@@ -1,283 +1,205 @@
+/* ============================================================
+   UPDATE — "Cronache delle Versioni" (prototipo J · Il Nesso)
+   Varco senza immagine · indice dei TIPI a pillole (filtro) ·
+   ogni versione = etichetta di sezione (vN · data) + pannello con
+   i gruppi per tipologia. Kit condiviso in styles/nesso.css.
+   Solo presentazione: logica nascondi/ripristina intatta.
+   ============================================================ */
 .updates-page {
   max-width: 860px;
   margin: 0 auto;
-  padding: 28px 18px 60px;
-  color: #33281a;
+  padding: 0 0 60px;
+  color: #edeaff;
+  font-family: "Manrope", system-ui, sans-serif;
 }
+.updates-page .updates-glhero { margin-bottom: 4px; }
+.updates-page .updates-glhero .gl-title { letter-spacing: .12em; }
 
-.updates-header { text-align: center; margin-bottom: 26px; }
-.updates-eyebrow {
-  display: inline-block; margin-bottom: 8px;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: 0.64rem; letter-spacing: 0.28em; text-transform: uppercase; color: #a9781a;
-}
-.updates-title {
-  font-size: clamp(1.6rem, 4vw, 2.3rem);
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  margin: 0 0 6px;
-  background: linear-gradient(180deg, #a9781a, #7c560f);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.updates-sub { color: #6a5b41; margin: 0; font-size: 0.95rem; }
-.updates-empty { text-align: center; color: #6a5b41; }
-
-.updates-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.updates-card {
-  background: linear-gradient(180deg, #fbf4e0 0%, #f1e7cf 100%);
-  border: 1px solid rgba(169, 120, 26, 0.30);
-  border-left: 4px solid rgba(169, 120, 26, 0.6);
-  border-radius: 14px;
-  padding: 16px 18px 18px;
-  box-shadow: 0 10px 30px rgba(86, 64, 30, 0.18);
-}
-.updates-card.latest {
-  border-left-color: #a9781a;
-  box-shadow: 0 12px 36px rgba(169, 120, 26, 0.18), 0 10px 30px rgba(86, 64, 30, 0.18);
-}
-
-.updates-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-.updates-version {
-  font-weight: 900;
-  font-size: 1.05rem;
-  color: #7c560f;
-  letter-spacing: 0.03em;
-}
-.updates-latest-badge {
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  background: #a9781a;
-  color: #fffdf5;
-  padding: 2px 7px;
-  border-radius: 4px;
-}
-.updates-date { margin-left: auto; color: #6a5b41; font-size: 0.84rem; }
-
-.updates-card-title {
-  margin: 2px 0 12px;
-  font-size: 1.12rem;
-  font-weight: 800;
-  color: #33281a;
-}
-
-/* ── Gruppi per tipologia ── */
-.updates-groups { display: flex; flex-direction: column; gap: 14px; }
-.updates-group {
-  border-left: 3px solid rgba(154, 138, 107, 0.45);
-  padding-left: 12px;
-}
-.updates-group-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-.updates-group-icon { font-size: 0.95rem; line-height: 1; }
-.updates-group-label {
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.updates-group-count {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #6a5b41;
-  background: rgba(45, 32, 14, 0.08);
-  border-radius: 999px;
-  padding: 1px 7px;
-}
-
-/* Colore per tipologia (bordo gruppo + etichetta) */
-.updates-group.feature   { border-left-color: rgba(46, 130, 70, 0.55); }
-.updates-group.feature   .updates-group-label { color: #2e8246; }
-.updates-group.graphic   { border-left-color: rgba(122, 79, 207, 0.6); }
-.updates-group.graphic   .updates-group-label { color: #553099; }
-.updates-group.mechanics { border-left-color: rgba(169, 120, 26, 0.6); }
-.updates-group.mechanics .updates-group-label { color: #7c560f; }
-.updates-group.balance   { border-left-color: rgba(169, 120, 26, 0.6); }
-.updates-group.balance   .updates-group-label { color: #8a6410; }
-.updates-group.fix       { border-left-color: rgba(40, 90, 160, 0.6); }
-.updates-group.fix       .updates-group-label { color: #2a5aa0; }
-.updates-group.chore     { border-left-color: rgba(154, 138, 107, 0.55); }
-.updates-group.chore     .updates-group-label { color: #6a5b41; }
-
-.updates-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
-.updates-change {
-  display: flex;
-  gap: 9px;
-  align-items: flex-start;
-  line-height: 1.55;
-}
-.updates-change-dot {
-  flex-shrink: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.5;
-  margin-top: 8px;
-}
-.updates-change-text { font-size: 0.92rem; color: #4a3c28; }
-
-/* ── Versione intera nascosta (solo master in "mostra nascosti") ── */
-.upd-version-hidden {
-  opacity: 0.45;
-  border-left-color: rgba(184, 54, 42, 0.5) !important;
-}
-.upd-hidden-badge {
-  font-size: 0.6rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  background: rgba(184, 54, 42, 0.14);
-  border: 1px solid rgba(184, 54, 42, 0.5);
-  color: #b8362a;
-  padding: 2px 7px;
-  border-radius: 4px;
-}
-/* Bottone 🗑 nella testata della versione: sempre visibile (non solo on hover) */
-.upd-ver-del-btn,
-.upd-ver-restore-btn {
-  margin-left: auto;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.updates-card:hover .upd-ver-del-btn,
-.updates-card:hover .upd-ver-restore-btn { opacity: 1; }
-
-.upd-ver-restore-btn {
-  font-size: 0.75rem;
-  padding: 3px 10px;
-}
-
-/* ── Master: toggle "mostra nascosti" ── */
+/* master: toggle "mostra nascosti" (nel corpo dell'hero) */
 .upd-toggle-hidden {
   display: inline-block;
   margin-top: 10px;
-  padding: 6px 14px;
+  padding: 7px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(169, 120, 26, 0.4);
-  background: rgba(169, 120, 26, 0.08);
-  color: #7c560f;
-  font-size: 0.8rem;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .7);
+  color: #c4b5fd;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .74rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: border-color .2s ease, box-shadow .2s ease, color .2s ease;
 }
 .upd-toggle-hidden:hover,
-.upd-toggle-hidden.active {
-  background: rgba(169, 120, 26, 0.18);
-  border-color: rgba(169, 120, 26, 0.7);
-  color: #7c560f;
+.upd-toggle-hidden.active { color: #edeaff; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
+
+/* ── indice dei tipi ── */
+.updates-page .updates-tipi { margin: 6px 0 22px; }
+.updates-empty { text-align: center; color: #8f8bb8; }
+
+/* ── timeline ── */
+.updates-timeline { display: flex; flex-direction: column; gap: 26px; }
+
+/* etichetta di sezione: versione · data · badge */
+.updates-page .updates-card-head { margin: 0 0 12px; gap: 12px; }
+.updates-page .updates-card-head::after { order: 99; }
+.updates-version-num {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: .06em;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 60%, #e879f9);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 14px rgba(139, 92, 246, .5));
+}
+.updates-date {
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: none;
+  color: #8f8bb8;
+  text-shadow: none;
+}
+.updates-page .updates-card-head .nx-tag {
+  position: static;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.updates-latest-badge { color: #22d3ee; background: rgba(34, 211, 238, .1); }
+.upd-hidden-badge { color: #e879f9; background: rgba(232, 121, 249, .1); }
+
+/* pannello della versione */
+.updates-card { padding: 18px 20px 18px; }
+.updates-version.latest .updates-card { border-color: rgba(34, 211, 238, .5); box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 30px -10px rgba(34, 211, 238, .5); }
+.updates-card-title {
+  margin: 0 0 14px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  color: #edeaff;
 }
 
-/* ── Voce nascosta (visibile solo al master in "mostra nascosti") ── */
-.upd-hidden-entry { opacity: 0.38; }
+/* ── gruppi per tipologia ── */
+.updates-groups { display: flex; flex-direction: column; gap: 14px; }
+.updates-group {
+  --tipo: #c4b5fd;
+  border-left: 2px solid color-mix(in srgb, var(--tipo) 55%, transparent);
+  padding-left: 14px;
+}
+.updates-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.updates-group-icon { font-size: .95rem; line-height: 1; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--tipo) 70%, transparent)); }
+.updates-group-label {
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--tipo);
+}
+.updates-group-count {
+  font-size: .62rem;
+  font-weight: 800;
+  color: #070713;
+  background: var(--tipo);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+/* colori per tipologia: vividi su fondo scuro */
+.updates-group.feature   { --tipo: #4ade80; }
+.updates-group.graphic   { --tipo: #e879f9; }
+.updates-group.mechanics { --tipo: #22d3ee; }
+.updates-group.balance   { --tipo: #fbbf24; }
+.updates-group.fix       { --tipo: #60a5fa; }
+.updates-group.chore     { --tipo: #a3a3c2; }
+/* le pillole dell'indice prendono il colore del tipo quando attive */
+.updates-page .upd-pill-feature.on   { background: linear-gradient(90deg, #4ade80, #22d3ee); }
+.updates-page .upd-pill-graphic.on   { background: linear-gradient(90deg, #e879f9, #8b5cf6); }
+.updates-page .upd-pill-mechanics.on { background: linear-gradient(90deg, #22d3ee, #8b5cf6); }
+.updates-page .upd-pill-balance.on   { background: linear-gradient(90deg, #fbbf24, #e879f9); }
+.updates-page .upd-pill-fix.on       { background: linear-gradient(90deg, #60a5fa, #8b5cf6); }
+.updates-page .upd-pill-chore.on     { background: linear-gradient(90deg, #a3a3c2, #8b5cf6); }
+
+.updates-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.updates-change { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; }
+.updates-change-dot {
+  flex-shrink: 0;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--tipo);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tipo) 80%, transparent);
+  margin-top: 8px;
+}
+.updates-change-text { font-size: .92rem; color: #c9c4ea; }
+
+/* ── versione nascosta / voce nascosta (solo master) ── */
+.upd-version-hidden { opacity: .5; }
+.upd-hidden-entry { opacity: .38; }
 .upd-hidden-entry .updates-change-text { text-decoration: line-through; }
 
-/* ── Bottone 🗑 per nascondere ── */
-.upd-del-btn,
-.upd-restore-btn {
+/* comandi master: 🗑 / ↩ */
+.upd-del-btn, .upd-restore-btn {
   flex-shrink: 0;
   margin-left: auto;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .74rem;
+  font-weight: 700;
   cursor: pointer;
-  line-height: 1;
+  line-height: 1.2;
   opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity .15s, background .15s, box-shadow .15s;
 }
 .updates-change:hover .upd-del-btn,
-.updates-change:hover .upd-restore-btn { opacity: 1; }
+.updates-change:hover .upd-restore-btn,
+.updates-version:hover .upd-ver-del-btn,
+.updates-version:hover .upd-ver-restore-btn { opacity: 1; }
+.upd-del-btn { background: rgba(232, 121, 249, .1); border: 1px solid rgba(232, 121, 249, .45); color: #e879f9; }
+.upd-del-btn:hover { background: rgba(232, 121, 249, .22); box-shadow: 0 0 14px -4px rgba(232, 121, 249, .8); }
+.upd-restore-btn { background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .45); color: #4ade80; }
+.upd-restore-btn:hover { background: rgba(74, 222, 128, .22); }
+.upd-ver-del-btn, .upd-ver-restore-btn { margin-left: 0; }
 
-.upd-del-btn {
-  background: rgba(184, 54, 42, 0.12);
-  border: 1px solid rgba(184, 54, 42, 0.45);
-  color: #b8362a;
-}
-.upd-del-btn:hover { background: rgba(184, 54, 42, 0.24); }
-
-.upd-restore-btn {
-  background: rgba(46, 130, 70, 0.12);
-  border: 1px solid rgba(46, 130, 70, 0.4);
-  color: #2e8246;
-}
-.upd-restore-btn:hover { background: rgba(46, 130, 70, 0.22); }
-
-/* ── Popup di conferma ── */
+/* ── popup di conferma (modale-varco) ── */
 .upd-confirm-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(45, 32, 14, 0.40);
+  background: rgba(4, 4, 12, .7);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
 .upd-confirm-box {
-  background: #fbf4e0;
-  border: 1px solid rgba(169, 120, 26, 0.4);
-  border-radius: 14px;
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .45);
+  border-radius: 22px;
   padding: 24px 22px;
   max-width: 440px;
   width: 100%;
-  box-shadow: 0 20px 50px rgba(86, 64, 30, 0.28);
+  box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(139, 92, 246, .6);
+  animation: upd-varco .4s cubic-bezier(.16, 1, .3, 1) both;
 }
-.upd-confirm-msg {
-  font-size: 1rem;
+@keyframes upd-varco { from { opacity: 0; transform: scale(.955); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.upd-confirm-msg { font-size: 1rem; font-weight: 700; color: #edeaff; margin: 0 0 10px; }
+.upd-confirm-text { font-size: .88rem; color: #8f8bb8; font-style: italic; margin: 0 0 20px; line-height: 1.5; }
+.upd-confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.upd-confirm-cancel, .upd-confirm-ok {
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .72rem;
   font-weight: 700;
-  color: #33281a;
-  margin: 0 0 10px;
-}
-.upd-confirm-text {
-  font-size: 0.88rem;
-  color: #6a5b41;
-  font-style: italic;
-  margin: 0 0 20px;
-  line-height: 1.5;
-}
-.upd-confirm-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-.upd-confirm-cancel,
-.upd-confirm-ok {
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
   cursor: pointer;
 }
-.upd-confirm-cancel {
-  background: rgba(45, 32, 14, 0.06);
-  border: 1px solid rgba(45, 32, 14, 0.18);
-  color: #6a5b41;
-}
-.upd-confirm-cancel:hover { background: rgba(45, 32, 14, 0.12); }
-.upd-confirm-ok {
-  background: rgba(184, 54, 42, 0.14);
-  border: 1px solid rgba(184, 54, 42, 0.5);
-  color: #b8362a;
-}
-.upd-confirm-ok:hover { background: rgba(184, 54, 42, 0.28); }
+.upd-confirm-cancel { background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .4); color: #c4b5fd; }
+.upd-confirm-cancel:hover { border-color: #22d3ee; color: #edeaff; }
+.upd-confirm-ok { background: linear-gradient(90deg, #e879f9, #c026d3); border: none; color: #070713; box-shadow: 0 0 26px -6px rgba(232, 121, 249, .8); }
+.upd-confirm-ok:hover { box-shadow: 0 0 40px -4px rgba(232, 121, 249, 1); }
 
 @media (max-width: 560px) {
-  .updates-date { margin-left: 0; width: 100%; }
+  .updates-page .updates-card-head { flex-wrap: wrap; }
+  .updates-card { padding: 14px 14px 16px; }
 }
-
-/* ── GLACIER ── */
-/* Finestra artica in testa alla timeline: respiro sotto l'arco. */
-.updates-page .updates-glhero { margin-bottom: 26px; padding-left: 0; padding-right: 0; }
+@media (prefers-reduced-motion: reduce) { .upd-confirm-box { animation: none; } }

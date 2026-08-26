@@ -1,186 +1,125 @@
-/* ============================================================================
-   DIARIO DI BORDO — tema "Pergamena Antica" (light).
-   Struttura: intestazione a cartiglio + (solo master) linguette gruppo +
-   riquadro di composizione "post-it" + registro a righe datate.
-   Accento per-gruppo via --cine-accent (impostato inline dal componente).
-   ============================================================================ */
+/* ============================================================
+   DIARIO DI BORDO — "IL REGISTRO DEL NESSO" (prototipo J · Il Nesso)
+   Varco con sigillo di gruppo · (master) pillole-gruppo · pannello di
+   composizione · voci = pannelli di vetro scuro in colonna con tag
+   orario, autore Cinzel, prosa; righello data = etichetta di sezione.
+   Accento per-gruppo via --cine-accent (inline dal componente).
+   Il kit vive in styles/nesso.css.
+   ============================================================ */
 
 .diario-page {
-  --acc: var(--cine-accent, #a9781a);
+  --acc: var(--cine-accent, #8b5cf6);
   max-width: 940px;
   margin: 0 auto;
-  padding: clamp(1.2rem, 3vw, 2.4rem) clamp(1rem, 4vw, 2rem) 6rem;
-  color: var(--ink);
+  padding: 0 0 6rem;
+  color: #edeaff;
+  font-family: "Manrope", system-ui, sans-serif;
 }
+.diario-page .gl-hero { padding-left: 0; padding-right: 0; margin-bottom: 1.2rem; }
 
-/* ── Guard / gate ─────────────────────────────────────────────────────── */
-.diario-gate {
+/* ── gate ── */
+.diario-page .diario-gate {
   max-width: 560px;
-  margin: 12vh auto;
+  margin: calc(var(--navbar-h, 66px) + 10vh) auto 0;
   text-align: center;
   padding: 2.4rem 1.6rem;
-  background: linear-gradient(180deg, var(--bg-2), #f6eed6);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-2);
 }
-.diario-gate-rune { font-size: 2.4rem; color: var(--amber-deep); display: block; margin-bottom: .4rem; }
-.diario-gate h1 { font-family: "Cinzel", serif; color: var(--amber-deep); margin: 0 0 .6rem; }
-.diario-gate p { color: var(--muted); line-height: 1.6; margin: 0; }
+.diario-gate-rune { font-size: 2.4rem; color: #22d3ee; display: block; margin-bottom: .4rem; text-shadow: 0 0 14px rgba(34, 211, 238, .8); }
+.diario-gate p { color: #8f8bb8; line-height: 1.6; margin: 0; }
 
-/* ── Intestazione ─────────────────────────────────────────────────────── */
-.diario-hero { text-align: center; margin-bottom: 1.6rem; }
-.diario-eyebrow {
-  font-size: .72rem; letter-spacing: .28em; text-transform: uppercase;
-  color: var(--arc-deep); margin: 0 0 .3rem; font-weight: 700;
-}
-.diario-eyebrow span { color: var(--acc); margin-right: .35em; }
-.diario-title {
-  font-family: "Cinzel", serif; font-weight: 800;
-  font-size: clamp(2rem, 6vw, 3.1rem); line-height: 1.02; margin: 0;
-  background: linear-gradient(180deg, #4a3a22, #7c560f);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
+/* ── sigillo e nota sotto il varco ── */
 .diario-sub {
   display: inline-flex; align-items: center; gap: .5rem;
-  margin: .7rem 0 0; color: var(--muted); font-size: .98rem;
+  margin: .4rem 0 0; color: #c9c4ea; font-size: .96rem;
 }
-.diario-sub em { color: var(--faint); font-style: italic; }
+.diario-sub em { color: #8f8bb8; font-style: italic; }
 .diario-seal {
   width: 1.7rem; height: 1.7rem; border-radius: 50%;
   display: inline-grid; place-items: center;
-  color: #fff; font-size: .9rem; box-shadow: var(--shadow-1);
+  color: #fff; font-size: .9rem;
+  box-shadow: 0 0 14px rgba(139, 92, 246, .6);
 }
 .diario-note-hint {
-  max-width: 46ch; margin: .8rem auto 0; color: var(--muted);
-  font-size: .88rem; line-height: 1.55;
+  max-width: 46ch; margin: .8rem auto 0; color: #8f8bb8;
+  font-size: .86rem; line-height: 1.55;
 }
+.diario-note-hint strong { color: #22d3ee; }
+.diario-page .gl-sotto .diario-sub { justify-content: center; }
 
-/* ── Linguette gruppo (master) ────────────────────────────────────────── */
-.diario-tabs {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem;
-  margin: 0 0 1.4rem;
-}
-.diario-tab {
-  --tab-color: var(--amber);
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .5rem .95rem; border-radius: 999px; cursor: pointer;
-  font-family: "Cinzel", serif; font-weight: 700; font-size: .84rem;
-  letter-spacing: .04em; color: var(--muted);
-  background: var(--bg-3); border: 1px solid var(--line-soft);
-  transition: all .18s ease;
-}
+/* ── pillole gruppo (master) ── */
+.diario-page .diario-tabs { margin: 0 0 1.2rem; }
+.diario-tab { --tab-color: #c4b5fd; }
 .diario-tab-rune { color: var(--tab-color); }
-.diario-tab:hover { border-color: var(--tab-color); color: var(--ink); }
-.diario-tab.is-active {
-  color: #fff; background: var(--tab-color); border-color: var(--tab-color);
-  box-shadow: 0 6px 18px -8px var(--tab-color);
-}
-.diario-tab.is-active .diario-tab-rune { color: rgba(255,255,255,.9); }
+.diario-tab.on .diario-tab-rune { color: #070713; }
 
-/* ── Composizione ─────────────────────────────────────────────────────── */
-.diario-compose {
-  background: linear-gradient(180deg, #fffdf5, #f8f0d9);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--acc);
-  border-radius: 12px;
+/* ── composizione ── */
+.diario-page .diario-compose {
+  margin-bottom: 1.6rem;
   padding: 1rem 1.1rem;
-  margin-bottom: 1.8rem;
-  box-shadow: var(--shadow-1);
+  border-left: 4px solid var(--acc);
 }
 .diario-input {
   width: 100%; box-sizing: border-box; resize: vertical; min-height: 3.4rem;
-  font: inherit; font-size: 1rem; line-height: 1.55; color: var(--ink);
+  font: inherit; font-size: 1rem; line-height: 1.55; color: #edeaff;
   background: transparent; border: none; outline: none;
   padding: .2rem 0;
 }
-.diario-input::placeholder { color: var(--faint); font-style: italic; }
+.diario-input::placeholder { color: #8f8bb8; font-style: italic; }
 .diario-compose-foot {
   display: flex; align-items: center; justify-content: space-between;
   gap: .8rem; margin-top: .7rem; padding-top: .7rem;
-  border-top: 1px dashed var(--line-soft);
+  border-top: 1px dashed rgba(139, 92, 246, .35);
 }
-.diario-signature { color: var(--muted); font-size: .85rem; font-style: italic; }
-.diario-add {
-  border: none; cursor: pointer; white-space: nowrap;
-  padding: .55rem 1.1rem; border-radius: 999px;
-  font-family: "Cinzel", serif; font-weight: 700; font-size: .86rem;
-  color: #fff; background: var(--acc);
-  box-shadow: 0 6px 18px -8px var(--acc); transition: transform .15s, opacity .15s;
-}
-.diario-add:hover:not(:disabled) { transform: translateY(-1px); }
-.diario-add:disabled { opacity: .45; cursor: not-allowed; }
-
+.diario-signature { color: #8f8bb8; font-size: .85rem; font-style: italic; }
+.diario-page .diario-add:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .diario-readonly {
-  text-align: center; color: var(--muted); font-size: .9rem; font-style: italic;
+  text-align: center; color: #8f8bb8; font-size: .9rem; font-style: italic;
   margin: 0 0 1.6rem;
 }
+.diario-readonly strong { color: #c4b5fd; }
 
-/* ── Registro ─────────────────────────────────────────────────────────── */
-.diario-empty {
-  text-align: center; color: var(--faint); font-style: italic;
-  padding: 2.4rem 1rem;
-}
+/* ── registro ── */
+.diario-empty { text-align: center; color: #8f8bb8; font-style: italic; padding: 2.4rem 1rem; }
 .diario-day { margin-bottom: 1.4rem; }
-.diario-day-rule {
-  display: flex; align-items: center; gap: .8rem;
-  margin: 0 0 .7rem; color: var(--amber-deep);
-  font-family: "Cinzel", serif; font-size: .78rem; letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.diario-day-rule::before,
-.diario-day-rule::after {
-  content: ""; height: 1px; flex: 1; background: var(--line-soft);
-}
-.diario-day-rule span { flex: 0 0 auto; }
-
+.diario-page .diario-day-rule { margin: 0 0 .8rem; }
 .diario-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
-.diario-entry {
-  display: flex; gap: .8rem; align-items: flex-start;
-  background: linear-gradient(180deg, var(--bg-2), #f6eed6);
-  border: 1px solid var(--line-soft);
-  border-radius: 11px; padding: .8rem .95rem;
-  box-shadow: var(--shadow-1);
+.diario-page .diario-entry {
+  display: flex; gap: .9rem; align-items: flex-start;
+  padding: .9rem 1rem;
 }
 .diario-avatar {
-  flex: 0 0 auto; width: 2.1rem; height: 2.1rem; border-radius: 50%;
+  flex: 0 0 auto; width: 2.3rem; height: 2.3rem; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--acc); color: #fff;
-  font-family: "Cinzel", serif; font-weight: 700; font-size: .95rem;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6); color: #070713;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .95rem;
+  box-shadow: 0 0 14px rgba(34, 211, 238, .5);
 }
 .diario-entry-body { flex: 1; min-width: 0; }
 .diario-entry-head {
-  display: flex; align-items: center; gap: .6rem; margin-bottom: .2rem;
+  display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin-bottom: .3rem;
+  padding-right: 2rem;
 }
 .diario-group-chip {
-  flex: 0 0 auto; color: #fff; font-size: .64rem; font-weight: 800;
-  letter-spacing: .06em; padding: .12rem .45rem; border-radius: 999px;
-  text-transform: uppercase; box-shadow: var(--shadow-1);
+  flex: 0 0 auto; color: #fff; font-size: .62rem; font-weight: 800;
+  letter-spacing: .08em; padding: .14rem .5rem; border-radius: 999px;
+  text-transform: uppercase; box-shadow: 0 0 10px rgba(0, 0, 0, .5);
 }
-.diario-author { font-weight: 700; color: var(--ink); font-size: .95rem; }
-.diario-when { color: var(--faint); font-size: .78rem; }
-.diario-del {
-  margin-left: auto; border: none; background: transparent; cursor: pointer;
-  color: var(--faint); font-size: 1.1rem; line-height: 1; padding: 0 .2rem;
-  border-radius: 6px; transition: color .15s;
+.diario-page .diario-author { font-size: .92rem; }
+.diario-page .diario-when { position: static; margin-left: auto; color: #8f8bb8; }
+.diario-page .diario-del {
+  position: absolute; top: 10px; right: 10px;
+  padding: 2px 9px; font-size: 1rem; line-height: 1;
+  color: #e879f9; border-color: rgba(232, 121, 249, .45);
 }
-.diario-del:hover { color: var(--crit); }
-.diario-text {
-  margin: 0; color: #3a2e1d; line-height: 1.55; font-size: .96rem;
-  white-space: pre-wrap; word-break: break-word;
-}
+.diario-page .diario-del:hover { border-color: #e879f9; box-shadow: 0 0 14px -4px rgba(232, 121, 249, .8); }
+.diario-page .diario-text { margin: 0; font-size: .95rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 
 @media (max-width: 560px) {
   .diario-compose-foot { flex-direction: column; align-items: stretch; }
-  .diario-add { width: 100%; }
+  .diario-page .diario-add { width: 100%; justify-content: center; }
   .diario-signature { text-align: center; }
 }
 
-/* ── GLACIER ── */
-/* L'intestazione a cartiglio (.diario-hero/.diario-eyebrow/.diario-title)
-   è stata sostituita da <GlacierHero>: quei selettori restano regole morte.
-   Il sigillo di gruppo e la nota vivono in .gl-sotto, centrati. */
-.diario-page .gl-hero { padding-left: 0; padding-right: 0; margin-bottom: 1.4rem; }
-.diario-page .gl-sotto .diario-sub { justify-content: center; }
-.diario-page .gl-sotto .diario-note-hint { margin-top: .6rem; }
+/* ── AMBIENT FX: contenuto sopra, layer dietro ── */
+.diario-page > * { position: relative; z-index: 1; }
+.diario-page > .ambient-fx { position: fixed; z-index: 0; }

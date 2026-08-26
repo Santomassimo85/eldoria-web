@@ -97,20 +97,19 @@ export default function Cinema() {
 
   if (!currentUser) {
     return (
-      <section className="cine-page theatrum theatrum--locked" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
-        <div className="theatrum-locked-card">
+      <section className="cine-page theatrum theatrum--locked" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+        <div className="nx-pannello theatrum-locked-card">
           <div className="theatrum-locked-glyph">🎭</div>
-          <h2 className="theatrum-locked-title">Sala Chiusa</h2>
-          <p className="theatrum-locked-text">Solo i compagni di viaggio possono entrare nel teatro. Effettua l'accesso per ammirare le memorie della campagna.</p>
+          <h2 className="nx-titolo theatrum-locked-title">Sala Chiusa</h2>
+          <p className="nx-sotto theatrum-locked-text">Solo i compagni di viaggio possono entrare nel teatro. Effettua l'accesso per ammirare le memorie della campagna.</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="cine-page theatrum" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
-      {/* ── HERO = FINESTRA ARTICA (mockup B): la locandina-fantasma nell'arco
-            di ghiaccio, titolo inciso sulla lastra, sigillo con i conteggi ── */}
+    <section className="cine-page theatrum" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      {/* ── HERO = VARCO (prototipo J): la locandina-fantasma nel portale esagonale ── */}
       <GlacierHero
         ariaLabel="Teatro delle Cronache"
         image={HERO_IMAGE}
@@ -122,28 +121,33 @@ export default function Cinema() {
         tagline="L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo."
       />
 
+      {/* ── INDICE A PILLOLE (satelliti della pagina) ── */}
+      {!loading && featured && (
+        <nav className="nx-pillole theatrum-indice" aria-label="Indice del teatro">
+          <a href="#cin-proiezione" className="nx-pillola on">▶ In proiezione</a>
+          {archive.length > 0 && <a href="#cin-archivio" className="nx-pillola">🎞 Archivio · {archive.length}</a>}
+          <span className="nx-pillola theatrum-pillola-info">🎭 {totalEpisodes} sessioni</span>
+        </nav>
+      )}
+
       {/* ── BODY ────────────────────────────────────────── */}
       {loading ? (
-        <div className="theatrum-loading">
+        <div className="nx-pannello theatrum-loading">
           <div className="theatrum-reel" />
           <p>Le bobine girano…</p>
         </div>
       ) : !featured ? (
-        <div className="theatrum-empty">
+        <div className="nx-pannello theatrum-empty">
           <div className="theatrum-empty-glyph">🎞</div>
           <p>Nessuna registrazione ancora archiviata.</p>
           <small>Le memorie del Monaco Errante attendono di essere proiettate.</small>
         </div>
       ) : (
         <>
-          {/* ── FEATURED ───────────────────────────────── */}
-          <article className="theatrum-feature">
-            <div className="theatrum-feature-eyebrow">
-              <span className="theatrum-feature-eyebrow-glyph">✦</span>
-              Ultima Cronaca · in proiezione
-              <span className="theatrum-feature-eyebrow-glyph">✦</span>
-            </div>
-
+          {/* ── FEATURED: pannello largo con locandina + scheda ── */}
+          <div id="cin-proiezione" className="gl-sezlabel">Ultima Cronaca · In Proiezione</div>
+          <article className="nx-pannello theatrum-feature">
+            <span className="nx-tag">✦ Ultima cronaca</span>
             <div className="theatrum-feature-grid">
               <button
                 type="button"
@@ -152,59 +156,57 @@ export default function Cinema() {
                 aria-label={`Riproduci ${featured.title}`}
               >
                 <Thumbnail video={featured} />
-                <span className="theatrum-feature-strip" aria-hidden="true" />
-                <span className="theatrum-feature-strip theatrum-feature-strip--right" aria-hidden="true" />
-                <span className="theatrum-feature-play">▶</span>
+                <span className="theatrum-velo" aria-hidden="true" />
+                <span className="theatrum-play" aria-hidden="true">▶</span>
               </button>
 
               <div className="theatrum-feature-meta">
-                <span className="theatrum-feature-num">
+                <span className="nx-kicker">
                   Cronaca №{extractSessionNumber(featured.title) > -Infinity ? extractSessionNumber(featured.title) : totalEpisodes}
                 </span>
-                <h2 className="theatrum-feature-title">{featured.title}</h2>
+                <h2 className="nx-titolo theatrum-feature-title">{featured.title}</h2>
                 {featured.createdAt && (
-                  <p className="theatrum-feature-date">📅 {formatDate(featured.createdAt)}</p>
+                  <p className="nx-meta theatrum-feature-date">📅 {formatDate(featured.createdAt)}</p>
                 )}
-                {featured.desc && <p className="theatrum-feature-desc">{featured.desc}</p>}
-                <button type="button" className="theatrum-feature-cta" onClick={() => openPlayer(featured)}>
-                  <span className="theatrum-cta-icon">▶</span>
-                  Entra nel Teatro
+                {featured.desc && <p className="nx-prosa theatrum-feature-desc">{featured.desc}</p>}
+                <button type="button" className="gl-cta theatrum-feature-cta" onClick={() => openPlayer(featured)}>
+                  ▶ Entra nel Teatro
                 </button>
               </div>
             </div>
           </article>
 
-          {/* ── ARCHIVE LIST ───────────────────────────── */}
+          {/* ── ARCHIVIO: griglia di bobine ── */}
           {archive.length > 0 && (
             <>
-            {/* ── ETICHETTA DI SEZIONE: Archivio ── */}
-            <div className="gl-sezlabel">Archivio · Sessioni Precedenti</div>
-            <p className="gl-vetrata-sub theatrum-archivio-sub">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
-            <section className="theatrum-archive">
-              <ul className="theatrum-rolls">
+            <div id="cin-archivio" className="gl-sezlabel">Archivio · Sessioni Precedenti</div>
+            <p className="nx-nota theatrum-archivio-sub">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
+            <section className="theatrum-archive" aria-label="Archivio delle sessioni">
+              <ul className="nx-griglia nx-griglia--larga theatrum-rolls">
                 {archive.map((v, i) => (
                   <li key={v.id}>
                     <button
                       type="button"
-                      className="theatrum-roll"
+                      className="nx-pannello nx-pannello--tap theatrum-roll"
                       onClick={() => openPlayer(v)}
                       aria-label={`Riproduci ${v.title}`}
                     >
-                      <span className="theatrum-roll-num">
+                      <span className="nx-tag theatrum-roll-num">
                         №{extractSessionNumber(v.title) > -Infinity ? extractSessionNumber(v.title) : archive.length - i}
                       </span>
                       <div className="theatrum-roll-thumb">
                         <Thumbnail video={v} />
-                        <span className="theatrum-roll-play">▶</span>
+                        <span className="theatrum-velo" aria-hidden="true" />
+                        <span className="theatrum-play" aria-hidden="true">▶</span>
                       </div>
                       <div className="theatrum-roll-body">
-                        <h4 className="theatrum-roll-title">{v.title}</h4>
-                        {v.desc && <p className="theatrum-roll-desc">{v.desc}</p>}
+                        <h4 className="nx-nome theatrum-roll-title">{v.title}</h4>
+                        {v.desc && <p className="nx-nota theatrum-roll-desc">{v.desc}</p>}
                         <div className="theatrum-roll-foot">
                           {v.createdAt && (
-                            <span className="theatrum-roll-date">📅 {formatDate(v.createdAt)}</span>
+                            <span className="nx-meta theatrum-roll-date">📅 {formatDate(v.createdAt)}</span>
                           )}
-                          <span className="theatrum-roll-platform">
+                          <span className="nx-meta theatrum-roll-platform">
                             {v.platform === "twitch" ? "🟣 Twitch" : "▶ YouTube"}
                           </span>
                         </div>

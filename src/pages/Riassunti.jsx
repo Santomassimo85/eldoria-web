@@ -451,15 +451,7 @@ export default function Riassunti() {
     return (
         <section className="riassunti-page">
 
-            {/* ── SFONDO ANIMATO COSTANTE: rune fluttuanti (stile Arena) ── */}
-            <div className="rs-rune-ambient" aria-hidden="true">
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <span key={i} className={`rs-rune rr${i + 1}`} />
-                ))}
-            </div>
-
-            {/* ── HERO = FINESTRA ARTICA (GlacierHero): arco di ghiaccio col lago,
-                  titolo inciso sulla lastra, sigillo con i conteggi dinamici ── */}
+            {/* ── HERO = VARCO (GlacierHero): portale esagonale + testata a gradiente ── */}
             <GlacierHero
                 id="rs-top"
                 ariaLabel="Memorie del Monaco Errante"
@@ -471,7 +463,7 @@ export default function Riassunti() {
                 tagline="Le schegge del mondo, raccolte sessione dopo sessione. Ciò che la forza dimentica, la memoria conserva."
             />
 
-            {/* ── TOOLBAR: ricerca + filtri gruppo (sticky) ── */}
+            {/* ── TOOLBAR: ricerca a pillola + satelliti di gruppo ── */}
             <div className="rs-toolbar">
                 <div className="rs-search">
                     <span className="rs-search-icon" aria-hidden="true">🔍</span>
@@ -496,52 +488,48 @@ export default function Riassunti() {
                 </div>
 
                 {groupKeys.length > 1 && (
-                    <div className="rs-chips" role="group" aria-label="Filtra per gruppo">
+                    <div className="nx-pillole rs-chips" role="group" aria-label="Filtra per gruppo">
                         <button
                             type="button"
-                            className={`rs-chip ${activeGroup === null ? "active" : ""}`}
+                            className={`nx-pillola rs-chip ${activeGroup === null ? "on" : ""}`}
                             onClick={() => setActiveGroup(null)}
                         >
-                            Tutti
+                            ✦ Tutti
                         </button>
                         {groupKeys.map((k, gi) => (
                             <button
                                 key={k}
                                 type="button"
                                 data-accent={gi % 5}
-                                className={`rs-chip ${activeGroup === k ? "active" : ""}`}
+                                className={`nx-pillola rs-chip ${activeGroup === k ? "on" : ""}`}
                                 onClick={() => setActiveGroup(activeGroup === k ? null : k)}
                             >
-                                ❦ {k}
+                                ⬡ {k}
                             </button>
                         ))}
                     </div>
                 )}
 
-                <span className="rs-result-count">
+                <span className="rs-result-count nx-nota">
                     {visibleCount} {visibleCount === 1 ? "memoria" : "memorie"}
                     {isFiltering ? " trovate" : ""}
                 </span>
             </div>
 
-            {/* ── INTRO manoscritto (nascosto quando si filtra) ── */}
+            {/* ── EPIGRAFE (nascosta quando si filtra) ── */}
             {!isFiltering && (
-                <div className="rs-intro">
-                    <h3>Le schegge del mondo</h3>
-                    <p>
-                        <span className="riassunti-drop">A</span>nno 1852 d.C.S.
-                        "Scrivo queste parole perché il mondo dimentica più in fretta
-                        di quanto il vento spenga una candela." Sono trascorsi quasi
-                        duemila anni dalla Caduta delle Stelle… "Se questo mondo
-                        dovrà essere ricomposto, non sarà con la forza, ma con la
-                        memoria." — <em>Obia, Monaco dell'Eco Silente</em>
-                    </p>
-                </div>
+                <blockquote className="nx-citazione rs-intro">
+                    Anno 1852 d.C.S. "Scrivo queste parole perché il mondo dimentica più in fretta
+                    di quanto il vento spenga una candela." Sono trascorsi quasi
+                    duemila anni dalla Caduta delle Stelle… "Se questo mondo
+                    dovrà essere ricomposto, non sarà con la forza, ma con la
+                    memoria." — <em>Obia, Monaco dell'Eco Silente</em>
+                </blockquote>
             )}
 
-            {/* ── GRUPPI PARTY ── */}
+            {/* ── GRUPPI PARTY: rubrica fissa + flusso di memorie ── */}
             {visibleGroups.length === 0 ? (
-                <p className="riassunti-empty">
+                <p className="riassunti-empty nx-nota">
                     {isFiltering
                         ? "Nessuna memoria corrisponde alla ricerca."
                         : "Nessuna memoria archiviata."}
@@ -552,16 +540,18 @@ export default function Riassunti() {
                         <section
                             key={partyKey}
                             id={`rs-group-${slugify(partyKey)}`}
-                            className="rs-group"
+                            className="rs-group nx-due"
                             data-accent={gi % 5}
                             aria-label={`Gruppo ${partyKey}`}
                         >
-                            {/* marginalia sticky del gruppo */}
-                            <aside className="rs-group-aside">
-                                <span className="rs-group-seal" aria-hidden="true">❦</span>
-                                <span className="rs-group-eyebrow">Cronaca</span>
-                                <h2 className="rs-group-name">Gruppo {partyKey}</h2>
-                                <span className="rs-group-chip">
+                            {/* rubrica del gruppo (sticky su desktop) */}
+                            <aside className="nx-pannello nx-pannello--sticky rs-group-aside">
+                                <div className="nx-anello" aria-hidden="true">
+                                    <div className="nx-anello-ph">{String(partyKey).charAt(0)}</div>
+                                </div>
+                                <span className="nx-kicker">Cronaca</span>
+                                <h2 className="nx-titolo rs-group-name">Gruppo {partyKey}</h2>
+                                <span className="nx-nota rs-group-chip">
                                     {summaries.length} {summaries.length === 1 ? "memoria" : "memorie"}
                                     {query.trim() && groupedSummaries[partyKey].length !== summaries.length
                                         ? ` di ${groupedSummaries[partyKey].length}`
@@ -569,22 +559,22 @@ export default function Riassunti() {
                                 </span>
                                 <button
                                     type="button"
-                                    className="riassunti-export-btn"
+                                    className="gl-cta riassunti-export-btn"
                                     onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
                                     title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
                                 >
-                                    📥 Esporta (PDF)
+                                    📥 Esporta PDF
                                 </button>
                             </aside>
 
-                            {/* card delle memorie */}
+                            {/* pannelli delle memorie */}
                             <div className="rs-group-body">
-                                <div className="summary-grid">
+                                <div className="nx-griglia nx-griglia--larga summary-grid">
                                     {summaries.map(summary => (
                                         <div
                                             key={summary.id}
                                             id={`rs-summary-${summary.id}`}
-                                            className={`summary-card-wrapper${targetId === summary.id ? " is-deeplinked" : ""}`}
+                                            className={`nx-pannello summary-card-wrapper${targetId === summary.id ? " is-deeplinked" : ""}`}
                                         >
                                             <ToggleSection
                                                 defaultOpen={targetId === summary.id}
@@ -600,36 +590,38 @@ export default function Riassunti() {
                                                                 />
                                                             </div>
                                                         )}
-                                                        <span className="summary-card-num">Sessione #{summary.num}</span>
-                                                        <span className="summary-card-title-text">{summary.title}</span>
+                                                        <span className="nx-tag summary-card-num">Sessione #{summary.num}</span>
+                                                        <span className="nx-nome summary-card-title-text">{summary.title}</span>
                                                         {summary.date && (
-                                                            <span className="summary-card-date-chip">
+                                                            <span className="nx-meta summary-card-date-chip">
                                                                 {summary.date}
                                                             </span>
                                                         )}
-                                                        {isMaster && (
-                                                            <span className="summary-visit-badge" title="Visite totali">
-                                                                👁 {summary.viewCount || 0}
-                                                            </span>
-                                                        )}
-                                                        <button
-                                                            type="button"
-                                                            className="summary-enlarge-btn"
-                                                            title="Apri la memoria in grande"
-                                                            aria-label="Apri la memoria in grande"
-                                                            onClick={(e) => { e.stopPropagation(); openEnlarged(summary); }}
-                                                        >
-                                                            ⛶ Apri
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className={`summary-share-btn${copiedId === summary.id ? " is-copied" : ""}`}
-                                                            title="Copia il link diretto a questa memoria"
-                                                            aria-label="Copia il link diretto a questa memoria"
-                                                            onClick={(e) => { e.stopPropagation(); copySummaryLink(summary.id); }}
-                                                        >
-                                                            {copiedId === summary.id ? "✓ Copiato" : "🔗 Link"}
-                                                        </button>
+                                                        <span className="summary-card-actions">
+                                                            {isMaster && (
+                                                                <span className="nx-pillola summary-visit-badge" title="Visite totali">
+                                                                    👁 {summary.viewCount || 0}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                className="nx-pillola summary-enlarge-btn"
+                                                                title="Apri la memoria in grande"
+                                                                aria-label="Apri la memoria in grande"
+                                                                onClick={(e) => { e.stopPropagation(); openEnlarged(summary); }}
+                                                            >
+                                                                ⛶ Apri
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className={`nx-pillola summary-share-btn${copiedId === summary.id ? " is-copied" : ""}`}
+                                                                title="Copia il link diretto a questa memoria"
+                                                                aria-label="Copia il link diretto a questa memoria"
+                                                                onClick={(e) => { e.stopPropagation(); copySummaryLink(summary.id); }}
+                                                            >
+                                                                {copiedId === summary.id ? "✓ Copiato" : "🔗 Link"}
+                                                            </button>
+                                                        </span>
                                                     </>
                                                 }
                                                 titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
@@ -637,13 +629,13 @@ export default function Riassunti() {
                                                 onOpen={() => recordVisit(summary.id)}
                                             >
                                                 {summary.date && (
-                                                    <h2 className="summaryDate">{summary.date}</h2>
+                                                    <h2 className="summaryDate nx-kicker">{summary.date}</h2>
                                                 )}
                                                 {summary.subTitle && (
-                                                    <h4 className="Obia">{summary.subTitle}</h4>
+                                                    <h4 className="Obia nx-meta">{summary.subTitle}</h4>
                                                 )}
                                                 <div
-                                                    className="rs-summary-html"
+                                                    className="rs-summary-html nx-prosa"
                                                     onClick={handleLoreClick}
                                                     dangerouslySetInnerHTML={{ __html: linkedContent[summary.id] || summary.content }}
                                                 />
@@ -679,16 +671,16 @@ export default function Riassunti() {
 
             {enlarged && (
                 <div
-                    className="rs-modal-overlay"
+                    className="nx-modale-overlay rs-modal-overlay"
                     onClick={() => setEnlargedId(null)}
                     role="dialog"
                     aria-modal="true"
                     aria-label={enlarged.title}
                 >
-                    <div className="rs-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="nx-modale rs-modal" onClick={(e) => e.stopPropagation()}>
                         <button
                             type="button"
-                            className="rs-modal-close"
+                            className="nx-modale-close rs-modal-close"
                             onClick={() => setEnlargedId(null)}
                             aria-label="Chiudi"
                         >✕</button>
@@ -697,21 +689,22 @@ export default function Riassunti() {
                             {enlarged.coverImage && (
                                 <div className="rs-modal-cover">
                                     <img
+                                        className="nx-modale-img"
                                         src={enlarged.coverImage}
                                         alt={enlarged.title}
                                         onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
                                     />
                                 </div>
                             )}
-                            <span className="rs-modal-eyebrow">
-                                ❦ Cronache di Eldoria{enlarged.party ? ` · Gruppo ${enlarged.party}` : ""}
+                            <span className="nx-kicker rs-modal-eyebrow">
+                                Cronache di Eldoria{enlarged.party ? ` · Gruppo ${enlarged.party}` : ""}
                             </span>
-                            <h2 className="rs-modal-title">{enlarged.title || "Senza titolo"}</h2>
-                            {enlarged.date && <p className="rs-modal-date">{enlarged.date}</p>}
-                            {enlarged.subTitle && <p className="rs-modal-sub">{enlarged.subTitle}</p>}
+                            <h2 className="nx-titolo rs-modal-title">{enlarged.title || "Senza titolo"}</h2>
+                            {enlarged.date && <p className="nx-meta rs-modal-date">{enlarged.date}</p>}
+                            {enlarged.subTitle && <p className="nx-nota rs-modal-sub">{enlarged.subTitle}</p>}
 
                             <div
-                                className="rs-summary-html rs-modal-body"
+                                className="rs-summary-html nx-prosa rs-modal-body"
                                 onClick={handleLoreClick}
                                 dangerouslySetInnerHTML={{ __html: linkedContent[enlarged.id] || enlarged.content }}
                             />
@@ -740,7 +733,7 @@ export default function Riassunti() {
                             <div className="rs-modal-foot">
                                 <button
                                     type="button"
-                                    className={`summary-share-btn${copiedId === enlarged.id ? " is-copied" : ""}`}
+                                    className={`nx-pillola summary-share-btn${copiedId === enlarged.id ? " is-copied" : ""}`}
                                     onClick={() => copySummaryLink(enlarged.id)}
                                 >
                                     {copiedId === enlarged.id ? "✓ Link copiato" : "🔗 Copia link"}

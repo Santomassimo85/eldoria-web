@@ -1,179 +1,323 @@
 /* ============================================================
-   ITEM DETAIL — tema cinematic (magenta/oro)
-   La vetrina (.player-showcase) resta una card chiara con tinta
-   rarità: leggibile sul fondo scuro. Qui ripristino il layout e
-   rendo scura la console del master + chrome.
+   DETTAGLIO OGGETTO — "Cartiglio del Nesso" (prototipo J)
+   Vista player: layout a due colonne (nx-due) — a sinistra il
+   pannello fisso con l'oggetto nell'ANELLO di rarità (180px),
+   etichetta rarità colorata, prezzo ciano, timer; a destra il
+   pannello con titolo a gradiente, dati, descrizione, offerte.
+   Vista master: console riabbigliata come pannello del vuoto.
+   Kit condiviso in styles/nesso.css. Solo presentazione.
    ============================================================ */
-
 .item-detail-page.cine-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   max-width: 1100px;
   margin: 0 auto;
-  padding: calc(var(--navbar-h, 80px) + 24px) 20px 80px;
+  padding: calc(var(--navbar-h, 66px) + 24px) 0 80px;
+  font-family: "Manrope", system-ui, sans-serif;
+  color: #edeaff;
 }
-
 .item-detail-page .loading-text,
 .item-detail-page .error-text {
-  color: var(--cine-gold-soft);
+  color: #c4b5fd;
   font-style: italic;
-  font-family: var(--font-title);
-  letter-spacing: 0.1em;
+  text-align: center;
   margin-top: 60px;
+  line-height: 1.6;
 }
 
-/* ── BACK BUTTON (ghost dorato) ── */
+/* colori di rarità accesi per il fondo scuro (vince su style.css) */
+.item-detail-page .rarity-bg-Comune       { --rarity-edge: #b3b3c8; }
+.item-detail-page .rarity-bg-Noncomune    { --rarity-edge: #4ade80; }
+.item-detail-page .rarity-bg-Raro,
+.item-detail-page .rarity-bg-Rara         { --rarity-edge: #60a5fa; }
+.item-detail-page .rarity-bg-Magico       { --rarity-edge: #a78bfa; }
+.item-detail-page .rarity-bg-Moltorara    { --rarity-edge: #d8b4fe; }
+.item-detail-page .rarity-bg-Epico        { --rarity-edge: #fb923c; }
+.item-detail-page .rarity-bg-Leggendario,
+.item-detail-page .rarity-bg-Leggendaria  { --rarity-edge: #fbbf24; }
+.item-detail-page .rarity-bg-Artefatto    { --rarity-edge: #f87171; }
+
+/* ── torna al mercato: pillola ── */
 .item-detail-page .back-button {
   align-self: flex-start;
-  background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
-  color: #7c560f;
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, #c9b78a);
+  margin-bottom: 18px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .7);
+  color: #c4b5fd;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all .2s ease;
+}
+.item-detail-page .back-button:hover { color: #edeaff; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); transform: translateY(-2px); }
+
+/* ══════════ VISTA PLAYER ══════════ */
+.item-detail-page .ps-varco { align-items: start; }
+@media (min-width: 820px) { .item-detail-page .ps-varco { grid-template-columns: 300px 1fr; } }
+
+/* pannello di sinistra */
+.item-detail-page .ps-lato { text-align: center; padding: 22px 18px 20px; border-color: color-mix(in srgb, var(--rarity-edge, #8b5cf6) 55%, transparent); }
+.item-detail-page .ps-anello {
+  width: 180px; height: 180px;
+  padding: 6px;
+  margin: 4px auto 14px;
+  aspect-ratio: auto;
+  overflow: visible;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.item-detail-page .ps-anello::before {
+  background: conic-gradient(var(--rarity-edge, #22d3ee), #8b5cf6 40%, var(--rarity-edge, #22d3ee) 70%, #fff 82%, var(--rarity-edge, #22d3ee));
+  box-shadow: 0 0 28px -4px color-mix(in srgb, var(--rarity-edge, #22d3ee) 85%, transparent);
+}
+.item-detail-page .ps-anello .ps-image {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #0d0d1f;
+  display: block;
+  transform: none !important;
+}
+.item-detail-page .ps-sold-overlay {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(7, 7, 19, .62);
+  color: #e879f9;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700; font-size: 1.1rem; letter-spacing: .14em;
+  text-shadow: 0 0 12px rgba(232, 121, 249, .8);
+  transform: rotate(-12deg);
+}
+.item-detail-page .ps-sold-overlay.expired { color: #fb923c; text-shadow: 0 0 12px rgba(251, 146, 60, .8); }
+/* etichetta rarità: statica, colore della rarità con alone */
+.item-detail-page .ps-lato .ps-rarity-badge {
+  position: static;
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rarity-edge, #e879f9) 60%, transparent);
+  background: rgba(7, 7, 19, .6);
+  color: var(--rarity-edge, #e879f9);
+  font-size: .68rem;
+  letter-spacing: .18em;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rarity-edge, #e879f9) 80%, transparent);
+}
+.item-detail-page .ps-type {
+  margin: 10px 0 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .62rem; letter-spacing: .3em; text-transform: uppercase;
+  color: #8f8bb8;
+}
+/* prezzo */
+.item-detail-page .ps-price-row {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(34, 211, 238, .07);
+  border: 1px solid rgba(34, 211, 238, .35);
+}
+.item-detail-page .ps-price-label {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem; letter-spacing: .24em; text-transform: uppercase;
+  color: #8f8bb8;
+}
+.item-detail-page .ps-price-value {
+  font-size: 1.7rem; font-weight: 800; line-height: 1;
+  color: #22d3ee;
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+}
+.item-detail-page .ps-price-value small { font-size: .8rem; font-weight: 700; color: #9ff0ff; }
+/* timer asta: grande e leggibile */
+.item-detail-page .ps-timer {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(232, 121, 249, .08);
+  border: 1px solid rgba(232, 121, 249, .4);
+}
+.item-detail-page .ps-timer-label { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: #c4b5fd; }
+.item-detail-page .ps-timer .countdown-timer,
+.item-detail-page .countdown-timer {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700; font-size: 1.15rem; letter-spacing: .08em;
+  color: #e879f9;
+  text-shadow: 0 0 12px rgba(232, 121, 249, .8);
+}
+.item-detail-page .ps-ratto-req {
+  margin: 12px 0 0;
+  font-size: .74rem; font-weight: 700;
+  color: #fbbf24;
+}
+
+/* pannello di destra */
+.item-detail-page .ps-info { padding: 22px 24px 24px; text-align: left; }
+.item-detail-page .ps-info .nx-titolo { text-align: left; margin: 8px 0 12px; font-size: clamp(1.5rem, 4.6vw, 2.2rem); }
+.item-detail-page .ps-meta { margin: 0 0 6px; }
+.item-detail-page .ps-sezlabel { margin: 22px 0 10px; }
+.item-detail-page .ps-description { font-size: .98rem; }
+.item-detail-page .ps-description p { margin: 0 0 10px; }
+.item-detail-page .ps-description strong { color: #edeaff; }
+
+/* bonus set: pannello a filetto viola */
+.item-detail-page .ps-set-block {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, .1);
+  border: 1px solid rgba(139, 92, 246, .35);
+}
+.item-detail-page .ps-set-head { display: flex; align-items: center; gap: 10px; }
+.item-detail-page .ps-set-icon { color: #c4b5fd; font-size: 1.1rem; }
+.item-detail-page .ps-set-name { color: #c4b5fd; font-family: "Cinzel", Georgia, serif; font-size: .9rem; }
+.item-detail-page .ps-set-size { color: #8f8bb8; }
+.item-detail-page .ps-set-bonus-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.item-detail-page .ps-set-bonus-item { display: flex; gap: 10px; align-items: baseline; color: #c9c4ea; font-size: .88rem; line-height: 1.5; }
+.item-detail-page .ps-set-bonus-frac { flex-shrink: 0; padding: 1px 8px; border-radius: 999px; background: rgba(34, 211, 238, .12); color: #22d3ee; font-weight: 800; font-size: .72rem; }
+.item-detail-page .ps-set-bonus-effect { color: #c9c4ea; }
+
+/* acquisto / offerta */
+.item-detail-page .ps-buy-btn { width: 100%; padding: 14px 22px; font-size: .78rem; }
+.item-detail-page .ps-offer-form { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.item-detail-page .ps-offer-form input {
+  flex: 1 1 180px;
+  padding: 12px 16px;
   border-radius: 12px;
-  padding: 9px 20px;
-  font-family: var(--font-title);
-  letter-spacing: 0.08em;
-  font-size: 0.9rem;
-  box-shadow: 0 6px 16px rgba(86, 64, 30, 0.18);
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: #0e0e22;
+  color: #edeaff;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: 1rem; font-weight: 700;
+  box-shadow: none;
 }
-.item-detail-page .back-button:hover {
-  transform: translateY(-2px);
-  border-color: var(--cine-gold);
-  box-shadow: 0 10px 24px rgba(86, 64, 30, 0.26);
+.item-detail-page .ps-offer-form input::placeholder { color: #8f8bb8; font-weight: 500; }
+.item-detail-page .ps-offer-form input:focus { outline: none; border-color: #e879f9; box-shadow: 0 0 16px -4px rgba(232, 121, 249, .8); }
+.item-detail-page .ps-bid-btn { flex: 0 0 auto; padding: 12px 22px; }
+.item-detail-page .ps-your-bid {
+  display: flex; flex-direction: column; gap: 4px;
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(232, 121, 249, .08);
+  border: 1px solid rgba(232, 121, 249, .4);
 }
+.item-detail-page .ps-bid-tag { font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: #e879f9; }
+.item-detail-page .ps-your-bid strong { font-size: 1.3rem; color: #edeaff; }
+.item-detail-page .ps-your-bid small { color: #8f8bb8; }
+.item-detail-page .ps-sold-info {
+  margin: 20px 0 0; padding: 12px 16px; border-radius: 14px;
+  background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35);
+  color: #c9c4ea;
+}
+.item-detail-page .ps-sold-info strong { color: #edeaff; }
+.item-detail-page .status-message { text-align: center; color: #c4b5fd; margin-top: 14px; }
 
-/* ── VETRINA: ombra coerente sul fondo chiaro ── */
-.item-detail-page .player-showcase {
-  margin: 0 auto;
-  box-shadow: 0 18px 48px rgba(86, 64, 30, 0.22), 0 0 0 1px rgba(255, 253, 245, 0.6) inset;
-}
-
-/* ── MASTER CONSOLE (glass scura) ── */
+/* ══════════ VISTA MASTER: console nel vuoto ══════════ */
 .item-detail-page .master-console {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  border-radius: var(--cine-radius);
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 28%, #c9b78a);
-  background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
-  box-shadow: 0 16px 44px rgba(86, 64, 30, 0.2);
+  border-radius: 18px;
+  border: 1px solid rgba(139, 92, 246, .35);
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
   padding: 22px 24px;
-  color: #33281a;
+  color: #edeaff;
+  font-family: "Manrope", system-ui, sans-serif;
 }
-.item-detail-page .master-console .mc-title { color: #7c560f; }
-.item-detail-page .master-console .mc-bids-table { width: 100%; border-collapse: collapse; color: #33281a; }
-.item-detail-page .master-console .mc-bids-table th {
-  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
-  color: #fff; padding: 10px; text-align: left; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em;
+.item-detail-page .mc-header { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: start; }
+.item-detail-page .mc-thumb {
+  width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+  border: 3px solid #0d0d1f;
+  box-shadow: 0 0 0 3px var(--rarity-edge, #8b5cf6), 0 0 22px -4px var(--rarity-edge, #8b5cf6);
 }
-.item-detail-page .master-console .mc-bids-table td { padding: 9px 10px; border-bottom: 1px solid rgba(169, 120, 26, 0.2); }
-.item-detail-page .master-console .mc-bids-table tr.top-bid td { background: color-mix(in srgb, var(--cine-gold) 16%, transparent); }
-.item-detail-page .master-console .mc-stat span { color: #6a5b41; }
-.item-detail-page .master-console .mc-stat strong { color: #7c560f; }
-.item-detail-page .master-console .mc-empty { color: #9a8a6b; font-style: italic; }
+.item-detail-page .mc-title {
+  margin: 0 0 8px;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(1.2rem, 3.6vw, 1.7rem);
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.item-detail-page .mc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.item-detail-page .mc-tag {
+  padding: 3px 10px; border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, .4); background: rgba(13, 13, 31, .7);
+  color: #c4b5fd; font-size: .64rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.item-detail-page .mc-tag[class*="rarity-"] { color: var(--rarity-edge, #e879f9); border-color: color-mix(in srgb, var(--rarity-edge, #e879f9) 60%, transparent); }
+.item-detail-page .mc-tag.tag-auction { color: #e879f9; border-color: rgba(232, 121, 249, .5); }
+.item-detail-page .mc-tag.tag-fixed { color: #22d3ee; border-color: rgba(34, 211, 238, .5); }
+.item-detail-page .mc-tag.tag-sold { color: #fb923c; border-color: rgba(251, 146, 60, .5); }
+.item-detail-page .mc-price { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.item-detail-page .mc-price span { color: #8f8bb8; font-size: .78rem; }
+.item-detail-page .mc-price strong { color: #22d3ee; font-size: 1.2rem; text-shadow: 0 0 12px rgba(34, 211, 238, .6); }
+.item-detail-page .mc-timer { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.item-detail-page .mc-timer-label { color: #8f8bb8; font-size: .78rem; }
+.item-detail-page .mc-description {
+  margin: 18px 0 0; padding: 12px 14px; border-radius: 14px;
+  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+  color: #c9c4ea; line-height: 1.7;
+}
+.item-detail-page .mc-description summary { cursor: pointer; color: #c4b5fd; font-weight: 700; }
+.item-detail-page .mc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
+.item-detail-page .mc-stat {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; border-radius: 14px;
+  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+}
+.item-detail-page .mc-stat span { color: #8f8bb8; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.item-detail-page .mc-stat strong { color: #edeaff; font-size: 1.2rem; }
+.item-detail-page .mc-stat strong small { color: #8f8bb8; font-size: .7rem; }
+.item-detail-page .mc-stat.highlight { border-color: rgba(34, 211, 238, .5); background: rgba(34, 211, 238, .08); }
+.item-detail-page .mc-stat.highlight strong { color: #22d3ee; }
+.item-detail-page .mc-bids {
+  padding: 14px; border-radius: 14px;
+  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+}
+.item-detail-page .mc-bids-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.item-detail-page .mc-bids-head h3 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: #c4b5fd; }
+.item-detail-page .mc-bids-table-wrap { overflow-x: auto; }
+.item-detail-page .mc-bids-table { width: 100%; border-collapse: collapse; color: #edeaff; font-size: .88rem; }
+.item-detail-page .mc-bids-table th {
+  background: rgba(139, 92, 246, .18); color: #c4b5fd;
+  padding: 9px 10px; text-align: left; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+}
+.item-detail-page .mc-bids-table td { padding: 9px 10px; border-bottom: 1px solid rgba(139, 92, 246, .18); }
+.item-detail-page .mc-bids-table tr.top-bid td { background: rgba(34, 211, 238, .08); }
+.item-detail-page .mc-rank { color: #8f8bb8; }
+.item-detail-page .mc-bid-amount { color: #22d3ee; font-weight: 800; }
+.item-detail-page .mc-bid-time { color: #8f8bb8; font-size: .78rem; }
+.item-detail-page .mc-empty { color: #8f8bb8; font-style: italic; margin: 0; }
+.item-detail-page .mc-btn {
+  padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  font-family: "Manrope", system-ui, sans-serif; font-size: .74rem; font-weight: 700;
+  transition: all .2s ease;
+}
+.item-detail-page .mc-btn.danger { background: linear-gradient(90deg, #e879f9, #c026d3); color: #070713; border: none; box-shadow: 0 0 20px -6px rgba(232, 121, 249, .8); }
+.item-detail-page .mc-btn.danger:hover { box-shadow: 0 0 30px -4px rgba(232, 121, 249, 1); transform: translateY(-2px); }
+.item-detail-page .mc-btn.ghost { background: rgba(13, 13, 31, .7); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, .4); }
+.item-detail-page .mc-btn.ghost:hover { color: #edeaff; border-color: #22d3ee; }
+.item-detail-page .mc-sold-banner {
+  margin: 18px 0 0; padding: 12px 16px; border-radius: 14px;
+  background: rgba(251, 146, 60, .1); border: 1px solid rgba(251, 146, 60, .45); color: #c9c4ea;
+}
+.item-detail-page .mc-sold-banner strong { color: #fb923c; }
+/* bonus-set dentro la console: stessi colori del pannello player */
+.item-detail-page .master-console .ps-set-block { background: rgba(139, 92, 246, .1); border-color: rgba(139, 92, 246, .35); }
 
-/* FIX contrasto: questi box erano nati su tema chiaro (sfondo chiaro),
-   ma il testo è stato reso chiaro per la pagina scura → chiaro su chiaro.
-   Porto i fondi su glass scuro coerente con il resto della pagina. */
-.item-detail-page .master-console .mc-stat {
-  background: #fffdf5;
-  border-color: color-mix(in srgb, var(--cine-gold) 22%, #c9b78a);
-}
-.item-detail-page .master-console .mc-stat.highlight {
-  background: linear-gradient(135deg, rgba(169, 120, 26, 0.18), rgba(169, 120, 26, 0.07));
-  border-color: color-mix(in srgb, var(--cine-gold) 45%, transparent);
-}
-.item-detail-page .master-console .mc-stat strong small { color: #9a8a6b; }
-.item-detail-page .master-console .mc-bids {
-  background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
-  border-color: color-mix(in srgb, var(--cine-gold) 25%, #c9b78a);
-}
-.item-detail-page .master-console .mc-bids-head h3 { color: #7c560f; }
-.item-detail-page .master-console .mc-timer-label { color: #6a5b41; }
-.item-detail-page .master-console .countdown-timer { color: #b8362a; }
-/* prezzo base (su pergamena chiara) */
-.item-detail-page .master-console .mc-price strong { color: #8a261c; }
-
-/* FIX contrasto: il blocco bonus-set (.ps-set-*) è nato per tema chiaro
-   (testo #2a2a2a / #444 / viola scuro). Nella CONSOLE MASTER sta su fondo
-   scuro → scuro-su-scuro: lo schiarisco SOLO lì. Nella vista Player il
-   pannello info è chiaro, quindi il testo scuro originale va benissimo. */
-.item-detail-page .master-console .ps-set-block {
-  background: linear-gradient(180deg, rgba(122, 79, 207, 0.14), rgba(122, 79, 207, 0.05));
-  border-color: rgba(122, 79, 207, 0.4);
-}
-.item-detail-page .master-console .ps-set-icon          { color: #553099; }
-.item-detail-page .master-console .ps-set-name          { color: #553099; }
-.item-detail-page .master-console .ps-set-size          { color: #6a5b41; }
-.item-detail-page .master-console .ps-set-bonus-item    { color: #33281a; }
-.item-detail-page .master-console .ps-set-bonus-frac    { color: #553099; }
-.item-detail-page .master-console .ps-set-bonus-effect  { color: #33281a; }
-
-.item-detail-page .status-message {
-  text-align: center;
-  color: var(--cine-gold-soft);
-  margin-top: 14px;
-}
-
-/* ============================================================
-   VISTA PLAYER → "Cartiglio di Stima" (Pergamena Antica)
-   Reframe della vetrina: ritratto incorniciato + voce di registro,
-   prezzo a bolla di ceralacca. Solo presentazione, override scoped.
-   ============================================================ */
-.item-detail-page .player-showcase {
-  background: linear-gradient(180deg, #fffdf5, #f3ead4) !important;
-  border: 1px solid var(--line, #c9b78a) !important;
-  border-top: 5px solid var(--rarity-edge, var(--cine-accent)) !important;
-  border-radius: 18px !important;
-  padding: 16px 16px 0 !important;
-  box-shadow: 0 22px 50px -18px rgba(86,64,30,.55), 0 1px 0 rgba(255,255,255,.7) inset !important;
-}
-/* ritratto incorniciato (non più incollato ai bordi) */
-.item-detail-page .player-showcase .ps-image-wrap {
-  border-radius: 14px;
-  overflow: hidden;
-  aspect-ratio: 16/10;
-  background: #1a0f14;
-  border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--cine-accent)) 45%, #c9b78a);
-  box-shadow: 0 12px 30px -12px rgba(86,64,30,.5);
-}
-.item-detail-page .player-showcase .ps-rarity-badge {
-  font-family: var(--font-head, "Cinzel"), serif;
-}
-/* corpo come voce di registro */
-.item-detail-page .player-showcase .ps-info { padding: 22px 18px 28px; }
-.item-detail-page .player-showcase .ps-type {
-  font-family: var(--font-head, "Cinzel"), serif;
-  color: #7a2e6e; letter-spacing: .2em;
-}
-.item-detail-page .player-showcase .ps-title {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  color: var(--rarity-edge, #7a2e6e);
-  border-bottom: 1px solid color-mix(in srgb, var(--rarity-edge, var(--cine-accent)) 45%, #c9b78a);
-}
-/* prezzo a bolla di ceralacca */
-.item-detail-page .player-showcase .ps-price-row {
-  background: linear-gradient(135deg, rgba(122,46,110,.08), rgba(169,120,26,.06)) !important;
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, #c9b78a) !important;
-  border-radius: 14px !important;
-}
-.item-detail-page .player-showcase .ps-price-label {
-  font-family: var(--font-head, "Cinzel"), serif; color: #7c560f;
-}
-.item-detail-page .player-showcase .ps-price-value {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  color: #8a261c;
-}
-.item-detail-page .player-showcase .ps-description {
-  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
-  color: #33281a;
-  font-family: var(--font-ui, Georgia), serif;
-}
-/* CTA acquisto/offerta in stile placca */
-.item-detail-page .player-showcase .ps-buy-btn,
-.item-detail-page .player-showcase .ps-bid-btn {
-  font-family: var(--font-head, "Cinzel"), serif; letter-spacing: .04em;
-  border-radius: 12px;
+@media (max-width: 560px) {
+  .item-detail-page .mc-header { grid-template-columns: 1fr; text-align: center; }
+  .item-detail-page .mc-thumb { margin: 0 auto; }
+  .item-detail-page .mc-tags, .item-detail-page .mc-price, .item-detail-page .mc-timer { justify-content: center; }
+  .item-detail-page .ps-info { padding: 18px 16px 20px; }
 }

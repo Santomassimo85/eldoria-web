@@ -63,9 +63,8 @@ export default function Notifications() {
   };
 
   return (
-    <section className="cine-page notifications-page" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con Tanagar,
-            titolo inciso sulla lastra, conteggio come sigillo di gelo ── */}
+    <section className="cine-page notifications-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      {/* ── VARCO (prototipo J): Tanagar nel portale esagonale ── */}
       <GlacierHero
         className="notif-glhero"
         ariaLabel="Log dei Messaggi"
@@ -76,47 +75,56 @@ export default function Notifications() {
         tagline="Missive, esiti d'asta e richiami del Master, tutti in un luogo."
       />
 
-      <div className="cine-wrap cine-wrap--narrow notif-body">
-      {list.length > 0 && (
-        <div className="notif-toolbar">
-          <button onClick={clearAllNotifications} className="btn-clear-all">🗑 Svuota Log</button>
+      <div className="notif-body">
+        <div className="gl-sezlabel notif-sezlabel">
+          <span>Missive ricevute</span>
+          {list.length > 0 && (
+            <button onClick={clearAllNotifications} className="nx-pillola btn-clear-all">🗑 Svuota Log</button>
+          )}
         </div>
-      )}
 
-      {list.length === 0 ? (
-        <p className="notifications-empty">Nessun messaggio per te, avventuriero.</p>
-      ) : (
-        list.map(n => (
-          <div
-            key={n.id}
-            className={`notification-card ${n.read ? "read" : "unread"}`}
-            onClick={() => markAsRead(n.id)}
-          >
-            <button
-              className="notification-card-delete"
-              onClick={(e) => deleteNotification(e, n.id)}
-              title="Elimina"
-            >
-              ×
-            </button>
-            <h3 className="notification-card-title">{n.title}</h3>
-            <p className="notification-card-msg">{n.message}</p>
-            {n.link && (
-              <button
-                className="notification-card-cta"
-                onClick={(e) => openLink(e, n)}
+        {list.length === 0 ? (
+          <p className="notifications-empty">Nessun messaggio per te, avventuriero.</p>
+        ) : (
+          <div className="notif-colonna">
+            {list.map(n => (
+              <div
+                key={n.id}
+                className={`nx-pannello notification-card ${n.read ? "read" : "unread"}`}
+                onClick={() => markAsRead(n.id)}
               >
-                {n.link === "/tarocchi" ? "Apri l'Oracolo" : "Vai alla pagina"}&nbsp;→
-              </button>
-            )}
-            <small className="notification-card-time">
-              {n.timestamp?.seconds
-                ? new Date(n.timestamp.seconds * 1000).toLocaleString()
-                : "Data ignota"}
-            </small>
+                <span className="nx-tag notification-card-time">
+                  {n.timestamp?.seconds
+                    ? new Date(n.timestamp.seconds * 1000).toLocaleString()
+                    : "Data ignota"}
+                </span>
+                <h3 className="nx-nome notification-card-title">
+                  {!n.read && <span className="notif-dot" aria-hidden="true" />}
+                  {n.title}
+                </h3>
+                <p className="nx-prosa notification-card-msg">{n.message}</p>
+                <div className="notification-card-actions">
+                  {n.link && (
+                    <button
+                      className="gl-cta notification-card-cta"
+                      onClick={(e) => openLink(e, n)}
+                    >
+                      {n.link === "/tarocchi" ? "Apri l'Oracolo" : "Vai alla pagina"}&nbsp;→
+                    </button>
+                  )}
+                  <button
+                    className="notification-card-delete"
+                    onClick={(e) => deleteNotification(e, n.id)}
+                    title="Elimina"
+                    aria-label="Elimina messaggio"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        ))
-      )}
+        )}
       </div>
     </section>
   );

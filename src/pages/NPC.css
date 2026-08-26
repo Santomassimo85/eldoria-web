@@ -1,279 +1,162 @@
 /* ============================================================
-   NPC — architettura "Schedario dei Volti" (Pergamena Antica)
-   Hero asimmetrico · capitoli per città (marginalia sticky) ·
-   schede-dossier orizzontali (ritratto a lato + descrizione a vista).
-   Scheletro condiviso da cinematic.css; qui la struttura della pagina.
+   NPC — "I VOLTI DEL NESSO" (prototipo J · Il Nesso)
+   Varco esagonale (GlacierHero) · SATELLITI = pillole dei luoghi ·
+   ricerca a pillola · per ogni luogo una GRIGLIA di pannelli con
+   anello-ritratto orbitante · tap → scheda-varco.
+   I mattoni (.nx-*, .gl-sezlabel) vivono in styles/nesso.css: qui
+   solo le regole specifiche della pagina. Nessuna palette pergamena.
    ============================================================ */
 
-/* accento per-città (sigillo, filetto, bordo dossier) */
-.npc-page .npc-city { --city-accent: #2c8a5a; }
-.npc-page .npc-city[data-accent="0"] { --city-accent: #2c8a5a; }
-.npc-page .npc-city[data-accent="1"] { --city-accent: #2f7ec0; }
-.npc-page .npc-city[data-accent="2"] { --city-accent: #b8902a; }
-.npc-page .npc-city[data-accent="3"] { --city-accent: #7a5bb0; }
-.npc-page .npc-city[data-accent="4"] { --city-accent: #c0392b; }
+/* ── pillole dei luoghi ── */
+.npc-page .npc-pillole { margin: 6px 0 12px; }
+.npc-page .npc-pillola-n {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: .62rem;
+  font-weight: 800;
+  background: rgba(139, 92, 246, .22);
+  color: #c4b5fd;
+}
+.npc-page .nx-pillola.on .npc-pillola-n { background: rgba(7, 7, 19, .25); color: #070713; }
 
-/* ============================================================
-   1) HERO ASIMMETRICO — immagine full-bleed + placca-registro
-   ============================================================ */
-.npc-page .npc-hero {
-  position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  min-height: 82vh;
+/* ── ricerca: toolbar a pillola scura ── */
+.npc-page .cine-toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto 8px;
+  padding: 8px 10px;
+  background: rgba(13, 13, 31, .7);
+  border: 1px solid rgba(139, 92, 246, .3);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
+}
+.npc-page .cine-search {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0e0e22;
+  border: 1px solid rgba(139, 92, 246, .4);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.npc-page .cine-search:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
+.npc-page .cine-search-icon { font-size: .85rem; opacity: .8; }
+.npc-page .cine-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: #edeaff;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .85rem;
+  padding: 4px 0;
+}
+.npc-page .cine-search-input::placeholder { color: #8f8bb8; }
+.npc-page .cine-search-clear {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 121, 249, .5);
+  background: rgba(232, 121, 249, .12);
+  color: #e879f9;
+  font-size: .7rem;
+  cursor: pointer;
+}
+.npc-page .cine-chips { display: none; }
+.npc-page .cine-result-count {
+  flex: 0 0 auto;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #22d3ee;
+  padding-right: 8px;
+  white-space: nowrap;
+}
+.npc-page .cine-empty {
+  text-align: center;
+  color: #8f8bb8;
+  font-family: "Manrope", system-ui, sans-serif;
+  padding: 30px 0;
+}
+
+/* ── sezione-luogo ── */
+.npc-page .npc-city { scroll-margin-top: 90px; }
+.npc-page .npc-city .gl-sezlabel { margin-bottom: 14px; }
+.npc-page .npc-city-n {
+  order: 3;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #8f8bb8;
+  white-space: nowrap;
+}
+
+/* ── il volto: pannello con anello ── */
+.npc-page .npc-volto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  font: inherit;
+  padding-top: 26px;
+}
+.npc-page .npc-volto .nx-anello { margin-bottom: 8px; }
+.npc-page .npc-volto .nx-tag { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.npc-page .npc-volto .nx-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.npc-page .npc-volto-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  isolation: isolate;
-  padding: 0 0 52px;
+  text-align: center;
+  margin-top: 2px;
 }
-.npc-page .npc-hero-media { position: absolute; inset: 0; z-index: 0; }
-.npc-page .npc-hero-media img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover; object-position: center 30%;
-  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.24px), 0);
-  will-change: transform;
+.npc-page .npc-volto-cue {
+  margin-top: 8px;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: .6rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #22d3ee;
+  opacity: .75;
+  transition: opacity .2s ease, transform .2s ease;
 }
-.npc-page .npc-hero-wash {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(26,16,6,.54) 0%, rgba(26,16,6,.16) 52%, transparent 76%),
-    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
-}
-.npc-page .npc-hero-plate {
-  position: relative; z-index: 2;
-  margin: 0 14px;
-  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 5px solid var(--cine-accent);
-  border-radius: 18px;
-  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
-  padding: 22px 20px;
-  animation: npc-plate-in .7s cubic-bezier(.16,1,.3,1) both;
-}
-@keyframes npc-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.npc-page .npc-volto:hover .npc-volto-cue { opacity: 1; transform: translateX(3px); }
+.npc-page .npc-volto:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
 
-.npc-page .npc-hero-seal {
-  display: inline-block;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase;
-  color: #1f6e46; padding: 6px 14px;
-  border: 1px solid rgba(31,110,70,.45); border-radius: 999px;
-  background: rgba(44,138,90,.08);
-}
-.npc-page .npc-hero-title {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  font-weight: 900;
-  font-size: clamp(2rem, 7.6vw, 4rem);
-  line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
-  background: linear-gradient(180deg, #173a28 0%, #1f6e46 58%, #2c8a5a 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.npc-page .npc-hero-tagline {
-  font-family: var(--font-ui, Georgia), serif;
-  color: #46382a; font-size: clamp(.98rem, 2.4vw, 1.1rem); line-height: 1.6;
-  margin: 0 0 18px; max-width: 44ch;
-}
-.npc-page .npc-hero-stats {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 0; margin: 0;
-  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
-}
-.npc-page .npc-hero-stats > div {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  padding: 10px 14px 6px;
-  border-right: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
-}
-.npc-page .npc-hero-stats > div:last-child { border-right: none; }
-.npc-page .npc-hero-stats dt {
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .66rem; letter-spacing: .18em; text-transform: uppercase; color: #6a5b41;
-}
-.npc-page .npc-hero-stats dd {
-  margin: 0;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: 1.25rem; line-height: 1; color: var(--cine-accent);
-}
-
-.npc-page .npc-hero-scroll {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  color: #285a1f;
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .42em; text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(255,248,230,.7);
-}
-.npc-page .npc-hero-scroll-ic {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; border: 1.5px solid rgba(44,138,90,.5);
-  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
-  color: #1f6e46; font-size: 1rem;
-  animation: npc-bob 2.2s ease-in-out infinite;
-}
-@keyframes npc-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
-
-@media (min-width: 900px) {
-  .npc-page .npc-hero { min-height: 90vh; align-items: center; }
-  .npc-page .npc-hero-media img { object-position: center 34%; }
-  .npc-page .npc-hero-wash {
-    background:
-      linear-gradient(90deg, rgba(26,16,6,.66) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
-      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
-  }
-  .npc-page .npc-hero-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 36px 34px; }
-}
-
-/* ============================================================
-   2) CAPITOLO PER CITTÀ — marginalia sticky + dossier
-   ============================================================ */
-.npc-page .npc-city {
-  max-width: 1180px; margin: 0 auto;
-  padding: 30px clamp(16px, 4vw, 30px);
-  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
-  border-top: 1px solid color-mix(in srgb, var(--city-accent) 24%, transparent);
-}
-.npc-page .npc-city:first-of-type { border-top: none; }
-
-/* ── marginalia ── */
-.npc-page .npc-city-aside {
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
-  margin-bottom: 18px;
-}
-.npc-page .npc-city-seal {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 60px; height: 60px; border-radius: 50%;
-  font-size: 1.7rem; color: #fffbea;
-  background: linear-gradient(135deg, var(--city-accent), color-mix(in srgb, var(--city-accent) 55%, #000));
-  border: 2px solid rgba(255, 240, 210, 0.45);
-  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--city-accent) 70%, rgba(86,64,30,.4));
-}
-.npc-page .npc-city-eyebrow {
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase; color: #6a5b41;
-}
-.npc-page .npc-city-name {
-  margin: 0;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(1.3rem, 4vw, 1.9rem); letter-spacing: .03em; line-height: 1.1;
-  background: linear-gradient(180deg, #2a2012 0%, var(--city-accent) 95%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.npc-page .npc-city-chip {
-  display: inline-block;
-  padding: 5px 16px; border-radius: 999px;
-  background: color-mix(in srgb, var(--city-accent) 20%, rgba(45, 32, 14, 0.08));
-  border: 1px solid color-mix(in srgb, var(--city-accent) 58%, transparent);
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: #33281a;
-}
-
-/* ── lista dossier ── */
-.npc-page .npc-dossier-list {
-  display: grid; grid-template-columns: 1fr; gap: 14px;
-}
-@media (min-width: 760px)  { .npc-page .npc-dossier-list { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1280px) { .npc-page .npc-dossier-list { grid-template-columns: repeat(3, 1fr); } }
-
-/* ── scheda-dossier orizzontale ── */
-.npc-page .npc-dossier {
-  display: flex; align-items: stretch; gap: 0; overflow: hidden;
-  background: linear-gradient(180deg, #fffdf5, #fbf4e0);
-  border: 1px solid color-mix(in srgb, var(--city-accent) 22%, transparent);
-  border-left: 4px solid var(--city-accent);
-  border-radius: 16px;
-  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 12px 30px -16px rgba(86,64,30,.5);
-  transition: transform .18s ease, box-shadow .2s ease, border-color .18s ease;
-}
-.npc-page .npc-dossier:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--city-accent) 60%, transparent);
-  box-shadow: 0 20px 42px -18px rgba(86,64,30,.6);
-}
-.npc-page .npc-dossier-portrait {
-  flex: 0 0 104px; width: 104px; align-self: stretch; overflow: hidden;
-  background: #e9dcbe;
-  border-right: 1px solid color-mix(in srgb, var(--city-accent) 30%, transparent);
-}
-.npc-page .npc-dossier-portrait img {
-  width: 100%; height: 100%; min-height: 132px;
-  object-fit: cover; object-position: top center; display: block;
-  transition: transform .35s ease;
-}
-.npc-page .npc-dossier:hover .npc-dossier-portrait img { transform: scale(1.05); }
-
-.npc-page .npc-dossier-body {
-  flex: 1 1 auto; min-width: 0;
-  padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 6px;
-}
-.npc-page .npc-dossier-name {
-  margin: 0; padding-bottom: 7px;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(1rem, 2.4vw, 1.14rem); letter-spacing: .02em; line-height: 1.2;
-  color: var(--city-accent); text-transform: uppercase; word-break: break-word;
-  border-bottom: 1px solid color-mix(in srgb, var(--city-accent) 40%, transparent);
-}
-.npc-page .npc-dossier-meta {
-  margin: 0;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: #9a7a20;
-  font-weight: 700; line-height: 1.45; word-break: break-word;
-}
-.npc-page .npc-dossier-desc {
-  margin: 2px 0 0;
-  font-family: var(--font-ui, Georgia), serif; font-size: .9rem; font-style: italic;
-  color: #4a3a20; line-height: 1.6;
-  max-height: 120px; overflow-y: auto; padding-right: 8px;
-  scrollbar-width: thin; scrollbar-color: var(--city-accent) transparent;
-}
-.npc-page .npc-dossier-desc::-webkit-scrollbar { width: 5px; }
-.npc-page .npc-dossier-desc::-webkit-scrollbar-track { background: transparent; }
-.npc-page .npc-dossier-desc::-webkit-scrollbar-thumb { background: var(--city-accent); border-radius: 3px; }
-
-/* ── desktop: marginalia sticky a sinistra, dossier a destra ── */
-@media (min-width: 920px) {
-  .npc-page .npc-city {
-    display: grid; grid-template-columns: 220px 1fr; gap: 42px; align-items: start;
-    padding-block: 40px;
-  }
-  .npc-page .npc-city-aside {
-    position: sticky; top: calc(var(--navbar-h, 80px) + 28px);
-    margin-bottom: 0; padding: 18px 14px;
-    border-right: 2px solid color-mix(in srgb, var(--city-accent) 30%, transparent);
-  }
-  .npc-page .npc-city-seal { width: 72px; height: 72px; font-size: 2rem; }
-  /* nel layout a 2 colonne i dossier tornano a 1/2 col entro la colonna destra */
-  .npc-page .npc-dossier-list { grid-template-columns: 1fr; }
-}
-@media (min-width: 1280px) {
-  .npc-page .npc-dossier-list { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .npc-page .npc-hero-plate,
-  .npc-page .npc-hero-scroll-ic,
-  .npc-page .npc-dossier,
-  .npc-page .npc-dossier-portrait img { animation: none !important; transition: none !important; }
-}
-
-/* ============================================================
-   AMBIENT FX — contenuto sopra, layer FX dietro
-   ============================================================ */
-.npc-page > * { position: relative; z-index: 1; }
-.npc-page > .ambient-fx { position: fixed; z-index: 0; }
-.npc-page > .cine-side-nav { z-index: 95; }
-
-/* ── Evidenziazione scheda al focus (arrivo da link interattivo) ── */
+/* arrivo da link (?focus=): il pannello lampeggia di ciano */
 .npc-page .npc-dossier--focus {
-  animation: npc-focus-pulse 2.8s ease;
-  scroll-margin-top: 90px;
+  animation: npc-focus 1.4s ease-in-out 2;
+  border-color: #22d3ee;
 }
-@keyframes npc-focus-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(63,174,114,0); }
-  12%  { box-shadow: 0 0 0 4px rgba(63,174,114,.55); }
-  60%  { box-shadow: 0 0 0 4px rgba(63,174,114,.35); }
-  100% { box-shadow: 0 0 0 0 rgba(63,174,114,0); }
+@keyframes npc-focus {
+  0%, 100% { box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8); }
+  50% { box-shadow: 0 0 0 4px rgba(34, 211, 238, .35), 0 0 40px -4px rgba(34, 211, 238, .9); }
 }
-.npc-page .npc-dossier { scroll-margin-top: 90px; }
+
+/* ── scheda-varco ── */
+.npc-page .npc-scheda .nx-titolo { text-align: left; }
+.npc-page .npc-scheda .nx-prosa { margin: 0; white-space: pre-line; }
+
+@media (max-width: 560px) {
+  .npc-page .cine-toolbar { border-radius: 22px; flex-wrap: wrap; }
+  .npc-page .cine-search { flex-basis: 100%; }
+  .npc-page .cine-result-count { padding: 0 0 0 6px; }
+  .npc-page .npc-volti { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .npc-page .npc-volto { padding: 24px 8px 12px; }
+  .npc-page .npc-volto .nx-anello { width: 76px; height: 76px; }
+  .npc-page .npc-volto .nx-nome { font-size: .82rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .npc-page .npc-dossier--focus { animation: none; }
 }

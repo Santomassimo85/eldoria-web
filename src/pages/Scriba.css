@@ -1,7 +1,13 @@
-/* src/pages/Scriba.css — Archivio pubblico "Lo Scriba" (Pergamena chiara) */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+/* ============================================================
+   LO SCRIBA — "LA GAZZETTA DEL NESSO" (prototipo J · Il Nesso)
+   Varco con la copertina dell'ultimo numero · countdown a pannello ·
+   ricerca/mese a pillola · numeri = pannelli di vetro scuro con
+   copertina arrotondata + velo, tag numero/data, titolo Cinzel, motto.
+   Lettore in overlay scuro (l'iframe conserva gli stili della gazzetta).
+   Il kit vive in styles/nesso.css.
+   ============================================================ */
 
-/* ── Video-intro a tutto schermo (nessun controllo eccetto mute) ─────────── */
+/* ── Video-intro a tutto schermo (nessun controllo eccetto mute) ── */
 .scriba-intro {
   position: fixed;
   inset: 0;
@@ -11,23 +17,17 @@
   align-items: center;
   justify-content: center;
 }
-.scriba-intro-video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;   /* mostra il video intero senza tagli */
-  background: #000;
-}
-.scriba-intro-mute {
+.scriba-intro-video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.scriba-intro-mute,
+.scriba-intro-close {
   position: fixed;
-  right: max(18px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 10000;
   width: 52px;
   height: 52px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(139, 92, 246, .6);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background: rgba(7, 7, 19, .6);
+  color: #edeaff;
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
@@ -36,282 +36,184 @@
   justify-content: center;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  transition: background-color .15s ease, transform .15s ease;
+  transition: box-shadow .15s ease, transform .15s ease;
 }
-.scriba-intro-mute:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
-.scriba-intro-mute:active { transform: scale(0.96); }
+.scriba-intro-mute { right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); }
+.scriba-intro-close { top: max(18px, env(safe-area-inset-top)); right: max(18px, env(safe-area-inset-right)); z-index: 10001; font-size: 1.4rem; }
+.scriba-intro-mute:hover,
+.scriba-intro-close:hover { box-shadow: 0 0 22px rgba(34, 211, 238, .8); transform: scale(1.06); }
+.scriba-intro-mute:active,
+.scriba-intro-close:active { transform: scale(.96); }
 
-/* X di chiusura: sempre visibile, in alto a destra, sopra al video. */
-.scriba-intro-close {
-  position: fixed;
-  top: max(18px, env(safe-area-inset-top));
-  right: max(18px, env(safe-area-inset-right));
-  z-index: 10001;
-  width: 52px;
-  height: 52px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  font-size: 1.4rem;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: background-color .15s ease, transform .15s ease;
-}
-.scriba-intro-close:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
-.scriba-intro-close:active { transform: scale(0.96); }
-
+/* ── pagina ── */
 .scriba-archive {
-  --ink: #1c1813;
-  --muted: #6b5d44;
-  --accent: #7a1f12;
-  --paper: #f4efe3;
-  --paper2: #ece3d0;
-  --line: #cdbfa3;
   max-width: 1040px;
   margin: 0 auto;
-  /* La top-bar è position:fixed → scansala, altrimenti taglia la testata
-     (specie su display grandi col titolo enorme). */
-  padding: calc(var(--navbar-h, 80px) + 30px) 18px 80px;
-  font-family: 'Lora', Georgia, "Times New Roman", serif;
+  padding: calc(var(--navbar-h, 66px) + 10px) 0 90px;
+  font-family: "Manrope", system-ui, sans-serif;
+  color: #edeaff;
 }
+.scriba-archive .gl-hero { padding-top: 0; margin-bottom: 12px; }
 
-/* ── Testata ──────────────────────────────────────────────────────────────── */
-.scriba-mast {
-  text-align: center;
-  border-bottom: 3px double var(--ink);
-  padding-bottom: 18px;
-  margin-bottom: 24px;
-}
-.scriba-eyebrow {
-  display: block;
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.74rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.scriba-title {
-  font-family: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
-  font-weight: 900;
-  font-size: clamp(2.8rem, 9vw, 5rem);
-  line-height: 1.04;
-  letter-spacing: 1px;
-  color: var(--ink);
-  margin: 10px 0 8px;
-}
-.scriba-sub {
-  font-family: 'Lora', Georgia, serif;
-  font-style: italic;
-  color: var(--muted);
-  margin: 0 auto;
-  max-width: 560px;
-}
-
-/* ── Countdown al prossimo numero (visibile a tutti) ─────────────────────── */
-.scriba-countdown {
+/* ── countdown: pannello con la penna che ondeggia ── */
+.scriba-archive .scriba-countdown {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: -8px auto 24px;
-  max-width: 640px;
-  padding: 13px 20px;
-  background: linear-gradient(135deg, #8a261c 0%, #5e140d 100%);
-  border: 1px solid #3d0c07;
-  border-left: 5px solid #e0b34a;
-  border-radius: 9px;
-  box-shadow: 0 8px 22px -10px rgba(94, 20, 13, 0.7);
+  margin: 0 auto 22px;
+  max-width: 680px;
+  padding: 14px 20px;
+  border-color: rgba(34, 211, 238, .4);
 }
 .scriba-cd-quill {
   font-size: 1.4rem;
   line-height: 1;
   flex-shrink: 0;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, .8));
   animation: scriba-quill-bob 3.2s ease-in-out infinite;
 }
 @keyframes scriba-quill-bob {
   0%, 100% { transform: translateY(0) rotate(-4deg); }
   50%      { transform: translateY(-3px) rotate(4deg); }
 }
-.scriba-cd-text {
-  margin: 0;
-  font-family: 'Lora', Georgia, serif;
-  font-weight: 700;
-  font-size: 1rem;
-  line-height: 1.4;
-  color: #fbf3df;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
+.scriba-cd-text { margin: 0; font-size: .96rem; line-height: 1.45; color: #c9c4ea; text-align: center; }
 .scriba-cd-text strong {
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 900;
-  color: #ffd778;
-  letter-spacing: 0.03em;
-}
-@media (prefers-reduced-motion: reduce) {
-  .scriba-cd-quill { animation: none; }
+  font-family: "Cinzel", Georgia, serif;
+  color: #22d3ee;
+  letter-spacing: .03em;
+  text-shadow: 0 0 10px rgba(34, 211, 238, .6);
 }
 
-/* ── Toolbar (ricerca + mese) ────────────────────────────────────────────── */
+/* avviso master (numeri d'esempio) */
+.scriba-archive .scriba-avviso {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  line-height: 1.5;
+  font-size: .9rem;
+  color: #c9c4ea;
+  border-color: rgba(232, 121, 249, .45);
+}
+.scriba-archive .scriba-avviso strong { color: #e879f9; }
+
+/* ── toolbar: ricerca + mese a pillola ── */
 .scriba-toolbar {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  margin: 0 0 28px;
+  margin: 0 0 24px;
 }
 .scriba-search,
 .scriba-mesesel {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 0.95rem;
-  padding: 9px 13px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 4px;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .86rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: #0e0e22;
+  color: #edeaff;
+  border-radius: 999px;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-.scriba-search { min-width: 260px; }
+.scriba-search { min-width: 260px; flex: 1 1 260px; max-width: 460px; }
+.scriba-search::placeholder { color: #8f8bb8; }
+.scriba-mesesel option { background: #0e0e22; color: #edeaff; }
 .scriba-search:focus,
-.scriba-mesesel:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.scriba-mesesel:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
 
-.scriba-empty {
-  text-align: center;
-  font-family: 'Lora', Georgia, serif;
-  font-style: italic;
-  color: var(--muted);
-  padding: 40px 0;
-}
+.scriba-empty { text-align: center; color: #8f8bb8; padding: 40px 0; }
 
-/* ── Gruppo mese ─────────────────────────────────────────────────────────── */
-.scriba-month { margin: 0 0 30px; }
-.scriba-month-title {
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: 6px;
-  margin: 0 0 16px;
-}
+/* ── gruppo mese ── */
+.scriba-month { margin: 0 0 26px; }
+.scriba-archive .scriba-month .gl-sezlabel { margin-top: 10px; }
 
-/* ── Griglia numeri ──────────────────────────────────────────────────────── */
-.scriba-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
-}
-
-.scriba-card {
+/* ── numeri ── */
+.scriba-card-wrap { position: relative; }
+.scriba-numero {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   text-align: left;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 0;
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  padding: 12px 12px 16px;
   font: inherit;
   color: inherit;
 }
-.scriba-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 22px rgba(28, 24, 19, 0.18);
+.scriba-copertina {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, .25), #0b0b1c 70%);
+  margin-bottom: 12px;
 }
+.scriba-copertina img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(1.05) brightness(.88);
+  transition: transform .6s ease, filter .3s ease;
+}
+.scriba-numero:hover .scriba-copertina img { transform: scale(1.06); filter: saturate(1.15) brightness(1); }
+.scriba-copertina-ph {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem;
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, .8));
+}
+.scriba-copertina-velo {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(7, 7, 19, .85));
+}
+.scriba-num { position: static; margin: 0 0 6px; }
+.scriba-titolo { font-size: 1rem; line-height: 1.3; }
+.scriba-motto { margin: 6px 0 0; font-style: italic; }
+.scriba-cue { margin-top: 10px; color: #22d3ee; font-weight: 700; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
 
-/* Badge letture (solo master): quanti hanno aperto il numero. */
+/* azioni del direttore (master): pillole sopra la copertina */
+.scriba-azioni {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+.scriba-azione { padding: 4px 9px; font-size: .9rem; background: rgba(7, 7, 19, .8); }
+.scriba-del { color: #e879f9; border-color: rgba(232, 121, 249, .55); }
+.scriba-del:hover { border-color: #e879f9; box-shadow: 0 0 16px -4px rgba(232, 121, 249, .8); color: #f5b8ff; }
+.scriba-edit { color: #22d3ee; }
 .scriba-reads {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 18px;
+  left: 18px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(28, 24, 19, 0.82);
-  color: #f4efe3;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-family: 'Cinzel', serif;
-  font-size: 12px;
+  background: rgba(7, 7, 19, .8);
+  border: 1px solid rgba(34, 211, 238, .45);
+  color: #9ff0ff;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: .66rem;
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
 }
 
-.scriba-card-thumb {
-  height: 152px;
-  background-size: cover;
-  background-position: center;
-  border-bottom: 1px solid var(--line);
-  filter: sepia(0.25) contrast(1.02);
-}
-.scriba-card-thumb--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  background: var(--paper2);
-}
-
-.scriba-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px 16px;
-}
-.scriba-card-num {
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.8rem;
-  color: var(--accent);
-}
-.scriba-card-date {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 0.78rem;
-  color: #8a7d64;
-}
-.scriba-card-motto {
-  font-family: 'Lora', Georgia, serif;
-  font-style: italic;
-  color: var(--muted);
-  margin: 4px 0 0;
-  font-size: 0.92rem;
-}
-.scriba-card-lead {
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 2px 0 0;
-  font-size: 1.02rem;
-  line-height: 1.28;
-}
-.scriba-card-cue {
-  margin-top: 8px;
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.8rem;
-  color: var(--accent);
-}
-
-/* ── Lettore (overlay) ───────────────────────────────────────────────────── */
+/* ── lettore (overlay) ── */
 .scriba-reader {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(28, 24, 19, 0.55);
+  background: rgba(4, 4, 12, .78);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   display: flex;
   flex-direction: column;
   padding: 18px;
@@ -320,17 +222,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.85rem;
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .45);
+  border-bottom: none;
+  color: #edeaff;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .82rem;
+  letter-spacing: .06em;
   padding: 10px 16px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 16px 16px 0 0;
 }
 .scriba-reader-bar button {
   background: none;
   border: none;
-  color: var(--paper);
+  color: #e879f9;
   font-size: 1.3rem;
   cursor: pointer;
   line-height: 1;
@@ -338,32 +243,30 @@
 .scriba-reader-frame {
   flex: 1;
   width: 100%;
-  border: none;
-  background: #e7e0d0;
-  border-radius: 0 0 6px 6px;
+  border: 1px solid rgba(139, 92, 246, .45);
+  border-top: none;
+  background: #e7e0d0; /* la gazzetta porta i propri stili (carta) */
+  border-radius: 0 0 16px 16px;
 }
 
-/* ── Pagina singola /giornale/:id (deep-link condivisibile) ──────────────── */
+/* ── pagina singola /giornale/:id (deep-link condivisibile) ── */
 .scriba-single {
-  --ink: #1c1813;
-  --paper: #f4efe3;
-  --accent: #7a1f12;
-  --line: #cdbfa3;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  font-family: 'Lora', Georgia, "Times New Roman", serif;
+  font-family: "Manrope", system-ui, sans-serif;
 }
 .scriba-single-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.85rem;
-  padding: calc(var(--navbar-h, 80px) + 8px) 16px 10px;
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border-bottom: 1px solid rgba(139, 92, 246, .45);
+  color: #edeaff;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .85rem;
+  padding: calc(var(--navbar-h, 66px) + 8px) 16px 10px;
   flex: none;
 }
 .scriba-single-label {
@@ -377,38 +280,33 @@
 .scriba-single-back,
 .scriba-single-share {
   flex: none;
-  background: none;
-  border: 1px solid rgba(244, 239, 227, .45);
-  color: var(--paper);
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.8rem;
-  padding: 6px 12px;
-  border-radius: 6px;
+  background: rgba(13, 13, 31, .7);
+  border: 1px solid rgba(139, 92, 246, .4);
+  color: #c4b5fd;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: .76rem;
+  padding: 7px 14px;
+  border-radius: 999px;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
+  transition: border-color .2s ease, box-shadow .2s ease, color .2s ease;
 }
-.scriba-single-share.is-copied {
-  background: #2f5d2a;
-  border-color: #2f5d2a;
-}
-.scriba-single-frame {
-  flex: 1;
-  width: 100%;
-  border: none;
-  background: #e7e0d0;
-}
+.scriba-single-back:hover,
+.scriba-single-share:hover { color: #edeaff; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
+.scriba-single-share.is-copied { background: linear-gradient(90deg, #22d3ee, #8b5cf6); color: #070713; border-color: transparent; }
+.scriba-single-frame { flex: 1; width: 100%; border: none; background: #e7e0d0; }
 @media (max-width: 640px) {
   .scriba-single-label { display: none; }
 }
 
-/* ── GLACIER ── */
-/* Testata → <GlacierHero> (finestra artica) e griglia numeri → vetrate
-   panoramiche (<Vetrata> in .gl-vetrate): .scriba-mast, .scriba-month-title,
-   .scriba-grid e .scriba-card-* restano come regole morte.
-   La pagina ha già il padding sotto la navbar: la finestra parte subito. */
-.scriba-archive .gl-hero { padding-top: 0; margin-bottom: 12px; }
-.scriba-archive .gl-vetrate { padding: 0; }
-/* i pulsanti master (🔗 ✒️ 🗑) e il badge letture restano ancorati al wrap */
-.scriba-archive .scriba-card-wrap { position: relative; }
-.scriba-archive .scriba-card-wrap .gl-vetrata { width: 100%; }
+@media (max-width: 480px) {
+  .scriba-archive .scriba-griglia { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scriba-cd-quill { animation: none; }
+}
+
+/* il tag "Numero N · data" è lungo: in flusso sopra la copertina, non sovrapposto */
+.scriba-numero .nx-tag { position: static; display: block; margin: 0 0 10px; text-align: left; line-height: 1.4; }

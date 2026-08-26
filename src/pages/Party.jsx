@@ -118,11 +118,12 @@ function membersFor(party, query) {
       .filter(Boolean).join(" ").toLowerCase().includes(q));
 }
 
-/* ── Voce di registro: medaglione + nome + razza·classe (tap → scheda) ── */
-function RosterEntry({ hero, accent, onOpen }) {
+/* ── Eroe = pannello del Nesso con anello-ritratto (tap → scheda) ── */
+function RosterEntry({ hero, tag, onOpen }) {
   return (
-    <button type="button" className="roster-entry" style={{ "--accent": accent }} onClick={onOpen}>
-      <span className="roster-medallion">
+    <button type="button" className="nx-pannello nx-pannello--tap eroe-card" onClick={onOpen}>
+      <span className="nx-tag">{tag}</span>
+      <span className="nx-anello">
         <img
           src={hero.image}
           alt={hero.name}
@@ -130,20 +131,14 @@ function RosterEntry({ hero, accent, onOpen }) {
           onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
         />
       </span>
-      <span className="roster-entry-body">
-        <span className="roster-entry-name">{hero.name}</span>
-        <span className="roster-entry-meta">
-          <span>{hero.race}</span>
-          <span className="dot">·</span>
-          <span>{hero.class}</span>
-        </span>
-      </span>
-      <span className="roster-entry-cue" aria-hidden="true">Scheda ›</span>
+      <span className="nx-nome">{hero.name}</span>
+      <span className="nx-meta">{hero.race} · {hero.class}</span>
+      <span className="eroe-cue" aria-hidden="true">Scheda ›</span>
     </button>
   );
 }
 
-/* ── Scheda-pergamena del singolo eroe (modale) ── */
+/* ── Scheda eroe = modale-varco del Nesso ── */
 function HeroModal({ hero, party, char, onClose }) {
   const bio = (HERO_BIOS[hero.name] || "").trim();
   const bioParas = bio ? bio.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) : [];
@@ -157,31 +152,27 @@ function HeroModal({ hero, party, char, onClose }) {
   const st = char?.stats || null;
 
   return (
-    <div className="hero-modal-overlay" onClick={onClose}>
+    <div className="nx-modale-overlay" onClick={onClose}>
       <div
-        className="hero-modal"
+        className="nx-modale eroe-modale"
         role="dialog"
         aria-modal="true"
-        style={{ "--accent": party.color }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button type="button" className="hero-modal-close" onClick={onClose} aria-label="Chiudi">✕</button>
+        <button type="button" className="nx-modale-close" onClick={onClose} aria-label="Chiudi">✕</button>
         <img
-          className="hero-modal-img"
+          className="nx-modale-img"
           src={hero.image}
           alt={hero.name}
           onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
         />
-        <span className="hero-modal-house">
-          <span className="hero-modal-house-crest">{party.code}</span>
-          {party.name}
-        </span>
-        <h3 className="hero-modal-name">{hero.name}</h3>
+        <span className="nx-kicker">{party.code} · {party.name}</span>
+        <h3 className="nx-titolo">{hero.name}</h3>
         {Number.isFinite(level) && (
-          <span className="hero-modal-level">Livello {level}</span>
+          <span className="nx-pillola on eroe-livello">Livello {level}</span>
         )}
 
-        <div className="hero-modal-meta">
+        <div className="nx-meta-box">
           <p><strong>Razza</strong> {race || "—"}</p>
           <p><strong>Classe</strong> {klass || "—"}</p>
           {subclass && <p><strong>Sottoclasse</strong> {subclass}</p>}
@@ -190,25 +181,25 @@ function HeroModal({ hero, party, char, onClose }) {
 
         {/* Statistiche dal foglio personaggio */}
         {st && (
-          <div className="hero-modal-sheet">
-            <div className="hero-modal-vitals">
+          <div className="eroe-sheet">
+            <div className="eroe-vitals">
               {Number.isFinite(st.hp ?? st.maxHp) && (
-                <span className="hero-vital"><b>{st.hp ?? st.maxHp}</b><i>PF</i></span>
+                <span className="eroe-vital"><b>{st.hp ?? st.maxHp}</b><i>PF</i></span>
               )}
               {Number.isFinite(st.ac) && (
-                <span className="hero-vital"><b>{st.ac}</b><i>CA</i></span>
+                <span className="eroe-vital"><b>{st.ac}</b><i>CA</i></span>
               )}
               {Number.isFinite(st.speed) && (
-                <span className="hero-vital"><b>{st.speed}</b><i>Vel.</i></span>
+                <span className="eroe-vital"><b>{st.speed}</b><i>Vel.</i></span>
               )}
             </div>
-            <div className="hero-modal-abilities">
+            <div className="nx-pillole eroe-abilities">
               {ABILITY_LABELS.map(([key, label]) => {
                 const a = st[key];
                 if (!a || !Number.isFinite(a.score)) return null;
                 const mod = Number.isFinite(a.mod) ? a.mod : Math.floor((a.score - 10) / 2);
                 return (
-                  <span key={key} className="hero-ability">
+                  <span key={key} className="nx-pillola eroe-ability">
                     <i>{label}</i>
                     <b>{a.score}</b>
                     <em>{mod >= 0 ? `+${mod}` : mod}</em>
@@ -221,19 +212,19 @@ function HeroModal({ hero, party, char, onClose }) {
 
         {/* Biografia (riempibile in HERO_BIOS) */}
         {bioParas.length > 0 && (
-          <div className="hero-modal-bio">
-            <span className="hero-modal-bio-label">Biografia</span>
+          <div className="nx-prosa eroe-bio">
+            <span className="nx-kicker">Biografia</span>
             {bioParas.map((p, i) => <p key={i}>{p}</p>)}
           </div>
         )}
 
-        <p className="hero-modal-motto"><em>«{party.motto}»</em></p>
+        <p className="nx-citazione">«{party.motto}»</p>
       </div>
     </div>
   );
 }
 
-/* ── Casata = doppia pagina di manoscritto: marginalia + registro ── */
+/* ── Casata = etichetta di sezione + griglia di pannelli ── */
 function HouseSection({ party, query, charByName, focusHero, onFocusConsumed }) {
   const [openIdx, setOpenIdx] = useState(null);
   const visibleMembers = membersFor(party, query);
@@ -255,29 +246,14 @@ function HouseSection({ party, query, charByName, focusHero, onFocusConsumed }) 
   const open = openIdx != null ? visibleMembers[openIdx] : null;
 
   return (
-    <section id={`party-${party.id}`} className="party-house" style={{ "--party-color": party.color }} data-id={party.id}>
-      {/* marginalia sticky */}
-      <aside className="party-house-aside">
-        <span className="party-crest" style={{ "--accent": party.color }}>
-          <span className="party-crest-letter">{party.code}</span>
-        </span>
-        <span className="party-house-code">Casata · {party.id}</span>
-        <p className="party-house-motto">«{party.motto}»</p>
-        <span className="party-count-chip">
-          {visibleMembers.length} {visibleMembers.length === 1 ? "Eroe" : "Eroi"}
-        </span>
-      </aside>
+    <section id={`party-${party.id}`} className="casata" data-id={party.id}>
+      <div className="gl-sezlabel">{party.code} · {party.name}</div>
+      <p className="nx-nota casata-motto">«{party.motto}» · {visibleMembers.length} {visibleMembers.length === 1 ? "eroe" : "eroi"}</p>
 
-      {/* registro degli eroi */}
-      <div className="party-roster">
-        <div className="party-roster-rubric">
-          <h2 className="party-roster-title">{party.name}</h2>
-        </div>
-        <div className="roster-list">
-          {visibleMembers.map((m, i) => (
-            <RosterEntry key={m.name} hero={m} accent={party.color} onOpen={() => setOpenIdx(i)} />
-          ))}
-        </div>
+      <div className="nx-griglia casata-griglia">
+        {visibleMembers.map((m, i) => (
+          <RosterEntry key={m.name} hero={m} tag={party.id} onOpen={() => setOpenIdx(i)} />
+        ))}
       </div>
 
       {open && (
@@ -344,10 +320,9 @@ export default function Party() {
 
   return (
     <section className="cine-page party-page cine-compact" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
-      <AmbientFX variant="leaves" />
+      <AmbientFX variant="cosmos" />
 
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la cessione
-            dell'anello, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      {/* ── HERO = VARCO esagonale (nesso.css) ── */}
       <GlacierHero
         id="party-top"
         ariaLabel="Le Compagnie di Exanthia"
@@ -357,31 +332,27 @@ export default function Party() {
         title={<>Le Compagnie<br />di Exanthia</>}
         seal={`${stats.heroes} eroi attivi · ${stats.parties} compagnie`}
         tagline="Quattro compagnie. Sedici anime. Una sola leggenda che si scrive, notte dopo notte, sulle pietre di Exanthia."
-        actions={<a href="#party-index" className="gl-cta">❆ Sfoglia il registro</a>}
+        actions={<a href="#party-index" className="gl-cta">✦ Sfoglia il registro</a>}
       />
 
-      {/* ── INDICE DELLE CASATE: sigilli araldici (filtro) ── */}
+      {/* ── INDICE DELLE CASATE: pillole-satellite (filtro) ── */}
       <div id="party-index" className="party-index">
-        <div className="gl-sezlabel">Indice · Le Casate di Exanthia</div>
-        <div className="party-index-sigils" role="tablist">
+        <div className="nx-pillole" role="tablist">
           <button
             type="button"
-            className={`party-sigil party-sigil--all ${activeParty === "all" ? "on" : ""}`}
+            className={`nx-pillola ${activeParty === "all" ? "on" : ""}`}
             onClick={() => setActiveParty("all")}
           >
-            <span className="party-sigil-crest">✦</span>
-            <span className="party-sigil-label">Tutte</span>
+            ✦ Tutte
           </button>
           {PARTIES.map((p) => (
             <button
               key={p.id}
               type="button"
-              className={`party-sigil ${activeParty === p.id ? "on" : ""}`}
+              className={`nx-pillola ${activeParty === p.id ? "on" : ""}`}
               onClick={() => setActiveParty(p.id)}
-              style={{ "--accent": p.color }}
             >
-              <span className="party-sigil-crest">{p.code}</span>
-              <span className="party-sigil-label">{p.id}</span>
+              <b className="party-pill-code">{p.code}</b> {p.id}
             </button>
           ))}
         </div>
@@ -397,7 +368,7 @@ export default function Party() {
       />
 
       {/* ── CASATE ── */}
-      <div className="party-list">
+      <div className="casate">
         {matchCount === 0 ? (
           <p className="cine-empty">Nessun eroe corrisponde alla ricerca.</p>
         ) : (

@@ -5,7 +5,6 @@ import "./Bacheca.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
-import CineToolbar from "../components/CineToolbar";
 import GlacierHero from "../components/glacier/GlacierHero";
 import {
   collection, onSnapshot, doc, getDoc,
@@ -159,11 +158,11 @@ export default function Bacheca() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
+    <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
       <AmbientFX variant="fireflies" />
 
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio sul tesoro,
-            saluto dinamico sotto la finestra, CTA a cristallo verso l'albo ── */}
+      {/* ── HERO = VARCO (prototipo J): il tesoro nel portale esagonale,
+            saluto dinamico sotto la testata, CTA verso l'albo ── */}
       <GlacierHero
         id="bacheca-top"
         ariaLabel="Hemile's Board"
@@ -174,7 +173,7 @@ export default function Bacheca() {
           ? `${userCharName}${userParty && userParty !== "Senza Gruppo" ? ` · Party ${userParty}` : ""}`
           : undefined}
         tagline="Pergamene, sigilli e missive attendono mani coraggiose."
-        actions={<a href="#bacheca-albo" className="gl-cta" aria-label="Scorri all'albo">❆ Apri l'albo</a>}
+        actions={<a href="#bacheca-albo" className="gl-cta" aria-label="Scorri all'albo">✦ Apri l'albo</a>}
       >
         <p className="bch-glacier-greet">
           Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
@@ -182,24 +181,29 @@ export default function Bacheca() {
         </p>
       </GlacierHero>
 
-      {/* ── ETICHETTA DI SEZIONE (glacier): Le Missive ── */}
+      {/* ══ L'ALBO DEL NESSO: etichetta, ricerca a pillola, filtri-satellite ══ */}
       <div id="bacheca-albo" className="gl-sezlabel">Incarichi · Le Missive</div>
-      <p className="gl-vetrata-sub bch-sezsub">
+      <p className="nx-nota bch-sezsub">
         Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
       </p>
 
       {!loading && questEntries.length > 0 && (
-        <CineToolbar
-          query={query}
-          onQuery={setQuery}
-          placeholder="Cerca per titolo, gruppo o personaggio…"
-          chips={[{ key: "available", label: "📜 Disponibili" }, { key: "accepted", label: "🛡 In corso" }]}
-          activeChip={statusFilter}
-          onChip={setStatusFilter}
-          allLabel="Tutte"
-          count={visibleQuests.length}
-          countNoun={visibleQuests.length === 1 ? "missiva" : "missive"}
-        />
+        <div className="bch-toolbar">
+          <input
+            type="search"
+            className="bch-search"
+            placeholder="Cerca per titolo, gruppo o personaggio…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Cerca missive"
+          />
+          <div className="nx-pillole bch-filtri" role="group" aria-label="Filtra per stato">
+            <button type="button" className={`nx-pillola${statusFilter == null ? " on" : ""}`} onClick={() => setStatusFilter(null)}>✦ Tutte</button>
+            <button type="button" className={`nx-pillola${statusFilter === "available" ? " on" : ""}`} onClick={() => setStatusFilter("available")}>📜 Disponibili</button>
+            <button type="button" className={`nx-pillola${statusFilter === "accepted" ? " on" : ""}`} onClick={() => setStatusFilter("accepted")}>🛡 In corso</button>
+          </div>
+          <span className="bch-count">{visibleQuests.length} {visibleQuests.length === 1 ? "missiva" : "missive"}</span>
+        </div>
       )}
 
       {loading ? (
@@ -209,8 +213,7 @@ export default function Bacheca() {
       ) : visibleQuests.length === 0 ? (
         <div className="cine-empty">Nessuna missiva corrisponde alla ricerca.</div>
       ) : (
-        <div className="bch-board">
-        <div className="scrolls-grid">
+        <div className="nx-griglia scrolls-grid">
           {visibleQuests.map((quest) => {
             const isAccepted          = !!quest.acceptedBy;
             const isAcceptedByMe      = quest.acceptedBy === userCharName;
@@ -220,8 +223,15 @@ export default function Bacheca() {
             const isHovered           = hoveredId === quest.id;
             const isOpenVisual        = !quest._sealed && (isAccepted || (quest._canOpen && isHovered));
             const badgeIcon           = quest._sealed ? "🔒" : isPrivate ? "🔒" : isPartyQuest ? "🛡️" : "🌐";
+            const tag = quest._sealed ? "Sigillata"
+              : isAccepted ? "In corso"
+              : isPrivate ? "Privata"
+              : isPartyQuest ? quest.targetParty
+              : "Aperta";
 
             const cardClass = [
+              "nx-pannello",
+              quest._canOpen ? "nx-pannello--tap" : "",
               "quest-card",
               quest._canOpen ? "is-clickable" : "",
               isOpenVisual ? "is-open" : "",
@@ -241,7 +251,9 @@ export default function Bacheca() {
                 tabIndex={quest._canOpen ? 0 : -1}
               >
                 <span className="quest-badge" aria-hidden="true">{badgeIcon}</span>
+                <span className={`nx-tag quest-tag${isAccepted ? " is-accepted" : ""}`}>{tag}</span>
 
+                {/* sigillo della missiva: la pergamena si apre da sola al passaggio */}
                 <div className="scroll-frame">
                   <img className="scroll-img closed" src="/closedScroll.png" alt="" />
                   {quest.coverImage ? (
@@ -256,30 +268,30 @@ export default function Bacheca() {
                   )}
                 </div>
 
-                <h3 className="quest-card-title">
+                <h3 className="nx-nome quest-card-title">
                   {quest._sealed ? "Missiva sigillata" : quest.title}
                 </h3>
 
                 {quest._sealed ? (
-                  <p className="quest-card-meta sealed">
+                  <p className="nx-meta quest-card-meta sealed">
                     In carico al gruppo {quest.acceptedParty}
                   </p>
                 ) : (
                   <>
                     {isPrivate && (
-                      <p className="quest-card-meta private">
+                      <p className="nx-meta quest-card-meta private">
                         Solo per {quest.targetCharacter}
                       </p>
                     )}
                     {isPartyQuest && !isAccepted && (
-                      <p className="quest-card-meta party">
+                      <p className="nx-meta quest-card-meta party">
                         Riservata a {quest.targetParty}
                       </p>
                     )}
 
                     {isAccepted && (
                       <div className="quest-card-accepted">
-                        <p>
+                        <p className="nx-nota">
                           In carico al gruppo{" "}
                           <strong className={isAcceptedByMyParty ? "mine" : "others"}>
                             {quest.acceptedParty || quest.acceptedBy}
@@ -288,7 +300,7 @@ export default function Bacheca() {
                         {(isAcceptedByMe || isMaster || isAcceptedByMyParty) && (
                           <button
                             type="button"
-                            className="btn-quest btn-quest-release"
+                            className="nx-pillola btn-quest btn-quest-release"
                             onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, false); }}
                           >
                             Rilascia
@@ -300,10 +312,10 @@ export default function Bacheca() {
                     {!isAccepted && isHovered && quest._canOpen && (
                       <button
                         type="button"
-                        className="btn-quest btn-quest-accept"
+                        className="gl-cta btn-quest btn-quest-accept"
                         onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
                       >
-                        Accetta Ora
+                        Accetta ora
                       </button>
                     )}
                   </>
@@ -311,7 +323,6 @@ export default function Bacheca() {
               </article>
             );
           })}
-        </div>
         </div>
       )}
     </section>

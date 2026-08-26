@@ -18,6 +18,7 @@ export default function NPC() {
   const [npcs, setNpcs] = useState([]);
   const [query, setQuery] = useState("");
   const [activeCity, setActiveCity] = useState(null);
+  const [openNpc, setOpenNpc] = useState(null); // scheda-varco aperta (solo presentazione)
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   useParallaxScroll();
@@ -78,11 +79,10 @@ export default function NPC() {
   const isFiltering = q !== "" || activeCity != null;
 
   return (
-    <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
-      <AmbientFX variant="water" />
+    <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <AmbientFX variant="cosmos" />
 
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la taverna,
-            titolo inciso sulla lastra, sigillo con i conteggi dinamici ── */}
+      {/* ── VARCO: il portale esagonale della taverna + testata ── */}
       <GlacierHero
         id="npc-top"
         ariaLabel="Gli abitanti del mondo"
@@ -94,15 +94,37 @@ export default function NPC() {
         tagline="Mercanti, nobili, erranti e creature: ogni volto che gli eroi hanno incrociato lungo le strade di Exanthia."
       />
 
+      {/* ── I SATELLITI: indice a pillole dei luoghi (stesso filtro di prima) ── */}
+      {npcs.length > 0 && (
+        <div className="nx-pillole npc-pillole" role="group" aria-label="Filtra per luogo">
+          <button
+            type="button"
+            className={`nx-pillola${activeCity == null ? " on" : ""}`}
+            onClick={() => setActiveCity(null)}
+          >
+            ✦ Tutti i luoghi
+          </button>
+          {cityKeys.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`nx-pillola${activeCity === c ? " on" : ""}`}
+              onClick={() => setActiveCity(activeCity === c ? null : c)}
+            >
+              <span aria-hidden="true">{c === "Erranti" ? "✸" : "⌖"}</span> {c}
+              <small className="npc-pillola-n">{grouped[c].length}</small>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ricerca (le chip dei luoghi vivono nelle pillole qui sopra) */}
       {npcs.length > 0 && (
         <CineToolbar
           query={query}
           onQuery={setQuery}
           placeholder="Cerca per nome, fazione, luogo o parola…"
-          chips={cityKeys.map((c) => ({ key: c, label: c }))}
-          activeChip={activeCity}
-          onChip={setActiveCity}
-          allLabel="Tutti i luoghi"
+          chips={[]}
           count={visibleCount}
           countNoun={visibleCount === 1 ? "abitante" : "abitanti"}
         />
@@ -113,51 +135,71 @@ export default function NPC() {
       ) : visibleCities.length === 0 ? (
         <p className="cine-empty">Nessun personaggio corrisponde alla ricerca.</p>
       ) : (
-        visibleCities.map(({ city, idx, list }) => (
+        visibleCities.map(({ city, list }) => (
           <section
             key={city}
             id={`npc-${slugify(city)}`}
             className="npc-city"
-            data-accent={idx % 5}
             aria-label={city}
           >
-            {/* marginalia sticky del luogo */}
-            <aside className="npc-city-aside">
-              <span className="npc-city-seal" aria-hidden="true">{city === "Erranti" ? "✸" : "⌖"}</span>
-              <span className="npc-city-eyebrow">{city === "Erranti" ? "Senza dimora" : "Luogo"}</span>
-              <h2 className="npc-city-name">{city}</h2>
-              <span className="npc-city-chip">
+            <div className="gl-sezlabel">
+              <span aria-hidden="true">{city === "Erranti" ? "✸" : "⌖"}</span>&nbsp;{city}
+              <span className="npc-city-n">
                 {list.length}{isFiltering && list.length !== grouped[city].length ? ` di ${grouped[city].length}` : ""} {list.length === 1 ? "abitante" : "abitanti"}
               </span>
-            </aside>
+            </div>
 
-            {/* registro delle schede-dossier */}
-            <div className="npc-dossier-list">
+            {/* i volti: griglia di pannelli con anello-ritratto, tap → scheda-varco */}
+            <div className="nx-griglia npc-volti">
               {list.map((npc) => (
-                <article key={npc.id} id={`npc-card-${slugify(npc.name)}`} className="npc-dossier">
-                  <div className="npc-dossier-portrait">
-                    <img
-                      src={npc.image || "/assets/player/default.png"}
-                      alt={npc.name}
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="npc-dossier-body">
-                    <h3 className="npc-dossier-name">{npc.name}</h3>
-                    {(npc.faction || npc.location) && (
-                      <p className="npc-dossier-meta">
-                        {[npc.faction, npc.location].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                    {npc.description && (
-                      <p className="npc-dossier-desc">{npc.description}</p>
-                    )}
-                  </div>
-                </article>
+                <button
+                  key={npc.id}
+                  type="button"
+                  id={`npc-card-${slugify(npc.name)}`}
+                  className="nx-pannello nx-pannello--tap npc-volto"
+                  onClick={() => setOpenNpc(npc)}
+                >
+                  {(npc.faction || city !== "Erranti") && (
+                    <span className="nx-tag">{npc.faction || city}</span>
+                  )}
+                  <span className="nx-anello">
+                    {npc.image
+                      ? <img src={npc.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
+                      : <span className="nx-anello-ph" aria-hidden="true">{String(npc.name || "?").charAt(0)}</span>}
+                  </span>
+                  <span className="nx-nome">{npc.name}</span>
+                  {(npc.faction || npc.location) && (
+                    <span className="nx-meta">{[npc.faction, npc.location].filter(Boolean).join(' · ')}</span>
+                  )}
+                  {npc.description && <span className="nx-nota npc-volto-desc">{npc.description}</span>}
+                  <span className="npc-volto-cue" aria-hidden="true">Apri scheda ›</span>
+                </button>
               ))}
             </div>
           </section>
         ))
+      )}
+
+      {/* ── SCHEDA-VARCO: dettaglio del volto ── */}
+      {openNpc && (
+        <div className="nx-modale-overlay" onClick={() => setOpenNpc(null)}>
+          <div className="nx-modale npc-scheda" role="dialog" aria-modal="true" aria-label={openNpc.name} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="nx-modale-close" onClick={() => setOpenNpc(null)} aria-label="Chiudi">✕</button>
+            {openNpc.image && (
+              <img className="nx-modale-img" src={openNpc.image} alt={openNpc.name}
+                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            )}
+            <span className="nx-kicker">{openNpc.linkedCity?.trim() || "Errante"}</span>
+            <h3 className="nx-titolo">{openNpc.name}</h3>
+            {(openNpc.faction || openNpc.location) && (
+              <div className="nx-meta-box">
+                {openNpc.faction && <p><strong>Fazione:</strong> {openNpc.faction}</p>}
+                {openNpc.location && <p><strong>Luogo:</strong> {openNpc.location}</p>}
+              </div>
+            )}
+            {openNpc.description && <p className="nx-prosa">{openNpc.description}</p>}
+          </div>
+        </div>
       )}
 
     </section>

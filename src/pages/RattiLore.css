@@ -1,264 +1,55 @@
 /* ============================================================
-   RATTI LORE — architettura "Codice del Sottosuolo" (Pergamena)
-   Hero asimmetrico · lore a manoscritto (marginalia + capolettera) ·
-   rubrica · scala gerarchica verticale (ladder).
+   GILDA DEI RATTI — "CODICE DEL SOTTOSUOLO" nel Nesso (prototipo J)
+   Varco → sommario a pillole → .nx-due (rubrica sticky + flusso a
+   capitoli: cronache in prosa, reputazione in 3 passi, gradi come
+   griglia di pannelli con orbe numerata). Mattoni nel KIT NESSO
+   (nesso.css §10): qui solo le regole specifiche.
    ============================================================ */
 
-/* ============================================================
-   1) HERO ASIMMETRICO — immagine full-bleed + placca
-   ============================================================ */
-.ratti-page .ratti-hero {
-  position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  min-height: 66vh;
-  display: flex; align-items: flex-end;
-  overflow: hidden; isolation: isolate;
-  padding: 0 0 46px;
-}
-.ratti-page .ratti-hero-media { position: absolute; inset: 0; z-index: 0; }
-.ratti-page .ratti-hero-media img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 28%;
-  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.22px), 0);
-  will-change: transform;
-}
-.ratti-page .ratti-hero-wash {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(20,20,8,.58) 0%, rgba(20,20,8,.18) 52%, transparent 76%),
-    linear-gradient(180deg, rgba(20,20,8,.08) 0%, rgba(20,20,8,.32) 55%, var(--cine-bg-bot, #eaddbd) 100%);
-}
-.ratti-page .ratti-hero-plate {
-  position: relative; z-index: 2; margin: 0 14px;
-  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 5px solid var(--cine-accent);
-  border-radius: 18px;
-  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
-  padding: 22px 20px;
-  animation: ratti-plate-in .7s cubic-bezier(.16,1,.3,1) both;
-}
-@keyframes ratti-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
-.ratti-page .ratti-hero-seal {
-  display: inline-block;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
-  color: #5a6418; padding: 6px 14px;
-  border: 1px solid rgba(90,100,24,.45); border-radius: 999px;
-  background: rgba(110,122,42,.1);
-}
-.ratti-page .ratti-hero-title {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(2rem, 7.4vw, 3.8rem); line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
-  background: linear-gradient(180deg, #2f350f 0%, #6e7a2a 58%, #9aab3a 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.ratti-page .ratti-hero-tagline {
-  font-family: var(--font-ui, Georgia), serif;
-  color: #46382a; font-size: clamp(.96rem, 2.4vw, 1.1rem); line-height: 1.6;
-  margin: 0; max-width: 44ch;
-}
-.ratti-page .ratti-hero-scroll {
-  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
-  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  text-decoration: none; color: #4a5215;
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(255,248,230,.7);
-}
-.ratti-page .ratti-hero-scroll-ic {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; border: 1.5px solid rgba(110,122,42,.5);
-  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
-  color: #5a6418; font-size: 1rem; animation: ratti-bob 2.2s ease-in-out infinite;
-}
-@keyframes ratti-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
-@media (min-width: 900px) {
-  .ratti-page .ratti-hero { min-height: 76vh; align-items: center; }
-  .ratti-page .ratti-hero-wash {
-    background:
-      linear-gradient(90deg, rgba(20,20,8,.7) 0%, rgba(20,20,8,.24) 42%, transparent 66%),
-      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
-  }
-  .ratti-page .ratti-hero-plate { margin: 0 0 0 7vw; max-width: 520px; padding: 34px 32px; }
+.ratti-page .ratti-sommario { margin: 6px 0 22px; }
+.ratti-page .ratti-pill-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.6em; height: 1.6em; padding: 0 .35em; border-radius: 999px;
+  font-family: "Cinzel", Georgia, serif; font-size: .62rem; font-weight: 700;
+  color: #070713; background: linear-gradient(135deg, #22d3ee, #8b5cf6);
 }
 
-/* ============================================================
-   2) LORE — manoscritto: marginalia + capolettera
-   ============================================================ */
-.ratti-page .ratti-lore {
-  max-width: 1040px; margin: 18px auto 0;
-  padding: 12px clamp(16px, 4vw, 30px) 0;
-  line-height: 1.85; font-size: clamp(0.94rem, 2.2vw, 1.05rem);
-}
-.ratti-page .ratti-lore-aside { display: none; }
-.ratti-page .ratti-lore-text { margin: 0 0 16px; color: #33281a; text-align: justify; }
-.ratti-page .ratti-lore strong { color: #7c560f; }
-.ratti-page .ratti-lore em, .ratti-page .ratti-lore b { color: #6b5410; }
-.ratti-page .ratti-lore-drop {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  font-size: clamp(2.6rem, 7vw, 3.8rem); line-height: .72;
-  float: left; margin: 6px 12px 0 0; padding: 8px 12px 6px; color: #fffdf5;
-  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-  border-radius: 8px; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
-}
-.ratti-page .ratti-quote {
-  margin: 22px 0;
-  padding: 14px 20px;
-  border-left: 4px solid #a9781a;
-  background: linear-gradient(90deg, rgba(169, 120, 26, 0.14), transparent 70%);
-  border-radius: 0 12px 12px 0;
-  color: #5a4a16;
-  font-size: 1.05rem;
-}
-.ratti-page .ratti-subtitle {
-  font-family: var(--font-title);
-  color: #7c560f;
-  font-size: clamp(1rem, 2.6vw, 1.25rem);
-  letter-spacing: 0.04em;
-  margin: 28px 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line, #c9b78a);
-}
+/* ── rubrica sticky ── */
+.ratti-page .ratti-rubrica { text-align: center; }
+.ratti-page .ratti-rubrica .nx-anello { width: 84px; height: 84px; }
+.ratti-page .ratti-rubrica .nx-anello-ph { font-size: 2rem; }
+.ratti-page .ratti-rubrica-titolo { font-size: 1.25rem; margin: 6px 0 12px; }
+.ratti-page .ratti-rubrica-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.ratti-page .ratti-rubrica-voce { justify-content: flex-start; text-align: left; }
+@media (max-width: 819px) { .ratti-page .ratti-rubrica { display: none; } }
 
-@media (min-width: 900px) {
-  .ratti-page .ratti-lore {
-    display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: start;
-  }
-  .ratti-page .ratti-lore-aside {
-    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
-    position: sticky; top: calc(var(--navbar-h, 80px) + 28px);
-    padding: 20px 14px; border-right: 2px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
-  }
-  .ratti-page .ratti-lore-orn { font-size: 1.6rem; }
-  .ratti-page .ratti-lore-chapter {
-    font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: 1.1rem; color: var(--cine-accent); letter-spacing: .08em;
-  }
-  .ratti-page .ratti-lore-note {
-    font-family: var(--font-head, "Cinzel"), serif; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: #6a5b41;
-  }
-  .ratti-page .ratti-lore-age {
-    margin-top: 4px; font-family: var(--font-ui), serif; font-style: italic; font-size: .82rem; color: #7c560f;
-    border-top: 1px solid color-mix(in srgb, var(--cine-accent) 25%, transparent); padding-top: 8px;
-  }
-}
+/* ── flusso ── */
+.ratti-page .ratti-flusso { min-width: 0; }
+.ratti-page .ratti-section { scroll-margin-top: calc(var(--navbar-h, 66px) + 16px); margin-bottom: 30px; }
+.ratti-page .ratti-section .gl-sezlabel { margin-top: 0; }
+.ratti-page .ratti-gradi-sub { margin: -4px 0 14px; }
 
-/* ============================================================
-   3) RUBRICA "Gradi di Reputazione"
-   ============================================================ */
-.ratti-page .ratti-rubric {
-  max-width: 1040px; margin: 30px auto 8px;
-  padding: 0 clamp(16px, 4vw, 30px); text-align: center;
-  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
-}
-.ratti-page .ratti-rubric-eyebrow {
-  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: #5a6418;
-}
-.ratti-page .ratti-rubric-eyebrow::before,
-.ratti-page .ratti-rubric-eyebrow::after {
-  content: ""; position: absolute; top: 50%; width: 28px; height: 1px;
-  background: color-mix(in srgb, var(--cine-accent) 55%, transparent);
-}
-.ratti-page .ratti-rubric-eyebrow::before { right: 100%; }
-.ratti-page .ratti-rubric-eyebrow::after  { left: 100%; }
-.ratti-page .ratti-rubric-title {
-  margin: 0;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.05;
-  background: linear-gradient(180deg, #2f350f 0%, #6e7a2a 70%, #9aab3a 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.ratti-page .ratti-rubric-sub {
-  margin: 4px auto 0; max-width: 52ch;
-  font-family: var(--font-ui, Georgia), serif; font-style: italic;
-  color: #6a5b41; font-size: clamp(.9rem, 2vw, 1rem);
-}
+/* ── prosa ── */
+.ratti-page .ratti-lore .nx-prosa { margin: 0 0 14px; }
+.ratti-page .ratti-lore .nx-prosa:last-child { margin-bottom: 0; }
+.ratti-page .ratti-lore strong, .ratti-page .ratti-lore b { color: #22d3ee; }
+.ratti-page .ratti-quote { margin: 4px 0 16px; }
 
-/* ============================================================
-   4) SCALA GERARCHICA — ladder verticale
-   ============================================================ */
-.ratti-page .ratti-ladder {
-  position: relative;
-  max-width: 720px; margin: 18px auto 0;
-  padding: 8px clamp(16px, 4vw, 24px) 20px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-/* filo verticale che collega i gradini */
-.ratti-page .ratti-ladder::before {
-  content: ""; position: absolute; top: 26px; bottom: 30px;
-  left: calc(clamp(16px, 4vw, 24px) + 31px); width: 2px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--cine-accent) 55%, transparent), color-mix(in srgb, var(--cine-accent) 18%, transparent));
-}
-.ratti-page .ratti-rung {
-  position: relative; z-index: 1;
-  display: flex; align-items: stretch; gap: 16px;
-}
-.ratti-page .ratti-rung-seal {
-  flex: 0 0 64px; width: 64px; height: 64px; align-self: flex-start;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
-  border: 2px solid rgba(255, 240, 210, 0.45);
-  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--cine-accent) 70%, rgba(86,64,30,.4));
-}
-.ratti-page .ratti-rung-lv {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 700;
-  color: #fffbea; font-size: .92rem; letter-spacing: .02em;
-}
-.ratti-page .ratti-rung-body {
-  flex: 1 1 auto; min-width: 0;
-  background: linear-gradient(180deg, rgba(255,252,245,.98), rgba(250,242,222,.96));
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
-  border-left: 4px solid var(--cine-accent);
-  border-radius: 14px; padding: 12px 16px;
-  box-shadow: 0 10px 26px -16px rgba(86,64,30,.5);
-}
-.ratti-page .ratti-rung-head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.ratti-page .ratti-rung-name {
-  margin: 0;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(1.05rem, 3vw, 1.25rem); color: #7c560f; letter-spacing: .02em; line-height: 1.15;
-}
-.ratti-page .ratti-rung-pr {
-  flex: 0 0 auto;
-  padding: 3px 12px; border-radius: 999px;
-  background: color-mix(in srgb, var(--cine-accent) 18%, rgba(45, 32, 14, 0.08));
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 55%, transparent);
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: #33281a; white-space: nowrap;
-}
-.ratti-page .ratti-rung-bonus {
-  margin: 0; color: #6a5b41; font-family: var(--font-ui, Georgia), serif; line-height: 1.6; font-size: .94rem;
-}
-/* gradini progressivamente rientrati (senso di scalata) */
-@media (min-width: 680px) {
-  .ratti-page .ratti-rung:nth-child(2) { margin-left: 14px; }
-  .ratti-page .ratti-rung:nth-child(3) { margin-left: 28px; }
-  .ratti-page .ratti-rung:nth-child(4) { margin-left: 42px; }
-  .ratti-page .ratti-rung:nth-child(5) { margin-left: 56px; }
-  .ratti-page .ratti-rung:nth-child(6) { margin-left: 70px; }
-  .ratti-page .ratti-rung:nth-child(7) { margin-left: 84px; }
-  .ratti-page .ratti-ladder::before { display: none; }
-}
+/* ── i tre passi ── */
+.ratti-page .ratti-passi { margin-top: 16px; }
+.ratti-page .ratti-passo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 12px; }
+.ratti-page .ratti-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(34, 211, 238, .7)); }
 
-@media (prefers-reduced-motion: reduce) {
-  .ratti-page .ratti-hero-plate,
-  .ratti-page .ratti-hero-scroll-ic { animation: none !important; }
+/* ── scala dei gradi: orbe numerata come nella classifica dell'Arena ── */
+.ratti-page .ratti-grado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 22px; }
+.ratti-page .orb {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1rem; color: #070713;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6); box-shadow: 0 0 18px -2px rgba(34, 211, 238, .8);
+  margin-bottom: 8px;
 }
-
-/* ── GLACIER ── */
-/* Sottotitolo della sezione Gradi: riusa .gl-vetrata-sub ma su fondo
-   chiaro (lastra), quindi inchiostro glaciale e centratura. */
-.ratti-page .ratti-gradi-sub {
-  display: block;
-  text-align: center;
-  color: #4a687a;
-  max-width: 60ch;
-  margin: -4px auto 18px;
-  padding: 0 16px;
-}
+.ratti-page .ratti-grado:last-child .orb { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 18px rgba(245, 158, 11, .8); }
+.ratti-page .ratti-grado:first-child .orb { background: #2c2c55; color: #8f8bb8; box-shadow: none; }
+.ratti-page .ratti-grado-nome { font-size: 1rem; }
+.ratti-page .ratti-grado-bonus { margin: 6px 0 0; }

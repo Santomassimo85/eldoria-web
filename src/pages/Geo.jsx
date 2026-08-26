@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, onSnapshot, getDocs } from "firebase/firestore";
-import ToggleSection from "./ToggleSection";
 import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
 import { awardPetPoints } from "../utils/pet";
@@ -127,6 +126,15 @@ export default function Geo() {
     if (href) navigate(href);
   };
 
+  // Luogo aperto nella modale-varco (solo presentazione)
+  const [openLoc, setOpenLoc] = useState(null);
+  useEffect(() => {
+    if (!openLoc) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpenLoc(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openLoc]);
+
   // chiusura popup con Esc
   useEffect(() => {
     if (!lorePopup) return;
@@ -144,6 +152,8 @@ export default function Geo() {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("geo-card--focus");
       setTimeout(() => el.classList.remove("geo-card--focus"), 2800);
+      const loc = locations.find((l) => slugify(l.name) === focusSlug);
+      if (loc) setOpenLoc(loc);
     }, 200);
     return () => clearTimeout(t);
   }, [focusSlug, locations]);
@@ -297,16 +307,26 @@ export default function Geo() {
         )}
       </GlacierHero>
 
-      {/* ── INDICE DEI CONTINENTI: sigilli inline (sostituisce il rail flottante) ── */}
+      {/* ── INDICE = PILLOLE (i satelliti della pagina): filtro per continente ── */}
       {activeContinents.length > 0 && (
-        <div id="geo-index" className="geo-index">
-          <div className="gl-sezlabel">Indice · Le Terre di Exanthia</div>
-          <div className="geo-index-sigils">
-            {activeContinents.map((c, i) => (
-              <a key={c} href={`#geo-${slugify(c)}`} className="geo-sigil" data-accent={i % 3}>
-                <span className="geo-sigil-crest" aria-hidden="true">🌍</span>
-                <span className="geo-sigil-label">{c}</span>
-              </a>
+        <div id="geo-index" className="geo-index" role="group" aria-label="Continenti">
+          <div className="nx-pillole">
+            <button
+              type="button"
+              className={`nx-pillola${activeContinent == null ? " on" : ""}`}
+              onClick={() => setActiveContinent(null)}
+            >
+              ✦ Tutte le terre
+            </button>
+            {activeContinents.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`nx-pillola${activeContinent === c ? " on" : ""}`}
+                onClick={() => setActiveContinent(activeContinent === c ? null : c)}
+              >
+                ⌖ {c} <span className="geo-pill-n">{locsOf(c).length}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -318,10 +338,6 @@ export default function Geo() {
           query={query}
           onQuery={setQuery}
           placeholder="Cerca per luogo, continente o parola…"
-          chips={activeContinents.map((c) => ({ key: c, label: c }))}
-          activeChip={activeContinent}
-          onChip={setActiveContinent}
-          allLabel="Tutti i continenti"
           count={visibleCount}
           countNoun={visibleCount === 1 ? "luogo" : "luoghi"}
         />
@@ -331,26 +347,26 @@ export default function Geo() {
       {editingLoc && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          backgroundColor: "rgba(255,255,255,0.85)", zIndex: 9999,
+          backgroundColor: "rgba(4,4,12,0.85)", zIndex: 9999,
           overflowY: "auto", padding: "20px"
         }}>
           <div style={{
-            backgroundColor: "#ffffffee", padding: "24px", borderRadius: "12px",
+            backgroundColor: "#12122a", color: "#edeaff", padding: "24px", borderRadius: "18px",
             maxWidth: "800px", margin: "0 auto",
-            border: "1.5px solid rgba(212,175,55,0.3)",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.1)"
+            border: "1px solid rgba(139,92,246,0.45)",
+            boxShadow: "0 30px 70px -24px #000"
           }}>
             <button
               onClick={() => setEditingLoc(null)}
               style={{
-                float: "right", background: "var(--red)", color: "white",
+                float: "right", background: "linear-gradient(90deg,#e879f9,#c026d3)", color: "#070713",
                 border: "none", padding: "6px 14px", cursor: "pointer",
                 borderRadius: "6px", fontWeight: "bold"
               }}
             >
               ✕ Chiudi
             </button>
-            <h2 style={{ color: "var(--red)", fontFamily: "var(--font-title)", marginBottom: "16px" }}>
+            <h2 style={{ color: "#c4b5fd", fontFamily: "Cinzel, serif", marginBottom: "16px" }}>
               Modifica — {editingLoc.name}
             </h2>
             <GeoAdmin editTarget={editingLoc} onComplete={() => setEditingLoc(null)} />
@@ -363,60 +379,110 @@ export default function Geo() {
         <p className="cine-empty">Nessun luogo corrisponde alla ricerca.</p>
       )}
 
-      {/* ---- CONTINENTI ---- */}
-      {visibleContinents.map(({ cont: contName, list: locationsInContinent }, ci) => {
-        return (
-          <section
-            key={contName}
-            id={`geo-${slugify(contName)}`}
-            className="continent-wrapper"
-            data-accent={ci % 3}
-            aria-label={contName}
-          >
-            {/* marginalia sticky del continente */}
-            <aside className="geo-cont-aside">
-              <span className="geo-cont-seal" aria-hidden="true">
-                <img src={CONTINENT_IMAGES[contName] || HERO_IMAGE} alt=""
-                     onError={(e) => { e.currentTarget.style.display = "none"; }} />
-              </span>
-              <span className="geo-cont-eyebrow">Continente</span>
-              <h2 className="geo-cont-name">{contName}</h2>
-              <span className="geo-cont-chip">
-                {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo cartografato" : "luoghi cartografati"}
-              </span>
-            </aside>
+      {/* ══ L'ATLANTE: rubrica fissa a sinistra + flusso di luoghi a destra ══ */}
+      {visibleContinents.length > 0 && (
+        <div className="nx-due geo-atlante">
+          {/* rubrica del continente attivo (o di tutte le terre) */}
+          <aside className="nx-pannello nx-pannello--sticky geo-rubrica" aria-label="Rubrica">
+            {(() => {
+              const cont = activeContinent && visibleContinents.find((v) => v.cont === activeContinent)
+                ? activeContinent
+                : (visibleContinents.length === 1 ? visibleContinents[0].cont : null);
+              const img = cont ? (CONTINENT_IMAGES[cont] || HERO_IMAGE) : HERO_IMAGE;
+              const n = cont ? (visibleContinents.find((v) => v.cont === cont)?.list.length || 0) : visibleCount;
+              return (
+                <>
+                  <div className="nx-anello">
+                    <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  </div>
+                  <span className="nx-kicker">{cont ? "Continente" : "Atlante"}</span>
+                  <h2 className="nx-titolo geo-rubrica-nome">{cont || "Tutte le terre"}</h2>
+                  <span className="gl-seal">{n} {n === 1 ? "luogo cartografato" : "luoghi cartografati"}</span>
+                  {!cont && (
+                    <ul className="geo-rubrica-lista">
+                      {visibleContinents.map((v) => (
+                        <li key={v.cont}>
+                          <button type="button" className="geo-rubrica-voce" onClick={() => setActiveContinent(v.cont)}>
+                            <span>⌖ {v.cont}</span><b>{v.list.length}</b>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {cont && activeContinents.length > 1 && (
+                    <button type="button" className="geo-rubrica-voce geo-rubrica-voce--tutte" onClick={() => setActiveContinent(null)}>
+                      ← Tutte le terre
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          </aside>
 
-            {/* carte d'atlante (accordion) */}
-            <div className="geo-grid">
-              {locationsInContinent.map((loc) => (
-                <div key={loc.id} id={`geo-card-${slugify(loc.name)}`} className="geo-card-wrapper">
-                  <ToggleSection
-                    title={loc.name}
-                    defaultOpen={!!focusSlug && slugify(loc.name) === focusSlug}
-                    staticContent={loc.image && (
-                      <img src={loc.image} alt={loc.name} className="geo-card-preview" />
-                    )}
-                  >
-                    {isMaster && (
-                      <button
-                        className="geo-edit-btn"
-                        onClick={() => setEditingLoc(loc)}
-                      >
-                        ⚙️ Modifica Luogo
-                      </button>
-                    )}
-                    <div
-                      className="geo-description"
-                      onClick={handleLoreClick}
-                      dangerouslySetInnerHTML={{ __html: linkifyLoreHtml(loc.description, loreRegistry) }}
-                    />
-                  </ToggleSection>
+          {/* flusso dei luoghi, per continente */}
+          <div className="geo-flusso">
+            {visibleContinents.map(({ cont: contName, list: locationsInContinent }) => (
+              <section key={contName} id={`geo-${slugify(contName)}`} className="geo-continente" aria-label={contName}>
+                {visibleContinents.length > 1 && (
+                  <div className="gl-sezlabel">{contName} · {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo" : "luoghi"}</div>
+                )}
+                <div className="nx-griglia nx-griglia--larga geo-griglia">
+                  {locationsInContinent.map((loc) => (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      id={`geo-card-${slugify(loc.name)}`}
+                      className="nx-pannello nx-pannello--tap geo-luogo"
+                      onClick={() => setOpenLoc(loc)}
+                      aria-label={`Apri ${loc.name}`}
+                    >
+                      {loc.image ? (
+                        <span className="geo-luogo-fascia" aria-hidden="true">
+                          <img src={loc.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                          <span className="geo-luogo-velo" />
+                        </span>
+                      ) : (
+                        <span className="nx-anello geo-luogo-anello" aria-hidden="true"><span className="nx-anello-ph">⌖</span></span>
+                      )}
+                      <span className="nx-tag">{loc.continent || contName}</span>
+                      <span className="nx-nome geo-luogo-nome">{loc.name}</span>
+                      {loc.description && (
+                        <span className="nx-nota geo-luogo-nota">{stripHtml(loc.description)}</span>
+                      )}
+                      <span className="geo-luogo-cue" aria-hidden="true">Apri la carta ›</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        );
-      })}
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODALE-VARCO del luogo: descrizione completa con link interattivi ══ */}
+      {openLoc && (
+        <div className="nx-modale-overlay" onClick={() => setOpenLoc(null)} role="dialog" aria-modal="true" aria-label={openLoc.name}>
+          <div className="nx-modale geo-modale" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="nx-modale-close" onClick={() => setOpenLoc(null)} aria-label="Chiudi">✕</button>
+            {openLoc.image && (
+              <img className="nx-modale-img" src={openLoc.image} alt={openLoc.name}
+                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            )}
+            <span className="nx-kicker">⌖ {openLoc.continent || "Vathriddon"}</span>
+            <h3 className="nx-titolo">{openLoc.name}</h3>
+            {isMaster && (
+              <button className="geo-edit-btn" onClick={() => { setOpenLoc(null); setEditingLoc(openLoc); }}>
+                ⚙️ Modifica Luogo
+              </button>
+            )}
+            <div
+              className="geo-description nx-prosa"
+              onClick={handleLoreClick}
+              dangerouslySetInnerHTML={{ __html: linkifyLoreHtml(openLoc.description, loreRegistry) }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Popup interattivo: dettaglio PG / NPC / città senza lasciare la pagina ── */}
       {lorePopup && (

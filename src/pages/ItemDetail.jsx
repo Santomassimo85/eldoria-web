@@ -465,21 +465,19 @@ export default function ItemDetail() {
           {message && <p className="status-message">{message}</p>}
         </div>
       ) : (
-        // ─────────────────────────────  PLAYER SHOWCASE  ─────────────────────────────
-        <div className={`player-showcase rarity-bg-${rarityKey}`}>
-          <div className="ps-image-wrap">
-            <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="ps-image" />
-            <span className={`ps-rarity-badge rarity-${rarityKey}`}>{item.class || "Comune"}</span>
-            {item.isSold && <div className="ps-sold-overlay">VENDUTO</div>}
-            {statusClass === "expired-item" && !item.isSold && <div className="ps-sold-overlay expired">SCADUTA</div>}
-          </div>
-
-          <div className="ps-info">
+        // ─────────────────────────────  PLAYER: CARTIGLIO DEL NESSO  ─────────────────────────────
+        // Layout a due colonne (prototipo J): a sinistra il pannello fisso con
+        // l'oggetto nell'ANELLO di rarità, rarità/prezzo/timer; a destra il
+        // pannello con titolo, dati, descrizione e offerte. Solo presentazione.
+        <div className={`ps-varco nx-due rarity-bg-${rarityKey}`}>
+          <aside className="nx-pannello nx-pannello--sticky ps-lato">
+            <div className="nx-anello ps-anello ps-image-wrap">
+              <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="ps-image" />
+              {item.isSold && <div className="ps-sold-overlay">VENDUTO</div>}
+              {statusClass === "expired-item" && !item.isSold && <div className="ps-sold-overlay expired">SCADUTA</div>}
+            </div>
+            <span className={`nx-tag ps-rarity-badge rarity-${rarityKey}`}>{item.class || "Comune"}</span>
             <p className="ps-type">{item.type}</p>
-            <h1 className="ps-title">{item.name}</h1>
-            {requiredLevel > 0 && (
-              <p className="ps-ratto-req">🐀 Riservato dal rango {requiredLevel} · Gilda dei Ratti</p>
-            )}
 
             <div className="ps-price-row">
               <span className="ps-price-label">
@@ -496,27 +494,50 @@ export default function ItemDetail() {
                 <Countdown endDate={item.endDate} />
               </div>
             )}
+            {requiredLevel > 0 && (
+              <p className="ps-ratto-req">🐀 Riservato dal rango {requiredLevel} · Gilda dei Ratti</p>
+            )}
+          </aside>
 
-            <div className="ps-description" dangerouslySetInnerHTML={{ __html: item.description }} />
+          <div className="nx-pannello ps-info">
+            <span className="nx-kicker">Cartiglio di stima · Mercato Nero</span>
+            <h1 className="nx-titolo ps-title">{item.name}</h1>
+
+            <div className="nx-meta-box ps-meta">
+              <p><strong>Tipo:</strong> {item.type || "—"}</p>
+              <p><strong>Rarità:</strong> {item.class || "Comune"}</p>
+              <p><strong>Vendita:</strong> {item.saleType === "auction" ? "Asta cieca" : "Prezzo fisso"}</p>
+              {item.setPayload?.name && <p><strong>Set:</strong> {item.setPayload.name}{item.setPayload.size ? ` · ${item.setPayload.size} pezzi` : ""}</p>}
+              {requiredLevel > 0 && <p><strong>Rango Ratto:</strong> dal livello {requiredLevel}</p>}
+            </div>
+
+            <div className="gl-sezlabel ps-sezlabel">Descrizione</div>
+            <div className="nx-prosa ps-description" dangerouslySetInnerHTML={{ __html: item.description }} />
 
             <SetBonusBlock setPayload={item.setPayload} />
 
             {!item.isSold && currentUser && (
               item.saleType === "fixed" ? (
-                <button onClick={handleBuyNow} className="ps-buy-btn">⚡ Acquista Ora · {item.price} Corone</button>
+                <>
+                  <div className="gl-sezlabel ps-sezlabel">Acquisto</div>
+                  <button onClick={handleBuyNow} className="gl-cta ps-buy-btn">⚡ Acquista Ora · {item.price} Corone</button>
+                </>
               ) : (
                 !userBid && statusClass !== "expired-item" && (
-                  <form onSubmit={handleSubmitOffer} className="ps-offer-form">
-                    <input
-                      type="number"
-                      value={offer}
-                      onChange={(e) => setOffer(e.target.value)}
-                      placeholder={`Min ${item.startingBid} Corone`}
-                      min={item.startingBid}
-                      required
-                    />
-                    <button type="submit" className="ps-bid-btn">🎲 Offerta alla Cieca</button>
-                  </form>
+                  <>
+                    <div className="gl-sezlabel ps-sezlabel">Offerta alla cieca</div>
+                    <form onSubmit={handleSubmitOffer} className="ps-offer-form">
+                      <input
+                        type="number"
+                        value={offer}
+                        onChange={(e) => setOffer(e.target.value)}
+                        placeholder={`Min ${item.startingBid} Corone`}
+                        min={item.startingBid}
+                        required
+                      />
+                      <button type="submit" className="gl-cta gl-cta--crit ps-bid-btn">🎲 Rilancia</button>
+                    </form>
+                  </>
                 )
               )
             )}

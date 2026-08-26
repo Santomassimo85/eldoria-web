@@ -17,7 +17,7 @@
   padding: 12px 30px 14px; margin: 0 0 2px;
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(255,253,245,.92), rgba(243,234,212,.86));
-  border: 1px solid var(--line, #c9b78a);
+  border: 1px solid var(--line, rgba(139,92,246,.35));
   box-shadow: 0 12px 30px -18px rgba(86,64,30,.5), 0 1px 0 rgba(255,255,255,.6) inset;
 }
 .map-cartouche-eyebrow {
@@ -46,7 +46,7 @@
   max-width: 1200px;
   overflow: hidden;
   border-radius: 12px;
-  border: 2px solid color-mix(in srgb, var(--gold, #a9781a) 45%, transparent);
+  border: 2px solid color-mix(in srgb, var(--gold, #22d3ee) 45%, transparent);
   box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 18px 48px -16px rgba(86,64,30,0.5);
   cursor: grab;
   user-select: none;

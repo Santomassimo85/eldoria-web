@@ -51,6 +51,8 @@ export default function Updates() {
 
   // pending: { type: "text"|"version", key: string }
   const [pending, setPending] = useState(null);
+  // filtro per tipologia (solo presentazione): null = tutte
+  const [activeType, setActiveType] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(HIDDEN_DOC, snap => {
@@ -77,10 +79,9 @@ export default function Updates() {
 
   return (
     <div className="updates-page">
-      {/* ── HERO = FINESTRA ARTICA (mockup B): senza immagine la finestra
-            mostra il gradiente d'abisso; titolo inciso sulla lastra ── */}
+      {/* ── VARCO (prototipo J): apertura senza immagine, titolo a gradiente ── */}
       <GlacierHero
-        className="updates-glhero"
+        className="updates-glhero gl-hero--cielo"
         ariaLabel="Cronache delle Versioni"
         eyebrow="Cronache delle Versioni"
         title="UPDATE"
@@ -121,6 +122,21 @@ export default function Updates() {
         </div>
       )}
 
+      {/* ── INDICE DEI TIPI: pillole-satellite (filtro di sola presentazione) ── */}
+      <div className="nx-pillole updates-tipi" role="group" aria-label="Filtra per tipologia">
+        <button type="button" className={`nx-pillola${activeType === null ? " on" : ""}`} onClick={() => setActiveType(null)}>✦ Tutto</button>
+        {TYPE_ORDER.map(t => (
+          <button
+            key={t}
+            type="button"
+            className={`nx-pillola upd-pill-${t}${activeType === t ? " on" : ""}`}
+            onClick={() => setActiveType(v => (v === t ? null : t))}
+          >
+            <span aria-hidden="true">{TYPE_META[t].icon}</span> {TYPE_META[t].label}
+          </button>
+        ))}
+      </div>
+
       {versions.length === 0 && (
         <p className="updates-empty">Nessun aggiornamento registrato.</p>
       )}
@@ -144,20 +160,22 @@ export default function Updates() {
             : groups.filter(g => g.visible.length > 0);
 
           if (!isMaster && visibleGroups.length === 0) return null;
+          if (activeType && !visibleGroups.some(g => g.type === activeType)) return null;
 
           // La prima versione NON nascosta è "ULTIMA" per i player
           const isLatest = i === 0;
 
           return (
-            <article
+            <section
               key={v.version + i}
-              className={`updates-card ${isLatest ? "latest" : ""}${versionHidden ? " upd-version-hidden" : ""}`}
+              className={`updates-version ${isLatest ? "latest" : ""}${versionHidden ? " upd-version-hidden" : ""}`}
             >
-              <div className="updates-card-head">
-                <span className="updates-version">v{v.version}</span>
-                {isLatest && !versionHidden && <span className="updates-latest-badge">ULTIMA</span>}
-                {versionHidden && isMaster && <span className="upd-hidden-badge">NASCOSTO</span>}
+              {/* etichetta di sezione: versione · data (+ badge e comandi master) */}
+              <div className="gl-sezlabel updates-card-head">
+                <span className="updates-version-num">v{v.version}</span>
                 <span className="updates-date">{fmtDate(v.date)}</span>
+                {isLatest && !versionHidden && <span className="nx-tag updates-latest-badge">ULTIMA</span>}
+                {versionHidden && isMaster && <span className="nx-tag upd-hidden-badge">NASCOSTO</span>}
                 {/* Bottone nasconde/ripristina l'intera versione — solo master */}
                 {isMaster && !versionHidden && (
                   <button
@@ -176,10 +194,11 @@ export default function Updates() {
                   >↩ Ripristina</button>
                 )}
               </div>
+              <article className="nx-pannello updates-card">
               {v.title && <h2 className="updates-card-title">{v.title}</h2>}
 
               <div className="updates-groups">
-                {visibleGroups.map(g => {
+                {visibleGroups.filter(g => !activeType || g.type === activeType).map(g => {
                   const shownItems = isMaster
                     ? (showHidden ? g.items : g.visible)
                     : g.visible;
@@ -224,7 +243,8 @@ export default function Updates() {
                   );
                 })}
               </div>
-            </article>
+              </article>
+            </section>
           );
         })}
       </div>

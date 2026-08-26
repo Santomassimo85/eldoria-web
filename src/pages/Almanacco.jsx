@@ -27,10 +27,10 @@ const GIORNI_PRONUNCIA = {
 
 // ── Stagioni: colore + icona ──────────────────────────────────────────────
 const STAGIONI = {
-  primavera: { nome: "Primavera", ic: "🌱", color: "#5a9a3f" },
-  estate:    { nome: "Estate",    ic: "☀️", color: "#d8a93a" },
-  autunno:   { nome: "Autunno",   ic: "🍂", color: "#b5702a" },
-  inverno:   { nome: "Inverno",   ic: "❄️", color: "#5a8aa8" },
+  primavera: { nome: "Primavera", ic: "🌱", color: "#4ade80" },
+  estate:    { nome: "Estate",    ic: "☀️", color: "#fbbf24" },
+  autunno:   { nome: "Autunno",   ic: "🍂", color: "#fb923c" },
+  inverno:   { nome: "Inverno",   ic: "❄️", color: "#60a5fa" },
 };
 
 // Mese → { stagione, icona propria }. L'ordine segue MESI_EXANTHIA (1→12).
@@ -71,31 +71,31 @@ const PASSI = [
 
 const RUOLI = [
   {
-    nome: "Guida", ic: "🧭", color: "#3f7fb5", ab: "Sopravvivenza (Saggezza)",
+    nome: "Guida", ic: "🧭", color: "#60a5fa", ab: "Sopravvivenza (Saggezza)",
     cosa: "Tiene la rotta e legge il territorio. Una volta al giorno tira per scegliere la strada giusta.",
     ok: "Trova la via più rapida: il gruppo guadagna tempo (−1 Veglia) o evita del tutto l'evento del giorno.",
     ko: "Vi perdete: si spreca tempo (+1 Veglia) o salta fuori un evento in più.",
   },
   {
-    nome: "Esploratore", ic: "🔭", color: "#4f9a4f", ab: "Percezione / Furtività",
+    nome: "Esploratore", ic: "🔭", color: "#4ade80", ab: "Percezione / Furtività",
     cosa: "Va in avanscoperta davanti al gruppo per fiutare agguati, trappole e nemici prima che colpiscano.",
     ok: "Vede il pericolo per tempo: niente sorprese per il gruppo (anzi, è lui a sorprendere).",
     ko: "Cade nell'imboscata: i nemici attaccano per primi e con vantaggio.",
   },
   {
-    nome: "Cacciatore", ic: "🏹", color: "#b5702a", ab: "Natura",
+    nome: "Cacciatore", ic: "🏹", color: "#fb923c", ab: "Natura",
     cosa: "Procura cibo e acqua lungo il cammino: caccia, raccoglie, riempie le borracce.",
     ok: "Buona caccia: +2 tacche di provviste (la fame si allontana).",
     ko: "Niente da mangiare o cibo avariato: nessun rifornimento quel giorno.",
   },
   {
-    nome: "Sentinella", ic: "🛡️", color: "#7a5aa8", ab: "Percezione passiva + 1d20 (stanchezza)",
+    nome: "Sentinella", ic: "🛡️", color: "#c4b5fd", ab: "Percezione passiva + 1d20 (stanchezza)",
     cosa: "Monta la guardia di notte. La Percezione passiva fa da baseline, ma ogni notte tira anche 1d20 di stanchezza: se esce basso, il sonno ha la meglio anche su una guardia attenta.",
     ok: "Resta vigile (d20 alto) e la sua passiva basta: sente arrivare il pericolo, il gruppo non viene colto di sorpresa.",
     ko: "Colpo di sonno (1–5 al d20) o pericolo più furtivo della sua passiva: l'attacco arriva nel sonno, il gruppo parte svantaggiato.",
   },
   {
-    nome: "Cronista / Morale", ic: "🎺", color: "#b5453a", ab: "Intrattenere / Persuasione",
+    nome: "Cronista / Morale", ic: "🎺", color: "#f87171", ab: "Intrattenere / Persuasione",
     cosa: "Tiene su l'umore con storie, canti e parole giuste, e annota le gesta del viaggio.",
     ok: "+1 morale: il gruppo ha vantaggio al prossimo tiro salvezza di squadra.",
     ko: "Nasce un battibecco tra compagni da appianare.",
@@ -104,7 +104,7 @@ const RUOLI = [
 
 const EVENTI = [
   {
-    n: 1, ic: "⚔️", tipo: "Combattimento", color: "#b5453a", voci: [
+    n: 1, ic: "⚔️", tipo: "Combattimento", color: "#f87171", voci: [
       "Predoni che bloccano la strada",
       "Bestia territoriale ferita",
       "Resti di una carovana + i mostri che l'hanno distrutta",
@@ -114,7 +114,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 2, ic: "🔍", tipo: "Scoperta", color: "#3f7fb5", voci: [
+    n: 2, ic: "🔍", tipo: "Scoperta", color: "#60a5fa", voci: [
       "Rovina / altare con un'iscrizione",
       "Carovana abbandonata (loot + mistero)",
       "Cadavere con una mappa / lettera",
@@ -124,7 +124,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 3, ic: "💬", tipo: "Incontro sociale", color: "#4f9a4f", voci: [
+    n: 3, ic: "💬", tipo: "Incontro sociale", color: "#4ade80", voci: [
       "Viandante che chiede un passaggio",
       "Pellegrino con voci e notizie",
       "Truffatore / mercante troppo gentile",
@@ -134,7 +134,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 4, ic: "🌊", tipo: "Sfida d'ambiente", color: "#2f9a9a", voci: [
+    n: 4, ic: "🌊", tipo: "Sfida d'ambiente", color: "#22d3ee", voci: [
       "Guado in piena",
       "Frana / passo chiuso",
       "Tempesta",
@@ -144,7 +144,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 5, ic: "🎭", tipo: "Momento di personaggio", color: "#7a5aa8", voci: [
+    n: 5, ic: "🎭", tipo: "Momento di personaggio", color: "#c4b5fd", voci: [
       "Sogno premonitore",
       "Un oggetto reagisce",
       "Un ricordo riaffiora",
@@ -154,7 +154,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 6, ic: "😄", tipo: "Simpatico", color: "#d8a93a", voci: [
+    n: 6, ic: "😄", tipo: "Simpatico", color: "#fbbf24", voci: [
       "Mercante che giura che i suoi formaggi sono magici",
       "Un animale del party ruba qualcosa a un PG",
       "Menestrello che canta malissimo le gesta del gruppo",
@@ -202,9 +202,9 @@ const TIRI = [
 
 // Etichetta colorata per «chi» tira.
 const TIRO_TAG = {
-  giocatori: { label: "Giocatore", color: "#3f7fb5" },
-  master:    { label: "Master",    color: "#a8443a" },
-  gruppo:    { label: "Gruppo",    color: "#4f9a4f" },
+  giocatori: { label: "Giocatore", color: "#60a5fa" },
+  master:    { label: "Master",    color: "#e879f9" },
+  gruppo:    { label: "Gruppo",    color: "#4ade80" },
 };
 
 // ── Recap lampo: cosa succede in una giornata, in 4 passi semplicissimi ────
@@ -217,12 +217,12 @@ const RECAP = [
 
 // ── La Scala dello Sfinimento: effetti cumulativi per livello ──────────────
 const SFINIMENTO = [
-  { lv: 1, col: "#d8a93a", eff: "Svantaggio alle prove di caratteristica" },
-  { lv: 2, col: "#cf8f2f", eff: "Velocità dimezzata" },
-  { lv: 3, col: "#c47328", eff: "Svantaggio ai tiri per colpire e ai tiri salvezza" },
-  { lv: 4, col: "#b85528", eff: "Massimo dei punti ferita dimezzato" },
-  { lv: 5, col: "#a83a28", eff: "Velocità ridotta a 0" },
-  { lv: 6, col: "#7a231c", eff: "Morte" },
+  { lv: 1, col: "#fbbf24", eff: "Svantaggio alle prove di caratteristica" },
+  { lv: 2, col: "#fbbf24", eff: "Velocità dimezzata" },
+  { lv: 3, col: "#fb923c", eff: "Svantaggio ai tiri per colpire e ai tiri salvezza" },
+  { lv: 4, col: "#f87171", eff: "Massimo dei punti ferita dimezzato" },
+  { lv: 5, col: "#e879f9", eff: "Velocità ridotta a 0" },
+  { lv: 6, col: "#c026d3", eff: "Morte" },
 ];
 
 export default function Almanacco() {
@@ -230,11 +230,10 @@ export default function Almanacco() {
   const [openEvento, setOpenEvento] = useState(null);
 
   return (
-    <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "#8a5a1f", "--cine-accent-2": "#b0832f" }}>
+    <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
       <AmbientFX variant="cosmos" />
 
-      {/* ── HERO = FINESTRA ARTICA (mockup B): Aen-Lor nell'arco di ghiaccio,
-            titolo inciso sulla lastra, indice come CTA a cristallo sotto ── */}
+      {/* ── HERO = VARCO (prototipo J): Aen-Lor nel portale esagonale ── */}
       <GlacierHero
         id="alm-top"
         ariaLabel="Almanacco del Mondo"
@@ -243,21 +242,24 @@ export default function Almanacco() {
         title={<>Almanacco<br />di Exanthia</>}
         seal="✦ 12 mesi · 5 giorni · 240 giorni l'anno"
         tagline="Il computo dei giorni e le vie del mondo: ciò che ogni viandante dovrebbe sapere prima di mettersi in cammino."
-        actions={
-          <nav className="alm-jump-gl" aria-label="Indice">
-            <a href="#alm-calendario" className="gl-cta">❆ Calendario</a>
-            <a href="#alm-viaggio" className="gl-cta gl-cta--deep">🜂 Le Vie del Mondo</a>
-          </nav>
-        }
       />
 
+      {/* ── INDICE A PILLOLE (satelliti della pagina) ── */}
+      <nav className="nx-pillole alm-indice" aria-label="Indice">
+        <a href="#alm-calendario" className="nx-pillola">📅 Calendario</a>
+        <a href="#alm-mesi" className="nx-pillola">🌙 I Mesi</a>
+        <a href="#alm-viaggio" className="nx-pillola">🜂 Le Vie del Mondo</a>
+        <a href="#alm-tiri" className="nx-pillola">🎲 I Tiri</a>
+        <a href="#alm-ruoli" className="nx-pillola">🧭 I Ruoli</a>
+        <a href="#alm-eventi" className="nx-pillola">🎯 Gli Eventi</a>
+      </nav>
+
       {/* ════════ SEZIONE 1 — CALENDARIO ════════ */}
-      <section id="alm-calendario" className="alm-section alm-band alm-band--cal" aria-label="Calendario di Exanthia">
-        <div className="alm-band-inner">
-        <header className="alm-sec-head">
-          <span className="alm-sec-eyebrow">Sezione I · Il Computo del Tempo</span>
-          <h2 className="alm-sec-title">Il Calendario di Exanthia</h2>
-          <p className="alm-sec-lead">
+      <section id="alm-calendario" className="alm-section" aria-label="Calendario di Exanthia">
+        <div className="gl-sezlabel">Sezione I · Il Computo del Tempo</div>
+        <header className="nx-testata alm-testata">
+          <h2 className="nx-titolo">Il Calendario di Exanthia</h2>
+          <p className="nx-sotto alm-lead">
             L'anno si divide in <strong>12 mesi da 20 giorni</strong>. La settimana conta
             <strong> 5 giorni</strong>, quindi ogni mese è fatto di <strong>4 settimane esatte</strong>:
             in tutto <strong>240 giorni</strong> l'anno. L'insegna fissa della gazzetta è
@@ -265,60 +267,50 @@ export default function Almanacco() {
           </p>
         </header>
 
-        {/* Giorni della settimana */}
-        <article className="alm-card alm-card--days">
-          <h3 className="alm-card-title">I Cinque Giorni della Settimana</h3>
-          <ol className="alm-days">
-            {GIORNI_SETTIMANA.map((g, i) => (
-              <li key={g} className="alm-day">
-                <span className="alm-day-num" aria-hidden="true">{i + 1}</span>
-                <span className="alm-day-name">{g}</span>
-                <span className="alm-day-pron">{GIORNI_PRONUNCIA[g]}</span>
-              </li>
-            ))}
-          </ol>
-        </article>
+        {/* Giorni della settimana: cinque orbe */}
+        <h3 className="alm-h3">I Cinque Giorni della Settimana</h3>
+        <ol className="nx-griglia alm-giorni">
+          {GIORNI_SETTIMANA.map((g, i) => (
+            <li key={g} className="nx-pannello alm-giorno">
+              <span className="orb" aria-hidden="true">{i + 1}</span>
+              <span className="nx-nome">{g}</span>
+              <span className="nx-nota alm-pron">{GIORNI_PRONUNCIA[g]}</span>
+            </li>
+          ))}
+        </ol>
 
         {/* Mesi dell'anno, colorati per stagione */}
-        <article className="alm-card alm-card--months">
-          <h3 className="alm-card-title">I Dodici Mesi dell'Anno</h3>
-
-          {/* Legenda stagioni */}
-          <div className="alm-seasons-legend">
-            {Object.values(STAGIONI).map((s) => (
-              <span key={s.nome} className="alm-season-chip" style={{ "--s-color": s.color }}>
-                <span aria-hidden="true">{s.ic}</span> {s.nome}
-              </span>
-            ))}
-          </div>
-
-          <ol className="alm-months">
-            {MESI_EXANTHIA.map((m, i) => {
-              const info = MESI_INFO[m] || { st: "inverno", ic: "•" };
-              const st = STAGIONI[info.st];
-              return (
-                <li key={m} className="alm-month" style={{ "--s-color": st.color }}>
-                  <span className="alm-month-num" aria-hidden="true">{i + 1}</span>
-                  <span className="alm-month-ic" aria-hidden="true">{info.ic}</span>
-                  <span className="alm-month-body">
-                    <span className="alm-month-name">{m}</span>
-                    <span className="alm-month-season">{st.ic} {st.nome}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </article>
+        <h3 id="alm-mesi" className="alm-h3">I Dodici Mesi dell'Anno</h3>
+        <div className="nx-pillole alm-stagioni" aria-label="Stagioni">
+          {Object.values(STAGIONI).map((s) => (
+            <span key={s.nome} className="nx-pillola alm-stagione" style={{ "--s-color": s.color }}>
+              <span aria-hidden="true">{s.ic}</span> {s.nome}
+            </span>
+          ))}
         </div>
+        <ol className="nx-griglia alm-mesi">
+          {MESI_EXANTHIA.map((m, i) => {
+            const info = MESI_INFO[m] || { st: "inverno", ic: "•" };
+            const st = STAGIONI[info.st];
+            return (
+              <li key={m} className="nx-pannello nx-pannello--tap alm-mese" style={{ "--s-color": st.color }}>
+                <span className="nx-tag alm-mese-tag">{st.ic} {st.nome}</span>
+                <span className="nx-titolo alm-mese-num" aria-hidden="true">{i + 1}</span>
+                <span className="alm-mese-ic" aria-hidden="true">{info.ic}</span>
+                <span className="nx-nome">{m}</span>
+                <span className="nx-meta">{i + 1}º mese · 20 giorni</span>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {/* ════════ SEZIONE 2 — LE VIE DEL MONDO ════════ */}
-      <section id="alm-viaggio" className="alm-section alm-band alm-band--travel" aria-label="Le Vie del Mondo">
-        <div className="alm-band-inner">
-        <header className="alm-sec-head">
-          <span className="alm-sec-eyebrow">Sezione II · Sistema di Viaggio</span>
-          <h2 className="alm-sec-title">🜂 Le Vie del Mondo</h2>
-          <p className="alm-sec-lead">
+      <section id="alm-viaggio" className="alm-section" aria-label="Le Vie del Mondo">
+        <div className="gl-sezlabel">Sezione II · Sistema di Viaggio</div>
+        <header className="nx-testata alm-testata">
+          <h2 className="nx-titolo">🜂 Le Vie del Mondo</h2>
+          <p className="nx-sotto alm-lead">
             Il modo in cui giochiamo gli spostamenti tra una meta e l'altra, senza ridurli a un
             «arrivate dopo tre giorni». La regola d'oro: <strong>ogni giornata di viaggio contiene
             una decisione e una scoperta</strong>. Sotto trovi prima il <strong>recap lampo</strong>,
@@ -327,9 +319,9 @@ export default function Almanacco() {
         </header>
 
         {/* ── RECAP LAMPO — il senso del viaggio in 4 passi ── */}
-        <div className="alm-recap">
-          <span className="alm-recap-badge">⚡ In due parole</span>
-          <p className="alm-recap-lead">
+        <div className="nx-pannello alm-recap">
+          <span className="nx-tag">⚡ In due parole</span>
+          <p className="nx-prosa alm-recap-lead">
             Il viaggio è un <strong>mini-gioco a giornate</strong>: invece di dire soltanto «arrivate
             dopo tre giorni», <strong>ogni giorno</strong> il gruppo decide come procedere, ognuno fa
             la sua mossa e succede qualcosa. Si gioca il momento importante e si passa al giorno dopo.
@@ -337,18 +329,19 @@ export default function Almanacco() {
           <ol className="alm-recap-steps">
             {RECAP.map((r, i) => (
               <li key={i}>
+                <span className="orb" aria-hidden="true">{i + 1}</span>
                 <span className="alm-recap-ic" aria-hidden="true">{r.ic}</span>
                 <span className="alm-recap-txt"><b>{r.k}</b> {r.t}</span>
               </li>
             ))}
           </ol>
-          <p className="alm-recap-foot">Tutto il resto della pagina serve solo ad approfondire questi quattro passi.</p>
+          <p className="nx-nota alm-recap-foot">Tutto il resto della pagina serve solo ad approfondire questi quattro passi.</p>
         </div>
 
         {/* ── LO SPECCHIETTO DEI TIRI — chi tira, quando, cosa, perché ── */}
-        <div className="alm-tiri" aria-label="Chi tira e cosa">
-          <h3 className="alm-tiri-title">📋 Lo specchietto dei tiri</h3>
-          <p className="alm-tiri-sub">
+        <div id="alm-tiri" className="nx-pannello alm-tiri" aria-label="Chi tira e cosa">
+          <h3 className="alm-block-title"><span className="orb" aria-hidden="true">🎲</span> Lo specchietto dei tiri</h3>
+          <p className="nx-nota alm-block-note">
             Tutto il viaggio si regge su pochissimi tiri. Ecco chi li fa e quando — il resto della
             pagina serve solo ad approfondirli.
           </p>
@@ -363,7 +356,7 @@ export default function Almanacco() {
                   <span className="alm-tiri-chi">
                     <span className="alm-tiri-ic" aria-hidden="true">{t.ic}</span>
                     <span className="alm-tiri-name">{t.chi}</span>
-                    <span className="alm-tiri-badge">{tag.label}</span>
+                    <span className="nx-pillola alm-tiri-badge">{tag.label}</span>
                   </span>
                   <span className="alm-tiri-cell" data-label="Quando">{t.quando}</span>
                   <span className="alm-tiri-cell alm-tiri-dado" data-label="Cosa tira">{t.tiro}</span>
@@ -375,34 +368,34 @@ export default function Almanacco() {
         </div>
 
         {/* Le Quattro Veglie */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">1</span> Come è fatta una giornata: le Quattro Veglie</h3>
-          <p className="alm-block-note">
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">1</span> Come è fatta una giornata: le Quattro Veglie</h3>
+          <p className="nx-prosa alm-block-note">
             Ogni giornata di cammino si spezza in 4 «Veglie» da 6 ore l'una: servono a dare ritmo e
             a sapere quando può succedere qualcosa. Di norma capita <strong>un evento al giorno</strong>,
             di solito durante la Veglia del Giorno. Se vuoi un viaggio teso ne tiri fino a 2; se vuoi
             correre, nessun evento e salti avanti con un «montaggio» (vedi punto 6).
           </p>
-          <div className="alm-veglie">
+          <div className="nx-griglia alm-veglie">
             {VEGLIE.map((v) => (
               <div key={v.nome} className="alm-veglia">
                 <span className="alm-veglia-ic" aria-hidden="true">{v.ic}</span>
-                <span className="alm-veglia-nome">{v.nome}</span>
-                <span className="alm-veglia-ore">{v.ore}</span>
-                <span className="alm-veglia-chi">{v.chi}</span>
+                <span className="nx-nome alm-veglia-nome">{v.nome}</span>
+                <span className="nx-meta alm-veglia-ore">{v.ore}</span>
+                <span className="nx-nota alm-veglia-chi">{v.chi}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* La partenza */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">2</span> Prima di partire: tre scelte rapide</h3>
-          <p className="alm-block-note">
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">2</span> Prima di partire: tre scelte rapide</h3>
+          <p className="nx-prosa alm-block-note">
             All'inizio del viaggio il gruppo decide tre cose. Sono scelte con conseguenze meccaniche
             chiare: ognuna ha un vantaggio e un prezzo.
           </p>
-          <div className="alm-trio">
+          <div className="nx-griglia alm-trio">
             <div className="alm-mini">
               <h4>A · La Rotta — che strada prendete?</h4>
               <ul className="alm-defs">
@@ -432,23 +425,23 @@ export default function Almanacco() {
         </div>
 
         {/* I ruoli di viaggio */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">3</span> I Ruoli di Viaggio — il compito di ciascuno</h3>
-          <p className="alm-block-note">
+        <div id="alm-ruoli" className="alm-block alm-block--nudo">
+          <h3 className="alm-block-title"><span className="orb">3</span> I Ruoli di Viaggio — il compito di ciascuno</h3>
+          <p className="nx-prosa alm-block-note">
             Questo è il cuore «giocabile»: all'inizio del viaggio <strong>ogni giocatore sceglie un
             ruolo</strong> (uno a testa). Poi, <strong>ogni giornata di cammino, tira una volta col
             proprio ruolo</strong>. Che riesca o fallisca, quel risultato diventa un pezzo della scena
             di quel giorno — così nessuno resta a guardare, anche fuori dal combattimento.
           </p>
-          <div className="alm-roles">
+          <div className="nx-griglia nx-griglia--larga alm-roles">
             {RUOLI.map((r) => (
-              <div key={r.nome} className="alm-role" style={{ "--r-color": r.color }}>
+              <div key={r.nome} className="nx-pannello alm-role" style={{ "--r-color": r.color }}>
                 <div className="alm-role-head">
                   <span className="alm-role-ic" aria-hidden="true">{r.ic}</span>
-                  <span className="alm-role-name">{r.nome}</span>
-                  <span className="alm-role-skill">{r.passivo ? `non tira — ${r.ab}` : `tira: ${r.ab}`}</span>
+                  <span className="nx-nome alm-role-name">{r.nome}</span>
                 </div>
-                <p className="alm-role-cosa">{r.cosa}</p>
+                <span className="nx-pillola alm-role-skill">{r.passivo ? `non tira — ${r.ab}` : `tira: ${r.ab}`}</span>
+                <p className="nx-nota alm-role-cosa">{r.cosa}</p>
                 <p className="alm-role-ok"><span aria-hidden="true">✓ Riesce</span> — {r.ok}</p>
                 <p className="alm-role-ko"><span aria-hidden="true">✗ Fallisce</span> — {r.ko}</p>
               </div>
@@ -457,49 +450,47 @@ export default function Almanacco() {
         </div>
 
         {/* Gli eventi — visibili a tutti */}
-        <div className="alm-block">
-            <h3 className="alm-block-title">
-              <span className="alm-block-num">4</span> Gli Eventi
-            </h3>
-            <p className="alm-block-note">
-              Per scegliere cosa succede in una giornata il Master tira
-              <strong> 1d6 per il tipo di evento</strong> (le sei categorie qui sotto), poi
-              <strong> un altro 1d6</strong> per pescare lo spunto preciso nella sotto-tabella.
-              Tocca una categoria per aprirla.
-            </p>
-            <div className="alm-eventi">
-              {EVENTI.map((e) => {
-                const isOpen = openEvento === e.n;
-                return (
-                  <div key={e.n} className={`alm-evento${isOpen ? " is-open" : ""}`} style={{ "--e-color": e.color }}>
-                    <button
-                      type="button"
-                      className="alm-evento-head"
-                      aria-expanded={isOpen}
-                      onClick={() => setOpenEvento(isOpen ? null : e.n)}
-                    >
-                      <span className="alm-evento-die" aria-hidden="true">{e.n}</span>
-                      <span className="alm-evento-ic" aria-hidden="true">{e.ic}</span>
-                      <span className="alm-evento-tipo">{e.tipo}</span>
-                      <span className="alm-evento-caret" aria-hidden="true">{isOpen ? "−" : "+"}</span>
-                    </button>
-                    {isOpen && (
-                      <ol className="alm-evento-list">
-                        {e.voci.map((v, i) => (
-                          <li key={i}><span className="alm-evento-subdie" aria-hidden="true">{i + 1}</span>{v}</li>
-                        ))}
-                      </ol>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        <div id="alm-eventi" className="alm-block alm-block--nudo">
+          <h3 className="alm-block-title"><span className="orb">4</span> Gli Eventi</h3>
+          <p className="nx-prosa alm-block-note">
+            Per scegliere cosa succede in una giornata il Master tira
+            <strong> 1d6 per il tipo di evento</strong> (le sei categorie qui sotto), poi
+            <strong> un altro 1d6</strong> per pescare lo spunto preciso nella sotto-tabella.
+            Tocca una categoria per aprirla.
+          </p>
+          <div className="nx-griglia alm-eventi">
+            {EVENTI.map((e) => {
+              const isOpen = openEvento === e.n;
+              return (
+                <div key={e.n} className={`nx-pannello alm-evento${isOpen ? " is-open" : ""}`} style={{ "--e-color": e.color }}>
+                  <button
+                    type="button"
+                    className="alm-evento-head"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenEvento(isOpen ? null : e.n)}
+                  >
+                    <span className="orb alm-evento-die" aria-hidden="true">{e.n}</span>
+                    <span className="alm-evento-ic" aria-hidden="true">{e.ic}</span>
+                    <span className="nx-nome alm-evento-tipo">{e.tipo}</span>
+                    <span className="alm-evento-caret" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+                  </button>
+                  {isOpen && (
+                    <ol className="alm-evento-list">
+                      {e.voci.map((v, i) => (
+                        <li key={i}><span className="alm-evento-subdie" aria-hidden="true">{i + 1}</span>{v}</li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
 
         {/* Sfide d'ambiente */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">5</span> Le Sfide d'Ambiente — superare un ostacolo insieme</h3>
-          <p className="alm-block-note">
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">5</span> Le Sfide d'Ambiente — superare un ostacolo insieme</h3>
+          <p className="nx-prosa alm-block-note">
             Quando l'evento del giorno è di tipo ambientale (un fiume in piena, una frana, una
             tempesta) non si combatte: si supera l'ostacolo con un piccolo gioco di squadra. A turno
             ogni PG <strong>racconta come prova a superarlo e tira un'abilità diversa</strong>
@@ -515,7 +506,7 @@ export default function Almanacco() {
               danni, Sfinimento o un evento extra.
             </p>
           </div>
-          <p className="alm-block-note alm-example">
+          <p className="nx-citazione alm-example">
             <strong>Esempio — guado in piena:</strong> uno nuota per primo (Atletica), uno cerca il
             punto meno profondo (Sopravvivenza), uno calma i cavalli (Addestrare Animali), uno tiene
             le scorte all'asciutto (Arcano). Tutti partecipano, in pochi minuti reali.
@@ -523,9 +514,9 @@ export default function Almanacco() {
         </div>
 
         {/* Ritmo */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">6</span> Il Ritmo — quando giocare e quando saltare</h3>
-          <p className="alm-block-note">
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">6</span> Il Ritmo — quando giocare e quando saltare</h3>
+          <p className="nx-prosa alm-block-note">
             Non tutto il viaggio va giocato minuto per minuto: alterna due velocità a seconda di
             quanto è interessante il momento.
           </p>
@@ -539,13 +530,13 @@ export default function Almanacco() {
               un normale incontro.
             </p>
           </div>
-          <p className="alm-block-note">Regola pratica: <strong>fai lo zoom solo dove c'è una scelta o una tensione</strong>. Tutto il resto è montaggio.</p>
+          <p className="nx-prosa alm-block-note">Regola pratica: <strong>fai lo zoom solo dove c'è una scelta o una tensione</strong>. Tutto il resto è montaggio.</p>
         </div>
 
         {/* Ricompense */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num">7</span> Cosa Lascia il Viaggio</h3>
-          <p className="alm-block-note">Un viaggio deve dare qualcosa, altrimenti resta tempo perso. Di solito porta:</p>
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">7</span> Cosa Lascia il Viaggio</h3>
+          <p className="nx-prosa alm-block-note">Un viaggio deve dare qualcosa, altrimenti resta tempo perso. Di solito porta:</p>
           <ul className="alm-rewards">
             <li>Un <strong>gancio di trama</strong> (di norma nasce da una Scoperta).</li>
             <li>Una <strong>scorciatoia</strong> o un <strong>contatto</strong> da usare la volta dopo.</li>
@@ -555,9 +546,9 @@ export default function Almanacco() {
         </div>
 
         {/* La Scala dello Sfinimento */}
-        <div className="alm-block">
-          <h3 className="alm-block-title"><span className="alm-block-num alm-block-num--warn">⚠</span> La Scala dello Sfinimento</h3>
-          <p className="alm-block-note">
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb orb--warn">⚠</span> La Scala dello Sfinimento</h3>
+          <p className="nx-prosa alm-block-note">
             Correre col <strong>Passo Forzato</strong> o restare a <strong>provviste 0</strong> fa
             accumulare livelli di <strong>Sfinimento</strong>. Gli effetti sono <strong>cumulativi</strong>:
             chi è al livello 3 subisce anche quelli dell'1 e del 2. Un <strong>riposo lungo</strong> con
@@ -566,7 +557,7 @@ export default function Almanacco() {
           <ol className="alm-sfin">
             {SFINIMENTO.map((s) => (
               <li key={s.lv} className={`alm-sfin-row${s.lv === 6 ? " is-death" : ""}`} style={{ "--sf": s.col }}>
-                <span className="alm-sfin-lv">{s.lv}</span>
+                <span className="orb alm-sfin-lv">{s.lv}</span>
                 <span className="alm-sfin-eff">{s.eff}</span>
               </li>
             ))}
@@ -574,8 +565,8 @@ export default function Almanacco() {
         </div>
 
         {/* Quick reference */}
-        <div className="alm-block alm-quick">
-          <h3 className="alm-block-title"><span className="alm-block-num">★</span> In breve: la sequenza di una giornata</h3>
+        <div className="nx-pannello alm-block alm-quick">
+          <h3 className="alm-block-title"><span className="orb">★</span> In breve: la sequenza di una giornata</h3>
           <ol className="alm-quick-steps">
             <li>Scegliete la Rotta (2 strade con un «ma»)</li>
             <li>Scegliete il Passo (lento / normale / forzato)</li>
@@ -584,7 +575,6 @@ export default function Almanacco() {
             <li>Giocate la scena (zoom) o saltate (montaggio)</li>
             <li>Aggiornate progresso e provviste</li>
           </ol>
-        </div>
         </div>
       </section>
     </section>

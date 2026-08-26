@@ -180,9 +180,9 @@ export default function Diario() {
   if (!currentUser) {
     return (
       <section className="diario-page cine-page cine-compact">
-        <div className="diario-gate">
+        <div className="nx-pannello diario-gate">
           <span className="diario-gate-rune" aria-hidden="true">ᛒ</span>
-          <h1>Diario di Bordo</h1>
+          <h1 className="nx-titolo">Diario di Bordo</h1>
           <p>Accedi con il tuo eroe per aprire il diario del tuo gruppo.</p>
         </div>
       </section>
@@ -191,9 +191,9 @@ export default function Diario() {
   if (ready && !isMaster && ownParty === "Senza Gruppo") {
     return (
       <section className="diario-page cine-page cine-compact">
-        <div className="diario-gate">
+        <div className="nx-pannello diario-gate">
           <span className="diario-gate-rune" aria-hidden="true">ᛒ</span>
-          <h1>Diario di Bordo</h1>
+          <h1 className="nx-titolo">Diario di Bordo</h1>
           <p>Il tuo personaggio non risulta assegnato a un gruppo, quindi non c'è ancora
              un diario da aprire. Chiedi al Master di inserirti in un party.</p>
         </div>
@@ -204,12 +204,12 @@ export default function Diario() {
   return (
     <section
       className="diario-page cine-page cine-compact"
-      style={{ "--cine-accent": meta?.color || "#a9781a" }}
+      style={{ "--cine-accent": meta?.color || "#8b5cf6" }}
     >
-      <AmbientFX variant="leaves" />
+      <AmbientFX variant="cosmos" />
 
-      {/* ── Intestazione = FINESTRA ARTICA (GlacierHero); sigillo di gruppo
-            e nota restano intatti sotto la finestra ── */}
+      {/* ── Intestazione = VARCO (GlacierHero); sigillo di gruppo e nota
+            restano intatti sotto la testata ── */}
       <GlacierHero
         className="diario-glhero"
         ariaLabel="Diario di Bordo"
@@ -220,7 +220,7 @@ export default function Diario() {
       >
         {isAllView ? (
           <p className="diario-sub">
-            <span className="diario-seal" style={{ background: "#7c560f" }}>✶</span>
+            <span className="diario-seal" style={{ background: "#8b5cf6" }}>✶</span>
             Tutti i gruppi · <em>vista del Master</em>
           </p>
         ) : meta && (
@@ -239,13 +239,13 @@ export default function Diario() {
 
       {/* ── Selettore gruppi: solo Master/co-master ──────────────────── */}
       {isMaster && (
-        <div className="diario-tabs" role="tablist" aria-label="Gruppi">
+        <div className="nx-pillole diario-tabs" role="tablist" aria-label="Gruppi">
           <button
             key="ALL"
             role="tab"
             aria-selected={isAllView}
-            className={"diario-tab" + (isAllView ? " is-active" : "")}
-            style={{ "--tab-color": "#7c560f" }}
+            className={"nx-pillola diario-tab" + (isAllView ? " on" : "")}
+            style={{ "--tab-color": "#c4b5fd" }}
             onClick={() => setViewParty("ALL")}
           >
             <span className="diario-tab-rune" aria-hidden="true">✶</span>
@@ -256,7 +256,7 @@ export default function Diario() {
               key={p}
               role="tab"
               aria-selected={viewParty === p}
-              className={"diario-tab" + (viewParty === p ? " is-active" : "")}
+              className={"nx-pillola diario-tab" + (viewParty === p ? " on" : "")}
               style={{ "--tab-color": PARTY_META[p].color }}
               onClick={() => setViewParty(p)}
             >
@@ -269,7 +269,7 @@ export default function Diario() {
 
       {/* ── Composizione voce ────────────────────────────────────────── */}
       {canPost ? (
-        <form className="diario-compose" onSubmit={addNote}>
+        <form className="nx-pannello diario-compose" onSubmit={addNote}>
           <textarea
             className="diario-input"
             value={text}
@@ -283,7 +283,7 @@ export default function Diario() {
           />
           <div className="diario-compose-foot">
             <span className="diario-signature">✍ {charName || (isMaster ? "Il Master" : "Eroe")}</span>
-            <button type="submit" className="diario-add" disabled={!text.trim() || saving}>
+            <button type="submit" className="gl-cta diario-add" disabled={!text.trim() || saving}>
               {saving ? "Salvo…" : "＋ Aggiungi al diario"}
             </button>
           </div>
@@ -309,12 +309,12 @@ export default function Diario() {
         ) : (
           groups.map((g) => (
             <div className="diario-day" key={g.key}>
-              <div className="diario-day-rule"><span>{g.label}</span></div>
+              <div className="gl-sezlabel diario-day-rule">{g.label}</div>
               <ul className="diario-entries">
                 {g.items.map((n) => {
                   const canDelete = isMaster || n.authorUid === currentUser?.uid;
                   return (
-                    <li className="diario-entry" key={n.id}>
+                    <li className="nx-pannello diario-entry" key={n.id}>
                       <span className="diario-avatar" aria-hidden="true">
                         {(n.authorName || "?").trim().charAt(0).toUpperCase()}
                       </span>
@@ -327,21 +327,21 @@ export default function Diario() {
                               title={PARTY_META[n.party].label}
                             >{n.party}</span>
                           )}
-                          <span className="diario-author">{n.authorName || "Anonimo"}</span>
-                          <span className="diario-when">
+                          <span className="nx-nome diario-author">{n.authorName || "Anonimo"}</span>
+                          <span className="nx-tag diario-when">
                             {fmtTime(n.createdAt) || "in salvataggio…"}
                           </span>
                           {canDelete && (
                             <button
                               type="button"
-                              className="diario-del"
+                              className="nx-pillola diario-del"
                               onClick={() => removeNote(n)}
                               aria-label="Elimina voce"
                               title="Elimina voce"
                             >×</button>
                           )}
                         </div>
-                        <p className="diario-text">{n.text}</p>
+                        <p className="nx-prosa diario-text">{n.text}</p>
                       </div>
                     </li>
                   );

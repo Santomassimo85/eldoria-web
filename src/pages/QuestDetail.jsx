@@ -95,16 +95,16 @@ export default function QuestDetail() {
   // ── Render ─────────────────────────────────────────────────
   if (loading || userCharName === null) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-        <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Leggendo i sigilli...</p>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+        <p className="qd-stato">Leggendo i sigilli...</p>
       </section>
     );
   }
 
   if (!quest) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-        <p style={{ textAlign: "center", color: "#aaa" }}>Incarico non trovato.</p>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+        <p className="qd-stato">Incarico non trovato.</p>
       </section>
     );
   }
@@ -113,12 +113,14 @@ export default function QuestDetail() {
 
   if (access === false) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-        <button onClick={() => navigate("/bacheca")} className="admin-back-link">← Torna alla Bacheca</button>
-        <div className="quest-detail-card" style={{ textAlign: "center", padding: "40px 20px" }}>
-          <p style={{ fontSize: "2rem", marginBottom: "12px" }}>🔒</p>
-          <h2 style={{ color: "var(--red)", fontFamily: "var(--font-title)", marginBottom: "8px" }}>Missiva Sigillata</h2>
-          <p style={{ color: "#888" }}>Questa pergamena non è destinata a te.</p>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+        <div className="qd-corpo qd-corpo--stato">
+          <button onClick={() => navigate("/bacheca")} className="nx-pillola qd-back">← Torna alla Bacheca</button>
+          <div className="nx-pannello qd-sigillata">
+            <p className="qd-lucchetto" aria-hidden="true">🔒</p>
+            <h2 className="nx-titolo">Missiva Sigillata</h2>
+            <p className="nx-nota">Questa pergamena non è destinata a te.</p>
+          </div>
         </div>
       </section>
     );
@@ -128,9 +130,9 @@ export default function QuestDetail() {
   const isAcceptedByMyParty = quest.acceptedParty === userParty;
 
   return (
-    <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-      {/* ── HERO = FINESTRA ARTICA (mockup B): copertina dinamica della missiva
-            nell'arco di ghiaccio, sigillo con la zona, titolo inciso in basso ── */}
+    <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      {/* ── HERO = VARCO (prototipo J): la copertina della missiva nel portale
+            esagonale, sigillo con la zona, titolo a gradiente accanto ── */}
       <GlacierHero
         id="quest-top"
         ariaLabel={quest.title}
@@ -141,46 +143,45 @@ export default function QuestDetail() {
         tagline={`Emesso da ${quest.sender || "Mittente Misterioso"}`}
       />
 
-      <div className="cine-wrap cine-wrap--narrow">
-      <button onClick={() => navigate(-1)} className="admin-back-link">← Torna alla Bacheca</button>
+      {/* ══ IL CORPO DELLA MISSIVA: pannello largo centrato ══ */}
+      <div className="qd-corpo">
+        <button onClick={() => navigate(-1)} className="nx-pillola qd-back">← Torna alla Bacheca</button>
 
-      <div className="quest-detail-card">
-        <p className="quest-detail-field">
-          <strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}
-        </p>
-        <p className="quest-detail-field">
-          <strong>Zona:</strong> {quest.zona}
-        </p>
+        <article className="nx-pannello qd-missiva">
+          <span className="nx-tag">{isAccepted ? "In corso" : "Disponibile"}</span>
+          <div className="gl-sezlabel qd-sez">La missiva</div>
 
-        <p className="quest-detail-lore">{quest.desc}</p>
-
-        <div className="quest-detail-rewards">
-          <strong>Ricompense:</strong> {quest.rewardGold || 0} Corone
-          {quest.rewardItem ? `, ${quest.rewardItem}` : ""}
-        </div>
-
-        {!isAccepted ? (
-          <div style={{ marginTop: 24 }}>
-            <button onClick={handleAccept} className="btn-admin-primary questDetailButton">
-              Accetta Missione
-            </button>
+          <div className="nx-meta-box qd-meta">
+            <p><strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}</p>
+            <p><strong>Zona:</strong> {quest.zona}</p>
           </div>
-        ) : (
-          <div className="quest-detail-accepted">
-            <p>
-              Presa in carico dal gruppo:{" "}
-              <strong style={{ color: isAcceptedByMyParty ? "#27ae60" : "var(--red)" }}>
-                {quest.acceptedParty || quest.acceptedBy}
-              </strong>
-            </p>
-            {isAcceptedByMyParty && quest.acceptedBy !== userCharName && (
-              <p style={{ fontSize: "0.85rem", color: "#888", marginTop: 4 }}>
-                (Accettata da {quest.acceptedBy})
+
+          <p className="nx-prosa quest-detail-lore">{quest.desc}</p>
+
+          <div className="nx-meta-box qd-ricompense">
+            <p><strong>Ricompense:</strong> {quest.rewardGold || 0} Corone{quest.rewardItem ? `, ${quest.rewardItem}` : ""}</p>
+          </div>
+
+          {!isAccepted ? (
+            <div className="qd-azioni">
+              <button onClick={handleAccept} className="gl-cta questDetailButton">
+                ⚔ Accetta missione
+              </button>
+            </div>
+          ) : (
+            <div className="nx-citazione qd-presa">
+              <p>
+                Presa in carico dal gruppo{" "}
+                <strong className={isAcceptedByMyParty ? "mine" : "others"}>
+                  {quest.acceptedParty || quest.acceptedBy}
+                </strong>
               </p>
-            )}
-          </div>
-        )}
-      </div>
+              {isAcceptedByMyParty && quest.acceptedBy !== userCharName && (
+                <p className="nx-nota">(Accettata da {quest.acceptedBy})</p>
+              )}
+            </div>
+          )}
+        </article>
       </div>
     </section>
   );

@@ -1,585 +1,184 @@
 /* ============================================================
-   ALMANACCO DEL MONDO — tema "Pergamena Antica"
+   ALMANACCO — "Il Computo del Nesso" (prototipo J · Il Nesso)
+   Varco in cima · indice a pillole · sezioni con etichetta ·
+   giorni = griglia di orbe · mesi = griglia di pannelli tinti per
+   stagione · Vie del Mondo = pannelli di vetro scuro numerati.
+   Solo regole specifiche: il kit (.nx-*) vive in styles/nesso.css.
    ============================================================ */
 
-.alm-page { --cont-accent: var(--cine-accent); }
-
-/* ---------- HERO ASIMMETRICO ---------- */
-.alm-page .alm-hero {
-  position: relative;
-  min-height: clamp(360px, 62vh, 560px);
-  display: flex; align-items: center;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.alm-page .alm-hero-media { position: absolute; inset: 0; z-index: 0; }
-.alm-page .alm-hero-media img {
-  width: 100%; height: 100%; object-fit: cover; object-position: 70% 30%;
-  filter: sepia(.25) saturate(.9) contrast(1.02);
-  transform: translateY(var(--parallax, 0));
-  will-change: transform;
-}
-.alm-page .alm-hero-wash {
-  position: absolute; inset: 0; z-index: 1;
-  background:
-    linear-gradient(100deg, rgba(247,240,224,.97) 0%, rgba(247,240,224,.78) 40%, rgba(247,240,224,.08) 72%),
-    linear-gradient(0deg, rgba(86,64,30,.25), transparent 40%);
-}
-.alm-page .alm-hero-plate {
-  position: relative; z-index: 2;
-  margin: 0 14px;
-  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 5px solid var(--cine-accent);
-  border-radius: 18px;
-  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
-  padding: 22px 20px;
-  animation: alm-plate-in .7s cubic-bezier(.16,1,.3,1) both;
-}
-@keyframes alm-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
-
-.alm-page .alm-hero-seal {
-  display: inline-block; margin-bottom: 10px;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .22em; text-transform: uppercase; color: #7a5a22;
-}
-.alm-page .alm-hero-title {
-  margin: 0 0 12px; line-height: .96;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(2.1rem, 7vw, 3.6rem); color: #3a2710;
-}
-.alm-page .alm-hero-tagline {
-  margin: 0 0 16px; max-width: 42ch;
-  color: #5a4a32; font-size: .98rem; line-height: 1.5;
-}
-.alm-page .alm-hero-jump { display: flex; flex-wrap: wrap; gap: 12px; }
-.alm-page .alm-hero-jump a {
-  --btn: #5a9a3f;            /* colore base, ridefinito per ciascun bottone */
-  --btn-2: #3f7a2c;
-  position: relative; isolation: isolate; overflow: hidden;
-  display: inline-flex; align-items: center; gap: 8px;
-  text-decoration: none;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: .82rem; letter-spacing: .12em; text-transform: uppercase;
-  color: #fff !important;
-  padding: 12px 22px; border-radius: 11px; border: none;
-  background: linear-gradient(135deg, var(--btn), var(--btn-2));
-  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--btn) 65%, #000);
-  text-shadow: 0 1px 2px rgba(0,0,0,.3);
-  transition: transform .22s cubic-bezier(.16,1,.3,1), box-shadow .22s ease;
-}
-/* colori per bottone */
-.alm-page .alm-hero-jump a:nth-of-type(1) { --btn: #4f9a8a; --btn-2: #2f6f74; }  /* Calendario — verde-acqua */
-.alm-page .alm-hero-jump a:nth-of-type(2) { --btn: #d8923a; --btn-2: #b0651f; }  /* Le Vie del Mondo — ambra */
-
-.alm-page .alm-hero-jump a::before {
-  content: "◆"; font-size: .58em; color: rgba(255,255,255,.85);
-  transition: transform .3s ease;
-}
-/* riflesso luminoso che attraversa il bottone all'hover */
-.alm-page .alm-hero-jump a::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.45) 50%, transparent 60%);
-  transform: translateX(-130%);
-  transition: transform .7s cubic-bezier(.22,1,.3,1);
-}
-.alm-page .alm-hero-jump a:hover,
-.alm-page .alm-hero-jump a:focus-visible {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow:
-    0 16px 30px -10px color-mix(in srgb, var(--btn) 70%, #000),
-    0 0 20px -2px color-mix(in srgb, var(--btn) 60%, transparent);
-  outline: none;
-}
-.alm-page .alm-hero-jump a:hover::after,
-.alm-page .alm-hero-jump a:focus-visible::after { transform: translateX(130%); }
-.alm-page .alm-hero-jump a:hover::before { transform: rotate(180deg) scale(1.15); }
-.alm-page .alm-hero-jump a:active { transform: translateY(-1px) scale(.99); }
-
-@media (prefers-reduced-motion: reduce) {
-  .alm-page .alm-hero-jump a,
-  .alm-page .alm-hero-jump a::after,
-  .alm-page .alm-hero-jump a::before { transition: none !important; }
-  .alm-page .alm-hero-jump a:hover { transform: none; }
+.alm-page { color: #edeaff; }
+.alm-page .alm-indice { margin: 4px 0 6px; }
+.alm-page .alm-section { margin-top: 6px; scroll-margin-top: 90px; }
+.alm-page .alm-testata { padding-bottom: 14px; }
+.alm-page .alm-lead { max-width: 62ch; }
+.alm-page .alm-lead strong, .alm-page .nx-prosa strong { color: #edeaff; font-weight: 700; }
+.alm-page .alm-h3 {
+  margin: 22px 0 10px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .9rem; letter-spacing: .1em; text-transform: uppercase;
+  color: #c4b5fd; scroll-margin-top: 90px;
 }
 
-@media (min-width: 860px) {
-  .alm-page .alm-hero-plate { margin: 0 0 0 7vw; max-width: 560px; padding: 36px 34px; }
+/* ── orbe numerate (gradiente ciano→viola) ── */
+.alm-page .orb {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+  font-family: "Manrope", system-ui, sans-serif; font-weight: 800; font-size: .82rem; color: #070713;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+  box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8);
 }
+.alm-page .orb--warn { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 18px rgba(245, 158, 11, .6); }
 
-/* ---------- SEZIONI ---------- */
-.alm-page .alm-section {
-  max-width: 1080px; margin: 40px auto;
-  padding: 0 clamp(16px, 4vw, 30px);
-  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
-}
+/* ── giorni della settimana ── */
+.alm-page .alm-giorni { list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.alm-page .alm-giorno { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.alm-page .alm-giorno .orb { width: 44px; height: 44px; font-size: 1rem; }
+.alm-page .alm-pron { font-style: italic; }
 
-/* ---------- BANDE DI SEZIONE (sfondi diversi per separare le sezioni) ---------- */
-/* La banda va a tutta larghezza; il contenuto resta centrato dall'inner wrapper
-   (niente 100vw: così non compare mai lo scroll orizzontale su desktop/iOS). */
-.alm-page .alm-band {
-  max-width: none; margin: 0;
-  padding: clamp(34px, 5vw, 60px) clamp(16px, 4vw, 30px);
-  position: relative;
+/* ── stagioni e mesi ── */
+.alm-page .alm-stagioni { margin: 0 0 14px; }
+.alm-page .alm-stagione { color: var(--s-color, #c4b5fd); border-color: color-mix(in srgb, var(--s-color, #8b5cf6) 55%, transparent); cursor: default; }
+.alm-page .alm-stagione:hover { transform: none; box-shadow: 0 0 14px -4px var(--s-color, #22d3ee); }
+.alm-page .alm-mesi { list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.alm-page .alm-mese {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
+  border-color: color-mix(in srgb, var(--s-color, #8b5cf6) 40%, transparent);
+  padding-top: 30px;
 }
-.alm-page .alm-band-inner { max-width: 1080px; margin: 0 auto; }
+.alm-page .alm-mese:hover { border-color: var(--s-color, #22d3ee); box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px color-mix(in srgb, var(--s-color, #22d3ee) 70%, transparent); }
+.alm-page .alm-mese-tag { color: var(--s-color, #e879f9); text-shadow: 0 0 10px color-mix(in srgb, var(--s-color, #e879f9) 70%, transparent); }
+.alm-page .alm-mese-num { font-size: 2rem; margin: 0; line-height: 1; }
+.alm-page .alm-mese-ic { font-size: 1.3rem; margin: 4px 0 6px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--s-color, #22d3ee) 80%, transparent)); }
 
-/* Calendario → banda fredda (verde-salvia), richiama il pulsante teal dell'indice */
-.alm-page .alm-band--cal {
-  background:
-    radial-gradient(130% 80% at 50% 0%, rgba(79,154,138,.10), transparent 62%),
-    linear-gradient(180deg, #e9f1ec 0%, #dee9e1 100%);
-  border-bottom: 1px solid rgba(63,120,110,.30);
-}
-/* Le Vie del Mondo → banda calda (sabbia/ambra), richiama il pulsante ambra */
-.alm-page .alm-band--travel {
-  background:
-    radial-gradient(130% 80% at 50% 0%, rgba(200,140,50,.13), transparent 62%),
-    linear-gradient(180deg, #f6ecd3 0%, #efe0bd 100%);
-  border-top: 2px solid rgba(176,120,40,.38);
-}
-/* accento dell'occhiello coerente con la banda */
-.alm-page .alm-band--cal .alm-sec-eyebrow { color: #3f7f72; }
-.alm-page .alm-band--cal .alm-sec-eyebrow::before,
-.alm-page .alm-band--cal .alm-sec-eyebrow::after { background: rgba(63,120,110,.5); }
-.alm-page .alm-sec-head { text-align: center; margin-bottom: 26px; }
-.alm-page .alm-sec-eyebrow {
-  display: inline-block; margin-bottom: 8px; padding: 0 16px; position: relative;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: #8a6a30;
-}
-.alm-page .alm-sec-eyebrow::before,
-.alm-page .alm-sec-eyebrow::after {
-  content: ""; position: absolute; top: 50%; width: 22px; height: 1px;
-  background: color-mix(in srgb, var(--cine-accent) 50%, transparent);
-}
-.alm-page .alm-sec-eyebrow::before { right: 100%; }
-.alm-page .alm-sec-eyebrow::after { left: 100%; }
-.alm-page .alm-sec-title {
-  margin: 0 0 12px;
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: clamp(1.6rem, 4.6vw, 2.4rem); color: #3a2710;
-}
-.alm-page .alm-sec-lead {
-  margin: 0 auto; max-width: 60ch;
-  color: #5a4a32; font-size: 1rem; line-height: 1.6;
-}
-.alm-page .alm-sec-lead strong { color: #6a4a18; }
-
-/* ---------- CARD GENERICA ---------- */
-.alm-page .alm-card {
-  background: linear-gradient(135deg, rgba(255,253,245,.97), rgba(245,237,218,.94));
-  border: 1px solid var(--line, #c9b78a);
-  border-radius: 14px;
-  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
-  padding: 20px 22px;
-}
-.alm-page .alm-card-title {
-  margin: 0 0 14px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: 1.02rem; letter-spacing: .04em; color: #4a3414;
-  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
-  padding-bottom: 8px;
-}
-
-/* ---------- CALENDARIO ---------- */
-.alm-page .alm-cal-grid {
-  display: grid; gap: 18px;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 760px) {
-  .alm-page .alm-cal-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
-}
-
-.alm-page .alm-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.alm-page .alm-day {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
-  padding: 10px 12px; border-radius: 10px;
-  background: rgba(255,255,255,.55);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
-}
-.alm-page .alm-day-num {
-  display: grid; place-items: center; width: 26px; height: 26px;
-  border-radius: 50%; font-weight: 800; font-size: .82rem;
-  color: #fffdf5; background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-}
-.alm-page .alm-day-name {
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: 1.05rem; color: #3a2710;
-}
-.alm-page .alm-day-pron {
-  font-style: italic; font-size: .82rem; color: #8a7050; letter-spacing: .02em;
-}
-
-/* Legenda stagioni */
-.alm-page .alm-seasons-legend {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
-}
-.alm-page .alm-season-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px; border-radius: 999px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
-  font-size: .76rem; letter-spacing: .03em;
-  color: var(--s-color);
-  background: color-mix(in srgb, var(--s-color) 12%, #fff);
-  border: 1px solid color-mix(in srgb, var(--s-color) 45%, transparent);
-}
-
-.alm-page .alm-months {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
-}
-@media (min-width: 560px) { .alm-page .alm-months { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 860px) { .alm-page .alm-months { grid-template-columns: repeat(4, 1fr); } }
-.alm-page .alm-month {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 11px; border-radius: 11px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--s-color) 10%, #fff), color-mix(in srgb, var(--s-color) 4%, #fff));
-  border: 1px solid color-mix(in srgb, var(--s-color) 35%, transparent);
-  border-left: 4px solid var(--s-color);
-}
-.alm-page .alm-month-num {
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: .74rem; color: var(--s-color); min-width: 1.2em; text-align: right;
-}
-.alm-page .alm-month-ic { font-size: 1.2rem; line-height: 1; }
-.alm-page .alm-month-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.alm-page .alm-month-name { font-size: .94rem; color: #3a2710; font-weight: 700; }
-.alm-page .alm-month-season {
-  font-size: .68rem; font-weight: 600;
-  color: color-mix(in srgb, var(--s-color) 70%, #5a4a32);
-}
-
-/* ---------- LE VIE DEL MONDO ---------- */
-.alm-page .alm-block {
-  margin: 0 0 22px;
-  background: linear-gradient(135deg, rgba(255,253,245,.96), rgba(245,237,218,.93));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 4px solid var(--cine-accent);
-  border-radius: 14px;
-  box-shadow: 0 10px 26px -16px rgba(86,64,30,.45);
-  padding: 20px 22px;
-}
+/* ── blocchi delle Vie del Mondo ── */
+.alm-page .alm-block { margin-top: 16px; }
+.alm-page .alm-block--nudo { padding: 0; }
 .alm-page .alm-block-title {
-  display: flex; align-items: center; gap: 12px; margin: 0 0 12px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: 1.12rem; color: #3a2710;
+  display: flex; align-items: center; gap: 12px; margin: 0 0 8px;
+  font-family: "Cinzel", Georgia, serif; font-size: 1rem; letter-spacing: .04em; color: #edeaff;
 }
-.alm-page .alm-block-num {
-  display: grid; place-items: center; flex: 0 0 auto;
-  width: 30px; height: 30px; border-radius: 50%;
-  font-size: .86rem; font-weight: 900; color: #fffdf5;
-  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-  box-shadow: 0 4px 10px -3px rgba(138,90,31,.5);
-}
-.alm-page .alm-block-note { margin: 0 0 14px; color: #5a4a32; font-size: .94rem; line-height: 1.55; }
-.alm-page .alm-block-note strong { color: #6a4a18; }
-.alm-page .alm-example {
-  margin-top: 14px; margin-bottom: 0; padding: 12px 14px; border-radius: 10px;
-  background: color-mix(in srgb, var(--cine-accent) 7%, #fff);
-  border: 1px dashed color-mix(in srgb, var(--cine-accent) 35%, transparent);
-  font-size: .88rem;
-}
+.alm-page .alm-block-note { margin: 0 0 12px; font-size: .95rem; }
 
-/* Recap lampo — il senso del viaggio in 4 passi, linguaggio semplice */
-.alm-page .alm-recap {
-  margin: 0 0 24px; padding: 20px 22px; border-radius: 16px;
-  background: linear-gradient(135deg, #fff6e2, #f6e7c2);
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 5px solid var(--cine-accent);
-  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
-}
-.alm-page .alm-recap-badge {
-  display: inline-block; margin-bottom: 12px; padding: 5px 14px; border-radius: 999px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: #fffdf5;
-  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-  box-shadow: 0 4px 10px -3px rgba(138,90,31,.45);
-}
-.alm-page .alm-recap-lead {
-  margin: 0 0 16px; max-width: 72ch;
-  color: #4a3a24; font-size: 1.02rem; line-height: 1.6;
-}
-.alm-page .alm-recap-lead strong { color: #6a4a18; }
+/* recap */
+.alm-page .alm-recap { margin-top: 16px; padding-top: 36px; border-color: rgba(34, 211, 238, .45); }
+.alm-page .alm-recap-lead { margin: 0 0 14px; }
+.alm-page .alm-recap-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.alm-page .alm-recap-steps li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .28); }
+.alm-page .alm-recap-ic { font-size: 1.2rem; }
+.alm-page .alm-recap-txt { font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; }
+.alm-page .alm-recap-txt b { color: #22d3ee; }
+.alm-page .alm-recap-foot { margin: 12px 0 0; text-align: center; }
 
-.alm-page .alm-recap-steps {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; gap: 10px; grid-template-columns: 1fr;
-}
-@media (min-width: 760px) { .alm-page .alm-recap-steps { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
-.alm-page .alm-recap-steps li {
-  position: relative;
-  display: flex; align-items: center; gap: 12px;
-  padding: 13px 15px; border-radius: 12px;
-  background: rgba(255,255,255,.66);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
-}
-/* freccia di collegamento tra i passi (solo desktop) */
-@media (min-width: 760px) {
-  .alm-page .alm-recap-steps li:not(:last-child)::after {
-    content: "→"; position: absolute; right: -15px; top: 50%; transform: translateY(-50%);
-    font-size: 1.15rem; font-weight: 700; z-index: 2;
-    color: color-mix(in srgb, var(--cine-accent) 60%, transparent);
-  }
-}
-.alm-page .alm-recap-ic { font-size: 1.7rem; line-height: 1; flex: 0 0 auto; }
-.alm-page .alm-recap-txt { font-size: .9rem; line-height: 1.32; color: #4a3a24; }
-.alm-page .alm-recap-txt b {
-  display: block; color: #3a2710;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: .96rem;
-}
-.alm-page .alm-recap-foot {
-  margin: 14px 0 0; font-size: .84rem; font-style: italic; color: #7a6446;
-}
-
-/* Lo specchietto dei tiri (chi tira, quando, cosa, perché) */
-.alm-page .alm-tiri {
-  margin: 0 0 26px;
-  background: linear-gradient(135deg, rgba(250,243,225,.97), rgba(242,231,205,.95));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 4px solid var(--cine-accent);
-  border-radius: 14px;
-  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
-  padding: 20px 22px;
-}
-.alm-page .alm-tiri-title {
-  margin: 0 0 6px; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: 1.18rem; color: #3a2710;
-}
-.alm-page .alm-tiri-sub { margin: 0 0 16px; color: #5a4a32; font-size: .92rem; line-height: 1.5; }
-
-.alm-page .alm-tiri-table { --tiri-cols: 1fr; display: grid; gap: 8px; }
+/* specchietto dei tiri */
+.alm-page .alm-tiri { margin-top: 16px; scroll-margin-top: 90px; }
+.alm-page .alm-tiri-table { display: flex; flex-direction: column; gap: 8px; }
 .alm-page .alm-tiri-head {
-  display: grid; grid-template-columns: var(--tiri-cols); gap: 14px;
-  padding: 0 14px 7px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: .7rem;
-  letter-spacing: .1em; text-transform: uppercase; color: #8a6a30;
-  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+  display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; gap: 12px; padding: 0 12px;
+  font-family: "Cinzel", Georgia, serif; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: #22d3ee;
 }
 .alm-page .alm-tiri-row {
-  display: grid; grid-template-columns: var(--tiri-cols); gap: 14px; align-items: start;
-  padding: 12px 14px; border-radius: 11px;
-  background: rgba(255,255,255,.6);
-  border: 1px solid color-mix(in srgb, var(--t-color) 26%, transparent);
-  border-left: 4px solid var(--t-color);
+  display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; gap: 12px; align-items: center;
+  padding: 12px; border-radius: 14px;
+  background: linear-gradient(90deg, #12122a, #0d0d1f); border: 1px solid rgba(139, 92, 246, .22);
+  border-left: 3px solid var(--t-color, #8b5cf6);
+  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #c9c4ea;
+  transition: transform .2s ease, border-color .2s ease;
 }
+.alm-page .alm-tiri-row:hover { transform: translateX(6px); border-color: rgba(34, 211, 238, .6); border-left-color: var(--t-color, #22d3ee); }
 .alm-page .alm-tiri-chi { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.alm-page .alm-tiri-ic { font-size: 1.2rem; line-height: 1; }
-.alm-page .alm-tiri-name { font-weight: 800; color: #3a2710; font-size: .92rem; }
-.alm-page .alm-tiri-badge {
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700; font-size: .6rem;
-  letter-spacing: .06em; text-transform: uppercase; color: #fffdf5;
-  padding: 2px 8px; border-radius: 999px; background: var(--t-color);
-}
-.alm-page .alm-tiri-cell { color: #4a3a24; font-size: .86rem; line-height: 1.42; }
-.alm-page .alm-tiri-dado { font-weight: 700; color: color-mix(in srgb, var(--t-color) 80%, #2a1c08); }
-
-@media (min-width: 820px) {
-  .alm-page .alm-tiri-table { --tiri-cols: 200px 1.05fr 1.15fr 1.55fr; }
-}
-/* mobile: niente intestazione, ogni cella si etichetta da sola */
-@media (max-width: 819px) {
+.alm-page .alm-tiri-ic { font-size: 1.1rem; }
+.alm-page .alm-tiri-name { font-weight: 700; color: #edeaff; }
+.alm-page .alm-tiri-badge { padding: 2px 9px; font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; color: var(--t-color, #c4b5fd); border-color: color-mix(in srgb, var(--t-color, #8b5cf6) 60%, transparent); cursor: default; }
+.alm-page .alm-tiri-badge:hover { transform: none; box-shadow: none; }
+.alm-page .alm-tiri-dado { font-weight: 800; color: #22d3ee; }
+@media (max-width: 760px) {
   .alm-page .alm-tiri-head { display: none; }
-  .alm-page .alm-tiri-row { gap: 7px; }
-  .alm-page .alm-tiri-cell::before {
-    content: attr(data-label) " · ";
-    font-weight: 800; color: #8a6a30; font-size: .76rem;
-  }
+  .alm-page .alm-tiri-row { grid-template-columns: 1fr; gap: 6px; }
+  .alm-page .alm-tiri-cell::before { content: attr(data-label) " · "; font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: #8f8bb8; }
 }
 
-/* Veglie */
-.alm-page .alm-veglie {
-  display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr);
-}
-@media (min-width: 700px) { .alm-page .alm-veglie { grid-template-columns: repeat(4, 1fr); } }
-.alm-page .alm-veglia {
-  display: flex; flex-direction: column; gap: 3px; text-align: center;
-  padding: 14px 10px; border-radius: 11px;
-  background: rgba(255,255,255,.55);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
-}
-.alm-page .alm-veglia-ic { font-size: 1.5rem; }
-.alm-page .alm-veglia-nome { font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; color: #3a2710; }
-.alm-page .alm-veglia-ore { font-size: .82rem; font-weight: 700; color: var(--cine-accent); }
-.alm-page .alm-veglia-chi { font-size: .78rem; color: #7a6446; line-height: 1.3; }
+/* veglie */
+.alm-page .alm-veglie { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.alm-page .alm-veglia { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 10px; border-radius: 14px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .25); }
+.alm-page .alm-veglia-ic { font-size: 1.5rem; filter: drop-shadow(0 0 10px rgba(34, 211, 238, .6)); }
+.alm-page .alm-veglia-ore { color: #22d3ee; font-weight: 700; }
 
-/* Partenza — trio mini */
-.alm-page .alm-trio { display: grid; gap: 14px; grid-template-columns: 1fr; }
-@media (min-width: 760px) { .alm-page .alm-trio { grid-template-columns: repeat(3, 1fr); align-items: start; } }
-.alm-page .alm-mini {
-  padding: 14px 16px; border-radius: 11px;
-  background: rgba(255,255,255,.5);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
-}
-.alm-page .alm-mini h4 {
-  margin: 0 0 10px; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: .92rem; letter-spacing: .04em; color: var(--cine-accent);
-}
-.alm-page .alm-defs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.alm-page .alm-defs li, .alm-page .alm-mini p { color: #4a3a24; font-size: .9rem; line-height: 1.45; margin: 0; }
-.alm-page .alm-defs strong, .alm-page .alm-mini strong { color: #3a2710; }
-.alm-page .alm-defs em { color: #9a5a20; font-style: italic; }
+/* tre scelte */
+.alm-page .alm-trio { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.alm-page .alm-mini { padding: 14px; border-radius: 14px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .25); }
+.alm-page .alm-mini h4 { margin: 0 0 8px; font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: #c4b5fd; }
+.alm-page .alm-mini p, .alm-page .alm-defs { margin: 0; padding: 0; list-style: none; font-family: "Manrope", system-ui, sans-serif; font-size: .86rem; line-height: 1.6; color: #c9c4ea; }
+.alm-page .alm-defs li + li { margin-top: 8px; }
+.alm-page .alm-defs strong, .alm-page .alm-mini strong { color: #edeaff; }
+.alm-page .alm-defs em { color: #e879f9; font-style: normal; font-weight: 600; }
 
-/* Ruoli (colorati per --r-color) */
-.alm-page .alm-roles { display: grid; gap: 12px; grid-template-columns: 1fr; }
-@media (min-width: 620px) { .alm-page .alm-roles { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 980px) { .alm-page .alm-roles { grid-template-columns: repeat(3, 1fr); } }
-.alm-page .alm-role {
-  padding: 14px 16px; border-radius: 12px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--r-color) 9%, #fff), color-mix(in srgb, var(--r-color) 3%, #fff));
-  border: 1px solid color-mix(in srgb, var(--r-color) 32%, transparent);
-  border-top: 4px solid var(--r-color);
-  box-shadow: 0 8px 20px -14px color-mix(in srgb, var(--r-color) 60%, transparent);
-}
-.alm-page .alm-role-head {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 9px; margin-bottom: 10px;
-  padding-bottom: 9px; border-bottom: 1px dashed color-mix(in srgb, var(--r-color) 35%, transparent);
-}
-.alm-page .alm-role-ic { font-size: 1.3rem; line-height: 1; }
-.alm-page .alm-role-name {
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: 1.05rem;
-  color: color-mix(in srgb, var(--r-color) 78%, #2a1c08);
-}
-.alm-page .alm-role-skill {
-  width: 100%; font-size: .76rem; font-style: italic; color: #8a6a3a;
-}
-.alm-page .alm-role-cosa { margin: 0 0 10px; font-size: .88rem; line-height: 1.45; color: #4a3a24; }
-.alm-page .alm-role-ok, .alm-page .alm-role-ko { margin: 0; font-size: .84rem; line-height: 1.4; }
-.alm-page .alm-role-ok { color: #2f6a44; } .alm-page .alm-role-ok span { font-weight: 800; }
-.alm-page .alm-role-ko { color: #9a4030; margin-top: 6px; } .alm-page .alm-role-ko span { font-weight: 800; }
+/* ruoli */
+.alm-page .alm-roles { margin-top: 4px; }
+.alm-page .alm-role { border-left: 3px solid var(--r-color, #8b5cf6); }
+.alm-page .alm-role-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.alm-page .alm-role-ic { font-size: 1.5rem; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--r-color, #22d3ee) 80%, transparent)); }
+.alm-page .alm-role-skill { display: inline-flex; margin-bottom: 10px; padding: 4px 10px; font-size: .64rem; color: var(--r-color, #c4b5fd); border-color: color-mix(in srgb, var(--r-color, #8b5cf6) 60%, transparent); cursor: default; }
+.alm-page .alm-role-skill:hover { transform: none; box-shadow: none; }
+.alm-page .alm-role-cosa { margin: 0 0 10px; font-size: .86rem; color: #c9c4ea; }
+.alm-page .alm-role-ok, .alm-page .alm-role-ko { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; font-family: "Manrope", system-ui, sans-serif; font-size: .8rem; line-height: 1.5; color: #c9c4ea; }
+.alm-page .alm-role-ok { background: rgba(74, 222, 128, .08); border: 1px solid rgba(74, 222, 128, .3); }
+.alm-page .alm-role-ok span { color: #4ade80; font-weight: 700; }
+.alm-page .alm-role-ko { background: rgba(232, 121, 249, .08); border: 1px solid rgba(232, 121, 249, .3); }
+.alm-page .alm-role-ko span { color: #e879f9; font-weight: 700; }
 
-/* Blocco riservato al Master */
-.alm-page .alm-block--master {
-  background: linear-gradient(135deg, rgba(248,238,232,.97), rgba(240,226,216,.95));
-  border-left-color: #8a3a2a;
-}
-.alm-page .alm-master-tag {
-  margin-left: auto;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
-  font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
-  color: #fffdf5; padding: 4px 10px; border-radius: 999px;
-  background: linear-gradient(135deg, #a8443a, #7a2c22);
-}
-
-/* Eventi (accordion, colorati per --e-color) */
-.alm-page .alm-eventi { display: grid; gap: 8px; }
-.alm-page .alm-evento {
-  border-radius: 11px; overflow: hidden;
-  background: color-mix(in srgb, var(--e-color) 5%, #fff);
-  border: 1px solid color-mix(in srgb, var(--e-color) 28%, transparent);
-  border-left: 4px solid var(--e-color);
-}
-.alm-page .alm-evento.is-open { box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--e-color) 70%, transparent); }
+/* eventi (accordion) */
+.alm-page .alm-eventi { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.alm-page .alm-evento { padding: 0; overflow: hidden; border-color: color-mix(in srgb, var(--e-color, #8b5cf6) 40%, transparent); }
+.alm-page .alm-evento.is-open { grid-column: 1 / -1; border-color: var(--e-color, #22d3ee); box-shadow: 0 0 26px -8px color-mix(in srgb, var(--e-color, #22d3ee) 70%, transparent); }
 .alm-page .alm-evento-head {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border: none; cursor: pointer; text-align: left;
-  background: transparent; font: inherit;
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px;
+  background: none; border: none; color: inherit; cursor: pointer; text-align: left;
+  transition: background .2s ease;
 }
-.alm-page .alm-evento-die {
-  display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px;
-  border-radius: 7px; font-weight: 900; font-size: .88rem; color: #fffdf5;
-  background: var(--e-color);
-}
-.alm-page .alm-evento-ic { font-size: 1.15rem; }
-.alm-page .alm-evento-tipo {
-  flex: 1; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: 1rem; color: color-mix(in srgb, var(--e-color) 72%, #2a1c08);
-}
-.alm-page .alm-evento-caret { font-size: 1.3rem; font-weight: 700; color: var(--e-color); }
-.alm-page .alm-evento-list {
-  list-style: none; margin: 0; padding: 4px 14px 14px;
-  display: grid; gap: 6px;
-  border-top: 1px dashed color-mix(in srgb, var(--e-color) 30%, transparent);
-}
-.alm-page .alm-evento-list li {
-  display: flex; align-items: baseline; gap: 9px;
-  color: #4a3a24; font-size: .9rem; line-height: 1.4;
-}
-.alm-page .alm-evento-subdie {
-  flex: 0 0 auto; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
-  font-size: .78rem; color: var(--e-color); min-width: 1.1em;
-}
+.alm-page .alm-evento-head:hover { background: rgba(139, 92, 246, .1); }
+.alm-page .alm-evento-die { background: linear-gradient(135deg, var(--e-color, #22d3ee), #8b5cf6); }
+.alm-page .alm-evento-ic { font-size: 1.3rem; }
+.alm-page .alm-evento-tipo { flex: 1; }
+.alm-page .alm-evento-caret { font-size: 1.2rem; color: var(--e-color, #22d3ee); font-weight: 800; }
+.alm-page .alm-evento-list { list-style: none; margin: 0; padding: 4px 16px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.alm-page .alm-evento-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #c9c4ea; }
+.alm-page .alm-evento-subdie { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; flex: 0 0 auto; font-weight: 800; font-size: .74rem; color: #070713; background: var(--e-color, #22d3ee); }
 
-/* Callout (sfide / ritmo) */
-.alm-page .alm-duo { display: grid; gap: 10px; grid-template-columns: 1fr; }
+/* callout e citazioni */
+.alm-page .alm-duo { display: grid; gap: 10px; margin: 0 0 12px; }
 @media (min-width: 700px) { .alm-page .alm-duo { grid-template-columns: 1fr 1fr; } }
-.alm-page .alm-callout {
-  margin: 0; padding: 13px 15px; border-radius: 11px;
-  font-size: .9rem; line-height: 1.45; color: #4a3a24;
-  background: rgba(255,255,255,.55);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
-  border-left: 4px solid var(--cine-accent);
-}
-.alm-page .alm-callout strong { color: #3a2710; }
-.alm-page .alm-callout--ok { border-left-color: #3f8a5a; }
-.alm-page .alm-callout--ko { border-left-color: #b05030; }
+.alm-page .alm-callout { margin: 0; padding: 12px 14px; border-radius: 12px; font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; line-height: 1.55; color: #c9c4ea; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .28); }
+.alm-page .alm-callout strong { color: #c4b5fd; }
+.alm-page .alm-callout--ok { border-color: rgba(74, 222, 128, .4); }
+.alm-page .alm-callout--ok strong { color: #4ade80; }
+.alm-page .alm-callout--ko { border-color: rgba(232, 121, 249, .4); }
+.alm-page .alm-callout--ko strong { color: #e879f9; }
+.alm-page .alm-example { text-align: left; font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; line-height: 1.6; }
+.alm-page .alm-example strong { color: #22d3ee; font-style: normal; }
 
-/* La Scala dello Sfinimento */
-.alm-page .alm-block-num--warn {
-  background: linear-gradient(135deg, #c47328, #7a231c);
-  box-shadow: 0 4px 10px -3px rgba(122,35,28,.5);
-}
-.alm-page .alm-sfin { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.alm-page .alm-sfin-row {
-  display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 13px;
-  padding: 9px 13px; border-radius: 10px;
-  background: color-mix(in srgb, var(--sf) 7%, #fff);
-  border: 1px solid color-mix(in srgb, var(--sf) 30%, transparent);
-  border-left: 4px solid var(--sf);
-}
-.alm-page .alm-sfin-lv {
-  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 900; font-size: .9rem;
-  color: #fffdf5; background: var(--sf);
-}
-.alm-page .alm-sfin-eff { color: #4a3a24; font-size: .92rem; line-height: 1.4; }
-.alm-page .alm-sfin-row.is-death {
-  background: color-mix(in srgb, var(--sf) 12%, #fff);
-}
-.alm-page .alm-sfin-row.is-death .alm-sfin-eff {
-  font-weight: 800; letter-spacing: .03em; color: #7a231c; text-transform: uppercase; font-size: .86rem;
-}
+/* ricompense e sequenza */
+.alm-page .alm-rewards, .alm-page .alm-quick-steps { margin: 0; padding: 0 0 0 4px; list-style: none; display: grid; gap: 8px; }
+.alm-page .alm-rewards li, .alm-page .alm-quick-steps li { position: relative; padding: 10px 12px 10px 40px; border-radius: 12px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; }
+.alm-page .alm-rewards li::before { content: "✦"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #22d3ee; }
+.alm-page .alm-rewards strong { color: #edeaff; }
+.alm-page .alm-quick-steps { counter-reset: passi; }
+.alm-page .alm-quick-steps li { counter-increment: passi; }
+.alm-page .alm-quick-steps li::before { content: counter(passi); position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .72rem; color: #070713; background: linear-gradient(135deg, #22d3ee, #8b5cf6); }
+.alm-page .alm-quick { border-color: rgba(34, 211, 238, .45); }
 
-/* Ricompense */
-.alm-page .alm-rewards { margin: 0; padding-left: 1.3em; display: grid; gap: 7px; }
-.alm-page .alm-rewards li { color: #4a3a24; font-size: .94rem; line-height: 1.45; }
-.alm-page .alm-rewards strong { color: #6a4a18; }
+/* scala dello sfinimento */
+.alm-page .alm-sfin { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.alm-page .alm-sfin-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 14px; background: linear-gradient(90deg, #12122a, #0d0d1f); border: 1px solid rgba(139, 92, 246, .22); border-left: 3px solid var(--sf, #8b5cf6); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; transition: transform .2s ease; }
+.alm-page .alm-sfin-row:hover { transform: translateX(6px); }
+.alm-page .alm-sfin-lv { background: linear-gradient(135deg, var(--sf, #22d3ee), color-mix(in srgb, var(--sf, #22d3ee) 60%, #8b5cf6)); box-shadow: 0 0 14px -3px var(--sf, #22d3ee); }
+.alm-page .alm-sfin-row.is-death { border-color: rgba(192, 38, 211, .6); }
+.alm-page .alm-sfin-row.is-death .alm-sfin-eff { color: #e879f9; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
-/* Quick reference */
-.alm-page .alm-quick { background: linear-gradient(135deg, rgba(250,243,225,.97), rgba(240,228,200,.95)); }
-.alm-page .alm-quick-steps {
-  margin: 0; padding: 0; list-style: none;
-  display: grid; gap: 8px; grid-template-columns: 1fr;
-  counter-reset: q;
+@media (max-width: 480px) {
+  .alm-page .alm-giorni { grid-template-columns: repeat(2, 1fr); }
+  .alm-page .alm-mesi { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .alm-page .alm-mese { padding: 28px 8px 12px; }
 }
-@media (min-width: 700px) { .alm-page .alm-quick-steps { grid-template-columns: repeat(3, 1fr); } }
-.alm-page .alm-quick-steps li {
-  counter-increment: q;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 9px;
-  background: rgba(255,255,255,.6);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
-  font-size: .9rem; font-weight: 600; color: #4a3414;
-}
-.alm-page .alm-quick-steps li::before {
-  content: counter(q);
-  display: grid; place-items: center; flex: 0 0 auto; width: 24px; height: 24px;
-  border-radius: 50%; font-weight: 900; font-size: .8rem; color: #fffdf5;
-  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-}
-
-/* Riduci movimento */
 @media (prefers-reduced-motion: reduce) {
-  .alm-page .alm-hero-plate,
-  .alm-page .alm-hero-media img { animation: none !important; transform: none !important; }
+  .alm-page .alm-tiri-row:hover, .alm-page .alm-sfin-row:hover { transform: none; }
 }
-
-/* AmbientFX dietro */
-.alm-page > * { position: relative; z-index: 1; }
-.alm-page > .ambient-fx { position: fixed; z-index: 0; }
-
-/* ── GLACIER ── */
-/* L'indice dell'hero resta un <nav aria-label="Indice"> dentro le azioni
-   della finestra artica: display:contents lo rende trasparente al flex
-   di .gl-actions (le CTA si impaginano come sorelle dirette). */
-.alm-page .gl-actions .alm-jump-gl { display: contents; }

@@ -9,7 +9,6 @@ import { doc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
-import GlacierHero from "../components/glacier/GlacierHero";
 import './Riassunti.css';
 import './RiassuntoSingolo.css';
 
@@ -186,11 +185,11 @@ export default function RiassuntoSingolo() {
     if (notFound || !summary) {
         return (
             <section className="rsx-page">
-                <div className="rsx-missing">
-                    <span className="rsx-missing-seal" aria-hidden="true">❦</span>
-                    <h1>Memoria non trovata</h1>
-                    <p>Questa cronaca non esiste più o il link non è corretto.</p>
-                    <Link to="/riassunti" className="rsx-back-btn">← Tutte le memorie</Link>
+                <div className="nx-pannello rsx-missing">
+                    <span className="rsx-missing-seal" aria-hidden="true">✦</span>
+                    <h1 className="nx-titolo">Memoria non trovata</h1>
+                    <p className="nx-nota">Questa cronaca non esiste più o il link non è corretto.</p>
+                    <Link to="/riassunti" className="gl-cta rsx-back-btn">← Tutte le memorie</Link>
                 </div>
             </section>
         );
@@ -198,12 +197,12 @@ export default function RiassuntoSingolo() {
 
     return (
         <section className="rsx-page">
-            <article className="rsx-scroll">
+            <article className="nx-pannello rsx-scroll">
                 <div className="rsx-topbar">
-                    <Link to="/riassunti" className="rsx-back">← Tutte le memorie</Link>
+                    <Link to="/riassunti" className="nx-pillola rsx-back">← Tutte le memorie</Link>
                     <button
                         type="button"
-                        className={`rsx-share${copied ? " is-copied" : ""}`}
+                        className={`nx-pillola rsx-share${copied ? " is-copied" : ""}`}
                         onClick={copyLink}
                         title="Copia il link a questa memoria"
                     >
@@ -211,24 +210,31 @@ export default function RiassuntoSingolo() {
                     </button>
                 </div>
 
-                {/* ── Testata = FINESTRA ARTICA (GlacierHero) con la copertina
-                      dinamica della memoria (arco d'abisso se assente) ── */}
-                <GlacierHero
-                    className="rsx-glhero"
-                    ariaLabel={summary.title || "Memoria"}
-                    image={summary.coverImage || undefined}
-                    eyebrow={`Cronache di Eldoria${summary.party ? ` · Gruppo ${summary.party}` : ""}`}
-                    title={summary.title || "Senza titolo"}
-                    seal={summary.date || undefined}
-                    tagline={summary.subTitle || undefined}
-                >
+                {/* ── Copertina arrotondata + testata a gradiente (kit Nesso) ── */}
+                {summary.coverImage && (
+                    <div className="rsx-cover">
+                        <img
+                            className="nx-modale-img"
+                            src={summary.coverImage}
+                            alt={summary.title || "Memoria"}
+                            onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                        />
+                    </div>
+                )}
+                <header className="rsx-head nx-testata">
+                    <span className="nx-kicker rsx-eyebrow">
+                        Cronache di Eldoria{summary.party ? ` · Gruppo ${summary.party}` : ""}
+                    </span>
+                    <h1 className="nx-titolo rsx-title">{summary.title || "Senza titolo"}</h1>
+                    {summary.date && <p className="nx-meta rsx-date">{summary.date}</p>}
+                    {summary.subTitle && <p className="nx-nota rsx-sub">{summary.subTitle}</p>}
                     {isMaster && (
-                        <span className="rsx-visits" title="Visite totali">👁 {summary.viewCount || 0}</span>
+                        <span className="nx-pillola rsx-visits" title="Visite totali">👁 {summary.viewCount || 0}</span>
                     )}
-                </GlacierHero>
+                </header>
 
                 <div
-                    className="rs-summary-html rsx-body"
+                    className="rs-summary-html nx-prosa rsx-body"
                     onClick={handleLoreClick}
                     dangerouslySetInnerHTML={{ __html: linkedHtml || summary.content }}
                 />
@@ -255,7 +261,7 @@ export default function RiassuntoSingolo() {
                 )}
 
                 <div className="rsx-foot">
-                    <Link to="/riassunti" className="rsx-back-btn">← Torna a tutte le memorie</Link>
+                    <Link to="/riassunti" className="gl-cta rsx-back-btn">← Torna a tutte le memorie</Link>
                 </div>
             </article>
 

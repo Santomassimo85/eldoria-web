@@ -1,8 +1,8 @@
 /* src/pages/Concilio.css — "Il Concilio" (tema Pergamena Antica) */
 .conc{
-  --panel:#fbf4e0; --panel2:#f3ead2; --line:rgba(124,86,15,.26);
-  --gold:#a9781a; --gold-deep:#7c560f; --red:#b8362a; --red-soft:#8a261c;
-  --ink:#33281a; --muted:#6a5b41;
+  --panel:#14142c; --panel2:#f3ead2; --line:rgba(124,86,15,.26);
+  --gold:#22d3ee; --gold-deep:#c4b5fd; --red:#e879f9; --red-soft:#e879f9;
+  --ink:#edeaff; --muted:#8f8bb8;
   max-width:1100px; margin:0 auto; padding:calc(var(--navbar-h,64px) + 22px) 18px 90px;
   font-family:var(--font-text),Georgia,serif; color:var(--ink);
 }
@@ -34,7 +34,7 @@
   font-size:14.5px; cursor:pointer; border:1px solid var(--line);
 }
 .conc-toast.ok{ background:#e7f1e2; color:#23502a; border-color:#bcd8b8; }
-.conc-toast.err{ background:#f7e0db; color:#8a261c; border-color:#e3b6ad; }
+.conc-toast.err{ background:#f7e0db; color:#e879f9; border-color:#e3b6ad; }
 
 /* ── GRIGLIA ── */
 .conc-grid{
@@ -137,16 +137,16 @@
 .conc-editions{ list-style:none; margin:12px 0 0; padding:0; }
 .conc-editions li{ display:flex; align-items:center; gap:10px; padding:6px 2px; border-top:1px solid rgba(124,86,15,.13); font-size:13.5px; }
 .conc-editions b{ font-family:var(--font-title),'Cinzel',serif; color:var(--red); min-width:46px; }
-.conc-ed-st{ font-size:11px; font-weight:700; padding:1px 8px; border-radius:12px; background:#eadfca; color:#7c560f; text-transform:capitalize; }
+.conc-ed-st{ font-size:11px; font-weight:700; padding:1px 8px; border-radius:12px; background:#eadfca; color:#c4b5fd; text-transform:capitalize; }
 .conc-ed-st.st-sent{ background:#dcefdc; color:#23502a; }
-.conc-ed-st.st-cancelled{ background:#f3dada; color:#8a261c; }
+.conc-ed-st.st-cancelled{ background:#f3dada; color:#e879f9; }
 .conc-ed-date{ margin-left:auto; color:var(--muted); font-size:12px; }
 
 .conc-scriba{ background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:14px; margin:16px 0; }
 .conc-scriba-row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .conc-pill{ font-size:13px; font-weight:700; padding:3px 10px; border-radius:20px; }
 .conc-pill.on{ background:#dcefdc; color:#23502a; }
-.conc-pill.off{ background:#eadfca; color:#7c560f; }
+.conc-pill.off{ background:#eadfca; color:#c4b5fd; }
 .conc-scriba-last{ font-size:13px; color:var(--muted); }
 .conc-scriba-btns{ display:flex; flex-wrap:wrap; gap:9px; }
 .conc-scriba-btns button, .conc-link-btn{
@@ -178,7 +178,7 @@
 /* ── LOCKED ── */
 .conc-locked{ text-align:center; padding:calc(var(--navbar-h,64px) + 60px) 20px 80px; color:#7a6f55; }
 .conc-orb{ font-size:64px; }
-.conc-locked h1{ font-family:var(--font-title),'Cinzel',serif; color:#b8362a; }
+.conc-locked h1{ font-family:var(--font-title),'Cinzel',serif; color:#e879f9; }
 
 @media(max-width:560px){
   .conc-stats{ grid-template-columns:1fr 1fr; }

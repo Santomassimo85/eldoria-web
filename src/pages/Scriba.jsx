@@ -16,7 +16,6 @@ import sampleIssues from "../data/scribaSample.json";
 import { exanthiaDateLabel, exanthiaMonthKey } from "../data/exanthiaCalendar";
 import ScribaEditModal from "./ScribaEditModal";
 import GlacierHero from "../components/glacier/GlacierHero";
-import Vetrata from "../components/glacier/Vetrata";
 import "./Scriba.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -276,8 +275,8 @@ export default function Scriba() {
         </div>
       )}
 
-      {/* ── Testata = FINESTRA ARTICA (GlacierHero): copertina dell'ultimo
-            numero nella finestra, titolo inciso sulla lastra ── */}
+      {/* ── Testata = VARCO (GlacierHero): copertina dell'ultimo numero nel
+            portale esagonale, titolo a gradiente accanto ── */}
       <GlacierHero
         className="scriba-glhero"
         ariaLabel="Lo Scriba — Gazzetta di Exanthia"
@@ -291,7 +290,7 @@ export default function Scriba() {
       />
 
       {nextIssueMs > 0 && (
-        <div className="scriba-countdown" role="status" aria-live="polite">
+        <div className="nx-pannello scriba-countdown" role="status" aria-live="polite">
           <span className="scriba-cd-quill" aria-hidden="true">🪶</span>
           {countdownMs > 0 ? (
             <p className="scriba-cd-text">
@@ -307,7 +306,7 @@ export default function Scriba() {
       )}
 
       {isMaster && !loading && issues.length > 0 && String(issues[0].id).startsWith("sample-") && (
-        <p style={{ background: "#fff6e0", border: "1px solid #e3cf9b", color: "#7a5b12", borderRadius: 8, padding: "10px 14px", margin: "0 0 14px", lineHeight: 1.5 }}>
+        <p className="nx-pannello scriba-avviso">
           ℹ️ Questi sono <strong>numeri d'esempio</strong> (spariscono al primo numero reale pubblicato). I pulsanti <strong>✒️ Modifica</strong> e <strong>🗑 Elimina</strong> compaiono solo sui numeri veri inviati.
         </p>
       )}
@@ -338,48 +337,52 @@ export default function Scriba() {
         groups.map((g) => (
           <section key={g.label} className="scriba-month">
             <h2 className="gl-sezlabel">{g.label}</h2>
-            <div className="gl-vetrate">
+            <div className="nx-griglia nx-griglia--larga scriba-griglia">
               {g.items.map((it) => (
-                <div key={it.id} className="scriba-card-wrap" style={{ position: "relative" }}>
-                {isMaster && !String(it.id).startsWith("sample-") && (
-                  <>
-                  <button
-                    type="button"
-                    className="scriba-link"
-                    title="Copia il link condivisibile a questo numero"
-                    aria-label="Copia il link a questo numero"
-                    onClick={(e) => { e.stopPropagation(); copyShareLink(it); }}
-                    style={{ position: "absolute", top: 8, right: 80, zIndex: 2, background: "rgba(28,24,19,.85)", color: "#f4efe3", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 14, lineHeight: 1 }}
-                  >🔗</button>
-                  <button
-                    type="button"
-                    className="scriba-edit"
-                    title="Modifica questo numero"
-                    aria-label="Modifica questo numero"
-                    onClick={(e) => { e.stopPropagation(); setEditing(it); }}
-                    style={{ position: "absolute", top: 8, right: 44, zIndex: 2, background: "rgba(201,162,39,.95)", color: "#1c1813", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 15, lineHeight: 1 }}
-                  >✒️</button>
-                  <button
-                    type="button"
-                    className="scriba-del"
-                    title="Elimina questo numero"
-                    aria-label="Elimina questo numero"
-                    onClick={(e) => { e.stopPropagation(); removeIssue(it); }}
-                    style={{ position: "absolute", top: 8, right: 8, zIndex: 2, background: "rgba(138,38,28,.92)", color: "#fff", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 15, lineHeight: 1 }}
-                  >🗑</button>
-                  </>
-                )}
-                {isMaster && !String(it.id).startsWith("sample-") && (
-                  <span className="scriba-reads" title="Letture totali">👁 {it.readCount || 0}</span>
-                )}
-                {/* Vetrata panoramica: STESSA azione di prima (apre il lettore) */}
-                <Vetrata
-                  img={it.images?.[0]?.url || undefined}
-                  title={it.content?.lead?.headline || `Numero ${it.number}`}
-                  sub={it.content?.edition_motto ? `«${it.content.edition_motto}»` : undefined}
-                  sigillo={`Numero ${it.number} · ${fmtDate(it)}`}
-                  onClick={() => openIssue(it)}
-                />
+                <div key={it.id} className="scriba-card-wrap">
+                  {isMaster && !String(it.id).startsWith("sample-") && (
+                    <div className="scriba-azioni" aria-label="Azioni del direttore">
+                      <button
+                        type="button"
+                        className="nx-pillola scriba-azione scriba-link"
+                        title="Copia il link condivisibile a questo numero"
+                        aria-label="Copia il link a questo numero"
+                        onClick={(e) => { e.stopPropagation(); copyShareLink(it); }}
+                      >🔗</button>
+                      <button
+                        type="button"
+                        className="nx-pillola scriba-azione scriba-edit"
+                        title="Modifica questo numero"
+                        aria-label="Modifica questo numero"
+                        onClick={(e) => { e.stopPropagation(); setEditing(it); }}
+                      >✒️</button>
+                      <button
+                        type="button"
+                        className="nx-pillola scriba-azione scriba-del"
+                        title="Elimina questo numero"
+                        aria-label="Elimina questo numero"
+                        onClick={(e) => { e.stopPropagation(); removeIssue(it); }}
+                      >🗑</button>
+                    </div>
+                  )}
+                  {isMaster && !String(it.id).startsWith("sample-") && (
+                    <span className="scriba-reads" title="Letture totali">👁 {it.readCount || 0}</span>
+                  )}
+                  {/* il numero = pannello del Nesso: STESSA azione di prima (apre il lettore) */}
+                  <button type="button" className="nx-pannello nx-pannello--tap scriba-numero" onClick={() => openIssue(it)}>
+                    <div className="scriba-copertina">
+                      {it.images?.[0]?.url
+                        ? <img src={it.images[0].url} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                        : <span className="scriba-copertina-ph" aria-hidden="true">🪶</span>}
+                      <span className="scriba-copertina-velo" aria-hidden="true" />
+                    </div>
+                    <span className="nx-tag scriba-num">Numero {it.number} · {fmtDate(it)}</span>
+                    <h3 className="nx-nome scriba-titolo">{it.content?.lead?.headline || `Numero ${it.number}`}</h3>
+                    {it.content?.edition_motto && (
+                      <p className="nx-nota scriba-motto">«{it.content.edition_motto}»</p>
+                    )}
+                    <span className="nx-meta scriba-cue">Apri il numero ›</span>
+                  </button>
                 </div>
               ))}
             </div>

@@ -805,3 +805,163 @@ body.theme-dark footer {
   border-top: 1px solid rgba(139, 92, 246, .28);
   color: var(--nx-muted);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   10) KIT NESSO — mattoni riutilizzabili per le pagine ristrutturate
+       (Party/NPC/Geo/Riassunti/…): testata, pannello, anello-ritratto,
+       pillole-indice (satelliti), griglia, modale-varco, testo.
+   ══════════════════════════════════════════════════════════════════ */
+/* testata di pagina o di sezione */
+.nx-testata { text-align: center; padding: 8px 8px 6px; }
+.nx-kicker {
+  display: block;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem; letter-spacing: .44em; text-transform: uppercase;
+  color: var(--nx-ciano); text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+}
+.nx-titolo {
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.05; margin: 8px 0 6px;
+  background: var(--nx-grad);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 22px rgba(139, 92, 246, .45));
+}
+.nx-sotto { font-family: "Manrope", system-ui, sans-serif; color: var(--nx-muted); max-width: 52ch; margin: 0 auto; line-height: 1.6; }
+
+/* pannello di vetro scuro */
+.nx-pannello {
+  position: relative;
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border: 1px solid var(--nx-line);
+  border-radius: 18px;
+  padding: 18px 16px 16px;
+  color: var(--nx-ink);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s ease, border-color .25s ease;
+}
+.nx-pannello--tap { cursor: pointer; text-align: center; }
+.nx-pannello--tap:hover { transform: translateY(-7px); border-color: var(--nx-line-hi); box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34, 211, 238, .55); }
+.nx-pannello--sticky { position: sticky; top: calc(var(--navbar-h, 66px) + 14px); }
+
+/* anello-ritratto: gradiente conico che orbita, accelera al passaggio */
+.nx-anello { position: relative; width: 104px; height: 104px; border-radius: 50%; padding: 4px; margin: 0 auto 12px; flex: 0 0 auto; }
+.nx-anello::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--nx-ciano), var(--nx-viola), var(--nx-magenta), var(--nx-ciano));
+  animation: nx-orbita 7s linear infinite;
+}
+.nx-pannello--tap:hover .nx-anello::before, .nx-anello:hover::before { animation-duration: 1.6s; }
+@keyframes nx-orbita { to { transform: rotate(360deg); } }
+.nx-anello img, .nx-anello .nx-anello-ph {
+  position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%;
+  object-fit: cover; object-position: top; border: 3px solid #0d0d1f; display: flex; align-items: center; justify-content: center;
+  background: #10102a; font-family: "Cinzel", Georgia, serif; font-size: 1.6rem; color: var(--nx-viola-soft);
+}
+.nx-anello--sm { width: 64px; height: 64px; padding: 3px; margin: 0; }
+.nx-anello--sm img, .nx-anello--sm .nx-anello-ph { border-width: 2px; font-size: 1.1rem; }
+
+/* pillole-indice: i "satelliti" di una pagina */
+.nx-pillole { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 14px 0; }
+.nx-pillola {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .7); color: var(--nx-muted); text-decoration: none; cursor: pointer;
+  font-family: "Manrope", system-ui, sans-serif; font-size: .72rem; font-weight: 600; letter-spacing: .04em;
+  transition: all .2s ease;
+}
+.nx-pillola:hover { color: var(--nx-ink); border-color: var(--nx-ciano); box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); transform: translateY(-2px); }
+.nx-pillola.on, .nx-pillola.active { background: var(--nx-grad-btn); color: #070713; border-color: transparent; box-shadow: 0 0 22px -4px rgba(34, 211, 238, .8); }
+
+/* griglia di pannelli */
+.nx-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+.nx-griglia--larga { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+/* layout a due colonne: rubrica fissa + flusso */
+.nx-due { display: grid; gap: 22px; }
+@media (min-width: 820px) { .nx-due { grid-template-columns: 260px 1fr; align-items: start; } }
+
+/* etichette e testo dentro i pannelli */
+.nx-nome { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .95rem; letter-spacing: .05em; color: var(--nx-ink); margin: 0; }
+.nx-meta { font-family: "Manrope", system-ui, sans-serif; font-size: .78rem; color: var(--nx-viola-soft); }
+.nx-nota { font-family: "Manrope", system-ui, sans-serif; font-size: .74rem; color: var(--nx-muted); line-height: 1.4; }
+.nx-tag { position: absolute; top: 12px; right: 14px; font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; color: var(--nx-magenta); }
+.nx-tag--inline { position: static; display: inline-block; }
+.nx-prosa { font-family: "Manrope", system-ui, sans-serif; color: #c9c4ea; line-height: 1.8; }
+.nx-prosa i, .nx-prosa em { color: var(--nx-viola-soft); }
+
+/* modale-varco */
+.nx-modale-overlay {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center;
+  padding: 18px; background: rgba(4, 4, 12, .7);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: nx-fade .2s ease both;
+}
+@keyframes nx-fade { from { opacity: 0; } to { opacity: 1; } }
+.nx-modale {
+  position: relative; width: 100%; max-width: 560px; max-height: calc(100dvh - 80px); overflow-y: auto;
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .45); border-radius: 22px; padding: 22px 24px 24px;
+  color: var(--nx-ink);
+  box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(139, 92, 246, .6);
+  animation: nx-varco .4s cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes nx-varco { from { opacity: 0; transform: scale(.955); filter: blur(6px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+.nx-modale-close {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid rgba(139, 92, 246, .4); background: rgba(13, 13, 31, .9); color: var(--nx-magenta);
+  font-size: .85rem; cursor: pointer; z-index: 2; transition: background .15s ease, transform .15s ease;
+}
+.nx-modale-close:hover { background: #1e1e40; transform: scale(1.08); }
+.nx-modale-img { width: 100%; height: 220px; object-fit: cover; object-position: top; border-radius: 14px; margin: 0 0 14px; border: 1px solid rgba(139, 92, 246, .4); }
+.nx-modale .nx-titolo { font-size: clamp(1.2rem, 4vw, 1.6rem); margin: 0 0 4px; }
+.nx-meta-box { display: grid; gap: 6px; padding: 12px 14px; margin: 12px 0; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .3); border-radius: 14px; }
+.nx-meta-box p { margin: 0; color: #c9c4ea; font-size: .92rem; line-height: 1.5; }
+.nx-meta-box strong { color: var(--nx-ciano); }
+.nx-citazione { margin: 0; padding: 12px 16px; text-align: center; color: var(--nx-viola-soft); font-style: italic; border-left: 3px solid var(--nx-ciano); background: rgba(34, 211, 238, .07); border-radius: 0 12px 12px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-anello::before, .nx-modale, .nx-modale-overlay { animation: none !important; }
+}
+
+/* ── Toolbar cine condivisa (cinematic.css): ricerca e chip nel vuoto,
+      per tutte le pagine che la importano ── */
+body:not(.theme-dark) .cine-toolbar {
+  background: rgba(13, 13, 31, .85);
+  border: 1px solid var(--nx-line);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
+}
+body:not(.theme-dark) .cine-search { background: transparent; }
+body:not(.theme-dark) .cine-search-input {
+  background: #0e0e22;
+  color: var(--nx-ink);
+  border: 1px solid rgba(139, 92, 246, .4);
+  border-radius: 999px;
+  font-family: "Manrope", system-ui, sans-serif;
+}
+body:not(.theme-dark) .cine-search-input::placeholder { color: var(--nx-muted); }
+body:not(.theme-dark) .cine-search-input:focus {
+  background: #0e0e22;
+  border-color: var(--nx-ciano);
+  box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8);
+}
+body:not(.theme-dark) .cine-search-icon { color: var(--nx-ciano); }
+body:not(.theme-dark) .cine-search-clear { background: rgba(139, 92, 246, .25); color: var(--nx-ink); }
+body:not(.theme-dark) .cine-chip {
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .7);
+  color: var(--nx-muted);
+  font-family: "Manrope", system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: .04em;
+}
+body:not(.theme-dark) .cine-chip:hover { color: var(--nx-ink); border-color: var(--nx-ciano); box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); transform: translateY(-2px); }
+body:not(.theme-dark) .cine-chip.active { background: var(--nx-grad-btn); color: #070713; border-color: transparent; box-shadow: 0 0 22px -4px rgba(34, 211, 238, .8); }
+body:not(.theme-dark) .cine-result-count { color: var(--nx-ciano); }
+
+/* ── Contrasto di sicurezza: dentro le pagine del Nesso il testo corrente
+      non può mai essere scuro (residui pergamena nei CSS di pagina) ── */
+/* specificità ZERO (:where): vince solo sui default, mai sulle classi */
+:where(body:not(.theme-dark) .cine-page) :where(p, li, dd, dt, td, th, label, figcaption, blockquote) { color: #d5d1ee; }
+:where(body:not(.theme-dark) .cine-page) :where(h1, h2, h3, h4, h5) { color: var(--nx-ink); }
+:where(body:not(.theme-dark) .cine-page) :where(small) { color: var(--nx-muted); }

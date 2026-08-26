@@ -375,7 +375,7 @@ function PlayerForm({ currentUser, characterName }) {
       )}
 
       <div className="fb-form-actions">
-        <button type="submit" className="fb-btn fb-btn--primary" disabled={loading}>
+        <button type="submit" className="gl-cta fb-btn fb-btn--primary" disabled={loading}>
           {loading ? "Salvataggio..." : "💾 Salva feedback"}
         </button>
         <button type="button" className="fb-btn fb-btn--ghost" onClick={removeMine}>
@@ -428,11 +428,11 @@ function MyFeedbackList({ currentUser }) {
     return <p className="fb-empty">Non hai ancora lasciato feedback.</p>;
   }
   return (
-    <ul className="fb-mine-list">
+    <ul className="nx-griglia nx-griglia--larga fb-mine-list">
       {items.map(d => (
-        <li key={d.id} className="fb-mine-row">
+        <li key={d.id} className="nx-pannello fb-mine-row">
           <div className="fb-mine-head">
-            <span className="fb-mine-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
+            <span className="nx-nome fb-mine-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
             <StarRating value={d.stars || 0} onChange={() => {}} readOnly />
             <button
               type="button"
@@ -650,7 +650,7 @@ function MasterDashboard({ masterUser }) {
 
   return (
     <div className="fb-master">
-      <h2 className="fb-section-title">📊 Dashboard Master · panoramica</h2>
+      <div className="gl-sezlabel">📊 Dashboard Master · panoramica</div>
 
       <div className="fb-stats-grid">
         {FEATURES.map(f => {
@@ -659,7 +659,7 @@ function MasterDashboard({ masterUser }) {
           return (
             <div
               key={f.key}
-              className={`fb-stat-card ${s.bugs > 0 ? "fb-stat-card--bug" : ""}`}
+              className={`nx-pannello fb-stat-card ${s.bugs > 0 ? "fb-stat-card--bug" : ""}`}
             >
               <div className="fb-stat-feat">{f.label}</div>
               <div className="fb-stat-row">
@@ -696,7 +696,7 @@ function MasterDashboard({ masterUser }) {
         </div>
       )}
 
-      <h2 className="fb-section-title">📜 Tutti i feedback</h2>
+      <div className="gl-sezlabel">📜 Tutti i feedback</div>
 
       <div className="fb-filters">
         <label>
@@ -726,11 +726,11 @@ function MasterDashboard({ masterUser }) {
       {visible.length === 0 ? (
         <p className="fb-empty">Nessun feedback corrisponde ai filtri.</p>
       ) : (
-        <ul className="fb-list">
+        <ul className="nx-griglia nx-griglia--larga fb-list">
           {visible.map(d => (
-            <li key={d.id} className="fb-row">
+            <li key={d.id} className="nx-pannello fb-row">
               <div className="fb-row-head">
-                <span className="fb-row-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
+                <span className="nx-nome fb-row-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
                 <StarRating value={d.stars || 0} onChange={() => {}} readOnly />
                 <button
                   type="button"
@@ -795,19 +795,19 @@ export default function Feedback() {
 
   if (!currentUser) {
     return (
-      <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
-        <div className="cine-wrap fb-locked-wrap">
-          <h1 className="fb-title">💬 Feedback</h1>
-          <p className="fb-locked">Accedi per lasciare un feedback.</p>
+      <section className="cine-page fb-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+        <div className="fb-locked-wrap nx-testata">
+          <span className="nx-kicker">La tua voce conta</span>
+          <h1 className="nx-titolo fb-title">Feedback</h1>
+          <p className="nx-pannello fb-locked">Accedi per lasciare un feedback.</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con Milo,
-            titolo inciso sulla lastra, tagline sotto la finestra ── */}
+    <section className="cine-page fb-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      {/* ── VARCO (prototipo J): Milo nel portale esagonale ── */}
       <GlacierHero
         className="fb-glhero"
         ariaLabel="Feedback"
@@ -817,22 +817,24 @@ export default function Feedback() {
         tagline="Valuta ogni funzionalità, scegli pro e contro, lascia un messaggio. Puoi modificare il tuo feedback quando vuoi."
       />
 
-      <div className="cine-wrap fb-body">
-      <div className="fb-panel">
-        <h2 className="fb-section-title">📝 Lascia il tuo feedback</h2>
-        <PlayerForm currentUser={currentUser} characterName={characterName} />
-      </div>
+      <div className="fb-body">
+        <section className="fb-sezione">
+          <div className="gl-sezlabel">📝 Lascia il tuo feedback</div>
+          <div className="nx-pannello fb-panel">
+            <PlayerForm currentUser={currentUser} characterName={characterName} />
+          </div>
+        </section>
 
-      <div className="fb-panel">
-        <h2 className="fb-section-title">📌 I tuoi feedback</h2>
-        <MyFeedbackList currentUser={currentUser} />
-      </div>
+        <section className="fb-sezione">
+          <div className="gl-sezlabel">📌 I tuoi feedback</div>
+          <MyFeedbackList currentUser={currentUser} />
+        </section>
 
-      {isMaster && (
-        <div className="fb-panel fb-panel--master">
-          <MasterDashboard masterUser={currentUser} />
-        </div>
-      )}
+        {isMaster && (
+          <section className="fb-sezione fb-sezione--master">
+            <MasterDashboard masterUser={currentUser} />
+          </section>
+        )}
       </div>
     </section>
   );
