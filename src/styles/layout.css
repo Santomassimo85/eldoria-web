@@ -157,15 +157,17 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   border: 1px solid rgba(34,211,238,.5);
   cursor: pointer;
   padding: 0;
-  background: radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22);
+  background: radial-gradient(circle at 40% 34%, #262650, #0d0d22);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  color: #8f8bb8;
+  color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 10px rgba(139,92,246,.8);
   font-family: "Cinzel", Georgia, serif;
-  font-size: .42rem;
+  font-weight: 700;
+  font-size: .46rem;
   letter-spacing: .08em;
   text-transform: uppercase;
   text-decoration: none;
@@ -191,7 +193,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 .nesso-sat.s6 { --sx: 114px;  --sy: -70px;   transition-delay: .15s; }
 .nesso-sat.s7 { --sx: 132px;  --sy: -6px;    transition-delay: .18s; }
 @media (min-width: 700px) {
-  .nesso-sat { width: 54px; height: 54px; left: -27px; font-size: .46rem; }
+  .nesso-sat { width: 54px; height: 54px; left: -27px; font-size: .5rem; }
   .nesso-sat.s1 { --sx: -156px; --sy: -6px; }
   .nesso-sat.s2 { --sx: -135px; --sy: -82px; }
   .nesso-sat.s3 { --sx: -78px;  --sy: -137px; }
@@ -200,7 +202,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   .nesso-sat.s6 { --sx: 135px;  --sy: -82px; }
   .nesso-sat.s7 { --sx: 156px;  --sy: -6px; }
 }
-.nesso-sat:hover { color: #edeaff; box-shadow: 0 0 22px rgba(34,211,238,.8); }
+.nesso-sat:hover { color: #fff; box-shadow: 0 0 22px rgba(34,211,238,.8); border-color: #22d3ee; }
 .nesso-sat.on,
 .nesso-sat.active {
   color: #070713;
@@ -208,8 +210,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   box-shadow: 0 0 26px rgba(34,211,238,1);
   border-color: transparent;
 }
-.nesso-sat.on .nesso-sat-g,
-.nesso-sat.active .nesso-sat-g { text-shadow: none; }
+.nesso-sat.on, .nesso-sat.active { text-shadow: none; }
 
 /* ============================================================
    COSTELLAZIONE — pannello flottante con i link di un gruppo
