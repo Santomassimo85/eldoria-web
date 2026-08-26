@@ -267,7 +267,7 @@
 
 
 /* ── LA PILA DEL VARCO: indietro + briciole + pagine che scorrono ── */
-.geo-page .geo-varco-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 40px 14px 0; }
+.geo-page .geo-varco-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -8px 0 14px; }
 .geo-page .geo-varco-back {
   display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;

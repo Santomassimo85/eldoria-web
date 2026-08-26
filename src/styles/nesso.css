@@ -1093,3 +1093,12 @@ nav a.admin-link.active, nav a.admin-link.admin-link-red.active { background: va
   font-variant: normal !important;
   font-weight: 400 !important;
 }
+
+/* ── Modale-varco: fascia libera in alto per la ✕ (mai sopra la foto) ── */
+.nx-modale { padding-top: 56px; }
+.nx-modale-close { top: 14px; right: 14px; }
+.nx-modale::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 44px;
+  background: linear-gradient(180deg, rgba(139, 92, 246, .12), transparent);
+  pointer-events: none;
+}
