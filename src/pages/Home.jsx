@@ -296,7 +296,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#e3aa3c", "--cine-accent-2": "#ffd97a" }}>
+    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#9a7bff", "--cine-accent-2": "#bfaaff" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -319,48 +319,44 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── HERO = IL COVO BUIO (mockup C): il drago del fiume nel buio,
-            la torcia rivela il covo, titolo d'oro e CTA tesoro sotto ── */}
+      {/* ── APERTURA (mockup G): solo il cielo d'aurora e il titolo ── */}
       <GlacierHero
         id="home-top"
+        className="gl-hero--cielo"
         ariaLabel="Il Mondo di Exanthia"
-        image="/assets/PhotoStory/GruppoMEAA/drago_fiume.png"
-        imgPos="center 30%"
-        hint="🔥 muovi la torcia: il covo si rivela"
-        eyebrow="Cronache di Exanthia · Il Covo"
+        eyebrow="Cronache di Exanthia"
         title={<>Il Mondo<br />di Exanthia</>}
-        tagline="Nel buio del covo, il drago custodisce le storie. Illumina, se osi."
-        actions={<a href="#home-tesoro" className="gl-cta">🜁 Sfida il Drago</a>}
       />
 
-      {/* ── IL TESORO CUSTODITO: mosaico bento di gemme (mockup C) ── */}
-      <div id="home-tesoro" className="gl-sezlabel">Il Tesoro Custodito</div>
-      <div className="gl-bento">
+      {/* ── I PANORAMI: sezioni a tutta larghezza, numerate, alternate ── */}
+      <div className="gl-vetrate">
         <Vetrata
-          className="gl-gemma--grande"
           to="/party"
           img="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png"
           title="Registro degli Eroi"
           sub="Predatori di leggende, in quattro stirpi."
+          sigillo="Apri il registro"
         />
         <Vetrata
-          className="gl-gemma--alta"
           to="/mercato"
           img="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png"
           title="Mercato Nero"
-          sub="Aste in oro di drago."
+          sub="Merci che nessuna dogana vedrà mai."
+          sigillo="Scendi al banco"
         />
         <Vetrata
           to="/riassunti"
           img="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
           title="Memorie"
-          sub="Le cronache dei party."
+          sub="Le cronache dei party, notte dopo notte."
+          sigillo="Sfoglia le memorie"
         />
         <Vetrata
           to="/tarocchi"
           img="/assets/PhotoStory/GruppoMEAA/karathep.png"
           title="L'Oracolo"
-          sub="1 responso al giorno."
+          sub="Un responso al giorno, non uno di più."
+          sigillo="Chiedi agli Arcani"
         />
       </div>
 

@@ -1,0 +1,844 @@
+/* ============================================================================
+   CRIT HAPPENS — Tema G "AURORA DEL NORD" · REDESIGN TOTALE
+   Caricato PER ULTIMO (dopo light-theme.css e layout.css) — sostituisce il
+   layer "Draghi · Il Covo" (drake.css, eliminato).
+   Concetto: LA NOTTE ARTICA. Il fondo dell'app è il cielo del nord: notte
+   blu-viola, NASTRI D'AURORA che danzano da soli, stelle che scintillano,
+   neve finissima (AuroraOverlay). <main> è un velo di notte semitrasparente
+   che lascia intravedere l'aurora. Gli hero e le sezioni sono PANORAMI:
+   immagini a tutta larghezza che respirano (Ken Burns lento), titoli
+   Marcellus con filo d'aurora, numerali romani in filigrana, CTA "faro"
+   alla menta. Tutto il movimento è AMBIENTALE: nessuna feature al tocco.
+   Scoped su body:not(.theme-dark): le pagine di gioco scure (Arena/TCG/
+   World Boss/Pet) restano intoccate. Mai background-attachment:fixed (iOS).
+   NB: i componenti condivisi conservano i nomi storici (GlacierHero,
+   Vetrata, classi gl-*) per non toccare 20+ pagine: qui vengono rivestiti.
+   ============================================================================ */
+
+/* ══════════════════════════════════════════════════════════════════
+   0) TOKEN — notte artica, menta d'aurora, viola, rosa
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg-0:#0d1226;   /* fondale — notte */
+  --bg-1:#101631;   /* superfici */
+  --bg-2:#131a38;   /* card — velo di notte */
+  --bg-3:#1a2246;   /* elementi elevati */
+  --line:#2b3560;   /* filetto notturno */
+  --line-soft:#1e2748;
+  --overlay:rgba(6, 8, 18, .65);
+
+  --amber:#5ce8b8;  --amber-deep:#2ba57f;  --amber-soft:#9fefd2; /* "oro" → menta d'aurora */
+  --arc:#9a7bff;    --arc-deep:#6a4fd0;    --arc-soft:#bfaaff;   /* arcano → viola aurora */
+  --crit:#e0567e;   --crit-deep:#a52f54;   /* rosso → rosa aurora */
+  --ok:#2f8f75;     --warn:#b07d1a;        --info:#2b7fc0;
+
+  --ink:#eef2ff;  --muted:#98a2c8;  --faint:#626c94;
+
+  --shadow-1:0 2px 10px rgba(3, 5, 14, .55);
+  --shadow-2:0 14px 44px -14px rgba(3, 5, 14, .75);
+  --shadow-3:0 28px 70px -24px rgba(3, 5, 14, .85);
+  --glow-amber:0 0 0 1px rgba(92, 232, 184, .4), 0 10px 30px -10px rgba(92, 232, 184, .45);
+  --glow-arc:0 0 0 1px rgba(154, 123, 255, .4), 0 10px 30px -10px rgba(154, 123, 255, .45);
+  --glow-crit:0 0 0 1px rgba(224, 86, 126, .4), 0 10px 30px -10px rgba(224, 86, 126, .45);
+
+  --grad-amber:linear-gradient(135deg,#9fefd2,#5ce8b8 45%,#2ba57f);
+  --grad-arc:linear-gradient(135deg,#bfaaff,#9a7bff 45%,#6a4fd0);
+  --grad-crit:linear-gradient(135deg,#ff8ac2,#e0567e 45%,#a52f54);
+
+  --text:#eef2ff;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   1) IL CIELO DEL NORD — il fondo dell'app è la notte artica
+      (i nastri d'aurora, le stelle e la neve vivono in AuroraOverlay)
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) {
+  background:
+    radial-gradient(70% 40% at 50% -5%, rgba(154, 123, 255, .1), transparent 60%),
+    linear-gradient(180deg, #0d1226, #0a0e1c 55%, #060812);
+  background-attachment: scroll; /* mai fixed (iOS) */
+  color: var(--ink);
+}
+body:not(.theme-dark) ::selection { background: rgba(92, 232, 184, .4); color: #071018; }
+
+/* ══════════════════════════════════════════════════════════════════
+   2) IL VELO — <main> è un velo di notte che lascia passare l'aurora
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) main {
+  width: min(1480px, calc(100% - clamp(10px, 2vw, 40px)));
+  margin: 0 auto clamp(20px, 3vw, 48px);
+  overflow-x: clip; /* clip (non hidden): gli sticky continuano a funzionare */
+  border-radius: 0 0 30px 30px;
+  background: linear-gradient(180deg, rgba(13, 18, 38, .62), rgba(10, 14, 28, .78) 30%, rgba(7, 9, 20, .9));
+  box-shadow:
+    0 0 0 1px rgba(154, 123, 255, .22),
+    0 0 60px -10px rgba(154, 123, 255, .18),
+    0 34px 90px -22px rgba(0, 0, 0, .8);
+}
+
+/* full-bleed residui (cine-scrolly ecc.): riportati alla larghezza velo */
+body:not(.theme-dark) .cine-scrolly,
+body:not(.theme-dark) .cine-hero {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3) SISTEMA CINE — palette della notte via CSS variables
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-page {
+  --cine-accent:      #9a7bff;
+  --cine-accent-2:    #bfaaff;
+  --cine-gold:        #5ce8b8;
+  --cine-gold-soft:   #9fefd2;
+  --cine-gold-ink:    #7ddfc0;
+  --cine-bg-top:      transparent;
+  --cine-bg-mid:      transparent;
+  --cine-bg-bot:      #060812;
+  color: var(--ink);
+  /* il velo del main basta: la pagina resta trasparente sull'aurora */
+  background-image: none;
+  background-color: transparent;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4) CHROME — header, drawer, footer = vetro di notte con fili d'aurora
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .app-nav {
+  background: linear-gradient(180deg, rgba(13, 18, 38, .92), rgba(8, 10, 22, .88)) !important;
+  border-bottom: 1px solid rgba(154, 123, 255, .3) !important;
+  box-shadow:
+    0 10px 34px -12px rgba(0, 0, 0, .85),
+    0 2px 24px -10px rgba(92, 232, 184, .25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+body:not(.theme-dark) .logo-img { filter: drop-shadow(0 2px 12px rgba(92, 232, 184, .55)); }
+body:not(.theme-dark) nav a,
+body:not(.theme-dark) .nav-dd-trigger { color: #c8cfec !important; }
+body:not(.theme-dark) nav a:hover,
+body:not(.theme-dark) .nav-dd-trigger:hover {
+  background: linear-gradient(90deg, rgba(92, 232, 184, .16), rgba(154, 123, 255, .14)) !important;
+  box-shadow: inset 0 0 0 1px rgba(92, 232, 184, .4), 0 0 20px -4px rgba(92, 232, 184, .5) !important;
+  text-shadow: 0 0 14px rgba(159, 239, 210, .7);
+}
+
+body:not(.theme-dark) footer {
+  background: linear-gradient(180deg, #0c1124, #060812);
+  border-top: 1px solid rgba(154, 123, 255, .28);
+  box-shadow: 0 -2px 30px -10px rgba(154, 123, 255, .3);
+}
+
+@media (max-width: 1300px) {
+  /* drawer mobile: cielo di mezzanotte */
+  body:not(.theme-dark) nav {
+    background: linear-gradient(180deg, #111838, #090c1e) !important;
+    border-left: 1px solid rgba(154, 123, 255, .3) !important;
+  }
+  /* la nav "fuochi" flottante vive in layout.css (valida anche sulle
+     pagine scure: il vetro di notte è coerente ovunque) */
+}
+
+/* rune della nav desktop e del drawer: fuochi d'aurora */
+.nav-rune {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  margin-right: .42em;
+  font-size: 1em;
+  line-height: 1;
+  color: #5f6a9a;
+  opacity: .9;
+  background: none;
+  box-shadow: none;
+  transform: translateY(.04em);
+}
+.nav-dd--open .nav-rune,
+.nav-dd-trigger:hover .nav-rune {
+  color: #5ce8b8;
+  opacity: 1;
+  text-shadow: 0 0 12px rgba(92, 232, 184, .9);
+  box-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   5) LIVELLI FX FISSI (renderizzati da <AuroraOverlay />): i nastri
+      d'aurora che danzano, le stelle e la neve finissima
+   ══════════════════════════════════════════════════════════════════ */
+.aur-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0; /* SOTTO il main (il velo è semitrasparente) */
+  overflow: hidden;
+}
+.aur-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+.aur-nastro {
+  position: absolute;
+  width: 140vw;
+  height: 34vh;
+  left: -20vw;
+  filter: blur(38px);
+  opacity: .45;
+  mix-blend-mode: screen;
+  border-radius: 50%;
+}
+.aur-nastro.n1 {
+  top: -6vh;
+  background: linear-gradient(100deg, transparent, #5ce8b8 30%, #9a7bff 65%, transparent);
+  animation: aur-danza1 16s ease-in-out infinite alternate;
+}
+.aur-nastro.n2 {
+  top: 8vh;
+  height: 26vh;
+  opacity: .3;
+  background: linear-gradient(80deg, transparent, #ff8ac2 35%, #5ce8b8 70%, transparent);
+  animation: aur-danza2 21s ease-in-out infinite alternate;
+}
+.aur-nastro.n3 {
+  top: -2vh;
+  height: 22vh;
+  opacity: .26;
+  background: linear-gradient(120deg, transparent, #9a7bff 40%, #ff8ac2 75%, transparent);
+  animation: aur-danza1 26s ease-in-out infinite alternate-reverse;
+}
+@keyframes aur-danza1 {
+  from { transform: translateX(-6vw) skewY(-4deg) scaleY(1); }
+  to   { transform: translateX(6vw)  skewY(3deg)  scaleY(1.25); }
+}
+@keyframes aur-danza2 {
+  from { transform: translateX(5vw)  skewY(3deg)  scaleY(1.15); }
+  to   { transform: translateX(-5vw) skewY(-5deg) scaleY(.9); }
+}
+body.theme-dark .aur-fx { display: none; } /* cintura di sicurezza */
+
+/* ══════════════════════════════════════════════════════════════════
+   6) DENTRO IL VELO — card/pannelli di vetro notturno, titoli di
+      luce, CTA faro, input scuri
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-card,
+body:not(.theme-dark) .cine-panel,
+body:not(.theme-dark) .ch-card,
+body:not(.theme-dark) .ch-panel {
+  background: linear-gradient(180deg, rgba(19, 26, 56, .88), rgba(11, 15, 34, .92));
+  border-color: rgba(154, 123, 255, .26);
+  box-shadow:
+    inset 0 1px 0 rgba(191, 170, 255, .1),
+    0 14px 44px -14px rgba(0, 0, 0, .75);
+}
+/* l'aurora brilla al passaggio */
+body:not(.theme-dark) .cine-card:hover,
+body:not(.theme-dark) .ch-card:hover {
+  border-color: rgba(92, 232, 184, .5);
+  box-shadow:
+    inset 0 1px 0 rgba(191, 170, 255, .14),
+    0 0 22px -4px rgba(92, 232, 184, .45),
+    0 18px 50px -16px rgba(0, 0, 0, .8);
+}
+body:not(.theme-dark) .ch-card::before {
+  background: radial-gradient(420px 220px at 100% 0%, rgba(154, 123, 255, .12), transparent 60%);
+}
+
+body:not(.theme-dark) .ch-h1 {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: var(--ink);
+  color: var(--ink);
+  font-family: "Marcellus", var(--font-head, "Cinzel"), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: .03em;
+  text-shadow: 0 0 22px rgba(154, 123, 255, .45), 0 2px 10px rgba(0, 0, 0, .6);
+  filter: none;
+}
+body:not(.theme-dark) .cine-hero-title {
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, .7),
+    0 0 26px rgba(92, 232, 184, .35),
+    0 0 60px rgba(154, 123, 255, .3);
+}
+body:not(.theme-dark) .cine-section-title { color: #cfe0f5; text-shadow: 0 0 18px rgba(154, 123, 255, .35); }
+body:not(.theme-dark) .ch-h2 { color: #9fefd2; }
+body:not(.theme-dark) .ch-lore { color: #c3cbe6; }
+body:not(.theme-dark) .cine-eyebrow,
+body:not(.theme-dark) .ch-eyebrow { color: #5ce8b8; text-shadow: 0 0 12px rgba(92, 232, 184, .5); }
+
+body:not(.theme-dark) .cine-pill {
+  border-color: rgba(154, 123, 255, .45);
+  box-shadow: 0 0 10px rgba(154, 123, 255, .2);
+}
+
+body:not(.theme-dark) .cine-btn--gold,
+body:not(.theme-dark) .ch-btn--amber {
+  background: linear-gradient(90deg, #5ce8b8, #9fefd2);
+  color: #0a1420;
+  border: none;
+  box-shadow:
+    0 0 30px -6px rgba(92, 232, 184, .85),
+    inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+body:not(.theme-dark) .cine-btn--gold:hover,
+body:not(.theme-dark) .ch-btn--amber:hover {
+  box-shadow:
+    0 0 40px -4px rgba(92, 232, 184, 1),
+    inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+body:not(.theme-dark) .ch-input,
+body:not(.theme-dark) .ch-select,
+body:not(.theme-dark) .ch-textarea {
+  background: #10162e;
+  color: var(--ink);
+  border-color: rgba(154, 123, 255, .32);
+}
+
+body:not(.theme-dark) .ch-divider {
+  background: linear-gradient(90deg, transparent, rgba(92, 232, 184, .5), transparent);
+}
+
+/* Toolbar cine (ricerca+chips): vetro di notte */
+body:not(.theme-dark) .cine-page .cine-toolbar {
+  background: rgba(14, 19, 40, .92);
+  border-color: rgba(154, 123, 255, .3);
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .75), 0 1px 0 rgba(191, 170, 255, .1) inset;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   7) PLACCHE E RUBRICHE — convenzione `*-hero-plate/-title/-rubric-*`
+      condivisa dalle pagine ristrutturate: chiave di luce notturna
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) [class*="-hero-plate"],
+body:not(.theme-dark) [class*="hero2-plate"] {
+  background: linear-gradient(150deg, rgba(19, 26, 56, .9), rgba(9, 12, 28, .94));
+  border-color: rgba(154, 123, 255, .32);
+  border-left-color: #5ce8b8;
+  box-shadow:
+    0 22px 50px -18px rgba(0, 0, 0, .8),
+    0 1px 0 rgba(191, 170, 255, .12) inset,
+    0 0 34px -10px rgba(92, 232, 184, .35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+body:not(.theme-dark) [class*="-hero-title"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-title"] {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: var(--ink);
+  color: var(--ink);
+  font-family: "Marcellus", var(--font-head, "Cinzel"), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: .03em;
+  text-shadow: 0 0 22px rgba(154, 123, 255, .5), 0 2px 10px rgba(0, 0, 0, .65);
+}
+body:not(.theme-dark) [class*="-hero-tagline"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-tagline"],
+body:not(.theme-dark) [class*="-hero-greet"] { color: #c3cbe6; }
+body:not(.theme-dark) [class*="-hero-greet"] strong { color: #9fefd2; }
+body:not(.theme-dark) [class*="-hero-seal"],
+body:not(.theme-dark) [class*="hero2-seal"] {
+  color: #9fefd2;
+  border-color: rgba(92, 232, 184, .45);
+  background: rgba(8, 12, 26, .6);
+}
+/* rubriche di sezione (convenzione *-rubric-*) */
+body:not(.theme-dark) [class*="-rubric-title"] {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: var(--ink);
+  color: var(--ink);
+  font-family: "Marcellus", var(--font-head, "Cinzel"), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: .04em;
+  text-shadow: 0 0 18px rgba(154, 123, 255, .4);
+}
+body:not(.theme-dark) [class*="-rubric-eyebrow"] { color: #5ce8b8; }
+body:not(.theme-dark) [class*="-rubric-sub"] { color: #98a2c8; }
+/* hint di scroll degli hero */
+body:not(.theme-dark) [class*="-hero-scroll"]:not([class*="cine"]) { color: #c8cfec; text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+body:not(.theme-dark) [class*="-hero-scroll-ic"] {
+  border-color: rgba(92, 232, 184, .5);
+  background: rgba(13, 18, 38, .6);
+  color: #5ce8b8;
+}
+/* velature fotografiche degli hero: notte del nord */
+body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) {
+  background:
+    linear-gradient(90deg, rgba(8, 10, 22, .55) 0%, rgba(8, 10, 22, .16) 50%, transparent 72%),
+    linear-gradient(180deg, rgba(8, 10, 22, .1) 0%, rgba(8, 10, 22, .3) 55%, var(--cine-bg-bot, #060812) 100%);
+}
+/* Bacheca: l'albo delle missive nel vetro di notte */
+body:not(.theme-dark) .bacheca-page .bch-board {
+  border-color: rgba(154, 123, 255, .3);
+  background:
+    linear-gradient(180deg, rgba(19, 26, 56, .8), rgba(10, 14, 30, .85)),
+    repeating-linear-gradient(135deg, rgba(92, 232, 184, .04) 0 14px, transparent 14px 28px);
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, .8), 0 1px 0 rgba(191, 170, 255, .1) inset;
+}
+
+/* Scrollbar: notte e menta */
+body:not(.theme-dark)::-webkit-scrollbar { width: 12px; background: #0a0e1c; }
+body:not(.theme-dark)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3c4a86, #232c55);
+  border-radius: 6px;
+  border: 2px solid #0a0e1c;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   8) STRUTTURA — i mattoni del mockup G (g-aurora.html), vestiti sui
+      componenti condivisi GlacierHero.jsx e Vetrata.jsx (classi gl-*).
+      8a) HERO = PANORAMA: immagine che respira, titolo con filo d'aurora
+      8b) SEZIONI-PANORAMA numerate a filigrana (ex vetrate)
+      8c) Apertura sotto l'aurora, etichette, CTA faro, sigilli
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 8a) HERO = PANORAMA ── */
+.gl-hero {
+  position: relative;
+  padding: 0 0 6px;
+  text-align: center;
+}
+.gl-finestra {
+  position: relative;
+  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  height: clamp(420px, 62vh, 640px);
+  overflow: hidden;
+  border-radius: 0 0 26px 26px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.gl-finestra-img {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  object-position: center 28%;
+  filter: none;
+  animation: gl-respira 18s ease-in-out infinite alternate;
+}
+@keyframes gl-respira {
+  from { transform: scale(1) translateY(0); }
+  to   { transform: scale(1.09) translateY(-2%); }
+}
+.gl-finestra-velo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg,
+    rgba(10, 14, 28, .5) 0%, rgba(10, 14, 28, .06) 32%,
+    rgba(10, 14, 28, .06) 50%, rgba(10, 14, 28, .94) 100%);
+}
+/* residui dei temi precedenti, neutralizzati (markup condiviso) */
+.gl-finestra-brina, .gl-covo-chiaro, .gl-torcia-luce, .gl-fiamma { display: none; }
+
+.gl-hint {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .54rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #9fefd2;
+  background: rgba(10, 14, 28, .6);
+  border: 1px solid rgba(92, 232, 184, .4);
+  border-radius: 999px;
+  padding: 6px 13px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+  animation: gl-lume 3s ease-in-out infinite alternate;
+}
+@keyframes gl-lume { from { opacity: .55; } to { opacity: 1; } }
+
+.gl-lastra-titolo {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 0 clamp(20px, 4vw, 46px) 26px;
+  z-index: 2;
+  text-align: left;
+}
+.gl-eyebrow {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .44em;
+  text-transform: uppercase;
+  color: #5ce8b8;
+  margin-bottom: 8px;
+  text-shadow: 0 0 16px rgba(92, 232, 184, .8);
+}
+.gl-title {
+  font-family: "Marcellus", var(--font-head, "Cinzel"), Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 7.6vw, 3rem);
+  line-height: 1.04;
+  margin: 0;
+  letter-spacing: .03em;
+  color: var(--ink);
+  background: none;
+  -webkit-text-fill-color: var(--ink);
+  filter: none;
+  text-shadow: 0 0 22px rgba(154, 123, 255, .5), 0 2px 10px rgba(0, 0, 0, .65);
+}
+/* filo d'aurora sotto il titolo */
+.gl-title::after {
+  content: "";
+  display: block;
+  width: 84px;
+  height: 1px;
+  margin-top: 12px;
+  background: linear-gradient(90deg, #5ce8b8, #ff8ac2, transparent);
+}
+.gl-sotto { padding: 18px 12px 8px; }
+.gl-tagline {
+  color: var(--muted, #98a2c8);
+  font-size: 1rem;
+  max-width: 46ch;
+  margin: 0 auto 16px;
+  line-height: 1.6;
+  font-style: italic;
+}
+.gl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.gl-plunge {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: #7ddfc0;
+  text-decoration: none;
+  transition: color .15s ease, text-shadow .15s ease;
+}
+.gl-plunge:hover { color: #9fefd2; text-shadow: 0 0 12px rgba(159, 239, 210, .7); }
+
+/* ── variante APERTURA (Home): niente immagine, solo cielo e titolo ── */
+.gl-hero--cielo .gl-finestra {
+  height: clamp(360px, 54vh, 560px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+.gl-hero--cielo .gl-finestra-velo { display: none; }
+.gl-hero--cielo .gl-lastra-titolo {
+  position: static;
+  text-align: center;
+  padding: 0 26px;
+}
+.gl-hero--cielo .gl-title { font-size: clamp(2.4rem, 12vw, 3.6rem); }
+.gl-hero--cielo .gl-title::after { margin-left: auto; margin-right: auto;
+  background: linear-gradient(90deg, transparent, #5ce8b8, #ff8ac2, transparent); }
+/* invito a scendere, pulsa da solo */
+.gl-hero--cielo .gl-finestra::after {
+  content: "⌄";
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #5ce8b8;
+  font-size: 1.2rem;
+  animation: gl-scendi 2s ease-in-out infinite;
+}
+@keyframes gl-scendi {
+  0%, 100% { transform: translate(-50%, 0); opacity: .5; }
+  50% { transform: translate(-50%, 9px); opacity: 1; }
+}
+
+/* ── CTA "faro" ── */
+.gl-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 26px;
+  border-radius: 999px;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: .72rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #0a1420;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(90deg, #5ce8b8, #9fefd2);
+  box-shadow:
+    0 0 30px -6px rgba(92, 232, 184, .9),
+    inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.gl-cta:hover { transform: translateY(-2px); box-shadow: 0 0 42px -4px rgba(92, 232, 184, 1), inset 0 1px 0 rgba(255, 255, 255, .6); }
+.gl-cta--deep {
+  background: linear-gradient(90deg, #9a7bff, #bfaaff);
+  color: #140f2c;
+  box-shadow: 0 0 30px -6px rgba(154, 123, 255, .85), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+.gl-cta--crit {
+  background: linear-gradient(90deg, #e0567e, #ff8ac2);
+  color: #2c0a18;
+  box-shadow: 0 0 30px -6px rgba(224, 86, 126, .85), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+
+/* ── Sigillo di luce (pill) ── */
+.gl-seal {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .56rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #9fefd2;
+  border: 1px solid rgba(92, 232, 184, .45);
+  background: rgba(8, 12, 26, .6);
+}
+.gl-seal--ink {
+  color: #9fefd2;
+  border-color: rgba(92, 232, 184, .45);
+  background: rgba(8, 12, 26, .6);
+}
+
+/* ── 8c) ETICHETTA DI SEZIONE con filo d'aurora ── */
+.gl-sezlabel {
+  text-align: center;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .62rem;
+  letter-spacing: .44em;
+  text-transform: uppercase;
+  color: var(--muted, #98a2c8);
+  margin: clamp(28px, 4vw, 46px) auto 16px;
+  padding: 0 16px;
+  scroll-margin-top: 90px;
+}
+.gl-sezlabel::after {
+  content: "";
+  display: block;
+  width: 110px;
+  height: 1px;
+  margin: 9px auto 0;
+  background: linear-gradient(90deg, transparent, #5ce8b8, #ff8ac2, transparent);
+}
+
+/* ── 8b) SEZIONI-PANORAMA (ex vetrate) con numerale in filigrana ── */
+.gl-vetrate {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  max-width: none;
+  margin: 0 auto;
+  counter-reset: panorami;
+}
+.gl-vetrata {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  aspect-ratio: auto;
+  height: clamp(320px, 52vh, 560px);
+  border: none;
+  background: #0a0e1c;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: none;
+  transition: none;
+}
+article.gl-vetrata { cursor: default; }
+.gl-vetrata-img {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  filter: none;
+  animation: gl-respira 20s ease-in-out infinite alternate;
+}
+.gl-vetrata:nth-child(even) .gl-vetrata-img { animation-direction: alternate-reverse; }
+.gl-vetrata-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(10, 14, 28, .5) 0%, rgba(10, 14, 28, .05) 34%,
+    rgba(10, 14, 28, .05) 52%, rgba(10, 14, 28, .94) 100%);
+}
+.gl-vetrata-riq {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 0 clamp(22px, 4vw, 48px) 30px;
+}
+/* numerale romano in filigrana */
+.gl-vetrate .gl-vetrata { counter-increment: panorami; }
+.gl-vetrate .gl-vetrata-riq::before {
+  content: counter(panorami, upper-roman);
+  font-family: "Marcellus", Georgia, serif;
+  font-size: 4.6rem;
+  line-height: .8;
+  opacity: .16;
+  color: var(--ink);
+  margin-bottom: -22px;
+}
+/* contenuti alternati: pari a destra */
+.gl-vetrate .gl-vetrata:nth-child(even) .gl-vetrata-riq { align-items: flex-end; text-align: right; }
+.gl-vetrata-title {
+  font-family: "Marcellus", Georgia, serif;
+  font-size: clamp(1.5rem, 6.4vw, 2.2rem);
+  letter-spacing: .03em;
+  margin: 0;
+  font-weight: 400;
+  color: var(--ink);
+  text-shadow: 0 0 18px rgba(92, 232, 184, .35), 0 2px 8px #000;
+}
+.gl-vetrata-title::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 1px;
+  margin-top: 10px;
+  background: linear-gradient(90deg, #5ce8b8, transparent);
+}
+.gl-vetrate .gl-vetrata:nth-child(even) .gl-vetrata-title::after {
+  margin-left: auto;
+  background: linear-gradient(270deg, #5ce8b8, transparent);
+}
+.gl-vetrata-sub {
+  color: var(--muted, #98a2c8);
+  font-size: .96rem;
+  font-style: italic;
+  margin: 8px 0 0;
+  line-height: 1.45;
+  max-width: 36ch;
+}
+/* dentro i panorami il sigillo diventa un FARO alla menta */
+.gl-vetrata-riq .gl-seal {
+  margin: 14px 0 0;
+  padding: 10px 20px;
+  letter-spacing: .26em;
+  color: #0a1420;
+  border: none;
+  background: linear-gradient(90deg, #5ce8b8, #9fefd2);
+  box-shadow: 0 0 30px -6px rgba(92, 232, 184, .9), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+/* fascia-panorama usata come intestazione di sezione dentro le pagine */
+.gl-vetrata--band {
+  width: auto;
+  margin: 0 0 18px;
+  height: clamp(230px, 34vh, 340px);
+  border-radius: 0;
+}
+/* il bento (se ancora presente) degrada a pila di panorami */
+.gl-bento {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  max-width: none;
+  margin: 0 auto;
+  counter-reset: panorami;
+}
+.gl-bento .gl-vetrata { counter-increment: panorami; }
+.gl-bento .gl-vetrata-riq::before {
+  content: counter(panorami, upper-roman);
+  font-family: "Marcellus", Georgia, serif;
+  font-size: 4.6rem;
+  line-height: .8;
+  opacity: .16;
+  color: var(--ink);
+  margin-bottom: -22px;
+}
+.gl-bento .gl-vetrata:nth-child(even) .gl-vetrata-riq { align-items: flex-end; text-align: right; }
+.gl-bento .gl-vetrata:nth-child(even) .gl-vetrata-title::after {
+  margin-left: auto;
+  background: linear-gradient(270deg, #5ce8b8, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   9) HOME SOTTO L'AURORA — manoscritto e carte-divinità nel vetro
+      di notte
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .home-page .home-lore-text { color: #c9d1e8; }
+body:not(.theme-dark) .home-page .home-lore-text i { color: #9fefd2; }
+body:not(.theme-dark) .home-page .home-lore-note { color: #98a2c8; }
+body:not(.theme-dark) .home-page .home-lore-age { color: #7ddfc0; }
+
+body:not(.theme-dark) .home-page .deity-card {
+  background: linear-gradient(180deg, rgba(19, 26, 56, .88), rgba(11, 15, 34, .92));
+  border-color: rgba(154, 123, 255, .26);
+  border-left-color: #5ce8b8;
+  box-shadow: 0 12px 30px -16px rgba(0, 0, 0, .8);
+}
+body:not(.theme-dark) .home-page .deity-card:hover {
+  border-color: rgba(92, 232, 184, .55);
+  box-shadow: 0 0 24px -6px rgba(92, 232, 184, .45), 0 22px 44px -18px rgba(0, 0, 0, .85);
+}
+body:not(.theme-dark) .home-page .deity-card-portrait { background: #10162e; }
+body:not(.theme-dark) .home-page .deity-card-name { color: #eef2ff; }
+body:not(.theme-dark) .home-page .deity-card-epithet { color: #bfaaff; }
+body:not(.theme-dark) .home-page .deity-card-dominio { color: #98a2c8; }
+body:not(.theme-dark) .home-page .deity-card-cue { color: #5ce8b8; }
+
+body:not(.theme-dark) .home-page .deity-modal {
+  background: linear-gradient(180deg, #141b3c, #0c1128);
+  border-color: rgba(154, 123, 255, .35);
+  border-top-color: #5ce8b8;
+}
+body:not(.theme-dark) .home-page .deity-modal-close {
+  background: rgba(13, 18, 38, .9);
+  color: #ff8ac2;
+  border-color: rgba(154, 123, 255, .3);
+}
+body:not(.theme-dark) .home-page .deity-modal-close:hover { background: #1a2246; }
+body:not(.theme-dark) .home-page .deity-modal-name { color: #eef2ff; }
+body:not(.theme-dark) .home-page .deity-modal-titolo { color: #bfaaff; }
+body:not(.theme-dark) .home-page .deity-modal-meta {
+  background: rgba(154, 123, 255, .08);
+  border-color: rgba(154, 123, 255, .28);
+}
+body:not(.theme-dark) .home-page .deity-modal-meta p { color: #c9d1e8; }
+body:not(.theme-dark) .home-page .deity-modal-meta strong { color: #9fefd2; }
+body:not(.theme-dark) .home-page .deity-modal-desc { color: #c9d1e8; }
+body:not(.theme-dark) .home-page .deity-modal-dogma {
+  color: #bfaaff;
+  border-left-color: #5ce8b8;
+  background: rgba(92, 232, 184, .08);
+}
+
+/* ── Accessibilità: reduced-motion ferma nastri, respiri e particelle ── */
+@media (prefers-reduced-motion: reduce) {
+  .aur-nastro { animation: none; opacity: .25; }
+  .aur-canvas { display: none; }
+  .gl-finestra-img, .gl-vetrata-img { animation: none; }
+  .gl-hint, .gl-hero--cielo .gl-finestra::after { animation: none; }
+}

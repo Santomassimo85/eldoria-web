@@ -65,10 +65,10 @@
   /* la voce "Menu" della bottom-bar sostituisce il burger */
   .burger { display: none !important; }
 
-  /* ── NAV "ARTIGLI" (mockup C): barra FLOTTANTE di ossidiana bordata
-        d'oro, rune-artiglio che si accendono d'oro; l'artiglio rosso ⌃
-        marca la voce attiva. Vale su tutte le pagine (anche quelle
-        scure di gioco: ossidiana e oro sono coerenti ovunque). ── */
+  /* ── NAV "FUOCHI" (mockup G): barra FLOTTANTE di vetro di notte,
+        ogni voce ha il suo fuoco d'aurora che si accende alla menta.
+        Vale su tutte le pagine (anche quelle scure di gioco: il vetro
+        di notte è coerente ovunque). ── */
   .app-bottom-nav {
     display: flex;
     position: fixed;
@@ -79,25 +79,26 @@
     height: var(--bottombar-h);
     align-items: stretch;
     justify-content: space-around;
-    border-radius: 22px;
-    background: rgba(14,10,14,.86);
-    border: 1px solid rgba(227,170,60,.45);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(16,22,49,.88), rgba(9,12,26,.94));
+    border: 1px solid rgba(154,123,255,.35);
     box-shadow:
-      0 -4px 44px -12px rgba(227,170,60,.5),
+      0 -4px 44px -12px rgba(92,232,184,.3),
+      0 0 30px -8px rgba(154,123,255,.35),
       0 20px 40px -18px rgba(0,0,0,.95);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
-    padding: 0 6px;
+    padding: 0 10px;
   }
 
   .mnav-tab {
     flex: 1 1 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px;
+    gap: 5px;
     background: none; border: none; cursor: pointer;
     padding: 6px 2px 5px; margin: 0;
     text-decoration: none; position: relative;
-    color: #a89f8e;
+    color: #98a2c8;
     font-family: var(--font-head, "Cinzel"), Georgia, serif;
     font-size: .55rem; letter-spacing: .14em; text-transform: uppercase; line-height: 1;
     transition: color .15s ease;
@@ -105,35 +106,23 @@
   .mnav-lb { white-space: nowrap; }
   .mnav-tab:active { transform: translateY(1px); }
   .mnav-tab.is-active,
-  .mnav-tab.active { color: #ffd97a; font-weight: 700; }
+  .mnav-tab.active { color: #eef2ff; font-weight: 700; }
 
-  /* la RUNA-ARTIGLIO: oro cupo che si accende d'oro vivo */
+  /* il FUOCO: puntino che si accende alla menta d'aurora */
   .mnav-pearl {
-    width: 26px; height: 26px; border-radius: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.05rem; line-height: 1; color: #6e5a2e;
-    background: none;
-    box-shadow: none;
-    transition: color .18s ease, text-shadow .18s ease, transform .18s var(--ease-spring, ease);
+    width: 7px; height: 7px; border-radius: 50%;
+    display: block;
+    font-size: 0; line-height: 0; color: transparent;
+    background: #39406b;
+    box-shadow: 0 0 0 2px rgba(154,123,255,.16);
+    overflow: hidden;
+    transition: background .2s ease, box-shadow .2s ease, transform .2s var(--ease-spring, ease);
   }
   .mnav-tab.is-active .mnav-pearl,
   .mnav-tab.active .mnav-pearl {
-    color: #ffd97a;
-    transform: translateY(-1px);
-    text-shadow: 0 0 14px rgba(255,217,122,.95);
-  }
-  /* l'artiglio rosso sotto la voce attiva */
-  .mnav-tab.is-active::after,
-  .mnav-tab.active::after {
-    content: "⌃";
-    position: absolute;
-    bottom: 1px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #c03a2a;
-    font-size: .68rem;
-    line-height: 1;
-    text-shadow: 0 0 8px rgba(192,58,42,.9);
+    background: #5ce8b8;
+    transform: scale(1.25);
+    box-shadow: 0 0 14px rgba(92,232,184,1), 0 0 0 2px rgba(92,232,184,.3);
   }
 
   /* drawer aperto → nascondi la bottom-bar (il drawer copre lo schermo) */
@@ -153,26 +142,26 @@
 
 /* ============================================================
    SIMBOLI RUNICI delle voci di navigazione (al posto delle icone)
-   Le rune sono ARTIGLI D'ORO (mockup C) — lo stile della runa
-   desktop (.nav-rune) è in drake.css.
+   Le rune sono FUOCHI D'AURORA (mockup G) — lo stile della runa
+   desktop (.nav-rune) è in aurora.css.
    ============================================================ */
-/* Mobile: runa nell'intestazione della bottom-sheet = artiglio d'oro */
+/* Mobile: runa nell'intestazione della bottom-sheet = luce alla menta */
 .mnav-sheet-rune {
   display: inline-block;
   margin-right: 0.35em;
-  font-size: 1.1em; line-height: 1;
+  font-size: 1.05em; line-height: 1;
   vertical-align: -0.08em;
-  color: #e3aa3c;
-  text-shadow: 0 0 10px rgba(227,170,60,.6);
+  color: #5ce8b8;
+  text-shadow: 0 0 10px rgba(92,232,184,.6);
 }
 
 /* ============================================================
    BOTTOM-SHEET di categoria (Mondo / Biblioteca / Gilda) —
-   scrigno flottante di ossidiana sopra la nav artigli
+   velo di notte flottante sopra la nav a fuochi
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;
-  background: rgba(4,3,6,.6);
+  background: rgba(4,6,14,.6);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   animation: mnav-fade .25s ease both;
 }
@@ -184,11 +173,12 @@
   right: max(8px, var(--safe-r));
   bottom: calc(var(--bottombar-h) + var(--safe-b) + 20px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(24,18,24,.97), rgba(12,9,13,.98));
-  border: 1px solid rgba(227,170,60,.45);
-  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(20,27,60,.96), rgba(10,13,30,.98));
+  border: 1px solid rgba(154,123,255,.4);
+  border-radius: 24px;
   box-shadow:
-    0 0 44px -10px rgba(227,170,60,.5),
+    0 0 44px -10px rgba(154,123,255,.4),
+    0 0 30px -12px rgba(92,232,184,.35),
     0 24px 60px -20px rgba(0,0,0,.95);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -199,33 +189,33 @@
 
 .mnav-sheet-grip {
   display: block; width: 42px; height: 4px; border-radius: 999px;
-  background: rgba(227,170,60,.45); margin: 2px auto 12px;
+  background: rgba(154,123,255,.45); margin: 2px auto 12px;
 }
 .mnav-sheet-head {
   font-family: var(--font-head, "Cinzel"), Georgia, serif;
   font-size: .66rem; letter-spacing: .34em; text-transform: uppercase;
-  color: #a89f8e; padding: 0 6px 10px; margin-bottom: 6px;
-  border-bottom: 1px solid rgba(227,170,60,.28);
+  color: #98a2c8; padding: 0 6px 10px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(154,123,255,.25);
 }
 .mnav-sheet-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mnav-sheet-link,
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
-  padding: 10px 14px; border-radius: 10px;
-  background: linear-gradient(180deg, rgba(30,23,29,.9), rgba(15,11,15,.94));
-  border: 1px solid rgba(227,170,60,.3);
-  border-left: 4px solid #8f6a1e;
-  color: #e6ddc8; text-decoration: none;
+  padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(26,34,70,.88), rgba(13,18,38,.92));
+  border: 1px solid rgba(154,123,255,.26);
+  border-left: 4px solid #6a4fd0;
+  color: #dbe2f6; text-decoration: none;
   font-family: var(--font-ui, Georgia), serif; font-size: .95rem; font-weight: 600;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,.85);
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 .mnav-sheet-link:active { transform: scale(.98); }
 .mnav-sheet-link.active {
-  border-left-color: #ffd97a;
-  background: linear-gradient(180deg, rgba(227,170,60,.22), rgba(15,11,15,.94));
-  color: #ffd97a;
-  box-shadow: 0 0 18px -4px rgba(227,170,60,.6), 0 6px 18px -10px rgba(0,0,0,.85);
+  border-left-color: #5ce8b8;
+  background: linear-gradient(180deg, rgba(92,232,184,.16), rgba(13,18,38,.92));
+  color: #9fefd2;
+  box-shadow: 0 0 18px -4px rgba(92,232,184,.5), 0 6px 18px -10px rgba(0,0,0,.85);
 }
 /* l'ultima voce dispari occupa l'intera riga */
 .mnav-sheet-links > *:last-child:nth-child(odd) { grid-column: 1 / -1; }

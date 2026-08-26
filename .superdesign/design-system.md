@@ -1,64 +1,61 @@
 # Design System — Crit Happens (Eldoria)
 
-## Direzione attiva: "DRAGHI · IL COVO" (2026-08-27)
+## Direzione attiva: "AURORA DEL NORD" (2026-08-27)
 
-REDESIGN TOTALE (sostituisce "Ghiaccio e Acqua", che sostituiva "Pergamena
-Antica" e "Tomo tra le Braci"): **il covo del drago**. Il fondo dell'app è
-l'ossidiana del covo (nero caldo, bagliore d'oro del tesoro dal basso, trama
-di squame, un drago che attraversa il cielo, il tesoro che luccica);
-`<main>` è un **forziere** di ossidiana bordato d'oro; **tutti gli hero sono
-IL COVO BUIO**: cornice del tesoro con angoli d'oro, immagine spenta che la
-**torcia rivela** seguendo dito/cursore (doppia immagine + mask radiale +
-fiamma), titolo d'oro fuso (Cinzel Decorative) con kicker rosso drago;
-le sezioni sono **gemme** con cornici d'oro e angoli (pannoramiche o in
-**mosaico bento**); chrome = ossidiana e oro, nav mobile = **artigli**
-(rune d'oro + artiglio rosso ⌃ sulla voce attiva). I documenti-pergamena
-interni delle pagine restano isole chiare sul buio (carta + oro = coerente).
-Scelto dal mockup C (`public/mockups/c-draghi.html`).
-
-**Feature interattive**: torcia sull'hero di ogni pagina (rivela il covo);
-drago in volo + luccichio del tesoro sul fondo (DrakeOverlay).
+REDESIGN TOTALE (sostituisce "Draghi · Il Covo", che sostituiva "Ghiaccio e
+Acqua" e "Pergamena Antica"): **la notte artica**. Il fondo dell'app è il
+cielo del nord — notte blu-viola con **tre nastri d'aurora che danzano da
+soli**, stelle che scintillano e neve finissima (AuroraOverlay, z-index 0);
+`<main>` è un **velo di notte semitrasparente** che lascia filtrare
+l'aurora. Hero e sezioni sono **PANORAMI**: immagini a tutta larghezza che
+respirano (Ken Burns lento), titoli **Marcellus** con **filo d'aurora**
+(menta→rosa) sotto, kicker alla menta, numerali romani in filigrana (CSS
+counters) e contenuti alternati sx/dx; CTA = **faro** (pillola menta).
+Nav mobile = **fuochi** (puntini che si accendono alla menta). TUTTO il
+movimento è AMBIENTALE: nessuna feature legata a click/hover (uso da
+cellulare). I documenti-pergamena interni restano isole chiare sulla notte.
+Scelto dal mockup G (`public/mockups/g-aurora.html`).
 
 **Vincoli inderogabili**
 - Solo grafica/struttura: MAI toccare logica, route, link, href.
 - Pagine di gioco (Arena, TCG, World Boss, Pet) = `body.theme-dark`, INTOCCATE.
 - Mai `background-attachment: fixed` (iOS). `prefers-reduced-motion` rispettato.
-- Test B&N: covo buio + cornici e angoli d'oro + bento = struttura nuova anche in B&N.
+- Motion solo ambientale (niente feature al tocco).
 
-## Palette (ossidiana e oro — token in drake.css :root)
-- Covo (body): `#121016 → #0c0a0e → #070609` + bagliore oro dal basso + squame
-- Forziere (main): `#131017 → #0d0a0f → #0a080c`, bordo rgba(227,170,60,.4)
-- Superfici: `--bg-0 #100d13` `--bg-2 #191319` `--bg-3 #221a20`; linee `#453723`
-- Inchiostro (caldo): `--ink #f1ecdf` `--muted #a89f8e` `--faint #7a715f`
-- Oro tesoro: `--amber #e3aa3c / deep #8f6a1e / soft #ffd97a`
-- Squama drago: `--arc #3e7a52 / deep #2e5c3c / soft #6fae87`
-- Rosso drago: `--crit #c03a2a / deep #8a2417` (kicker/eyebrow + artiglio ⌃)
-- Cine vars: accent `#e3aa3c`, accent-2/gold-soft `#ffd97a`, gold-ink `#caa04a`,
-  bg `#121016/#0c0a0e/#070609` (niente velo crema)
-- Titoli: clip-text `#fff2cf → #ffd97a 40% → #e3aa3c 75% → #a5711c`
+## Palette (notte artica — token in aurora.css :root)
+- Cielo (body): `#0d1226 → #0a0e1c → #060812` + radiale viola in alto
+- Velo (main): rgba notte .62→.9, bordo rgba(154,123,255,.22)
+- Superfici: `--bg-0 #0d1226` `--bg-2 #131a38` `--bg-3 #1a2246`; linee `#2b3560`
+- Inchiostro: `--ink #eef2ff` `--muted #98a2c8` `--faint #626c94`
+- Menta d'aurora (ex "oro"): `--amber #5ce8b8 / deep #2ba57f / soft #9fefd2`
+- Viola aurora: `--arc #9a7bff / deep #6a4fd0 / soft #bfaaff`
+- Rosa aurora: `--crit #e0567e / deep #a52f54` (+ #ff8ac2 nei gradienti)
+- Cine vars: accent `#9a7bff`, gold `#5ce8b8`, gold-soft `#9fefd2`,
+  bg trasparente (il velo del main basta)
+- Titoli: Marcellus 400, colore ink + glow viola; filo d'aurora `#5ce8b8→#ff8ac2`
 
 ## File del layer
-- `src/styles/drake.css` — tutto il tema + sez. 8 STRUTTURA (covo gl-finestra,
-  gemme gl-vetrata, bento gl-bento, gl-sezlabel con ⟁, gl-cta tesoro, gl-seal)
-- `src/components/DrakeOverlay.jsx` — drago in volo + luccichio del tesoro
-  (montato in App.jsx; si spegne da solo su `body.theme-dark` via MutationObserver)
-- `src/components/glacier/GlacierHero.jsx` — hero IL COVO BUIO condiviso con
-  torcia (il file conserva il nome storico per non toccare 20+ import)
-- `src/components/glacier/Vetrata.jsx` — gemma (Link/a/button/article);
-  angoli d'oro via ::before/::after in drake.css
-- `src/styles/layout.css` — NAV ARTIGLI: bottom-bar flottante di ossidiana
-  bordata d'oro, rune-artiglio, sheet-scrigno (valide anche sulle pagine scure)
-- Spec storica del giro strutturale: `docs/glacier-restyle-spec.md`
-  (le istruzioni restano valide; il vestito ora è drake.css)
+- `src/styles/aurora.css` — tutto il tema + sez. 8 STRUTTURA (panorama
+  gl-finestra, sezioni-panorama gl-vetrata con counters romani, apertura
+  `.gl-hero--cielo`, gl-sezlabel con filo, gl-cta faro, gl-seal)
+- `src/components/AuroraOverlay.jsx` — nastri d'aurora + stelle + neve
+  (montato in App.jsx; si spegne da solo su `body.theme-dark`)
+- `src/components/glacier/GlacierHero.jsx` — hero PANORAMA condiviso
+  (il file conserva il nome storico per non toccare 20+ import)
+- `src/components/glacier/Vetrata.jsx` — sezione-panorama (Link/a/button/article)
+- `src/styles/layout.css` — NAV FUOCHI: bottom-bar flottante di vetro di
+  notte con puntini-menta, sheet-velo (valide anche sulle pagine scure)
+- Font: Marcellus aggiunto in index.html (Google Fonts)
 
-## Restyle STRUTTURALE (2026-08-26/27)
-Tutte le pagine chiare usano l'hero condiviso (covo con torcia, sigillo
-dinamico, tagline+CTA sotto); rubriche → `.gl-sezlabel`; Home = mockup C
-1:1 (covo → "Sfida il Drago" → "Il Tesoro Custodito" bento a 4 gemme →
-lore → pantheon a gemme); WorldMap/DmTools/GeneraNPC/Concilio = testata
-compatta. ItemDetail e ScribaSingolo senza hero: invariati.
+## Restyle STRUTTURALE
+Tutte le pagine chiare usano l'hero condiviso (panorama full-width, sigillo
+dinamico, tagline+CTA sotto); Home = mockup G: apertura sotto l'aurora
+(senza immagine) → 4 panorami numerati I-IV (Party/Mercato/Riassunti/
+Tarocchi) → lore → pantheon a fasce-panorama. ItemDetail e ScribaSingolo
+senza hero: invariati. WorldMap/DmTools/GeneraNPC/Concilio = compatti.
 
-## Motion
-- torcia (mask + fiamma `gl-guizza`) · drago `drake-volo` 17s · luccichio
-  canvas (22/32/44 gemme per breakpoint, dpr max 1.5, pausa a tab nascosta)
-- reduced-motion: niente drago/luccichio/fiamma animata (mask statica ok)
+## Motion (solo ambientale)
+- nastri d'aurora `aur-danza1/2` 16-26s · stelle+neve canvas (55-120/30-64
+  per breakpoint, dpr max 1.5, pausa a tab nascosta) · Ken Burns
+  `gl-respira` 18-20s sui panorami · scroll-cue `gl-scendi` in apertura
+- reduced-motion: nastri fermi, canvas spento, niente Ken Burns

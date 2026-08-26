@@ -7,7 +7,7 @@ import "./styles/theme.css"; // design system "Arcanum Nocturne" — dopo style.
 import "./styles/shell.css"; // restyle header/navigazione (scuro premium + drawer mobile)
 import "./styles/light-theme.css"; // tema chiaro "Pergamena Antica" — caricato per ultimo (vince)
 import "./styles/layout.css"; // posizionamento flottanti coerente + safe-area iOS
-import "./styles/drake.css"; // Tema C "Draghi · Il Covo" — ossidiana + oro del tesoro (solo tema chiaro)
+import "./styles/aurora.css"; // Tema G "Aurora del Nord" — notte artica + panorami (solo tema chiaro)
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
