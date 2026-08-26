@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP J — Il Nesso</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --vuoto:#070713; --viola:#8b5cf6; --ciano:#22d3ee; --magenta:#e879f9;
+    --ink:#edeaff; --muted:#8f8bb8; --pannello:#12122a;
+  }
+  html { scrollbar-width:thin; scrollbar-color:#2c2c55 #070713; }
+  body { background:var(--vuoto); color:var(--ink); font-family:"Manrope",system-ui,sans-serif;
+    min-height:100dvh; overflow-x:hidden; }
+
+  /* ── IL VUOTO: stelle in fuga dal centro (warp) + nebulose ── */
+  .vuoto { position:fixed; inset:0; z-index:0;
+    background:
+      radial-gradient(50% 40% at 80% 15%, rgba(139,92,246,.16), transparent 60%),
+      radial-gradient(45% 40% at 15% 85%, rgba(34,211,238,.1), transparent 60%),
+      #070713; }
+  #warp { position:absolute; inset:0; }
+
+  .app { position:relative; z-index:1; max-width:1100px; margin:0 auto;
+    padding:26px 18px 150px; }
+
+  /* ── VISTE: entrano con un balzo dal warp ── */
+  .view { display:none; }
+  .view.on { display:block; animation:varco .5s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes varco { from { opacity:0; transform:scale(.955); filter:blur(6px); }
+    to { opacity:1; transform:scale(1); filter:blur(0); } }
+
+  .kicker { font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.44em;
+    text-transform:uppercase; color:var(--ciano); text-shadow:0 0 14px rgba(34,211,238,.7); }
+  h1 { font-family:"Cinzel",serif; font-weight:700; font-size:clamp(1.9rem,6vw,3rem);
+    line-height:1.05; margin:10px 0 6px;
+    background:linear-gradient(90deg,var(--ciano),var(--viola) 50%,var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 24px rgba(139,92,246,.45)); }
+  .sotto { color:var(--muted); max-width:52ch; line-height:1.6; }
+
+  /* ═════════ HOME: LA SALA DEI PORTALI (griglia esagonale) ═════════ */
+  .testata { text-align:center; padding:34px 0 26px; }
+  .esagoni { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:18px; margin-top:26px; }
+  @media (min-width:700px){ .esagoni { grid-template-columns:repeat(3,1fr); gap:24px; }
+    .esagoni .porta:nth-child(2), .esagoni .porta:nth-child(5) { transform:translateY(30px); } }
+  .porta { position:relative; aspect-ratio:1/1.12; cursor:pointer; border:none; background:none;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), filter .25s ease; }
+  .porta::before { content:""; position:absolute; inset:0; z-index:2;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:linear-gradient(160deg, rgba(34,211,238,.55), rgba(139,92,246,.55) 55%, rgba(232,121,249,.5));
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; padding:2px; }
+  .porta img { position:absolute; inset:2px; width:calc(100% - 4px); height:calc(100% - 4px);
+    object-fit:cover; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    filter:saturate(1.05) brightness(.85); transition:filter .25s ease, transform .6s ease; }
+  .porta .velo { position:absolute; inset:2px; z-index:1;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:linear-gradient(180deg, transparent 40%, rgba(7,7,19,.92)); }
+  .porta figcaption { position:absolute; left:0; right:0; bottom:19%; z-index:3;
+    text-align:center; font-family:"Cinzel",serif; font-size:clamp(.72rem,2vw,.92rem);
+    letter-spacing:.12em; text-transform:uppercase; color:var(--ink);
+    text-shadow:0 0 12px rgba(139,92,246,.8); }
+  .porta small { position:absolute; left:0; right:0; bottom:12%; z-index:3;
+    text-align:center; font-size:.62rem; color:var(--muted); }
+  .porta:hover { transform:translateY(-8px) scale(1.03); filter:drop-shadow(0 0 26px rgba(34,211,238,.5)); }
+  .esagoni .porta:nth-child(2):hover, .esagoni .porta:nth-child(5):hover { transform:translateY(22px) scale(1.03); }
+  .porta:hover img { filter:saturate(1.2) brightness(1.05); transform:scale(1.07); }
+
+  /* ═════════ MERCATO: IL BAZAR DEL NESSO (mercante fisso + flusso merci) ═════════ */
+  .bazar { display:grid; gap:22px; }
+  @media (min-width:820px){ .bazar { grid-template-columns:280px 1fr; align-items:start; } }
+  .mercante { position:sticky; top:18px; background:linear-gradient(180deg,#161632,#0e0e22);
+    border:1px solid rgba(139,92,246,.35); border-radius:20px; padding:20px; text-align:center; }
+  .mercante .occhio { width:84px; height:84px; margin:0 auto 12px; border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, var(--magenta), var(--viola) 55%, #1d1040);
+    box-shadow:0 0 34px rgba(139,92,246,.7); position:relative; overflow:hidden;
+    animation:respiro 5s ease-in-out infinite alternate; }
+  @keyframes respiro { from { transform:scale(1); } to { transform:scale(1.06); } }
+  .occhio::after { content:"🐀"; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; font-size:2rem; }
+  .mercante h3 { font-family:"Cinzel",serif; font-size:1rem; letter-spacing:.08em; }
+  .mercante .rango { display:inline-block; margin-top:6px; padding:4px 12px; border-radius:999px;
+    font-size:.66rem; letter-spacing:.18em; text-transform:uppercase; color:var(--ciano);
+    border:1px solid rgba(34,211,238,.45); }
+  .filtri { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:16px; }
+  .filtro { padding:8px 14px; border-radius:999px; border:1px solid rgba(139,92,246,.4);
+    background:none; color:var(--muted); font-family:"Manrope",sans-serif; font-size:.72rem;
+    font-weight:600; cursor:pointer; transition:all .2s ease; }
+  .filtro:hover { color:var(--ink); border-color:var(--ciano);
+    box-shadow:0 0 16px -4px rgba(34,211,238,.8); transform:translateY(-2px); }
+  .filtro.on { background:linear-gradient(90deg,var(--ciano),var(--viola)); color:#070713;
+    border-color:transparent; }
+  .merci { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  .merce { position:relative; background:linear-gradient(180deg,#14142c,#0d0d1f);
+    border:1px solid rgba(139,92,246,.28); border-radius:18px; padding:18px 16px 16px;
+    text-align:center; cursor:pointer;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, border-color .25s ease; }
+  .merce:hover { transform:translateY(-7px); border-color:rgba(34,211,238,.6);
+    box-shadow:0 20px 40px -18px #000, 0 0 30px -8px rgba(34,211,238,.55); }
+  .anello { position:relative; width:110px; height:110px; margin:0 auto 12px; border-radius:50%; padding:5px; }
+  .anello::before { content:""; position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(var(--ciano), var(--viola), var(--magenta), var(--ciano));
+    animation:orbita 6s linear infinite; }
+  .merce:hover .anello::before { animation-duration:1.6s; }
+  @keyframes orbita { to { transform:rotate(360deg); } }
+  .anello img { position:relative; z-index:1; width:100%; height:100%; border-radius:50%;
+    object-fit:cover; border:3px solid #0d0d1f; }
+  .merce h4 { font-family:"Cinzel",serif; font-size:.9rem; letter-spacing:.05em; }
+  .merce .prezzo { margin-top:6px; font-weight:800; color:var(--ciano); font-size:.9rem;
+    text-shadow:0 0 12px rgba(34,211,238,.6); }
+  .merce .rar { position:absolute; top:12px; right:14px; font-size:.58rem; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--magenta); }
+  .merce.asta { grid-column:1/-1; display:flex; align-items:center; gap:18px; text-align:left; }
+  .merce.asta .anello { margin:0; flex:0 0 110px; }
+  .barra-asta { height:6px; border-radius:999px; background:#1e1e3c; margin-top:10px; overflow:hidden; }
+  .barra-asta i { display:block; height:100%; width:64%;
+    background:linear-gradient(90deg,var(--ciano),var(--magenta));
+    animation:consuma 18s linear infinite; }
+  @keyframes consuma { from { width:64%; } to { width:8%; } }
+  .btn { display:inline-flex; align-items:center; gap:8px; margin-top:10px; padding:11px 22px;
+    border-radius:12px; border:none; cursor:pointer; font-family:"Cinzel",serif; font-weight:700;
+    font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:#070713;
+    background:linear-gradient(90deg,var(--ciano),var(--viola));
+    box-shadow:0 0 26px -6px rgba(34,211,238,.8); position:relative; overflow:hidden;
+    transition:transform .2s ease, box-shadow .2s ease; }
+  .btn::after { content:""; position:absolute; top:0; left:-80%; width:50%; height:100%;
+    background:linear-gradient(105deg,transparent,rgba(255,255,255,.5),transparent);
+    transform:skewX(-20deg); transition:left .45s ease; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 0 40px -4px rgba(34,211,238,1); }
+  .btn:hover::after { left:120%; }
+  .btn.rosso { background:linear-gradient(90deg,var(--magenta),#c026d3); box-shadow:0 0 26px -6px rgba(232,121,249,.8); }
+
+  /* ═════════ ARENA: IL COLOSSEO ASTRALE (palco VS + bottega + scala) ═════════ */
+  .vs-palco { position:relative; display:flex; align-items:center; justify-content:center;
+    gap:clamp(10px,4vw,40px); padding:30px 0 26px; }
+  .gladiatore { position:relative; width:min(38%,240px); border-radius:20px; overflow:hidden;
+    border:1px solid rgba(139,92,246,.4); background:#101024;
+    transition:transform .3s ease, box-shadow .3s ease; }
+  .gladiatore:hover { transform:translateY(-6px) scale(1.02); box-shadow:0 0 34px -8px rgba(34,211,238,.7); }
+  .gladiatore:first-child { transform:rotate(-3deg); }
+  .gladiatore:last-child { transform:rotate(3deg); }
+  .gladiatore:first-child:hover { transform:rotate(-1deg) translateY(-6px); }
+  .gladiatore:last-child:hover { transform:rotate(1deg) translateY(-6px); }
+  .gladiatore img { width:100%; aspect-ratio:3/3.4; object-fit:cover; display:block; }
+  .gladiatore .nome { position:absolute; left:0; right:0; bottom:0; padding:26px 12px 10px;
+    background:linear-gradient(180deg,transparent,rgba(7,7,19,.95));
+    font-family:"Cinzel",serif; font-size:.88rem; letter-spacing:.08em; text-align:center; }
+  .vite { display:flex; gap:3px; padding:8px 10px 2px; }
+  .vite i { flex:1; height:5px; border-radius:2px; background:linear-gradient(90deg,#34d399,#22d3ee); }
+  .vite i.giu { background:#26264a; }
+  .vs { font-family:"Cinzel",serif; font-weight:700; font-size:clamp(1.4rem,5vw,2.2rem);
+    color:var(--magenta); text-shadow:0 0 20px rgba(232,121,249,.9);
+    animation:vs-pulsa 1.6s ease-in-out infinite alternate; }
+  @keyframes vs-pulsa { from { transform:scale(1); opacity:.8; } to { transform:scale(1.14); opacity:1; } }
+  .fulmine { position:absolute; top:20%; bottom:22%; left:50%; width:2px;
+    background:linear-gradient(180deg,transparent,var(--ciano),var(--magenta),transparent);
+    filter:blur(1px); opacity:.7; animation:crepita .9s steps(2) infinite; }
+  @keyframes crepita { 50% { opacity:.2; transform:skewX(8deg); } }
+
+  .sezione-t { display:flex; align-items:center; gap:14px; margin:26px 0 14px; }
+  .sezione-t h2 { font-family:"Cinzel",serif; font-size:.78rem; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--ciano); white-space:nowrap; }
+  .sezione-t i { flex:1; height:1px; background:linear-gradient(90deg, rgba(139,92,246,.6), transparent); }
+  .bottega { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; }
+  .pozione { background:linear-gradient(180deg,#14142c,#0d0d1f); border:1px solid rgba(139,92,246,.3);
+    border-radius:16px; padding:16px; text-align:center; cursor:pointer;
+    transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease; }
+  .pozione:hover { transform:translateY(-6px); border-color:var(--magenta);
+    box-shadow:0 0 26px -8px rgba(232,121,249,.7); }
+  .pozione .ico { font-size:1.7rem; filter:drop-shadow(0 0 12px rgba(34,211,238,.8)); }
+  .pozione h4 { font-family:"Cinzel",serif; font-size:.8rem; margin-top:8px; letter-spacing:.06em; }
+  .pozione .ma { margin-top:6px; font-weight:800; color:var(--ciano); font-size:.82rem; }
+  .scala { display:flex; flex-direction:column; gap:8px; }
+  .grado { display:flex; align-items:center; gap:14px; padding:12px 16px; border-radius:14px;
+    background:linear-gradient(90deg,#12122a,#0d0d1f); border:1px solid rgba(139,92,246,.22);
+    transition:transform .2s ease, border-color .2s ease; }
+  .grado:hover { transform:translateX(6px); border-color:rgba(34,211,238,.6); }
+  .grado .orb { width:30px; height:30px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:.78rem; color:#070713;
+    background:linear-gradient(135deg,var(--ciano),var(--viola)); }
+  .grado:first-child .orb { background:linear-gradient(135deg,#fde68a,#f59e0b);
+    box-shadow:0 0 18px rgba(245,158,11,.8); }
+  .grado b { flex:1; font-weight:600; }
+  .grado span { color:var(--muted); font-size:.8rem; }
+
+  /* ═════════ NAV: L'ORBE DEL NESSO (radiale, unico per questo mockup) ═════════ */
+  .nesso { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:50; }
+  .orbe { position:relative; width:64px; height:64px; border-radius:50%; border:none; cursor:pointer;
+    background:radial-gradient(circle at 38% 32%, #c9b8ff, var(--viola) 55%, #2a1660);
+    box-shadow:0 0 0 3px rgba(139,92,246,.25), 0 0 40px rgba(139,92,246,.8), 0 14px 30px -10px #000;
+    animation:orbe-batte 3.4s ease-in-out infinite alternate; transition:transform .2s ease; }
+  .orbe:hover { transform:scale(1.08); }
+  @keyframes orbe-batte { from { box-shadow:0 0 0 3px rgba(139,92,246,.25),0 0 30px rgba(139,92,246,.6),0 14px 30px -10px #000; }
+    to { box-shadow:0 0 0 6px rgba(139,92,246,.15),0 0 60px rgba(139,92,246,1),0 14px 30px -10px #000; } }
+  .orbe::after { content:"✦"; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-size:1.3rem; text-shadow:0 0 12px #fff; }
+  .satellite { position:absolute; bottom:8px; left:50%; width:52px; height:52px; margin-left:-26px;
+    border-radius:50%; border:1px solid rgba(34,211,238,.5); cursor:pointer;
+    background:radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    color:var(--muted); font-family:"Cinzel",serif; font-size:.44rem; letter-spacing:.08em;
+    text-transform:uppercase;
+    transform:translate(0,0) scale(.3); opacity:0; pointer-events:none;
+    transition:transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, box-shadow .2s ease, color .2s ease; }
+  .satellite .g { font-size:1rem; line-height:1; }
+  .nesso.aperto .satellite { opacity:1; pointer-events:auto; }
+  .nesso.aperto .s1 { transform:translate(-124px,-26px) scale(1); }
+  .nesso.aperto .s2 { transform:translate(-52px,-74px) scale(1); }
+  .nesso.aperto .s3 { transform:translate(52px,-74px) scale(1); }
+  .nesso.aperto .s4 { transform:translate(124px,-26px) scale(1); }
+  .satellite:hover { color:var(--ink); box-shadow:0 0 22px rgba(34,211,238,.8); }
+  .satellite.on { color:#070713; background:radial-gradient(circle at 40% 34%, #9ff0ff, var(--ciano) 60%, #0e7490);
+    box-shadow:0 0 26px rgba(34,211,238,1); border-color:transparent; }
+  .nesso-hint { position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+    font-size:.56rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted);
+    white-space:nowrap; opacity:.8; }
+  .nesso.aperto .nesso-hint { display:none; }
+
+  .badge-opt { position:fixed; top:12px; left:12px; z-index:60; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:#070713; background:linear-gradient(90deg,var(--ciano),var(--magenta));
+    padding:7px 14px; border-radius:999px; box-shadow:0 0 26px -4px rgba(139,92,246,.9); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; } #warp{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">J · IL NESSO</div>
+  <div class="vuoto"><canvas id="warp"></canvas></div>
+
+  <div class="app">
+    <!-- ══ HOME ══ -->
+    <section class="view on" data-view="home">
+      <div class="testata">
+        <span class="kicker">Cronache di Exanthia</span>
+        <h1>Il Nesso dei Mondi</h1>
+        <p class="sotto" style="margin:0 auto">Sei portali, un solo varco. Attraversa l'esagono che ti chiama — o apri l'Orbe qui sotto.</p>
+      </div>
+      <div class="esagoni">
+        <figure class="porta" onclick="go('mercato')">
+          <img src="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" alt=""><div class="velo"></div>
+          <figcaption>Mercato</figcaption><small>3 aste aperte</small>
+        </figure>
+        <figure class="porta" onclick="go('arena')">
+          <img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt=""><div class="velo"></div>
+          <figcaption>Arena</figcaption><small>torneo attivo</small>
+        </figure>
+        <figure class="porta">
+          <img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt=""><div class="velo"></div>
+          <figcaption>Eroi</figcaption><small>4 compagnie</small>
+        </figure>
+        <figure class="porta">
+          <img src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg" alt=""><div class="velo"></div>
+          <figcaption>Memorie</figcaption><small>cap. XXVII</small>
+        </figure>
+        <figure class="porta">
+          <img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt=""><div class="velo"></div>
+          <figcaption>Oracolo</figcaption><small>1 responso/dì</small>
+        </figure>
+        <figure class="porta">
+          <img src="/assets/PhotoStory/GruppoMEAA/drago_fiume.png" alt=""><div class="velo"></div>
+          <figcaption>Atlante</figcaption><small>2 continenti</small>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ══ MERCATO ══ -->
+    <section class="view" data-view="mercato">
+      <div class="testata" style="padding-bottom:14px">
+        <span class="kicker">Il Sottosuolo · Gilda dei Ratti</span>
+        <h1>Bazar del Nesso</h1>
+      </div>
+      <div class="bazar">
+        <aside class="mercante">
+          <div class="occhio"></div>
+          <h3>Mastro Ratto</h3>
+          <span class="rango">Rango: Zanna d'Argento</span>
+          <div class="filtri">
+            <button class="filtro on">Tutto</button>
+            <button class="filtro">Armi</button>
+            <button class="filtro">Reagenti</button>
+            <button class="filtro">Reliquie</button>
+            <button class="filtro">Solo aste</button>
+          </div>
+        </aside>
+        <div class="merci">
+          <div class="merce asta">
+            <div class="anello"><img src="/assets/PhotoStory/GruppoMEAA/masso_arcanite.png" alt=""></div>
+            <div style="flex:1">
+              <span class="rar">Leggendario</span>
+              <h4>Frammento di Arcanite Pura</h4>
+              <p class="sotto" style="font-size:.85rem">Asta in corso — il Nesso trattiene il respiro.</p>
+              <div class="barra-asta"><i></i></div>
+              <button class="btn rosso">Rilancia · 240 ⬡</button>
+            </div>
+          </div>
+          <div class="merce">
+            <span class="rar">Raro</span>
+            <div class="anello"><img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt=""></div>
+            <h4>Stocco del Veleno</h4>
+            <div class="prezzo">140 ⬡</div>
+            <button class="btn">Acquista</button>
+          </div>
+          <div class="merce">
+            <span class="rar">Raro</span>
+            <div class="anello"><img src="/assets/PhotoStory/GruppoMEAA/portale.png" alt=""></div>
+            <h4>Veste dell'Arcano</h4>
+            <div class="prezzo">120 ⬡</div>
+            <button class="btn">Acquista</button>
+          </div>
+          <div class="merce">
+            <span class="rar">Comune</span>
+            <div class="anello"><img src="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg" alt=""></div>
+            <h4>Flauto di Smeraldo</h4>
+            <div class="prezzo">80 ⬡</div>
+            <button class="btn">Acquista</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ARENA ══ -->
+    <section class="view" data-view="arena">
+      <div class="testata" style="padding-bottom:0">
+        <span class="kicker">Torneo VII · Round 2</span>
+        <h1>Colosseo Astrale</h1>
+      </div>
+      <div class="vs-palco">
+        <div class="gladiatore">
+          <img src="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg" alt="">
+          <div class="vite"><i></i><i></i><i></i><i class="giu"></i><i class="giu"></i></div>
+          <div class="nome">Garroth · Lv.3</div>
+        </div>
+        <span class="vs">VS</span>
+        <span class="fulmine"></span>
+        <div class="gladiatore">
+          <img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt="">
+          <div class="vite"><i></i><i></i><i></i><i></i><i class="giu"></i></div>
+          <div class="nome">Caius · Lv.3</div>
+        </div>
+      </div>
+      <div style="text-align:center"><button class="btn rosso">⚔ Entra nello scontro</button></div>
+
+      <div class="sezione-t"><h2>Bottega Settimanale</h2><i></i></div>
+      <div class="bottega">
+        <div class="pozione"><span class="ico">🗡️</span><h4>Lama Astrale</h4><div class="ma">18 MA</div></div>
+        <div class="pozione"><span class="ico">🛡️</span><h4>Egida del Vuoto</h4><div class="ma">15 MA</div></div>
+        <div class="pozione"><span class="ico">⚗️</span><h4>Elisir di Fase</h4><div class="ma">9 MA</div></div>
+        <div class="pozione"><span class="ico">💫</span><h4>Sigillo Rapido</h4><div class="ma">6 MA</div></div>
+      </div>
+
+      <div class="sezione-t"><h2>Classifica del Torneo</h2><i></i></div>
+      <div class="scala">
+        <div class="grado"><span class="orb">1</span><b>Temistocle Sottocolle</b><span>9 punti</span></div>
+        <div class="grado"><span class="orb">2</span><b>Zethir Nightwhisper</b><span>7 punti</span></div>
+        <div class="grado"><span class="orb">3</span><b>Alaric Voltasorte</b><span>6 punti</span></div>
+        <div class="grado"><span class="orb">4</span><b>Cleofe</b><span>4 punti</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ NAV RADIALE: L'ORBE DEL NESSO ══ -->
+  <nav class="nesso" id="nesso">
+    <span class="nesso-hint">tocca l'orbe</span>
+    <button class="satellite s1 on" data-go="home"><span class="g">✦</span>Nesso</button>
+    <button class="satellite s2" data-go="mercato"><span class="g">⬡</span>Bazar</button>
+    <button class="satellite s3" data-go="arena"><span class="g">⚔</span>Arena</button>
+    <button class="satellite s4"><span class="g">☰</span>Altro</button>
+    <button class="orbe" id="orbe" aria-label="Apri il Nesso"></button>
+  </nav>
+
+<script>
+  /* warp: stelle che scivolano via dal centro, ambientale */
+  const cv=document.getElementById('warp'), cx=cv.getContext('2d');
+  let W,H,ss=[];
+  const rs=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight;
+    ss=Array.from({length:W<600?60:110},()=>nasce(true)); };
+  const nasce=(sparse)=>({ a:Math.random()*Math.PI*2, d:sparse?Math.random()*W*.5:20+Math.random()*60,
+    v:.2+Math.random()*.6, r:.4+Math.random()*1 });
+  rs(); addEventListener('resize',rs);
+  (function tick(){ cx.clearRect(0,0,W,H);
+    for(const s of ss){ s.d+=s.v*(s.d/140);
+      const x=W/2+Math.cos(s.a)*s.d, y=H/2+Math.sin(s.a)*s.d;
+      if(x<-20||x>W+20||y<-20||y>H+20){ Object.assign(s,nasce(false)); continue; }
+      const al=Math.min(.8, s.d/300);
+      cx.fillStyle=`rgba(237,234,255,${al.toFixed(2)})`;
+      cx.beginPath(); cx.arc(x,y,s.r,0,7); cx.fill(); }
+    requestAnimationFrame(tick);
+  })();
+
+  /* navigazione tra viste + orbe radiale */
+  const nesso=document.getElementById('nesso');
+  document.getElementById('orbe').addEventListener('click',()=>nesso.classList.toggle('aperto'));
+  function go(v){
+    document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.dataset.view===v));
+    document.querySelectorAll('.satellite').forEach(b=>b.classList.toggle('on', b.dataset.go===v));
+    nesso.classList.remove('aperto');
+    scrollTo({top:0});
+  }
+  document.querySelectorAll('.satellite[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+  /* su desktop l'orbe si apre da solo al passaggio */
+  nesso.addEventListener('mouseenter',()=>nesso.classList.add('aperto'));
+  nesso.addEventListener('mouseleave',()=>nesso.classList.remove('aperto'));
+</script>
+</body>
+</html>

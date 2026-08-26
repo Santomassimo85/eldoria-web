@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP K — La Rotta</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Cinzel:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --fondale:#0c1920; --carta:#11242e; --china:#67e8f9; --corallo:#fb7185;
+    --ink:#eaf3f2; --muted:#7fa3a8; --linea:rgba(103,232,249,.4);
+  }
+  html { scrollbar-width:thin; scrollbar-color:#1f3d46 #0c1920; }
+  body { background:var(--fondale); color:var(--ink);
+    font-family:"Cormorant Garamond",Georgia,serif; min-height:100dvh; overflow-x:hidden; }
+
+  /* ── LA CARTA NAUTICA: griglia, isobate che scorrono, correnti ── */
+  .oceano { position:fixed; inset:0; z-index:0;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 46px, rgba(103,232,249,.045) 46px 47px),
+      repeating-linear-gradient(90deg, transparent 0 46px, rgba(103,232,249,.045) 46px 47px),
+      radial-gradient(60% 50% at 85% 10%, rgba(251,113,133,.06), transparent 60%),
+      linear-gradient(180deg,#0e1e27,#0c1920 60%,#091319); }
+  .isobata { position:absolute; border:1.5px dashed var(--linea); border-radius:50%;
+    animation:corrente 60s linear infinite; }
+  .isobata.i1 { width:70vmax; height:52vmax; left:-20vmax; top:-18vmax; }
+  .isobata.i2 { width:50vmax; height:38vmax; right:-16vmax; bottom:-14vmax; animation-duration:80s; }
+  .isobata.i3 { width:30vmax; height:22vmax; right:-6vmax; bottom:-4vmax; animation-duration:45s;
+    animation-direction:reverse; opacity:.6; }
+  @keyframes corrente { to { transform:rotate(360deg); } }
+  #plancton { position:absolute; inset:0; }
+
+  /* ── ROTTA IN ALTO: i tre approdi (waypoint cliccabili) ── */
+  .rotta-bar { position:fixed; top:0; left:0; right:0; z-index:40;
+    display:flex; justify-content:center; gap:0; padding:14px 8px 10px;
+    background:linear-gradient(180deg, rgba(9,19,25,.92), transparent);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .approdo { position:relative; display:flex; align-items:center; gap:9px; border:none;
+    background:none; cursor:pointer; color:var(--muted); padding:8px 16px;
+    font-family:"Cinzel",serif; font-size:.62rem; letter-spacing:.22em; text-transform:uppercase;
+    transition:color .2s ease; }
+  .approdo:hover { color:var(--ink); }
+  .approdo .pin { width:11px; height:11px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    border:1.5px solid var(--china); background:transparent; transition:all .2s ease; }
+  .approdo:hover .pin { background:rgba(103,232,249,.4); }
+  .approdo.on { color:var(--china); }
+  .approdo.on .pin { background:var(--china); box-shadow:0 0 14px rgba(103,232,249,.9); }
+  /* tratteggio fra gli approdi */
+  .approdo + .approdo::before { content:""; position:absolute; left:-26px; top:50%; width:44px;
+    height:0; border-top:1.5px dashed var(--linea); }
+
+  /* ── IL VIAGGIO: le tre carte affiancate, si naviga in panoramica ── */
+  .mare { position:relative; z-index:1; overflow:hidden; }
+  .convoglio { display:flex; width:300%;
+    transition:transform .7s cubic-bezier(.65,0,.35,1); }
+  .distretto { width:33.3334%; flex:0 0 33.3334%; min-height:100dvh;
+    padding:86px clamp(16px,4vw,54px) 150px; }
+  .dentro { max-width:960px; margin:0 auto; }
+
+  .cartiglio { position:relative; text-align:center; padding:18px 26px 22px; margin:0 auto 26px;
+    max-width:560px; border:1.5px solid var(--linea); background:rgba(17,36,46,.55); }
+  .cartiglio::before, .cartiglio::after { content:"✦"; position:absolute; top:-9px; color:var(--china);
+    background:var(--fondale); padding:0 6px; font-size:.7rem; }
+  .cartiglio::before { left:18px; } .cartiglio::after { right:18px; }
+  .kicker { font-family:"Cinzel",serif; font-size:.58rem; letter-spacing:.44em;
+    text-transform:uppercase; color:var(--corallo); }
+  h1 { font-family:"Cormorant Garamond",serif; font-weight:700; font-size:clamp(1.9rem,6vw,2.9rem);
+    line-height:1.04; margin-top:8px; color:var(--ink); }
+  h1 em { font-style:italic; font-weight:500; color:var(--china); }
+  .sotto { color:var(--muted); font-style:italic; font-size:1.02rem; }
+
+  /* ═════════ HOME: LA CAPITALE — tappe lungo la rotta tratteggiata ═════════ */
+  .percorso { position:relative; margin-top:10px; }
+  .percorso::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:0;
+    border-left:2px dashed var(--linea); }
+  .tappa { position:relative; display:flex; align-items:center; gap:18px; margin:0 0 34px; }
+  .tappa:nth-child(even) { flex-direction:row-reverse; }
+  .tappa .medaglione { position:relative; z-index:2; flex:0 0 46%; border-radius:8px; overflow:hidden;
+    border:1.5px solid var(--linea); cursor:pointer;
+    box-shadow:0 18px 40px -18px #000;
+    transition:transform .28s ease, box-shadow .28s ease, border-color .28s ease; }
+  .tappa .medaglione:hover { transform:translateY(-6px) rotate(-.6deg); border-color:var(--china);
+    box-shadow:0 0 30px -8px rgba(103,232,249,.6), 0 22px 44px -18px #000; }
+  .tappa:nth-child(even) .medaglione:hover { transform:translateY(-6px) rotate(.6deg); }
+  .medaglione img { width:100%; aspect-ratio:16/10; object-fit:cover; display:block;
+    filter:saturate(.9) sepia(.12); transition:filter .3s ease; }
+  .medaglione:hover img { filter:saturate(1.1) sepia(0); }
+  .medaglione figcaption { position:absolute; left:0; right:0; bottom:0; padding:20px 12px 9px;
+    background:linear-gradient(180deg,transparent,rgba(9,19,25,.95));
+    font-family:"Cinzel",serif; font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; }
+  .tappa .nota { flex:1; color:var(--muted); font-style:italic; font-size:.98rem; line-height:1.5; }
+  .tappa:nth-child(odd) .nota { text-align:left; }
+  .tappa:nth-child(even) .nota { text-align:right; }
+  .tappa .nodo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3;
+    width:13px; height:13px; border-radius:50%; background:var(--fondale);
+    border:2.5px solid var(--china); box-shadow:0 0 14px rgba(103,232,249,.8); }
+
+  /* ═════════ MERCATO: PORTO FRANCO — il manifesto di carico ═════════ */
+  .manifesto { border:1.5px solid var(--linea); background:rgba(17,36,46,.5); }
+  .manifesto-testa { display:flex; justify-content:space-between; align-items:center;
+    padding:12px 18px; border-bottom:1.5px dashed var(--linea);
+    font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.3em; text-transform:uppercase;
+    color:var(--muted); }
+  .riga-carico { display:flex; align-items:center; gap:16px; padding:14px 18px;
+    border-bottom:1px solid rgba(103,232,249,.14); cursor:pointer;
+    transition:background .2s ease, transform .2s ease; }
+  .riga-carico:hover { background:rgba(103,232,249,.07); transform:translateX(6px); }
+  .riga-carico .tondo { flex:0 0 58px; width:58px; height:58px; border-radius:50%; overflow:hidden;
+    border:1.5px solid var(--linea); }
+  .riga-carico .tondo img { width:100%; height:100%; object-fit:cover; }
+  .riga-carico .desc { flex:1; min-width:0; }
+  .riga-carico h4 { font-weight:700; font-size:1.14rem; line-height:1.1; }
+  .riga-carico small { color:var(--muted); font-style:italic; }
+  .timbro { font-family:"Cinzel",serif; font-size:.56rem; letter-spacing:.16em; text-transform:uppercase;
+    padding:5px 10px; border:1.5px solid; transform:rotate(-4deg); white-space:nowrap; }
+  .timbro.disp { color:var(--china); border-color:var(--china); }
+  .timbro.asta { color:var(--corallo); border-color:var(--corallo); animation:timbro-batte 2.4s ease-in-out infinite; }
+  @keyframes timbro-batte { 0%,100% { transform:rotate(-4deg) scale(1); } 50% { transform:rotate(-4deg) scale(1.08); } }
+  .timbro.via { color:var(--muted); border-color:var(--muted); opacity:.6; }
+  .prezzo-k { font-family:"Cinzel",serif; font-weight:700; color:var(--china); white-space:nowrap; }
+  /* asta del molo: la marea consuma il tempo */
+  .molo { margin-top:22px; border:1.5px solid var(--corallo); background:rgba(251,113,133,.06);
+    padding:18px; position:relative; overflow:hidden; }
+  .molo .onda { position:absolute; left:0; bottom:0; height:8px; width:58%;
+    background:repeating-linear-gradient(90deg,var(--corallo) 0 10px, transparent 10px 16px);
+    animation:marea 16s linear infinite; }
+  @keyframes marea { from { width:58%; } to { width:6%; } }
+  .molo h3 { font-family:"Cinzel",serif; font-size:.8rem; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--corallo); }
+  .molo p { color:var(--muted); font-style:italic; margin:6px 0 12px; }
+  .btnk { display:inline-block; padding:11px 24px; border:1.5px solid var(--china); background:none;
+    color:var(--china); font-family:"Cinzel",serif; font-weight:700; font-size:.68rem;
+    letter-spacing:.2em; text-transform:uppercase; cursor:pointer; position:relative;
+    transition:color .25s ease, box-shadow .25s ease; overflow:hidden; z-index:1; }
+  .btnk::before { content:""; position:absolute; inset:0; background:var(--china);
+    transform:scaleX(0); transform-origin:left; transition:transform .25s ease; z-index:-1; }
+  .btnk:hover { color:#0c1920; box-shadow:0 0 26px -6px rgba(103,232,249,.8); }
+  .btnk:hover::before { transform:scaleX(1); }
+  .btnk.rosso { border-color:var(--corallo); color:var(--corallo); }
+  .btnk.rosso::before { background:var(--corallo); }
+  .btnk.rosso:hover { color:#0c1920; box-shadow:0 0 26px -6px rgba(251,113,133,.8); }
+
+  /* ═════════ ARENA: L'ISOLA DEL DUELLO — carta dell'isola + rotte del torneo ═════════ */
+  .isola { position:relative; margin:0 auto 26px; width:min(100%,520px); aspect-ratio:1/1;
+    border-radius:50%; border:1.5px dashed var(--linea);
+    display:flex; align-items:center; justify-content:center; }
+  .isola::before { content:""; position:absolute; inset:12%; border-radius:50%;
+    border:1.5px dashed rgba(103,232,249,.25); animation:corrente 50s linear infinite; }
+  .isola::after { content:""; position:absolute; inset:26%; border-radius:50%;
+    border:1.5px dashed rgba(103,232,249,.18); animation:corrente 34s linear infinite reverse; }
+  .duellanti { position:relative; z-index:2; display:flex; align-items:center; gap:clamp(12px,4vw,30px); }
+  .polena { width:clamp(110px,17vw,150px); text-align:center; cursor:pointer;
+    transition:transform .25s ease; }
+  .polena:hover { transform:translateY(-6px); }
+  .polena .ritratto { width:100%; aspect-ratio:1/1; border-radius:50%; overflow:hidden;
+    border:2px solid var(--china); box-shadow:0 0 0 5px rgba(103,232,249,.12), 0 14px 30px -12px #000;
+    transition:box-shadow .25s ease; }
+  .polena:hover .ritratto { box-shadow:0 0 26px rgba(103,232,249,.7), 0 14px 30px -12px #000; }
+  .polena.avversa .ritratto { border-color:var(--corallo); }
+  .polena.avversa:hover .ritratto { box-shadow:0 0 26px rgba(251,113,133,.7), 0 14px 30px -12px #000; }
+  .polena .ritratto img { width:100%; height:100%; object-fit:cover; }
+  .polena b { display:block; margin-top:8px; font-family:"Cinzel",serif; font-size:.72rem;
+    letter-spacing:.1em; text-transform:uppercase; }
+  .polena .tacche { display:flex; gap:3px; justify-content:center; margin-top:5px; }
+  .polena .tacche i { width:14px; height:4px; background:var(--china); }
+  .polena.avversa .tacche i { background:var(--corallo); }
+  .polena .tacche i.giu { opacity:.2; }
+  .rosa-vs { font-family:"Cinzel",serif; color:var(--ink); font-size:1rem; letter-spacing:.3em;
+    animation:rollio 3s ease-in-out infinite alternate; }
+  @keyframes rollio { from { transform:rotate(-4deg); } to { transform:rotate(4deg); } }
+
+  .rotte-torneo { border:1.5px solid var(--linea); background:rgba(17,36,46,.5); padding:18px; }
+  .rotte-torneo h3 { font-family:"Cinzel",serif; font-size:.72rem; letter-spacing:.3em;
+    text-transform:uppercase; color:var(--china); margin-bottom:14px; }
+  .ramo { display:flex; align-items:center; gap:10px; padding:9px 4px;
+    border-bottom:1px dashed rgba(103,232,249,.18); font-size:1.02rem;
+    transition:background .2s ease, padding-left .2s ease; }
+  .ramo:hover { background:rgba(103,232,249,.06); padding-left:12px; }
+  .ramo .p { width:9px; height:9px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    border:1.5px solid var(--china); flex:0 0 9px; }
+  .ramo.vinto .p { background:var(--china); }
+  .ramo b { flex:1; font-weight:600; }
+  .ramo span { color:var(--muted); font-style:italic; font-size:.88rem; }
+
+  /* ── NAV: LA BUSSOLA (unica per questo mockup) ── */
+  .bussola { position:fixed; right:20px; bottom:20px; z-index:50; width:92px; height:92px; }
+  .quadr { position:absolute; inset:0; border-radius:50%; cursor:pointer;
+    background:radial-gradient(circle at 40% 34%, #17323d, #0b1a21 70%);
+    border:1.5px solid var(--linea);
+    box-shadow:0 0 0 4px rgba(12,25,32,.8), 0 0 30px -6px rgba(103,232,249,.5), 0 16px 34px -12px #000;
+    transition:transform .2s ease; }
+  .quadr:hover { transform:scale(1.05); }
+  .quadr i { position:absolute; left:50%; top:50%; width:2.5px; height:34px; margin-left:-1.25px;
+    transform-origin:50% 100%; transform:translateY(-100%) rotate(var(--punta,0deg));
+    background:linear-gradient(180deg,var(--corallo),transparent);
+    transition:transform .6s cubic-bezier(.34,1.56,.64,1); }
+  .quadr::after { content:""; position:absolute; left:50%; top:50%; width:9px; height:9px;
+    margin:-4.5px; border-radius:50%; background:var(--china); box-shadow:0 0 10px rgba(103,232,249,.9); }
+  .venti { position:absolute; inset:0; pointer-events:none; }
+  .vento { position:absolute; left:50%; top:50%; pointer-events:auto; border:none; cursor:pointer;
+    width:56px; height:56px; margin:-28px; border-radius:50%;
+    background:radial-gradient(circle at 40% 34%, #14303a, #0a181f);
+    border:1.5px solid var(--linea); color:var(--muted);
+    font-family:"Cinzel",serif; font-size:.5rem; letter-spacing:.1em; text-transform:uppercase;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    opacity:0; transform:scale(.3); pointer-events:none;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease, color .2s, box-shadow .2s; }
+  .vento .r { font-size:.92rem; line-height:1; color:var(--china); }
+  .bussola.aperta .vento { opacity:1; pointer-events:auto; }
+  .bussola.aperta .v1 { transform:translate(-96px,0) scale(1); }
+  .bussola.aperta .v2 { transform:translate(-72px,-72px) scale(1); }
+  .bussola.aperta .v3 { transform:translate(0,-96px) scale(1); }
+  .vento:hover { color:var(--ink); box-shadow:0 0 20px rgba(103,232,249,.7); }
+  .vento.on { border-color:var(--china); color:var(--china);
+    box-shadow:0 0 22px rgba(103,232,249,.9); }
+
+  .badge-opt { position:fixed; top:60px; left:12px; z-index:60; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:#0c1920; background:linear-gradient(90deg,var(--china),#a5f3fc);
+    padding:7px 14px; border-radius:2px; box-shadow:0 0 26px -4px rgba(103,232,249,.9); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } #plancton{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">K · LA ROTTA</div>
+  <div class="oceano">
+    <div class="isobata i1"></div><div class="isobata i2"></div><div class="isobata i3"></div>
+    <canvas id="plancton"></canvas>
+  </div>
+
+  <!-- rotta in alto: gli approdi -->
+  <nav class="rotta-bar">
+    <button class="approdo on" data-go="0"><span class="pin"></span>La Capitale</button>
+    <button class="approdo" data-go="1"><span class="pin"></span>Porto Franco</button>
+    <button class="approdo" data-go="2"><span class="pin"></span>Isola del Duello</button>
+  </nav>
+
+  <div class="mare">
+    <div class="convoglio" id="convoglio">
+
+      <!-- ══ HOME: LA CAPITALE ══ -->
+      <section class="distretto"><div class="dentro">
+        <div class="cartiglio">
+          <span class="kicker">Carta Nautica di Exanthia · Foglio I</span>
+          <h1>Il Mondo <em>di Exanthia</em></h1>
+          <p class="sotto">Ogni luogo è un approdo. Segui la rotta tratteggiata.</p>
+        </div>
+        <div class="percorso">
+          <div class="tappa">
+            <figure class="medaglione" onclick="viaggia(1)">
+              <img src="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" alt="">
+              <figcaption>Mercato Nero</figcaption>
+            </figure>
+            <span class="nodo"></span>
+            <p class="nota">Merci senza bandiera nel porto franco della Gilda.</p>
+          </div>
+          <div class="tappa">
+            <figure class="medaglione" onclick="viaggia(2)">
+              <img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt="">
+              <figcaption>Arena</figcaption>
+            </figure>
+            <span class="nodo"></span>
+            <p class="nota">L'isola dove i duellanti scrivono il proprio nome.</p>
+          </div>
+          <div class="tappa">
+            <figure class="medaglione">
+              <img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt="">
+              <figcaption>Registro degli Eroi</figcaption>
+            </figure>
+            <span class="nodo"></span>
+            <p class="nota">Quattro compagnie, sedici nomi sul giornale di bordo.</p>
+          </div>
+          <div class="tappa">
+            <figure class="medaglione">
+              <img src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg" alt="">
+              <figcaption>Memorie</figcaption>
+            </figure>
+            <span class="nodo"></span>
+            <p class="nota">I diari di navigazione delle notti passate.</p>
+          </div>
+        </div>
+      </div></section>
+
+      <!-- ══ MERCATO: PORTO FRANCO ══ -->
+      <section class="distretto"><div class="dentro">
+        <div class="cartiglio">
+          <span class="kicker">Gilda dei Ratti · Dogana Nulla</span>
+          <h1>Porto <em>Franco</em></h1>
+          <p class="sotto">Manifesto di carico — rango: Zanna d'Argento.</p>
+        </div>
+        <div class="manifesto">
+          <div class="manifesto-testa"><span>Carico del giorno</span><span>⬡ = corone</span></div>
+          <div class="riga-carico">
+            <span class="tondo"><img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt=""></span>
+            <div class="desc"><h4>Stocco del Veleno Smeraldino</h4><small>lama rara · provenienza ignota</small></div>
+            <span class="prezzo-k">140 ⬡</span>
+            <span class="timbro disp">a banco</span>
+          </div>
+          <div class="riga-carico">
+            <span class="tondo"><img src="/assets/PhotoStory/GruppoMEAA/portale.png" alt=""></span>
+            <div class="desc"><h4>Veste dell'Arcano Celeste</h4><small>tessuto raro · non reclamata</small></div>
+            <span class="prezzo-k">120 ⬡</span>
+            <span class="timbro disp">a banco</span>
+          </div>
+          <div class="riga-carico">
+            <span class="tondo"><img src="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg" alt=""></span>
+            <div class="desc"><h4>Flauto di Smeraldo Vivente</h4><small>strumento comune · suona da solo</small></div>
+            <span class="prezzo-k">80 ⬡</span>
+            <span class="timbro via">salpato</span>
+          </div>
+        </div>
+        <div class="molo">
+          <h3>⚓ Asta del molo</h3>
+          <p>Frammento di Arcanite Pura — la marea decide la chiusura.</p>
+          <button class="btnk rosso">Rilancia · 240 ⬡</button>
+          <div class="onda"></div>
+        </div>
+      </div></section>
+
+      <!-- ══ ARENA: ISOLA DEL DUELLO ══ -->
+      <section class="distretto"><div class="dentro">
+        <div class="cartiglio">
+          <span class="kicker">Torneo VII · Round 2</span>
+          <h1>Isola del <em>Duello</em></h1>
+          <p class="sotto">Due polene, una sola prua che rientra in porto.</p>
+        </div>
+        <div class="isola">
+          <div class="duellanti">
+            <div class="polena">
+              <div class="ritratto"><img src="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg" alt=""></div>
+              <b>Garroth</b>
+              <div class="tacche"><i></i><i></i><i></i><i class="giu"></i><i class="giu"></i></div>
+            </div>
+            <span class="rosa-vs">CONTRO</span>
+            <div class="polena avversa">
+              <div class="ritratto"><img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt=""></div>
+              <b>Caius</b>
+              <div class="tacche"><i></i><i></i><i></i><i></i><i class="giu"></i></div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-bottom:24px"><button class="btnk">⚔ Salpa verso lo scontro</button></div>
+        <div class="rotte-torneo">
+          <h3>Rotte del torneo</h3>
+          <div class="ramo vinto"><span class="p"></span><b>Temistocle → semifinale</b><span>9 pt · rotta sicura</span></div>
+          <div class="ramo vinto"><span class="p"></span><b>Zethir → semifinale</b><span>7 pt · vento in poppa</span></div>
+          <div class="ramo"><span class="p"></span><b>Alaric — in navigazione</b><span>6 pt</span></div>
+          <div class="ramo"><span class="p"></span><b>Cleofe — in navigazione</b><span>4 pt</span></div>
+        </div>
+      </div></section>
+
+    </div>
+  </div>
+
+  <!-- ── NAV: LA BUSSOLA ── -->
+  <nav class="bussola" id="bussola">
+    <div class="venti">
+      <button class="vento v1 on" data-go="0"><span class="r">✦</span>Capitale</button>
+      <button class="vento v2" data-go="1"><span class="r">⚓</span>Porto</button>
+      <button class="vento v3" data-go="2"><span class="r">⚔</span>Isola</button>
+    </div>
+    <button class="quadr" id="quadr" aria-label="Apri la bussola"><i id="ago"></i></button>
+  </nav>
+
+<script>
+  /* plancton luminoso che deriva nelle correnti — ambientale */
+  const cv=document.getElementById('plancton'), cx=cv.getContext('2d');
+  let W,H,pl=[];
+  const rs=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight;
+    pl=Array.from({length:W<600?26:46},()=>({x:Math.random()*W,y:Math.random()*H,
+      a:Math.random()*7, v:.1+Math.random()*.25, ph:Math.random()*7,
+      c:Math.random()<.8?'103,232,249':'251,113,133'})); };
+  rs(); addEventListener('resize',rs);
+  let t=0;
+  (function tick(){ t++; cx.clearRect(0,0,W,H);
+    for(const p of pl){
+      p.a+=(Math.random()-.5)*.2; p.x+=Math.cos(p.a)*p.v+.12; p.y+=Math.sin(p.a)*p.v;
+      if(p.x>W+8)p.x=-8; if(p.x<-8)p.x=W+8; if(p.y>H+8)p.y=-8; if(p.y<-8)p.y=H+8;
+      const al=.12+.4*Math.abs(Math.sin(t/70+p.ph));
+      cx.fillStyle=`rgba(${p.c},${al.toFixed(2)})`;
+      cx.beginPath(); cx.arc(p.x,p.y,1.2,0,7); cx.fill(); }
+    requestAnimationFrame(tick);
+  })();
+
+  /* il viaggio: panoramica orizzontale tra i distretti + ago della bussola */
+  const conv=document.getElementById('convoglio'), bus=document.getElementById('bussola'), ago=document.getElementById('ago');
+  const ANGOLI=[0,120,240];
+  function viaggia(i){
+    conv.style.transform=`translateX(${-i*33.3334}%)`;
+    document.querySelectorAll('.approdo').forEach((a,k)=>a.classList.toggle('on',k===i));
+    document.querySelectorAll('.vento').forEach((v,k)=>v.classList.toggle('on',k===i));
+    ago.style.setProperty('--punta', ANGOLI[i]+'deg');
+    bus.classList.remove('aperta');
+    scrollTo({top:0});
+  }
+  document.querySelectorAll('.approdo').forEach(a=>a.addEventListener('click',()=>viaggia(+a.dataset.go)));
+  document.querySelectorAll('.vento').forEach(v=>v.addEventListener('click',()=>viaggia(+v.dataset.go)));
+  document.getElementById('quadr').addEventListener('click',()=>bus.classList.toggle('aperta'));
+  bus.addEventListener('mouseenter',()=>bus.classList.add('aperta'));
+  bus.addEventListener('mouseleave',()=>bus.classList.remove('aperta'));
+</script>
+</body>
+</html>
