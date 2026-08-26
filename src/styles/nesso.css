@@ -71,16 +71,22 @@
    1) IL VUOTO — il fondo dell'app è lo spazio tra i mondi
       (stelle in fuga e nebulose vivono in NessoOverlay)
    ══════════════════════════════════════════════════════════════════ */
-body:not(.theme-dark) {
-  --font-ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-head: "Cinzel", Georgia, serif;
-  --font-display: "Cinzel", Georgia, serif;
-  --font-title: "Cinzel", Georgia, serif;
+/* il fondo del vuoto vive sul CANVAS (<html>), così NessoOverlay può stare a
+   z-index -1 e <main> non apre uno stacking context (i bottoni fixed dentro
+   main — es. agenda — restano sopra l'header) */
+html {
   background:
     radial-gradient(50% 40% at 80% 15%, rgba(139, 92, 246, .16), transparent 60%),
     radial-gradient(45% 40% at 15% 85%, rgba(34, 211, 238, .1), transparent 60%),
     #070713;
   background-attachment: scroll; /* mai fixed (iOS) */
+}
+body:not(.theme-dark) {
+  --font-ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Cinzel", Georgia, serif;
+  --font-display: "Cinzel", Georgia, serif;
+  --font-title: "Cinzel", Georgia, serif;
+  background: transparent;
   color: var(--nx-ink);
   font-family: var(--font-ui);
 }
@@ -93,10 +99,11 @@ body:not(.theme-dark)::before, body:not(.theme-dark)::after { display: none !imp
    ══════════════════════════════════════════════════════════════════ */
 body:not(.theme-dark) main {
   position: relative;
-  z-index: 1;
+  z-index: auto; /* nessuno stacking context: vedi nota su <html> */
   width: min(1100px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 0 0 120px;
+  /* l'header è fixed: il contenuto parte SOTTO il banner del menu */
+  padding: calc(var(--navbar-h, 66px) + 12px) 0 120px;
   overflow-x: clip;
   border-radius: 0;
   background: transparent;
@@ -182,7 +189,6 @@ body:not(.theme-dark) .nav-backdrop { background: rgba(4, 4, 12, .7); }
 
 body:not(.theme-dark) footer {
   position: relative;
-  z-index: 1;
   background: linear-gradient(180deg, rgba(13, 13, 31, .6), #070713);
   border-top: 1px solid rgba(139, 92, 246, .28);
   box-shadow: 0 -2px 30px -10px rgba(139, 92, 246, .35);
@@ -217,7 +223,7 @@ body:not(.theme-dark) footer {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0; /* SOTTO il main */
+  z-index: -1; /* sopra il canvas (<html>), sotto tutto il resto */
   overflow: hidden;
 }
 .nesso-warp { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
@@ -965,3 +971,27 @@ body:not(.theme-dark) .cine-result-count { color: var(--nx-ciano); }
 :where(body:not(.theme-dark) .cine-page) :where(p, li, dd, dt, td, th, label, figcaption, blockquote) { color: #d5d1ee; }
 :where(body:not(.theme-dark) .cine-page) :where(h1, h2, h3, h4, h5) { color: var(--nx-ink); }
 :where(body:not(.theme-dark) .cine-page) :where(small) { color: var(--nx-muted); }
+
+/* ── Tastino AGENDA (Home): piccolo, nel banner accanto all'avatar ── */
+.floating-sidebar-btn {
+  top: calc((var(--navbar-h, 66px) - 34px) / 2) !important;
+  left: auto !important;
+  right: calc(var(--safe-r, 0px) + 112px) !important;
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 15px !important;
+  z-index: 1001 !important;
+  background: radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22) !important;
+  color: var(--nx-ciano-soft) !important;
+  border: 1px solid rgba(34, 211, 238, .5) !important;
+  box-shadow: 0 0 14px -4px rgba(34, 211, 238, .7) !important;
+}
+.floating-sidebar-btn:hover,
+.floating-sidebar-btn.active {
+  transform: scale(1.06) !important;
+  background: radial-gradient(circle at 40% 34%, #9ff0ff, #22d3ee 60%, #0e7490) !important;
+  color: #070713 !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 22px rgba(34, 211, 238, .9) !important;
+}
+body:not(.theme-dark) .side-drawer { z-index: 1002; padding-top: calc(var(--navbar-h, 66px) + 16px); }
