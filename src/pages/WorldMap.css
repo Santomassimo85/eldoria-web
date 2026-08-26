@@ -1,710 +1,160 @@
 /* ============================================================
-   WORLD MAP — zoom/pan, light style
+   MAPPA DI EXANTHIA — edizione "Il Nesso" (Leaflet + foglio + Vola a…)
    ============================================================ */
+.map-page { padding-bottom: 0 !important; }
+.map-page .map-testata { text-align: center; padding: 6px 8px 10px; }
+.map-page .map-titolo { font-size: clamp(1.4rem, 5vw, 2.2rem); margin: 6px 0 0; }
 
-.map-page {
-  padding: 100px 12px 60px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ── CARTIGLIO del titolo (cornice manoscritto) ─────────── */
-.map-cartouche {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 12px 30px 14px; margin: 0 0 2px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255,253,245,.92), rgba(243,234,212,.86));
-  border: 1px solid var(--line, rgba(139,92,246,.35));
-  box-shadow: 0 12px 30px -18px rgba(86,64,30,.5), 0 1px 0 rgba(255,255,255,.6) inset;
-}
-.map-cartouche-eyebrow {
-  font-family: var(--font-title, "Cinzel"), serif;
-  font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: #2f6e8a;
-}
-.map-page-title {
-  font-family: var(--font-display, "Cinzel Decorative"), var(--font-title), serif;
-  font-weight: 900;
-  font-size: clamp(1.3rem, 4vw, 2.2rem);
-  letter-spacing: 0.04em;
-  text-align: center;
-  margin: 0;
-  background: linear-gradient(180deg, #1f4a5e 0%, #2f6e8a 60%, #4a9ac0 110%);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
-}
-.map-cartouche-rule {
-  width: 120px; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #2f6e8a, transparent);
-}
-
-/* ---- VIEWPORT --------------------------------------------- */
-.map-viewport {
+/* ── il palco ── */
+.map-page .map-palco {
   position: relative;
   width: 100%;
-  max-width: 1200px;
+  height: calc(100dvh - var(--navbar-h, 66px) - 150px);
+  min-height: 420px;
+  border-radius: 22px;
   overflow: hidden;
-  border-radius: 12px;
-  border: 2px solid color-mix(in srgb, var(--gold, #22d3ee) 45%, transparent);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 18px 48px -16px rgba(86,64,30,0.5);
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
+  border: 1px solid rgba(139, 92, 246, .35);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 40px -12px rgba(139, 92, 246, .45);
+  background: #070713;
+  isolation: isolate;
 }
+@media (min-width: 901px) { .map-page .map-palco { height: 72vh; min-height: 520px; } }
+.map-page .map-stage { position: absolute; inset: 0; background: #070713; z-index: 0; }
+.map-page .leaflet-container { background: #070713; font-family: "Manrope", system-ui, sans-serif; outline: none; }
+.map-page .map-image { image-rendering: auto; filter: saturate(1.05); }
+.map-page .leaflet-marker-icon.map-pin { background: none; border: none; }
 
-.map-viewport:active { cursor: grabbing; }
-
-.map-inner {
-  position: relative;
-  width: 100%;
-  will-change: transform;
+/* ── pin ── */
+.map-pin { position: relative; width: 0; height: 0; --p: #22d3ee; }
+.map-pin--boss { --p: #f87171; }
+.map-pin--npc  { --p: #c4b5fd; }
+.map-pin--muta { --p: #8f8bb8; opacity: .8; }
+.map-pin .pin-dot {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22);
+  border: 2px solid var(--p); color: #fff;
+  font: 800 .7rem/1 "Manrope", system-ui, sans-serif;
+  box-shadow: 0 0 14px var(--p), 0 4px 10px -4px #000;
+  cursor: pointer; transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s ease;
 }
-
-.world-map-img {
-  width: 100%;
-  display: block;
-  border-radius: 10px;
-  pointer-events: none;
+.map-pin--boss .pin-dot { width: 30px; height: 30px; font-size: .95rem; }
+.map-pin .pin-ring {
+  position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 2px solid var(--p); opacity: .8;
+  animation: map-ping 2.2s ease-out infinite; pointer-events: none;
 }
+.map-pin--boss .pin-ring { animation-duration: 1.2s; }
+@keyframes map-ping { from { transform: translate(-50%, -50%) scale(1); opacity: .8; } to { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
+.map-pin .pin-label {
+  position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none;
+  font: 700 .58rem/1 "Cinzel", Georgia, serif; letter-spacing: .08em; text-transform: uppercase;
+  color: #fff; text-shadow: 0 0 6px #000, 0 0 10px #000, 0 1px 2px #000;
+  opacity: .92;
+}
+.map-pin:hover .pin-dot, .leaflet-marker-icon.map-pin:hover .pin-dot { transform: translate(-50%, -50%) scale(1.18); box-shadow: 0 0 24px var(--p), 0 4px 10px -4px #000; }
+@media (max-width: 600px) { .map-pin .pin-label { display: none; } }
 
-/* ---- RESET ZOOM ------------------------------------------- */
-.btn-reset-zoom {
-  background: #fff;
-  border: 1px solid #ccc;
-  color: #555;
-  padding: 5px 14px;
+/* ── zoom ── */
+.map-page .map-zoomctl {
+  position: absolute; bottom: 14px; right: 12px; z-index: 5;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.map-page .map-zoomctl button {
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(34, 211, 238, .5); color: #fff; font-size: 1.1rem; line-height: 1;
+  background: radial-gradient(circle at 40% 34%, #262650, #0d0d22);
+  box-shadow: 0 6px 16px -6px #000; transition: box-shadow .15s ease, transform .15s ease;
+}
+.map-page .map-zoomctl button:hover { box-shadow: 0 0 18px rgba(34, 211, 238, .8); transform: scale(1.06); }
+
+/* ── Vola a… ── */
+.map-page .map-vola {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 5;
+  padding: 10px 10px 12px;
+  background: linear-gradient(180deg, rgba(7, 7, 19, .94) 55%, transparent);
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform .3s cubic-bezier(.16, 1, .3, 1), opacity .2s ease;
+}
+.map-page .map-palco.has-sheet .map-vola { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+.map-page .map-cerca {
+  display: flex; align-items: center; gap: 8px; width: min(100%, 360px); margin: 0 auto;
+  padding: 7px 14px; border-radius: 999px; background: #0e0e22; border: 1px solid rgba(139, 92, 246, .4);
+}
+.map-page .map-cerca:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
+.map-page .map-cerca input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none; color: #edeaff;
+  font: 600 .84rem "Manrope", system-ui, sans-serif;
+}
+.map-page .map-cerca input::placeholder { color: #8f8bb8; }
+.map-page .map-pillole {
+  display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.map-page .map-pillole::-webkit-scrollbar { display: none; }
+.map-page .map-pillola { flex: 0 0 auto; white-space: nowrap; padding: 7px 12px; }
+.map-page .map-pill-n { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: rgba(34, 211, 238, .18); color: #9ff0ff; font-size: .6rem; }
+.map-page .map-pillola.on .map-pill-n { background: rgba(7, 7, 19, .3); color: #070713; }
+.map-page .map-pillole-vuoto { color: #8f8bb8; font-size: .78rem; padding: 6px 4px; }
+
+/* ── il foglio ── */
+.map-page .map-sheet {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6;
+  max-height: 62%; overflow-y: auto;
+  padding: 16px 16px 16px;
   border-radius: 20px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  background: linear-gradient(180deg, rgba(22, 22, 50, .97), rgba(10, 10, 26, .98));
+  border: 1px solid rgba(34, 211, 238, .45);
+  box-shadow: 0 -10px 40px -14px rgba(34, 211, 238, .5), 0 24px 60px -20px #000;
+  animation: map-sheet-in .32s cubic-bezier(.16, 1, .3, 1) both;
+  --s: #22d3ee;
 }
-
-.btn-reset-zoom:hover { background: #f5f5f5; border-color: #aaa; }
-
-/* ---- ZOOM HINT -------------------------------------------- */
-.map-zoom-hint {
-  font-size: 0.7rem;
-  color: rgba(120,100,60,0.6);
-  text-align: center;
-  margin: 0;
-}
-
-/* ============================================================
-   ANCHOR & PING BASE
-   ============================================================ */
-.map-anchor {
-  position: absolute;
-  /* La controscala (1 / map-zoom) compensa lo `scale(zoom)` del .map-inner,
-     così ping e tooltip mantengono dimensioni visive costanti anche quando
-     l'utente zooma la mappa. transform-origin resta center così l'ancora
-     resta centrata sulle sue coordinate (left%, top%). */
-  transform: translate(-50%, -50%) scale(calc(1 / var(--map-zoom, 1)));
-  transform-origin: center center;
-  /* Stesso timing del .map-inner per restare in sync durante zoom/pan */
-  transition: transform 0.08s ease-out;
-  z-index: 10;
-}
-
-.ping {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.ping:hover { transform: scale(1.3); }
-
-/* Animated ring */
-.ping-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1.5px solid transparent;
-  animation: ring-pulse 2.4s ease-out infinite;
-  pointer-events: none;
-}
-
-@keyframes ring-pulse {
-  0%   { transform: scale(1);   opacity: 0.8; }
-  60%  { transform: scale(2.2); opacity: 0;   }
-  100% { transform: scale(2.2); opacity: 0;   }
-}
-
-/* ---- BOSS ping  (rosso fluo) ------------------------------ */
-.boss-ping {
-  width: 14px;
-  height: 14px;
-  background: #ff2020;
-  border: 1.5px solid #fff;
-  box-shadow: 0 0 8px 2px rgba(255,30,30,0.9), 0 0 16px rgba(255,30,30,0.5);
-}
-
-.boss-ring { border-color: rgba(255,30,30,0.7); }
-
-/* ---- CITY ping (verde fluo) ------------------------------- */
-.city-ping {
-  width: 14px;
-  height: 14px;
-  background: #39ff14;
-  border: 1.5px solid #fff;
-  box-shadow: 0 0 8px 2px rgba(57,255,20,0.9), 0 0 18px rgba(57,255,20,0.5);
-}
-
-.city-ring { border-color: rgba(57,255,20,0.7); }
-
-.city-count {
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  background: #fff;
-  color: #1a7000;
-  font-size: 0.55rem;
-  font-weight: 900;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-  border: 1px solid #39ff14;
-  line-height: 1;
-}
-
-/* ---- NPC free ping (ciano fluo) --------------------------- */
-.npc-ping {
-  width: 12px;
-  height: 12px;
-  background: #00f5ff;
-  border: 1.5px solid #fff;
-  box-shadow: 0 0 8px 2px rgba(0,245,255,0.9), 0 0 16px rgba(0,245,255,0.5);
-}
-
-.npc-ring { border-color: rgba(0,245,255,0.7); }
-
-/* ============================================================
-   TOOLTIP BASE (light)
-   ============================================================ */
-.map-tooltip {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
-  pointer-events: none;
-  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
-}
-
-.map-anchor:hover .map-tooltip,
-.map-anchor.is-active .map-tooltip {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 0.18s ease, visibility 0s linear 0s;
-}
-
-/* Ancora aperta su tap: assicura che il tooltip non sia coperto da altri ping */
-.map-anchor.is-active { z-index: 30; }
-
-/* ============================================================
-   PLACEMENT UNIVERSALE DEL TOOLTIP
-   Le classi vengono applicate in JSX in base a (x%, y%) dell'ancora
-   così il tooltip non finisce mai fuori dal viewport.
-   ============================================================ */
-
-/* Apri sotto l'ancora invece che sopra (anchor near top) */
-.map-anchor.tip-y-down .map-tooltip {
-  bottom: auto;
-  top: calc(100% + 10px);
-}
-
-/* Aggancia il bordo sinistro del tooltip al ping (anchor near left edge) */
-.map-anchor.tip-x-left .map-tooltip {
-  left: 0;
-  right: auto;
-  transform: translateX(0);
-}
-
-/* Aggancia il bordo destro del tooltip al ping (anchor near right edge) */
-.map-anchor.tip-x-right .map-tooltip {
-  left: auto;
-  right: 0;
-  transform: translateX(0);
-}
-
-/* ---- BOSS & NPC-free tooltip ----------------------------- */
-.boss-tooltip,
-.npc-tooltip {
-  width: 210px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
-  background: #fff;
-}
-
-.tooltip-img-wrap {
-  position: relative;
-  width: 100%;
-  height: 120px;
-  overflow: hidden;
-}
-
-.tooltip-img-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-  display: block;
-}
-
-.tooltip-img-fade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
-}
-
-.tooltip-body {
-  padding: 8px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: #fff;
-}
-
-.tooltip-name {
-  font-family: var(--font-title);
-  color: #2a1a0a;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.gs-badge {
-  color: #8a6500;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.reward-box {
-  background: #fffbe8;
-  border: 1px solid rgba(200,150,10,0.35);
-  border-radius: 6px;
-  padding: 5px 8px;
-}
-
-.reward-label {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: #8a6500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 2px;
-}
-
-.reward-text {
-  color: #4a3500;
-  font-size: 0.76rem;
-  margin: 0;
-  font-style: italic;
-}
-
-.mini-timer {
-  font-size: 0.7rem;
-  color: #888;
-}
-
-.hp-bar-wrap {
-  width: 100%;
-  height: 5px;
-  background: #eee;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.hp-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #c00, #ff4444);
-  border-radius: 3px;
-  transition: width 0.4s ease;
-}
-
-.hp-label {
-  font-size: 0.7rem;
-  color: #c00;
-  font-weight: 600;
-}
-
-.btn-fight {
-  background: #b00000;
-  color: #fff;
-  border: none;
-  padding: 6px 10px;
-  width: 100%;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  transition: background 0.15s;
-  margin-top: 2px;
-  pointer-events: auto;
-}
-
-.btn-fight:hover { background: #e00000; }
-
-.faction-badge {
-  color: #1a8a8b;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.loc-text {
-  color: #888;
-  font-size: 0.7rem;
-  margin: 0;
-}
-
-/* ---- CITY tooltip ---------------------------------------- */
-.city-tooltip {
-  width: 200px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 12px;
-  padding: 10px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.16);
-}
-
-.city-tooltip-title {
-  font-family: var(--font-title);
-  color: #7a5c00;
-  text-align: center;
-  font-size: 0.82rem;
-  letter-spacing: 0.05em;
-  margin: 0 0 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(200,150,10,0.25);
-}
-
-.npc-scroll-list {
-  max-height: 180px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  scrollbar-width: thin;
-  scrollbar-color: #ddd transparent;
-}
-
-.npc-mini-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fafafa;
-  border: 1px solid #eee;
-  padding: 5px 7px;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-  pointer-events: auto;
-}
-
-.npc-mini-card:hover {
-  background: #fff8e8;
-  border-color: rgba(200,150,10,0.4);
-}
-
-.npc-mini-card img {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid #ddd;
-  flex-shrink: 0;
-}
-
-.npc-mini-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.npc-mini-info strong {
-  color: #2a1a0a;
-  font-size: 0.72rem;
-  line-height: 1.2;
-}
-
-.npc-mini-info span {
-  color: #9a7500;
-  font-size: 0.6rem;
-}
-
-/* ============================================================
-   NPC DETAIL MODAL (light)
-   ============================================================ */
-.npc-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-  padding: 16px;
-}
-
-.npc-modal {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 440px;
-  padding: 22px;
-  position: relative;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-  animation: modalPop 0.28s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-@keyframes modalPop {
-  from { opacity: 0; transform: scale(0.88); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  color: #666;
-  font-size: 0.78rem;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.12s;
-}
-
-.modal-close:hover { background: #eee; }
-
-.modal-head {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-head img {
-  width: 84px;
-  height: 84px;
-  object-fit: cover;
-  object-position: top;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  flex-shrink: 0;
-}
-
-.modal-head h2 {
-  font-family: var(--font-title);
-  color: #2a1a0a;
-  margin: 0 0 6px;
-  font-size: clamp(0.95rem, 3vw, 1.2rem);
-  line-height: 1.2;
-}
-
-.faction-tag {
-  display: inline-block;
-  color: #7a5c00;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: #fffbe8;
-  border: 1px solid rgba(200,150,10,0.35);
-  border-radius: 4px;
-  padding: 2px 6px;
-  margin-bottom: 4px;
-}
-
-.loc-tag {
-  color: #888;
-  font-size: 0.73rem;
-  margin: 3px 0 0;
-}
-
-.modal-body h4 {
-  font-family: var(--font-title);
-  color: #7a5c00;
-  font-size: 0.78rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin: 0 0 7px;
-}
-
-.modal-body p {
-  color: #444;
-  line-height: 1.65;
-  font-size: 0.86rem;
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 600px) {
-  .map-page {
-    padding: 70px 0 8px;
-    min-height: 100vh;
-    min-height: 100dvh;
-    gap: 4px;
-    align-items: stretch;
-  }
-  .map-page-title {
-    font-size: 1rem;
-    margin: 0;
-    padding: 4px 8px;
-    text-align: center;
-  }
-  /* La mappa è ~4:3 landscape: forzando height:100% (vecchio CSS) la larghezza
-     superava lo schermo e il device sembrava "tagliare" la mappa. Ora torniamo
-     al sizing per larghezza così il dispositivo mostra l'intera mappa al primo
-     impatto; l'utente può ancora zoomare con pizzico per vedere i dettagli. */
-  .map-viewport {
-    width: 100%;
-    max-width: none;
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    box-shadow: none;
-    background: #1a0f04;
-  }
-  .map-inner {
-    width: 100%;
-    height: auto;
-  }
-  .world-map-img {
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: none;
-    display: block;
-  }
-
-  /* Ping più grandi su mobile per essere tappabili senza zoom */
-  .boss-ping, .city-ping { width: 18px; height: 18px; }
-  .npc-ping { width: 16px; height: 16px; }
-  .city-count {
-    width: 14px; height: 14px;
-    font-size: 0.6rem;
-    top: -8px; right: -8px;
-  }
-
-  /* UI fluttuante */
-  .btn-reset-zoom {
-    position: fixed;
-    bottom: 14px;
-    right: 12px;
-    z-index: 50;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-  .map-zoom-hint {
-    position: fixed;
-    bottom: 14px;
-    left: 12px;
-    max-width: 58%;
-    z-index: 50;
-    font-size: 0.62rem;
-    background: rgba(255,255,255,0.85);
-    padding: 4px 8px;
-    border-radius: 8px;
-    line-height: 1.2;
-  }
-
-  /* Tooltip responsive — mai più larghi del viewport */
-  .map-tooltip { max-width: calc(100vw - 24px); }
-  .boss-tooltip, .npc-tooltip { width: min(180px, calc(100vw - 24px)); }
-  .city-tooltip { width: min(180px, calc(100vw - 24px)); }
-  .tooltip-img-wrap { height: 90px; }
-  .tooltip-name { word-wrap: break-word; overflow-wrap: anywhere; }
-
-  /* Modal NPC: fit schermo, testo che va a capo */
-  .npc-overlay { padding: 12px; }
-  .npc-modal {
-    max-width: calc(100vw - 24px);
-    width: 100%;
-    padding: 18px 14px;
-    max-height: calc(100dvh - 60px);
-    overflow-y: auto;
-  }
-  .modal-head { gap: 10px; }
-  .modal-head img { width: 64px; height: 64px; }
-  .modal-head > div { min-width: 0; flex: 1; }
-  .modal-head h2 {
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-  .faction-tag { white-space: normal; }
-}
-
-/* Tablet: nessuna modifica strutturale, solo tooltip un po' più grandi
-   sfruttando lo spazio disponibile. */
-@media (min-width: 601px) and (max-width: 1024px) {
-  .boss-tooltip, .npc-tooltip { width: 220px; }
-  .city-tooltip { width: 210px; }
-}
-
-/* Mobile in landscape: dvh basso, riduco padding superiore e altezza titolo
-   per dare più spazio alla mappa. */
-@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
-  .map-page { padding: 56px 0 4px; }
-  .map-page-title { font-size: 0.85rem; padding: 2px 8px; }
-  .map-zoom-hint { display: none; } /* spazio prezioso, niente hint */
-}
-
-/* ── GLACIER ── */
-/* Testata glaciale compatta: piccola lastra d'abisso ad arco (firma del tema
-   "Ghiaccio e Acqua") al posto del cartiglio-pergamena. La mappa, lo zoom e i
-   marker restano intatti. I selettori .map-cartouche* sopra restano morti. */
-.map-glhead {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 16px 36px 12px;
-  margin: 0 0 2px;
-  border-radius: 74px 74px 12px 12px;
-  background: linear-gradient(180deg, #0d2438, #081827);
-  border: 3px solid rgba(191, 230, 245, .55);
-  box-shadow:
-    0 0 0 1px rgba(111, 208, 238, .35),
-    0 0 34px -10px rgba(111, 208, 238, .55),
-    inset 0 0 26px rgba(4, 16, 28, .5);
-}
-.map-glhead .gl-eyebrow { margin-bottom: 2px; }
-/* titolo inciso sul ghiaccio (bianco → azzurro) al posto del gradiente seppia */
-.map-glhead .map-page-title {
-  background: linear-gradient(180deg, #ffffff, #bfe6f5 55%, #2e9ad0 95%);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
-  filter: drop-shadow(0 2px 12px rgba(111, 208, 238, .45));
-}
+.map-page .map-sheet--boss { --s: #f87171; border-color: rgba(248, 113, 113, .55); box-shadow: 0 -10px 40px -14px rgba(248, 113, 113, .5), 0 24px 60px -20px #000; }
+.map-page .map-sheet--npc  { --s: #c4b5fd; border-color: rgba(196, 181, 253, .5); }
+@keyframes map-sheet-in { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* su telefono il foglio è FISSO sopra l'Orbe (che è chrome di pagina) */
 @media (max-width: 900px) {
-  .map-glhead { padding: 9px 22px 6px; border-radius: 46px 46px 10px 10px; border-width: 2px; }
+  .map-page .map-sheet {
+    position: fixed; left: 8px; right: 8px;
+    bottom: calc(var(--orbe-size, 64px) + var(--orbe-bottom, 22px) + var(--safe-b, 0px) + 12px);
+    z-index: 1064; max-height: 52vh;
+  }
 }
-@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
-  .map-glhead { padding: 4px 16px 3px; border-radius: 30px 30px 8px 8px; }
-  .map-glhead .gl-eyebrow { display: none; } /* spazio prezioso in landscape */
+@media (min-width: 901px) { .map-page .map-sheet { left: auto; right: 14px; bottom: 14px; width: 360px; max-height: 80%; } }
+.map-page .map-sheet .nx-kicker { color: var(--s); text-shadow: 0 0 12px color-mix(in srgb, var(--s) 70%, transparent); }
+.map-page .map-sheet-close {
+  position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid rgba(139, 92, 246, .4); background: rgba(13, 13, 31, .9); color: #e879f9; cursor: pointer;
+}
+.map-page .map-sheet-nome { margin: 4px 36px 10px 0; font: 700 1.1rem "Cinzel", Georgia, serif; letter-spacing: .04em; color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--s) 60%, transparent); }
+.map-page .map-sheet-lista { display: flex; flex-direction: column; gap: 6px; }
+.map-page .map-npc {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+  padding: 8px 10px; border-radius: 14px; background: rgba(7, 7, 19, .5); border: 1px solid rgba(139, 92, 246, .25);
+  color: #edeaff; font-family: "Manrope", system-ui, sans-serif; transition: border-color .15s ease, transform .15s ease;
+}
+.map-page .map-npc:hover { border-color: var(--s); transform: translateX(3px); }
+.map-page .map-npc .nx-anello--sm { width: 44px; height: 44px; }
+.map-page .map-npc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.map-page .map-npc-info strong { font-size: .88rem; }
+.map-page .map-npc-info span { font-size: .72rem; color: #8f8bb8; }
+.map-page .map-npc-cue { color: var(--s); font-size: 1.2rem; }
+.map-page .map-sheet-cta { margin-top: 12px; width: 100%; }
+.map-page .map-kicker--boss { color: #f87171; }
+.map-page .map-boss { display: flex; gap: 12px; align-items: flex-start; }
+.map-page .map-boss-img { width: 92px; height: 92px; object-fit: cover; border-radius: 14px; border: 1px solid rgba(248, 113, 113, .55); box-shadow: 0 0 18px -6px #f87171; flex: 0 0 auto; }
+.map-page .map-boss-info { flex: 1; min-width: 0; font-size: .84rem; }
+.map-page .map-boss-info p { margin: 0 0 6px; }
+.map-page .map-boss-reward { color: #fde68a; }
+.map-page .map-boss-timer { color: #c4b5fd; }
+.map-page .map-hp { height: 8px; border-radius: 999px; background: #1e1e3c; overflow: hidden; margin: 6px 0 4px; }
+.map-page .map-hp i { display: block; height: 100%; background: linear-gradient(90deg, #f87171, #e879f9); box-shadow: 0 0 10px #f87171; }
+
+.map-page .map-hint { text-align: center; margin: 10px 0 0; }
+.map-page .map-npc-modale .nx-modale-img { height: 260px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .map-pin .pin-ring, .map-page .map-sheet { animation: none !important; }
 }

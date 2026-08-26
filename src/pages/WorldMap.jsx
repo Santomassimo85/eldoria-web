@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -7,86 +9,43 @@ import "../styles/cinematic.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { useAuth } from "../AuthContext";
 import { CITIES_HUB } from "../data/citiesHub";
+import { loreSlug } from "../utils/loreLinks";
 
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 5;
+/* ── LA MAPPA DI EXANTHIA — edizione "Il Nesso"
+   Motore Leaflet (CRS.Simple + immagine): pinch/inerzia/doppio-tap nativi,
+   `flyTo` animato, marker HTML. Su telefono la vista iniziale COPRE l'altezza
+   (si scorre di lato), niente rotazione forzata. Si naviga per NOME con le
+   pillole "Vola a…" + ricerca; ogni pin apre un FOGLIO in basso (città → NPC
+   e "Apri nell'Atlante"; boss → scheda di caccia; NPC libero → scheda).
+   Coordinate: i pin restano in % (CITIES_HUB / mapX,mapY) → unità immagine. */
+
+const MAP_URL = "/assets/Exanthia.webp";
+const MAP_W = 2048;
+const MAP_H = 1536;
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-const TAP_THRESHOLD = 8; // px: movimenti < 8px restano "tap" e non panning
-
-// Placement universale del tooltip: in base alla posizione dell'ancora sulla
-// mappa (in %) decidiamo da quale lato deve aprirsi così non finisce mai
-// fuori dal viewport. Si combina con le classi CSS .tip-y-down/.tip-x-left/right.
-function tooltipPlacementClasses(xPct, yPct) {
-  const cls = [];
-  // Soglie tarate per tooltip ~200px su map ~360px (mobile, caso peggiore):
-  // metà tooltip ≈ 25% della larghezza mappa, da qui il 25% sui lati.
-  // Top: tooltip include immagine 90px + body, ~150px → 30% della mappa più
-  // corta è una soglia conservativa che evita il clipping anche a viewport piccoli.
-  if (yPct < 30) cls.push("tip-y-down");
-  if (xPct < 25) cls.push("tip-x-left");
-  else if (xPct > 75) cls.push("tip-x-right");
-  return cls.join(" ");
-}
+const toLatLng = (xPct, yPct) => [MAP_H - (Number(yPct) / 100) * MAP_H, (Number(xPct) / 100) * MAP_W];
+const isMobileViewport = () => window.matchMedia("(max-width: 900px)").matches;
 
 export default function WorldMap() {
   const [activeBosses, setActiveBosses] = useState([]);
   const [npcs, setNpcs]                 = useState([]);
   const [selectedNpc, setSelectedNpc]   = useState(null);
-  const [activeAnchorId, setActiveAnchorId] = useState(null);
-  const [zoom, setZoom]                 = useState(1);
-  const [pan, setPan]                   = useState({ x: 0, y: 0 });
+  const [sheet, setSheet]               = useState(null);   // { kind: "city"|"boss"|"npc", ... }
+  const [query, setQuery]               = useState("");
+  const [ready, setReady]               = useState(false);
 
-  const viewportRef   = useRef(null);
-  const innerRef      = useRef(null);
-  const isDragging    = useRef(false);
-  const didDrag       = useRef(false);
-  const dragStartPos  = useRef(null);
-  const lastPointer   = useRef({ x: 0, y: 0 });
-  const lastTouchDist = useRef(null);
-  const zoomRef       = useRef(1);
+  const stageRef   = useRef(null);
+  const mapRef     = useRef(null);
+  const layerRef   = useRef(null);
+  const sheetRef   = useRef(null);
+  sheetRef.current = setSheet;
 
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-
-  // ── Orientamento: SOLO in questa pagina forziamo il landscape (la mappa è
-  // larga e in portrait si vede male). All'uscita ripristiniamo il portrait
-  // (il default dell'app, vedi manifest). Funziona quando la pagina può
-  // bloccare l'orientamento (PWA installata o fullscreen); altrove fallisce
-  // in silenzio. iOS Safari non supporta il lock via web. ──
-  useEffect(() => {
-    const orient = (typeof window !== "undefined" && window.screen && window.screen.orientation) || null;
-    if (!orient || typeof orient.lock !== "function") return;
-    // Solo su mobile/touch: niente fullscreen forzato su desktop.
-    const isMobile = window.matchMedia("(max-width: 900px)").matches || window.matchMedia("(pointer: coarse)").matches;
-    if (!isMobile) return;
-
-    // Se non siamo già fullscreen, prova a entrarci sull'elemento radice:
-    // su Chrome Android il lock dell'orientamento richiede il fullscreen.
-    const root = document.documentElement;
-    const wasFullscreen = !!document.fullscreenElement;
-    const tryLock = async () => {
-      try {
-        if (!document.fullscreenElement && root.requestFullscreen) {
-          await root.requestFullscreen().catch(() => {});
-        }
-        await orient.lock("landscape");
-      } catch { /* in tab senza gesture/fullscreen fallisce: nessun problema */ }
-    };
-    tryLock();
-
-    return () => {
-      try { orient.unlock && orient.unlock(); } catch { /* noop */ }
-      if (!wasFullscreen && document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
-    };
-  }, []);
-
-  // Firebase
+  // ── Firebase (invariato) ──
   useEffect(() => {
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) =>
       setActiveBosses(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(b => b.isActive && b.hp > 0))
@@ -97,304 +56,261 @@ export default function WorldMap() {
     return () => { unsubBoss(); unsubNpc(); };
   }, []);
 
-  // Wheel zoom (passive: false required)
+  // ── Motore: Leaflet su immagine (CRS.Simple) ──
   useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const onWheel = (e) => {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.12 : 0.9;
-      setZoom(prev => {
-        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * factor));
-        if (next <= MIN_ZOOM + 0.01) { setPan({ x: 0, y: 0 }); return MIN_ZOOM; }
-        return next;
+    const el = stageRef.current;
+    if (!el || mapRef.current) return;
+    const bounds = L.latLngBounds([[0, 0], [MAP_H, MAP_W]]);
+    const map = L.map(el, {
+      crs: L.CRS.Simple,
+      attributionControl: false,
+      zoomControl: false,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      wheelPxPerZoomLevel: 90,
+      maxBounds: bounds.pad(0.02),
+      maxBoundsViscosity: 1,
+      inertia: true,
+      tap: true,
+    });
+    L.imageOverlay(MAP_URL, bounds, { className: "map-image" }).addTo(map);
+    layerRef.current = L.layerGroup().addTo(map);
+
+    // vista iniziale: su telefono COPRE l'altezza (si scorre di lato),
+    // su desktop entra tutta; non si può zoomare oltre l'inquadratura minima
+    const inquadra = () => {
+      const { clientWidth: w, clientHeight: h } = el;
+      if (!w || !h) return;
+      const fitW = Math.log2(w / MAP_W);
+      const fitH = Math.log2(h / MAP_H);
+      const minZ = isMobileViewport() ? Math.max(fitW, fitH) : Math.min(fitW, fitH);
+      map.setMinZoom(minZ);
+      map.setMaxZoom(minZ + 3.5);
+      map.setView([MAP_H / 2, MAP_W / 2], minZ, { animate: false });
+    };
+    inquadra();
+    map.whenReady(() => setReady(true));
+    const onResize = () => { map.invalidateSize(); inquadra(); };
+    window.addEventListener("resize", onResize);
+    mapRef.current = map;
+    return () => {
+      window.removeEventListener("resize", onResize);
+      map.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+  }, []);
+
+  // ── Pin: città (hub NPC), boss, NPC liberi ──
+  useEffect(() => {
+    const map = mapRef.current, layer = layerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
+
+    const pin = (latlng, html, cls, onClick) => {
+      const m = L.marker(latlng, {
+        icon: L.divIcon({ className: `map-pin ${cls}`, html, iconSize: null }),
+        keyboard: false, riseOnHover: true,
       });
+      m.on("click", (e) => { L.DomEvent.stopPropagation(e); onClick(); });
+      m.addTo(layer);
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
 
-  // Touch — prevent page scroll while interacting with map
+    CITIES_HUB.forEach((city) => {
+      const local = npcs.filter(n => n.linkedCity === city.name);
+      const n = local.length;
+      pin(
+        toLatLng(city.x, city.y),
+        `<span class="pin-ring"></span><span class="pin-dot">${n || "⌖"}</span><span class="pin-label">${city.name}</span>`,
+        `map-pin--city${n ? "" : " map-pin--muta"}`,
+        () => { voloA(city); sheetRef.current({ kind: "city", city, npcs: local }); }
+      );
+    });
+
+    activeBosses.forEach((boss) => {
+      if (!Number.isFinite(Number(boss.mapX)) || !Number.isFinite(Number(boss.mapY))) return;
+      pin(
+        toLatLng(boss.mapX, boss.mapY),
+        `<span class="pin-ring"></span><span class="pin-dot">👹</span><span class="pin-label">${boss.name || "Boss"}</span>`,
+        "map-pin--boss",
+        () => { mapRef.current?.flyTo(toLatLng(boss.mapX, boss.mapY), zoomObiettivo(), { duration: .8 }); sheetRef.current({ kind: "boss", boss }); }
+      );
+    });
+
+    npcs.filter(n => {
+      const cityKnown = n.linkedCity && CITIES_HUB.some(c => c.name === n.linkedCity);
+      return !cityKnown && Number.isFinite(n.mapX) && Number.isFinite(n.mapY);
+    }).forEach((npc) => {
+      pin(
+        toLatLng(npc.mapX, npc.mapY),
+        `<span class="pin-ring"></span><span class="pin-dot">☖</span><span class="pin-label">${npc.name || ""}</span>`,
+        "map-pin--npc",
+        () => { mapRef.current?.flyTo(toLatLng(npc.mapX, npc.mapY), zoomObiettivo(), { duration: .8 }); sheetRef.current({ kind: "npc", npc }); }
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [npcs, activeBosses, ready]);
+
+  // ── Vola a… ──
+  const zoomObiettivo = () => {
+    const map = mapRef.current;
+    if (!map) return 0;
+    return Math.max(map.getZoom(), map.getMinZoom() + 1.5);
+  };
+  const voloA = useCallback((city) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo(toLatLng(city.x, city.y), zoomObiettivo(), { duration: .9, easeLinearity: .25 });
+  }, []);
+  const zoomIn  = () => mapRef.current?.zoomIn(0.75);
+  const zoomOut = () => mapRef.current?.zoomOut(0.75);
+  const reset   = () => { const m = mapRef.current; if (m) m.flyTo([MAP_H / 2, MAP_W / 2], m.getMinZoom(), { duration: .7 }); setSheet(null); };
+
+  // chiusura foglio: tap sulla mappa / Esc
   useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const prevent = (e) => { if (e.touches.length > 1) e.preventDefault(); };
-    el.addEventListener("touchmove", prevent, { passive: false });
-    return () => el.removeEventListener("touchmove", prevent);
-  }, []);
+    const map = mapRef.current;
+    if (!map) return;
+    const chiudi = () => setSheet(null);
+    map.on("click", chiudi);
+    return () => map.off("click", chiudi);
+  }, [ready]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") { if (selectedNpc) setSelectedNpc(null); else setSheet(null); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedNpc]);
 
-  const clampPan = useCallback((x, y) => {
-    const el = viewportRef.current;
-    const inner = innerRef.current;
-    if (!el) return { x, y };
-    const z = zoomRef.current;
-    const innerW = inner?.offsetWidth  ?? el.offsetWidth;
-    const innerH = inner?.offsetHeight ?? el.offsetHeight;
-    const maxX = Math.max(0, (innerW * z - el.offsetWidth)  / 2);
-    const maxY = Math.max(0, (innerH * z - el.offsetHeight) / 2);
-    return {
-      x: Math.min(maxX, Math.max(-maxX, x)),
-      y: Math.min(maxY, Math.max(-maxY, y)),
-    };
-  }, []);
-
-  // Mouse events
-  const onMouseDown = useCallback((e) => {
-    if (e.button !== 0) return;
-    isDragging.current = true;
-    didDrag.current = false;
-    lastPointer.current = { x: e.clientX, y: e.clientY };
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
-  const onMouseMove = useCallback((e) => {
-    if (!isDragging.current) return;
-    if (!didDrag.current && dragStartPos.current) {
-      const dxs = e.clientX - dragStartPos.current.x;
-      const dys = e.clientY - dragStartPos.current.y;
-      if (Math.hypot(dxs, dys) < TAP_THRESHOLD) return; // soglia tap
-      didDrag.current = true;
-    }
-    const dx = e.clientX - lastPointer.current.x;
-    const dy = e.clientY - lastPointer.current.y;
-    lastPointer.current = { x: e.clientX, y: e.clientY };
-    setPan(prev => clampPan(prev.x + dx, prev.y + dy));
-  }, [clampPan]);
-
-  const onMouseUp = useCallback(() => { isDragging.current = false; }, []);
-
-  // Touch events
-  const onTouchStart = useCallback((e) => {
-    if (e.touches.length === 2) {
-      lastTouchDist.current = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      didDrag.current = true; // pinch-zoom non è un tap
-    } else {
-      isDragging.current = true;
-      didDrag.current = false;
-      lastPointer.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      dragStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, []);
-
-  const onTouchMove = useCallback((e) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      if (lastTouchDist.current) {
-        const factor = dist / lastTouchDist.current;
-        setZoom(prev => {
-          const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * factor));
-          if (next <= MIN_ZOOM + 0.01) { setPan({ x: 0, y: 0 }); return MIN_ZOOM; }
-          return next;
-        });
-      }
-      lastTouchDist.current = dist;
-    } else if (isDragging.current && e.touches.length === 1) {
-      const cx = e.touches[0].clientX;
-      const cy = e.touches[0].clientY;
-      if (!didDrag.current && dragStartPos.current) {
-        const dxs = cx - dragStartPos.current.x;
-        const dys = cy - dragStartPos.current.y;
-        if (Math.hypot(dxs, dys) < TAP_THRESHOLD) return; // entro la soglia: ancora un tap, non panning
-        didDrag.current = true;
-      }
-      const dx = cx - lastPointer.current.x;
-      const dy = cy - lastPointer.current.y;
-      lastPointer.current = { x: cx, y: cy };
-      setPan(prev => clampPan(prev.x + dx, prev.y + dy));
-    }
-  }, [clampPan]);
-
-  const onTouchEnd = useCallback(() => {
-    isDragging.current = false;
-    lastTouchDist.current = null;
-  }, []);
-
-  const resetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
-
-  // Tap su un'ancora: se il movimento era < soglia (didDrag=false) considero il gesto un click utile.
-  const handleNpcClick = (e, npc) => {
-    e.stopPropagation();
-    if (didDrag.current) return;
-    setSelectedNpc(npc);
-  };
-
-  const handleAnchorTap = (e, anchorId) => {
-    e.stopPropagation();
-    if (didDrag.current) return;
-    setActiveAnchorId(prev => (prev === anchorId ? null : anchorId));
-  };
-
-  // Tap su sfondo mappa (non su ancora) chiude il tooltip aperto.
-  const handleViewportTap = () => {
-    if (didDrag.current) return;
-    if (activeAnchorId) setActiveAnchorId(null);
-  };
-
-  const innerStyle = {
-    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-    transformOrigin: "center center",
-    transition: isDragging.current ? "none" : "transform 0.08s ease-out",
-    // Esposto via CSS var: le ancore (ping + tooltip) si controscalano con
-    // calc(1 / var(--map-zoom)) per restare a dimensione visiva costante.
-    "--map-zoom": zoom,
-  };
+  // pillole "Vola a…": tutte le città, filtrate dalla ricerca
+  const cities = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...CITIES_HUB]
+      .sort((a, b) => a.name.localeCompare(b.name, "it"))
+      .filter(c => !q || c.name.toLowerCase().includes(q));
+  }, [query]);
+  const countOf = (name) => npcs.filter(n => n.linkedCity === name).length;
 
   return (
-    <div className="cine-page map-page" style={{ "--cine-accent": "#2f6e8a", "--cine-accent-2": "#4a9ac0" }}>
-      {/* ── GLACIER: testata compatta — piccola lastra d'abisso ad arco al posto
-            del cartiglio-pergamena. Nessuna finestra grande: la mappa È il contenuto. ── */}
-      <header className="map-glhead">
-        <span className="gl-eyebrow">Archivio Cartografico</span>
-        <h1 className="map-page-title">Mappa di Exanthia</h1>
+    <div className="cine-page map-page" style={{ "--cine-accent": "#22d3ee", "--cine-accent-2": "#8b5cf6" }}>
+      <header className="map-testata">
+        <span className="nx-kicker">Archivio Cartografico</span>
+        <h1 className="nx-titolo map-titolo">Mappa di Exanthia</h1>
       </header>
 
-      <div
-        ref={viewportRef}
-        className={`map-viewport${zoom > 1 ? " is-zoomed" : ""}`}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onClick={handleViewportTap}
-      >
-        <div ref={innerRef} className="map-inner" style={innerStyle}>
-          <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" draggable={false} />
+      {/* ── IL PALCO: la mappa (Leaflet) + comandi sovrapposti ── */}
+      <div className={`map-palco${sheet ? " has-sheet" : ""}`}>
+        <div ref={stageRef} className="map-stage" aria-label="Mappa interattiva di Exanthia" />
 
-          {/* BOSS (Ping Rossi) */}
-          {activeBosses.map((boss) => (
-            <div key={boss.id}
-              className={`map-anchor boss-anchor ${tooltipPlacementClasses(boss.mapX, boss.mapY)}${activeAnchorId === `boss-${boss.id}` ? " is-active" : ""}`}
-              style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}
-              onClick={(e) => handleAnchorTap(e, `boss-${boss.id}`)}>
-              <div className="ping boss-ping">
-                <div className="ping-ring boss-ring" />
-              </div>
-              <div className="map-tooltip boss-tooltip">
-                <div className="tooltip-img-wrap">
-                  <img src={boss.imageUrl} alt={boss.name} />
-                  <div className="tooltip-img-fade" />
-                </div>
-                <div className="tooltip-body">
-                  <h3 className="tooltip-name">{boss.name}</h3>
-                  <span className="gs-badge">GS {boss.gradoSfida || "??"}</span>
-                  {boss.rewards && (
-                    <div className="reward-box">
-                      <span className="reward-label">🎁 Ricompensa</span>
-                      <p className="reward-text">{boss.rewards}</p>
-                    </div>
-                  )}
-                  <div className="mini-timer">⏳ <TimerDisplay expiryDate={boss.expiryDate} /></div>
-                  <div className="hp-bar-wrap">
-                    <div className="hp-bar-fill" style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }} />
-                  </div>
-                  <div className="hp-label">{isMaster ? `❤️ ${boss.hp}/${boss.maxHp}` : "❤️ Stato Salute"}</div>
-                  <button className="btn-fight" onClick={() => navigate("/world-boss-fight")}>⚔️ COMBATTI</button>
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* zoom */}
+        <div className="map-zoomctl" role="group" aria-label="Zoom">
+          <button type="button" onClick={zoomIn} aria-label="Ingrandisci">＋</button>
+          <button type="button" onClick={zoomOut} aria-label="Riduci">－</button>
+          <button type="button" onClick={reset} aria-label="Vista iniziale" title="Vista iniziale">⌂</button>
+        </div>
 
-          {/* CITTÀ HUB (Ping raggruppati) */}
-          {CITIES_HUB.map((city) => {
-            const localNpcs = npcs.filter(n => n.linkedCity === city.name);
-            if (localNpcs.length === 0) return null;
-            return (
-              <div key={city.name}
-                className={`map-anchor city-anchor ${tooltipPlacementClasses(city.x, city.y)}${activeAnchorId === `city-${city.name}` ? " is-active" : ""}`}
-                style={{ left: `${city.x}%`, top: `${city.y}%` }}
-                onClick={(e) => handleAnchorTap(e, `city-${city.name}`)}>
-                <div className="ping city-ping">
-                  <div className="ping-ring city-ring" />
-                  <span className="city-count">{localNpcs.length}</span>
-                </div>
-                <div className="map-tooltip city-tooltip">
-                  <h4 className="city-tooltip-title">{city.name}</h4>
-                  <div className="npc-scroll-list">
-                    {localNpcs.map(npc => (
-                      <div key={npc.id} className="npc-mini-card" onClick={(e) => handleNpcClick(e, npc)}>
-                        <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
-                        <div className="npc-mini-info">
-                          <strong>{npc.name}</strong>
-                          <span>{npc.faction}</span>
-                        </div>
-                      </div>
+        {/* Vola a… : ricerca + pillole scorrevoli */}
+        <div className="map-vola" role="navigation" aria-label="Vola a">
+          <label className="map-cerca">
+            <span aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              value={query}
+              placeholder="Cerca un luogo…"
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="map-pillole">
+            {cities.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                className={`nx-pillola map-pillola${sheet?.kind === "city" && sheet.city.name === c.name ? " on" : ""}`}
+                onClick={() => { voloA(c); setSheet({ kind: "city", city: c, npcs: npcs.filter(n => n.linkedCity === c.name) }); }}
+              >
+                ⌖ {c.name}{countOf(c.name) > 0 && <span className="map-pill-n">{countOf(c.name)}</span>}
+              </button>
+            ))}
+            {cities.length === 0 && <span className="map-pillole-vuoto">Nessun luogo trovato</span>}
+          </div>
+        </div>
+
+        {/* FOGLIO in basso: dettaglio del pin ── */}
+        {sheet && (
+          <aside className={`map-sheet map-sheet--${sheet.kind}`} role="dialog" aria-label={
+            sheet.kind === "city" ? sheet.city.name : sheet.kind === "boss" ? sheet.boss.name : sheet.npc.name
+          }>
+            <button type="button" className="map-sheet-close" onClick={() => setSheet(null)} aria-label="Chiudi">✕</button>
+
+            {sheet.kind === "city" && (
+              <>
+                <span className="nx-kicker">⌖ Città · {sheet.npcs.length} {sheet.npcs.length === 1 ? "volto" : "volti"}</span>
+                <h3 className="map-sheet-nome">{sheet.city.name}</h3>
+                {sheet.npcs.length > 0 ? (
+                  <div className="map-sheet-lista">
+                    {sheet.npcs.map((npc) => (
+                      <button key={npc.id} type="button" className="map-npc" onClick={() => setSelectedNpc(npc)}>
+                        <span className="nx-anello nx-anello--sm"><img src={npc.image || "/assets/player/default.png"} alt="" /></span>
+                        <span className="map-npc-info"><strong>{npc.name}</strong><span>{npc.faction || npc.location || ""}</span></span>
+                        <span className="map-npc-cue" aria-hidden="true">›</span>
+                      </button>
                     ))}
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                ) : (
+                  <p className="nx-nota">Nessun volto archiviato qui, per ora.</p>
+                )}
+                <button type="button" className="gl-cta map-sheet-cta" onClick={() => navigate(`/Geo?focus=${loreSlug(sheet.city.name)}`)}>
+                  Apri nell'Atlante →
+                </button>
+              </>
+            )}
 
-          {/* NPC LIBERI — anche quelli con linkedCity orfana (città non più presente in CITIES_HUB) */}
-          {npcs.filter(n => {
-            const cityKnown = n.linkedCity && CITIES_HUB.some(c => c.name === n.linkedCity);
-            const hasCoords = Number.isFinite(n.mapX) && Number.isFinite(n.mapY);
-            return !cityKnown && hasCoords;
-          }).map(npc => (
-            <div key={npc.id}
-              className={`map-anchor npc-anchor ${tooltipPlacementClasses(npc.mapX, npc.mapY)}`}
-              style={{ left: `${npc.mapX}%`, top: `${npc.mapY}%` }}
-              onClick={(e) => handleNpcClick(e, npc)}>
-              <div className="ping npc-ping">
-                <div className="ping-ring npc-ring" />
-              </div>
-              <div className="map-tooltip npc-tooltip">
-                <div className="tooltip-img-wrap">
-                  <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
-                  <div className="tooltip-img-fade" />
+            {sheet.kind === "boss" && (
+              <>
+                <span className="nx-kicker map-kicker--boss">👹 World Boss · GS {sheet.boss.gradoSfida || "??"}</span>
+                <h3 className="map-sheet-nome">{sheet.boss.name}</h3>
+                <div className="map-boss">
+                  {sheet.boss.imageUrl && <img className="map-boss-img" src={sheet.boss.imageUrl} alt="" />}
+                  <div className="map-boss-info">
+                    {sheet.boss.rewards && <p className="map-boss-reward">🎁 {sheet.boss.rewards}</p>}
+                    <p className="map-boss-timer">⏳ <TimerDisplay expiryDate={sheet.boss.expiryDate} /></p>
+                    <div className="map-hp"><i style={{ width: `${Math.max(0, (sheet.boss.hp / sheet.boss.maxHp) * 100)}%` }} /></div>
+                    <p className="nx-nota">{isMaster ? `❤️ ${sheet.boss.hp}/${sheet.boss.maxHp}` : "❤️ Stato di salute"}</p>
+                  </div>
                 </div>
-                <div className="tooltip-body">
-                  <h3 className="tooltip-name">{npc.name}</h3>
-                  {npc.faction && <span className="faction-badge">{npc.faction}</span>}
-                  {npc.location && <p className="loc-text">📍 {npc.location}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                <button type="button" className="gl-cta gl-cta--crit map-sheet-cta" onClick={() => navigate("/world-boss-fight")}>⚔ Combatti</button>
+              </>
+            )}
+
+            {sheet.kind === "npc" && (
+              <>
+                <span className="nx-kicker">☖ Personaggio non giocante</span>
+                <h3 className="map-sheet-nome">{sheet.npc.name}</h3>
+                <button type="button" className="map-npc" onClick={() => setSelectedNpc(sheet.npc)}>
+                  <span className="nx-anello nx-anello--sm"><img src={sheet.npc.image || "/assets/player/default.png"} alt="" /></span>
+                  <span className="map-npc-info"><strong>{sheet.npc.faction || "—"}</strong><span>{sheet.npc.location ? `📍 ${sheet.npc.location}` : ""}</span></span>
+                  <span className="map-npc-cue" aria-hidden="true">›</span>
+                </button>
+              </>
+            )}
+          </aside>
+        )}
       </div>
 
-      {/* Reset zoom button */}
-      {zoom > 1 && (
-        <button className="btn-reset-zoom" onClick={resetZoom} title="Reimposta zoom">
-          ✕ Reset zoom
-        </button>
-      )}
+      <p className="map-hint nx-nota">Pizzica o scorri per zoomare · trascina per spostarti · tocca un luogo o scegli una pillola per volarci.</p>
 
-      {/* Hint zoom */}
-      <p className="map-zoom-hint">
-        🖱 Scorri per zoomare · Trascina per spostarti · 📱 Pizzica per zoomare
-      </p>
-
-      {/* MODAL DETTAGLIO NPC */}
+      {/* MODALE-VARCO: dettaglio NPC (logica invariata) */}
       {selectedNpc && (
-        <div className="npc-overlay" onClick={() => setSelectedNpc(null)}>
-          <div className="npc-modal" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedNpc(null)}>✕</button>
-            <div className="modal-head">
-              <img src={selectedNpc.image || "/assets/player/default.png"} alt={selectedNpc.name} />
-              <div>
-                <h2>{selectedNpc.name}</h2>
-                {selectedNpc.faction  && <span className="faction-tag">{selectedNpc.faction}</span>}
-                {selectedNpc.location && <p className="loc-tag">📍 {selectedNpc.location}</p>}
-                {selectedNpc.linkedCity && <p className="loc-tag">🏰 {selectedNpc.linkedCity}</p>}
-              </div>
+        <div className="nx-modale-overlay" onClick={() => setSelectedNpc(null)} role="dialog" aria-modal="true" aria-label={selectedNpc.name}>
+          <div className="nx-modale map-npc-modale" onClick={e => e.stopPropagation()}>
+            <button type="button" className="nx-modale-close" onClick={() => setSelectedNpc(null)} aria-label="Chiudi">✕</button>
+            <img className="nx-modale-img" src={selectedNpc.image || "/assets/player/default.png"} alt={selectedNpc.name} />
+            <span className="nx-kicker">☖ Personaggio non giocante</span>
+            <h3 className="nx-titolo">{selectedNpc.name}</h3>
+            <div className="nx-meta-box">
+              {selectedNpc.faction    && <p><strong>Fazione</strong> {selectedNpc.faction}</p>}
+              {selectedNpc.location   && <p><strong>Luogo</strong> {selectedNpc.location}</p>}
+              {selectedNpc.linkedCity && <p><strong>Città</strong> {selectedNpc.linkedCity}</p>}
             </div>
-            {selectedNpc.description && (
-              <div className="modal-body">
-                <h4>Note</h4>
-                <p>{selectedNpc.description}</p>
-              </div>
-            )}
+            {selectedNpc.description && <p className="nx-prosa">{selectedNpc.description}</p>}
           </div>
         </div>
       )}
