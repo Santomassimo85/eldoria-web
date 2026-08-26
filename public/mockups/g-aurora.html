@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP G — Aurora del Nord</title>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --notte:#0a0e1c; --acqua:#5ce8b8; --viola:#9a7bff; --rosa:#ff8ac2;
+    --ink:#eef2ff; --muted:#98a2c8;
+  }
+  html, body { height:100%; }
+  body { background:var(--notte); color:var(--ink); font-family:"EB Garamond",Georgia,serif; overflow:hidden; }
+
+  /* ── IL CIELO: stelle + NASTRI D'AURORA che danzano da soli ── */
+  .world { position:fixed; inset:0; overflow:hidden;
+    background:linear-gradient(180deg,#0d1226,#0a0e1c 55%,#060812); }
+  #stelle { position:absolute; inset:0; }
+  .nastro { position:absolute; width:140vw; height:34vh; left:-20vw; filter:blur(38px);
+    opacity:.5; mix-blend-mode:screen; border-radius:50%; }
+  .nastro.n1 { top:-6vh;
+    background:linear-gradient(100deg, transparent, var(--acqua) 30%, var(--viola) 65%, transparent);
+    animation:danza1 16s ease-in-out infinite alternate; }
+  .nastro.n2 { top:8vh; height:26vh; opacity:.35;
+    background:linear-gradient(80deg, transparent, var(--rosa) 35%, var(--acqua) 70%, transparent);
+    animation:danza2 21s ease-in-out infinite alternate; }
+  .nastro.n3 { top:-2vh; height:22vh; opacity:.3;
+    background:linear-gradient(120deg, transparent, var(--viola) 40%, var(--rosa) 75%, transparent);
+    animation:danza1 26s ease-in-out infinite alternate-reverse; }
+  @keyframes danza1 {
+    from { transform:translateX(-6vw) skewY(-4deg) scaleY(1); }
+    to   { transform:translateX(6vw)  skewY(3deg)  scaleY(1.25); } }
+  @keyframes danza2 {
+    from { transform:translateX(5vw)  skewY(3deg)  scaleY(1.15); }
+    to   { transform:translateX(-5vw) skewY(-5deg) scaleY(.9); } }
+
+  .phone { position:relative; width:min(430px,100vw); height:100dvh; max-height:930px;
+    margin:0 auto; background:transparent; }
+  @media (min-width:520px){
+    .phone { height:92vh; margin-top:4vh; border-radius:42px; overflow:hidden;
+      border:1px solid rgba(154,123,255,.4);
+      box-shadow:0 0 0 8px #0d1226, 0 0 90px -22px rgba(92,232,184,.4), 0 40px 120px -30px #000; }
+  }
+
+  /* ── PANORAMI VERTICALI A SCATTO: ogni sezione è uno schermo intero ── */
+  .fiume { height:100%; overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
+    scroll-snap-type:y mandatory; scroll-behavior:smooth; }
+  .fiume::-webkit-scrollbar{ display:none; }
+  .quadro { position:relative; height:100%; scroll-snap-align:start; scroll-snap-stop:always;
+    overflow:hidden; display:flex; }
+  .quadro .sfondo { position:absolute; inset:-6%; }
+  .quadro .sfondo img { width:100%; height:100%; object-fit:cover;
+    animation:respira 18s ease-in-out infinite alternate; }
+  @keyframes respira { from { transform:scale(1) translateY(0); } to { transform:scale(1.09) translateY(-2%); } }
+  .quadro .velo { position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(10,14,28,.55) 0%, rgba(10,14,28,.05) 34%,
+      rgba(10,14,28,.05) 52%, rgba(10,14,28,.92) 100%); }
+
+  /* apertura: solo cielo e titolo */
+  .quadro.apertura { align-items:center; justify-content:center; text-align:center;
+    background:transparent; }
+  .apertura .blocco { position:relative; z-index:2; padding:0 26px; }
+  .kicker { font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.5em; text-transform:uppercase;
+    color:var(--acqua); text-shadow:0 0 16px rgba(92,232,184,.8); }
+  .apertura h1 { font-family:"Marcellus",serif; font-weight:400; margin:14px 0 10px;
+    font-size:clamp(2.6rem,13vw,3.6rem); line-height:1.02; letter-spacing:.03em; color:var(--ink);
+    text-shadow:0 0 22px rgba(154,123,255,.5), 0 2px 10px rgba(0,0,0,.6); }
+  .apertura h1 em { font-style:normal; display:block; font-size:.62em; letter-spacing:.14em;
+    background:linear-gradient(90deg,var(--acqua),var(--rosa));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .apertura p { color:var(--muted); font-style:italic; font-size:1.02rem; max-width:30ch; margin:0 auto; }
+  .giu { position:absolute; bottom:26px; left:50%; transform:translateX(-50%); z-index:3;
+    color:var(--acqua); font-size:1.2rem; opacity:.9;
+    animation:scendi 2s ease-in-out infinite; }
+  @keyframes scendi { 0%,100% { transform:translate(-50%,0); opacity:.5; }
+    50% { transform:translate(-50%,9px); opacity:1; } }
+
+  /* panorami: contenuto ancorato in basso, alternato dx/sx */
+  .quadro .contenuto { position:relative; z-index:2; align-self:flex-end; width:100%;
+    padding:0 24px 74px; }
+  .quadro:nth-child(odd) .contenuto { text-align:right; }
+  .numero { font-family:"Marcellus",serif; font-size:5.4rem; line-height:.8; opacity:.16;
+    color:var(--ink); display:block; margin-bottom:-26px; }
+  .quadro h2 { font-family:"Marcellus",serif; font-weight:400; font-size:clamp(1.7rem,8vw,2.3rem);
+    letter-spacing:.03em; color:var(--ink); text-shadow:0 0 18px rgba(92,232,184,.35), 0 2px 8px #000; }
+  .quadro h2::after { content:""; display:block; width:72px; height:1px; margin-top:10px;
+    background:linear-gradient(90deg,var(--acqua),transparent); }
+  .quadro:nth-child(odd) h2::after { margin-left:auto;
+    background:linear-gradient(270deg,var(--acqua),transparent); }
+  .quadro .contenuto p { color:var(--muted); font-style:italic; font-size:.98rem; margin-top:8px;
+    max-width:34ch; display:inline-block; }
+  .faro { display:inline-block; margin-top:12px; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.26em; text-transform:uppercase; color:var(--notte); padding:10px 20px;
+    border-radius:999px; text-decoration:none;
+    background:linear-gradient(90deg,var(--acqua),#9fefd2);
+    box-shadow:0 0 30px -6px rgba(92,232,184,.9); }
+
+  /* pager a fuochi sul lato destro */
+  .fuochi { position:absolute; right:12px; top:50%; transform:translateY(-50%); z-index:20;
+    display:flex; flex-direction:column; gap:12px; }
+  .fuochi span { width:5px; height:5px; border-radius:50%; background:#39406b;
+    box-shadow:0 0 0 2px rgba(154,123,255,.15); }
+  .fuochi span.on { background:var(--acqua); box-shadow:0 0 12px rgba(92,232,184,1); }
+
+  /* insegna in alto: vetro sottile */
+  .insegna { position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; justify-content:center; padding:14px 0 10px;
+    background:linear-gradient(180deg, rgba(10,14,28,.7), transparent); }
+  .insegna b { font-family:"Cinzel",serif; font-weight:600; font-size:.66rem; letter-spacing:.5em;
+    text-transform:uppercase; color:var(--ink); opacity:.9; }
+
+  .badge-opt { position:fixed; top:12px; left:12px; z-index:50; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:#0a1420; background:linear-gradient(90deg,var(--acqua),var(--rosa));
+    padding:7px 14px; border-radius:999px; box-shadow:0 0 26px -4px rgba(92,232,184,.9); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; } #stelle{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">G · AURORA DEL NORD</div>
+  <div class="world">
+    <canvas id="stelle"></canvas>
+    <div class="nastro n1"></div>
+    <div class="nastro n2"></div>
+    <div class="nastro n3"></div>
+  </div>
+
+  <div class="phone">
+    <div class="insegna"><b>Eldoria</b></div>
+    <div class="fuochi" id="fuochi">
+      <span class="on"></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="fiume" id="fiume">
+      <!-- 0 · apertura sotto l'aurora -->
+      <section class="quadro apertura">
+        <div class="blocco">
+          <span class="kicker">Cronache di Exanthia</span>
+          <h1>Il Mondo<em>di Exanthia</em></h1>
+          <p>Sotto l'aurora, cinque strade. Scorri e lasciati portare.</p>
+        </div>
+        <span class="giu">⌄</span>
+      </section>
+
+      <!-- 1 -->
+      <section class="quadro">
+        <div class="sfondo"><img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt=""></div>
+        <div class="velo"></div>
+        <div class="contenuto">
+          <span class="numero">I</span>
+          <h2>Registro degli Eroi</h2>
+          <p>Predatori di leggende, in quattro stirpi.</p><br>
+          <a class="faro" href="#">Apri il registro</a>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section class="quadro">
+        <div class="sfondo"><img src="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" alt=""></div>
+        <div class="velo"></div>
+        <div class="contenuto">
+          <span class="numero">II</span>
+          <h2>Mercato Nero</h2>
+          <p>Merci che nessuna dogana vedrà mai.</p><br>
+          <a class="faro" href="#">Scendi al banco</a>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="quadro">
+        <div class="sfondo"><img src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg" alt=""></div>
+        <div class="velo"></div>
+        <div class="contenuto">
+          <span class="numero">III</span>
+          <h2>Memorie</h2>
+          <p>Le cronache dei party, notte dopo notte.</p><br>
+          <a class="faro" href="#">Sfoglia le memorie</a>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="quadro">
+        <div class="sfondo"><img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt=""></div>
+        <div class="velo"></div>
+        <div class="contenuto">
+          <span class="numero">IV</span>
+          <h2>L'Oracolo</h2>
+          <p>Un responso al giorno, non uno di più.</p><br>
+          <a class="faro" href="#">Chiedi agli Arcani</a>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+  /* stelle che scintillano + NEVE finissima che cade — tutto ambientale */
+  const cv=document.getElementById('stelle'), cx=cv.getContext('2d');
+  let W,H,st=[],nv=[];
+  const rs=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight;
+    st=Array.from({length:W<600?60:110},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:.5+Math.random()*1.1, ph:Math.random()*7, s:.5+Math.random()}));
+    nv=Array.from({length:W<600?34:60},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:.6+Math.random()*1.2, v:.25+Math.random()*.5, ph:Math.random()*7})); };
+  rs(); addEventListener('resize',rs);
+  let t=0;
+  (function tick(){ t++; cx.clearRect(0,0,W,H);
+    for(const s of st){ const a=.15+.7*Math.abs(Math.sin(t/80*s.s+s.ph));
+      cx.fillStyle=`rgba(238,242,255,${a.toFixed(2)})`;
+      cx.beginPath(); cx.arc(s.x,s.y,s.r,0,7); cx.fill(); }
+    for(const f of nv){ f.y+=f.v; f.x+=Math.sin(t/90+f.ph)*.3;
+      if(f.y>H+4){ f.y=-4; f.x=Math.random()*W; }
+      cx.fillStyle='rgba(238,242,255,.5)';
+      cx.beginPath(); cx.arc(f.x,f.y,f.r,0,7); cx.fill(); }
+    requestAnimationFrame(tick);
+  })();
+
+  /* pager: si accende da solo seguendo lo scroll (nessuna azione richiesta) */
+  const fiume=document.getElementById('fiume'), dots=[...document.querySelectorAll('#fuochi span')];
+  fiume.addEventListener('scroll', ()=>{
+    const i=Math.round(fiume.scrollTop/fiume.clientHeight);
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+  }, {passive:true});
+</script>
+</body>
+</html>
