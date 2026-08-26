@@ -19,6 +19,13 @@ const CONTINENT_IMAGES = {
   Ehkia: "/assets/PhotoStory/GruppoMEAA/hellhound.png",
   Ohzkie: "/assets/PhotoStory/GruppoLAC/zombie_fungo.png",
 };
+// COLORE DEL CONTINENTE (solo presentazione): tinge pillole, rubrica, carte e varco.
+const CONTINENT_COLORS = {
+  Vathriddon: "#4ade80", // verde delle foreste
+  Ehkia: "#fb923c",      // arancio delle terre di fuoco
+  Ohzkie: "#a78bfa",     // viola delle spore
+};
+const contColor = (c) => CONTINENT_COLORS[c] || "#22d3ee";
 const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 // HTML → testo semplice (per l'anteprima nel popup interattivo)
 const stripHtml = (html) => {
@@ -128,6 +135,15 @@ export default function Geo() {
 
   // Luogo aperto nella modale-varco (solo presentazione)
   const [openLoc, setOpenLoc] = useState(null);
+  // origine del VARCO: il popup sboccia dal punto della carta cliccata
+  const [warp, setWarp] = useState({ x: "50vw", y: "50vh", g: "#22d3ee" });
+  const apriVarco = (loc, contName, e) => {
+    const r = e?.currentTarget?.getBoundingClientRect?.();
+    const g = contColor(loc.continent || contName);
+    if (r) setWarp({ x: `${Math.round(r.left + r.width / 2)}px`, y: `${Math.round(r.top + r.height / 2)}px`, g });
+    else setWarp({ x: "50vw", y: "50vh", g });
+    setOpenLoc(loc);
+  };
   useEffect(() => {
     if (!openLoc) return;
     const onKey = (e) => { if (e.key === "Escape") setOpenLoc(null); };
@@ -322,7 +338,8 @@ export default function Geo() {
               <button
                 key={c}
                 type="button"
-                className={`nx-pillola${activeContinent === c ? " on" : ""}`}
+                className={`nx-pillola geo-pillola${activeContinent === c ? " on" : ""}`}
+                style={{ "--g": contColor(c) }}
                 onClick={() => setActiveContinent(activeContinent === c ? null : c)}
               >
                 ⌖ {c} <span className="geo-pill-n">{locsOf(c).length}</span>
@@ -383,11 +400,14 @@ export default function Geo() {
       {visibleContinents.length > 0 && (
         <div className="nx-due geo-atlante">
           {/* rubrica del continente attivo (o di tutte le terre) */}
-          <aside className="nx-pannello nx-pannello--sticky geo-rubrica" aria-label="Rubrica">
+          {(() => {
+            const rubCont = activeContinent && visibleContinents.find((v) => v.cont === activeContinent)
+              ? activeContinent
+              : (visibleContinents.length === 1 ? visibleContinents[0].cont : null);
+            return (
+          <aside className="nx-pannello nx-pannello--sticky geo-rubrica" aria-label="Rubrica" style={{ "--g": rubCont ? contColor(rubCont) : "#22d3ee" }}>
             {(() => {
-              const cont = activeContinent && visibleContinents.find((v) => v.cont === activeContinent)
-                ? activeContinent
-                : (visibleContinents.length === 1 ? visibleContinents[0].cont : null);
+              const cont = rubCont;
               const img = cont ? (CONTINENT_IMAGES[cont] || HERO_IMAGE) : HERO_IMAGE;
               const n = cont ? (visibleContinents.find((v) => v.cont === cont)?.list.length || 0) : visibleCount;
               return (
@@ -402,7 +422,7 @@ export default function Geo() {
                     <ul className="geo-rubrica-lista">
                       {visibleContinents.map((v) => (
                         <li key={v.cont}>
-                          <button type="button" className="geo-rubrica-voce" onClick={() => setActiveContinent(v.cont)}>
+                          <button type="button" className="geo-rubrica-voce" style={{ "--g": contColor(v.cont) }} onClick={() => setActiveContinent(v.cont)}>
                             <span>⌖ {v.cont}</span><b>{v.list.length}</b>
                           </button>
                         </li>
@@ -418,11 +438,13 @@ export default function Geo() {
               );
             })()}
           </aside>
+            );
+          })()}
 
           {/* flusso dei luoghi, per continente */}
           <div className="geo-flusso">
             {visibleContinents.map(({ cont: contName, list: locationsInContinent }) => (
-              <section key={contName} id={`geo-${slugify(contName)}`} className="geo-continente" aria-label={contName}>
+              <section key={contName} id={`geo-${slugify(contName)}`} className="geo-continente" aria-label={contName} style={{ "--g": contColor(contName) }}>
                 {visibleContinents.length > 1 && (
                   <div className="gl-sezlabel">{contName} · {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo" : "luoghi"}</div>
                 )}
@@ -432,8 +454,8 @@ export default function Geo() {
                       key={loc.id}
                       type="button"
                       id={`geo-card-${slugify(loc.name)}`}
-                      className="nx-pannello nx-pannello--tap geo-luogo"
-                      onClick={() => setOpenLoc(loc)}
+                      className={`nx-pannello nx-pannello--tap geo-luogo${openLoc?.id === loc.id ? " geo-luogo--warp" : ""}`}
+                      onClick={(e) => apriVarco(loc, contName, e)}
                       aria-label={`Apri ${loc.name}`}
                     >
                       {loc.image ? (
@@ -461,7 +483,12 @@ export default function Geo() {
 
       {/* ══ MODALE-VARCO del luogo: descrizione completa con link interattivi ══ */}
       {openLoc && (
-        <div className="nx-modale-overlay" onClick={() => setOpenLoc(null)} role="dialog" aria-modal="true" aria-label={openLoc.name}>
+        <div
+          className="nx-modale-overlay geo-varco"
+          style={{ "--ox": warp.x, "--oy": warp.y, "--g": warp.g }}
+          onClick={() => setOpenLoc(null)} role="dialog" aria-modal="true" aria-label={openLoc.name}
+        >
+          <span className="geo-varco-onda" aria-hidden="true" />
           <div className="nx-modale geo-modale" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="nx-modale-close" onClick={() => setOpenLoc(null)} aria-label="Chiudi">✕</button>
             {openLoc.image && (

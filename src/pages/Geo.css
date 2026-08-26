@@ -172,3 +172,76 @@
   .geo-page .geo-card--focus, .geo-page .geo-loading { animation: none !important; }
   .geo-description .lore-link { transition: none; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   COLORE DEL CONTINENTE (--g dal JSX) + IL VARCO: il popup sboccia dal
+   punto della carta cliccata con un flip 3D, mentre un'onda di luce del
+   colore del continente si allarga dall'origine.
+   ══════════════════════════════════════════════════════════════════ */
+/* pillole */
+.geo-page .geo-pillola { color: var(--g); border-color: color-mix(in srgb, var(--g) 55%, transparent); background: color-mix(in srgb, var(--g) 8%, rgba(13, 13, 31, .7)); }
+.geo-page .geo-pillola:hover { border-color: var(--g); box-shadow: 0 0 16px -4px var(--g); color: #fff; }
+.geo-page .geo-pillola.on { background: var(--g); color: #070713; border-color: transparent; box-shadow: 0 0 22px -4px var(--g); }
+.geo-page .geo-pillola .geo-pill-n { color: inherit; }
+/* rubrica */
+.geo-page .geo-rubrica { border-color: color-mix(in srgb, var(--g, #22d3ee) 50%, transparent); box-shadow: 0 14px 44px -14px rgba(0,0,0,.8), 0 0 34px -12px color-mix(in srgb, var(--g, #22d3ee) 60%, transparent); }
+.geo-page .geo-rubrica .nx-anello::before { background: conic-gradient(var(--g, #22d3ee), #8b5cf6 45%, var(--g, #22d3ee) 75%, #fff 88%, var(--g, #22d3ee)); }
+.geo-page .geo-rubrica .nx-kicker { color: var(--g, #22d3ee); text-shadow: 0 0 12px color-mix(in srgb, var(--g, #22d3ee) 70%, transparent); }
+.geo-page .geo-rubrica .nx-titolo { background: linear-gradient(90deg, #fff, var(--g, #22d3ee)); -webkit-background-clip: text; background-clip: text; }
+.geo-page .geo-rubrica .gl-seal { color: var(--g, #22d3ee); border-color: color-mix(in srgb, var(--g, #22d3ee) 50%, transparent); }
+.geo-page .geo-rubrica-voce { border-left: 3px solid var(--g, #22d3ee); }
+.geo-page .geo-rubrica-voce:hover { background: color-mix(in srgb, var(--g, #22d3ee) 14%, transparent); }
+/* sezione + carte */
+.geo-page .geo-continente .gl-sezlabel { color: var(--g); text-shadow: 0 0 12px color-mix(in srgb, var(--g) 60%, transparent); }
+.geo-page .geo-continente .gl-sezlabel::after { background: linear-gradient(90deg, color-mix(in srgb, var(--g) 60%, transparent), transparent); }
+.geo-page .geo-luogo { border-color: color-mix(in srgb, var(--g) 40%, transparent); }
+.geo-page .geo-luogo::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 3; background: var(--g); box-shadow: 0 0 14px var(--g); }
+.geo-page .geo-luogo:hover { border-color: var(--g); box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--g) 70%, transparent); }
+.geo-page .geo-luogo .nx-tag { color: var(--g); }
+.geo-page .geo-luogo-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--g) 70%, transparent); }
+.geo-page .geo-luogo-cue { color: var(--g); }
+.geo-page .geo-luogo-anello::before { background: conic-gradient(var(--g), #8b5cf6 45%, var(--g) 75%, #fff 88%, var(--g)); }
+.geo-page .geo-luogo-velo { background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--g) 10%, rgba(13, 13, 31, .95))); }
+/* la carta cliccata "si apre": pulsa e si accende mentre il varco sboccia */
+.geo-page .geo-luogo--warp { animation: geo-carta-warp .6s cubic-bezier(.34, 1.56, .64, 1) both; border-color: var(--g); }
+@keyframes geo-carta-warp {
+  0%   { transform: scale(1); filter: brightness(1); }
+  40%  { transform: scale(1.06); filter: brightness(1.6); box-shadow: 0 0 0 6px color-mix(in srgb, var(--g) 40%, transparent), 0 0 40px var(--g); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* ── IL VARCO ── */
+.geo-page .geo-varco { perspective: 1200px; --ox: 50vw; --oy: 50vh; }
+/* onda di luce dall'origine */
+.geo-page .geo-varco-onda {
+  position: fixed; left: var(--ox); top: var(--oy);
+  width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+  border: 2px solid var(--g); box-shadow: 0 0 30px var(--g), inset 0 0 20px var(--g);
+  pointer-events: none;
+  animation: geo-onda .9s cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes geo-onda { from { transform: scale(0); opacity: 1; } to { transform: scale(40); opacity: 0; } }
+/* il pannello parte dal punto cliccato, piccolo e girato, e si apre con un flip */
+.geo-page .geo-modale {
+  border-color: color-mix(in srgb, var(--g) 60%, transparent);
+  box-shadow: 0 30px 70px -24px #000, 0 0 50px -10px color-mix(in srgb, var(--g) 70%, transparent);
+  transform-origin: center center;
+  animation: geo-varco-apre .65s cubic-bezier(.16, 1, .3, 1) both;
+  backface-visibility: hidden;
+}
+@keyframes geo-varco-apre {
+  0%   { opacity: 0; transform: translate(calc(var(--ox) - 50vw), calc(var(--oy) - 50vh)) scale(.12) rotateY(-100deg); filter: blur(10px) brightness(2.2); }
+  55%  { opacity: 1; filter: blur(0) brightness(1.15); }
+  75%  { transform: translate(0, 0) scale(1.025) rotateY(8deg); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.geo-page .geo-modale .nx-modale-img { border-color: color-mix(in srgb, var(--g) 60%, transparent); box-shadow: 0 0 24px -8px var(--g); }
+.geo-page .geo-modale .nx-kicker { color: var(--g); text-shadow: 0 0 12px color-mix(in srgb, var(--g) 70%, transparent); }
+.geo-page .geo-modale .nx-titolo { background: linear-gradient(90deg, #fff, var(--g) 60%, #c4b5fd); -webkit-background-clip: text; background-clip: text; }
+.geo-page .geo-modale .nx-modale-close { color: var(--g); border-color: color-mix(in srgb, var(--g) 50%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .geo-page .geo-modale, .geo-page .geo-varco-onda, .geo-page .geo-luogo--warp { animation: none !important; }
+}
+.geo-page .geo-rubrica-voce b { color: var(--g, #22d3ee); }
+.geo-page .geo-rubrica-voce:hover { border-color: var(--g, #22d3ee); box-shadow: 0 0 16px -4px var(--g, #22d3ee); }
