@@ -9,6 +9,7 @@ import {
   onSnapshot,
   doc,
 } from "firebase/firestore";
+import { classColor, MASTER_COLOR } from "./utils/classColor";
 import "./LoginDropdown.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -105,6 +106,8 @@ export default function LoginDropdown() {
   };
 
   const rattoRank = getRattoRank(charData?.rattoPoints ?? 0);
+  // colore di classe del PG (solo presentazione); il Master veste l'oro chiaro
+  const cls = isMaster ? MASTER_COLOR : classColor(charData?.class);
 
   // --- NON LOGGATO ---
   if (!currentUser) {
@@ -143,7 +146,7 @@ export default function LoginDropdown() {
 
   // --- LOGGATO ---
   return (
-    <div className="ld-container" ref={dropdownRef}>
+    <div className="ld-container" ref={dropdownRef} style={{ "--cls": cls }}>
       <button className="ld-avatar-btn" onClick={togglePanel}>
         <img
           src={charData?.image || "/assets/player/default.png"}
@@ -167,6 +170,9 @@ export default function LoginDropdown() {
             <div className="ld-char-info">
               <p className="ld-char-name">{charData?.name || currentUser.email}</p>
               <p className="ld-char-email">{currentUser.email}</p>
+              {(isMaster || charData?.class) && (
+                <span className="ld-char-class">{isMaster ? "Master" : charData.class}</span>
+              )}
             </div>
           </div>
 

@@ -636,7 +636,7 @@ export default function App() {
         >
           <button type="button" className="nav-close" onClick={closeMenu} aria-label="Chiudi menu">×</button>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
-          <NavLink to="/assistente" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "#0e4d75", fontWeight: 700 })}>Agent</NavLink>
+          <NavLink to="/assistente" onClick={closeMenu} className="nav-agent">Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
           <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛗ</span> Mondo</>} closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
