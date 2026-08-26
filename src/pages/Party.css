@@ -93,3 +93,36 @@
   .party-page .eroe-card .nx-nome { font-size: .82rem; }
   .party-page .eroe-card .nx-meta { font-size: .7rem; }
 }
+
+/* ── COLORE DI CLASSE (--cls impostata dal JSX): anello, bordo, tag,
+      pillola della classe e alone del nome ── */
+.party-page .eroe-card { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 45%, transparent); }
+.party-page .eroe-card:hover {
+  border-color: var(--cls, #22d3ee);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--cls, #22d3ee) 70%, transparent);
+}
+.party-page .eroe-card .nx-anello::before {
+  background: conic-gradient(var(--cls, #22d3ee), #8b5cf6 40%, var(--cls, #22d3ee) 70%, #fff 82%, var(--cls, #22d3ee));
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--cls, #22d3ee) 80%, transparent);
+}
+.party-page .eroe-card .nx-tag { color: var(--cls, #e879f9); }
+.party-page .eroe-card .nx-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--cls, #8b5cf6) 45%, transparent); }
+.party-page .eroe-card .nx-meta { color: #8f8bb8; }
+.eroe-classe {
+  display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
+  font-family: "Manrope", system-ui, sans-serif; font-weight: 700;
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cls, #c4b5fd);
+  border: 1px solid color-mix(in srgb, var(--cls, #c4b5fd) 55%, transparent);
+  background: color-mix(in srgb, var(--cls, #c4b5fd) 12%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--cls, #c4b5fd) 60%, transparent);
+}
+.eroe-classe--inline { margin: 0 0 0 4px; }
+/* legenda sotto l'indice */
+.party-page .eroe-legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 10px; }
+.party-page .eroe-legenda .eroe-classe { margin: 0; }
+/* la scheda-varco prende il colore della classe */
+.eroe-modale { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 55%, transparent); box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px color-mix(in srgb, var(--cls, #8b5cf6) 70%, transparent); }
+.eroe-modale .nx-modale-img { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 55%, transparent); }
+.eroe-modale .nx-kicker { color: var(--cls, #22d3ee); text-shadow: 0 0 14px color-mix(in srgb, var(--cls, #22d3ee) 70%, transparent); }
+.eroe-modale .eroe-livello { background: var(--cls, #22d3ee); color: #070713; box-shadow: 0 0 22px -4px var(--cls, #22d3ee); }

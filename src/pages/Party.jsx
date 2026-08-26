@@ -109,6 +109,29 @@ const ABILITY_LABELS = [
   ["int", "INT"], ["wis", "SAG"], ["cha", "CAR"],
 ];
 
+/* ── COLORE DI CLASSE (solo presentazione): tinge anello, bordo, tag e
+      pillola della classe. Accesi per il fondo scuro del Nesso. ── */
+const CLASS_COLORS = [
+  [/mago|wizard/i,            "#60a5fa"], // blu arcano
+  [/stregon|sorcer/i,         "#f472b6"], // rosa sangue di drago
+  [/warlock|occult/i,         "#a78bfa"], // viola del patto
+  [/chieric|cleric/i,         "#fde68a"], // oro sacro
+  [/paladin/i,                "#fbbf24"], // ambra del giuramento
+  [/guerrier|fighter/i,       "#f87171"], // rosso d'acciaio
+  [/barbar/i,                 "#fb923c"], // arancio furia
+  [/ladr|rogue/i,             "#a3e635"], // lime dell'ombra
+  [/ranger|sniper|arcier/i,   "#4ade80"], // verde bosco
+  [/druid/i,                  "#34d399"], // smeraldo
+  [/bard/i,                   "#e879f9"], // magenta
+  [/monac|monk/i,             "#2dd4bf"], // teal
+  [/artef|artific/i,          "#22d3ee"], // ciano
+];
+const classColor = (klass) => {
+  const k = String(klass || "");
+  const hit = CLASS_COLORS.find(([re]) => re.test(k));
+  return hit ? hit[1] : "#c4b5fd";
+};
+
 /* helper: filtra i membri visibili di una compagnia secondo la query */
 function membersFor(party, query) {
   const q = query.trim().toLowerCase();
@@ -121,7 +144,12 @@ function membersFor(party, query) {
 /* ── Eroe = pannello del Nesso con anello-ritratto (tap → scheda) ── */
 function RosterEntry({ hero, tag, onOpen }) {
   return (
-    <button type="button" className="nx-pannello nx-pannello--tap eroe-card" onClick={onOpen}>
+    <button
+      type="button"
+      className="nx-pannello nx-pannello--tap eroe-card"
+      style={{ "--cls": classColor(hero.class) }}
+      onClick={onOpen}
+    >
       <span className="nx-tag">{tag}</span>
       <span className="nx-anello">
         <img
@@ -132,7 +160,8 @@ function RosterEntry({ hero, tag, onOpen }) {
         />
       </span>
       <span className="nx-nome">{hero.name}</span>
-      <span className="nx-meta">{hero.race} · {hero.class}</span>
+      <span className="nx-meta">{hero.race}</span>
+      <span className="eroe-classe">{hero.class}</span>
       <span className="eroe-cue" aria-hidden="true">Scheda ›</span>
     </button>
   );
@@ -155,6 +184,7 @@ function HeroModal({ hero, party, char, onClose }) {
     <div className="nx-modale-overlay" onClick={onClose}>
       <div
         className="nx-modale eroe-modale"
+        style={{ "--cls": classColor(klass) }}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -174,7 +204,7 @@ function HeroModal({ hero, party, char, onClose }) {
 
         <div className="nx-meta-box">
           <p><strong>Razza</strong> {race || "—"}</p>
-          <p><strong>Classe</strong> {klass || "—"}</p>
+          <p><strong>Classe</strong> <span className="eroe-classe eroe-classe--inline">{klass || "—"}</span></p>
           {subclass && <p><strong>Sottoclasse</strong> {subclass}</p>}
           {background && <p><strong>Origine</strong> {background}</p>}
         </div>
@@ -337,6 +367,12 @@ export default function Party() {
 
       {/* ── INDICE DELLE CASATE: pillole-satellite (filtro) ── */}
       <div id="party-index" className="party-index">
+        {/* legenda dei colori di classe */}
+        <div className="eroe-legenda" aria-label="Colori delle classi">
+          {[...new Set(allMembers.map((m) => m.class).filter((c) => c && c !== "??"))].sort().map((c) => (
+            <span key={c} className="eroe-classe" style={{ "--cls": classColor(c) }}>{c}</span>
+          ))}
+        </div>
         <div className="nx-pillole" role="tablist">
           <button
             type="button"
