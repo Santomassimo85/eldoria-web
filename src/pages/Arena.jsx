@@ -9634,17 +9634,58 @@ export default function Arena() {
           ...(showBet ? [{ key: "bet", title: "Scommesse", sub: "Punta le tue Monete Arena sui duellanti", onClick: () => setBettingDrawerOpen(true) }] : []),
           ...(isMaster ? [{ key: "master", title: "Pannello Master", sub: "Gestisci l'Arena", onClick: () => setArenaView("master") }] : []),
         ];
-        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+        const ICO = { join: "⚔", bracket: "🏟", bottega: "🛍", libera: "🥊", gesta: "📜", albo: "👑", regole: "📖", dadi: "🎲", bet: "💰", master: "🛠" };
         return (
           <div className="arena-bill">
-            {/* MAIN EVENT — la tua sfida in corso, come striscione del match clou */}
-            {hasMyActive && (
-              <button type="button" className={`arena-bill-mainevent${isMyTurnInActive ? " your-turn" : ""}`} onClick={() => setCombatModalOpen(true)}>
-                <span className="abme-tag">Main Event</span>
-                <span className="abme-txt">{isMyTurnInActive ? "È IL TUO TURNO — entra nel combattimento" : "Hai una sfida in corso — guarda il combattimento"}</span>
-                <span className="abme-go" aria-hidden="true">›</span>
-              </button>
-            )}
+            {/* ══ PALCO VS (prototipo J "Il Nesso"): lo scontro in corso —
+                  il tuo, oppure il primo attivo del torneo — con VS pulsante
+                  e fulmine; se l'arena è vuota, due sagome in attesa. ══ */}
+            {(() => {
+              const snaps = arenaMeta?.characterSnapshots || {};
+              const all = arenaMeta.matches || [];
+              const live = all.find(m => m.matchId === myActiveMatchId)
+                || all.find(m => ((m.kind === "fun") || arenaMeta.phase === "combat") && m.status !== "open" && m.status !== "finished");
+              const P = (i) => live?.players?.[i];
+              const vite = (p) => {
+                const n = 5;
+                const on = p?.maxHp ? Math.round(n * Math.max(0, Math.min(1, (p.hp ?? p.maxHp) / p.maxHp))) : n;
+                return Array.from({ length: n }, (_, k) => <i key={k} className={k < on ? "" : "giu"} />);
+              };
+              const glad = (p, side) => (
+                <div className={`gladiatore gladiatore--${side}${p ? "" : " gladiatore--vuoto"}`}>
+                  {p && snaps[p.id]?.image
+                    ? <img src={snaps[p.id].image} alt="" />
+                    : <div className="gladiatore-sil" aria-hidden="true">{p ? "⚔" : "?"}</div>}
+                  <div className="vite" aria-hidden="true">{vite(p)}</div>
+                  <div className="nome">{p ? `${p.name}${p.class ? " · " + p.class : ""}` : "In attesa"}</div>
+                </div>
+              );
+              return (
+                <section className="vs-palco-wrap" aria-label="Palco dello scontro">
+                  <div className="vs-palco">
+                    {glad(P(0), "sx")}
+                    <span className="vs" aria-hidden="true">VS</span>
+                    <span className="fulmine" aria-hidden="true" />
+                    {glad(P(1), "dx")}
+                  </div>
+                  <div className="vs-azione">
+                    {hasMyActive ? (
+                      <button type="button" className={`nx-btn nx-btn--rosso${isMyTurnInActive ? " nx-btn--turno" : ""}`} onClick={() => setCombatModalOpen(true)}>
+                        {isMyTurnInActive ? "⚔ È il tuo turno — entra nello scontro" : "⚔ Entra nello scontro"}
+                      </button>
+                    ) : live && hasBracket ? (
+                      <button type="button" className="nx-btn" onClick={() => { setArenaView("bracket"); setBracketModalOpen(true); }}>🏟 Guarda il tabellone</button>
+                    ) : (
+                      <p className="vs-attesa">
+                        {arenaMeta.phase === "registration"
+                          ? "Le iscrizioni sono aperte: il Colosseo attende il tuo campione."
+                          : "Nessuno scontro in corso: l'Arena Libera è sempre aperta."}
+                      </p>
+                    )}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* PAUSA BOTTEGA — finestra di acquisti tra un round e l'altro */}
             {arenaMeta.phase === "shopping" && (
@@ -9669,30 +9710,41 @@ export default function Arena() {
               </div>
             )}
 
-            {/* Programma della serata: righe numerate stile locandina.
+            {/* Programma della serata: PIASTRELLE (prototipo J), una per voce.
                 NB: <div role="navigation">, NON <nav> — shell.css trasforma ogni
-                <nav> nel drawer di sito (nascosto sotto i 1300px, !important). */}
-            <div role="navigation" className="arena-bill-program" aria-label="Programma dell'Arena">
-              <div className="abp-head"><span className="abp-head-rule" aria-hidden="true" />Programma della Serata<span className="abp-head-rule" aria-hidden="true" /></div>
-              {program.map((row, i) => {
+                <nav> nel drawer di sito. */}
+            <div className="sezione-t"><h2>Programma della Serata</h2><i aria-hidden="true" /></div>
+            <div role="navigation" className="arena-portali" aria-label="Programma dell'Arena">
+              {program.map((row) => {
                 const inner = (<>
-                  <span className="abp-num" aria-hidden="true">{ROMAN[i] || i + 1}</span>
-                  <span className="abp-main">
-                    <span className="abp-title">{row.title}</span>
-                    <span className="abp-sub">{row.sub}</span>
-                  </span>
-                  <span className="abp-go" aria-hidden="true">›</span>
+                  <span className="ico" aria-hidden="true">{ICO[row.key] || "✦"}</span>
+                  <h4>{row.title}</h4>
+                  <div className="sub">{row.sub}</div>
                 </>);
                 if (row.href) {
-                  return <a key={row.key} className="abp-row" href={row.href}>{inner}</a>;
+                  return <a key={row.key} className="pozione" href={row.href}>{inner}</a>;
                 }
                 return (
-                  <button key={row.key} type="button" className={`abp-row${row.disabled ? " abp-row--off" : ""}`} disabled={row.disabled} onClick={row.onClick}>
+                  <button key={row.key} type="button" className={`pozione${row.disabled ? " pozione--off" : ""}`} disabled={row.disabled} onClick={row.onClick}>
                     {inner}
                   </button>
                 );
               })}
             </div>
+
+            {/* La SCALA: classifica generale a punti dei tornei (già calcolata) */}
+            {arenaLeaderboard.length > 0 && (<>
+              <div className="sezione-t"><h2>Classifica dei Tornei</h2><i aria-hidden="true" /></div>
+              <div className="scala">
+                {arenaLeaderboard.slice(0, 5).map((e, i) => (
+                  <div key={e.uid} className="grado">
+                    <span className="orb">{i + 1}</span>
+                    <b>{e.name || "Eroe"}</b>
+                    <span>{e.points} {e.points === 1 ? "punto" : "punti"}</span>
+                  </div>
+                ))}
+              </div>
+            </>)}
           </div>
         );
       })()}

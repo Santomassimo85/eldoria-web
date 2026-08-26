@@ -985,3 +985,308 @@ body .arena-page.arena-page .arena-reward-deco {
   .gesta-chart-row { justify-content: center; }
   .gp-stat { font-size: 0.76rem; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER 10 — "IL COLOSSEO ASTRALE" (prototipo J · Il Nesso, 2026-08-26)
+   Hub ristrutturato: masthead → testata centrata a gradiente con tabellone a
+   pillole; PALCO VS (due gladiatori inclinati, VS che pulsa, fulmine che
+   crepita); programma → PIASTRELLE; classifica → SCALA a orbe. Le viste
+   interne (join/bracket/libera/albo/regole/master) restano intatte.
+   Importato DOPO ArenaHero.css → vince in cascata. Solo presentazione.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.arena-page .arena-bill-mast {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  border: none;
+  padding: 26px 16px 8px;
+  margin: 10px auto 0;
+}
+.arena-page .arena-bill-mast::before,
+.arena-page .arena-bill-mast::after { display: none; }
+.arena-page .abm-eyebrow {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 600;
+  font-size: .6rem;
+  letter-spacing: .44em;
+  color: #22d3ee;
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+  margin-bottom: 6px;
+}
+.arena-page .abm-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.9rem, 6vw, 3rem);
+  line-height: 1.05;
+  text-transform: none;
+  letter-spacing: .01em;
+  margin: 0 0 8px;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 24px rgba(139, 92, 246, .45));
+}
+.arena-page .abm-tag {
+  font-family: "Manrope", system-ui, sans-serif;
+  font-style: normal;
+  color: #8f8bb8;
+  margin: 0 auto;
+  max-width: 52ch;
+}
+/* tabellone → fila di pillole */
+.arena-page .abm-board {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: none;
+  width: auto;
+  margin: 0 auto;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.arena-page .abm-board-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .8);
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  color: #8f8bb8;
+}
+.arena-page .abm-board-phase { padding: 0; border: none; background: none; }
+.arena-page .abm-board-dots { display: none; }
+.arena-page .abm-board-lab { color: #8f8bb8; letter-spacing: .12em; text-transform: uppercase; font-size: .62rem; }
+.arena-page .abm-board-val { color: #22d3ee; font-weight: 800; text-shadow: 0 0 10px rgba(34, 211, 238, .6); }
+.arena-page .abm-board-prizetxt { color: #f5b8ff; }
+.arena-page .abm-board-warn .abm-board-lab { color: #e879f9; }
+
+/* ── corpo ── */
+.arena-page .arena-bill { max-width: 1000px; }
+
+/* ── PALCO VS ── */
+.arena-page .vs-palco-wrap { margin: 6px 0 4px; }
+.arena-page .vs-palco {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 40px);
+  padding: 22px 0 18px;
+}
+.arena-page .gladiatore {
+  position: relative;
+  width: min(38%, 240px);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, .4);
+  background: #101024;
+  box-shadow: 0 20px 40px -18px #000;
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+.arena-page .gladiatore--sx { transform: rotate(-3deg); }
+.arena-page .gladiatore--dx { transform: rotate(3deg); }
+.arena-page .gladiatore--sx:hover { transform: rotate(-1deg) translateY(-6px); box-shadow: 0 0 34px -8px rgba(34, 211, 238, .7); }
+.arena-page .gladiatore--dx:hover { transform: rotate(1deg) translateY(-6px); box-shadow: 0 0 34px -8px rgba(34, 211, 238, .7); }
+.arena-page .gladiatore img,
+.arena-page .gladiatore-sil {
+  width: 100%;
+  aspect-ratio: 3 / 3.4;
+  object-fit: cover;
+  display: block;
+}
+.arena-page .gladiatore-sil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2rem, 8vw, 3.6rem);
+  color: rgba(196, 181, 253, .35);
+  background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, .25), #0b0b1c 70%);
+}
+.arena-page .gladiatore--vuoto { opacity: .7; border-style: dashed; }
+.arena-page .gladiatore .nome {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 26px 12px 10px;
+  background: linear-gradient(180deg, transparent, rgba(7, 7, 19, .95));
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .82rem;
+  letter-spacing: .06em;
+  text-align: center;
+  color: #edeaff;
+  text-transform: capitalize;
+}
+.arena-page .vite {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+  padding: 8px 10px 2px;
+}
+.arena-page .vite i { flex: 1; height: 5px; border-radius: 2px; background: linear-gradient(90deg, #34d399, #22d3ee); box-shadow: 0 0 8px rgba(34, 211, 238, .6); }
+.arena-page .vite i.giu { background: #26264a; box-shadow: none; }
+.arena-page .vs {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  color: #e879f9;
+  text-shadow: 0 0 20px rgba(232, 121, 249, .9);
+  animation: vs-pulsa 1.6s ease-in-out infinite alternate;
+  z-index: 2;
+}
+@keyframes vs-pulsa { from { transform: scale(1); opacity: .8; } to { transform: scale(1.14); opacity: 1; } }
+.arena-page .fulmine {
+  position: absolute;
+  top: 20%; bottom: 22%; left: 50%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, #22d3ee, #e879f9, transparent);
+  filter: blur(1px);
+  opacity: .7;
+  animation: crepita .9s steps(2) infinite;
+  pointer-events: none;
+}
+@keyframes crepita { 50% { opacity: .2; transform: skewX(8deg); } }
+.arena-page .vs-azione { text-align: center; }
+.arena-page .vs-attesa { margin: 0; font-family: "Manrope", system-ui, sans-serif; color: #8f8bb8; font-size: .9rem; }
+
+/* CTA del Nesso (sheen che scorre) */
+.arena-page .nx-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: .74rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #070713;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+  box-shadow: 0 0 26px -6px rgba(34, 211, 238, .8);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.arena-page .nx-btn::after {
+  content: "";
+  position: absolute; top: 0; left: -80%;
+  width: 50%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: skewX(-20deg);
+  transition: left .45s ease;
+}
+.arena-page .nx-btn:hover { transform: translateY(-2px); box-shadow: 0 0 40px -4px rgba(34, 211, 238, 1); }
+.arena-page .nx-btn:hover::after { left: 120%; }
+.arena-page .nx-btn--rosso { background: linear-gradient(90deg, #e879f9, #c026d3); box-shadow: 0 0 26px -6px rgba(232, 121, 249, .8); }
+.arena-page .nx-btn--rosso:hover { box-shadow: 0 0 40px -4px rgba(232, 121, 249, 1); }
+.arena-page .nx-btn--turno { animation: nx-turno 1.4s ease-in-out infinite alternate; }
+@keyframes nx-turno { from { box-shadow: 0 0 20px -6px rgba(232, 121, 249, .7); } to { box-shadow: 0 0 46px -2px rgba(232, 121, 249, 1); } }
+
+/* ── etichetta di sezione ── */
+.arena-page .sezione-t { display: flex; align-items: center; gap: 14px; margin: 26px 0 14px; }
+.arena-page .sezione-t h2 {
+  margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .78rem;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: #22d3ee;
+  text-shadow: 0 0 12px rgba(34, 211, 238, .5);
+  white-space: nowrap;
+}
+.arena-page .sezione-t i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(139, 92, 246, .6), transparent); }
+
+/* ── PIASTRELLE del programma ── */
+.arena-page .arena-portali {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+.arena-page .pozione {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .3);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.arena-page .pozione:hover:not(:disabled) { transform: translateY(-6px); border-color: #e879f9; box-shadow: 0 0 26px -8px rgba(232, 121, 249, .7); }
+.arena-page .pozione--off { opacity: .38; cursor: default; }
+.arena-page .pozione .ico { font-size: 1.7rem; filter: drop-shadow(0 0 12px rgba(34, 211, 238, .8)); }
+.arena-page .pozione h4 {
+  margin: 8px 0 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  color: #edeaff;
+}
+.arena-page .pozione .sub {
+  margin-top: 6px;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .72rem;
+  line-height: 1.4;
+  color: #8f8bb8;
+}
+
+/* ── SCALA della classifica ── */
+.arena-page .scala { display: flex; flex-direction: column; gap: 8px; }
+.arena-page .grado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #12122a, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .22);
+  font-family: "Manrope", system-ui, sans-serif;
+  transition: transform .2s ease, border-color .2s ease;
+}
+.arena-page .grado:hover { transform: translateX(6px); border-color: rgba(34, 211, 238, .6); }
+.arena-page .grado .orb {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .78rem; color: #070713;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+}
+.arena-page .grado:first-child .orb { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 18px rgba(245, 158, 11, .8); }
+.arena-page .grado b { flex: 1; font-weight: 600; color: #edeaff; }
+.arena-page .grado > span:last-child { color: #8f8bb8; font-size: .8rem; }
+
+/* ── pausa bottega: pannello del vuoto ── */
+.arena-page .arena-shop-banner {
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border: 1px solid rgba(34, 211, 238, .45);
+  border-radius: 18px;
+}
+
+@media (max-width: 640px) {
+  .arena-page .vs-palco { gap: 10px; }
+  .arena-page .gladiatore { width: 42%; }
+  .arena-page .gladiatore .nome { font-size: .68rem; padding: 20px 8px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-page .vs, .arena-page .fulmine, .arena-page .nx-btn--turno { animation: none !important; }
+}

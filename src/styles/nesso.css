@@ -797,3 +797,11 @@ article.gl-vetrata { cursor: default; }
   .nesso-warp { display: none; }
   .gl-finestra, .gl-finestra-img, .gl-vetrata-img, .gl-hint { animation: none; }
 }
+
+/* ── Footer anche sulle pagine di gioco scure: il token --crit (ora magenta)
+      non deve colorare il piè di pagina → sempre il vuoto ── */
+body.theme-dark footer {
+  background: linear-gradient(180deg, rgba(13, 13, 31, .6), #070713) !important;
+  border-top: 1px solid rgba(139, 92, 246, .28);
+  color: var(--nx-muted);
+}
