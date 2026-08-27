@@ -387,21 +387,21 @@ export default function Home() {
           Iniziarono a formarsi i primi culti per Ny e Ouh che venneró presto
           rimpiazzati dai nuovi Dei Antico Pantheon. <br /> Per anni l´equilibrio
           dei piani rimase stabile finché un potente mago, che si faceva
-          chiamare "L´Arcano", diede sfogo a tutto il suo potere soggiogando le
+          chiamare <span className="home-lore-cite">"L´Arcano"</span>, diede sfogo a tutto il suo potere soggiogando le
           cittá e piegando al suo volere le razze. <br /> <br /> 
           
           Quel giorno le civiltá
           caddero e ci fu un solo vincitore, Arkra´x l´ossuto, un demone dei
           piani infernali con un potere immenso. Lui era dietro tutte le idee
           folli del mago, lui aveva pianificato ogni cosa, lui tutto avrebbe
-          fatto per il suo signore Zha´rukhael - ´Il trono spezzato´, per
+          fatto per il suo signore <span className="home-lore-cite">Zha´rukhael - ´Il trono spezzato´</span>, per
           portare squilibrio nel mondo, e una volta creato lo squilibrio, il
-          mondo rosso (cosí viene chiamato in alcuni monasteri) puó finalmente
+          mondo rosso <span className="home-lore-aside-note">(cosí viene chiamato in alcuni monasteri)</span> puó finalmente
           inviare i suoi soldati sul piano terrestre.<br /> <br /> 
            Gli inferi urlarono:<br /> 
-          <i>"Nzâgh’th khâl ûr’ezth rzhûn-ar Thol’kar."</i> <br /> <br /> 
+          <span className="home-lore-say home-lore-say--infernal">"Nzâgh’th khâl ûr’ezth rzhûn-ar Thol’kar."</span> <br /> <br /> 
           Che nella lingua degli
-          inferi significa "Ascesa degli inferi e dominio sulla terra".` Gli
+          inferi significa <span className="home-lore-say">"Ascesa degli inferi e dominio sulla terra"</span>. Gli
           inferi invasero il mondo e il mago non venne risparmiato, cosí dopo
           una lunga battaglia perí vicino i campi deserti del territorio
           (l´attuale Tirrenia). Il suo corpo fu fatto a pezzi e, vista l´immane
@@ -415,7 +415,7 @@ export default function Home() {
            La
           ferocia delle forze del male fu terribile ma si crearono alleanze e
           fazioni per combattere questo male, tra quelle riportate dall´antico
-          manoscritto di Obia spiccano i "Ratti", uno squadrone formato da
+          manoscritto di Obia spiccano i <span className="home-lore-cite">"Ratti"</span>, uno squadrone formato da
           varie razze, ognuno abile in qualche arte. Si racconta che da soli
           hanno ricacciato nell´abisso piú della metá dei demoni e sconfitto due
           generali.<br /> 
@@ -442,7 +442,7 @@ export default function Home() {
           per secoli regnó di nuovo la pace... <br /> <br /> 
           
           Sono passati 1852 anni dalla
-          "Caduta delle stelle" (anno della guerra e riferimento alla discesa
+          <span className="home-lore-cite">"Caduta delle stelle"</span> (anno della guerra e riferimento alla discesa
           dei serafini) e il mondo é tranquillo, continua nell´equilibrio
           cosmico giusto, le cittá sono state ricostruite, la tecnologia avanza,
           gli unici pensieri delle guardie rimangono ubriaconi della cittá...e

@@ -185,6 +185,41 @@
   color: #c9c4ea; text-align: left;
 }
 .home-page .home-lore-text i { color: #c4b5fd; font-style: italic; }
+
+/* Dialoghi e citazioni del manoscritto: colori vividi */
+.home-page .home-lore-say {
+  font-family: "Cinzel", Georgia, serif; font-style: italic; font-weight: 700;
+  font-size: 1.06em; letter-spacing: .02em;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b 55%, #fb7185);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, .45));
+}
+.home-page .home-lore-say--infernal {
+  display: inline-block; margin: 4px 0 2px; padding: 6px 14px;
+  font-size: 1.14em; letter-spacing: .06em;
+  background: linear-gradient(90deg, #fb7185, #ef4444 50%, #f97316);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  border-left: 3px solid #ef4444;
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .28), 0 0 24px -6px rgba(239, 68, 68, .8);
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, .55));
+  animation: home-lore-ember 3.2s ease-in-out infinite;
+}
+@keyframes home-lore-ember {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(239, 68, 68, .4)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(249, 115, 22, .85)); }
+}
+.home-page .home-lore-cite {
+  font-weight: 700; white-space: nowrap;
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, .45));
+}
+.home-page .home-lore-aside-note { color: #a78bfa; font-style: italic; }
+@media (prefers-reduced-motion: reduce) {
+  .home-page .home-lore-say--infernal { animation: none; }
+}
 .home-page .home-lore-drop {
   font-family: "Cinzel", Georgia, serif; font-weight: 700;
   font-size: clamp(2.8rem, 7vw, 4rem); line-height: .72;
