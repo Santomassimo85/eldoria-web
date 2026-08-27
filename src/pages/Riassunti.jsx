@@ -9,6 +9,7 @@ import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firesto
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
+import { partyById } from '../data/parties';
 import './Riassunti.css';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -36,6 +37,13 @@ const stripImages = (html) =>
         .replace(/<img\b[^>]*>/gi, "")
         .replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, "")
         .replace(/<figure\b[^>]*>([\s\S]*?)<\/figure>/gi, (_, inner) => inner.trim() ? `<div>${inner}</div>` : "");
+
+// Colore del party (per pillole, rubriche e filo delle memorie): la tinta
+// ufficiale di parties.js, schiarita per reggere sul vuoto del Nesso.
+const PARTY_ACCENT = { AMEA: "#f87171", LEAF: "#34d399", ENOX: "#c084fc", LAC: "#22d3ee" };
+const PARTY_FALLBACK = ["#22d3ee", "#8b5cf6", "#e879f9", "#f59e0b", "#fb7185"];
+const partyAccent = (key, i = 0) =>
+    PARTY_ACCENT[String(key || "").toUpperCase()] || partyById(key)?.color || PARTY_FALLBACK[i % PARTY_FALLBACK.length];
 
 const exportPartyAsPdf = (partyKey, summaries) => {
     const docTitle = `Memorie · Gruppo ${partyKey}`;
@@ -501,10 +509,11 @@ export default function Riassunti() {
                                 key={k}
                                 type="button"
                                 data-accent={gi % 5}
-                                className={`nx-pillola rs-chip ${activeGroup === k ? "on" : ""}`}
+                                style={{ "--grp-accent": partyAccent(k, gi) }}
+                                className={`nx-pillola rs-chip rs-chip--party ${activeGroup === k ? "on" : ""}`}
                                 onClick={() => setActiveGroup(activeGroup === k ? null : k)}
                             >
-                                ⬡ {k}
+                                <i className="rs-chip-dot" aria-hidden="true" /> {k}
                             </button>
                         ))}
                     </div>
@@ -542,6 +551,7 @@ export default function Riassunti() {
                             id={`rs-group-${slugify(partyKey)}`}
                             className="rs-group nx-due"
                             data-accent={gi % 5}
+                            style={{ "--grp-accent": partyAccent(partyKey, gi) }}
                             aria-label={`Gruppo ${partyKey}`}
                         >
                             {/* rubrica del gruppo (sticky su desktop) */}

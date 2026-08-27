@@ -104,7 +104,7 @@
 .rs-group-chip { margin: 0 0 8px; }
 .rs-group-aside .riassunti-export-btn { margin-top: 6px; }
 @media (max-width: 819px) {
-  .rs-group-aside { position: static; }
+  .rs-group-aside { position: relative; }
 }
 
 .rs-group-body { min-width: 0; }
@@ -393,4 +393,58 @@
 @media (prefers-reduced-motion: reduce) {
   .lore-popup-overlay, .lore-popup, .summary-card-wrapper.is-deeplinked { animation: none !important; }
   .rs-summary-html .lore-link { transition: none; }
+}
+
+/* ============================================================
+   COLORI DEI PARTY — pillole, rubrica e memorie prendono la tinta del gruppo
+   (--grp-accent inline dal JSX: AMEA rosso · LEAF verde · ENOX viola)
+   ============================================================ */
+.rs-chips .rs-chip--party {
+  color: var(--grp-accent);
+  border-color: color-mix(in srgb, var(--grp-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--grp-accent) 10%, rgba(13, 13, 31, .7));
+}
+.rs-chips .rs-chip--party:hover {
+  border-color: var(--grp-accent);
+  box-shadow: 0 0 18px -6px var(--grp-accent);
+}
+.rs-chips .rs-chip--party.on {
+  background: var(--grp-accent);
+  color: #070713;
+  border-color: transparent;
+  box-shadow: 0 0 22px -4px var(--grp-accent);
+}
+.rs-chip-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--grp-accent);
+  box-shadow: 0 0 8px var(--grp-accent);
+}
+.rs-chips .rs-chip--party.on .rs-chip-dot { background: #070713; box-shadow: none; }
+
+/* rubrica del gruppo: anello, iniziale e titolo nella tinta del party */
+.rs-group-aside .nx-anello::before {
+  background: conic-gradient(var(--grp-accent), transparent 35%, var(--grp-accent) 55%, transparent 85%, var(--grp-accent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--grp-accent) 70%, transparent));
+}
+.rs-group-aside .nx-anello-ph { color: var(--grp-accent); }
+.rs-group-aside .nx-kicker { color: var(--grp-accent); }
+.rs-group-aside .rs-group-name {
+  background: linear-gradient(90deg, #fff, var(--grp-accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.rs-group-aside { border-color: color-mix(in srgb, var(--grp-accent) 45%, transparent); }
+.rs-group-aside::before {
+  content: ""; position: absolute; left: 18px; right: 18px; top: 0; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--grp-accent), transparent);
+}
+.rs-group-aside .riassunti-export-btn { border-color: color-mix(in srgb, var(--grp-accent) 60%, transparent); }
+
+/* memorie: bordo e filo nella tinta del party; numero di sessione tinto */
+.summary-card-wrapper { border-color: color-mix(in srgb, var(--grp-accent) 32%, transparent); }
+.summary-card-wrapper:hover { border-color: var(--grp-accent); box-shadow: 0 0 30px -10px var(--grp-accent); }
+.summary-card-wrapper::before { opacity: 1; }
+.summary-card-wrapper .nx-tag.summary-card-num {
+  color: var(--grp-accent);
+  border-color: color-mix(in srgb, var(--grp-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--grp-accent) 12%, transparent);
 }
