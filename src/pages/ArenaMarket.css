@@ -467,3 +467,34 @@
 @media (prefers-reduced-motion: reduce) {
   .bt-page .bt-orbe, .bt-page .bt-orbe::after, .bt-page .bt-anello::before, .bt-page .bt-pillola--timer i { animation: none !important; }
 }
+
+/* ══ MERCI A SFONDO CHIARO: le carte della vetrina sono "isole chiare" nel vuoto
+   (lavanda-avorio), con inchiostro scuro; anello, categoria e CTA restano accesi ══ */
+.bt-page .bt-merce {
+  --ink: #1b1836; --ink2: #5b5786;
+  background: linear-gradient(180deg, #fbfaff, #ece8fb);
+  border: 1px solid rgba(139, 92, 246, .35);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), inset 0 1px 0 #fff;
+}
+.bt-page .bt-merce:hover {
+  border-color: color-mix(in srgb, var(--c) 75%, #fff);
+  box-shadow: 0 20px 40px -18px #000, 0 0 34px -6px color-mix(in srgb, var(--c) 70%, transparent), inset 0 1px 0 #fff;
+}
+.bt-page .bt-merce--mia { border-color: rgba(5, 150, 105, .55); }
+.bt-page .bt-merce-cat { color: color-mix(in srgb, var(--c) 70%, #1b1836); }
+.bt-page .bt-merce-mia { background: rgba(5, 150, 105, .12); border-color: rgba(5, 150, 105, .5); color: #047857; }
+.bt-page .bt-anello span {
+  background: radial-gradient(circle at 50% 40%, #ffffff, #e6e1f7 75%);
+  box-shadow: inset 0 0 18px rgba(139, 92, 246, .18);
+}
+.bt-page .bt-merce-nome { color: var(--ink); }
+.bt-page .bt-merce-desc { color: var(--ink2); }
+.bt-page .bt-prezzo { color: #b45309; text-shadow: none; }
+.bt-page .bt-prezzo small,
+.bt-page .bt-prezzo em { color: var(--ink2); }
+.bt-page .bt-merce .am-buy-btn { box-shadow: 0 8px 20px -10px rgba(139, 92, 246, .8); }
+.bt-page .bt-merce .am-buy-btn:disabled {
+  color: var(--ink2); background: #e3dff5; border: 1px solid rgba(139, 92, 246, .3);
+}
+.bt-page .bt-merce--mia .am-buy-btn:disabled { color: #047857; background: #dff5ec; border-color: rgba(5, 150, 105, .4); }
+.bt-page .bt-merce--cara { opacity: .82; }
