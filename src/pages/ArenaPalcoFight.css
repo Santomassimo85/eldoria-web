@@ -1,0 +1,247 @@
+/* src/pages/ArenaPalcoFight.css — LO SCONTRO NEL PALCO (hub) + palette Nesso del combat v3.
+   Importato DOPO ArenaNessoViste.css → vince in cascata. Solo presentazione.
+
+   1) PALETTE NESSO del combattimento: il LAYER 10 "COMBAT v3" di ArenaHero.css
+      usa variabili (--bg/--card/--cyan/--mag/--gold) + molti colori brace/oro
+      cablati: qui le variabili vengono ribaltate sul vuoto arcano e i colori
+      cablati sovrascritti con gli stessi selettori (stessa specificità, file
+      successivo → vince). Vale sia per la modale (fallback fuori dall'hub) sia
+      per lo scontro inline.
+   2) SCONTRO INLINE: nell'hub la modale combat viene "portata" dentro
+      `.palco-scontro` (vedi ArenaModal.inlineTarget): le carte VS si chiudono,
+      il combattimento sboccia sotto nella stessa cornice del palco; la ✕ o
+      il bottone "Chiudi lo scontro" richiudono e il palco torna com'era. */
+
+/* ═══════════════════════ 1) PALETTE NESSO ═══════════════════════ */
+.arena-combat-dialog{
+  --bg:#070713; --card:#12122a; --cyan:#22d3ee; --mag:#e879f9; --gold:#fde68a;
+  --hpg:#34d399; --hpy:#fde68a; --hpr:#fb7185; --txt:#edeaff; --txt2:#8f8bb8;
+  --viola:#8b5cf6;
+}
+.arena-combat-overlay{ background:rgba(7,7,19,.88)!important; }
+.arena-combat-dialog{ background:radial-gradient(ellipse 80% 40% at 50% 0%, rgba(139,92,246,.18), transparent 70%), var(--bg)!important; }
+
+/* tab In corso / Storico */
+.arena-combat-dialog .combat-tabs{ background:var(--card); border-bottom:1px solid rgba(139,92,246,.22); }
+.arena-combat-dialog .combat-tab{ font-family:"Cinzel",Georgia,serif; color:var(--txt2); background:rgba(255,255,255,.03); border:1px solid rgba(139,92,246,.22); }
+.arena-combat-dialog .combat-tab.active{ color:#070713; background:linear-gradient(90deg,var(--cyan),var(--viola)); border-color:transparent; box-shadow:0 0 18px -6px rgba(34,211,238,.8); }
+.arena-combat-dialog .combat-tabs-close{ background:rgba(232,121,249,.14); border:1px solid rgba(232,121,249,.45); }
+.arena-combat-dialog .combat-tabs-close:hover{ background:rgba(232,121,249,.35); border-color:rgba(232,121,249,.8); }
+.arena-combat-dialog .combat-empty-link{ color:var(--cyan); background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.4); }
+
+/* storico */
+.combat-hist-card{ background:linear-gradient(180deg,#14142c,#0d0d1f); border:1px solid rgba(139,92,246,.28); }
+.combat-hist-card .chc-kind{ color:var(--cyan,#22d3ee); background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.35); }
+.combat-hist-card .chc-remove{ background:rgba(232,121,249,.14); border:1px solid rgba(232,121,249,.4); }
+.combat-hist-card .chc-ava{ border:2px solid rgba(139,92,246,.5); }
+.combat-hist-card .chc-log{ border-top:1px solid rgba(139,92,246,.18); }
+.combat-hist-card .chc-log-sum{ color:var(--cyan,#22d3ee); }
+
+/* [1] barra top */
+.arena-combat-dialog .cv-topbar{ background:var(--card); }
+.arena-combat-dialog .cv-turn-badge{ font-family:"Cinzel",Georgia,serif; color:var(--cyan); background:rgba(34,211,238,.1)!important; }
+.arena-combat-dialog .cv-timer{ font-family:"Cinzel",Georgia,serif; color:var(--cyan); text-shadow:0 0 14px rgba(34,211,238,.7); }
+.arena-combat-dialog .cv-timer.urgent{ color:var(--hpr); text-shadow:0 0 16px rgba(251,113,133,.85); }
+.arena-combat-dialog .cv-close{ background:rgba(232,121,249,.14); border:1px solid rgba(232,121,249,.45); }
+.arena-combat-dialog .cv-close:hover{ background:rgba(232,121,249,.4); }
+.arena-combat-dialog .cv-abandon{ background:rgba(251,113,133,.16); border:1px solid rgba(251,113,133,.5); color:#ffd0d6; }
+.arena-combat-dialog .cv-abandon:hover{ background:rgba(251,113,133,.45); }
+
+/* [2] zona scontro: nebulosa che respira invece della brace */
+.arena-combat-dialog .fighters-row{
+  background:linear-gradient(120deg, #070713, #1c1650, #2a0f45, #070713); background-size:300% 300%;
+}
+.arena-combat-dialog .fighter-card .fighter-name{ font-family:"Cinzel",Georgia,serif; color:#fff; }
+.arena-combat-dialog .side-you .cv-avatar-wrap .fighter-avatar{ border:2px solid rgba(34,211,238,.7)!important; box-shadow:0 0 16px rgba(34,211,238,.6); }
+.arena-combat-dialog .side-foe .cv-avatar-wrap .fighter-avatar{ border:2px solid rgba(232,121,249,.7)!important; box-shadow:0 0 16px rgba(232,121,249,.6); }
+@keyframes cv-pulse-cy{0%,100%{box-shadow:0 0 12px rgba(34,211,238,.5)}50%{box-shadow:0 0 28px rgba(34,211,238,.95)}}
+@keyframes cv-pulse-mg{0%,100%{box-shadow:0 0 12px rgba(232,121,249,.5)}50%{box-shadow:0 0 28px rgba(232,121,249,.95)}}
+.arena-combat-dialog .side-foe .cv-noavatar{ border:2px solid rgba(232,121,249,.55); box-shadow:0 0 14px rgba(232,121,249,.4); background:rgba(232,121,249,.08); }
+.arena-combat-dialog .side-you .cv-noavatar{ border:2px solid rgba(34,211,238,.55); box-shadow:0 0 14px rgba(34,211,238,.4); background:rgba(34,211,238,.08); }
+.arena-combat-dialog .cv-hp-text{ font-family:"Cinzel",Georgia,serif; }
+.arena-combat-dialog .ministat{ background:rgba(255,255,255,.04); border:1px solid rgba(139,92,246,.25); }
+.arena-combat-dialog .fighter-card.side-you .ministat{ color:#9ff0ff; border-color:rgba(34,211,238,.35); }
+.arena-combat-dialog .fighter-card.side-foe .ministat{ color:#f5b8ff; border-color:rgba(232,121,249,.35); }
+.arena-combat-dialog .fighter-title-badge{ background:rgba(253,230,138,.12)!important; border:1px solid rgba(253,230,138,.4)!important; color:var(--gold)!important; }
+.arena-combat-dialog .turn-indicator{ background:linear-gradient(135deg,var(--cyan),var(--viola))!important; color:#070713!important; }
+.arena-combat-dialog .defeated-banner{ background:rgba(251,113,133,.2)!important; color:#ffd0d6!important; border:1px solid rgba(251,113,133,.5)!important; }
+.arena-combat-dialog .btn-init{
+  background:linear-gradient(135deg,var(--cyan),var(--viola))!important; color:#070713!important; border:1px solid rgba(255,255,255,.5)!important;
+  box-shadow:0 0 18px rgba(34,211,238,.55)!important;
+}
+.arena-combat-dialog .fighter-card.active-turn{
+  background:linear-gradient(180deg, rgba(139,92,246,.16), rgba(139,92,246,0))!important;
+}
+/* sotto controllo: aura viola/magenta */
+.arena-combat-dialog .cv-avatar-wrap.is-controlled .fighter-avatar{ border-color:rgba(232,121,249,.9)!important; box-shadow:0 0 18px rgba(232,121,249,.75)!important; }
+.arena-combat-dialog .cv-noavatar.is-controlled{ border-color:rgba(232,121,249,.9)!important; box-shadow:0 0 18px rgba(232,121,249,.6)!important; }
+.arena-combat-dialog .cv-control-aura{ background:radial-gradient(circle, rgba(232,121,249,.4) 0%, rgba(139,92,246,.16) 46%, transparent 64%); }
+.arena-combat-dialog .cv-control-aura::before{ border-color:rgba(232,121,249,.9); }
+.arena-combat-dialog .cv-control-aura::after{ border-color:rgba(196,181,253,.85); }
+/* reazioni */
+.arena-combat-dialog .arena-react-toggle{ background:rgba(34,211,238,.1)!important; border:1px solid rgba(34,211,238,.35)!important; color:#9ff0ff!important; }
+.arena-combat-dialog .arena-react-row{ background:var(--card)!important; border:1px solid rgba(139,92,246,.35)!important; }
+
+/* [3] stat */
+.arena-combat-dialog .cv-stats{ background:rgba(13,13,31,.85); }
+.arena-combat-dialog .cv-stat-pill{ background:var(--card); border:1px solid rgba(139,92,246,.3); }
+.arena-combat-dialog .cv-stat-pill strong{ color:var(--cyan); }
+
+/* [4] azioni: schede come pillole del Nesso */
+.arena-combat-dialog .action-panel{ background:var(--bg)!important; }
+.arena-combat-dialog .combat-dock-tabs{ background:var(--bg); }
+.arena-combat-dialog .cdt-tab{
+  background:linear-gradient(180deg,#14142c,#0d0d1f)!important; border:1px solid rgba(139,92,246,.35)!important; color:#c4b5fd!important;
+  box-shadow:none!important;
+}
+.arena-combat-dialog .cdt-tab:hover{ background:linear-gradient(180deg,#1a1a38,#12122a)!important; border-color:rgba(34,211,238,.6)!important; box-shadow:0 0 16px -6px rgba(34,211,238,.6)!important; }
+.arena-combat-dialog .cdt-lab{ font-family:"Cinzel",Georgia,serif; }
+.arena-combat-dialog .cdt-tab.active{ background:linear-gradient(90deg,var(--cyan),var(--viola))!important; border-color:transparent!important; color:#070713!important; box-shadow:0 0 20px -4px rgba(34,211,238,.8)!important; }
+.arena-combat-dialog .abilita-subtab{ background:rgba(255,255,255,.04)!important; border:1px solid rgba(139,92,246,.35)!important; color:#c4b5fd!important; font-family:"Cinzel",Georgia,serif; }
+.arena-combat-dialog .abilita-subtab:hover{ background:rgba(139,92,246,.14)!important; border-color:rgba(34,211,238,.6)!important; }
+.arena-combat-dialog .abilita-subtab.active{ background:linear-gradient(90deg,var(--cyan),var(--viola))!important; border-color:transparent!important; color:#070713!important; box-shadow:0 0 14px rgba(34,211,238,.5)!important; }
+.arena-combat-dialog .btn-action{ background:var(--card)!important; border:1px solid rgba(139,92,246,.28)!important; }
+.arena-combat-dialog .btn-action:hover,.arena-combat-dialog .btn-action:active{ border-color:var(--cyan)!important; box-shadow:0 0 20px -2px rgba(34,211,238,.6)!important; }
+.arena-combat-dialog .btn-action.weapon:hover,.arena-combat-dialog .btn-action.weapon:active{ border-color:var(--gold)!important; box-shadow:0 0 20px -2px rgba(253,230,138,.55)!important; }
+.arena-combat-dialog .btn-action.spell:hover,.arena-combat-dialog .btn-action.spell:active{ border-color:var(--mag)!important; box-shadow:0 0 20px -2px rgba(232,121,249,.6)!important; }
+.arena-combat-dialog .action-uses-badge{ background:rgba(34,211,238,.14)!important; border:1px solid rgba(34,211,238,.4)!important; color:#9ff0ff!important; }
+.arena-combat-dialog .action-uses-badge.empty{ background:rgba(251,113,133,.2)!important; border-color:rgba(251,113,133,.45)!important; color:#ffd0d6!important; }
+.arena-combat-dialog .bonus-action-tag{ background:linear-gradient(135deg,var(--cyan),var(--viola))!important; color:#070713!important; }
+.arena-combat-dialog .dual-action-row{ color:var(--txt)!important; }
+.arena-combat-dialog .dual-action-label{ color:var(--cyan)!important; }
+.arena-combat-dialog .btn-end-dual-turn{ background:rgba(0,0,0,.4)!important; border:1px solid rgba(34,211,238,.4)!important; color:#9ff0ff!important; }
+.arena-combat-dialog .btn-item{ background:var(--card)!important; border:1px solid rgba(139,92,246,.28)!important; }
+.arena-combat-dialog .btn-item:hover,.arena-combat-dialog .btn-item:active{ border-color:var(--gold)!important; box-shadow:0 0 18px -3px rgba(253,230,138,.5)!important; }
+.arena-combat-dialog .btn-item .item-name{ color:#edeaff!important; }
+.arena-combat-dialog .btn-item .item-uses{ color:#c4b5fd!important; }
+.arena-combat-dialog .btn-wild-shape{ background:rgba(52,211,153,.12)!important; border:1px solid rgba(52,211,153,.4)!important; color:#a7f3d0!important; }
+.arena-combat-dialog .save-block{ background:rgba(251,113,133,.12)!important; border:1px solid rgba(251,113,133,.4)!important; }
+.arena-combat-dialog .btn-saving-throw{ background:linear-gradient(135deg,#fb7185,#be123c)!important; border:1px solid #fecdd3!important; }
+.arena-combat-dialog .equip-panel{ background:var(--card)!important; }
+.arena-combat-dialog .equip-panel-title{ color:var(--cyan)!important; }
+.arena-combat-dialog .lay-of-hands-picker,.arena-combat-dialog .wild-picker{ background:var(--card)!important; border:1px solid rgba(139,92,246,.4)!important; }
+
+/* [5] cronaca */
+.arena-combat-dialog .match-log{ background:var(--card)!important; border-top:2px solid var(--mag)!important; box-shadow:0 -6px 24px rgba(0,0,0,.6)!important; }
+.arena-combat-dialog .match-log-head{ background:var(--card); border-bottom:1px solid rgba(232,121,249,.25)!important; }
+.arena-combat-dialog .match-log-head:hover{ background:#1a1a38; }
+.arena-combat-dialog .match-log-title{ color:var(--mag)!important; font-family:"Cinzel",Georgia,serif; }
+.arena-combat-dialog .match-log-count{ background:rgba(232,121,249,.16); border:1px solid rgba(232,121,249,.4); color:#f5b8ff; }
+.arena-combat-dialog .log-entry{ color:#edeaff!important; }
+.arena-combat-dialog .log-entry.log-attacker{ border-left-color:var(--cyan); background:rgba(34,211,238,.07); }
+.arena-combat-dialog .log-entry.log-defender{ border-left-color:var(--hpr); background:rgba(251,113,133,.07); }
+.arena-combat-dialog .log-entry.log-dot{ border-left-color:var(--mag); background:rgba(232,121,249,.08); }
+.arena-combat-dialog .log-entry.latest{ outline:1px solid rgba(253,230,138,.5); box-shadow:0 0 12px -4px rgba(253,230,138,.6); }
+.arena-combat-dialog .btn-fun-abandon,.arena-combat-dialog .btn-fun-remove-inline{
+  background:rgba(251,113,133,.14)!important; border-top:1px solid rgba(251,113,133,.4)!important; color:#ffd0d6!important;
+}
+
+/* ═══════════════════════ 2) SCONTRO INLINE NEL PALCO ═══════════════════════ */
+/* lo slot è vuoto (0px) finché il combat non viene "portato" dentro */
+.arena-page .palco-scontro{ display:block; }
+.arena-page .palco-scontro:empty{ display:none; }
+
+/* palco vivo: le carte VS si ripiegano, resta solo lo scontro */
+.arena-page .vs-palco-wrap--live .vs-palco{ display:none; }
+.arena-page .vs-palco-wrap--live .vs-azione{ margin-top:10px; }
+.arena-page .vs-palco-wrap--live .fulmine{ display:none; }
+
+/* la cornice del combat dentro il palco: pannello del Nesso a tutta larghezza,
+   altezza NATURALE (batte width/height 100vw/94vh !important del LAYER 10) */
+.arena-page .arena-combat-dialog.arena-combat-inline{
+  position:relative!important;
+  width:100%!important; max-width:100%!important;
+  height:auto!important; max-height:none!important; min-height:min(78vh,760px);
+  margin:6px 0 4px;
+  border:1px solid rgba(139,92,246,.4)!important;
+  border-radius:22px!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(139,92,246,.22), transparent 70%),
+    linear-gradient(180deg,#0d0d1f,#070713)!important;
+  box-shadow:0 30px 60px -30px #000, 0 0 40px -14px rgba(139,92,246,.6)!important;
+  animation:palco-sboccia .45s cubic-bezier(.2,.8,.2,1) both;
+  transform-origin:50% 0;
+}
+@keyframes palco-sboccia{ from{ opacity:0; transform:translateY(-18px) scaleY(.92); } to{ opacity:1; transform:none; } }
+/* bordo di luce che scorre in cima, come sui pannelli del Nesso */
+.arena-page .arena-combat-inline::after{
+  content:""; position:absolute; top:0; left:0; right:0; height:2px; z-index:6; pointer-events:none;
+  background:linear-gradient(90deg, transparent, #22d3ee, #e879f9, transparent);
+  background-size:200% 100%;
+  animation:palco-luce 4s linear infinite;
+}
+@keyframes palco-luce{ to{ background-position:-200% 0; } }
+.arena-page .arena-combat-inline .arena-modal-body{
+  height:auto!important; min-height:inherit; display:flex!important; flex-direction:column!important;
+}
+.arena-page .arena-combat-inline .matches-container,
+.arena-page .arena-combat-inline .match-card{ flex:1 1 auto; min-height:0; }
+/* nel palco la cronaca ha un'altezza fissa e scorre da sé (niente 30vh elastici) */
+.arena-page .arena-combat-inline .match-log{ flex:0 0 auto; min-height:220px; max-height:300px; }
+.arena-page .arena-combat-inline .match-card.cv-logmode .match-log{ max-height:70vh; }
+.arena-page .arena-combat-inline .action-panel{ max-height:42vh; }
+
+/* CTA "Chiudi lo scontro": fantasma, non urla */
+.arena-page .nx-btn--chiudi{
+  background:rgba(232,121,249,.1); color:#f5b8ff;
+  border:1px solid rgba(232,121,249,.45); box-shadow:none; animation:none;
+}
+.arena-page .nx-btn--chiudi:hover{ background:rgba(232,121,249,.22); box-shadow:0 0 22px -8px rgba(232,121,249,.8); }
+
+@media (max-width:640px){
+  .arena-page .arena-combat-dialog.arena-combat-inline{ border-radius:16px!important; min-height:min(84vh,720px); margin:4px -6px 2px; width:calc(100% + 12px)!important; max-width:none!important; }
+}
+@media (prefers-reduced-motion:reduce){
+  .arena-page .arena-combat-inline, .arena-page .arena-combat-inline::after{ animation:none!important; }
+}
+
+/* ── larghezza piena dentro il palco (il contenitore dei match si centrava a 417px) ── */
+.arena-page .arena-combat-inline .matches-container,
+.arena-page .arena-combat-inline .match-card{ width:100%!important; max-width:none!important; align-self:stretch!important; }
+
+/* ── impugnatura (equip-panel): via i bottoni bianchi/rossi della pergamena ── */
+.arena-combat-dialog .equip-panel-title{ font-family:"Cinzel",Georgia,serif; letter-spacing:.14em; }
+.arena-combat-dialog .equip-panel-sub{ color:var(--txt2)!important; }
+.arena-combat-dialog .equip-weapon-btn{
+  background:linear-gradient(180deg,#14142c,#0d0d1f)!important; border:1px solid rgba(139,92,246,.4)!important; color:#edeaff!important;
+  border-radius:10px!important; box-shadow:none!important;
+}
+.arena-combat-dialog .equip-weapon-btn:hover:not(.locked){ border-color:var(--cyan)!important; background:#1a1a38!important; box-shadow:0 0 16px -6px rgba(34,211,238,.7)!important; }
+.arena-combat-dialog .equip-weapon-btn.sel{ background:linear-gradient(90deg,var(--cyan),var(--viola))!important; color:#070713!important; border-color:transparent!important; box-shadow:0 0 18px -4px rgba(34,211,238,.8)!important; }
+.arena-combat-dialog .equip-weapon-btn .equip-2h-tag,
+.arena-combat-dialog .equip-weapon-btn .equip-1h-tag{ background:rgba(232,121,249,.16)!important; color:#f5b8ff!important; border:1px solid rgba(232,121,249,.4)!important; }
+.arena-combat-dialog .equip-weapon-btn.sel .equip-2h-tag,
+.arena-combat-dialog .equip-weapon-btn.sel .equip-1h-tag{ background:rgba(7,7,19,.35)!important; color:#070713!important; border-color:transparent!important; }
+.arena-combat-dialog .equip-panel > button:not(.equip-weapon-btn),
+.arena-combat-dialog .equip-panel .equip-confirm-btn{
+  background:linear-gradient(90deg,var(--cyan),var(--viola))!important; color:#070713!important; border:none!important;
+  border-radius:10px!important; font-family:"Cinzel",Georgia,serif; letter-spacing:.1em; text-transform:uppercase; font-weight:800;
+}
+.arena-combat-dialog .equip-panel > button:disabled{ opacity:.35!important; filter:grayscale(.6); }
+
+/* ── DESKTOP: nel palco lo scontro si apre a DUE COLONNE — a sinistra il campo
+   (barra, lottatori, stat, azioni), a destra la Cronaca a tutta altezza ── */
+@media (min-width:900px){
+  .arena-page .arena-combat-dialog.arena-combat-inline{ min-height:520px; }
+  .arena-page .arena-combat-inline .match-card{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 340px;
+    grid-template-rows:auto auto auto auto auto 1fr auto;
+    align-items:start;
+  }
+  .arena-page .arena-combat-inline .match-card > *{ grid-column:1; min-width:0; }
+  .arena-page .arena-combat-inline .match-card > .cv-topbar,
+  .arena-page .arena-combat-inline .match-card > .match-pause-banner{ grid-column:1 / -1; }
+  .arena-page .arena-combat-inline .match-card > .match-log{
+    grid-column:2; grid-row:2 / -1; align-self:stretch;
+    max-height:none; min-height:0; height:100%;
+    border-top:none!important; border-left:2px solid var(--mag)!important; box-shadow:none!important;
+  }
+  .arena-page .arena-combat-inline .match-card > .match-log .match-log-scroll{ max-height:440px!important; }
+  .arena-page .arena-combat-inline .match-card > .action-panel{ max-height:none; align-self:stretch; }
+  .arena-page .arena-combat-inline .match-card > .btn-fun-abandon,
+  .arena-page .arena-combat-inline .match-card > .btn-fun-remove-inline{ grid-column:1; }
+  /* cronaca espansa: tutto lo scontro diventa cronaca */
+  .arena-page .arena-combat-inline .match-card.cv-logmode{ display:flex!important; }
+}

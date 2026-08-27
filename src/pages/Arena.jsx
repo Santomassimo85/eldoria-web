@@ -17,6 +17,8 @@ import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, mal
 import "./Arena.css";
 import "./ArenaHero.css";
 import "./ArenaBill.css";
+import "./ArenaNessoViste.css";   // viste interne (join/loadout/libera/bracket/albo/regole/master) nel Nesso
+import "./ArenaPalcoFight.css";   // scontro INLINE nel palco dell'hub + palette Nesso del combat
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
 // Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
@@ -101,9 +103,10 @@ function ArenaVfxLayer({ messages }) {
 }
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
-function ArenaModal({ open, onClose, title, children, variant = "modal", className = "" }) {
+function ArenaModal({ open, onClose, title, children, variant = "modal", className = "", inlineTarget = null }) {
+  const isInline = variant === "combat" && !!inlineTarget;
   useEffect(() => {
-    if (!open) return;
+    if (!open || isInline) return;
     const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -112,9 +115,19 @@ function ArenaModal({ open, onClose, title, children, variant = "modal", classNa
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose]);
+  }, [open, onClose, isInline]);
 
   if (!open) return null;
+  // Scontro INLINE nel palco dell'hub: niente overlay, niente header — il
+  // combattimento sboccia sotto le carte VS (stesso markup, stessa logica).
+  if (isInline) {
+    return createPortal(
+      <div className={`arena-combat-dialog arena-combat-inline${className ? ` ${className}` : ""}`} role="region" aria-label={title}>
+        <div className="arena-modal-body">{children}</div>
+      </div>,
+      inlineTarget
+    );
+  }
   const overlayClass =
     variant === "drawer" ? "arena-drawer-overlay"
     : variant === "combat" ? "arena-combat-overlay"
@@ -3084,6 +3097,9 @@ export default function Arena() {
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
   const [combatModalOpen, setCombatModalOpen] = useState(false);
+  // Slot del PALCO (hub): quando è montato, lo scontro si apre QUI, sotto le
+  // carte VS, invece che in una modale a tutto schermo.
+  const [palcoSlot, setPalcoSlot] = useState(null);
   // ── COMBAT REDESIGN: arena immersiva — dock azioni a schede + cronaca a cassetto ──
   const [combatDock, setCombatDock] = useState("attacchi"); // attacchi | magie | abilita | oggetti
   const [abilitaSub, setAbilitaSub] = useState("skill"); // sotto-tab dentro "abilita": skill | pet (Ranger)
@@ -9660,18 +9676,29 @@ export default function Arena() {
                   <div className="nome">{p ? `${p.name}${p.class ? " · " + p.class : ""}` : "In attesa"}</div>
                 </div>
               );
+              const palcoLive = combatModalOpen && !!palcoSlot;
               return (
-                <section className="vs-palco-wrap" aria-label="Palco dello scontro">
+                <section className={`vs-palco-wrap${palcoLive ? " vs-palco-wrap--live" : ""}`} aria-label="Palco dello scontro">
                   <div className="vs-palco">
                     {glad(P(0), "sx")}
                     <span className="vs" aria-hidden="true">VS</span>
                     <span className="fulmine" aria-hidden="true" />
                     {glad(P(1), "dx")}
                   </div>
+                  {/* Lo SCONTRO sboccia qui (portal della modale combat, vedi ArenaModal.inlineTarget) */}
+                  <div className="palco-scontro" ref={setPalcoSlot} />
                   <div className="vs-azione">
                     {hasMyActive ? (
-                      <button type="button" className={`nx-btn nx-btn--rosso${isMyTurnInActive ? " nx-btn--turno" : ""}`} onClick={() => setCombatModalOpen(true)}>
-                        {isMyTurnInActive ? "⚔ È il tuo turno — entra nello scontro" : "⚔ Entra nello scontro"}
+                      <button
+                        type="button"
+                        className={`nx-btn nx-btn--rosso${isMyTurnInActive && !palcoLive ? " nx-btn--turno" : ""}${palcoLive ? " nx-btn--chiudi" : ""}`}
+                        onClick={() => {
+                          if (palcoLive) { setCombatModalOpen(false); return; }
+                          setCombatModalOpen(true);
+                          requestAnimationFrame(() => palcoSlot?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+                        }}
+                      >
+                        {palcoLive ? "✕ Chiudi lo scontro" : isMyTurnInActive ? "⚔ È il tuo turno — entra nello scontro" : "⚔ Entra nello scontro"}
                       </button>
                     ) : live && hasBracket ? (
                       <button type="button" className="nx-btn" onClick={() => { setArenaView("bracket"); setBracketModalOpen(true); }}>🏟 Guarda il tabellone</button>
@@ -9820,6 +9847,11 @@ export default function Arena() {
       {/* ── VISTA REGOLE & CLASSI ── */}
       {arenaView === "regole" && (
       <div id="arena-info-anchor" className="arena-info-section arena-info-section--view">
+        <div className="nx-testata">
+          <span className="nx-kicker">Codice del Colosseo</span>
+          <h2 className="nx-titolo">Regole &amp; Classi</h2>
+          <p className="nx-sotto">Come si entra, come si combatte, come si vince. Tutto il regolamento dell'Arena in un solo codice.</p>
+        </div>
         {(
           <div className="arena-info-body">
 
@@ -9957,6 +9989,11 @@ export default function Arena() {
       )}
 
       {arenaView === "albo" && (<>
+      <div className="nx-testata">
+        <span className="nx-kicker">Sala dei Campioni</span>
+        <h2 className="nx-titolo">Albo dei Campioni</h2>
+        <p className="nx-sotto">Chi ha vinto un torneo resta inciso qui: campioni, classifica generale a punti e storico delle edizioni.</p>
+      </div>
       {/* CHAMPION BANNER */}
       {arenaMeta.phase === "finished" && arenaMeta.tournamentWinner && (
         <div className="champion-banner">
@@ -11958,6 +11995,7 @@ export default function Arena() {
           onClose={() => setCombatModalOpen(false)}
           title={isMyTurnInActive ? "⚔ È il tuo turno" : "🛡 Il tuo combattimento"}
           variant="combat"
+          inlineTarget={arenaView === "hub" ? palcoSlot : null}
         >
         <div className="matches-container" id="arena-my-match">
           <div className="my-arena-banner">

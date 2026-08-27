@@ -1,552 +1,128 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   BOTTEGA — SKIN "LOCANDINA DEL COLOSSEO" (scura, 2026-07-04)
-   Stessa identità della landing Arena: pietra scura, doppi filetti dorati,
-   titoli serif in maiuscolo, righe a registro con puntinati. Importato DOPO
-   ArenaMarket.css e vince su cinematic.css (tema chiaro) per la sola Bottega.
+   src/pages/ArenaMarketCatalogo.css — IL BANCO DI LAVORO DEL MASTER (Nesso)
+   Editor del catalogo settimanale (ArenaMarketCatalog.jsx) riscritto nel
+   linguaggio "Il Nesso": console a pannelli, form a griglia, righe del
+   catalogo con stato "in vetrina" ciano. Importato DOPO ArenaMarket.css.
+   Solo presentazione: logica/handler intatti.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Pagina: pietra scura al posto della pergamena ── */
-.cine-page.am-page {
-  background-image:
-    radial-gradient(circle, rgba(212, 175, 55, 0.05) 1px, transparent 1.6px),
-    radial-gradient(circle at 15% 8%, rgba(212, 175, 55, 0.08), transparent 40%),
-    radial-gradient(circle at 85% 92%, rgba(120, 20, 20, 0.12), transparent 45%),
-    linear-gradient(180deg, #16110d 0%, #100c0a 45%, #14100c 100%);
-  background-size: 26px 26px, auto, auto, auto;
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
-  color: #d8cdb3;
-}
-.am-page .am-login-notice { color: #d8cdb3; }
+.bt-page .am-catalog { display: flex; flex-direction: column; gap: 12px; }
+.bt-page .am-cat-form-toggle { align-self: flex-start; }
 
-/* ── Toolbar di ricerca (cine) in scuro ── */
-.am-page .cine-toolbar { background: transparent; border-color: rgba(212, 175, 55, 0.3); }
-.am-page .cine-search-input {
-  background: rgba(10, 8, 6, 0.6);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #f0e3c2;
-  border-radius: 0;
+/* ── il banco di lavoro (form) ── */
+.bt-page .am-cat-form {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(7, 7, 19, .55);
+  border: 1px solid rgba(34, 211, 238, .35);
+  box-shadow: inset 0 0 40px -20px rgba(34, 211, 238, .35);
 }
-.am-page .cine-search-input::placeholder { color: rgba(216, 205, 179, 0.5); }
-.am-page .cine-search-icon { color: rgba(212, 175, 55, 0.7); }
-.am-page .cine-chips button,
-.am-page .cine-chip {
-  background: rgba(10, 8, 6, 0.55);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #d8cdb3;
-  border-radius: 0;
+.bt-page .am-cat-form .am-mp-tabs { justify-content: flex-start; margin: 0; }
+.bt-page .am-cat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 12px; align-items: end;
+  padding: 12px; border-radius: 12px;
+  border: 1px dashed rgba(139, 92, 246, .3);
 }
-.am-page .cine-chips button.active,
-.am-page .cine-chips button[aria-pressed="true"],
-.am-page .cine-chip.active {
-  background: rgba(212, 175, 55, 0.18);
-  color: #ffd98a;
-  border-color: rgba(212, 175, 55, 0.7);
+.bt-page .am-cat-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.bt-page .am-cat-field > span {
+  font-family: var(--bt-font-t); font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--bt-muted);
 }
-.am-page .cine-result-count { color: rgba(216, 205, 179, 0.65); }
-.am-page .cine-empty { color: rgba(216, 205, 179, 0.6); }
+.bt-page .am-cat-field--full { grid-column: 1 / -1; }
+.bt-page .am-cat-check { flex-direction: row; align-items: center; gap: 8px; }
+.bt-page .am-cat-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: #22d3ee; }
+.bt-page .am-cat-check > span { text-transform: none; letter-spacing: 0; font-family: var(--bt-font-b); font-size: .8rem; color: var(--bt-ink); }
+.bt-page .am-cat-textarea { min-height: 64px; resize: vertical; line-height: 1.45; }
+.bt-page .am-cat-note { grid-column: 1 / -1; margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(139, 92, 246, .1); color: var(--bt-muted); font-size: .76rem; }
 
-/* ── Frontespizio: identico linguaggio del masthead Arena ── */
-.amc-mast {
-  max-width: 1060px;
-  margin: 18px auto 8px;
-  padding: 26px 18px 24px;
-  text-align: center;
-  border-top: 3px double rgba(212, 175, 55, 0.55);
-  border-bottom: 3px double rgba(212, 175, 55, 0.55);
-  position: relative;
-}
-.amc-mast::before,
-.amc-mast::after {
-  content: "✦";
-  position: absolute;
-  top: -14px;
-  color: #d4af37;
-  font-size: 0.9rem;
-}
-.amc-mast::before { left: 8px; }
-.amc-mast::after { right: 8px; }
+/* slot persi */
+.bt-page .am-cat-slotcost { display: flex; flex-wrap: wrap; gap: 8px; }
+.bt-page .am-cat-slotcost-item { display: flex; flex-direction: column; gap: 4px; flex: 1 1 90px; }
+.bt-page .am-cat-slotcost-item > span { font-size: .66rem; color: var(--bt-muted); }
 
-.amc-mast-eyebrow {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.75);
-  margin-bottom: 10px;
+/* componenti di danno / effetti */
+.bt-page .am-cat-dmg-list { display: flex; flex-direction: column; gap: 6px; }
+.bt-page .am-cat-dmg-row, .bt-page .am-cat-eff-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px; border-radius: 10px; background: rgba(13, 13, 31, .8); border: 1px solid rgba(139, 92, 246, .22);
 }
-.amc-mast-title {
-  font-family: var(--font-title, serif);
-  font-size: clamp(2.2rem, 6vw, 3.9rem);
-  line-height: 0.96;
-  margin: 0 0 10px;
-  color: #f0e3c2;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.65), 0 0 34px rgba(212, 175, 55, 0.18);
+.bt-page .am-cat-dmg-dice { width: 90px; flex: 0 0 auto; }
+.bt-page .am-cat-dmg-type, .bt-page .am-cat-eff-kind, .bt-page .am-cat-eff-fld { flex: 1 1 140px; width: auto; }
+.bt-page .am-cat-eff-sm { width: 74px; flex: 0 0 auto; }
+.bt-page .am-cat-eff-chance { display: inline-flex; align-items: center; gap: 4px; color: var(--bt-muted); font-size: .76rem; }
+.bt-page .am-cat-dmg-del,
+.bt-page .am-cat-eff-row .am-cat-dmg-del {
+  cursor: pointer; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(232, 121, 249, .14); border: 1px solid rgba(232, 121, 249, .45); color: #f5b8ff;
+  display: inline-flex; align-items: center; justify-content: center; font-size: .8rem;
 }
-.amc-mast-sub {
-  margin: 0 auto 16px;
-  max-width: 56ch;
-  font-size: 0.95rem;
-  font-style: italic;
-  color: rgba(222, 210, 182, 0.85);
+.bt-page .am-cat-dmg-add {
+  cursor: pointer; align-self: flex-start; margin-top: 8px;
+  padding: 7px 12px; border-radius: 999px;
+  background: rgba(34, 211, 238, .1); border: 1px solid rgba(34, 211, 238, .45); color: var(--bt-ciano);
+  font-family: var(--bt-font-b); font-weight: 700; font-size: .74rem;
+  transition: background .2s, box-shadow .2s;
 }
-.amc-mast-plates {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.amc-plate {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 18px;
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  background: rgba(10, 8, 6, 0.55);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
-}
-.amc-plate-lab {
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.8);
-}
-.amc-plate-val {
-  font-family: var(--font-title, serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f0e3c2;
-}
+.bt-page .am-cat-dmg-add:hover { background: rgba(34, 211, 238, .2); box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
 
-/* ── Intestazioni di sezione a filetto (stile "Programma della Serata") ── */
-.amc-sect-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 26px 0 6px;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.34em;
-  text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.7);
-  white-space: nowrap;
+/* resistenze: griglia di sigilli a 3 stati */
+.bt-page .am-cat-resist { display: flex; flex-direction: column; gap: 8px; }
+.bt-page .am-cat-resist-hint { font-size: .72rem; color: var(--bt-muted); line-height: 1.45; }
+.bt-page .am-cat-resist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.bt-page .am-cat-resist-chip {
+  cursor: pointer; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px;
+  padding: 7px 9px; border-radius: 10px;
+  background: rgba(13, 13, 31, .8); border: 1px solid rgba(139, 92, 246, .25); color: var(--bt-muted);
+  font-family: var(--bt-font-b); font-size: .72rem; text-align: left;
+  transition: border-color .2s, background .2s, color .2s;
 }
-.amc-sect-rule { flex: 1; border-bottom: 1px solid rgba(212, 175, 55, 0.35); }
-.amc-sect-note {
-  text-align: center;
-  font-size: 0.85rem;
-  color: rgba(216, 205, 179, 0.7);
-  margin: 0 0 16px;
-}
+.bt-page .am-cat-resist-chip:hover { border-color: var(--bt-ciano); color: var(--bt-ink); }
+.bt-page .am-cat-resist-chip--resist { border-color: rgba(34, 211, 238, .6); background: rgba(34, 211, 238, .12); color: var(--bt-ciano); }
+.bt-page .am-cat-resist-chip--immune { border-color: rgba(253, 230, 138, .6); background: rgba(253, 230, 138, .1); color: var(--bt-oro); }
+.bt-page .am-cat-resist-chip--vuln { border-color: rgba(232, 121, 249, .6); background: rgba(232, 121, 249, .12); color: #f5b8ff; }
+.bt-page .am-cat-resist-lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-page .am-cat-resist-lvl { font-size: .66rem; font-weight: 700; }
 
-/* ── Fregio classi ── */
-.amc-classes { max-width: 900px; margin: 0 auto; padding: 0 16px; }
-.amc-classes-sub {
-  text-align: center;
-  font-size: 0.9rem;
-  color: rgba(216, 205, 179, 0.75);
-  max-width: 62ch;
-  margin: 4px auto 14px;
-}
-.amc-class-strip {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 10px;
-  margin-bottom: 8px;
-}
-.amc-class-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  background: rgba(10, 8, 6, 0.55);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #e6dcc2;
-}
-.amc-class-chip em {
-  font-style: normal;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgba(255, 217, 138, 0.9);
-}
-.amc-class-chip-ico { font-size: 1rem; }
+.bt-page .am-cat-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.bt-page .am-cat-cancel { background: #1a1a36; color: var(--bt-ink); border: 1px solid rgba(139, 92, 246, .35); box-shadow: none; }
 
-/* ── Ricevuta settimanale ── */
-.amc-receipt {
-  max-width: 460px;
-  margin: 6px auto 22px;
-  padding: 14px 18px;
-  border: 1.5px dashed rgba(212, 175, 55, 0.45);
-  background: rgba(10, 8, 6, 0.5);
+/* ── il catalogo: gruppi per categoria, righe con stato vetrina ── */
+.bt-page .am-cat-list { display: flex; flex-direction: column; gap: 16px; }
+.bt-page .am-cat-group { display: flex; flex-direction: column; gap: 6px; }
+.bt-page .am-cat-group-title {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 0 4px;
+  font-family: var(--bt-font-t); font-size: .72rem; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--bt-ciano); text-shadow: 0 0 12px rgba(34, 211, 238, .5);
 }
-.amc-receipt-title {
-  font-family: var(--font-title, serif);
-  font-weight: 800;
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
-  color: #ffd98a;
-  text-align: center;
-  margin-bottom: 10px;
-  text-transform: uppercase;
+.bt-page .am-cat-group-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(139, 92, 246, .6), transparent); }
+.bt-page .am-cat-row {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 14px;
+  background: rgba(7, 7, 19, .5); border: 1px solid rgba(139, 92, 246, .22);
+  transition: border-color .2s, transform .2s, box-shadow .2s;
 }
-.amc-receipt-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 0.9rem;
-  color: #e6dcc2;
+.bt-page .am-cat-row:hover { transform: translateX(4px); border-color: rgba(34, 211, 238, .5); }
+.bt-page .am-cat-row--active { border-color: rgba(34, 211, 238, .55); box-shadow: 0 0 22px -10px rgba(34, 211, 238, .8); background: linear-gradient(90deg, rgba(34, 211, 238, .08), rgba(7, 7, 19, .5)); }
+.bt-page .am-cat-row-icon {
+  width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; background: radial-gradient(circle at 50% 40%, #1c1c3d, #0b0b1c 75%); border: 1px solid rgba(139, 92, 246, .35);
 }
-.amc-receipt-name { font-weight: 600; }
-.amc-receipt-dots { flex: 1; border-bottom: 1px dotted rgba(212, 175, 55, 0.4); transform: translateY(-3px); }
-.amc-receipt-qty { font-weight: 700; color: #ffd98a; }
-.amc-receipt-foot {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(212, 175, 55, 0.3);
-  font-size: 0.76rem;
-  color: rgba(216, 205, 179, 0.65);
-  text-align: center;
-}
+.bt-page .am-cat-row--active .am-cat-row-icon { border-color: var(--bt-ciano); box-shadow: 0 0 14px -4px rgba(34, 211, 238, .8); }
+.bt-page .am-cat-row-main { min-width: 0; }
+.bt-page .am-cat-row-name { font-family: var(--bt-font-t); font-size: .9rem; color: var(--bt-ink); }
+.bt-page .am-cat-row-price { font-family: var(--bt-font-b); font-size: .72rem; color: var(--bt-oro); margin-left: 6px; }
+.bt-page .am-cat-row-sum { font-size: .76rem; color: var(--bt-muted); line-height: 1.45; margin-top: 2px; }
+.bt-page .am-cat-row .am-coin-save { padding: 8px 12px; font-size: .6rem; white-space: nowrap; }
+.bt-page .am-cat-toggle { background: #1a1a36; color: var(--bt-muted); border: 1px solid rgba(139, 92, 246, .35); box-shadow: none; }
+.bt-page .am-cat-toggle--on { background: linear-gradient(90deg, #22d3ee, #8b5cf6); color: #070713; border: none; box-shadow: 0 0 18px -6px rgba(34, 211, 238, .9); }
+.bt-page .am-cat-del { background: rgba(232, 121, 249, .14); color: #f5b8ff; border: 1px solid rgba(232, 121, 249, .45); box-shadow: none; }
+.bt-page .am-cat-del:hover:not(:disabled) { box-shadow: 0 0 18px -6px rgba(232, 121, 249, .9); }
 
-/* ── Vetrina a LOTTI: righe come il Programma della Serata ── */
-.amc-lots {
-  max-width: 900px;
-  margin: 0 auto 30px;
-  border-top: 1px solid rgba(212, 175, 55, 0.3);
-}
-.amc-lot {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 16px 10px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
-  transition: background 0.18s ease;
-}
-.amc-lot--affordable:hover { background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), transparent 70%); }
-.amc-lot--maxed { opacity: 0.6; }
-
-.amc-lot-side {
-  flex: 0 0 84px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  border-right: 1px solid rgba(212, 175, 55, 0.3);
-  padding-right: 14px;
-}
-.amc-lot-num {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(212, 175, 55, 0.85);
-  white-space: nowrap;
-}
-.amc-lot-icon { font-size: 1.9rem; line-height: 1; }
-
-.amc-lot-main { flex: 1; min-width: 0; }
-.amc-lot-name {
-  font-family: var(--font-title, serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f0e3c2;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  letter-spacing: 0.03em;
-}
-.amc-lot-cat {
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #ffd98a;
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  background: rgba(212, 175, 55, 0.1);
-  padding: 2px 9px;
-}
-.amc-lot-owned {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #9fd6a4;
-  border: 1px solid rgba(110, 200, 120, 0.45);
-  background: rgba(40, 90, 50, 0.25);
-  padding: 2px 9px;
-}
-.amc-lot-desc { font-size: 0.86rem; color: rgba(212, 199, 171, 0.75); margin-top: 4px; }
-
-.amc-lot-buy {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-.amc-lot-price {
-  font-family: var(--font-title, serif);
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ffd98a;
-  white-space: nowrap;
-}
-.amc-lot-price em { font-style: normal; font-size: 0.72rem; color: rgba(216, 205, 179, 0.65); }
-
-/* Bottone Acquista a "timbro" dorato */
-.am-page .am-buy-btn {
-  border-radius: 0;
-  border: 1px solid rgba(212, 175, 55, 0.6);
-  background: rgba(212, 175, 55, 0.14);
-  color: #ffd98a;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-  padding: 8px 16px;
-  cursor: pointer;
-}
-.am-page .am-buy-btn:hover:not(:disabled) { background: rgba(212, 175, 55, 0.3); }
-.am-page .am-buy-btn:disabled {
-  opacity: 0.45;
-  border-color: rgba(212, 175, 55, 0.3);
-  color: rgba(216, 205, 179, 0.6);
-  cursor: default;
-}
-
-/* ── Messaggi ── */
-.am-page .am-message {
-  background: rgba(40, 90, 50, 0.3);
-  border: 1px solid rgba(110, 200, 120, 0.5);
-  color: #cfe8d2;
-  border-radius: 0;
-}
-.am-page .am-message--err {
-  background: rgba(120, 20, 20, 0.35);
-  border-color: rgba(212, 88, 66, 0.55);
-  color: #ffd0c2;
-}
-
-/* ── Sezioni informative (Come funziona / MA / Scommesse) ── */
-.am-page .am-how {
-  background: rgba(10, 8, 6, 0.5);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 0;
-  color: #d8cdb3;
-}
-.am-page .am-how-title {
-  color: #ffd98a;
-  font-family: var(--font-title, serif);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.am-page .am-how-list li,
-.am-page .am-classes-sub { color: rgba(216, 205, 179, 0.85); }
-.am-page .am-how-list li strong,
-.am-page .am-classes-sub strong,
-.am-page .amc-classes-sub strong,
-.am-page .amc-sect-note strong,
-.am-page .amc-mast-sub strong { color: #ffd98a; }
-.am-page .am-manual-note { color: rgba(216, 205, 179, 0.65); }
-.am-page .am-bet-table {
-  background: rgba(10, 8, 6, 0.45);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 0;
-}
-.am-page .am-bet-table-title { color: #ffd98a; }
-.am-page .am-bet-row { color: #e6dcc2; border-color: rgba(212, 175, 55, 0.2); }
-.am-page .am-bet-stake, .am-page .am-bet-win { color: #f0e3c2; }
-.am-page .am-bet-profit { color: #9fd6a4; }
-
-/* ── Pannelli Master (Catalogo + Giocatori): registro scuro a doppi filetti ── */
-.am-page .am-master-panel {
-  border: none;
-  border-top: 3px double rgba(212, 175, 55, 0.5);
-  border-bottom: 3px double rgba(212, 175, 55, 0.5);
-  border-radius: 0;
-  background: transparent;
-}
-.am-page .am-master-panel-title {
-  text-align: center;
-  color: #f0e3c2;
-  font-family: var(--font-title, serif);
-  font-size: 1.05rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-.am-page .am-master-note { color: rgba(216, 205, 179, 0.7); }
-.am-page .am-master-note strong, .am-page .am-master-note code { color: #ffd98a; }
-
-.am-page .am-mp-tabs { border-color: rgba(212, 175, 55, 0.3); }
-.am-page .am-mp-tab {
-  background: rgba(10, 8, 6, 0.5);
-  border-color: rgba(212, 175, 55, 0.35);
-  color: #d8cdb3;
-  border-radius: 0;
-}
-.am-page .am-mp-tab--active {
-  background: rgba(212, 175, 55, 0.16);
-  color: #ffd98a;
-  border-color: rgba(212, 175, 55, 0.6);
-}
-.am-page .am-mp-tab-count { background: rgba(212, 175, 55, 0.2); color: #ffd98a; }
-
-.am-page .am-coin-input,
-.am-page .am-mp-search,
-.am-page .am-cat-textarea,
-.am-page select.am-coin-input {
-  background: rgba(10, 8, 6, 0.65);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  color: #f0e3c2;
-  border-radius: 0;
-}
-.am-page .am-coin-input::placeholder,
-.am-page .am-mp-search::placeholder { color: rgba(216, 205, 179, 0.45); }
-.am-page select.am-coin-input option { background: #16110d; color: #f0e3c2; }
-
-.am-page .am-coin-save {
-  border-radius: 0;
-  border: 1px solid rgba(212, 175, 55, 0.5);
-  background: rgba(212, 175, 55, 0.12);
-  color: #ffd98a;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.am-page .am-coin-save:hover { background: rgba(212, 175, 55, 0.28); }
-.am-page .am-cat-cancel { border-color: rgba(160, 160, 160, 0.4); background: rgba(120, 120, 120, 0.12); color: #cfc6b4; }
-.am-page .am-cat-del, .am-page .am-remove-item-btn, .am-page .am-season-reset {
-  background: rgba(120, 20, 20, 0.25);
-  border-color: rgba(212, 88, 66, 0.5);
-  color: #ffb4a0;
-  border-radius: 0;
-}
-.am-page .am-cat-toggle--on {
-  background: rgba(40, 90, 50, 0.3);
-  border-color: rgba(110, 200, 120, 0.5);
-  color: #9fd6a4;
-}
-
-.am-page .am-coin-row {
-  background: transparent;
-  border: none;
-  border-bottom: 1px dotted rgba(212, 175, 55, 0.3);
-  border-radius: 0;
-}
-.am-page .am-coin-name { color: #e6dcc2; }
-.am-page .am-coin-val { color: #ffd98a; }
-.am-page .am-coin-preview { color: #9fd6a4; }
-.am-page .am-mp-weekly-chip {
-  color: #9fd6a4;
-  background: rgba(40, 90, 50, 0.22);
-  border-color: rgba(110, 200, 120, 0.4);
-}
-
-.am-page .am-cat-form {
-  border: 1px dashed rgba(212, 175, 55, 0.4);
-  background: rgba(10, 8, 6, 0.4);
-  border-radius: 0;
-}
-.am-page .am-cat-field > span { color: rgba(226, 205, 156, 0.8); }
-.am-page .am-cat-check > span { color: #e6dcc2; }
-.am-page .am-cat-group-title { color: #ffd98a; }
-.am-page .am-cat-row {
-  background: rgba(10, 8, 6, 0.45);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 0;
-}
-.am-page .am-cat-row--active {
-  border-color: rgba(110, 200, 120, 0.5);
-  background: rgba(40, 90, 50, 0.18);
-}
-.am-page .am-cat-row-name { color: #f0e3c2; }
-.am-page .am-cat-row-price { color: #ffd98a; }
-.am-page .am-cat-row-sum { color: rgba(212, 199, 171, 0.7); }
-
-/* ── Mobile ── */
 @media (max-width: 640px) {
-  .amc-lot { flex-wrap: wrap; gap: 10px 14px; }
-  .amc-lot-side {
-    flex: 0 0 auto;
-    flex-direction: row;
-    border-right: none;
-    padding-right: 0;
-    gap: 8px;
-  }
-  .amc-lot-main { flex: 1 1 100%; order: 3; }
-  .amc-lot-buy {
-    flex: 1 1 100%;
-    order: 4;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .amc-mast { margin-top: 12px; }
-}
-
-/* ── Danno tipizzato (armi) + Resistenze (armature/oggetti) — creazione ── */
-.am-cat-field--full { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
-
-.am-cat-slotcost { display: flex; gap: 10px; flex-wrap: wrap; }
-.am-cat-slotcost-item { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
-.am-cat-slotcost-item .am-coin-input { width: 70px; }
-
-.am-cat-dmg-list { display: flex; flex-direction: column; gap: 8px; }
-.am-cat-dmg-row { display: flex; gap: 8px; align-items: center; }
-.am-cat-dmg-dice { flex: 0 0 90px; }
-.am-cat-dmg-type { flex: 1; min-width: 0; }
-.am-cat-dmg-del {
-  flex: 0 0 auto; border-radius: 0; cursor: pointer;
-  background: rgba(120, 20, 20, 0.35); color: #ffd7c9;
-  border: 1px solid rgba(212, 88, 66, 0.5); padding: 6px 10px; font-weight: 700;
-}
-.am-cat-dmg-del:hover { background: rgba(150, 30, 30, 0.5); }
-.am-cat-dmg-add {
-  align-self: flex-start; margin-top: 2px; cursor: pointer; border-radius: 0;
-  background: rgba(236, 212, 135, 0.12); color: #ffd98a;
-  border: 1px solid rgba(236, 212, 135, 0.45); padding: 7px 14px;
-  text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.78rem; font-weight: 700;
-}
-.am-cat-dmg-add:hover { background: rgba(236, 212, 135, 0.22); }
-
-/* Righe di effetti componibili (extra oggetto / all'impatto arma) */
-.am-cat-eff-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.am-cat-eff-kind { flex: 0 0 150px; }
-.am-cat-eff-fld  { flex: 1 1 120px; min-width: 0; }
-.am-cat-eff-sm   { flex: 0 0 64px; }
-.am-cat-eff-chance { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: #ffd98a; }
-
-.am-cat-resist { display: flex; flex-direction: column; gap: 8px; }
-.am-cat-resist-hint { font-size: 0.78rem; color: rgba(240, 226, 190, 0.75); }
-.am-cat-resist-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 6px;
-}
-.am-cat-resist-chip {
-  display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 0;
-  background: rgba(10, 8, 6, 0.55); border: 1px solid rgba(236, 212, 135, 0.28);
-  color: rgba(240, 226, 190, 0.85); padding: 7px 9px; text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-.am-cat-resist-chip:hover { border-color: rgba(236, 212, 135, 0.6); }
-.am-cat-resist-icon { font-size: 1rem; }
-.am-cat-resist-lab { flex: 1; min-width: 0; font-size: 0.82rem; }
-.am-cat-resist-lvl { font-weight: 800; font-size: 0.82rem; color: rgba(216, 205, 179, 0.55); }
-.am-cat-resist-chip--resist { border-color: rgba(90, 200, 160, 0.6); background: rgba(30, 70, 55, 0.35); }
-.am-cat-resist-chip--resist .am-cat-resist-lvl { color: #86efac; }
-.am-cat-resist-chip--immune { border-color: rgba(120, 200, 255, 0.6); background: rgba(30, 55, 80, 0.4); }
-.am-cat-resist-chip--immune .am-cat-resist-lvl { color: #7dd3fc; }
-.am-cat-resist-chip--vuln { border-color: rgba(212, 88, 66, 0.6); background: rgba(80, 22, 18, 0.4); }
-.am-cat-resist-chip--vuln .am-cat-resist-lvl { color: #ff9a7a; }
-
-/* Contatore vittorie all'Arena per giocatore (Pannello Master) */
-.am-coin-wins {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #ffd98a;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
+  .bt-page .am-cat-row { grid-template-columns: 40px minmax(0, 1fr); }
+  .bt-page .am-cat-row .am-coin-save { grid-column: 2; justify-self: start; }
+  .bt-page .am-cat-grid { grid-template-columns: 1fr 1fr; }
 }

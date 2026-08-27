@@ -145,38 +145,47 @@ export default function ArenaMarket() {
 
   if (!currentUser) {
     return (
-      <div className="cine-page am-page" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
+      <div className="cine-page am-page bt-page">
         <p className="am-login-notice">Accedi per visitare la Bottega dell'Arena.</p>
       </div>
     );
   }
 
+  const CAT_COLORS = { item: "#22d3ee", spell: "#e879f9", weapon: "#fb7185", armor: "#8b5cf6", pet: "#34d399" };
+  const pgName = charData?.name || currentUser?.displayName || "Il tuo campione";
+  const pgImg  = charData?.image || charData?.imageUrl || charData?.avatar || null;
+
+  // ── BOTTEGA DEL NESSO: testata a gradiente → BAZAR (colonna sticky con
+  //    forziere/PG/ricevuta/filtri | merci con anello conico di categoria) ──
   return (
-    <div className="cine-page am-page cine-compact" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
-      <AmbientFX variant="fire" />
+    <div className="cine-page am-page bt-page">
+      <AmbientFX variant="cosmos" />
       {/* Tastino Hub: torna all'Arena (coerente col FAB delle altre viste Arena) */}
       <Link to="/arena" className="am-hub-fab" aria-label="Torna all'Arena" title="Torna all'Arena">
         <span className="am-hub-fab-arrow" aria-hidden="true">‹</span>
         <span className="am-hub-fab-label">Hub</span>
       </Link>
-      {/* ── MASTHEAD "CATALOGO D'ASTA": frontespizio tipografico a doppi filetti,
-            in dialogo con la Locandina del Colosseo della pagina Arena ── */}
-      <header className="amc-mast" aria-label="Bottega dell'Arena">
-        <span className="amc-mast-eyebrow">Grande Colosseo · Catalogo d'Asta della Settimana</span>
-        <h1 className="amc-mast-title">Bottega dell'Arena</h1>
-        <p className="amc-mast-sub">
+
+      {/* ── TESTATA ── */}
+      <header className="bt-testata" aria-label="Bottega dell'Arena">
+        <span className="bt-kicker">Colosseo Astrale · Vetrina della Settimana</span>
+        <h1 className="bt-titolo">Bottega dell'Arena</h1>
+        <p className="bt-sotto">
           La vetrina si rinnova ogni settimana: ciò che compri vale fino a <strong>{weekEndLabel(weekKey)}</strong>, solo nei tornei.
         </p>
-        <div className="amc-mast-plates">
-          <div className="amc-plate"><span className="amc-plate-lab">Le tue Monete Arena</span><span className="amc-plate-val">🪙 {coins}</span></div>
-          <div className="amc-plate"><span className="amc-plate-lab">Scadenza acquisti</span><span className="amc-plate-val">⏳ {weekEndLabel(weekKey)}</span></div>
+        <div className="bt-pillole" role="list">
+          <span className="bt-pillola bt-pillola--timer" role="listitem"><i aria-hidden="true" />⏳ Acquisti validi fino a {weekEndLabel(weekKey)}</span>
+          <span className="bt-pillola" role="listitem">🏟 Solo tornei</span>
+          <span className="bt-pillola" role="listitem">⚔ Classi base Lv.3</span>
+          {arenaMeta?.phase === "shopping" && <span className="bt-pillola bt-pillola--on" role="listitem">🛒 Pausa Bottega aperta</span>}
+          {!isMaster && arenaMeta?.phase === "combat" && <span className="bt-pillola bt-pillola--off" role="listitem">⚔ Torneo in corso · acquisti chiusi</span>}
         </div>
       </header>
 
       {/* ── SCHEDE MASTER: Vetrina · Crea oggetti · Soldi giocatori ── */}
       {isMaster && (
-        <div className="cine-wrap am-body" style={{ paddingBottom: 0 }}>
-          <div className="am-mp-tabs am-master-tabs" role="tablist" aria-label="Strumenti Master della Bottega">
+        <div className="cine-wrap bt-wrap bt-wrap--tabs">
+          <div className="am-mp-tabs am-master-tabs bt-master-tabs" role="tablist" aria-label="Strumenti Master della Bottega">
             <button
               type="button"
               role="tab"
@@ -208,189 +217,218 @@ export default function ArenaMarket() {
         </div>
       )}
 
-      {(!isMaster || masterTab === "vetrina") && (<>
-      {/* ── RICERCA ── */}
-      <CineToolbar
-        query={query}
-        onQuery={setQuery}
-        placeholder="Cerca una classe o un articolo in vetrina…"
-        chips={[{ key: "classes", label: "⚔ Classi" }, { key: "items", label: "🛍 Vetrina" }]}
-        activeChip={activeCat}
-        onChip={setActiveCat}
-        allLabel="Tutto"
-        count={resultCount}
-        countNoun={resultCount === 1 ? "risultato" : "risultati"}
-      />
-
-      <div className="cine-wrap am-body">
-      {/* Stato acquisti in base alla fase del torneo. */}
-      {arenaMeta?.phase === "shopping" ? (
-        <div className="am-message">🛒 Pausa Bottega aperta: acquista e ri-equipaggiati, il prossimo round parte allo scadere del tempo.</div>
-      ) : (!isMaster && arenaMeta?.phase === "combat") ? (
-        <div className="am-message am-message--err">⚔ Torneo in corso: gli acquisti riaprono nella pausa Bottega tra un round e l'altro.</div>
-      ) : null}
-      {message && (
-        <div className={`am-message ${message.type === "err" ? "am-message--err" : ""}`}>
-          {message.text}
-        </div>
-      )}
-
-      {/* ── CLASSI ARENA (fregio informativo: tutte base Lv.3) ── */}
-      {showClasses && (
-      <div className="amc-classes">
-        <div className="amc-sect-head"><span className="amc-sect-rule" aria-hidden="true" />Le Classi del Colosseo<span className="amc-sect-rule" aria-hidden="true" /></div>
-        <p className="amc-classes-sub">
-          Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli, niente archetipi.
-          L'unico modo per potenziarsi è la <strong>vetrina settimanale</strong> qui sotto.
-        </p>
-        {filteredClasses.length === 0 ? (
-          <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
-        ) : (
-        <div className="amc-class-strip">
-          {filteredClasses.map(cls => (
-            <span key={cls.key} className="amc-class-chip">
-              <span className="amc-class-chip-ico">{cls.icon}</span> {cls.name} <em>Lv.3</em>
-            </span>
-          ))}
-        </div>
-        )}
-      </div>
-      )}
-
-      {showInfo && (<>
-      <div className="am-how am-class-manual">
-        <h3 className="am-how-title">📖 Come funziona la Bottega Settimanale</h3>
-        <ul className="am-how-list" style={{ marginBottom: "12px" }}>
-          <li>🗓 Ogni settimana il Master rinnova la <strong>vetrina</strong>: oggetti, incantesimi, armi, armature e pet.</li>
-          <li>🪙 Compri con le <strong>Monete Arena</strong>. Ogni articolo può avere un <strong>massimo di acquisti a settimana</strong>.</li>
-          <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>. Il lunedì torni <strong>base</strong> (classi Lv.3) e puoi comprare le novità.</li>
-          <li>🏟 Gli acquisti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte col kit base.</li>
-          <li>🛒 <strong>Non è tutto equipaggiato in automatico!</strong> All'iscrizione al torneo gli acquisti compaiono <strong>nella loro tab</strong> del loadout (le armi tra le <strong>Armi</strong>, gli incantesimi tra le <strong>Magie</strong>, gli oggetti tra gli <strong>Oggetti</strong>, le armature nella <strong>Difesa</strong>) come <strong>carte viola</strong>: tocca quelle che vuoi usare. Ciò che non scegli resta a magazzino fino a fine settimana.</li>
-          <li>🎒 <strong>Oggetti</strong>: azione gratuita, 1 per turno (cure, danni o bonus temporanei).</li>
-          <li>☠ <strong>Oggetti Malus</strong>: azione gratuita che infligge al nemico uno svantaggio a scelta del Master — <strong>svantaggio ai tiri per colpire, sanguinamento, veleno, Bruciatura o Congelato</strong>.</li>
-          <li>🧩 <strong>Effetti multipli</strong>: oggetti e armi possono combinare più cose insieme — es. un oggetto che cura e ti dà +2 CA, o un'arma che oltre al danno avvelena il bersaglio all'impatto (con una probabilità).</li>
-          <li>📜 <strong>Spell Scroll</strong>: sono pergamene magiche con un numero di <strong>cariche</strong> e una <strong>caratteristica</strong> per usarle (decise dal Master). Alcuni richiedono un <strong>punteggio minimo</strong> in quella caratteristica: se il tuo è più basso non puoi equipaggiarlo. Le equipaggi dalla tab <strong>Magie</strong> e le lanci anche se di livello alto. ⚠️ Alcuni scroll, per essere equipaggiati, ti fanno <strong>rinunciare a degli spell slot di classe</strong> (es. −1 slot di Lv2 e −1 di Lv3): lo vedi scritto sulla carta.</li>
-          <li>⚔️ <strong>Armi e armature</strong>: le armi comprate compaiono nella selezione <strong>Armi</strong> e contano come armi vere; le <strong>armature</strong> della Bottega hanno una <strong>CA fissa</strong> (es. 12 = hai 12 di CA, non si somma altro) e <strong>sostituiscono</strong> l'armatura base: se ne indossi una, le base si disattivano.</li>
-          <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
-        </ul>
-        <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
-      </div>
-
-      <div className="am-how">
-        <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
-        <ul className="am-how-list">
-          <li>🪙 <strong>+5 MA</strong> per ogni fight di torneo concluso (anche se perdi)</li>
-          <li>🪙 <strong>+10 MA</strong> per ogni round vinto</li>
-          <li>🪙 <strong>+5 MA</strong> se vinci con oltre il 70% di HP · <strong>+3 MA</strong> se vinci con oltre il 40% (si sommano)</li>
-          <li>🪙 <strong>+5 MA</strong> se vinci il round in meno di 8 attacchi</li>
-          <li>🪙 <strong>+4 MA</strong> se una tua resistenza scatta almeno 2 volte nel round</li>
-          <li>🪙 <strong>+30 MA</strong> se vinci il torneo</li>
-          <li>💡 Le Monete arrivano <strong>subito a fine round</strong>: spendile alla Bottega prima del successivo</li>
-          <li>🎲 Le <strong>scommesse</strong> vinte pagano il doppio della puntata</li>
-        </ul>
-      </div>
-
-      <div className="am-how am-bets-section">
-        <h3 className="am-how-title">🎲 Scommesse Arena</h3>
-        <p className="am-classes-sub" style={{ marginBottom: "10px" }}>
-          Le scommesse usano <strong>Monete Arena (MA)</strong>. Puoi scommettere su singoli fight o sul vincitore del torneo.
-          Le scommesse chiudono quando un combattente scende sotto il <strong>50% HP</strong>.
-        </p>
-        <div className="am-bet-tables">
-          <div className="am-bet-table">
-            <div className="am-bet-table-title">⚔️ Fight singolo — x2 (max 1 MA)</div>
-            <div className="am-bet-rows">
-              <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
-            </div>
-          </div>
-          <div className="am-bet-table">
-            <div className="am-bet-table-title">🏆 Vincitore torneo — x2 (max 3 MA)</div>
-            <div className="am-bet-rows">
-              <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">2 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">4 MA</span><span className="am-bet-profit">+2 MA</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">3 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MA</span><span className="am-bet-profit">+3 MA</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      </>)}
-      </div>
-
-      {showItems && (<>
-      {/* ── VETRINA A LOTTI: registro d'asta, non più griglia di card ── */}
-      <div className="cine-wrap am-body">
-      <div className="amc-sect-head amc-sect-head--lots"><span className="amc-sect-rule" aria-hidden="true" />Vetrina della Settimana<span className="amc-sect-rule" aria-hidden="true" /></div>
-      <p className="amc-sect-note">Gli acquisti valgono fino a <strong>{weekEndLabel(weekKey)}</strong> · solo nei tornei.</p>
-
-      {/* ── RICEVUTA: i tuoi acquisti della settimana ── */}
-      {weeklyPurchases.length > 0 && (
-        <div className="amc-receipt">
-          <div className="amc-receipt-title">🧾 Ricevuta della settimana</div>
-          {weeklyPurchases.map(p => (
-            <div key={p.itemId} className="amc-receipt-row">
-              <span className="amc-receipt-name">{p.icon} {p.name}</span>
-              <span className="amc-receipt-dots" aria-hidden="true" />
-              <span className="amc-receipt-qty">{(p.qty || 1) > 1 ? `×${p.qty}` : "✓"}</span>
-            </div>
-          ))}
-          <div className="amc-receipt-foot">⏳ Valida fino a <strong>{weekEndLabel(weekKey)}</strong>, poi si torna al kit base · solo tornei.</div>
-        </div>
-      )}
-
-      {filteredItems.length === 0 ? (
-        <p className="cine-empty">{q ? "Nessun articolo corrisponde alla ricerca." : "La vetrina di questa settimana è ancora vuota: torna a trovarci!"}</p>
-      ) : (
-      <div className="amc-lots">
-        {filteredItems.map((item, i) => {
-          const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
-          const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
-          const owned = ownedQty(item.id);
-          const maxed = owned >= maxPerWeek;
-          const canAfford = coins >= item.price;
-          const cat = CAT_META[item.category];
-          return (
-            <div key={item.id} className={`amc-lot ${maxed ? "amc-lot--maxed" : canAfford ? "amc-lot--affordable" : ""}`}>
-              <div className="amc-lot-side">
-                <span className="amc-lot-num">Lotto {ROMAN[i] || i + 1}</span>
-                <span className="amc-lot-icon" aria-hidden="true">{item.icon}</span>
-              </div>
-              <div className="amc-lot-main">
-                <div className="amc-lot-name">
-                  {item.name}
-                  <span className="amc-lot-cat">{cat?.icon} {cat?.label}</span>
-                  {owned > 0 && <span className="amc-lot-owned">{maxed ? `✔ Tuo (${owned}/${maxPerWeek})` : `Hai ${owned}/${maxPerWeek}`}</span>}
+      {(!isMaster || masterTab === "vetrina") && (
+      <div className="cine-wrap bt-wrap">
+        <div className="bt-bazar">
+          {/* ══ COLONNA STICKY: forziere · campione · ricevuta · filtri ══ */}
+          <aside className="bt-lato" aria-label="Il tuo forziere">
+            <div className="bt-forziere">
+              <div className="bt-orbe" aria-hidden="true"><span>🪙</span></div>
+              <div className="bt-monete"><b>{coins}</b><span>Monete Arena</span></div>
+              <div className="bt-campione">
+                {pgImg ? <img src={pgImg} alt="" /> : <span className="bt-campione-sil" aria-hidden="true">⚔</span>}
+                <div>
+                  <div className="bt-campione-nome">{pgName}</div>
+                  <div className="bt-campione-meta">Campione dell'Arena · Lv.3</div>
                 </div>
-                <div className="amc-lot-desc">{item.description || marketItemSummary(item)}</div>
-              </div>
-              <div className="amc-lot-buy">
-                <span className="amc-lot-price">🪙 {item.price} MA{maxPerWeek > 1 && <em> · max {maxPerWeek}/sett.</em>}</span>
-                <button
-                  className="am-buy-btn"
-                  onClick={() => buyMarketItem(item)}
-                  disabled={maxed || !canAfford}
-                >
-                  {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
-                </button>
               </div>
             </div>
-          );
-        })}
+
+            {message && (
+              <div className={`am-message ${message.type === "err" ? "am-message--err" : ""}`}>
+                {message.text}
+              </div>
+            )}
+            {arenaMeta?.phase === "shopping" ? (
+              <div className="am-message">🛒 Pausa Bottega aperta: acquista e ri-equipaggiati, il prossimo round parte allo scadere del tempo.</div>
+            ) : (!isMaster && arenaMeta?.phase === "combat") ? (
+              <div className="am-message am-message--err">⚔ Torneo in corso: gli acquisti riaprono nella pausa Bottega tra un round e l'altro.</div>
+            ) : null}
+
+            {/* RICEVUTA: i tuoi acquisti della settimana */}
+            <div className="bt-ricevuta">
+              <div className="bt-lato-t">🧾 Acquisti della settimana</div>
+              {weeklyPurchases.length === 0 ? (
+                <p className="bt-ricevuta-vuota">Nessun acquisto ancora: il forziere è pieno, la vetrina ti aspetta.</p>
+              ) : (<>
+                <ul className="bt-ricevuta-lista">
+                  {weeklyPurchases.map(p => (
+                    <li key={p.itemId} className="bt-ricevuta-riga">
+                      <span className="bt-ricevuta-ico" style={{ "--c": CAT_COLORS[p.category] || "#22d3ee" }} aria-hidden="true">{p.icon}</span>
+                      <span className="bt-ricevuta-nome">{p.name}</span>
+                      <span className="bt-ricevuta-qty">{(p.qty || 1) > 1 ? `×${p.qty}` : "✓"}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="bt-ricevuta-foot">⏳ Valida fino a <strong>{weekEndLabel(weekKey)}</strong>, poi si torna al kit base · solo tornei.</div>
+              </>)}
+            </div>
+
+            {/* FILTRI in colonna */}
+            <div className="bt-filtri">
+              <div className="bt-lato-t">🔍 Cerca in vetrina</div>
+              <CineToolbar
+                query={query}
+                onQuery={setQuery}
+                placeholder="Classe o articolo…"
+                chips={[{ key: "classes", label: "⚔ Classi" }, { key: "items", label: "🛍 Vetrina" }]}
+                activeChip={activeCat}
+                onChip={setActiveCat}
+                allLabel="Tutto"
+                count={resultCount}
+                countNoun={resultCount === 1 ? "risultato" : "risultati"}
+              />
+            </div>
+          </aside>
+
+          {/* ══ LE MERCI ══ */}
+          <div className="bt-merci">
+            {/* CLASSI ARENA (fregio informativo: tutte base Lv.3) */}
+            {showClasses && (
+              <section className="bt-sez" aria-label="Le classi del Colosseo">
+                <div className="bt-sez-t"><h2>Le Classi del Colosseo</h2><i aria-hidden="true" /></div>
+                <p className="bt-sez-sub">
+                  Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli, niente archetipi.
+                  L'unico modo per potenziarsi è la <strong>vetrina settimanale</strong>.
+                </p>
+                {filteredClasses.length === 0 ? (
+                  <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
+                ) : (
+                  <div className="bt-classi">
+                    {filteredClasses.map(cls => (
+                      <span key={cls.key} className="bt-classe">
+                        <span className="bt-classe-ico" aria-hidden="true">{cls.icon}</span>
+                        <span className="bt-classe-nome">{cls.name}</span>
+                        <em>Lv.3</em>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* VETRINA: griglia di merci con anello conico di categoria */}
+            {showItems && (
+              <section className="bt-sez" aria-label="Vetrina della settimana">
+                <div className="bt-sez-t"><h2>Vetrina della Settimana</h2><i aria-hidden="true" /><span className="bt-sez-n">{filteredItems.length}</span></div>
+                {filteredItems.length === 0 ? (
+                  <p className="cine-empty">{q ? "Nessun articolo corrisponde alla ricerca." : "La vetrina di questa settimana è ancora vuota: torna a trovarci!"}</p>
+                ) : (
+                  <div className="bt-griglia">
+                    {filteredItems.map((item) => {
+                      const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
+                      const owned = ownedQty(item.id);
+                      const maxed = owned >= maxPerWeek;
+                      const canAfford = coins >= item.price;
+                      const cat = CAT_META[item.category];
+                      const col = CAT_COLORS[item.category] || "#22d3ee";
+                      return (
+                        <article
+                          key={item.id}
+                          className={`bt-merce${maxed ? " bt-merce--mia" : canAfford ? " bt-merce--ok" : " bt-merce--cara"}`}
+                          style={{ "--c": col }}
+                        >
+                          <span className="bt-merce-cat">{cat?.icon} {cat?.label}</span>
+                          {owned > 0 && <span className="bt-merce-mia">{maxed ? `✔ Tuo ${owned}/${maxPerWeek}` : `Hai ${owned}/${maxPerWeek}`}</span>}
+                          <div className="bt-anello" aria-hidden="true"><span>{item.icon || cat?.icon || "🎁"}</span></div>
+                          <h3 className="bt-merce-nome">{item.name}</h3>
+                          <p className="bt-merce-desc">{item.description || marketItemSummary(item)}</p>
+                          <div className="bt-merce-foot">
+                            <span className="bt-prezzo">🪙 {item.price} <small>MA</small>{maxPerWeek > 1 && <em>· max {maxPerWeek}/sett.</em>}</span>
+                            <button
+                              className="am-buy-btn"
+                              onClick={() => buyMarketItem(item)}
+                              disabled={maxed || !canAfford}
+                            >
+                              {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* MANUALE: tre pannelli a soffietto (come funziona · monete · scommesse) */}
+            {showInfo && (
+              <section className="bt-sez" aria-label="Manuale della Bottega">
+                <div className="bt-sez-t"><h2>Manuale della Bottega</h2><i aria-hidden="true" /></div>
+                <div className="bt-manuale">
+                  <details className="bt-soffietto am-how am-class-manual" open>
+                    <summary className="am-how-title">📖 Come funziona la Bottega Settimanale</summary>
+                    <ul className="am-how-list">
+                      <li>🗓 Ogni settimana il Master rinnova la <strong>vetrina</strong>: oggetti, incantesimi, armi, armature e pet.</li>
+                      <li>🪙 Compri con le <strong>Monete Arena</strong>. Ogni articolo può avere un <strong>massimo di acquisti a settimana</strong>.</li>
+                      <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>. Il lunedì torni <strong>base</strong> (classi Lv.3) e puoi comprare le novità.</li>
+                      <li>🏟 Gli acquisti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte col kit base.</li>
+                      <li>🛒 <strong>Non è tutto equipaggiato in automatico!</strong> All'iscrizione al torneo gli acquisti compaiono <strong>nella loro tab</strong> del loadout (le armi tra le <strong>Armi</strong>, gli incantesimi tra le <strong>Magie</strong>, gli oggetti tra gli <strong>Oggetti</strong>, le armature nella <strong>Difesa</strong>) come <strong>carte viola</strong>: tocca quelle che vuoi usare. Ciò che non scegli resta a magazzino fino a fine settimana.</li>
+                      <li>🎒 <strong>Oggetti</strong>: azione gratuita, 1 per turno (cure, danni o bonus temporanei).</li>
+                      <li>☠ <strong>Oggetti Malus</strong>: azione gratuita che infligge al nemico uno svantaggio a scelta del Master — <strong>svantaggio ai tiri per colpire, sanguinamento, veleno, Bruciatura o Congelato</strong>.</li>
+                      <li>🧩 <strong>Effetti multipli</strong>: oggetti e armi possono combinare più cose insieme — es. un oggetto che cura e ti dà +2 CA, o un'arma che oltre al danno avvelena il bersaglio all'impatto (con una probabilità).</li>
+                      <li>📜 <strong>Spell Scroll</strong>: sono pergamene magiche con un numero di <strong>cariche</strong> e una <strong>caratteristica</strong> per usarle (decise dal Master). Alcuni richiedono un <strong>punteggio minimo</strong> in quella caratteristica: se il tuo è più basso non puoi equipaggiarlo. Le equipaggi dalla tab <strong>Magie</strong> e le lanci anche se di livello alto. ⚠️ Alcuni scroll, per essere equipaggiati, ti fanno <strong>rinunciare a degli spell slot di classe</strong> (es. −1 slot di Lv2 e −1 di Lv3): lo vedi scritto sulla carta.</li>
+                      <li>⚔️ <strong>Armi e armature</strong>: le armi comprate compaiono nella selezione <strong>Armi</strong> e contano come armi vere; le <strong>armature</strong> della Bottega hanno una <strong>CA fissa</strong> (es. 12 = hai 12 di CA, non si somma altro) e <strong>sostituiscono</strong> l'armatura base: se ne indossi una, le base si disattivano.</li>
+                      <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
+                    </ul>
+                    <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
+                  </details>
+
+                  <details className="bt-soffietto am-how">
+                    <summary className="am-how-title">🪙 Come guadagnare Monete Arena</summary>
+                    <ul className="am-how-list">
+                      <li>🪙 <strong>+5 MA</strong> per ogni fight di torneo concluso (anche se perdi)</li>
+                      <li>🪙 <strong>+10 MA</strong> per ogni round vinto</li>
+                      <li>🪙 <strong>+5 MA</strong> se vinci con oltre il 70% di HP · <strong>+3 MA</strong> se vinci con oltre il 40% (si sommano)</li>
+                      <li>🪙 <strong>+5 MA</strong> se vinci il round in meno di 8 attacchi</li>
+                      <li>🪙 <strong>+4 MA</strong> se una tua resistenza scatta almeno 2 volte nel round</li>
+                      <li>🪙 <strong>+30 MA</strong> se vinci il torneo</li>
+                      <li>💡 Le Monete arrivano <strong>subito a fine round</strong>: spendile alla Bottega prima del successivo</li>
+                      <li>🎲 Le <strong>scommesse</strong> vinte pagano il doppio della puntata</li>
+                    </ul>
+                  </details>
+
+                  <details className="bt-soffietto am-how am-bets-section">
+                    <summary className="am-how-title">🎲 Scommesse Arena</summary>
+                    <p className="am-classes-sub">
+                      Le scommesse usano <strong>Monete Arena (MA)</strong>. Puoi scommettere su singoli fight o sul vincitore del torneo.
+                      Le scommesse chiudono quando un combattente scende sotto il <strong>50% HP</strong>.
+                    </p>
+                    <div className="am-bet-tables">
+                      <div className="am-bet-table">
+                        <div className="am-bet-table-title">⚔️ Fight singolo — x2 (max 1 MA)</div>
+                        <div className="am-bet-rows">
+                          <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
+                        </div>
+                      </div>
+                      <div className="am-bet-table">
+                        <div className="am-bet-table-title">🏆 Vincitore torneo — x2 (max 3 MA)</div>
+                        <div className="am-bet-rows">
+                          <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
+                          <div className="am-bet-row"><span className="am-bet-stake">2 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">4 MA</span><span className="am-bet-profit">+2 MA</span></div>
+                          <div className="am-bet-row"><span className="am-bet-stake">3 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MA</span><span className="am-bet-profit">+3 MA</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
       </div>
       )}
-      </div>
-      </>)}
-      </>)}
 
       {/* ── SCHEDA MASTER · Crea oggetti ── */}
       {isMaster && masterTab === "crea" && (
-        <div className="cine-wrap am-body">
+        <div className="cine-wrap bt-wrap">
           <ArenaMarketCatalog />
         </div>
       )}
 
       {/* ── SCHEDA MASTER · Soldi giocatori ── */}
       {isMaster && masterTab === "soldi" && (
-        <div className="cine-wrap am-body">
+        <div className="cine-wrap bt-wrap">
           <MasterCoinPanel />
         </div>
       )}

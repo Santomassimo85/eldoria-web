@@ -1102,3 +1102,21 @@ nav a.admin-link.active, nav a.admin-link.admin-link-red.active { background: va
   background: linear-gradient(180deg, rgba(139, 92, 246, .12), transparent);
   pointer-events: none;
 }
+
+/* ── RUNE A COLORI: ogni gruppo del menu ha la sua tinta (drawer, costellazioni
+   e satelliti dell'Orbe condividono la stessa mappa) ── */
+.nav-rune[data-g], .mnav-sheet-rune[data-g] {
+  color: var(--rune, #6b66a3);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rune, #6b66a3) 75%, transparent);
+  opacity: 1;
+}
+.nav-dd--open .nav-rune[data-g], .nav-dd-trigger:hover .nav-rune[data-g] {
+  color: var(--rune);
+  text-shadow: 0 0 14px var(--rune), 0 0 26px color-mix(in srgb, var(--rune) 60%, transparent);
+}
+[data-g="mondo"]      { --rune: #34d399; }   /* smeraldo  — Mondo */
+[data-g="biblioteca"] { --rune: #fbbf24; }   /* ambra     — Biblioteca */
+[data-g="guide"]      { --rune: #a78bfa; }   /* lilla     — Guide */
+[data-g="eroi"]       { --rune: #e879f9; }   /* magenta   — Eroi */
+[data-g="gilda"]      { --rune: #22d3ee; }   /* ciano     — Gilda */
+[data-g="battaglia"]  { --rune: #fb7185; }   /* rubino    — Battaglia/Arena */

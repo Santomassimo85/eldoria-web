@@ -300,3 +300,23 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   .mnav-backdrop, .mnav-sheet, .nesso-orbe { animation: none !important; }
   .nesso-sat { transition: opacity .2s ease; }
 }
+
+/* ── Satelliti dell'Orbe: ogni runa con la sua tinta (stessa mappa del drawer) ── */
+.nesso-sat.s1 { --rune: #f8fafc; }   /* ✦ Nesso   — bianco stellare */
+.nesso-sat.s2 { --rune: #34d399; }   /* ᛗ Mondo   — smeraldo */
+.nesso-sat.s3 { --rune: #fbbf24; }   /* ᛒ Libri   — ambra */
+.nesso-sat.s4 { --rune: #e879f9; }   /* ᛖ Eroi    — magenta */
+.nesso-sat.s5 { --rune: #22d3ee; }   /* ᚷ Gilda   — ciano */
+.nesso-sat.s6 { --rune: #fb7185; }   /* ᚦ Arena   — rubino */
+.nesso-sat.s7 { --rune: #c4b5fd; }   /* ☰ Altro   — lilla */
+.nesso-sat { border-color: color-mix(in srgb, var(--rune, #22d3ee) 55%, transparent); }
+.nesso-sat .nesso-sat-g {
+  color: var(--rune, #fff);
+  text-shadow: 0 0 10px var(--rune, #22d3ee), 0 0 20px color-mix(in srgb, var(--rune, #22d3ee) 55%, transparent);
+}
+.nesso-sat:hover { border-color: var(--rune, #22d3ee); box-shadow: 0 0 22px color-mix(in srgb, var(--rune, #22d3ee) 80%, transparent); }
+.nesso-sat.on, .nesso-sat.active {
+  background: radial-gradient(circle at 40% 34%, #fff, var(--rune, #22d3ee) 60%, color-mix(in srgb, var(--rune, #22d3ee) 60%, #000));
+  box-shadow: 0 0 26px var(--rune, #22d3ee);
+}
+.nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: #070713; text-shadow: none; }

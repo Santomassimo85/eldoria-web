@@ -351,7 +351,7 @@ function NessoNav({ openMenu }) {
       {g && <div className="mnav-backdrop" onClick={() => setSheet(null)} aria-hidden="true" />}
       {g && (
         <div className="mnav-sheet" role="dialog" aria-label={g.label}>
-          <div className="mnav-sheet-head"><span className="mnav-sheet-rune" aria-hidden="true">{g.rune}</span> {g.label}</div>
+          <div className="mnav-sheet-head"><span className="mnav-sheet-rune" data-g={sheet} aria-hidden="true">{g.rune}</span> {g.label}</div>
           <div className="mnav-sheet-links">
             {g.links.map((l) => (
               <NavLink key={l.to} to={l.to} className="mnav-sheet-link" onClick={() => setSheet(null)}>
@@ -639,30 +639,30 @@ export default function App() {
           <NavLink to="/assistente" onClick={closeMenu} className="nav-agent">Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛗ</span> Mondo</>} closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="mondo" aria-hidden="true">ᛗ</span> Mondo</>} closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/world-map">Mappa</NavLink>
             <NavLink to="/Geo">Archivio Geomantico</NavLink>
           </NavDropdown>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛒ</span> Biblioteca</>} closeAll={closeMenu} id="biblioteca" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="biblioteca" aria-hidden="true">ᛒ</span> Biblioteca</>} closeAll={closeMenu} id="biblioteca" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/scriba">Lo Scriba</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
             <NavLink to="/diario">Diario di Bordo</NavLink>
           </NavDropdown>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚱ</span> Guide</>} closeAll={closeMenu} id="guide" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="guide" aria-hidden="true">ᚱ</span> Guide</>} closeAll={closeMenu} id="guide" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/almanacco">Almanacco del Mondo</NavLink>
             <NavLink to="/crafting">Crafting</NavLink>
             <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
           </NavDropdown>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛖ</span> Eroi</>} closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="eroi" aria-hidden="true">ᛖ</span> Eroi</>} closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/party">Party</NavLink>
             <NavLink to="/scheda-pg">Scheda PG</NavLink>
             <NavLink to="/npc">NPC</NavLink>
           </NavDropdown>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚷ</span> Gilda</>} closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="gilda" aria-hidden="true">ᚷ</span> Gilda</>} closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
@@ -671,7 +671,7 @@ export default function App() {
             <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
 
-          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚦ</span> Battaglia</>} closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" data-g="battaglia" aria-hidden="true">ᚦ</span> Battaglia</>} closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             {/* <NavLink to="/pet">Pet Hub</NavLink> */}
