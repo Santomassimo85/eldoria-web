@@ -893,6 +893,8 @@ body.theme-dark footer {
 .nx-tag { position: absolute; top: 12px; right: 14px; font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; color: var(--nx-magenta); }
 .nx-tag--inline { position: static; display: inline-block; }
 .nx-prosa { font-family: "Manrope", system-ui, sans-serif; color: #c9c4ea; line-height: 1.8; }
+/* il CSS globale (style.css) forza p/li a #272727: nella prosa del Nesso il colore deve restare quello chiaro del contenitore */
+.nx-prosa p, .nx-prosa li { color: inherit; }
 .nx-prosa i, .nx-prosa em { color: var(--nx-viola-soft); }
 
 /* modale-varco */

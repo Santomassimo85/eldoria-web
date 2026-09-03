@@ -478,3 +478,19 @@
 @media (max-width: 819px) {
   .rs-group { padding: 12px; border-radius: 18px; }
 }
+
+/* ============================================================
+   FLUSSO DI MEMORIE — larghezza minima di colonna e colonna unica
+   su schermi stretti. Con il vecchio minimo (280px) su viewport
+   ~600px entravano DUE colonne e la prosa aperta finiva in gabbie
+   strette e illeggibili; ora le colonne partono da 340px (e sotto i
+   700px il flusso è sempre a una colonna). La prosa non può sbordare.
+   ============================================================ */
+.summary-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+@media (max-width: 699px) {
+  .summary-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.summary-card-wrapper { min-width: 0; }
+.rs-summary-html, .rs-modal-body { min-width: 0; overflow-wrap: anywhere; }
+.rs-summary-html table { display: block; max-width: 100%; overflow-x: auto; }
+.rs-summary-html img, .rs-summary-html video, .rs-summary-html iframe { max-width: 100%; }
