@@ -230,3 +230,12 @@ html[data-theme="light"] body:not(.theme-dark) .mnav-sheet {
   border-color: rgba(109, 63, 224, .35);
 }
 html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-head { color: var(--nx-ciano-soft); text-shadow: none; }
+
+/* ── 6) BANNER CON IMMAGINE (Vetrata: pantheon Home, sezioni con copertina):
+   anche all'alba il testo sta SOPRA l'immagine → velo scuro e testo chiaro ── */
+html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-velo {
+  background: linear-gradient(180deg, transparent 35%, rgba(7, 7, 19, .94));
+}
+html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-title { color: #edeaff; text-shadow: 0 2px 14px rgba(0, 0, 8, .8); }
+html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-sub { color: #c9c4ea; }
+html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-riq .gl-seal { color: #ffffff; filter: none; }
