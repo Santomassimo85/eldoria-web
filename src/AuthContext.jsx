@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { ensureBaseCharacter } from './utils/ensureBaseCharacter';
 
 // Struttura del contesto per il valore iniziale e per evitare errori di tipizzazione
 const initialContextValue = {
@@ -38,8 +37,6 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, user => {
       setCurrentUser(user);
       setLoading(false);
-      // Player senza PG → assegna una volta sola il guerriero base (Lv4).
-      if (user) ensureBaseCharacter(user);
     });
     return unsubscribe;
   }, []);
