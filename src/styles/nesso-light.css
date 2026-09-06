@@ -109,6 +109,8 @@ html[data-theme="light"] body:not(.theme-dark) .app-nav {
 /* ── 3) IL TASTINO ☀/☾ (header) ── */
 .theme-toggle {
   width: 34px; height: 34px; flex: 0 0 34px;
+  /* distanziato dal gruppo avatar/burger, in proporzione allo schermo */
+  margin-inline-end: clamp(10px, 2.5vw, 36px);
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%;
   border: 1px solid var(--nx-line, rgba(139, 92, 246, .35));
