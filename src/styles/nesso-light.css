@@ -190,3 +190,39 @@ html[data-theme="light"] body:not(.theme-dark) .home-page .porta-nome {
   text-shadow: 0 0 12px rgba(139, 92, 246, .8);
 }
 html[data-theme="light"] body:not(.theme-dark) .home-page .porta-nota { color: #c9c4ea; }
+
+/* ── 5) MENU (drawer "Altro" + costellazioni dell'Orbe): voci in inchiostro scuro ── */
+html[data-theme="light"] body:not(.theme-dark) nav a,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-trigger,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-menu a,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-arrow { color: var(--nx-ink) !important; text-shadow: none !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a:hover,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-trigger:hover,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-menu a:hover { color: var(--nx-viola) !important; background: rgba(109, 63, 224, .08) !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a.active,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-menu a.active,
+html[data-theme="light"] body:not(.theme-dark) .nav-dd--open .nav-dd-trigger { color: #ffffff !important; background: var(--nx-grad-btn) !important; }
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-menu { background: #ffffff !important; border-color: var(--line) !important; }
+/* voci speciali: Agent / DM Tools / DM Admin */
+html[data-theme="light"] body:not(.theme-dark) nav a.nav-agent { color: var(--nx-ciano-soft) !important; }
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-trigger[data-dd="dmtools"] { color: var(--nx-viola-soft) !important; }
+html[data-theme="light"] body:not(.theme-dark) .nav-dd-trigger[data-dd="dmtools"] .nav-dd-arrow { color: var(--nx-viola-soft) !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link,
+html[data-theme="light"] body:not(.theme-dark) .admin-link { color: var(--nx-ciano-soft) !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link.admin-link-red,
+html[data-theme="light"] body:not(.theme-dark) .admin-link.admin-link-red { color: var(--nx-magenta) !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link:hover,
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link.admin-link-red:hover { color: var(--nx-ink) !important; }
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link.active,
+html[data-theme="light"] body:not(.theme-dark) nav a.admin-link.admin-link-red.active { color: #ffffff !important; }
+/* costellazione dell'Orbe */
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-head { color: var(--nx-ink); }
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-link,
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-links > a { color: var(--nx-ink); background: linear-gradient(180deg, #ffffff, #f3f0ff); }
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-link:hover { color: var(--nx-viola); }
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-link.active { color: #ffffff; }
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .97), rgba(243, 240, 255, .98));
+  border-color: rgba(109, 63, 224, .35);
+}
+html[data-theme="light"] body:not(.theme-dark) .mnav-sheet-head { color: var(--nx-ciano-soft); text-shadow: none; }
