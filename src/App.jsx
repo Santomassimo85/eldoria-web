@@ -614,12 +614,11 @@ export default function App() {
       )}
       {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
-        <NavLink to="/" className="logo logo--img-only" onClick={closeMenu} aria-label="Crit Happens — Home">
-          <img src="/logo.png" alt="Crit Happens" className="logo-img" />
-        </NavLink>
-
-        {/* Destra header: avatar sempre visibile + burger su mobile */}
-        <div className="header-right">
+        {/* Sinistra header: logo + tastino tema ☀/☾ */}
+        <div className="header-left">
+          <NavLink to="/" className="logo logo--img-only" onClick={closeMenu} aria-label="Crit Happens — Home">
+            <img src="/logo.png" alt="Crit Happens" className="logo-img" />
+          </NavLink>
           <button
             type="button"
             className="theme-toggle"
@@ -634,6 +633,10 @@ export default function App() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
             )}
           </button>
+        </div>
+
+        {/* Destra header: avatar sempre visibile + burger su mobile */}
+        <div className="header-right">
           <LoginDropdown closeMenu={closeMenu} />
 
           <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">

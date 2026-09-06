@@ -974,11 +974,13 @@ body:not(.theme-dark) .cine-result-count { color: var(--nx-ciano); }
 :where(body:not(.theme-dark) .cine-page) :where(h1, h2, h3, h4, h5) { color: var(--nx-ink); }
 :where(body:not(.theme-dark) .cine-page) :where(small) { color: var(--nx-muted); }
 
-/* ── Tastino AGENDA (Home): piccolo, nel banner accanto all'avatar ── */
+/* ── Tastino AGENDA (Home): piccolo, al centro del banner (non copre
+      mai "Accedi"/avatar a destra né logo/tema a sinistra) ── */
 .floating-sidebar-btn {
   top: calc((var(--navbar-h, 66px) - 34px) / 2) !important;
-  left: auto !important;
-  right: calc(var(--safe-r, 0px) + 112px) !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
   width: 34px !important;
   height: 34px !important;
   font-size: 15px !important;
@@ -990,7 +992,7 @@ body:not(.theme-dark) .cine-result-count { color: var(--nx-ciano); }
 }
 .floating-sidebar-btn:hover,
 .floating-sidebar-btn.active {
-  transform: scale(1.06) !important;
+  transform: translateX(-50%) scale(1.06) !important;
   background: radial-gradient(circle at 40% 34%, #9ff0ff, #22d3ee 60%, #0e7490) !important;
   color: #070713 !important;
   border-color: transparent !important;

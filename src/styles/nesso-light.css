@@ -106,11 +106,13 @@ html[data-theme="light"] body:not(.theme-dark) .app-nav {
   box-shadow: 0 8px 30px -18px rgba(60, 40, 130, .35);
 }
 
-/* ── 3) IL TASTINO ☀/☾ (header) ── */
+/* ── 3) IL TASTINO ☀/☾ (header, a sinistra accanto al logo) ── */
+.header-left { display: flex; align-items: center; min-width: 0; }
+.header-left .logo { margin: 0; }
 .theme-toggle {
   width: 34px; height: 34px; flex: 0 0 34px;
-  /* distanziato dal gruppo avatar/burger, in proporzione allo schermo */
-  margin-inline-end: clamp(10px, 2.5vw, 36px);
+  /* accanto al logo, distanziato in proporzione allo schermo */
+  margin-inline-start: clamp(10px, 2.5vw, 36px);
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%;
   border: 1px solid var(--nx-line, rgba(139, 92, 246, .35));
