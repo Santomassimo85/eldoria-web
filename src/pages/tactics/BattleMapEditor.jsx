@@ -23,8 +23,6 @@ import {
 import { generateTransparentSpriteDataUrl, propPixelPrompt } from "../../utils/aiSprite";
 import { isHiddenChar } from "../../data/hiddenPlayers";
 
-// Player sempre inclusi nella lista "Inserisci tutti" anche se filtrati altrove.
-const FORCE_PLAYER_EMAILS = ["ale_wolf@icloud.com"];
 import "./BossTactics.css";
 import "./BattleMapEditor.css";
 
@@ -122,10 +120,9 @@ export default function BattleMapEditor() {
   }, [isMaster]);
 
   // Lista giocatori per il posizionamento = lista "Corone" (characters non
-  // nascosti, con nome) + i player forzati per email (es. ale_wolf).
+  // nascosti, con nome).
   const players = useMemo(() => {
-    const list = characters.filter((c) =>
-      (c.name && !isHiddenChar(c)) || FORCE_PLAYER_EMAILS.includes((c.email || "").toLowerCase()));
+    const list = characters.filter((c) => c.name && !isHiddenChar(c));
     list.sort((a, b) => (a.name || a.email || a.id).localeCompare(b.name || b.email || b.id));
     return list;
   }, [characters]);
