@@ -3,6 +3,11 @@
 - Strumento privato (solo master + co-master) per generare/archiviare le prep-sessioni dei party AMEA/LEAF/ENOX con Claude Opus 4.8.
 - Collezione `dm_sessions` (NON la `sessions` esistente = calendario). Isolamento per party sempre. `reference_sessions/*.html` = solo guscio grafico.
 
+## Tema chiaro "Alba del Nesso" (2026-09-06)
+- Tastino ☀/☾ nell'header (`App.jsx`, `.theme-toggle`), scelta in localStorage `nx_theme`; attivo via `html[data-theme="light"]`. Le pagine di gioco (`body.theme-dark`) restano SEMPRE scure.
+- `src/styles/nesso-light.generated.css` è GENERATO: dopo aver toccato colori in nesso.css/layout/shell o nei CSS di pagina, rilanciare `node tools/gen-light-theme.mjs` (mappa vuoto→alba, vedi MAP nello script). Regole a mano in `src/styles/nesso-light.css`.
+- Colori inline dal JS (party, classi, continenti) sul chiaro vengono scuriti con `filter: brightness(.55)` (lista in nesso-light.css §4).
+
 ## Regole restyle (sempre valide)
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.
 - NON toccare logica/link/route/href. Solo markup + CSS/animazioni.

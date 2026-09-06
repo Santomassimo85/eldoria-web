@@ -68,6 +68,8 @@ export default function NessoOverlay() {
     const tick = () => {
       if (!running) return;
       ctx.clearRect(0, 0, W, H);
+      // all'alba (tema chiaro) le stelle sono scintille viola
+      const light = document.documentElement.dataset.theme === "light";
       for (const s of stars) {
         s.d += s.v * (s.d / 140);
         const x = W / 2 + Math.cos(s.a) * s.d;
@@ -77,7 +79,9 @@ export default function NessoOverlay() {
           continue;
         }
         const al = Math.min(0.8, s.d / 300);
-        ctx.fillStyle = `rgba(237,234,255,${al.toFixed(2)})`;
+        ctx.fillStyle = light
+          ? `rgba(91,63,196,${(al * 0.7).toFixed(2)})`
+          : `rgba(237,234,255,${al.toFixed(2)})`;
         ctx.beginPath();
         ctx.arc(x, y, s.r, 0, Math.PI * 2);
         ctx.fill();

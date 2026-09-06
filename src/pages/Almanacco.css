@@ -108,6 +108,7 @@
 .alm-page .alm-mini { padding: 14px; border-radius: 14px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .25); }
 .alm-page .alm-mini h4 { margin: 0 0 8px; font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: #c4b5fd; }
 .alm-page .alm-mini p, .alm-page .alm-defs { margin: 0; padding: 0; list-style: none; font-family: "Manrope", system-ui, sans-serif; font-size: .86rem; line-height: 1.6; color: #c9c4ea; }
+.alm-page .alm-defs li { color: inherit; } /* il globale style.css forza li a #272727 */
 .alm-page .alm-defs li + li { margin-top: 8px; }
 .alm-page .alm-defs strong, .alm-page .alm-mini strong { color: #edeaff; }
 .alm-page .alm-defs em { color: #e879f9; font-style: normal; font-weight: 600; }

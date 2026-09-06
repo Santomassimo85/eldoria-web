@@ -55,7 +55,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #7c560f;
+  color: #5e4208;
   margin: 0 0 6px 2px;
 }
 
@@ -291,3 +291,7 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
 }
 .npcgen-glhero .gl-sotto { padding: 12px 6px 0; }
 .npcgen-glhero .gl-tagline { margin-bottom: 4px; }
+
+/* testata del varco sull'isola crema: inchiostro scuro, non i colori del vuoto */
+.npcgen-page .gl-eyebrow { color: #5b32c9; }
+.npcgen-page .gl-tagline { color: #5b4a30; }

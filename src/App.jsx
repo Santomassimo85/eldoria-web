@@ -545,6 +545,18 @@ export default function App() {
 
   // TEMA: il sito è light "pergamena" di default; le pagine immersive di gioco
   // (arena, tcg, world boss tattico, pet) restano scure → body.theme-dark.
+  // Tema chiaro "Alba del Nesso": scelta dell'utente (☀/☾ nell'header),
+  // salvata in localStorage; le pagine di gioco scure lo ignorano sempre.
+  const [lightTheme, setLightTheme] = useState(() => {
+    try { return localStorage.getItem("nx_theme") === "light"; } catch { return false; }
+  });
+  const toggleTheme = () => {
+    setLightTheme((v) => {
+      const next = !v;
+      try { localStorage.setItem("nx_theme", next ? "light" : "dark"); } catch { /* ignora */ }
+      return next;
+    });
+  };
   useEffect(() => {
     const p = location.pathname;
     const isDarkGamePage =
@@ -555,8 +567,9 @@ export default function App() {
       p.startsWith("/pet") ||
       p === "/dm-admin/battle-maps";
     document.body.classList.toggle("theme-dark", isDarkGamePage);
+    document.documentElement.dataset.theme = lightTheme && !isDarkGamePage ? "light" : "dark";
     return () => document.body.classList.remove("theme-dark");
-  }, [location.pathname]);
+  }, [location.pathname, lightTheme]);
 
   // --- LOGICA REFRESH & CACHE BUSTING ---
   useEffect(() => {
@@ -607,6 +620,20 @@ export default function App() {
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
         <div className="header-right">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={lightTheme ? "Passa al tema scuro" : "Passa al tema chiaro"}
+            title={lightTheme ? "Tema scuro (il vuoto)" : "Tema chiaro (l'alba)"}
+            aria-pressed={lightTheme}
+          >
+            {lightTheme ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+            )}
+          </button>
           <LoginDropdown closeMenu={closeMenu} />
 
           <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">

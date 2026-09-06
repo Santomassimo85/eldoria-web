@@ -17,7 +17,7 @@ const CSS = `
 .spg-page{
   /* Pergamena Antica (chiaro) — palette ribaltata dal vecchio grimorio scuro */
   --bg:#ece0c2; --panel:#fbf4e0; --panel2:#f1e7cf; --line:#c9b78a;
-  --gold:#7c560f; --gold-dim:#a9781a; --arc:#6f44c9; --arc-dim:#b79bf0;
+  --gold:#7c560f; --gold-dim:#8a6212; --arc:#6f44c9; --arc-dim:#b79bf0;
   --ink:#33281a; --muted:#6a5b41; --hp:#b8362a; --hp-track:#e6d3c0;
   --neg:#b0552a; --key:#2c8a5a; --key-dim:#7bbf9a;
   min-height:100vh;
@@ -161,6 +161,9 @@ const CSS = `
 .spg-page .spg-glhero .gl-sotto{padding:10px 8px 2px}
 .spg-page .spg-glhero .gl-tagline{margin-bottom:4px}
 @media (min-width:840px){.spg-page .spg-glhero .gl-finestra{width:min(100%,560px);min-height:250px}}
+/* testata del varco sull'isola crema: inchiostro scuro, non i colori del vuoto */
+.spg-page .gl-eyebrow{color:#5b32c9}
+.spg-page .gl-tagline{color:#5b4a30}
 `;
 
 const AB_LABELS = { str:"FOR", dex:"DES", con:"COS", int:"INT", wis:"SAG", cha:"CAR" };

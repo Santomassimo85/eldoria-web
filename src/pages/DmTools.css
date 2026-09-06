@@ -21,7 +21,7 @@
   letter-spacing: 0.03em;
   background: rgba(169, 120, 26, 0.10);
   border: 1px solid rgba(169, 120, 26, 0.45);
-  color: #c4b5fd;
+  color: #4a3b7a;
   transition: background 0.15s, filter 0.15s;
 }
 .dmt-tab:hover { background: rgba(169, 120, 26, 0.18); }
@@ -124,7 +124,7 @@ textarea.npcgen-input.dmt-prompt {
   font-weight: 700;
   background: rgba(169, 120, 26, 0.10);
   border: 1px solid rgba(169, 120, 26, 0.45);
-  color: #c4b5fd;
+  color: #4a3b7a;
 }
 .dmt-style.on {
   background: linear-gradient(180deg, #e7c878 0%, #d9b25a 45%, #b8902f 100%);

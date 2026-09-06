@@ -69,10 +69,11 @@
 
 /* ── chip caratteristica/professione ── */
 .cr-page .cr-prof-chips { justify-content: flex-start; margin: 6px 0 0; }
-.cr-page .cr-prof-chip { --cs: color-mix(in srgb, var(--c, #8b5cf6) 45%, #fff); cursor: default; color: #edeaff; border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
+.cr-page .cr-prof-chip, .cr-page .cr-prof-card { --cs: color-mix(in srgb, var(--c, #8b5cf6) 45%, #fff); }
+.cr-page .cr-prof-chip { cursor: default; color: #edeaff; border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
 .cr-page .cr-prof-chip-stat {
   padding: 2px 8px; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .08em;
-  color: #070713; background: var(--cs);
+  color: #070713; background: var(--cs, #c4b5fd);
 }
 
 /* ── vantaggio/svantaggio ── */
@@ -155,7 +156,7 @@
 .cr-page .cr-prof-icon { font-size: 1.5rem; }
 .cr-page .cr-prof-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cr-page .cr-prof-meta { display: flex; align-items: center; gap: 8px; }
-.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: #070713; background: var(--cs); }
+.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: #070713; background: var(--cs, #c4b5fd); }
 .cr-page .cr-prof-toggle {
   width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid rgba(34, 211, 238, .45); color: #22d3ee; font-size: 1.1rem; font-weight: 700;

@@ -62,7 +62,7 @@
 
 .conc-kind{
   align-self:flex-start; font-size:11px; font-weight:700; letter-spacing:.04em;
-  padding:2px 9px; border-radius:20px; color:var(--c); background:color-mix(in srgb, var(--c) 16%, transparent);
+  padding:2px 9px; border-radius:20px; color:color-mix(in srgb, var(--c) 45%, #fff); background:color-mix(in srgb, var(--c) 22%, transparent);
   border:1px solid color-mix(in srgb, var(--c) 35%, transparent);
 }
 
