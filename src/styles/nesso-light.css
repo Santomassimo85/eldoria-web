@@ -178,3 +178,15 @@ html[data-theme="light"] body:not(.theme-dark) .adm-title {
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: none;
 }
+
+/* Home: i portali esagonali restano "finestre sul vuoto" anche all'alba —
+   velo scuro in basso e testo chiaro sull'immagine */
+html[data-theme="light"] body:not(.theme-dark) .home-page .porta .velo {
+  background: linear-gradient(180deg, transparent 40%, rgba(7, 7, 19, .92));
+}
+html[data-theme="light"] body:not(.theme-dark) .home-page .porta figcaption,
+html[data-theme="light"] body:not(.theme-dark) .home-page .porta-nome {
+  color: #edeaff;
+  text-shadow: 0 0 12px rgba(139, 92, 246, .8);
+}
+html[data-theme="light"] body:not(.theme-dark) .home-page .porta-nota { color: #c9c4ea; }
