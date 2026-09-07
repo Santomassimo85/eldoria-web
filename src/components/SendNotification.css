@@ -1,15 +1,15 @@
 /* Container della pagina Admin */
 .admin-notif-container {
-    background: #f4e4bc; /* Colore base carta invecchiata */
+    background: #14142c; /* Colore base carta invecchiata */
     background-image: 
-        radial-gradient(circle at 2px 2px, rgba(86,64,30,0.06) 1px, transparent 0);
+        radial-gradient(circle at 2px 2px, rgba(0, 0, 8, 0.06) 1px, transparent 0);
     background-size: 4px 4px;
     padding: 40px;
     border-radius: 5px;
     box-shadow:
-        0 0 5px rgba(86, 64, 30, 0.18),
+        0 0 5px rgba(0, 0, 8, 0.18),
         inset 0 0 50px rgba(139, 69, 19, 0.2); /* Effetto bruciacchiato ai bordi */
-    border: 2px solid #8b4513;
+    border: 2px solid #8b5cf6;
     max-width: 600px;
     margin: 20px auto;
     position: relative;
@@ -28,21 +28,21 @@
 
 .admin-notif-container::before {
     top: -5px;
-    background-image: radial-gradient(circle at 10px -5px, transparent 12px, #f4e4bc 13px);
+    background-image: radial-gradient(circle at 10px -5px, transparent 12px, #14142c 13px);
 }
 
 .admin-notif-container::after {
     bottom: -5px;
-    background-image: radial-gradient(circle at 10px 15px, transparent 12px, #f4e4bc 13px);
+    background-image: radial-gradient(circle at 10px 15px, transparent 12px, #14142c 13px);
 }
 
 /* Titolo della pergamena */
 .admin-notif-container h2 {
-    color: #5d2e0a;
+    color: #edeaff;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 2px;
-    border-bottom: 2px solid #8b4513;
+    border-bottom: 2px solid #8b5cf6;
     padding-bottom: 10px;
     margin-bottom: 25px;
 }
@@ -52,21 +52,21 @@
     background: rgba(139, 69, 19, 0.05);
     padding: 15px;
     border-radius: 4px;
-    border: 1px dashed #8b4513;
+    border: 1px dashed #8b5cf6;
     margin-bottom: 20px;
 }
 
 .checkbox-label {
     display: block;
     margin: 8px 0;
-    color: #3e1f07;
+    color: #edeaff;
     cursor: pointer;
     font-weight: bold;
 }
 
 .checkbox-label input {
     margin-right: 10px;
-    accent-color: #8b4513; /* Colore check marrone scuro */
+    accent-color: #8b5cf6; /* Colore check marrone scuro */
 }
 
 /* Campi Input e Textarea */
@@ -79,7 +79,7 @@
     padding: 10px;
     margin-bottom: 20px;
     font-size: 1.1rem;
-    color: #2b1608;
+    color: #edeaff;
     outline: none;
 }
 
@@ -92,7 +92,7 @@
 .admin-notif-container input::placeholder, 
 .admin-notif-container textarea::placeholder {
     font-style: italic;
-    color: #a68b7c;
+    color: #8f8bb8;
 }
 
 /* Pulsante d'invio (Sigillo in ceralacca) */
@@ -100,24 +100,24 @@
     display: block;
     width: 100%;
     padding: 12px;
-    background: #a52a2a; /* Rosso ceralacca */
+    background: #c026d3; /* Rosso ceralacca */
     color: white;
-    border: 2px solid #800000;
+    border: 2px solid #c026d3;
     border-radius: 50px;
     font-weight: bold;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 2px 2px 5px rgba(86,64,30,0.25);
+    box-shadow: 2px 2px 5px rgba(0, 0, 8, 0.25);
 }
 
 .admin-notif-container button:hover {
-    background: #800000;
+    background: #c026d3;
     transform: scale(1.02);
 }
 
 .admin-notif-container button:disabled {
-    background: #cccccc;
-    border-color: #999999;
+    background: #2c2c55;
+    border-color: #5e5b86;
     cursor: not-allowed;
 }

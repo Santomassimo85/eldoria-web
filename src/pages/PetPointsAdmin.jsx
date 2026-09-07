@@ -179,10 +179,10 @@ export default function PetPointsAdmin() {
           style={{
             width: "100%",
             padding: "10px 14px",
-            border: "1.5px solid #c9a961",
+            border: "1.5px solid var(--gold)",
             borderRadius: 10,
             fontSize: "0.95rem",
-            background: "#fffdf6",
+            background: "var(--bg-2)", color: "var(--text)",
           }}
         />
       </div>
@@ -245,9 +245,9 @@ export default function PetPointsAdmin() {
                       style={{
                         padding: "5px 12px",
                         borderRadius: 999,
-                        border: amt > 0 ? "1.5px solid #3a7a4a" : "1.5px solid #a04545",
-                        background: amt > 0 ? "rgba(58, 122, 74, 0.08)" : "rgba(160, 69, 69, 0.08)",
-                        color: amt > 0 ? "#1f5532" : "#a04545",
+                        border: amt > 0 ? "1.5px solid #4ade80" : "1.5px solid #f87171",
+                        background: amt > 0 ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
+                        color: amt > 0 ? "#4ade80" : "#f87171",
                         fontWeight: 700,
                         fontSize: "0.84rem",
                         cursor: isBusy ? "not-allowed" : "pointer",
@@ -269,9 +269,9 @@ export default function PetPointsAdmin() {
                         marginLeft: "auto",
                         padding: "5px 12px",
                         borderRadius: 999,
-                        border: "1.5px solid #7d2929",
-                        background: petsOpen[char.id] ? "rgba(125, 41, 41, 0.12)" : "rgba(255, 250, 235, 0.6)",
-                        color: "#7d2929",
+                        border: "1.5px solid #f87171",
+                        background: petsOpen[char.id] ? "rgba(232, 121, 249, 0.14)" : "var(--bg-2)",
+                        color: "#f87171",
                         fontWeight: 700,
                         fontSize: "0.84rem",
                         cursor: "pointer",
@@ -289,8 +289,8 @@ export default function PetPointsAdmin() {
                     flex: "1 1 100%",
                     marginTop: 8,
                     padding: 10,
-                    background: "rgba(125, 41, 41, 0.04)",
-                    border: "1px dashed #c9a961",
+                    background: "rgba(232, 121, 249, 0.06)",
+                    border: "1px dashed #22d3ee",
                     borderRadius: 10,
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -305,21 +305,21 @@ export default function PetPointsAdmin() {
                           alignItems: "center",
                           gap: 10,
                           padding: "6px 10px",
-                          background: "#fffdf6",
-                          border: "1px solid #c9a961",
-                          borderLeft: `4px solid ${RARITY_COLOR[sp?.rarity] || "#c9a961"}`,
+                          background: "var(--bg-2)",
+                          border: "1px solid var(--line)",
+                          borderLeft: `4px solid ${RARITY_COLOR[sp?.rarity] || "var(--gold)"}`,
                           borderRadius: 8,
                           fontSize: "0.84rem",
                         }}>
                           <PetAvatar
                             species={sp}
-                            style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #c9a961", flexShrink: 0 }}
+                            style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #22d3ee", flexShrink: 0 }}
                           />
                           <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
-                            <div style={{ fontWeight: 700, color: "#2d2418", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <div style={{ fontWeight: 700, color: "#edeaff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {pet.nickname || sp?.name || "?"}
                             </div>
-                            <div style={{ fontSize: "0.74rem", color: "#6f6453" }}>
+                            <div style={{ fontSize: "0.74rem", color: "#8f8bb8" }}>
                               Lv {lvl} · {sp ? `${TYPE_ICON[sp.type]} ${sp.name}` : "specie sconosciuta"}
                               {sp && (
                                 <span style={{ color: RARITY_COLOR[sp.rarity], marginLeft: 4 }}>
@@ -334,9 +334,9 @@ export default function PetPointsAdmin() {
                             disabled={isBusy}
                             title={`Elimina "${pet.nickname}"`}
                             style={{
-                              background: "linear-gradient(180deg, #b91c1c, #7d2929)",
-                              color: "#fdf2dc",
-                              border: "1.5px solid #5a1818",
+                              background: "linear-gradient(180deg, #f87171, #f87171)",
+                              color: "rgba(248,113,113,.14)",
+                              border: "1.5px solid #f87171",
                               borderRadius: 6,
                               padding: "4px 10px",
                               fontWeight: 700,

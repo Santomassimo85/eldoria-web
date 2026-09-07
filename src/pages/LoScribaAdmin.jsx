@@ -21,11 +21,11 @@ import "./admin.css";
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
 const STATUS_LABEL = {
-  preview: { t: "Anteprima", c: "#6b5d44" },
-  draft: { t: "In attesa", c: "#b8860b" },
-  approved: { t: "Approvato", c: "#b8860b" },
-  sent: { t: "Inviato", c: "#2f5d2a" },
-  cancelled: { t: "Annullato", c: "#8a261c" },
+  preview: { t: "Anteprima", c: "var(--muted)" },
+  draft: { t: "In attesa", c: "var(--gold)" },
+  approved: { t: "Approvato", c: "var(--gold)" },
+  sent: { t: "Inviato", c: "#4ade80" },
+  cancelled: { t: "Annullato", c: "#f87171" },
 };
 
 function tsToDate(ts) {
@@ -93,7 +93,7 @@ export default function LoScribaAdmin() {
 
   if (!isMaster) {
     return (
-      <section className="adm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+      <section className="adm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
         <div className="adm-masthead"><div className="adm-mast-main">
           <span className="adm-eyebrow">✦ Accesso riservato ✦</span>
           <h1 className="adm-title">Accesso Negato</h1>
@@ -178,7 +178,7 @@ export default function LoScribaAdmin() {
     if (d.sent) setPicked(new Set());
   });
 
-  const btn = (label, onClick, color = "#c9a227", textColor = "#7a1f12") => (
+  const btn = (label, onClick, color = "var(--gold)", textColor = "#070713") => (
     <button type="button" onClick={onClick} disabled={busy}
       style={{ background: color, color: textColor, border: "none", fontWeight: 700, padding: "9px 14px", borderRadius: 6, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, marginRight: 8 }}>
       {label}
@@ -186,7 +186,7 @@ export default function LoScribaAdmin() {
   );
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+    <section className="adm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
       <div className="adm-masthead">
         <div className="adm-mast-main">
           <span className="adm-eyebrow">✦ Redazione ✦</span>
@@ -198,24 +198,24 @@ export default function LoScribaAdmin() {
           </p>
         </div>
         <div className="adm-mast-aside">
-          <div className="adm-stat"><span>Stato</span><strong style={{ color: enabled ? "#2f5d2a" : "#8a261c" }}>{enabled ? "Attivo" : "In pausa"}</strong></div>
+          <div className="adm-stat"><span>Stato</span><strong style={{ color: enabled ? "#4ade80" : "#f87171" }}>{enabled ? "Attivo" : "In pausa"}</strong></div>
         </div>
       </div>
 
       {msg && (
-        <p style={{ padding: "10px 12px", borderRadius: 6, background: msg.type === "ok" ? "#e7f0e1" : "#f6e0dc", color: msg.type === "ok" ? "#2f5d2a" : "#8a261c", lineHeight: 1.5 }}>
+        <p style={{ padding: "10px 12px", borderRadius: 6, background: msg.type === "ok" ? "rgba(74,222,128,.14)" : "rgba(248,113,113,.14)", color: msg.type === "ok" ? "#4ade80" : "#f87171", lineHeight: 1.5 }}>
           {msg.type === "ok" ? "✅ " : "⚠️ "}{msg.text}
         </p>
       )}
 
       {/* Interruttore automatismo */}
       <div style={{ margin: "8px 0 20px" }}>
-        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "#e0d6bf" : "#c9a227", "#1c1813")}
+        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "#c4b5fd" : "#22d3ee", "#070713")}
       </div>
 
       {/* Bozza in attesa */}
       {pending && (
-        <div className="adm-tile" style={{ cursor: "default", marginBottom: 22, borderColor: "#b8860b" }}>
+        <div className="adm-tile" style={{ cursor: "default", marginBottom: 22, borderColor: "var(--gold)" }}>
           <span className="adm-tile-icon" aria-hidden="true">📰</span>
           <h3 className="adm-tile-title">Bozza in attesa di approvazione — N. {pending.number}</h3>
           <p className="adm-tile-desc">
@@ -223,8 +223,8 @@ export default function LoScribaAdmin() {
           </p>
           <div style={{ marginTop: 12 }}>
             {btn("📤 Invia ora", () => inviaOra(pending.id))}
-            {btn("👁 Anteprima", () => setPreviewHtml(pending.html), "#e0d6bf", "#1c1813")}
-            {btn("✖ Annulla", () => annulla(pending.id), "#e7c9c2", "#8a261c")}
+            {btn("👁 Anteprima", () => setPreviewHtml(pending.html), "var(--bg-3)", "var(--text)")}
+            {btn("✖ Annulla", () => annulla(pending.id), "rgba(248,113,113,.18)", "#f87171")}
           </div>
         </div>
       )}
@@ -243,18 +243,18 @@ export default function LoScribaAdmin() {
         {notes.length > 0 ? (
           <ul style={{ listStyle: "none", padding: 0, margin: "6px 0 12px", display: "flex", flexDirection: "column", gap: 6 }}>
             {notes.map((n, i) => (
-              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: "#fffdf7", border: "1px solid #e3d8bf", borderRadius: 6 }}>
-                <span aria-hidden="true" style={{ color: "#b8860b", fontWeight: 700 }}>✦</span>
-                <span style={{ flex: 1, color: "#5a4d36", lineHeight: 1.45 }}>{n}</span>
+              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: "var(--bg-2)", border: "1px solid var(--line)", borderRadius: 6 }}>
+                <span aria-hidden="true" style={{ color: "var(--gold)", fontWeight: 700 }}>✦</span>
+                <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.45 }}>{n}</span>
                 <button type="button" onClick={() => removeNote(i)} disabled={busy} title="Rimuovi spunto"
-                  style={{ background: "none", border: "1px solid #d9b3ac", color: "#8a261c", borderRadius: 5, padding: "2px 8px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
+                  style={{ background: "none", border: "1px solid rgba(248,113,113,.45)", color: "#f87171", borderRadius: 5, padding: "2px 8px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
                   ✕
                 </button>
               </li>
             ))}
           </ul>
         ) : (
-          <p style={{ color: "#8a7a5b", fontStyle: "italic", margin: "6px 0 12px" }}>
+          <p style={{ color: "var(--muted)", fontStyle: "italic", margin: "6px 0 12px" }}>
             Nessuno spunto: il prossimo numero sarà a totale libertà di Lo Scriba.
           </p>
         )}
@@ -266,11 +266,11 @@ export default function LoScribaAdmin() {
             onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addNote(); } }}
             rows={2} maxLength={400}
             placeholder="Es.: a Havondé si cerca un locandiere impazzito per un anello maledetto…"
-            style={{ flex: 1, boxSizing: "border-box", padding: "10px 12px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, resize: "vertical" }}
+            style={{ flex: 1, boxSizing: "border-box", padding: "10px 12px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid var(--line)", borderRadius: 6, resize: "vertical", background: "var(--bg-2)", color: "var(--text)" }}
           />
           {btn(busy ? "…" : "➕ Aggiungi", addNote)}
         </div>
-        <small style={{ color: "#8a7a5b" }}>Suggerimento: Ctrl/⌘ + Invio per aggiungere in fretta.</small>
+        <small style={{ color: "var(--muted)" }}>Suggerimento: Ctrl/⌘ + Invio per aggiungere in fretta.</small>
       </div>
 
       {/* Generazione manuale (facoltativa) */}
@@ -282,7 +282,7 @@ export default function LoScribaAdmin() {
           <input type="number" min={1} max={60} value={days} disabled={busy}
             onChange={(e) => setDays(Math.max(1, Math.min(60, Number(e.target.value) || 10)))}
             style={{ width: 72, padding: "6px 8px", fontSize: "1rem" }} />
-          <span style={{ color: "#6b5d44" }}>giorni</span>
+          <span style={{ color: "var(--muted)" }}>giorni</span>
         </label>
         {btn(busy ? "Lo Scriba sta scrivendo…" : "Genera e mandami l'anteprima", generaAnteprima)}
       </div>
@@ -300,7 +300,7 @@ export default function LoScribaAdmin() {
           <select
             value={target} disabled={busy}
             onChange={(e) => setTarget(e.target.value)}
-            style={{ flex: "1 1 280px", minWidth: 220, padding: "8px 10px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, background: "#fffdf7" }}
+            style={{ flex: "1 1 280px", minWidth: 220, padding: "8px 10px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid var(--line)", borderRadius: 6, background: "var(--bg-2)", color: "var(--text)" }}
           >
             <option value="">— scegli destinatario ({players.length} registrati) —</option>
             {players.map((p) => (
@@ -314,22 +314,22 @@ export default function LoScribaAdmin() {
       </div>
 
       {/* Archivio numeri */}
-      <h2 className="adm-panel-title" style={{ margin: "0 0 12px", fontSize: "0.82rem", letterSpacing: ".16em", textTransform: "uppercase", color: "#8a6212" }}>
+      <h2 className="adm-panel-title" style={{ margin: "0 0 12px", fontSize: "0.82rem", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--gold)" }}>
         Numeri ({editions.length})
       </h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {editions.map((e) => {
-          const st = STATUS_LABEL[e.status] || { t: e.status, c: "#6b5d44" };
+          const st = STATUS_LABEL[e.status] || { t: e.status, c: "var(--muted)" };
           const motto = e.content?.edition_motto || "";
           return (
-            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: picked.has(e.id) ? "#fbf3da" : "#fffdf7", border: `1px solid ${picked.has(e.id) ? "#c9a227" : "#e3d8bf"}`, borderRadius: 6 }}>
+            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: picked.has(e.id) ? "var(--bg-3)" : "var(--bg-2)", border: `1px solid ${picked.has(e.id) ? "var(--gold)" : "var(--line)"}`, borderRadius: 6 }}>
               <input type="checkbox" checked={picked.has(e.id)} onChange={() => togglePick(e.id)}
                 disabled={!e.html} title={e.html ? "Seleziona per l'invio mirato" : "Numero senza contenuto"}
                 style={{ width: 18, height: 18, cursor: e.html ? "pointer" : "not-allowed" }} />
               <strong style={{ minWidth: 42 }}>N. {e.number}</strong>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: st.c, minWidth: 78 }}>{st.t}</span>
-              <span style={{ flex: 1, color: "#6b5d44", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{motto}</span>
-              {e.recipientCount != null && <span style={{ color: "#2f5d2a", fontSize: "0.85rem" }}>→ {e.recipientCount}</span>}
+              <span style={{ flex: 1, color: "var(--muted)", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{motto}</span>
+              {e.recipientCount != null && <span style={{ color: "#4ade80", fontSize: "0.85rem" }}>→ {e.recipientCount}</span>}
               <button type="button" onClick={() => setPreviewHtml(e.html)} disabled={!e.html}
                 style={{ background: "none", border: "1px solid #c9a227", color: "#7a1f12", borderRadius: 5, padding: "5px 10px", cursor: e.html ? "pointer" : "not-allowed", fontWeight: 600 }}>
                 👁 Anteprima
@@ -339,13 +339,13 @@ export default function LoScribaAdmin() {
                 🔗 Link
               </button>
               <button type="button" onClick={() => elimina(e)} disabled={busy} title="Elimina numero"
-                style={{ background: "none", border: "1px solid #d9b3ac", color: "#8a261c", borderRadius: 5, padding: "5px 9px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
+                style={{ background: "none", border: "1px solid rgba(248,113,113,.45)", color: "#f87171", borderRadius: 5, padding: "5px 9px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
                 🗑
               </button>
             </div>
           );
         })}
-        {editions.length === 0 && <p style={{ color: "#6b5d44" }}>Ancora nessun numero. Il primo uscirà automaticamente, oppure generane uno a mano qui sopra.</p>}
+        {editions.length === 0 && <p style={{ color: "var(--muted)" }}>Ancora nessun numero. Il primo uscirà automaticamente, oppure generane uno a mano qui sopra.</p>}
       </div>
 
       {/* Visore anteprima */}
@@ -353,9 +353,9 @@ export default function LoScribaAdmin() {
         <div style={{ marginTop: 22 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <h3 className="adm-tile-title" style={{ margin: 0 }}>Anteprima del numero</h3>
-            <button type="button" onClick={() => setPreviewHtml(null)} style={{ background: "none", border: "none", fontSize: "1.4rem", cursor: "pointer", color: "#8a261c" }}>✕</button>
+            <button type="button" onClick={() => setPreviewHtml(null)} style={{ background: "none", border: "none", fontSize: "1.4rem", cursor: "pointer", color: "#f87171" }}>✕</button>
           </div>
-          <iframe title="anteprima-scriba" srcDoc={previewHtml} style={{ width: "100%", height: 640, border: "1px solid #cdbfa3", borderRadius: 6, background: "#fff" }} />
+          <iframe title="anteprima-scriba" srcDoc={previewHtml} style={{ width: "100%", height: 640, border: "1px solid var(--line)", borderRadius: 6, background: "#fff" }} />
         </div>
       )}
     </section>

@@ -63,6 +63,9 @@ const FILES = [
   "src/pages/Concilio.css",
   "src/pages/DmTools.css",
   "src/pages/admin.css",
+  "src/GeneraNPC.css",
+  "src/pages/pgSheetEditor.css",
+  "src/pages/WorldBossAdmin.css",
   "src/pages/ToggleSection.css",
 ].filter((f) => fs.existsSync(path.join(ROOT, f)));
 
@@ -94,6 +97,8 @@ const MAP = {
   "c9c4ea": { surf: "#2c2850", text: "#2c2850" },
   "8f8bb8": { surf: "#5d5a86", text: "#5d5a86" },
   "5e5b86": { surf: "#8d89b5", text: "#8d89b5" },
+  "b9b4dc": { surf: "#5d5a86", text: "#5d5a86" },
+  "a9a5cf": { surf: "#5d5a86", text: "#5d5a86" },
   // accenti (più scuri: devono reggere su fondo chiaro)
   "22d3ee": { surf: "#0891b2", text: "#0e7490" },
   "67e8f9": { surf: "#0891b2", text: "#0e7490" },

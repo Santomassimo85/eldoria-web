@@ -72,7 +72,7 @@ export default function VideoAdmin() {
   };
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
+    <section className="adm" style={{ "--cine-accent": "#a78bfa", "--cine-accent-2": "#9a52cf" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">
@@ -120,7 +120,7 @@ export default function VideoAdmin() {
                 <div key={video.id} className="adm-row">
                   <div style={{ minWidth: 0 }}>
                     <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif", display: "block" }}>{video.title}</strong>
-                    <small style={{ color: "#9a8a6b" }}>{video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}</small>
+                    <small style={{ color: "#8f8bb8" }}>{video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}</small>
                   </div>
                   <button onClick={() => handleDelete(video.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
                 </div>

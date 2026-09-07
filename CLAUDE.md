@@ -7,6 +7,7 @@
 - Tastino ☀/☾ nell'header (`App.jsx`, `.theme-toggle`), scelta in localStorage `nx_theme`; attivo via `html[data-theme="light"]`. Le pagine di gioco (`body.theme-dark`) restano SEMPRE scure.
 - `src/styles/nesso-light.generated.css` è GENERATO: dopo aver toccato colori in nesso.css/layout/shell o nei CSS di pagina, rilanciare `node tools/gen-light-theme.mjs` (mappa vuoto→alba, vedi MAP nello script). Regole a mano in `src/styles/nesso-light.css`.
 - Colori inline dal JS (party, classi, continenti) sul chiaro vengono scuriti con `filter: brightness(.55)` (lista in nesso-light.css §4).
+- Pannelli DM/Admin (`admin.css`, `GeneraNPC.css`, `DmTools.css`, `pgSheetEditor.css`, `WorldBossAdmin.css`, `DateTimePicker.css`, `SendNotification.css`) sono ora NATIVI Nesso (scuri): migrati il 2026-09-07 con `node tools/admin-to-nesso.mjs` (mappa pergamena→vuoto, una tantum; rilanciabile, è idempotente). Niente più sfondi crema hardcoded: il chiaro si genera da lì.
 
 ## Regole restyle (sempre valide)
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.

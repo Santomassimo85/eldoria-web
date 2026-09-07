@@ -150,7 +150,8 @@ html[data-theme="light"] body:not(.theme-dark) :is(
   .summary-card-num, .diario-tab-rune, .conc-kind, .party-pill-code,
   .adm-area-title, .adm-eyebrow, .adm-sub strong, .adm-stat strong, .fb-filter-bug,
   .fb-field-label--bug, .fb-stat-bug, .conc-tes h2, .gl-eyebrow, .merc-kicker, .home-kicker,
-  .adm-tile-cue
+  .adm-tile-cue, .adm-panel-title, .adm-label, .wbs-card-name, .rep-card-name, .adm-btn--ghost,
+  .fdy-city-selall, .fdy-import-title
 ) { filter: brightness(.55) saturate(1.3); }
 /* le pillole attive a gradiente restano com'erano (testo bianco) */
 html[data-theme="light"] body:not(.theme-dark) .nx-pillola.on :is(.nx-tag, .party-pill-code, .diario-tab-rune) { filter: none; }
@@ -239,3 +240,17 @@ html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-velo {
 html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-title { color: #edeaff; text-shadow: 0 2px 14px rgba(0, 0, 8, .8); }
 html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-sub { color: #c9c4ea; }
 html[data-theme="light"] body:not(.theme-dark) .gl-vetrata-riq .gl-seal { color: #ffffff; filter: none; }
+
+/* ── 7) PANNELLI DM/ADMIN (accenti inline brillanti, tarati per il vuoto) ── */
+/* etichette in accento → mescolate con l'inchiostro */
+html[data-theme="light"] body:not(.theme-dark) .adm label,
+html[data-theme="light"] body:not(.theme-dark) .mkadm-field label,
+html[data-theme="light"] body:not(.theme-dark) .sumadm-field > label,
+html[data-theme="light"] body:not(.theme-dark) .admin-form-grid label {
+  color: color-mix(in srgb, var(--cine-accent, #0891b2) 45%, #1a1636);
+}
+/* bottoni pieni sull'accento (chiaro): inchiostro scuro */
+html[data-theme="light"] body:not(.theme-dark) .adm-btn--primary,
+html[data-theme="light"] body:not(.theme-dark) .adm.pa-page .pa-count { color: #1a1636; }
+html[data-theme="light"] body:not(.theme-dark) :is(.sumadm-filter:not(.on), .qstadm-filter:not(.on), .qstadm-diff-pill, .mkadm-price-hint) { filter: brightness(.6) saturate(1.3); }
+

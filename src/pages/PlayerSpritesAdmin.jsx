@@ -190,7 +190,7 @@ export default function PlayerSpritesAdmin() {
   }
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#7a2e1a", "--cine-accent-2": "#b8362a" }}>
+    <section className="adm" style={{ "--cine-accent": "#f87171", "--cine-accent-2": "#fb923c" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">

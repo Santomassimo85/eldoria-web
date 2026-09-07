@@ -140,7 +140,7 @@ export default function PlatinumAdmin() {
   };
 
   return (
-    <section className="adm pa-page" style={{ "--cine-accent": "#7c560f", "--cine-accent-2": "#a9781a" }}>
+    <section className="adm pa-page" style={{ "--cine-accent": "#fbbf24", "--cine-accent-2": "#fde68a" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">

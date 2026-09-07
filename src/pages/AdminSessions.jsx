@@ -48,7 +48,7 @@ export default function AdminSessions() {
   };
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
+    <section className="adm" style={{ "--cine-accent": "#60a5fa", "--cine-accent-2": "#38bdf8" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">
@@ -98,7 +98,7 @@ export default function AdminSessions() {
                 <div key={s.id} className="adm-row">
                   <div>
                     <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif" }}>{s.id}</strong>
-                    <div style={{ fontSize: "0.82rem", color: "#6a5b41" }}>{new Date(s.date).toLocaleString("it-IT")}</div>
+                    <div style={{ fontSize: "0.82rem", color: "#8f8bb8" }}>{new Date(s.date).toLocaleString("it-IT")}</div>
                   </div>
                   <button onClick={() => deleteSession(s.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
                 </div>

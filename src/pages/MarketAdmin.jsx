@@ -963,7 +963,7 @@ export default function MarketAdmin() {
   }
 
   return (
-    <section className="adm mkadm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+    <section className="adm mkadm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ─── HERO STATS BAR ─── */}

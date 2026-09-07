@@ -78,7 +78,7 @@ export default function ReputationAdmin() {
   }, [characters, query]);
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#7a2e1a", "--cine-accent-2": "#a9781a" }}>
+    <section className="adm" style={{ "--cine-accent": "#f87171", "--cine-accent-2": "#fbbf24" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">

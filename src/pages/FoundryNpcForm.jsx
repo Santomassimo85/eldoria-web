@@ -35,10 +35,10 @@ const OTHER = "Altrove";
 
 // Colore/icona per continente: divide visivamente i gruppi della pagina.
 const CONTINENT_STYLE = {
-  Vathriddon: { slug: "vathriddon", color: "#b3402f", icon: "🔥" },
-  Ehkia:      { slug: "ehkia",      color: "#2f7d4f", icon: "🌿" },
-  Ohzkie:     { slug: "ohzkie",     color: "#7b4bb0", icon: "🔮" },
-  Altrove:    { slug: "altrove",    color: "#8a6a30", icon: "🧭" },
+  Vathriddon: { slug: "vathriddon", color: "#f87171", icon: "🔥" },
+  Ehkia:      { slug: "ehkia",      color: "#4ade80", icon: "🌿" },
+  Ohzkie:     { slug: "ohzkie",     color: "#a78bfa", icon: "🔮" },
+  Altrove:    { slug: "altrove",    color: "#fbbf24", icon: "🧭" },
 };
 const contStyle = (c) => CONTINENT_STYLE[c] || CONTINENT_STYLE.Altrove;
 

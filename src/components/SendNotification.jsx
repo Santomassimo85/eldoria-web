@@ -59,7 +59,7 @@ export default function SendNotification() {
   };
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
+    <section className="adm" style={{ "--cine-accent": "#60a5fa", "--cine-accent-2": "#38bdf8" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       <div className="adm-masthead">
