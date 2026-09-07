@@ -9,6 +9,9 @@
 - Colori inline dal JS (party, classi, continenti) sul chiaro vengono scuriti con `filter: brightness(.55)` (lista in nesso-light.css §4).
 - Pannelli DM/Admin (`admin.css`, `GeneraNPC.css`, `DmTools.css`, `pgSheetEditor.css`, `WorldBossAdmin.css`, `DateTimePicker.css`, `SendNotification.css`) sono ora NATIVI Nesso (scuri): migrati il 2026-09-07 con `node tools/admin-to-nesso.mjs` (mappa pergamena→vuoto, una tantum; rilanciabile, è idempotente). Niente più sfondi crema hardcoded: il chiaro si genera da lì.
 
+## NUOVA GRAFICA — savepoint 2026-09-07
+- Mockup `public/mockups/r-covo.html` ("R · Il Covo del Drago": squame, occhio, d20-menu, Fuoco/Gelo, blocchi statistiche, effetto standard "Tiro") IN ATTESA DI GIUDIZIO. I 5 "Cinque vie" (`m-q-cinque-vie.html`) sono bocciati. Se approvato: porting una pagina alla volta (Home + nav prima), FASE 0 prima di ogni pagina.
+
 ## Scala di superfici Nesso (2026-09-07)
 - Token in `nesso.css` §0: `--nx-s1` (contenitori/input incassati) → `--nx-s2` (card) → `--nx-s3` (elevati: hover, tab attivi, modali, card DENTRO card) → `--nx-s4` (livello massimo). Deriva prugna, non più indaco piatto. Bordo "filo di luce" `--nx-hair` + riflesso `--nx-hair-hi`. Testo: `--nx-ink` / `--nx-body` / `--nx-muted` / `--nx-faint`.
 - Regola: un elemento annidato SALE di un gradino, mai lo stesso colore del contenitore. Il gradiente ciano→viola è solo per CTA e chip attive; i tab (`.dmt-tab`, `.mkadm-tab`, `.geoadm-tab`) sono binario S1 + segmento S4 con filo ciano (nesso.css §12).
