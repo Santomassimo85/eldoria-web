@@ -1,0 +1,504 @@
+<title>Il Covo del Drago</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+SC:wght@500;700&family=Cinzel:wght@600;800&display=swap">
+<style>
+/* ════════════════════════════════════════════════════════════════
+   R · IL COVO — la tana del drago. Il fondo è la sua pelle (squame che
+   respirano), il suo occhio guarda chi entra, il suo respiro cambia
+   il colore del mondo: FUOCO (braci) o GELO (cristalli). I dadi sono
+   il gesto: il d20 è il menu, ogni scheda tira al passaggio.
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --ossidiana:#0b0a0d; --roccia:#17151b; --roccia-2:#221f27; --roccia-3:#2e2a35;
+  --osso:#ece5d6; --osso-2:#b9af9d; --osso-3:#7d7566;
+  --oro:#e8c56a; --sangue:#b3261e;
+  /* respiro: FUOCO */
+  --el:#ff7a1a; --el-2:#ffb347; --el-soft:#ffd9a8; --el-deep:#8a2f04;
+  --el-rgb:255,122,26;
+  --iride:radial-gradient(circle at 50% 50%, #ffe8a3 0 6%, #ff9a2e 22%, #c2410c 48%, #4a1206 70%, #1a0602 100%);
+}
+:root[data-soffio="gelo"] {
+  --el:#5fd3ff; --el-2:#b8f1ff; --el-soft:#e6fbff; --el-deep:#0a4a63;
+  --el-rgb:95,211,255;
+  --iride:radial-gradient(circle at 50% 50%, #f2fdff 0 6%, #8fe3ff 22%, #1e88b8 48%, #0b2f4a 70%, #04101a 100%);
+}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--ossidiana); color:var(--osso); font-family:"Alegreya",Georgia,serif; min-height:100vh; overflow-x:clip; transition:background .8s; }
+a { color:inherit; }
+button { font:inherit; }
+:focus-visible { outline:2px solid var(--el-2); outline-offset:3px; }
+
+/* ── la pelle: squame e respiro (canvas fissi) ── */
+#pelle, #soffio { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+#soffio { z-index:1; mix-blend-mode:screen; }
+.velo { position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(70% 60% at 50% 30%, transparent 40%, rgba(11,10,13,.75) 100%); }
+
+/* ── testata: nome inciso + respiro ── */
+.testata { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px clamp(14px,3vw,34px);
+  background:linear-gradient(180deg, rgba(11,10,13,.92), rgba(11,10,13,.6) 70%, transparent); }
+.marchio { font:900 1.45rem/1 "Grenze Gotisch",serif; letter-spacing:.04em; color:var(--osso); text-decoration:none; display:flex; align-items:center; gap:10px; }
+.marchio i { width:10px; height:10px; background:var(--el); transform:rotate(45deg); box-shadow:0 0 14px var(--el); transition:background .6s, box-shadow .6s; }
+.respiro { display:inline-flex; border:1px solid var(--roccia-3); background:rgba(23,21,27,.85); border-radius:999px; padding:3px; }
+.respiro button { appearance:none; border:0; background:transparent; color:var(--osso-2); padding:6px 14px; border-radius:999px; cursor:pointer; font:500 .85rem "Alegreya SC",serif; letter-spacing:.08em; display:flex; align-items:center; gap:7px; transition:color .3s, background .3s; }
+.respiro button svg { width:14px; height:14px; fill:currentColor; }
+.respiro button[aria-pressed="true"] { background:var(--el-deep); color:var(--el-soft); box-shadow:inset 0 0 0 1px rgba(var(--el-rgb),.5), 0 0 16px -4px var(--el); }
+.chi { font:500 .8rem "Alegreya SC",serif; color:var(--osso-2); letter-spacing:.06em; }
+.chi b { color:var(--el-2); }
+
+main { position:relative; z-index:2; width:min(1120px, calc(100% - 32px)); margin:0 auto; padding:0 0 90px; }
+
+/* ── HERO: l'occhio ── */
+.ingresso { display:grid; grid-template-columns:1fr auto; gap:clamp(20px,4vw,60px); align-items:center; padding:clamp(20px,4vw,50px) 0 20px; }
+.kicker { font:700 .72rem "Alegreya SC",serif; letter-spacing:.34em; color:var(--el-2); text-transform:lowercase; font-variant:small-caps; }
+h1.titolo { font:900 clamp(3rem,8vw,6.4rem)/.92 "Grenze Gotisch",serif; margin:8px 0 14px; text-wrap:balance; letter-spacing:.01em;
+  background:linear-gradient(180deg, var(--osso) 55%, var(--osso-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+h1.titolo em { font-style:normal; color:var(--el); -webkit-text-fill-color:var(--el); text-shadow:0 0 30px rgba(var(--el-rgb),.55); }
+.sotto { max-width:48ch; font-size:1.15rem; line-height:1.55; color:var(--osso-2); margin:0 0 22px; }
+.sotto b { color:var(--osso); font-weight:500; }
+.azioni { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.cta { display:inline-flex; align-items:center; gap:8px; padding:12px 20px; border-radius:6px; text-decoration:none; font:700 .82rem "Cinzel",serif; letter-spacing:.14em; text-transform:uppercase; color:var(--ossidiana); background:linear-gradient(180deg,var(--el-2),var(--el)); box-shadow:0 0 28px -8px var(--el), inset 0 1px 0 rgba(255,255,255,.4); transition:transform .15s; }
+.cta:hover { transform:translateY(-2px); }
+.cta.spento { background:transparent; color:var(--osso); border:1px solid var(--roccia-3); box-shadow:none; }
+.cta.spento:hover { border-color:var(--el); color:var(--el-2); }
+
+.occhio-wrap { position:relative; width:min(380px, 42vw); aspect-ratio:1.9/1; }
+.occhio { position:absolute; inset:0; border-radius:50%; overflow:hidden;
+  background:radial-gradient(circle at 50% 50%, #f1e3c8 0 30%, #d8c5a2 55%, #6b5539 80%, #241a12 100%);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.7), 0 0 60px -10px rgba(var(--el-rgb),.55), 0 0 0 6px #141118, 0 0 0 8px #2a2530; transition:box-shadow .6s; }
+.occhio::before { content:""; position:absolute; inset:0; background:
+  radial-gradient(circle at 30% 25%, rgba(255,255,255,.35), transparent 22%),
+  repeating-radial-gradient(circle at 50% 50%, transparent 0 9px, rgba(120,60,30,.12) 9px 10px); pointer-events:none; z-index:3; }
+.iride { position:absolute; left:50%; top:50%; width:58%; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%);
+  background:var(--iride); box-shadow:0 0 0 3px rgba(0,0,0,.6), 0 0 30px rgba(var(--el-rgb),.5); transition:background .8s, box-shadow .6s;
+  display:grid; place-items:center; will-change:transform; }
+.iride::before { content:""; position:absolute; inset:0; border-radius:50%; background:repeating-conic-gradient(from 0deg, rgba(0,0,0,.28) 0 2deg, transparent 2deg 7deg); mix-blend-mode:multiply; }
+.pupilla { width:var(--dil, 17%); height:82%; border-radius:50%; background:radial-gradient(ellipse at 50% 40%, #1a0a05, #000 70%); transition:width .35s cubic-bezier(.34,1.56,.64,1); box-shadow:0 0 8px #000; }
+.palpebra { position:absolute; left:-5%; right:-5%; height:55%; background:#141118; z-index:4; pointer-events:none; }
+.palpebra.su { top:-5%; border-radius:0 0 50% 50% / 0 0 100% 100%; transform:translateY(-100%); }
+.palpebra.giu { bottom:-5%; border-radius:50% 50% 0 0 / 100% 100% 0 0; transform:translateY(100%); }
+.occhio.batte .palpebra.su { animation:batti-su .32s ease-in-out; }
+.occhio.batte .palpebra.giu { animation:batti-giu .32s ease-in-out; }
+@keyframes batti-su { 50% { transform:translateY(0); } }
+@keyframes batti-giu { 50% { transform:translateY(0); } }
+.occhio-nota { position:absolute; left:50%; bottom:-30px; transform:translateX(-50%); font:italic .85rem "Alegreya",serif; color:var(--osso-3); white-space:nowrap; }
+
+/* ── IL D20: menu ── */
+.d20-nav { position:relative; display:grid; place-items:center; height:300px; margin:26px 0 6px; }
+.d20 { position:relative; width:150px; height:150px; cursor:pointer; background:transparent; border:0; padding:0; z-index:2; }
+.d20 svg { width:100%; height:100%; overflow:visible; animation:d20-gira 14s linear infinite; }
+.d20 svg .faccia { fill:var(--roccia-2); stroke:var(--el); stroke-width:1.2; stroke-linejoin:round; transition:fill .3s, stroke .6s; }
+.d20 svg .faccia.alta { fill:var(--roccia-3); }
+.d20 svg .bordo { fill:none; stroke:var(--el-2); stroke-width:2; filter:drop-shadow(0 0 8px rgba(var(--el-rgb),.8)); }
+@keyframes d20-gira { to { transform:rotate(360deg); } }
+.d20:hover svg { animation-duration:4s; }
+.d20 .num { position:absolute; inset:0; display:grid; place-items:center; font:800 3rem "Cinzel",serif; color:var(--osso); text-shadow:0 0 18px rgba(var(--el-rgb),.7); pointer-events:none; }
+.d20.tira svg { animation:d20-tira .8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes d20-tira { 0%{transform:rotate(0) scale(1);} 40%{transform:rotate(380deg) scale(1.15);} 100%{transform:rotate(720deg) scale(1);} }
+.d20.crit .num { color:var(--oro); text-shadow:0 0 24px var(--oro), 0 0 60px var(--el); animation:crit-lampo .6s ease-out; }
+@keyframes crit-lampo { 0%{transform:scale(1.6);} 100%{transform:scale(1);} }
+.d20-hint { position:absolute; bottom:8px; font:500 .72rem "Alegreya SC",serif; letter-spacing:.28em; color:var(--osso-3); }
+.sfaccettature { position:absolute; inset:0; pointer-events:none; }
+.sfaccettature a { position:absolute; left:50%; top:50%; --r:0px; transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(calc(-1 * var(--a))); opacity:0; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center; gap:2px; text-decoration:none; transition:transform .55s cubic-bezier(.34,1.56,.64,1), opacity .3s; }
+.sfaccettature a i { width:54px; height:54px; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); background:linear-gradient(160deg,var(--roccia-3),var(--roccia)); display:grid; place-items:center; font:800 1.1rem "Cinzel",serif; color:var(--el-2); box-shadow:0 0 0 1px var(--el); font-style:normal; }
+.sfaccettature a b { font:700 .78rem "Alegreya SC",serif; letter-spacing:.12em; color:var(--osso); font-weight:500; background:rgba(11,10,13,.8); padding:2px 8px; border-radius:4px; }
+.sfaccettature a:hover i { background:linear-gradient(160deg,var(--el-2),var(--el)); color:var(--ossidiana); }
+.d20-nav.aperto .sfaccettature a { --r:132px; opacity:1; pointer-events:auto; }
+
+/* ── etichette di sezione: filetto rasato del manuale ── */
+.rubrica { display:flex; align-items:center; gap:14px; margin:44px 0 16px; }
+.rubrica h2 { margin:0; font:700 1.6rem/1 "Grenze Gotisch",serif; letter-spacing:.03em; color:var(--osso); }
+.rubrica h2 span { color:var(--el-2); }
+.rubrica .filo { flex:1; height:4px; background:var(--el); clip-path:polygon(0 0, 100% 50%, 0 100%); opacity:.85; transition:background .6s; }
+.rubrica small { font:500 .78rem "Alegreya SC",serif; letter-spacing:.14em; color:var(--osso-3); }
+
+/* ── BLOCCO STATISTICHE (schede) + effetto standard TIRO ── */
+.griglia { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:16px; }
+.blocco { position:relative; background:linear-gradient(180deg, var(--roccia-2), var(--roccia)); border:1px solid var(--roccia-3); border-top:3px solid var(--el); padding:16px 18px 34px; overflow:hidden;
+  box-shadow:0 20px 40px -24px #000, inset 0 1px 0 rgba(255,255,255,.05); transition:transform .25s, box-shadow .25s, border-color .6s; }
+.blocco:hover { transform:translateY(-4px); box-shadow:0 26px 46px -22px #000, 0 0 40px -14px rgba(var(--el-rgb),.6); }
+.blocco .nome { margin:0; font:700 1.5rem/1.05 "Grenze Gotisch",serif; color:var(--el-2); letter-spacing:.02em; padding-right:60px; }
+.blocco .tipo { margin:2px 0 8px; font-style:italic; font-size:.95rem; color:var(--osso-2); }
+.blocco .taglio { height:3px; background:var(--el); clip-path:polygon(0 0, 100% 50%, 0 100%); margin:8px 0; opacity:.9; }
+.blocco .riga { margin:0; font-size:.98rem; line-height:1.5; }
+.blocco .riga b { font-weight:700; color:var(--osso); }
+.blocco .riga span { color:var(--osso-2); }
+.carat { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; margin:8px 0 6px; text-align:center; }
+.carat div { background:rgba(11,10,13,.5); border:1px solid var(--roccia-3); padding:5px 2px; }
+.carat b { display:block; font:700 .68rem "Alegreya SC",serif; letter-spacing:.08em; color:var(--el-2); }
+.carat span { display:block; font:600 .95rem "Cinzel",serif; color:var(--osso); font-variant-numeric:tabular-nums; }
+.carat small { color:var(--osso-3); font-size:.72rem; }
+.blocco .compagnia { position:absolute; left:0; bottom:0; padding:3px 10px; font:700 .62rem "Alegreya SC",serif; letter-spacing:.2em; background:var(--el-deep); color:var(--el-soft); }
+/* artigli: tre graffi che si rivelano */
+.blocco::after { content:""; position:absolute; right:-40px; top:-20px; width:140px; height:140px; pointer-events:none; opacity:0; transform:translate(30px,-30px) rotate(-25deg); transition:opacity .35s, transform .45s ease-out;
+  background:repeating-linear-gradient(90deg, transparent 0 22px, rgba(var(--el-rgb),.55) 22px 26px, transparent 26px 48px); -webkit-mask:linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent); mask:linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent); filter:blur(.4px); }
+.blocco:hover::after { opacity:1; transform:translate(0,0) rotate(-25deg); }
+/* il dadino: TIRO al passaggio */
+.tiro { position:absolute; top:10px; right:12px; width:44px; height:44px; display:grid; place-items:center; z-index:2; }
+.tiro svg { position:absolute; inset:0; width:100%; height:100%; }
+.tiro svg path { fill:var(--ossidiana); stroke:var(--osso-3); stroke-width:1.2; stroke-linejoin:round; transition:stroke .3s, fill .3s; }
+.tiro b { position:relative; font:800 1rem "Cinzel",serif; color:var(--osso-2); font-variant-numeric:tabular-nums; }
+.tiro.rotola svg { animation:d20-tira .7s cubic-bezier(.2,.8,.2,1) both; }
+.tiro.rotola b { color:var(--osso); }
+.tiro.ok svg path { stroke:var(--el); }
+.tiro.ok b { color:var(--el-2); }
+.tiro.crit svg path { stroke:var(--oro); fill:#2a2108; }
+.tiro.crit b { color:var(--oro); text-shadow:0 0 14px var(--oro); }
+.tiro.fumble svg path { stroke:var(--sangue); fill:#2a0c0a; }
+.tiro.fumble b { color:#ff6b61; }
+.esito { position:absolute; top:58px; right:10px; font:700 .62rem "Alegreya SC",serif; letter-spacing:.2em; opacity:0; transform:translateY(-4px); transition:opacity .2s, transform .2s; z-index:2; }
+.blocco.crit .esito { opacity:1; transform:none; color:var(--oro); }
+.blocco.fumble .esito { opacity:1; transform:none; color:#ff6b61; }
+.blocco.crit { animation:scossa .4s ease-out; border-top-color:var(--oro); box-shadow:0 26px 46px -22px #000, 0 0 50px -10px var(--oro); }
+.blocco.fumble { border-top-color:var(--sangue); }
+.blocco.fumble::before { content:""; position:absolute; left:40%; top:-2px; width:2px; height:60%; background:linear-gradient(180deg, var(--sangue), transparent); transform:skewX(-12deg); pointer-events:none; }
+@keyframes scossa { 0%,100%{transform:translate(0,-4px);} 20%{transform:translate(-3px,-4px) rotate(-.6deg);} 40%{transform:translate(3px,-4px) rotate(.6deg);} 60%{transform:translate(-2px,-4px);} 80%{transform:translate(2px,-4px);} }
+
+/* ── BESTIARIO: fascia orizzontale di bestie ── */
+.bestie { display:flex; gap:14px; overflow-x:auto; padding:6px 2px 16px; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--roccia-3) transparent; }
+.bestie .blocco { flex:0 0 320px; scroll-snap-align:start; }
+.gs { position:absolute; right:64px; top:12px; font:700 .62rem "Alegreya SC",serif; letter-spacing:.18em; color:var(--osso-3); }
+.gs b { color:var(--osso); font-family:"Cinzel",serif; }
+
+/* ── TAB = dadi a sei facce ── */
+.officina { background:linear-gradient(180deg, var(--roccia-2), var(--roccia)); border:1px solid var(--roccia-3); padding:18px 20px 20px; position:relative; }
+.dadi { display:flex; gap:14px; align-items:flex-end; margin:0 0 14px; }
+.d6 { appearance:none; border:0; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--osso-2); font:500 .85rem "Alegreya SC",serif; letter-spacing:.1em; padding:0; }
+.d6 .faccia { width:50px; height:50px; border-radius:9px; background:linear-gradient(160deg,#f0e8d8,#c9bfa8); box-shadow:0 6px 0 #6b6152, 0 10px 14px -6px #000, inset 0 1px 0 #fff; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); padding:8px; gap:2px; transition:transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s; }
+.d6 .faccia i { width:8px; height:8px; border-radius:50%; background:var(--ossidiana); place-self:center; }
+.d6 .faccia i.v { visibility:hidden; }
+.d6:hover .faccia { transform:translateY(-3px) rotate(-6deg); }
+.d6[aria-selected="true"] { color:var(--el-2); }
+.d6[aria-selected="true"] .faccia { transform:translateY(-8px) rotate(6deg); box-shadow:0 14px 0 #6b6152, 0 20px 22px -8px #000, 0 0 30px -6px var(--el), inset 0 1px 0 #fff; }
+.d6[aria-selected="true"] .faccia i { background:var(--el-deep); }
+.officina .pannello { border-left:3px solid var(--el); padding:10px 16px; background:rgba(11,10,13,.45); font-size:1rem; line-height:1.55; color:var(--osso-2); }
+.officina .pannello b { color:var(--osso); font-weight:500; }
+.officina .pannello .campo { display:inline-block; margin:6px 10px 0 0; padding:4px 10px; border:1px solid var(--roccia-3); background:var(--roccia); color:var(--osso); font-size:.9rem; }
+.officina .pannello .campo small { color:var(--osso-3); font:500 .68rem "Alegreya SC",serif; letter-spacing:.1em; margin-right:6px; }
+
+/* ── MEMORIE: tacche sulla parete del covo ── */
+.parete { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+.tacca { position:relative; background:rgba(23,21,27,.85); border:1px solid var(--roccia-3); padding:14px 16px 12px 58px; overflow:hidden; transition:border-color .2s; }
+.tacca:hover { border-color:var(--el); }
+.tacca .segni { position:absolute; left:14px; top:14px; width:32px; height:30px; background:repeating-linear-gradient(90deg, var(--el-2) 0 2px, transparent 2px 8px); -webkit-mask:linear-gradient(180deg,#000,#000); mask:linear-gradient(180deg,#000,#000); opacity:.9; transform:skewX(-8deg); }
+.tacca .segni::after { content:""; position:absolute; left:-4px; right:-2px; top:50%; height:2px; background:var(--el-2); transform:rotate(-28deg); }
+.tacca .segni.quattro::after { display:none; }
+.tacca small { font:700 .64rem "Alegreya SC",serif; letter-spacing:.2em; color:var(--el-2); }
+.tacca h3 { margin:2px 0 3px; font:700 1.15rem/1.15 "Grenze Gotisch",serif; color:var(--osso); }
+.tacca p { margin:0; font-size:.9rem; color:var(--osso-2); }
+
+footer { position:relative; z-index:2; text-align:center; padding:30px 16px 40px; color:var(--osso-3); font-size:.9rem; font-style:italic; }
+footer b { color:var(--el-2); font-style:normal; font-family:"Alegreya SC",serif; letter-spacing:.1em; }
+
+@media (max-width:820px) {
+  .ingresso { grid-template-columns:1fr; }
+  .occhio-wrap { width:min(320px, 80vw); margin:10px auto 30px; }
+  .d20-nav { height:320px; }
+  .chi { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } .d20-nav .sfaccettature a { transition:none; } }
+</style>
+
+<canvas id="pelle" aria-hidden="true"></canvas>
+<canvas id="soffio" aria-hidden="true"></canvas>
+<div class="velo" aria-hidden="true"></div>
+
+<header class="testata">
+  <a class="marchio" href="#"><i></i>Crit Happens</a>
+  <div class="respiro" role="group" aria-label="Respiro del drago">
+    <button type="button" data-soffio="fuoco" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M8 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s0 2 1.5 2C7 6 6 4 8 1z"/></svg>Fuoco</button>
+    <button type="button" data-soffio="gelo" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M7.3 1h1.4v3.2l2-1.2.7 1.2-2.7 1.6V8l2.3 1.3 2-1.2.7 1.2-1.6.9 2.5 1.5-.7 1.2-2.6-1.5v2l-1.4.1v-3.1L8.7 9.1v2.7l2 1.2-.7 1.2L8 13.1 6.3 14.2l-.7-1.2 2-1.2V9.1l-1.3-.7v3.1L4.9 11.6v-2L2.3 11.1l-.7-1.2 2.5-1.5-1.6-.9.7-1.2 2 1.2L7.3 6.3V4.6L4.6 4.2l.7-1.2 2 1.2z"/></svg>Gelo</button>
+  </div>
+  <span class="chi">Bentornato, <b>Master</b> · 6 al tavolo</span>
+</header>
+
+<main>
+  <section class="ingresso">
+    <div>
+      <span class="kicker">Cronache di Exanthia · il covo</span>
+      <h1 class="titolo">Il drago <em>ti guarda</em> entrare.</h1>
+      <p class="sotto">Quattro compagnie, sedici anime, <b>quaranta memorie</b> scritte sulle pareti della tana. Tira il d20 per scegliere dove andare: il covo risponde a chi osa.</p>
+      <div class="azioni">
+        <a class="cta" href="#registro">Sfoglia il registro</a>
+        <a class="cta spento" href="#bestiario">Bestiario</a>
+      </div>
+    </div>
+    <div class="occhio-wrap">
+      <div class="occhio" id="occhio">
+        <div class="palpebra su"></div>
+        <div class="iride" id="iride"><div class="pupilla"></div></div>
+        <div class="palpebra giu"></div>
+      </div>
+      <span class="occhio-nota">segue il cursore · si dilata sulle schede</span>
+    </div>
+  </section>
+
+  <nav class="d20-nav" id="d20nav" aria-label="Menu del covo">
+    <div class="sfaccettature">
+      <a href="#" style="--a:0deg"><i>E</i><b>Eroi</b></a>
+      <a href="#" style="--a:60deg"><i>B</i><b>Bestiario</b></a>
+      <a href="#" style="--a:120deg"><i>A</i><b>Atlante</b></a>
+      <a href="#" style="--a:180deg"><i>M</i><b>Mercato</b></a>
+      <a href="#" style="--a:240deg"><i>C</i><b>Cronache</b></a>
+      <a href="#" style="--a:300deg"><i>T</i><b>Arena</b></a>
+    </div>
+    <button class="d20" id="d20" type="button" aria-expanded="false" aria-label="Tira il d20 e apri il menu">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <polygon class="faccia" points="50,4 92,28 92,72 50,96 8,72 8,28"/>
+        <polygon class="faccia alta" points="50,22 78,66 22,66"/>
+        <polygon class="faccia" points="50,4 50,22 92,28"/><polygon class="faccia" points="50,4 50,22 8,28"/>
+        <polygon class="faccia" points="92,28 78,66 92,72"/><polygon class="faccia" points="8,28 22,66 8,72"/>
+        <polygon class="faccia" points="78,66 50,96 92,72"/><polygon class="faccia" points="22,66 50,96 8,72"/>
+        <polygon class="faccia" points="50,22 92,28 78,66"/><polygon class="faccia" points="50,22 8,28 22,66"/>
+        <polygon class="faccia" points="22,66 78,66 50,96"/>
+        <polygon class="bordo" points="50,4 92,28 92,72 50,96 8,72 8,28"/>
+      </svg>
+      <span class="num" id="d20num">20</span>
+    </button>
+    <span class="d20-hint" id="d20hint">tira per aprire</span>
+  </nav>
+
+  <div class="rubrica" id="registro"><h2>Registro <span>araldico</span></h2><span class="filo"></span><small>Compagnia di Amea · 3 eroi</small></div>
+  <div class="griglia">
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span>
+      <h3 class="nome">Caius</h3><p class="tipo">Umanoide medio (elfo), mago · livello 5</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 12 <span>(armatura magica 15)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 30 <span>(5d6 + 10)</span></p>
+      <p class="riga"><b>Velocità</b> 9 m</p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>8</span><small>−1</small></div><div><b>Des</b><span>14</span><small>+2</small></div><div><b>Cos</b><span>12</span><small>+1</small></div><div><b>Int</b><span>18</span><small>+4</small></div><div><b>Sag</b><span>13</span><small>+1</small></div><div><b>Car</b><span>10</span><small>+0</small></div></div>
+      <p class="riga"><b>Incantesimi.</b> <span>Dardo incantato, Scudo, Palla di fuoco.</span></p>
+      <span class="compagnia">Amea</span>
+    </article>
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span>
+      <h3 class="nome">Garroth</h3><p class="tipo">Umanoide medio (mezz'elfo), ranger · livello 5</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 15 <span>(cuoio borchiato)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 38 <span>(5d10 + 5)</span></p>
+      <p class="riga"><b>Velocità</b> 9 m</p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>12</span><small>+1</small></div><div><b>Des</b><span>17</span><small>+3</small></div><div><b>Cos</b><span>13</span><small>+1</small></div><div><b>Int</b><span>10</span><small>+0</small></div><div><b>Sag</b><span>15</span><small>+2</small></div><div><b>Car</b><span>11</span><small>+0</small></div></div>
+      <p class="riga"><b>Nemico prescelto.</b> <span>Bestie. Arco lungo +7, 1d8+3 perforante.</span></p>
+      <span class="compagnia">Amea</span>
+    </article>
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span>
+      <h3 class="nome">Tanagar</h3><p class="tipo">Umanoide medio (mezz'orco), guerriero · livello 5</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 17 <span>(cotta di maglia, scudo)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 52 <span>(5d10 + 15)</span></p>
+      <p class="riga"><b>Velocità</b> 9 m</p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>18</span><small>+4</small></div><div><b>Des</b><span>12</span><small>+1</small></div><div><b>Cos</b><span>16</span><small>+3</small></div><div><b>Int</b><span>8</span><small>−1</small></div><div><b>Sag</b><span>11</span><small>+0</small></div><div><b>Car</b><span>10</span><small>+0</small></div></div>
+      <p class="riga"><b>Tenacia implacabile.</b> <span>Spada lunga +7, 1d8+4 tagliente; Azione impetuosa.</span></p>
+      <span class="compagnia">Amea</span>
+    </article>
+  </div>
+
+  <div class="rubrica" id="bestiario"><h2>Bestiario <span>del covo</span></h2><span class="filo"></span><small>Incontrate in sessione · Grado di Sfida</small></div>
+  <div class="bestie">
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span><span class="gs">GS <b>6</b></span>
+      <h3 class="nome">Drago Bianco Giovane</h3><p class="tipo">Drago grande, caotico malvagio</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 17 <span>(armatura naturale)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 133 <span>(14d10 + 56)</span></p>
+      <p class="riga"><b>Velocità</b> 12 m, scavare 6 m, volare 24 m, nuotare 12 m</p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>18</span><small>+4</small></div><div><b>Des</b><span>10</span><small>+0</small></div><div><b>Cos</b><span>18</span><small>+4</small></div><div><b>Int</b><span>6</span><small>−2</small></div><div><b>Sag</b><span>11</span><small>+0</small></div><div><b>Car</b><span>12</span><small>+1</small></div></div>
+      <p class="riga"><b>Soffio di gelo</b> <span>(ricarica 5–6). Cono di 9 m, TS Cos CD 15, 45 (10d8) danni da freddo.</span></p>
+      <span class="compagnia">Rovine di Toua</span>
+    </article>
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span><span class="gs">GS <b>3</b></span>
+      <h3 class="nome">Lupo Mannaro</h3><p class="tipo">Umanoide medio (umano, mutaforma), caotico malvagio</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 11 <span>(12 in forma di lupo)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 58 <span>(9d8 + 18)</span></p>
+      <p class="riga"><b>Velocità</b> 9 m <span>(12 m in forma di lupo)</span></p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>15</span><small>+2</small></div><div><b>Des</b><span>13</span><small>+1</small></div><div><b>Cos</b><span>14</span><small>+2</small></div><div><b>Int</b><span>10</span><small>+0</small></div><div><b>Sag</b><span>11</span><small>+0</small></div><div><b>Car</b><span>10</span><small>+0</small></div></div>
+      <p class="riga"><b>Morso.</b> <span>+4, 1d8+2 perforante; TS Cos CD 12 o licantropia.</span></p>
+      <span class="compagnia">Il furto · sess. 1</span>
+    </article>
+    <article class="blocco" data-tiro>
+      <div class="tiro"><svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z"/></svg><b>–</b></div><span class="esito"></span><span class="gs">GS <b>1</b></span>
+      <h3 class="nome">Ragno Gigante</h3><p class="tipo">Bestia grande, non allineata</p>
+      <div class="taglio"></div>
+      <p class="riga"><b>Classe Armatura</b> 14 <span>(armatura naturale)</span></p>
+      <p class="riga"><b>Punti Ferita</b> 26 <span>(4d10 + 4)</span></p>
+      <p class="riga"><b>Velocità</b> 9 m, scalare 9 m</p>
+      <div class="taglio"></div>
+      <div class="carat"><div><b>For</b><span>14</span><small>+2</small></div><div><b>Des</b><span>16</span><small>+3</small></div><div><b>Cos</b><span>12</span><small>+1</small></div><div><b>Int</b><span>2</span><small>−4</small></div><div><b>Sag</b><span>11</span><small>+0</small></div><div><b>Car</b><span>4</span><small>−3</small></div></div>
+      <p class="riga"><b>Ragnatela</b> <span>(ricarica 5–6). Gittata 9/18 m, bersaglio trattenuto.</span></p>
+      <span class="compagnia">Foresta di Eldoria</span>
+    </article>
+  </div>
+
+  <div class="rubrica"><h2>Officina <span>del Master</span></h2><span class="filo"></span><small>Strumenti DM · scegli un dado</small></div>
+  <section class="officina">
+    <div class="dadi" role="tablist" data-dadi>
+      <button class="d6" role="tab" aria-selected="true"><span class="faccia"><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i><i></i><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i></span>Incontri</button>
+      <button class="d6" role="tab" aria-selected="false"><span class="faccia"><i></i><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i><i class="v"></i><i></i></span>Loot</button>
+      <button class="d6" role="tab" aria-selected="false"><span class="faccia"><i></i><i class="v"></i><i class="v"></i><i class="v"></i><i></i><i class="v"></i><i class="v"></i><i class="v"></i><i></i></span>Città</button>
+      <button class="d6" role="tab" aria-selected="false"><span class="faccia"><i></i><i class="v"></i><i></i><i class="v"></i><i class="v"></i><i class="v"></i><i></i><i class="v"></i><i></i></span>Cronaca</button>
+    </div>
+    <div class="pannello" data-pane><b>Incontri casuali.</b> Il covo tira sulla tabella della zona e popola la strada.<br><span class="campo"><small>Zona</small>una strada nella foresta di Eldoria</span><span class="campo"><small>Livello</small>5</span><span class="campo"><small>PG</small>4</span><span class="campo"><small>Momento</small>giorno</span><span class="campo"><small>Difficoltà</small>media</span></div>
+    <div class="pannello" data-pane hidden><b>Bottino.</b> 1d12 sulla rarità al banco del Ratto, dal comune al leggendario. Le monete cadono, i reagenti proibiti no.<br><span class="campo"><small>Tabella</small>1d12 rarità</span><span class="campo"><small>Banco</small>Mastro Ratto · Ombra di Obia</span></div>
+    <div class="pannello" data-pane hidden><b>Città.</b> Quartieri, gilde e un nome che suona vero, generati dal CITIES_HUB con un segreto che nessuno racconta.<br><span class="campo"><small>Sorgente</small>CITIES_HUB</span><span class="campo"><small>Continente</small>a scelta</span></div>
+    <div class="pannello" data-pane hidden><b>Cronaca.</b> Dalle linee guida al riassunto scritto, con copertina illustrata. Finisce tra le tacche delle Memorie.<br><span class="campo"><small>Party</small>Amea</span><span class="campo"><small>Sessione</small>#9 · Drokhan giorno 17</span></div>
+  </section>
+
+  <div class="rubrica"><h2>Memorie <span>sulla parete</span></h2><span class="filo"></span><small>Cronache di Obia · Amea</small></div>
+  <div class="parete">
+    <a class="tacca" href="#"><span class="segni"></span><small>Sessione 5</small><h3>Vol. VII · "L'Abbraccio del Sangue e del Ferro"</h3><p>12.10.2025 · Drokhan giorno 14 · 11 letture</p></a>
+    <a class="tacca" href="#"><span class="segni quattro"></span><small>Sessione 4</small><h3>Vol. VI · "La Forgia e la Fiamma"</h3><p>05.10.2025 · Drokhan giorno 12 · 12 letture</p></a>
+    <a class="tacca" href="#"><span class="segni quattro"></span><small>Sessione 3</small><h3>Vol. IV · "Il sangue di Silean"</h3><p>21.09.2025 · Drokhan giorno 9 · 16 letture</p></a>
+    <a class="tacca" href="#"><span class="segni quattro"></span><small>Sessione 2</small><h3>Vol. III · Le Rovine di Toua</h3><p>12.09.2025 · Drokhan giorno 8 · 18 letture</p></a>
+    <a class="tacca" href="#"><span class="segni quattro"></span><small>Sessione 1</small><h3>Vol. II · "Il furto"</h3><p>05.09.2025 · Drokhan giorno 4 · 27 letture</p></a>
+    <a class="tacca" href="#"><span class="segni quattro"></span><small>Lo Scriba · n. 12</small><h3>La gazzetta del mondo</h3><p>Approvata e spedita a 12 lettori</p></a>
+  </div>
+</main>
+<footer>Il covo tiene il conto: <b>ogni sessione, una tacca</b>. Ciò che la forza dimentica, la memoria conserva.</footer>
+
+<script>
+(function(){
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = () => getComputedStyle(root).getPropertyValue('--el-rgb').trim().split(',').map(Number);
+
+  /* ── respiro: fuoco / gelo ── */
+  let soffio = 'fuoco';
+  try { soffio = localStorage.getItem('covo_soffio') || 'fuoco'; } catch(e){}
+  function setSoffio(s){
+    soffio = s; root.setAttribute('data-soffio', s);
+    document.querySelectorAll('.respiro button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.soffio === s)));
+    try { localStorage.setItem('covo_soffio', s); } catch(e){}
+    particelle.length = 0; dipingiPelle();
+  }
+  document.querySelectorAll('.respiro button').forEach(b => b.addEventListener('click', () => setSoffio(b.dataset.soffio)));
+
+  /* ── la pelle: squame ── */
+  const pelle = document.getElementById('pelle'), pc = pelle.getContext('2d');
+  const soff = document.getElementById('soffio'), sc = soff.getContext('2d');
+  let W, H, squame = [], mouse = { x:-9999, y:-9999 }, fase = 0;
+  function misura(){
+    W = pelle.width = soff.width = innerWidth; H = pelle.height = soff.height = innerHeight;
+    squame = [];
+    const r = 26, dy = r * .78;
+    for (let row = -1, y = 0; y < H + r; row++, y += dy)
+      for (let x = (row % 2 ? 0 : r); x < W + r; x += r * 2) squame.push({ x, y, s: .9 + Math.random()*.2 });
+    dipingiPelle();
+  }
+  function dipingiPelle(){
+    const [R,G,B] = el();
+    pc.clearRect(0,0,W,H);
+    pc.fillStyle = '#0b0a0d'; pc.fillRect(0,0,W,H);
+    squame.forEach(q => {
+      const r = 26 * q.s;
+      const g = pc.createRadialGradient(q.x, q.y - r*.4, 2, q.x, q.y, r);
+      g.addColorStop(0, '#1e1b23'); g.addColorStop(.7, '#121016'); g.addColorStop(1, '#0b0a0d');
+      pc.fillStyle = g;
+      pc.beginPath(); pc.arc(q.x, q.y, r, 0, Math.PI*2); pc.fill();
+      pc.strokeStyle = `rgba(${R},${G},${B},.08)`; pc.lineWidth = 1;
+      pc.beginPath(); pc.arc(q.x, q.y, r - .5, Math.PI*1.15, Math.PI*1.85, false); pc.stroke();
+    });
+  }
+  /* ── il soffio: braci che salgono / cristalli che scendono + squame accese ── */
+  const particelle = [];
+  function nasce(){
+    const fuoco = soffio === 'fuoco';
+    return { x: Math.random()*W, y: fuoco ? H + 10 : -10, vx:(Math.random()-.5)*.35, vy: fuoco ? -(.4 + Math.random()*.9) : (.25 + Math.random()*.6), r: fuoco ? 1 + Math.random()*2.2 : 1.2 + Math.random()*2.6, vita: 1, rot: Math.random()*Math.PI, spin:(Math.random()-.5)*.03 };
+  }
+  function frame(){
+    fase += .012;
+    sc.clearRect(0,0,W,H);
+    const [R,G,B] = el();
+    /* respiro delle squame: alone che pulsa + squame vicine al cursore */
+    const alone = sc.createRadialGradient(W*.5, H*.25, 0, W*.5, H*.25, Math.max(W,H)*.55);
+    const a = .05 + .03*Math.sin(fase);
+    alone.addColorStop(0, `rgba(${R},${G},${B},${a})`); alone.addColorStop(1, 'rgba(0,0,0,0)');
+    sc.fillStyle = alone; sc.fillRect(0,0,W,H);
+    squame.forEach(q => {
+      const d = Math.hypot(q.x - mouse.x, q.y - mouse.y);
+      if (d < 180) {
+        const k = 1 - d/180;
+        sc.strokeStyle = `rgba(${R},${G},${B},${(.75*k).toFixed(3)})`; sc.lineWidth = 1.4;
+        sc.beginPath(); sc.arc(q.x, q.y, 26*q.s - 1, Math.PI*1.1, Math.PI*1.9); sc.stroke();
+      }
+    });
+    if (!reduce) {
+      if (particelle.length < 90 && Math.random() < .5) particelle.push(nasce());
+      for (let i = particelle.length - 1; i >= 0; i--) {
+        const p = particelle[i];
+        p.x += p.vx + Math.sin(fase*3 + p.y*.01)*.25; p.y += p.vy; p.vita -= .0035; p.rot += p.spin;
+        if (p.vita <= 0 || p.y < -20 || p.y > H + 20) { particelle.splice(i,1); continue; }
+        sc.globalAlpha = Math.min(1, p.vita*1.4);
+        if (soffio === 'fuoco') {
+          sc.fillStyle = `rgba(${R},${G},${B},1)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 8;
+          sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI*2); sc.fill();
+        } else {
+          sc.strokeStyle = `rgba(${R},${G},${B},.9)`; sc.lineWidth = 1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 6;
+          sc.save(); sc.translate(p.x,p.y); sc.rotate(p.rot);
+          for (let k = 0; k < 3; k++) { sc.beginPath(); sc.moveTo(-p.r*2,0); sc.lineTo(p.r*2,0); sc.stroke(); sc.rotate(Math.PI/3); }
+          sc.restore();
+        }
+        sc.shadowBlur = 0; sc.globalAlpha = 1;
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener('resize', misura); misura(); setSoffio(soffio); frame();
+  addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+  /* ── l'occhio: segue, si dilata, sbatte ── */
+  const occhio = document.getElementById('occhio'), iride = document.getElementById('iride');
+  addEventListener('mousemove', e => {
+    const r = occhio.getBoundingClientRect();
+    const dx = (e.clientX - (r.left + r.width/2)) / innerWidth, dy = (e.clientY - (r.top + r.height/2)) / innerHeight;
+    iride.style.transform = `translate(calc(-50% + ${(dx*70).toFixed(1)}px), calc(-50% + ${(dy*26).toFixed(1)}px))`;
+  });
+  document.querySelectorAll('.blocco, .tacca, .d20, .cta').forEach(n => {
+    n.addEventListener('mouseenter', () => iride.style.setProperty('--dil', '34%'));
+    n.addEventListener('mouseleave', () => iride.style.removeProperty('--dil'));
+  });
+  (function sbatte(){ if (!reduce) { occhio.classList.add('batte'); setTimeout(() => occhio.classList.remove('batte'), 400); } setTimeout(sbatte, 3500 + Math.random()*4000); })();
+
+  /* ── il d20 del menu ── */
+  const d20 = document.getElementById('d20'), num = document.getElementById('d20num'), nav = document.getElementById('d20nav'), hint = document.getElementById('d20hint');
+  function tira(cb){
+    let t = 0; const iv = setInterval(() => { num.textContent = 1 + Math.floor(Math.random()*20); if (++t > 10) { clearInterval(iv); const v = 1 + Math.floor(Math.random()*20); num.textContent = v; cb(v); } }, 55);
+  }
+  d20.addEventListener('click', () => {
+    if (nav.classList.contains('aperto')) { nav.classList.remove('aperto'); d20.setAttribute('aria-expanded','false'); hint.textContent = 'tira per aprire'; return; }
+    d20.classList.remove('tira','crit'); void d20.offsetWidth; d20.classList.add('tira');
+    tira(v => { if (v === 20) d20.classList.add('crit'); nav.classList.add('aperto'); d20.setAttribute('aria-expanded','true'); hint.textContent = v === 20 ? 'critico! il covo si apre' : v === 1 ? 'fumble… ma entra lo stesso' : 'scegli una faccia'; });
+  });
+
+  /* ── effetto standard: TIRO su ogni scheda ── */
+  document.querySelectorAll('[data-tiro]').forEach(card => {
+    const dado = card.querySelector('.tiro'), n = dado.querySelector('b'), esito = card.querySelector('.esito');
+    let busy = false;
+    card.addEventListener('mouseenter', () => {
+      if (busy) return; busy = true;
+      card.classList.remove('crit','fumble'); dado.className = 'tiro rotola';
+      let t = 0; const iv = setInterval(() => { n.textContent = 1 + Math.floor(Math.random()*20); if (++t > 9) { clearInterval(iv);
+        const v = 1 + Math.floor(Math.random()*20); n.textContent = v; busy = false;
+        if (v === 20) { dado.classList.add('crit'); card.classList.add('crit'); esito.textContent = 'critico!'; }
+        else if (v === 1) { dado.classList.add('fumble'); card.classList.add('fumble'); esito.textContent = 'fumble'; }
+        else { dado.classList.add('ok'); esito.textContent = ''; }
+      } }, 50);
+    });
+  });
+
+  /* ── i dadi-tab ── */
+  document.querySelectorAll('[data-dadi]').forEach(g => {
+    const tabs = Array.from(g.children), panes = Array.from(g.parentElement.querySelectorAll(':scope > [data-pane]'));
+    tabs.forEach((t,i) => t.addEventListener('click', () => { tabs.forEach(x => x.setAttribute('aria-selected','false')); t.setAttribute('aria-selected','true'); panes.forEach((p,j) => p.hidden = j !== i); }));
+  });
+})();
+</script>
