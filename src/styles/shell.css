@@ -125,13 +125,13 @@ nav a.admin-link.admin-link-red:hover { color:#fff5e6 !important; }
     border-left:1px solid var(--line) !important; border-radius:0 !important;
     box-shadow:-24px 0 60px -20px rgba(0,0,0,.8) !important;
     transform:translateX(105%); visibility:hidden; opacity:0;
-    transition:transform .42s var(--ease-out), opacity .3s ease, visibility 0s linear .42s;
+    transition:transform .28s var(--ease-out), opacity .22s ease, visibility 0s linear .28s;
     overflow-y:auto; z-index:1050 !important; display:flex !important;
   }
   nav.active {
     transform:translateX(0) !important; visibility:visible !important; opacity:1 !important;
     background:linear-gradient(180deg,#0e1426,#0a0f1c) !important; margin:0 !important;
-    transition:transform .42s var(--ease-out), opacity .3s ease;
+    transition:transform .28s var(--ease-out), opacity .22s ease;
   }
   /* X di chiusura in alto a destra nel drawer */
   .nav-close {

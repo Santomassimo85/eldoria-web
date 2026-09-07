@@ -146,7 +146,9 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 }
 .nesso-nav.aperto .nesso-hint { display: none; }
 
-/* satelliti: partono dall'orbe (scala .3, opachi) e sbocciano sull'arco */
+/* satelliti: stanno GIÀ nella posizione finale e sbocciano in loco (scala .35→1).
+   Prima volavano dall'orbe in ~.6s: un click "anticipato" sulla posizione finale
+   cadeva nel vuoto e l'utente doveva ricliccare. */
 .nesso-sat {
   position: absolute;
   left: -25px;
@@ -172,10 +174,10 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   text-transform: uppercase;
   text-decoration: none;
   --sx: 0px; --sy: 0px;
-  transform: translate(0, 0) scale(.3);
+  transform: translate(var(--sx), var(--sy)) scale(.35);
   opacity: 0;
   pointer-events: none;
-  transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, box-shadow .2s ease, color .2s ease;
+  transition: transform .24s cubic-bezier(.34,1.56,.64,1), opacity .18s ease, box-shadow .2s ease, color .2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .nesso-sat-g { font-size: 1.05rem; line-height: 1; }
@@ -186,12 +188,12 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 }
 /* posizioni sull'arco (raggio 132px su mobile) — 7 satelliti, da sinistra a destra */
 .nesso-sat.s1 { --sx: -132px; --sy: -6px;    transition-delay: 0s; }
-.nesso-sat.s2 { --sx: -114px; --sy: -70px;   transition-delay: .03s; }
-.nesso-sat.s3 { --sx: -66px;  --sy: -116px;  transition-delay: .06s; }
-.nesso-sat.s4 { --sx: 0px;    --sy: -134px;  transition-delay: .09s; }
-.nesso-sat.s5 { --sx: 66px;   --sy: -116px;  transition-delay: .12s; }
-.nesso-sat.s6 { --sx: 114px;  --sy: -70px;   transition-delay: .15s; }
-.nesso-sat.s7 { --sx: 132px;  --sy: -6px;    transition-delay: .18s; }
+.nesso-sat.s2 { --sx: -114px; --sy: -70px;   transition-delay: .02s; }
+.nesso-sat.s3 { --sx: -66px;  --sy: -116px;  transition-delay: .04s; }
+.nesso-sat.s4 { --sx: 0px;    --sy: -134px;  transition-delay: .06s; }
+.nesso-sat.s5 { --sx: 66px;   --sy: -116px;  transition-delay: .08s; }
+.nesso-sat.s6 { --sx: 114px;  --sy: -70px;   transition-delay: .10s; }
+.nesso-sat.s7 { --sx: 132px;  --sy: -6px;    transition-delay: .12s; }
 @media (min-width: 700px) {
   .nesso-sat { width: 54px; height: 54px; left: -27px; font-size: .5rem; }
   .nesso-sat.s1 { --sx: -156px; --sy: -6px; }

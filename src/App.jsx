@@ -330,8 +330,12 @@ function NessoNav({ openMenu }) {
   const g = sheet ? NESSO_GROUPS[sheet] : null;
   const canHover = typeof window !== "undefined" && window.matchMedia?.("(hover: hover)").matches;
 
+  // Il pannello "sale" in .32s: un tap dato subito dove la voce sta per
+  // arrivare colpirebbe il backdrop e chiuderebbe tutto → i primi 400ms li ignora.
+  const sheetOpenedAt = useRef(0);
   const goHome = () => { setOpen(false); setSheet(null); navigate("/"); };
-  const openGroup = (key) => { setOpen(false); setSheet((s) => (s === key ? null : key)); };
+  const openGroup = (key) => { setOpen(false); sheetOpenedAt.current = Date.now(); setSheet((s) => (s === key ? null : key)); };
+  const onBackdrop = () => { if (Date.now() - sheetOpenedAt.current < 400) return; setSheet(null); };
   const openDrawer = () => { setOpen(false); setSheet(null); openMenu(); };
 
   // TCG entra nella costellazione Battaglia solo se il link esiste nel drawer
@@ -348,7 +352,7 @@ function NessoNav({ openMenu }) {
 
   return (
     <>
-      {g && <div className="mnav-backdrop" onClick={() => setSheet(null)} aria-hidden="true" />}
+      {g && <div className="mnav-backdrop" onClick={onBackdrop} aria-hidden="true" />}
       {g && (
         <div className="mnav-sheet" role="dialog" aria-label={g.label}>
           <div className="mnav-sheet-head"><span className="mnav-sheet-rune" data-g={sheet} aria-hidden="true">{g.rune}</span> {g.label}</div>
@@ -526,6 +530,12 @@ export default function App() {
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => { setMenuOpen(false); setOpenDd(null); };
+  // Il drawer scivola dentro in .28s: un click dato subito dove la voce sta per
+  // arrivare colpirebbe il backdrop e richiuderebbe il menu → nei primi 450ms
+  // il backdrop non chiude.
+  const menuOpenedAt = useRef(0);
+  useEffect(() => { if (menuOpen) menuOpenedAt.current = Date.now(); }, [menuOpen]);
+  const closeMenuFromBackdrop = () => { if (Date.now() - menuOpenedAt.current < 450) return; closeMenu(); };
 
   // Chiude il dropdown aperto cliccando fuori da qualsiasi .nav-dd (un solo listener).
   useEffect(() => {
@@ -659,7 +669,7 @@ export default function App() {
           )}
         </div>
 
-        {menuOpen && <div className="nav-backdrop" onClick={closeMenu} aria-hidden="true" />}
+        {menuOpen && <div className="nav-backdrop" onClick={closeMenuFromBackdrop} aria-hidden="true" />}
         <nav
           className={menuOpen ? "active" : ""}
           onClick={(e) => { if (e.target === e.currentTarget) closeMenu(); }}
