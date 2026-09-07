@@ -1,0 +1,600 @@
+<title>Cinque Vie di Exanthia</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=Alegreya+Sans:wght@400;500;700&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Courier+Prime&family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Big+Shoulders+Display:wght@600;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* ═══════════════ GUSCIO: selettore delle cinque vie ═══════════════ */
+:root { --shell-bg:#0c0c0e; --shell-ink:#f2f0ea; --shell-mute:#8a887f; }
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--shell-bg); color:var(--shell-ink); font-family:"IBM Plex Sans",system-ui,sans-serif; }
+.via-rail { position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:6px; padding:8px 12px; background:rgba(12,12,14,.92); backdrop-filter:blur(8px); border-bottom:1px solid #26262a; overflow-x:auto; }
+.via-rail .lbl { font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:var(--shell-mute); margin-right:6px; white-space:nowrap; }
+.via-btn { appearance:none; border:1px solid #2e2e34; background:#151518; color:var(--shell-ink); padding:7px 12px; border-radius:6px; cursor:pointer; font:600 .8rem/1 "IBM Plex Sans",sans-serif; white-space:nowrap; display:flex; gap:8px; align-items:center; }
+.via-btn i { width:12px; height:12px; border-radius:50%; display:inline-block; }
+.via-btn[aria-pressed="true"] { background:var(--shell-ink); color:#0c0c0e; border-color:var(--shell-ink); }
+.via-btn:focus-visible { outline:2px solid #f7d774; outline-offset:2px; }
+.mock[hidden] { display:none !important; }
+body { overflow-x:clip; }
+.mock { min-height:100vh; }
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+/* ═══════════════ M · LA LOCANDA ═══════════════ */
+#m { --wood:#2a1b12; --wood-2:#3a2618; --plank:#4a3222; --ale:#e0a040; --ale-2:#c47f22; --cream:#f5e6c8; --cream-2:#d9c6a1; --wax:#a83232; --iron:#1b1410;
+  background:var(--wood); color:var(--cream); font-family:"Alegreya Sans",system-ui,sans-serif;
+  background-image:repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 2px, transparent 2px 180px), repeating-linear-gradient(180deg, rgba(255,255,255,.02) 0 1px, transparent 1px 7px);
+  display:grid; grid-template-columns:200px 1fr; }
+#m .insegna { position:sticky; top:44px; height:calc(100vh - 44px); border-right:6px double var(--plank); padding:26px 18px; display:flex; flex-direction:column; gap:18px; background:linear-gradient(180deg,#1f140d,#2a1b12); }
+#m .insegna h1 { font:900 1.5rem/1 "Fraunces",serif; color:var(--ale); margin:0; letter-spacing:.02em; }
+#m .insegna h1 small { display:block; font:italic 400 .8rem "Fraunces",serif; color:var(--cream-2); margin-top:6px; letter-spacing:.08em; }
+#m .insegna nav { display:flex; flex-direction:column; gap:2px; margin-top:8px; }
+#m .insegna nav a { color:var(--cream); text-decoration:none; padding:9px 10px; border-left:3px solid transparent; font-weight:500; font-size:1rem; display:flex; justify-content:space-between; }
+#m .insegna nav a span { color:var(--cream-2); font-size:.78rem; }
+#m .insegna nav a:hover, #m .insegna nav a.on { border-left-color:var(--ale); background:rgba(224,160,64,.1); }
+#m .candela { margin-top:auto; display:flex; gap:10px; align-items:flex-end; }
+#m .fiamma { width:14px; height:26px; border-radius:50% 50% 45% 45%; background:radial-gradient(circle at 50% 80%, #fff6d0, #ffb545 45%, #d3541b 80%, transparent 82%); filter:blur(.4px); transform-origin:50% 100%; animation:m-fiamma 1.4s ease-in-out infinite alternate; }
+#m .cera { width:12px; height:36px; background:linear-gradient(180deg,#f2ead3,#d8ccad); border-radius:3px 3px 1px 1px; }
+@keyframes m-fiamma { 0%{transform:scaleY(1) rotate(-3deg);} 40%{transform:scaleY(1.12) rotate(2deg);} 100%{transform:scaleY(.95) rotate(-2deg);} }
+#m .sala { padding:28px 0 40px 34px; min-width:0; }
+#m .titolo { font:900 clamp(2.2rem,5vw,4rem)/1 "Fraunces",serif; margin:0; color:var(--cream); text-wrap:balance; max-width:14ch; }
+#m .titolo em { font-style:italic; font-weight:400; color:var(--ale); }
+#m .sotto { max-width:52ch; color:var(--cream-2); font-size:1.08rem; line-height:1.55; margin:14px 0 0; }
+#m .luce { position:relative; }
+#m .luce::before { content:""; position:absolute; inset:-60px -40px; background:radial-gradient(60% 70% at 18% 30%, rgba(224,160,64,.18), transparent 70%); animation:m-lume 3s ease-in-out infinite alternate; pointer-events:none; }
+@keyframes m-lume { from{opacity:.75;} to{opacity:1;} }
+#m .fascia { display:flex; align-items:baseline; gap:14px; margin:38px 0 12px; }
+#m .fascia h2 { font:700 1rem "Fraunces",serif; letter-spacing:.14em; text-transform:uppercase; color:var(--ale); margin:0; }
+#m .fascia .filo { flex:1; height:1px; background:linear-gradient(90deg,var(--ale-2),transparent); }
+#m .bancone { display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory; padding:16px 34px 26px 0; scrollbar-color:var(--ale-2) transparent; }
+#m .boccale { scroll-snap-align:start; flex:0 0 250px; background:linear-gradient(180deg,var(--wood-2),#22160e); border:1px solid #5a3d28; border-radius:6px 6px 14px 14px; padding:0 0 16px; position:relative; box-shadow:0 18px 30px -18px #000, inset 0 1px 0 rgba(255,255,255,.06); transform-origin:50% 0; animation:m-sway 6s ease-in-out infinite alternate; }
+#m .boccale:nth-child(2n) { animation-delay:-2s; }
+#m .boccale:nth-child(3n) { animation-delay:-4s; }
+@keyframes m-sway { from{transform:rotate(-.4deg) translateY(0);} to{transform:rotate(.4deg) translateY(-3px);} }
+#m .boccale .ritratto { height:150px; border-radius:6px 6px 0 0; background:linear-gradient(160deg,var(--c1),var(--c2)); position:relative; }
+#m .boccale .ritratto::after { content:attr(data-ini); position:absolute; inset:0; display:grid; place-items:center; font:900 3.6rem "Fraunces",serif; color:rgba(245,230,200,.85); text-shadow:0 4px 18px rgba(0,0,0,.6); }
+#m .boccale h3 { font:700 1.25rem "Fraunces",serif; margin:14px 16px 2px; }
+#m .boccale p { margin:0 16px; color:var(--cream-2); font-size:.92rem; }
+#m .boccale .tag { display:inline-block; margin:10px 16px 0; padding:3px 9px; border:1px solid var(--ale-2); color:var(--ale); border-radius:999px; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }
+/* effetto standard: SIGILLO DI CERA che si preme */
+#m .sigillo { position:absolute; top:-14px; right:14px; width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #d94a4a, var(--wax) 55%, #6e1c1c); box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 0 0 4px rgba(255,255,255,.08); display:grid; place-items:center; font:700 .8rem "Fraunces",serif; color:#f7d9d9; transform:scale(.7) rotate(-12deg); opacity:0; transition:transform .35s cubic-bezier(.34,1.56,.64,1), opacity .2s; }
+#m .boccale:hover, #m .tavola:hover, #m .osteria-tab:hover { animation-play-state:paused; }
+#m .boccale:hover .sigillo, #m .tavola:hover .sigillo, #m .osteria-tab.on .sigillo { opacity:1; transform:scale(1) rotate(-8deg); }
+#m .boccale:hover { border-color:var(--ale); box-shadow:0 22px 34px -18px #000, 0 0 40px -10px rgba(224,160,64,.5), inset 0 1px 0 rgba(255,255,255,.1); }
+/* tab dell'osteria: lavagna del menu */
+#m .lavagna { background:#121010; border:8px solid #4a3222; border-radius:4px; padding:18px; margin-right:34px; box-shadow:inset 0 0 40px rgba(0,0,0,.6); }
+#m .osteria-tabs { display:flex; gap:8px; border-bottom:1px dashed rgba(245,230,200,.25); padding-bottom:10px; }
+#m .osteria-tab { position:relative; appearance:none; background:transparent; border:1px solid transparent; color:var(--cream-2); font:500 1rem "Alegreya Sans",sans-serif; padding:8px 14px; cursor:pointer; border-radius:4px; }
+#m .osteria-tab .sigillo { width:22px; height:22px; top:-10px; right:-8px; font-size:.5rem; }
+#m .osteria-tab.on { color:var(--cream); background:rgba(245,230,200,.06); border-color:rgba(245,230,200,.2); }
+#m .osteria-tab:hover { color:var(--cream); }
+#m .gesso { font:italic 400 1.05rem "Fraunces",serif; color:#e9e3d3; margin:14px 4px 0; line-height:1.6; }
+#m .gesso b { color:var(--ale); font-weight:700; }
+#m .tavole { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-right:34px; }
+#m .tavola { position:relative; background:var(--wood-2); border:1px solid #5a3d28; padding:14px 16px; border-radius:4px; }
+#m .tavola small { color:var(--ale); letter-spacing:.14em; text-transform:uppercase; font-size:.68rem; }
+#m .tavola h4 { margin:4px 0 4px; font:700 1.05rem "Fraunces",serif; }
+#m .tavola p { margin:0; color:var(--cream-2); font-size:.9rem; }
+@media (max-width:820px) { #m { grid-template-columns:1fr; } #m .insegna { position:static; height:auto; border-right:0; border-bottom:6px double var(--plank); } #m .sala { padding:22px 18px 40px; } #m .bancone{padding-right:0;} #m .lavagna,#m .tavole{margin-right:0;} }
+
+/* ═══════════════ N · LA CARTA DEL CARTOGRAFO ═══════════════ */
+#n { --carta:#efe6d2; --carta-2:#e4d8bd; --inchiostro:#2b2a33; --mare:#2f6f74; --rosso:#b5472f; --sbiadito:#8b7f66; --oro:#b08a3c;
+  background:var(--carta); color:var(--inchiostro); font-family:"Crimson Pro",Georgia,serif; position:relative; overflow:hidden;
+  background-image:radial-gradient(120% 80% at 50% 40%, transparent 60%, rgba(120,90,40,.22)); }
+#n canvas.contorni { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+#n .mappa { position:relative; display:grid; grid-template-columns:1fr 360px; min-height:100vh; }
+#n .campo { position:relative; padding:30px 34px; }
+#n .cartiglio { display:inline-block; border:2px solid var(--inchiostro); outline:1px solid var(--inchiostro); outline-offset:3px; padding:14px 22px; background:rgba(239,230,210,.85); }
+#n .cartiglio h1 { font:400 clamp(1.8rem,4.5vw,3.2rem)/1 "IM Fell English",serif; margin:0; letter-spacing:.02em; }
+#n .cartiglio h1 i { color:var(--rosso); }
+#n .cartiglio p { margin:8px 0 0; font:italic 1rem "Crimson Pro",serif; color:var(--sbiadito); }
+#n .coord { font:.72rem "Courier Prime",monospace; letter-spacing:.06em; color:var(--sbiadito); }
+#n .bussola { position:absolute; right:30px; top:30px; width:110px; height:110px; border-radius:50%; border:2px solid var(--inchiostro); background:radial-gradient(circle, var(--carta) 55%, transparent 56%), conic-gradient(var(--inchiostro) 0 2deg, transparent 2deg 88deg, var(--inchiostro) 88deg 92deg, transparent 92deg 178deg, var(--inchiostro) 178deg 182deg, transparent 182deg 268deg, var(--inchiostro) 268deg 272deg, transparent 272deg 358deg, var(--inchiostro) 358deg); display:grid; place-items:center; }
+#n .bussola .ago { width:6px; height:70px; background:linear-gradient(180deg,var(--rosso) 50%, var(--inchiostro) 50%); clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); transition:transform .25s ease-out; }
+#n .bussola b { position:absolute; top:6px; font:.8rem "IM Fell English",serif; }
+#n .spilli { position:relative; height:520px; margin-top:26px; }
+#n .spillo { position:absolute; left:var(--x); top:var(--y); transform:translate(-50%,-100%); text-decoration:none; color:var(--inchiostro); display:flex; flex-direction:column; align-items:center; gap:4px; transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
+#n .spillo .capocchia { width:34px; height:34px; border-radius:50%; background:var(--rosso); color:#fff; display:grid; place-items:center; font:700 .9rem "Courier Prime",monospace; box-shadow:0 3px 0 #7b2c1c, 0 8px 14px -6px rgba(0,0,0,.5); }
+#n .spillo .asta { width:2px; height:22px; background:var(--inchiostro); }
+#n .spillo .nome { font:italic 1rem "IM Fell English",serif; background:rgba(239,230,210,.9); padding:1px 8px; border:1px solid var(--inchiostro); white-space:nowrap; }
+/* effetto standard: lo spillo si ALZA e la ROTTA tratteggiata si disegna verso la legenda */
+#n .spillo:hover, #n .spillo:focus-visible { transform:translate(-50%,-100%) translateY(-8px); outline:none; }
+#n .spillo:hover .capocchia { box-shadow:0 11px 0 #7b2c1c, 0 18px 20px -6px rgba(0,0,0,.5); }
+#n .rotta { position:absolute; inset:0; pointer-events:none; overflow:visible; }
+#n .rotta path { fill:none; stroke:var(--rosso); stroke-width:2; stroke-dasharray:6 6; stroke-dashoffset:600; opacity:0; transition:stroke-dashoffset .9s ease, opacity .2s; }
+#n .rotta path.on { stroke-dashoffset:0; opacity:1; }
+#n .legenda { background:var(--carta-2); border-left:3px double var(--inchiostro); padding:30px 24px; position:sticky; top:44px; height:calc(100vh - 44px); overflow:auto; }
+#n .legenda h2 { font:400 1.4rem "IM Fell English",serif; margin:0 0 4px; }
+#n .legenda .coord { display:block; margin-bottom:16px; }
+#n .voce { display:grid; grid-template-columns:34px 1fr; gap:10px; padding:12px 0; border-top:1px solid rgba(43,42,51,.25); align-items:start; }
+#n .voce .n { font:700 .9rem "Courier Prime",monospace; color:var(--rosso); }
+#n .voce h3 { margin:0; font:400 1.15rem "IM Fell English",serif; position:relative; display:inline-block; }
+#n .voce h3::after { content:""; position:absolute; left:0; right:0; bottom:-2px; height:1px; background:var(--rosso); transform:scaleX(0); transform-origin:left; transition:transform .5s ease; }
+#n .voce.on h3::after, #n .voce:hover h3::after { transform:scaleX(1); }
+#n .voce p { margin:3px 0 0; font-size:.95rem; color:#4a4657; line-height:1.4; }
+/* tab come SCHEDE DI ARCHIVIO (linguette in cima) */
+#n .archivio { margin-top:24px; }
+#n .linguette { display:flex; gap:4px; align-items:flex-end; }
+#n .linguetta { appearance:none; border:1px solid var(--inchiostro); border-bottom:0; background:var(--carta-2); font:italic 1rem "IM Fell English",serif; padding:7px 14px; cursor:pointer; color:var(--sbiadito); transform:translateY(2px); }
+#n .linguetta.on { background:var(--carta); color:var(--inchiostro); transform:translateY(1px); padding-bottom:9px; }
+#n .linguetta:hover { color:var(--inchiostro); }
+#n .scheda { border:1px solid var(--inchiostro); background:var(--carta); padding:16px 18px; font-size:1rem; line-height:1.55; }
+#n .scheda .coord { display:block; margin-bottom:6px; }
+@media (max-width:900px) { #n .mappa { grid-template-columns:1fr; } #n .legenda { position:static; height:auto; border-left:0; border-top:3px double var(--inchiostro); } #n .spilli{height:420px;} }
+
+/* ═══════════════ O · LA SALA DI COMANDO ═══════════════ */
+#o { --grafite:#0f1316; --lavagna:#161c21; --lavagna-2:#1d252c; --fosforo:#7ee081; --fosforo-2:#3fa86a; --allarme:#ff5c5c; --avviso:#ffc34d; --testo:#dfe7ea; --testo-2:#8fa0a8; --linea:#2a343c;
+  background:var(--grafite); color:var(--testo); font-family:"IBM Plex Sans",system-ui,sans-serif; position:relative; display:grid; grid-template-columns:60px 1fr; }
+#o::after { content:""; position:absolute; left:0; right:0; height:120px; top:-120px; background:linear-gradient(180deg,transparent, rgba(126,224,129,.07), transparent); animation:o-scan 7s linear infinite; pointer-events:none; }
+@keyframes o-scan { to { transform:translateY(calc(100vh + 240px)); } }
+#o .rail { background:#0a0d10; border-right:1px solid var(--linea); display:flex; flex-direction:column; align-items:center; padding:14px 0; gap:6px; position:sticky; top:44px; height:calc(100vh - 44px); }
+#o .rail .logo { width:34px; height:34px; border:2px solid var(--fosforo); display:grid; place-items:center; font:700 .9rem "Chakra Petch",sans-serif; color:var(--fosforo); margin-bottom:14px; }
+#o .rail a { width:40px; height:40px; display:grid; place-items:center; color:var(--testo-2); text-decoration:none; font:500 .62rem "IBM Plex Mono",monospace; border-left:2px solid transparent; }
+#o .rail a.on, #o .rail a:hover { color:var(--fosforo); border-left-color:var(--fosforo); background:rgba(126,224,129,.06); }
+#o .plancia { padding:0 0 30px; min-width:0; }
+#o .ticker { border-bottom:1px solid var(--linea); background:#0a0d10; font:.78rem "IBM Plex Mono",monospace; color:var(--fosforo); overflow:hidden; white-space:nowrap; padding:7px 0; }
+#o .ticker span { display:inline-block; padding-left:100%; animation:o-ticker 28s linear infinite; }
+@keyframes o-ticker { to { transform:translateX(-100%); } }
+#o .testata { display:grid; grid-template-columns:1fr auto; gap:20px; align-items:end; padding:22px 24px 14px; }
+#o h1 { font:700 clamp(1.5rem,3.4vw,2.4rem)/1.05 "Chakra Petch",sans-serif; margin:0; letter-spacing:.02em; text-transform:uppercase; }
+#o h1 small { display:block; font:500 .72rem "IBM Plex Mono",monospace; color:var(--fosforo); letter-spacing:.24em; margin-bottom:8px; }
+#o .stato { display:flex; gap:10px; }
+#o .chip { font:.7rem "IBM Plex Mono",monospace; padding:5px 10px; border:1px solid var(--linea); color:var(--testo-2); }
+#o .chip.ok { border-color:var(--fosforo-2); color:var(--fosforo); }
+#o .chip.warn { border-color:var(--avviso); color:var(--avviso); }
+#o .griglia { display:grid; grid-template-columns:repeat(12,1fr); gap:12px; padding:0 24px; }
+#o .pan { position:relative; background:var(--lavagna); border:1px solid var(--linea); padding:14px 16px; min-width:0; }
+#o .pan h2 { font:700 .72rem "Chakra Petch",sans-serif; letter-spacing:.2em; text-transform:uppercase; color:var(--testo-2); margin:0 0 10px; display:flex; justify-content:space-between; }
+#o .pan h2 i { font-style:normal; color:var(--fosforo); font-family:"IBM Plex Mono",monospace; }
+/* effetto standard: PARENTESI DI MIRA che si chiudono agli angoli */
+#o .pan::before, #o .pan::after, #o .pan > .mira::before, #o .pan > .mira::after { content:""; position:absolute; width:14px; height:14px; border:2px solid var(--fosforo); opacity:0; transition:opacity .15s, transform .25s ease-out; }
+#o .pan::before { left:-2px; top:-2px; border-right:0; border-bottom:0; transform:translate(-8px,-8px); }
+#o .pan::after { right:-2px; top:-2px; border-left:0; border-bottom:0; transform:translate(8px,-8px); }
+#o .pan > .mira::before { left:-2px; bottom:-2px; border-right:0; border-top:0; transform:translate(-8px,8px); }
+#o .pan > .mira::after { right:-2px; bottom:-2px; border-left:0; border-top:0; transform:translate(8px,8px); }
+#o .pan:hover::before, #o .pan:hover::after, #o .pan:hover > .mira::before, #o .pan:hover > .mira::after { opacity:1; transform:translate(0,0); }
+#o .pan:hover { border-color:#3a4750; }
+#o .big { font:700 2.4rem/1 "Chakra Petch",sans-serif; color:var(--fosforo); font-variant-numeric:tabular-nums; }
+#o .big small { font:.7rem "IBM Plex Mono",monospace; color:var(--testo-2); margin-left:6px; }
+#o .barra { height:6px; background:#0a0d10; margin-top:10px; }
+#o .barra i { display:block; height:100%; background:var(--fosforo); width:var(--w); animation:o-fill 1.2s ease-out both; }
+@keyframes o-fill { from { width:0; } }
+#o .lista { list-style:none; margin:0; padding:0; }
+#o .lista li { display:grid; grid-template-columns:24px 1fr auto; gap:10px; padding:8px 0; border-top:1px solid var(--linea); font-size:.9rem; align-items:center; }
+#o .lista li:first-child { border-top:0; }
+#o .lista .ini { font:.72rem "IBM Plex Mono",monospace; color:var(--fosforo); }
+#o .lista .hp { font:.72rem "IBM Plex Mono",monospace; color:var(--testo-2); }
+#o .lista .hp.low { color:var(--allarme); }
+#o .lista .k { font-weight:600; }
+#o .lista .k span { color:var(--testo-2); font-weight:400; font-size:.8rem; margin-left:6px; }
+/* tab = COMMUTATORI: selettore a segmenti con LED */
+#o .commut { display:inline-flex; border:1px solid var(--linea); background:#0a0d10; }
+#o .commut button { appearance:none; background:transparent; border:0; border-right:1px solid var(--linea); color:var(--testo-2); font:500 .78rem "IBM Plex Mono",monospace; padding:8px 14px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+#o .commut button:last-child { border-right:0; }
+#o .commut button::before { content:""; width:7px; height:7px; border-radius:50%; background:#2a343c; box-shadow:inset 0 0 0 1px #3a4750; }
+#o .commut button.on { background:var(--lavavna-2,#1d252c); color:var(--testo); }
+#o .commut button.on::before { background:var(--fosforo); box-shadow:0 0 8px var(--fosforo); }
+#o .commut button:hover { color:var(--testo); }
+#o .log { font:.8rem/1.6 "IBM Plex Mono",monospace; color:var(--testo-2); margin:12px 0 0; }
+#o .log b { color:var(--testo); font-weight:500; }
+#o .log .t { color:var(--fosforo); }
+#o .eroi { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+#o .eroe { border:1px solid var(--linea); background:var(--lavagna-2); padding:10px; position:relative; }
+#o .eroe .ava { height:70px; background:linear-gradient(135deg,var(--c1),var(--c2)); margin-bottom:8px; display:grid; place-items:center; font:700 1.6rem "Chakra Petch",sans-serif; color:rgba(255,255,255,.85); }
+#o .eroe b { display:block; font:700 .9rem "Chakra Petch",sans-serif; }
+#o .eroe span { font:.7rem "IBM Plex Mono",monospace; color:var(--testo-2); }
+#o .eroe .lv { position:absolute; top:6px; right:6px; font:.62rem "IBM Plex Mono",monospace; color:var(--fosforo); background:#0a0d10; padding:2px 5px; }
+@media (max-width:900px) { #o { grid-template-columns:1fr; } #o .rail { position:static; flex-direction:row; height:auto; overflow-x:auto; } #o .griglia > * { grid-column:span 12 !important; } }
+
+/* ═══════════════ P · IL GRIMORIO ═══════════════ */
+#p { --tavolo:#1d1622; --velina:#f3ecdc; --velina-2:#e9dfc8; --inchiostro:#1f1a2e; --oro:#c9a23f; --oro-2:#8c6d1f; --indaco:#2c2a6b; --sangue:#7d1e2e;
+  background:var(--tavolo); color:var(--inchiostro); font-family:"EB Garamond",Georgia,serif; padding:40px 20px 60px; display:grid; place-items:start center; }
+#p .libro { width:min(1100px,100%); perspective:2200px; position:relative; }
+#p .segnalibri { display:flex; gap:10px; padding:0 40px; }
+#p .segnalibro { appearance:none; border:0; cursor:pointer; padding:10px 14px 16px; color:var(--velina); font:italic 500 .95rem "Cormorant Garamond",serif; letter-spacing:.06em; background:var(--col); clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%); transform:translateY(6px); transition:transform .25s; box-shadow:0 6px 12px -6px #000; }
+#p .segnalibro:hover, #p .segnalibro.on { transform:translateY(0); }
+#p .doppia { display:grid; grid-template-columns:1fr 1fr; min-height:620px; background:var(--velina); box-shadow:0 30px 60px -20px #000, 0 0 0 1px #3a2d3f, inset 0 0 0 8px #2b2130; position:relative; transform-style:preserve-3d; }
+#p .doppia::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:60px; transform:translateX(-50%); background:linear-gradient(90deg,transparent, rgba(60,40,30,.28) 50%, transparent); pointer-events:none; z-index:2; }
+#p .pagina { padding:48px 52px; position:relative; background:linear-gradient(90deg,var(--velina-2),var(--velina) 12%, var(--velina) 88%, var(--velina-2)); }
+#p .pagina.sx { border-right:1px solid rgba(31,26,46,.15); }
+#p .pagina .folio { position:absolute; bottom:22px; font:italic .85rem "Cormorant Garamond",serif; color:var(--oro-2); }
+#p .pagina.sx .folio { left:52px; } #p .pagina.dx .folio { right:52px; }
+#p .capitolo { font:500 .8rem "Cormorant Garamond",serif; letter-spacing:.32em; text-transform:uppercase; color:var(--oro-2); }
+#p h1 { font:italic 500 clamp(2rem,4.6vw,3.6rem)/1.02 "Cormorant Garamond",serif; margin:10px 0 18px; text-wrap:balance; }
+#p h1 b { font-style:normal; font-weight:700; color:var(--indaco); }
+#p .miniatura { height:220px; border:1px solid var(--oro); outline:1px solid var(--oro); outline-offset:4px; background:radial-gradient(circle at 30% 30%, #6c5cb8, var(--indaco) 50%, #12102b); display:grid; place-items:center; color:var(--oro); font:italic 1.3rem "Cormorant Garamond",serif; margin:8px 0 18px; }
+#p .capolettera::first-letter { float:left; font:700 4.4rem/.8 "Cormorant Garamond",serif; color:var(--sangue); padding:8px 8px 0 0; }
+#p p { font-size:1.08rem; line-height:1.62; margin:0 0 12px; max-width:60ch; }
+#p .rubrica { font:italic .9rem "Cormorant Garamond",serif; color:var(--sangue); }
+/* effetto standard: BAGLIORE DORATO che scorre sul bordo */
+#p .glint { position:relative; border:1px solid var(--oro-2); padding:12px 14px; margin:0 0 10px; background:rgba(201,162,63,.05); overflow:hidden; }
+#p .glint::after { content:""; position:absolute; inset:-1px; background:linear-gradient(115deg, transparent 30%, rgba(255,235,170,.55) 50%, transparent 70%); transform:translateX(-110%); transition:transform .7s ease; pointer-events:none; }
+#p .glint:hover::after { transform:translateX(110%); }
+#p .glint:hover { border-color:var(--oro); box-shadow:0 0 0 1px rgba(201,162,63,.35); }
+#p .glint h3 { margin:0; font:600 1.1rem "Cormorant Garamond",serif; }
+#p .glint small { color:var(--oro-2); font-style:italic; }
+#p .eroi { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0 16px; }
+#p .eroe { text-align:center; }
+#p .eroe .tondo { width:72px; height:72px; margin:0 auto 6px; border-radius:50%; border:2px solid var(--oro); outline:1px solid var(--oro-2); outline-offset:3px; background:linear-gradient(135deg,var(--c1),var(--c2)); display:grid; place-items:center; color:#fff; font:700 1.5rem "Cormorant Garamond",serif; }
+#p .eroe b { display:block; font:600 1rem "Cormorant Garamond",serif; }
+#p .eroe span { font-size:.85rem; color:#5a5470; font-style:italic; }
+/* tab = INDICE DEL CAPITOLO con puntini di riempimento */
+#p .indice { list-style:none; margin:0; padding:0; }
+#p .indice li { display:flex; align-items:baseline; gap:8px; padding:5px 0; cursor:pointer; }
+#p .indice li .pt { flex:1; border-bottom:1px dotted var(--oro-2); transform:translateY(-4px); }
+#p .indice li .pg { font:italic .9rem "Cormorant Garamond",serif; color:var(--oro-2); }
+#p .indice li.on, #p .indice li:hover { color:var(--sangue); }
+#p .indice li.on { font-weight:600; }
+#p .voltapagina { animation:p-volta .9s cubic-bezier(.6,0,.2,1); transform-origin:left center; }
+@keyframes p-volta { 0%{transform:rotateY(0);} 45%{transform:rotateY(-70deg); filter:brightness(.85);} 100%{transform:rotateY(0);} }
+@media (max-width:820px) { #p .doppia { grid-template-columns:1fr; } #p .pagina { padding:32px 26px; } #p .pagina.sx{border-right:0;border-bottom:1px solid rgba(31,26,46,.15);} #p .segnalibri{padding:0 10px;flex-wrap:wrap;} }
+
+/* ═══════════════ Q · IL PALCO ═══════════════ */
+#q { --velluto:#1a0b10; --velluto-2:#2a1119; --sipario:#8e1b2c; --sipario-2:#5a0f1c; --oro:#f7d774; --oro-2:#c9a23f; --gesso:#f4efe6; --fumo:#8a7378;
+  background:var(--velluto); color:var(--gesso); font-family:"Source Serif 4",Georgia,serif; position:relative; overflow:hidden; }
+#q .riflettore { position:absolute; inset:0; pointer-events:none; background:radial-gradient(420px 420px at var(--mx,50%) var(--my,30%), rgba(247,215,116,.16), rgba(247,215,116,.04) 45%, transparent 70%); transition:background .05s linear; }
+#q .sipario { position:absolute; top:0; bottom:0; width:50%; background:repeating-linear-gradient(90deg, var(--sipario) 0 28px, var(--sipario-2) 28px 46px); z-index:5; pointer-events:none; box-shadow:0 0 60px #000; }
+#q .sipario.sx { left:0; transform-origin:left; animation:q-apri-sx 1.6s cubic-bezier(.7,0,.3,1) .3s both; }
+#q .sipario.dx { right:0; transform-origin:right; animation:q-apri-dx 1.6s cubic-bezier(.7,0,.3,1) .3s both; }
+@keyframes q-apri-sx { to { transform:translateX(-96%) scaleX(.5); } }
+@keyframes q-apri-dx { to { transform:translateX(96%) scaleX(.5); } }
+#q .mantovana { position:sticky; top:44px; z-index:6; height:18px; background:repeating-linear-gradient(90deg, var(--sipario) 0 20px, var(--sipario-2) 20px 34px); border-bottom:4px solid var(--oro-2); }
+#q .locandina { position:relative; z-index:1; width:min(1100px,100%); margin:0 auto; padding:30px 24px 60px; display:grid; grid-template-columns:1.15fr .85fr; gap:40px; }
+#q .manifesto { border:6px double var(--oro-2); padding:36px 30px; position:relative; }
+#q .stagione { font:800 .8rem "Big Shoulders Display",sans-serif; letter-spacing:.34em; text-transform:uppercase; color:var(--oro); text-align:center; }
+#q h1 { font:900 clamp(3.4rem,9vw,7rem)/.9 "Big Shoulders Display",sans-serif; text-transform:uppercase; margin:12px 0 10px; text-align:center; text-wrap:balance; }
+#q h1 span { display:block; font-size:.42em; letter-spacing:.14em; color:var(--oro); }
+#q .sotto { text-align:center; font-style:italic; color:var(--fumo); max-width:44ch; margin:0 auto 22px; font-size:1.05rem; }
+#q .atti { display:flex; flex-direction:column; gap:0; }
+#q .atto { display:grid; grid-template-columns:80px 1fr; gap:16px; padding:16px 8px; border-top:1px solid rgba(247,215,116,.28); position:relative; }
+#q .atto .num { font:900 2.2rem/1 "Big Shoulders Display",sans-serif; color:var(--oro); }
+#q .atto h2 { margin:0 0 4px; font:800 1.4rem "Big Shoulders Display",sans-serif; text-transform:uppercase; letter-spacing:.06em; }
+#q .atto p { margin:0; color:#cfc4bd; font-size:.98rem; line-height:1.5; }
+/* effetto standard: LAMPADINE DA INSEGNA che si accendono a giro */
+#q .luci { position:relative; }
+#q .luci::before { content:""; position:absolute; inset:-9px; border-radius:4px; pointer-events:none; opacity:0; transition:opacity .2s;
+  background:radial-gradient(circle, var(--oro) 2.5px, transparent 3px) 0 0/18px 18px repeat-x, radial-gradient(circle, var(--oro) 2.5px, transparent 3px) 0 100%/18px 18px repeat-x, radial-gradient(circle, var(--oro) 2.5px, transparent 3px) 0 0/18px 18px repeat-y, radial-gradient(circle, var(--oro) 2.5px, transparent 3px) 100% 0/18px 18px repeat-y; }
+#q .luci:hover::before { opacity:1; animation:q-bulbi .5s steps(2) infinite; }
+@keyframes q-bulbi { to { background-position:18px 0, -18px 100%, 0 18px, 100% -18px; } }
+#q .luci:hover { color:var(--gesso); }
+#q .cast { border:1px solid rgba(247,215,116,.35); padding:24px; background:rgba(0,0,0,.25); align-self:start; }
+#q .cast h3 { font:800 .8rem "Big Shoulders Display",sans-serif; letter-spacing:.3em; text-transform:uppercase; color:var(--oro); margin:0 0 12px; text-align:center; }
+#q .ruolo { display:grid; grid-template-columns:56px 1fr auto; gap:12px; align-items:center; padding:10px 6px; }
+#q .ruolo .volto { width:56px; height:56px; background:linear-gradient(135deg,var(--c1),var(--c2)); display:grid; place-items:center; font:900 1.4rem "Big Shoulders Display",sans-serif; color:#fff; }
+#q .ruolo b { display:block; font:800 1.1rem "Big Shoulders Display",sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+#q .ruolo i { color:var(--fumo); font-size:.9rem; }
+#q .ruolo .parte { font:italic .85rem "Source Serif 4",serif; color:var(--oro); text-align:right; }
+/* tab = CARTELLONE degli spettacoli: pannelli a bandiera */
+#q .cartellone { margin-top:18px; }
+#q .bandiere { display:flex; gap:8px; }
+#q .bandiera { appearance:none; border:1px solid rgba(247,215,116,.4); background:transparent; color:var(--fumo); font:800 .8rem "Big Shoulders Display",sans-serif; letter-spacing:.2em; text-transform:uppercase; padding:9px 14px; cursor:pointer; clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%); }
+#q .bandiera.on { background:var(--oro); color:var(--velluto); border-color:var(--oro); }
+#q .bandiera:hover { color:var(--gesso); }
+#q .replica { border:1px solid rgba(247,215,116,.4); border-top:0; padding:14px 16px; font-size:.95rem; line-height:1.5; color:#cfc4bd; }
+#q .replica b { color:var(--gesso); }
+@media (max-width:900px) { #q .locandina { grid-template-columns:1fr; } #q .manifesto{padding:26px 18px;} }
+</style>
+
+<div class="via-rail" role="tablist" aria-label="Le cinque vie">
+  <span class="lbl">Cinque vie</span>
+  <button class="via-btn" data-via="m" aria-pressed="true"><i style="background:#e0a040"></i>M · Locanda</button>
+  <button class="via-btn" data-via="n" aria-pressed="false"><i style="background:#b5472f"></i>N · Carta</button>
+  <button class="via-btn" data-via="o" aria-pressed="false"><i style="background:#7ee081"></i>O · Sala di comando</button>
+  <button class="via-btn" data-via="p" aria-pressed="false"><i style="background:#c9a23f"></i>P · Grimorio</button>
+  <button class="via-btn" data-via="q" aria-pressed="false"><i style="background:#8e1b2c"></i>Q · Palco</button>
+</div>
+
+<!-- ═══════════════ M · LA LOCANDA ═══════════════ -->
+<section class="mock" id="m">
+  <aside class="insegna">
+    <h1>Crit Happens<small>Locanda del Nesso</small></h1>
+    <nav>
+      <a class="on" href="#">Sala grande <span>Home</span></a>
+      <a href="#">Compagnie <span>16</span></a>
+      <a href="#">Volti <span>NPC</span></a>
+      <a href="#">Carte <span>Atlante</span></a>
+      <a href="#">Bancone <span>Mercato</span></a>
+      <a href="#">Cronache <span>40</span></a>
+      <a href="#">Arena <span>Torneo</span></a>
+    </nav>
+    <div class="candela"><div class="cera"></div><div class="fiamma"></div><small style="color:var(--cream-2);font-style:italic">Il fuoco è acceso · 6 online</small></div>
+  </aside>
+  <div class="sala">
+    <div class="luce">
+      <h1 class="titolo">Entra, <em>siediti,</em> raccontami dove eri.</h1>
+      <p class="sotto">Quattro compagnie, sedici anime, una leggenda che si scrive notte dopo notte. Qui si ordina da bere, si consultano le carte e si ascoltano le cronache di chi è tornato.</p>
+    </div>
+    <div class="fascia"><h2>Al bancone</h2><span class="filo"></span></div>
+    <div class="bancone">
+      <article class="boccale" style="--c1:#6b4a8a;--c2:#22143a"><span class="sigillo">A</span><div class="ritratto" data-ini="C"></div><h3>Caius</h3><p>Elfo · Mago</p><span class="tag">Amea</span></article>
+      <article class="boccale" style="--c1:#3f7a4a;--c2:#12301a"><span class="sigillo">A</span><div class="ritratto" data-ini="G"></div><h3>Garroth</h3><p>Mezz'Elfo · Ranger</p><span class="tag">Amea</span></article>
+      <article class="boccale" style="--c1:#9a3a3a;--c2:#3a1010"><span class="sigillo">A</span><div class="ritratto" data-ini="T"></div><h3>Tanagar</h3><p>Mezz'Orco · Guerriero</p><span class="tag">Amea</span></article>
+      <article class="boccale" style="--c1:#2f6f74;--c2:#0f2a2d"><span class="sigillo">L</span><div class="ritratto" data-ini="L"></div><h3>Compagnia di Lac</h3><p>«Le acque profonde non temono il vento» · 2 eroi</p><span class="tag">Lac</span></article>
+      <article class="boccale" style="--c1:#b5772f;--c2:#3a2410"><span class="sigillo">E</span><div class="ritratto" data-ini="E"></div><h3>Compagnia di Enox</h3><p>Il fuoco non chiede permesso · 4 eroi</p><span class="tag">Enox</span></article>
+      <article class="boccale" style="--c1:#4b6f3a;--c2:#1a2a12"><span class="sigillo">F</span><div class="ritratto" data-ini="F"></div><h3>Compagnia di Leaf</h3><p>Radici e frecce · 5 eroi</p><span class="tag">Leaf</span></article>
+    </div>
+    <div class="fascia"><h2>La lavagna del Master</h2><span class="filo"></span></div>
+    <div class="lavagna">
+      <div class="osteria-tabs" data-tabs>
+        <button class="osteria-tab on"><span class="sigillo">✦</span>Incontri</button>
+        <button class="osteria-tab"><span class="sigillo">✦</span>Loot</button>
+        <button class="osteria-tab"><span class="sigillo">✦</span>Città</button>
+        <button class="osteria-tab"><span class="sigillo">✦</span>Cronaca</button>
+      </div>
+      <p class="gesso" data-pane>Zona: <b>una strada nella foresta di Eldoria</b> · livello party <b>5</b> · 4 PG · momento <b>giorno</b> · difficoltà <b>media</b>. Il gestore tira i dadi e la strada si popola.</p>
+      <p class="gesso" data-pane hidden>Tabella del bottino: <b>rarità comune → leggendaria</b>, 1d12 sul banco del Ratto. Le monete cadono, i reagenti proibiti no.</p>
+      <p class="gesso" data-pane hidden>Città generata dalle <b>CITIES_HUB</b>: quartieri, gilde, un nome che suona vero e un segreto che nessuno racconta.</p>
+      <p class="gesso" data-pane hidden>Cronaca: dalle linee guida al <b>riassunto scritto</b>, con copertina illustrata. Finisce nel Codice delle Memorie.</p>
+    </div>
+    <div class="fascia"><h2>Cronache appese</h2><span class="filo"></span></div>
+    <div class="tavole">
+      <article class="tavola"><span class="sigillo">1</span><small>Sessione 1 · Amea</small><h4>Cronache di Obia, vol. II · "Il furto"</h4><p>05.09.2025 · Drokhan giorno 4 · 27 letture</p></article>
+      <article class="tavola"><span class="sigillo">2</span><small>Sessione 2 · Amea</small><h4>Vol. III · Le Rovine di Toua</h4><p>12.09.2025 · Drokhan giorno 8 · 18 letture</p></article>
+      <article class="tavola"><span class="sigillo">3</span><small>Sessione 3 · Amea</small><h4>Vol. IV · "Il sangue di Silean"</h4><p>21.09.2025 · Drokhan giorno 9 · 16 letture</p></article>
+      <article class="tavola"><span class="sigillo">✶</span><small>Lo Scriba · gazzetta</small><h4>Numero 12 · La Forgia e la Fiamma</h4><p>Approvato e spedito a 12 lettori</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ N · LA CARTA DEL CARTOGRAFO ═══════════════ -->
+<section class="mock" id="n" hidden>
+  <canvas class="contorni"></canvas>
+  <div class="mappa">
+    <div class="campo">
+      <div class="cartiglio">
+        <span class="coord">51° 22′ N · 12° 08′ E · SCALA 1 : 40 000</span>
+        <h1>Carta di <i>Exanthia</i></h1>
+        <p>Rilevata dal Monaco Errante. Sei portali, un solo varco.</p>
+      </div>
+      <div class="bussola"><b>N</b><div class="ago"></div></div>
+      <div class="spilli">
+        <svg class="rotta" aria-hidden="true"><path id="n-rotta" d=""></path></svg>
+        <a class="spillo" href="#" style="--x:18%;--y:34%" data-voce="1"><span class="capocchia">1</span><span class="asta"></span><span class="nome">Bazar del Nesso</span></a>
+        <a class="spillo" href="#" style="--x:44%;--y:22%" data-voce="2"><span class="capocchia">2</span><span class="asta"></span><span class="nome">Arena di Obia</span></a>
+        <a class="spillo" href="#" style="--x:70%;--y:38%" data-voce="3"><span class="capocchia">3</span><span class="asta"></span><span class="nome">Registro Araldico</span></a>
+        <a class="spillo" href="#" style="--x:30%;--y:72%" data-voce="4"><span class="capocchia">4</span><span class="asta"></span><span class="nome">Codice delle Memorie</span></a>
+        <a class="spillo" href="#" style="--x:58%;--y:80%" data-voce="5"><span class="capocchia">5</span><span class="asta"></span><span class="nome">Oracolo di Alaric</span></a>
+        <a class="spillo" href="#" style="--x:84%;--y:66%" data-voce="6"><span class="capocchia">6</span><span class="asta"></span><span class="nome">Rovine di Toua</span></a>
+      </div>
+      <div class="archivio">
+        <div class="linguette" data-tabs>
+          <button class="linguetta on">Incontri</button><button class="linguetta">Loot</button><button class="linguetta">Città</button><button class="linguetta">Cronaca</button>
+        </div>
+        <div class="scheda" data-pane><span class="coord">SCHEDA I · STRUMENTI DEL MASTER</span>Una strada nella foresta di Eldoria, livello 5, quattro viaggiatori, di giorno. Il cartografo annota due imboscate possibili e un mercante che non è quello che dice.</div>
+        <div class="scheda" data-pane hidden><span class="coord">SCHEDA II · BOTTINO</span>Dodici colonne di rarità, dal ferro comune al leggendario. Le monete si contano, i reagenti si nascondono.</div>
+        <div class="scheda" data-pane hidden><span class="coord">SCHEDA III · CITTÀ</span>Quartieri, gilde e un nome che suona vero. Dal CITIES_HUB alla carta in un tiro.</div>
+        <div class="scheda" data-pane hidden><span class="coord">SCHEDA IV · CRONACA</span>Dalle linee guida al riassunto scritto, con copertina. Va nel Codice delle Memorie.</div>
+      </div>
+    </div>
+    <aside class="legenda">
+      <h2>Legenda</h2>
+      <span class="coord">SEI LUOGHI · 16 EROI · 40 MEMORIE</span>
+      <div class="voce" data-voce="1"><span class="n">1</span><div><h3>Bazar del Nesso</h3><p>Mastro Ratto, rango Ombra di Obia · 97 pt. Reagenti proibiti e aste cieche.</p></div></div>
+      <div class="voce" data-voce="2"><span class="n">2</span><div><h3>Arena di Obia</h3><p>Tornei settimanali, 60 MA a lunedì, bottega tra i round.</p></div></div>
+      <div class="voce" data-voce="3"><span class="n">3</span><div><h3>Registro Araldico</h3><p>Caius, Garroth, Tanagar e le altre tredici anime delle quattro compagnie.</p></div></div>
+      <div class="voce" data-voce="4"><span class="n">4</span><div><h3>Codice delle Memorie</h3><p>Cronache di Obia dal vol. II al vol. X, con Drokhan giorno per giorno.</p></div></div>
+      <div class="voce" data-voce="5"><span class="n">5</span><div><h3>Oracolo di Alaric</h3><p>Ventidue Arcani, una lettura al giorno, l'oracolo bendato risponde.</p></div></div>
+      <div class="voce" data-voce="6"><span class="n">6</span><div><h3>Rovine di Toua</h3><p>Sessione 2 di Amea · 12.09.2025. Ciò che la forza dimentica, la memoria conserva.</p></div></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ O · LA SALA DI COMANDO ═══════════════ -->
+<section class="mock" id="o" hidden>
+  <nav class="rail">
+    <div class="logo">CH</div>
+    <a class="on" href="#">HOME</a><a href="#">EROI</a><a href="#">NPC</a><a href="#">MAPPA</a><a href="#">MERC</a><a href="#">CRON</a><a href="#">ARENA</a><a href="#">DM</a>
+  </nav>
+  <div class="plancia">
+    <div class="ticker"><span>LO SCRIBA · N.12 · LA FORGIA E LA FIAMMA — ARENA: RESET SETTIMANALE LUNEDÌ 00:01, 60 MA ACCREDITATI — BAZAR: MASTRO RATTO SALE A OMBRA DI OBIA (97 PT) — ORACOLO: ALARIC HA VOLTATO L'ARCANO XVI — SESSIONE AMEA #9 IN PROGRAMMA: DROKHAN GIORNO 17</span></div>
+    <div class="testata">
+      <h1><small>CONSOLE DEL MASTER · EXANTHIA</small>Quartier generale</h1>
+      <div class="stato"><span class="chip ok">6 ONLINE</span><span class="chip">4 PARTY</span><span class="chip warn">1 TORNEO APERTO</span></div>
+    </div>
+    <div class="griglia">
+      <div class="pan" style="grid-column:span 3"><span class="mira"></span><h2>Eroi attivi <i>16</i></h2><div class="big">16<small>/ 4 compagnie</small></div><div class="barra"><i style="--w:100%"></i></div></div>
+      <div class="pan" style="grid-column:span 3"><span class="mira"></span><h2>Memorie <i>40</i></h2><div class="big">40<small>ultima: vol. X</small></div><div class="barra"><i style="--w:78%"></i></div></div>
+      <div class="pan" style="grid-column:span 3"><span class="mira"></span><h2>Arena <i>T-07</i></h2><div class="big">3<small>round · shopping 1h</small></div><div class="barra"><i style="--w:45%"></i></div></div>
+      <div class="pan" style="grid-column:span 3"><span class="mira"></span><h2>Ratto <i>97 pt</i></h2><div class="big">97<small>Ombra di Obia</small></div><div class="barra"><i style="--w:97%"></i></div></div>
+      <div class="pan" style="grid-column:span 7"><span class="mira"></span><h2>Strumenti DM <i>officina</i></h2>
+        <div class="commut" data-tabs><button class="on">INCONTRI</button><button>LOOT</button><button>CITTÀ</button><button>CRONACA</button></div>
+        <p class="log" data-pane><span class="t">[12:04:11]</span> zona=<b>strada nella foresta di Eldoria</b> lvl=<b>5</b> pg=<b>4</b> momento=<b>giorno</b> diff=<b>media</b><br><span class="t">[12:04:12]</span> → 2 imboscate possibili, 1 mercante sospetto. <b>Pronto a generare.</b></p>
+        <p class="log" data-pane hidden><span class="t">[12:05:02]</span> tabella=<b>1d12 rarità</b> banco=<b>Ratto</b> → monete sì, reagenti no.</p>
+        <p class="log" data-pane hidden><span class="t">[12:06:40]</span> sorgente=<b>CITIES_HUB</b> → quartieri, gilde, un segreto.</p>
+        <p class="log" data-pane hidden><span class="t">[12:07:15]</span> linee guida → <b>riassunto</b> + copertina → summaries.</p>
+      </div>
+      <div class="pan" style="grid-column:span 5"><span class="mira"></span><h2>Iniziativa · Amea <i>round 2</i></h2>
+        <ul class="lista">
+          <li><span class="ini">18</span><span class="k">Tanagar<span>Mezz'Orco · Guerriero</span></span><span class="hp">41/52</span></li>
+          <li><span class="ini">15</span><span class="k">Garroth<span>Mezz'Elfo · Ranger</span></span><span class="hp">33/38</span></li>
+          <li><span class="ini">11</span><span class="k">Lupo Mannaro<span>bestia</span></span><span class="hp low">9/60</span></li>
+          <li><span class="ini">7</span><span class="k">Caius<span>Elfo · Mago</span></span><span class="hp">22/30</span></li>
+        </ul>
+      </div>
+      <div class="pan" style="grid-column:span 12"><span class="mira"></span><h2>Registro araldico <i>compagnia di Amea</i></h2>
+        <div class="eroi">
+          <div class="eroe" style="--c1:#6b4a8a;--c2:#22143a"><span class="lv">LV 5</span><div class="ava">C</div><b>Caius</b><span>ELFO · MAGO</span></div>
+          <div class="eroe" style="--c1:#3f7a4a;--c2:#12301a"><span class="lv">LV 5</span><div class="ava">G</div><b>Garroth</b><span>MEZZ'ELFO · RANGER</span></div>
+          <div class="eroe" style="--c1:#9a3a3a;--c2:#3a1010"><span class="lv">LV 5</span><div class="ava">T</div><b>Tanagar</b><span>MEZZ'ORCO · GUERRIERO</span></div>
+          <div class="eroe" style="--c1:#2f6f74;--c2:#0f2a2d"><span class="lv">LAC</span><div class="ava">L</div><b>Compagnia di Lac</b><span>2 EROI</span></div>
+          <div class="eroe" style="--c1:#b5772f;--c2:#3a2410"><span class="lv">ENOX</span><div class="ava">E</div><b>Compagnia di Enox</b><span>4 EROI</span></div>
+          <div class="eroe" style="--c1:#4b6f3a;--c2:#1a2a12"><span class="lv">LEAF</span><div class="ava">F</div><b>Compagnia di Leaf</b><span>5 EROI</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ P · IL GRIMORIO ═══════════════ -->
+<section class="mock" id="p" hidden>
+  <div class="libro">
+    <div class="segnalibri" data-segnalibri>
+      <button class="segnalibro on" style="--col:#7d1e2e">Sala grande</button>
+      <button class="segnalibro" style="--col:#2c2a6b">Compagnie</button>
+      <button class="segnalibro" style="--col:#2f6f74">Atlante</button>
+      <button class="segnalibro" style="--col:#8c6d1f">Mercato</button>
+      <button class="segnalibro" style="--col:#3f5a2a">Memorie</button>
+    </div>
+    <div class="doppia" id="p-doppia">
+      <div class="pagina sx">
+        <span class="capitolo">Capitolo I · La caduta delle stelle</span>
+        <h1>Il Nesso <b>dei Mondi</b></h1>
+        <div class="miniatura">miniatura del varco esagonale</div>
+        <p class="capolettera">Eoni fa esisteva solo il buio. L'assenza di vita, e con essa una bolla di oscurità che vivevano due esseri, uno di luce e uno d'ombra, che per la prima volta si guardarono. Da quello sguardo nacque Exanthia, e con lei le quattro compagnie che oggi ne scrivono la cronaca.</p>
+        <span class="rubrica">Prosa originale della Home, invariata.</span>
+        <span class="folio">· 2 ·</span>
+      </div>
+      <div class="pagina dx">
+        <span class="capitolo">Registro araldico</span>
+        <div class="eroi">
+          <div class="eroe" style="--c1:#6b4a8a;--c2:#22143a"><div class="tondo">C</div><b>Caius</b><span>Elfo, mago</span></div>
+          <div class="eroe" style="--c1:#3f7a4a;--c2:#12301a"><div class="tondo">G</div><b>Garroth</b><span>Mezz'elfo, ranger</span></div>
+          <div class="eroe" style="--c1:#9a3a3a;--c2:#3a1010"><div class="tondo">T</div><b>Tanagar</b><span>Mezz'orco, guerriero</span></div>
+        </div>
+        <span class="capitolo">Officina del Master</span>
+        <ul class="indice" data-tabs style="margin:8px 0 14px">
+          <li class="on"><span>Incontri</span><span class="pt"></span><span class="pg">i</span></li>
+          <li><span>Loot</span><span class="pt"></span><span class="pg">ii</span></li>
+          <li><span>Città</span><span class="pt"></span><span class="pg">iii</span></li>
+          <li><span>Cronaca</span><span class="pt"></span><span class="pg">iv</span></li>
+        </ul>
+        <div class="glint" data-pane><h3>Incontri sulla strada</h3><small>foresta di Eldoria · lvl 5 · 4 PG · giorno · media</small></div>
+        <div class="glint" data-pane hidden><h3>Bottino del Ratto</h3><small>1d12 sulla rarità, dal comune al leggendario</small></div>
+        <div class="glint" data-pane hidden><h3>Città generata</h3><small>quartieri, gilde e un segreto dal CITIES_HUB</small></div>
+        <div class="glint" data-pane hidden><h3>Cronaca scritta</h3><small>dalle linee guida al riassunto illustrato</small></div>
+        <span class="capitolo" style="display:block;margin-top:12px">Memorie recenti</span>
+        <div class="glint" style="margin-top:8px"><h3>Cronache di Obia, vol. II · "Il furto"</h3><small>05.09.2025 · Drokhan giorno 4 · 27 letture</small></div>
+        <div class="glint"><h3>Vol. III · Le Rovine di Toua</h3><small>12.09.2025 · Drokhan giorno 8 · 18 letture</small></div>
+        <span class="folio">· 3 ·</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ Q · IL PALCO ═══════════════ -->
+<section class="mock" id="q" hidden>
+  <div class="riflettore"></div>
+  <div class="sipario sx"></div><div class="sipario dx"></div>
+  <div class="mantovana"></div>
+  <div class="locandina">
+    <div class="manifesto luci">
+      <div class="stagione">Crit Happens presenta · stagione 2025/26</div>
+      <h1>Exanthia<span>Il Nesso dei Mondi</span></h1>
+      <p class="sotto">Quattro compagnie, sedici anime, una leggenda che si recita notte dopo notte. Il riflettore segue chi entra in scena.</p>
+      <div class="atti">
+        <a class="atto luci" href="#"><span class="num">I</span><div><h2>Le Compagnie</h2><p>Registro araldico: Amea, Lac, Enox, Leaf. Sedici eroi, ciascuno con la sua scheda in quinta.</p></div></a>
+        <a class="atto luci" href="#"><span class="num">II</span><div><h2>Il Bazar del Nesso</h2><p>Mastro Ratto, rango Ombra di Obia. Reagenti proibiti, aste cieche, ogni affare aumenta la tua ombra.</p></div></a>
+        <a class="atto luci" href="#"><span class="num">III</span><div><h2>L'Arena</h2><p>Torneo settimanale, sessanta MA il lunedì, bottega tra un round e l'altro. Applausi a scena aperta.</p></div></a>
+        <a class="atto luci" href="#"><span class="num">IV</span><div><h2>Le Memorie</h2><p>Cronache di Obia, dal vol. II al vol. X. Ciò che la forza dimentica, la memoria conserva.</p></div></a>
+      </div>
+      <div class="cartellone">
+        <div class="bandiere" data-tabs><button class="bandiera on">Incontri</button><button class="bandiera">Loot</button><button class="bandiera">Città</button><button class="bandiera">Cronaca</button></div>
+        <div class="replica" data-pane><b>Replica di oggi:</b> una strada nella foresta di Eldoria, livello 5, quattro attori, luce diurna, difficoltà media.</div>
+        <div class="replica" data-pane hidden><b>Bottino:</b> 1d12 sulla rarità al banco del Ratto. Le monete cadono, i reagenti no.</div>
+        <div class="replica" data-pane hidden><b>Città:</b> quartieri, gilde e un segreto. Scenografia dal CITIES_HUB.</div>
+        <div class="replica" data-pane hidden><b>Cronaca:</b> dalle linee guida al riassunto, con copertina. Va in archivio nelle Memorie.</div>
+      </div>
+    </div>
+    <aside class="cast">
+      <h3>Cast · Compagnia di Amea</h3>
+      <div class="ruolo luci" style="--c1:#6b4a8a;--c2:#22143a"><div class="volto">C</div><div><b>Caius</b><i>Elfo</i></div><span class="parte">il mago</span></div>
+      <div class="ruolo luci" style="--c1:#3f7a4a;--c2:#12301a"><div class="volto">G</div><div><b>Garroth</b><i>Mezz'Elfo</i></div><span class="parte">il ranger</span></div>
+      <div class="ruolo luci" style="--c1:#9a3a3a;--c2:#3a1010"><div class="volto">T</div><div><b>Tanagar</b><i>Mezz'Orco</i></div><span class="parte">il guerriero</span></div>
+      <h3 style="margin-top:22px">Comparse</h3>
+      <div class="ruolo luci" style="--c1:#2f6f74;--c2:#0f2a2d"><div class="volto">L</div><div><b>Lac</b><i>2 eroi</i></div><span class="parte">le acque</span></div>
+      <div class="ruolo luci" style="--c1:#b5772f;--c2:#3a2410"><div class="volto">E</div><div><b>Enox</b><i>4 eroi</i></div><span class="parte">il fuoco</span></div>
+      <div class="ruolo luci" style="--c1:#4b6f3a;--c2:#1a2a12"><div class="volto">F</div><div><b>Leaf</b><i>5 eroi</i></div><span class="parte">le radici</span></div>
+    </aside>
+  </div>
+</section>
+
+<script>
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* selettore delle vie */
+  const btns = document.querySelectorAll('.via-btn');
+  function show(id){
+    document.querySelectorAll('.mock').forEach(s => s.hidden = s.id !== id);
+    btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.via === id)));
+    try { localStorage.setItem('cinque_via', id); } catch(e){}
+    if (id === 'n') drawContorni();
+    window.scrollTo({top:0});
+  }
+  btns.forEach(b => b.addEventListener('click', () => show(b.dataset.via)));
+  let start = 'm'; try { start = localStorage.getItem('cinque_via') || 'm'; } catch(e){}
+  if (!document.getElementById(start)) start = 'm';
+  show(start);
+
+  /* tab generici: [data-tabs] > figli; [data-pane] fratelli successivi nello stesso contenitore */
+  document.querySelectorAll('[data-tabs]').forEach(group => {
+    const tabs = Array.from(group.children);
+    const panes = Array.from(group.parentElement.querySelectorAll(':scope > [data-pane]'));
+    tabs.forEach((t, i) => t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('on'));
+      t.classList.add('on');
+      panes.forEach((p, j) => p.hidden = j !== i);
+    }));
+  });
+
+  /* N — curve di livello su canvas + bussola + rotta */
+  const cv = document.querySelector('#n canvas.contorni');
+  let drawn = false;
+  function drawContorni(){
+    const sec = document.getElementById('n');
+    const w = cv.width = sec.clientWidth, h = cv.height = sec.clientHeight;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(47,111,116,.35)'; ctx.lineWidth = 1;
+    const centri = [[w*.28,h*.32,1],[w*.62,h*.55,1.3],[w*.15,h*.8,.8]];
+    let step = 0;
+    function frame(){
+      ctx.clearRect(0,0,w,h);
+      centri.forEach(([cx,cy,k],ci) => {
+        for (let r = 30; r < 520; r += 34) {
+          if (!reduce && r > 30 + step*34) break;
+          ctx.beginPath();
+          for (let a = 0; a <= Math.PI*2 + .05; a += .06) {
+            const wob = 1 + .16*Math.sin(a*3 + ci) + .09*Math.cos(a*7 + r*.02) + .05*Math.sin(a*11);
+            const x = cx + Math.cos(a)*r*k*wob, y = cy + Math.sin(a)*r*.7*wob;
+            a === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+          }
+          ctx.stroke();
+        }
+      });
+      if (!reduce && step < 16) { step++; requestAnimationFrame(frame); }
+    }
+    frame(); drawn = true;
+  }
+  addEventListener('resize', () => { if (!document.getElementById('n').hidden) drawContorni(); });
+  const ago = document.querySelector('#n .ago'), buss = document.querySelector('#n .bussola');
+  document.getElementById('n').addEventListener('mousemove', e => {
+    const r = buss.getBoundingClientRect();
+    const ang = Math.atan2(e.clientY - (r.top + r.height/2), e.clientX - (r.left + r.width/2)) * 180/Math.PI + 90;
+    ago.style.transform = 'rotate(' + ang + 'deg)';
+  });
+  const rotta = document.getElementById('n-rotta'), spilli = document.querySelector('#n .spilli');
+  document.querySelectorAll('#n .spillo').forEach(sp => {
+    const voce = document.querySelector('#n .voce[data-voce="' + sp.dataset.voce + '"]');
+    sp.addEventListener('mouseenter', () => {
+      const a = sp.getBoundingClientRect(), b = spilli.getBoundingClientRect(), c = voce.getBoundingClientRect();
+      const x1 = a.left + a.width/2 - b.left, y1 = a.top + a.height - b.top, x2 = c.left - b.left, y2 = c.top + 14 - b.top;
+      rotta.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q ' + (x1 + (x2 - x1)*.5) + ' ' + (y1 - 60) + ' ' + x2 + ' ' + y2);
+      rotta.classList.add('on'); voce.classList.add('on');
+    });
+    sp.addEventListener('mouseleave', () => { rotta.classList.remove('on'); voce.classList.remove('on'); });
+  });
+
+  /* P — voltapagina ai segnalibri */
+  const doppia = document.getElementById('p-doppia');
+  document.querySelectorAll('#p .segnalibro').forEach(s => s.addEventListener('click', () => {
+    document.querySelectorAll('#p .segnalibro').forEach(x => x.classList.remove('on')); s.classList.add('on');
+    if (reduce) return;
+    doppia.classList.remove('voltapagina'); void doppia.offsetWidth; doppia.classList.add('voltapagina');
+  }));
+
+  /* Q — riflettore che segue il cursore */
+  const q = document.getElementById('q'), rif = q.querySelector('.riflettore');
+  q.addEventListener('mousemove', e => {
+    const r = q.getBoundingClientRect();
+    rif.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    rif.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+})();
+</script>
