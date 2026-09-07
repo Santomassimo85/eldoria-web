@@ -22,7 +22,7 @@
   padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid rgba(139, 92, 246, .4);
-  background: rgba(13, 13, 31, .7);
+  background: rgba(20, 17, 31, .7);
   color: #c4b5fd;
   font-family: "Manrope", system-ui, sans-serif;
   font-size: .74rem;
@@ -35,7 +35,7 @@
 
 /* ── indice dei tipi ── */
 .updates-page .updates-tipi { margin: 6px 0 22px; }
-.updates-empty { text-align: center; color: #8f8bb8; }
+.updates-empty { text-align: center; color: #a6a1c2; }
 
 /* ── timeline ── */
 .updates-timeline { display: flex; flex-direction: column; gap: 26px; }
@@ -57,7 +57,7 @@
   font-size: .72rem;
   letter-spacing: .08em;
   text-transform: none;
-  color: #8f8bb8;
+  color: #a6a1c2;
   text-shadow: none;
 }
 .updates-page .updates-card-head .nx-tag {
@@ -130,7 +130,7 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--tipo) 80%, transparent);
   margin-top: 8px;
 }
-.updates-change-text { font-size: .92rem; color: #c9c4ea; }
+.updates-change-text { font-size: .92rem; color: #d6d2e6; }
 
 /* ── versione nascosta / voce nascosta (solo master) ── */
 .upd-version-hidden { opacity: .5; }
@@ -170,7 +170,7 @@
   padding: 20px;
 }
 .upd-confirm-box {
-  background: linear-gradient(180deg, #161632, #0d0d1f);
+  background: linear-gradient(180deg, #2d2841, #14111f);
   border: 1px solid rgba(139, 92, 246, .45);
   border-radius: 22px;
   padding: 24px 22px;
@@ -181,7 +181,7 @@
 }
 @keyframes upd-varco { from { opacity: 0; transform: scale(.955); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 .upd-confirm-msg { font-size: 1rem; font-weight: 700; color: #edeaff; margin: 0 0 10px; }
-.upd-confirm-text { font-size: .88rem; color: #8f8bb8; font-style: italic; margin: 0 0 20px; line-height: 1.5; }
+.upd-confirm-text { font-size: .88rem; color: #a6a1c2; font-style: italic; margin: 0 0 20px; line-height: 1.5; }
 .upd-confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .upd-confirm-cancel, .upd-confirm-ok {
   padding: 9px 18px;
@@ -193,7 +193,7 @@
   text-transform: uppercase;
   cursor: pointer;
 }
-.upd-confirm-cancel { background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .4); color: #c4b5fd; }
+.upd-confirm-cancel { background: rgba(20, 17, 31, .7); border: 1px solid rgba(139, 92, 246, .4); color: #c4b5fd; }
 .upd-confirm-cancel:hover { border-color: #22d3ee; color: #edeaff; }
 .upd-confirm-ok { background: linear-gradient(90deg, #e879f9, #c026d3); border: none; color: #070713; box-shadow: 0 0 26px -6px rgba(232, 121, 249, .8); }
 .upd-confirm-ok:hover { box-shadow: 0 0 40px -4px rgba(232, 121, 249, 1); }

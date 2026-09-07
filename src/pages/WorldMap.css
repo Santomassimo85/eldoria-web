@@ -28,12 +28,12 @@
 .map-pin { position: relative; width: 0; height: 0; --p: #22d3ee; }
 .map-pin--boss { --p: #f87171; }
 .map-pin--npc  { --p: #c4b5fd; }
-.map-pin--muta { --p: #8f8bb8; opacity: .8; }
+.map-pin--muta { --p: #a6a1c2; opacity: .8; }
 .map-pin .pin-dot {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22);
+  background: radial-gradient(circle at 40% 34%, #2d2841, #14111f);
   border: 2px solid var(--p); color: #fff;
   font: 800 .7rem/1 "Manrope", system-ui, sans-serif;
   box-shadow: 0 0 14px var(--p), 0 4px 10px -4px #000;
@@ -65,7 +65,7 @@
 .map-page .map-zoomctl button {
   width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
   border: 1px solid rgba(34, 211, 238, .5); color: #fff; font-size: 1.1rem; line-height: 1;
-  background: radial-gradient(circle at 40% 34%, #262650, #0d0d22);
+  background: radial-gradient(circle at 40% 34%, #3b3555, #14111f);
   box-shadow: 0 6px 16px -6px #000; transition: box-shadow .15s ease, transform .15s ease;
 }
 .map-page .map-zoomctl button:hover { box-shadow: 0 0 18px rgba(34, 211, 238, .8); transform: scale(1.06); }
@@ -81,14 +81,14 @@
 .map-page .map-palco.has-sheet .map-vola { transform: translateY(-110%); opacity: 0; pointer-events: none; }
 .map-page .map-cerca {
   display: flex; align-items: center; gap: 8px; width: min(100%, 360px); margin: 0 auto;
-  padding: 7px 14px; border-radius: 999px; background: #0e0e22; border: 1px solid rgba(139, 92, 246, .4);
+  padding: 7px 14px; border-radius: 999px; background: #14111f; border: 1px solid rgba(139, 92, 246, .4);
 }
 .map-page .map-cerca:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
 .map-page .map-cerca input {
   flex: 1; min-width: 0; background: none; border: none; outline: none; color: #edeaff;
   font: 600 .84rem "Manrope", system-ui, sans-serif;
 }
-.map-page .map-cerca input::placeholder { color: #8f8bb8; }
+.map-page .map-cerca input::placeholder { color: #a6a1c2; }
 .map-page .map-pillole {
   display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none;
   -webkit-overflow-scrolling: touch; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
@@ -97,7 +97,7 @@
 .map-page .map-pillola { flex: 0 0 auto; white-space: nowrap; padding: 7px 12px; }
 .map-page .map-pill-n { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: rgba(34, 211, 238, .18); color: #9ff0ff; font-size: .6rem; }
 .map-page .map-pillola.on .map-pill-n { background: rgba(7, 7, 19, .3); color: #070713; }
-.map-page .map-pillole-vuoto { color: #8f8bb8; font-size: .78rem; padding: 6px 4px; }
+.map-page .map-pillole-vuoto { color: #a6a1c2; font-size: .78rem; padding: 6px 4px; }
 
 /* ── il foglio ── */
 .map-page .map-sheet {
@@ -105,7 +105,7 @@
   max-height: 62%; overflow-y: auto;
   padding: 16px 16px 16px;
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(22, 22, 50, .97), rgba(10, 10, 26, .98));
+  background: linear-gradient(180deg, rgba(45, 40, 65, .97), rgba(10, 10, 26, .98));
   border: 1px solid rgba(34, 211, 238, .45);
   box-shadow: 0 -10px 40px -14px rgba(34, 211, 238, .5), 0 24px 60px -20px #000;
   animation: map-sheet-in .32s cubic-bezier(.16, 1, .3, 1) both;
@@ -126,7 +126,7 @@
 .map-page .map-sheet .nx-kicker { color: var(--s); text-shadow: 0 0 12px color-mix(in srgb, var(--s) 70%, transparent); }
 .map-page .map-sheet-close {
   position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%;
-  border: 1px solid rgba(139, 92, 246, .4); background: rgba(13, 13, 31, .9); color: #e879f9; cursor: pointer;
+  border: 1px solid rgba(139, 92, 246, .4); background: rgba(20, 17, 31, .9); color: #e879f9; cursor: pointer;
 }
 .map-page .map-sheet-nome { margin: 4px 36px 10px 0; font: 700 1.1rem "Cinzel", Georgia, serif; letter-spacing: .04em; color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--s) 60%, transparent); }
 .map-page .map-sheet-lista { display: flex; flex-direction: column; gap: 6px; }
@@ -139,7 +139,7 @@
 .map-page .map-npc .nx-anello--sm { width: 44px; height: 44px; }
 .map-page .map-npc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .map-page .map-npc-info strong { font-size: .88rem; }
-.map-page .map-npc-info span { font-size: .72rem; color: #8f8bb8; }
+.map-page .map-npc-info span { font-size: .72rem; color: #a6a1c2; }
 .map-page .map-npc-cue { color: var(--s); font-size: 1.2rem; }
 .map-page .map-sheet-cta { margin-top: 12px; width: 100%; }
 .map-page .map-kicker--boss { color: #f87171; }
@@ -149,7 +149,7 @@
 .map-page .map-boss-info p { margin: 0 0 6px; }
 .map-page .map-boss-reward { color: #fde68a; }
 .map-page .map-boss-timer { color: #c4b5fd; }
-.map-page .map-hp { height: 8px; border-radius: 999px; background: #1e1e3c; overflow: hidden; margin: 6px 0 4px; }
+.map-page .map-hp { height: 8px; border-radius: 999px; background: #2d2841; overflow: hidden; margin: 6px 0 4px; }
 .map-page .map-hp i { display: block; height: 100%; background: linear-gradient(90deg, #f87171, #e879f9); box-shadow: 0 0 10px #f87171; }
 
 .map-page .map-hint { text-align: center; margin: 10px 0 0; }

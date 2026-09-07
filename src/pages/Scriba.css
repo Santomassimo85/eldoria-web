@@ -77,7 +77,7 @@
   0%, 100% { transform: translateY(0) rotate(-4deg); }
   50%      { transform: translateY(-3px) rotate(4deg); }
 }
-.scriba-cd-text { margin: 0; font-size: .96rem; line-height: 1.45; color: #c9c4ea; text-align: center; }
+.scriba-cd-text { margin: 0; font-size: .96rem; line-height: 1.45; color: #d6d2e6; text-align: center; }
 .scriba-cd-text strong {
   font-family: "Cinzel", Georgia, serif;
   color: #22d3ee;
@@ -91,7 +91,7 @@
   padding: 10px 14px;
   line-height: 1.5;
   font-size: .9rem;
-  color: #c9c4ea;
+  color: #d6d2e6;
   border-color: rgba(232, 121, 249, .45);
 }
 .scriba-archive .scriba-avviso strong { color: #e879f9; }
@@ -112,18 +112,18 @@
   font-weight: 600;
   padding: 10px 16px;
   border: 1px solid rgba(139, 92, 246, .4);
-  background: #0e0e22;
+  background: #14111f;
   color: #edeaff;
   border-radius: 999px;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
 .scriba-search { min-width: 260px; flex: 1 1 260px; max-width: 460px; }
-.scriba-search::placeholder { color: #8f8bb8; }
-.scriba-mesesel option { background: #0e0e22; color: #edeaff; }
+.scriba-search::placeholder { color: #a6a1c2; }
+.scriba-mesesel option { background: #14111f; color: #edeaff; }
 .scriba-search:focus,
 .scriba-mesesel:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
 
-.scriba-empty { text-align: center; color: #8f8bb8; padding: 40px 0; }
+.scriba-empty { text-align: center; color: #a6a1c2; padding: 40px 0; }
 
 /* ── gruppo mese ── */
 .scriba-month { margin: 0 0 26px; }
@@ -147,7 +147,7 @@
   height: 160px;
   border-radius: 14px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, .25), #0b0b1c 70%);
+  background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, .25), #110e1b 70%);
   margin-bottom: 12px;
 }
 .scriba-copertina img {
@@ -222,7 +222,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(180deg, #161632, #0d0d1f);
+  background: linear-gradient(180deg, #2d2841, #14111f);
   border: 1px solid rgba(139, 92, 246, .45);
   border-bottom: none;
   color: #edeaff;
@@ -261,7 +261,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: linear-gradient(180deg, #161632, #0d0d1f);
+  background: linear-gradient(180deg, #2d2841, #14111f);
   border-bottom: 1px solid rgba(139, 92, 246, .45);
   color: #edeaff;
   font-family: "Cinzel", Georgia, serif;
@@ -280,7 +280,7 @@
 .scriba-single-back,
 .scriba-single-share {
   flex: none;
-  background: rgba(13, 13, 31, .7);
+  background: rgba(20, 17, 31, .7);
   border: 1px solid rgba(139, 92, 246, .4);
   color: #c4b5fd;
   font-family: "Manrope", system-ui, sans-serif;

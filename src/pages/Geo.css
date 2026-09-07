@@ -5,7 +5,7 @@
    come pannelli di vetro scuro (fascia immagine o anello) · dettaglio
    nella MODALE-VARCO con i link interattivi. Il kit (.nx-*) vive in
    styles/nesso.css; qui solo le regole specifiche della pagina.
-   Palette testo: #edeaff · #8f8bb8 · #c4b5fd · #22d3ee · #e879f9.
+   Palette testo: #edeaff · #a6a1c2 · #c4b5fd · #22d3ee · #e879f9.
    ============================================================ */
 
 .geo-page > * { position: relative; z-index: 1; }
@@ -27,13 +27,13 @@
 @media (min-width: 900px) { .geo-page .gl-hero-body .geo-export-row { justify-content: flex-start; } }
 .geo-page .geo-export-btn {
   display: inline-flex; align-items: center; gap: 7px;
-  background: rgba(13, 13, 31, .7); color: #c4b5fd;
+  background: rgba(20, 17, 31, .7); color: #c4b5fd;
   border: 1px solid rgba(139, 92, 246, .45); border-radius: 999px; padding: 8px 14px;
   font-family: "Manrope", system-ui, sans-serif; font-weight: 600; font-size: .72rem; letter-spacing: .04em;
   cursor: pointer; transition: all .2s ease;
 }
 .geo-page .geo-export-btn:hover { color: #edeaff; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); transform: translateY(-2px); }
-.geo-page .geo-export-btn--alt { color: #8f8bb8; }
+.geo-page .geo-export-btn--alt { color: #a6a1c2; }
 
 /* ── indice a pillole ── */
 .geo-page .geo-index { margin: 4px 0 0; scroll-margin-top: 90px; }
@@ -46,7 +46,7 @@
 .geo-page .nx-pillola.on .geo-pill-n { background: rgba(7, 7, 19, .3); color: #070713; }
 
 /* ── nessun risultato ── */
-.geo-page .cine-empty { color: #8f8bb8; text-align: center; font-family: "Manrope", system-ui, sans-serif; }
+.geo-page .cine-empty { color: #a6a1c2; text-align: center; font-family: "Manrope", system-ui, sans-serif; }
 
 /* ── l'atlante: rubrica + flusso ── */
 .geo-page .geo-atlante { margin-top: 18px; }
@@ -59,13 +59,13 @@
 .geo-page .geo-rubrica-voce {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
   padding: 9px 12px; border-radius: 12px;
-  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+  background: rgba(20, 17, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
   color: #c4b5fd; font-family: "Manrope", system-ui, sans-serif; font-size: .78rem; font-weight: 600;
   cursor: pointer; transition: all .2s ease;
 }
 .geo-page .geo-rubrica-voce b { color: #22d3ee; font-weight: 800; }
 .geo-page .geo-rubrica-voce:hover { color: #edeaff; border-color: #22d3ee; transform: translateX(4px); box-shadow: 0 0 16px -4px rgba(34, 211, 238, .6); }
-.geo-page .geo-rubrica-voce--tutte { justify-content: center; margin-top: 8px; color: #8f8bb8; }
+.geo-page .geo-rubrica-voce--tutte { justify-content: center; margin-top: 8px; color: #a6a1c2; }
 
 .geo-page .geo-flusso { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .geo-page .geo-continente:first-child .gl-sezlabel { margin-top: 0; }
@@ -87,7 +87,7 @@
   filter: saturate(1.05) brightness(.85); transition: transform .6s ease, filter .25s ease;
 }
 .geo-page .geo-luogo:hover .geo-luogo-fascia img { transform: scale(1.07); filter: saturate(1.2) brightness(1); }
-.geo-page .geo-luogo-velo { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(13, 13, 31, .95)); }
+.geo-page .geo-luogo-velo { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(20, 17, 31, .95)); }
 .geo-page .geo-luogo-anello { margin: 18px auto 12px; }
 .geo-page .geo-luogo .nx-tag { top: 10px; right: 12px; z-index: 2; text-shadow: 0 1px 6px rgba(0, 0, 0, .9); }
 .geo-page .geo-luogo-nome { padding: 0 16px; text-transform: uppercase; letter-spacing: .08em; text-shadow: 0 0 12px rgba(139, 92, 246, .8); }
@@ -114,7 +114,7 @@
 /* ── modale-varco del luogo ── */
 .geo-page .geo-modale { max-width: 680px; }
 .geo-page .geo-modale .nx-titolo { margin-bottom: 12px; }
-.geo-page .geo-description { color: #c9c4ea; line-height: 1.8; font-size: .96rem; }
+.geo-page .geo-description { color: #d6d2e6; line-height: 1.8; font-size: .96rem; }
 .geo-page .geo-description p { margin: 0 0 .9em; }
 .geo-page .geo-description img {
   width: 100% !important; height: auto; border-radius: 12px; margin: 14px 0;
@@ -153,15 +153,15 @@
 /* ── popup interattivo (definito globalmente in Riassunti.css): vestito del vuoto, sopra la modale ── */
 .geo-page .lore-popup-overlay { z-index: 1200; background: rgba(4, 4, 12, .72); }
 .geo-page .lore-popup {
-  background: linear-gradient(180deg, #161632, #0d0d1f) !important;
+  background: linear-gradient(180deg, #2d2841, #14111f) !important;
   border: 1px solid rgba(139, 92, 246, .45) !important; border-radius: 20px !important;
   color: #edeaff !important; box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(139, 92, 246, .6) !important;
 }
-.geo-page .lore-popup-close { background: rgba(13, 13, 31, .9) !important; color: #e879f9 !important; border: 1px solid rgba(139, 92, 246, .4) !important; }
+.geo-page .lore-popup-close { background: rgba(20, 17, 31, .9) !important; color: #e879f9 !important; border: 1px solid rgba(139, 92, 246, .4) !important; }
 .geo-page .lore-popup-kind { color: #22d3ee !important; font-family: "Cinzel", Georgia, serif; letter-spacing: .3em; text-transform: uppercase; font-size: .58rem; }
 .geo-page .lore-popup-name { color: #edeaff !important; font-family: "Cinzel", Georgia, serif; }
 .geo-page .lore-popup-meta { color: #c4b5fd !important; }
-.geo-page .lore-popup-desc { color: #c9c4ea !important; }
+.geo-page .lore-popup-desc { color: #d6d2e6 !important; }
 .geo-page .lore-popup-go {
   background: linear-gradient(90deg, #22d3ee, #8b5cf6) !important; color: #070713 !important; border: none !important;
   border-radius: 12px !important; font-family: "Cinzel", Georgia, serif; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .66rem;
@@ -180,7 +180,7 @@
    colore del continente si allarga dall'origine.
    ══════════════════════════════════════════════════════════════════ */
 /* pillole */
-.geo-page .geo-pillola { color: var(--g); border-color: color-mix(in srgb, var(--g) 55%, transparent); background: color-mix(in srgb, var(--g) 8%, rgba(13, 13, 31, .7)); }
+.geo-page .geo-pillola { color: var(--g); border-color: color-mix(in srgb, var(--g) 55%, transparent); background: color-mix(in srgb, var(--g) 8%, rgba(20, 17, 31, .7)); }
 .geo-page .geo-pillola:hover { border-color: var(--g); box-shadow: 0 0 16px -4px var(--g); color: #fff; }
 .geo-page .geo-pillola.on { background: var(--g); color: #070713; border-color: transparent; box-shadow: 0 0 22px -4px var(--g); }
 .geo-page .geo-pillola .geo-pill-n { color: inherit; }
@@ -202,7 +202,7 @@
 .geo-page .geo-luogo-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--g) 70%, transparent); }
 .geo-page .geo-luogo-cue { color: var(--g); }
 .geo-page .geo-luogo-anello::before { background: conic-gradient(var(--g), #8b5cf6 45%, var(--g) 75%, #fff 88%, var(--g)); }
-.geo-page .geo-luogo-velo { background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--g) 10%, rgba(13, 13, 31, .95))); }
+.geo-page .geo-luogo-velo { background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--g) 10%, rgba(20, 17, 31, .95))); }
 /* la carta cliccata "si apre": pulsa e si accende mentre il varco sboccia */
 .geo-page .geo-luogo--warp { animation: geo-carta-warp .6s cubic-bezier(.34, 1.56, .64, 1) both; border-color: var(--g); }
 @keyframes geo-carta-warp {
@@ -277,10 +277,10 @@
 .geo-page .geo-varco-back:hover { transform: translateX(-3px); box-shadow: 0 0 26px -2px var(--g); }
 .geo-page .geo-varco-briciole { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .geo-page .geo-varco-briciole li { display: flex; align-items: center; }
-.geo-page .geo-varco-briciole li + li::before { content: "›"; color: #8f8bb8; margin: 0 4px; }
+.geo-page .geo-varco-briciole li + li::before { content: "›"; color: #a6a1c2; margin: 0 4px; }
 .geo-page .geo-varco-crumb {
-  padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .35); background: rgba(13, 13, 31, .7);
-  color: #8f8bb8; font-family: "Manrope", system-ui, sans-serif; font-size: .66rem; font-weight: 600; cursor: pointer;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .35); background: rgba(20, 17, 31, .7);
+  color: #a6a1c2; font-family: "Manrope", system-ui, sans-serif; font-size: .66rem; font-weight: 600; cursor: pointer;
   transition: all .15s ease; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .geo-page button.geo-varco-crumb:hover { color: #fff; border-color: var(--g); box-shadow: 0 0 12px -4px var(--g); }

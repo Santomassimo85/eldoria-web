@@ -11,8 +11,8 @@
   padding: calc(var(--navbar-h, 80px) + 34px) 18px 100px;
   background:
     radial-gradient(ellipse 90% 55% at 50% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse at 50% 40%, #1a1a3a 0%, #1e1e3c 48%, #2c2c55 100%),
-    #1a1a3a;
+    radial-gradient(ellipse at 50% 40%, #2d2841 0%, #2d2841 48%, #3e3856 100%),
+    #2d2841;
   color: #edeaff;
   font-family: var(--font-text, "Cardo", serif);
 }
@@ -43,7 +43,7 @@
 
 .npcgen-sub {
   text-align: center;
-  color: #8f8bb8;
+  color: #a6a1c2;
   font-size: 1rem;
   margin: 0 0 26px;
   line-height: 1.5;
@@ -55,7 +55,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #c9c4ea;
+  color: #d6d2e6;
   margin: 0 0 6px 2px;
 }
 
@@ -63,8 +63,8 @@
   width: 100%;
   padding: 13px 14px;
   border-radius: 10px;
-  border: 1px solid #2c2c55;
-  background: #14142c;
+  border: 1px solid #3e3856;
+  background: #201c2f;
   color: #edeaff;
   font-size: 1rem;
   font-family: inherit;
@@ -72,7 +72,7 @@
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.npcgen-input::placeholder { color: #8f8bb8; }
+.npcgen-input::placeholder { color: #a6a1c2; }
 .npcgen-input:focus {
   border-color: #22d3ee;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
@@ -126,8 +126,8 @@
   margin-top: 26px;
   background:
     linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, transparent 120px),
-    #14142c;
-  border: 1px solid #2c2c55;
+    #201c2f;
+  border: 1px solid #3e3856;
   border-radius: 16px;
   padding: 24px 22px;
   box-shadow: 0 12px 34px rgba(0, 0, 8, 0.18);
@@ -142,7 +142,7 @@
 }
 
 .npcgen-role {
-  color: #8f8bb8;
+  color: #a6a1c2;
   font-size: 1rem;
   margin: 0 0 6px;
 }
@@ -192,7 +192,7 @@
 
 /* ---------- scheda d'archivio (campi modificabili) ---------- */
 .npcgen-archive-hint {
-  color: #8f8bb8;
+  color: #a6a1c2;
   font-size: 0.92rem;
   font-style: italic;
   margin: 0 0 14px;
@@ -237,8 +237,8 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
   gap: 2px;
   padding: 10px 12px;
   border-radius: 11px;
-  border: 1px solid #2c2c55;
-  background: #14142c;
+  border: 1px solid #3e3856;
+  background: #201c2f;
   color: #edeaff;
   font-family: inherit;
   text-align: left;
@@ -261,7 +261,7 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
 }
 .npcgen-style-hint {
   font-size: 0.78rem;
-  color: #8f8bb8;
+  color: #a6a1c2;
   line-height: 1.25;
 }
 
@@ -296,4 +296,4 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
 
 /* testata del varco: viola chiaro sul vuoto */
 .npcgen-page .gl-eyebrow { color: #c4b5fd; }
-.npcgen-page .gl-tagline { color: #8f8bb8; }
+.npcgen-page .gl-tagline { color: #a6a1c2; }

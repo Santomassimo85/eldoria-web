@@ -125,7 +125,7 @@
 .cr-page .cr-ing-head, .cr-page .cr-ing-row {
   display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px;
   padding: 10px 16px; border-bottom: 1px solid rgba(139, 92, 246, .22);
-  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #c9c4ea;
+  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #d6d2e6;
 }
 .cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: #22d3ee; font-weight: 700; }
 .cr-page .cr-ing-row:last-child { border-bottom: none; }
@@ -164,7 +164,7 @@
 .cr-page .cr-prof-body { padding: 4px 16px 18px; border-top: 1px solid rgba(139, 92, 246, .22); }
 .cr-page .cr-prof-quote { margin: 14px 0; }
 .cr-page .cr-scheda .nx-kicker { margin-bottom: 4px; }
-.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: #c9c4ea; font-size: .88rem; line-height: 1.55; }
+.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: #d6d2e6; font-size: .88rem; line-height: 1.55; }
 .cr-page .cr-scheda-spec-list strong { color: #22d3ee; }
 .cr-page .cr-creazioni-title { margin-top: 18px; }
 .cr-page .cr-tier-tabs { justify-content: flex-start; margin: 6px 0 12px; }
@@ -175,7 +175,7 @@
 .cr-page .cr-d12-row {
   display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
   border-radius: 12px; border: 1px solid rgba(139, 92, 246, .22); border-left: 3px solid var(--qs);
-  background: rgba(13, 13, 31, .6);
+  background: rgba(20, 17, 31, .6);
 }
 .cr-page .cr-d12-num { background: var(--qs); box-shadow: none; }
 .cr-page .cr-d12-name { font-size: .86rem; }
@@ -188,4 +188,4 @@
 .cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: #e879f9; text-shadow: 0 0 10px rgba(232, 121, 249, .5); }
 .cr-page .cr-example-esito { margin-top: 6px; text-align: left; }
 
-.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Manrope", system-ui, sans-serif; color: #8f8bb8; }
+.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Manrope", system-ui, sans-serif; color: #a6a1c2; }

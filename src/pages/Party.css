@@ -4,7 +4,7 @@
    casate = etichetta di sezione + GRIGLIA di pannelli con
    anello-ritratto · scheda eroe = modale-varco.
    Il kit (.nx-*) vive in styles/nesso.css: qui solo la pagina.
-   Palette testo: #edeaff ink · #8f8bb8 muted · #c4b5fd viola-soft ·
+   Palette testo: #edeaff ink · #a6a1c2 muted · #c4b5fd viola-soft ·
    #22d3ee ciano · #e879f9 magenta. Nessuno sfondo chiaro.
    ============================================================ */
 
@@ -24,22 +24,22 @@
   padding: 6px 0 2px; max-width: 640px; margin: 0 auto;
 }
 .party-page .cine-search {
-  background: #0e0e22; border: 1px solid rgba(139, 92, 246, .4); border-radius: 999px;
+  background: #14111f; border: 1px solid rgba(139, 92, 246, .4); border-radius: 999px;
   box-shadow: none; transition: border-color .2s ease, box-shadow .2s ease;
 }
 .party-page .cine-search:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
-.party-page .cine-search-icon { color: #8f8bb8; }
+.party-page .cine-search-icon { color: #a6a1c2; }
 .party-page .cine-search-input {
   background: none; border: none; color: #edeaff;
   font-family: "Manrope", system-ui, sans-serif; font-size: .88rem;
 }
-.party-page .cine-search-input::placeholder { color: #8f8bb8; }
+.party-page .cine-search-input::placeholder { color: #a6a1c2; }
 .party-page .cine-search-clear { background: rgba(139, 92, 246, .25); color: #edeaff; }
 .party-page .cine-result-count {
   font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .68rem;
   letter-spacing: .16em; text-transform: uppercase; color: #22d3ee;
 }
-.party-page .cine-empty { color: #8f8bb8; text-align: center; font-family: "Manrope", system-ui, sans-serif; }
+.party-page .cine-empty { color: #a6a1c2; text-align: center; font-family: "Manrope", system-ui, sans-serif; }
 
 /* ── casate ── */
 .party-page .casate { display: flex; flex-direction: column; gap: 6px; }
@@ -72,10 +72,10 @@
 .eroe-vital {
   display: flex; flex-direction: column; align-items: center; min-width: 64px;
   padding: 8px 12px; border-radius: 14px;
-  background: linear-gradient(180deg, #14142c, #0d0d1f); border: 1px solid rgba(139, 92, 246, .3);
+  background: linear-gradient(180deg, #201c2f, #14111f); border: 1px solid rgba(139, 92, 246, .3);
 }
 .eroe-vital b { font-family: "Cinzel", Georgia, serif; font-size: 1.15rem; color: #22d3ee; text-shadow: 0 0 12px rgba(34, 211, 238, .6); }
-.eroe-vital i { font-style: normal; font-family: "Manrope", system-ui, sans-serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: #8f8bb8; }
+.eroe-vital i { font-style: normal; font-family: "Manrope", system-ui, sans-serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: #a6a1c2; }
 .eroe-abilities { margin: 0; }
 .eroe-ability { gap: 6px; cursor: default; }
 .eroe-ability i { font-style: normal; color: #c4b5fd; font-size: .62rem; letter-spacing: .14em; }
@@ -107,7 +107,7 @@
 }
 .party-page .eroe-card .nx-tag { color: var(--cls, #e879f9); }
 .party-page .eroe-card .nx-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--cls, #8b5cf6) 45%, transparent); }
-.party-page .eroe-card .nx-meta { color: #8f8bb8; }
+.party-page .eroe-card .nx-meta { color: #a6a1c2; }
 .eroe-classe {
   display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
   font-family: "Manrope", system-ui, sans-serif; font-weight: 700;

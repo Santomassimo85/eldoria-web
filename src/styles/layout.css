@@ -139,7 +139,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   font-size: .56rem;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: #8f8bb8;
+  color: #a6a1c2;
   white-space: nowrap;
   opacity: .8;
   pointer-events: none;
@@ -159,7 +159,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   border: 1px solid rgba(34,211,238,.5);
   cursor: pointer;
   padding: 0;
-  background: radial-gradient(circle at 40% 34%, #262650, #0d0d22);
+  background: radial-gradient(circle at 40% 34%, #3b3555, #14111f);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -232,7 +232,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   width: min(560px, calc(100% - 20px));
   bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b) + 22px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(22,22,50,.96), rgba(10,10,26,.98));
+  background: linear-gradient(180deg, rgba(45, 40, 65,.96), rgba(10,10,26,.98));
   border: 1px solid rgba(139,92,246,.45);
   border-radius: 24px;
   box-shadow:
@@ -277,7 +277,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
   padding: 10px 14px; border-radius: 14px;
-  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  background: linear-gradient(180deg, #201c2f, #14111f);
   border: 1px solid rgba(139,92,246,.3);
   color: #dcd8ff; text-decoration: none;
   font-family: "Manrope", system-ui, sans-serif; font-size: .9rem; font-weight: 600;

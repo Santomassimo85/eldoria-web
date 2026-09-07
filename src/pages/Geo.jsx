@@ -382,7 +382,7 @@ export default function Geo() {
           overflowY: "auto", padding: "20px"
         }}>
           <div style={{
-            backgroundColor: "#12122a", color: "#edeaff", padding: "24px", borderRadius: "18px",
+            backgroundColor: "#201c2f", color: "#edeaff", padding: "24px", borderRadius: "18px",
             maxWidth: "800px", margin: "0 auto",
             border: "1px solid rgba(139,92,246,0.45)",
             boxShadow: "0 30px 70px -24px #000"

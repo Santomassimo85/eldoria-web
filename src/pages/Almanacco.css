@@ -65,7 +65,7 @@
 .alm-page .alm-recap-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .alm-page .alm-recap-steps li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .28); }
 .alm-page .alm-recap-ic { font-size: 1.2rem; }
-.alm-page .alm-recap-txt { font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; }
+.alm-page .alm-recap-txt { font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #d6d2e6; }
 .alm-page .alm-recap-txt b { color: #22d3ee; }
 .alm-page .alm-recap-foot { margin: 12px 0 0; text-align: center; }
 
@@ -79,9 +79,9 @@
 .alm-page .alm-tiri-row {
   display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr; gap: 12px; align-items: center;
   padding: 12px; border-radius: 14px;
-  background: linear-gradient(90deg, #12122a, #0d0d1f); border: 1px solid rgba(139, 92, 246, .22);
+  background: linear-gradient(90deg, #201c2f, #14111f); border: 1px solid rgba(139, 92, 246, .22);
   border-left: 3px solid var(--t-color, #8b5cf6);
-  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #c9c4ea;
+  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #d6d2e6;
   transition: transform .2s ease, border-color .2s ease;
 }
 .alm-page .alm-tiri-row:hover { transform: translateX(6px); border-color: rgba(34, 211, 238, .6); border-left-color: var(--t-color, #22d3ee); }
@@ -94,7 +94,7 @@
 @media (max-width: 760px) {
   .alm-page .alm-tiri-head { display: none; }
   .alm-page .alm-tiri-row { grid-template-columns: 1fr; gap: 6px; }
-  .alm-page .alm-tiri-cell::before { content: attr(data-label) " · "; font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: #8f8bb8; }
+  .alm-page .alm-tiri-cell::before { content: attr(data-label) " · "; font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: #a6a1c2; }
 }
 
 /* veglie */
@@ -107,7 +107,7 @@
 .alm-page .alm-trio { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .alm-page .alm-mini { padding: 14px; border-radius: 14px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .25); }
 .alm-page .alm-mini h4 { margin: 0 0 8px; font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: #c4b5fd; }
-.alm-page .alm-mini p, .alm-page .alm-defs { margin: 0; padding: 0; list-style: none; font-family: "Manrope", system-ui, sans-serif; font-size: .86rem; line-height: 1.6; color: #c9c4ea; }
+.alm-page .alm-mini p, .alm-page .alm-defs { margin: 0; padding: 0; list-style: none; font-family: "Manrope", system-ui, sans-serif; font-size: .86rem; line-height: 1.6; color: #d6d2e6; }
 .alm-page .alm-defs li { color: inherit; } /* il globale style.css forza li a #272727 */
 .alm-page .alm-defs li + li { margin-top: 8px; }
 .alm-page .alm-defs strong, .alm-page .alm-mini strong { color: #edeaff; }
@@ -120,8 +120,8 @@
 .alm-page .alm-role-ic { font-size: 1.5rem; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--r-color, #22d3ee) 80%, transparent)); }
 .alm-page .alm-role-skill { display: inline-flex; margin-bottom: 10px; padding: 4px 10px; font-size: .64rem; color: var(--r-color, #c4b5fd); border-color: color-mix(in srgb, var(--r-color, #8b5cf6) 60%, transparent); cursor: default; }
 .alm-page .alm-role-skill:hover { transform: none; box-shadow: none; }
-.alm-page .alm-role-cosa { margin: 0 0 10px; font-size: .86rem; color: #c9c4ea; }
-.alm-page .alm-role-ok, .alm-page .alm-role-ko { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; font-family: "Manrope", system-ui, sans-serif; font-size: .8rem; line-height: 1.5; color: #c9c4ea; }
+.alm-page .alm-role-cosa { margin: 0 0 10px; font-size: .86rem; color: #d6d2e6; }
+.alm-page .alm-role-ok, .alm-page .alm-role-ko { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; font-family: "Manrope", system-ui, sans-serif; font-size: .8rem; line-height: 1.5; color: #d6d2e6; }
 .alm-page .alm-role-ok { background: rgba(74, 222, 128, .08); border: 1px solid rgba(74, 222, 128, .3); }
 .alm-page .alm-role-ok span { color: #4ade80; font-weight: 700; }
 .alm-page .alm-role-ko { background: rgba(232, 121, 249, .08); border: 1px solid rgba(232, 121, 249, .3); }
@@ -142,13 +142,13 @@
 .alm-page .alm-evento-tipo { flex: 1; }
 .alm-page .alm-evento-caret { font-size: 1.2rem; color: var(--e-color, #22d3ee); font-weight: 800; }
 .alm-page .alm-evento-list { list-style: none; margin: 0; padding: 4px 16px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
-.alm-page .alm-evento-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #c9c4ea; }
+.alm-page .alm-evento-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #d6d2e6; }
 .alm-page .alm-evento-subdie { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; flex: 0 0 auto; font-weight: 800; font-size: .74rem; color: #070713; background: var(--e-color, #22d3ee); }
 
 /* callout e citazioni */
 .alm-page .alm-duo { display: grid; gap: 10px; margin: 0 0 12px; }
 @media (min-width: 700px) { .alm-page .alm-duo { grid-template-columns: 1fr 1fr; } }
-.alm-page .alm-callout { margin: 0; padding: 12px 14px; border-radius: 12px; font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; line-height: 1.55; color: #c9c4ea; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .28); }
+.alm-page .alm-callout { margin: 0; padding: 12px 14px; border-radius: 12px; font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; line-height: 1.55; color: #d6d2e6; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .28); }
 .alm-page .alm-callout strong { color: #c4b5fd; }
 .alm-page .alm-callout--ok { border-color: rgba(74, 222, 128, .4); }
 .alm-page .alm-callout--ok strong { color: #4ade80; }
@@ -159,7 +159,7 @@
 
 /* ricompense e sequenza */
 .alm-page .alm-rewards, .alm-page .alm-quick-steps { margin: 0; padding: 0 0 0 4px; list-style: none; display: grid; gap: 8px; }
-.alm-page .alm-rewards li, .alm-page .alm-quick-steps li { position: relative; padding: 10px 12px 10px 40px; border-radius: 12px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; }
+.alm-page .alm-rewards li, .alm-page .alm-quick-steps li { position: relative; padding: 10px 12px 10px 40px; border-radius: 12px; background: rgba(139, 92, 246, .08); border: 1px solid rgba(139, 92, 246, .22); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #d6d2e6; }
 .alm-page .alm-rewards li::before { content: "✦"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #22d3ee; }
 .alm-page .alm-rewards strong { color: #edeaff; }
 .alm-page .alm-quick-steps { counter-reset: passi; }
@@ -169,7 +169,7 @@
 
 /* scala dello sfinimento */
 .alm-page .alm-sfin { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.alm-page .alm-sfin-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 14px; background: linear-gradient(90deg, #12122a, #0d0d1f); border: 1px solid rgba(139, 92, 246, .22); border-left: 3px solid var(--sf, #8b5cf6); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #c9c4ea; transition: transform .2s ease; }
+.alm-page .alm-sfin-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 14px; background: linear-gradient(90deg, #201c2f, #14111f); border: 1px solid rgba(139, 92, 246, .22); border-left: 3px solid var(--sf, #8b5cf6); font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #d6d2e6; transition: transform .2s ease; }
 .alm-page .alm-sfin-row:hover { transform: translateX(6px); }
 .alm-page .alm-sfin-lv { background: linear-gradient(135deg, var(--sf, #22d3ee), color-mix(in srgb, var(--sf, #22d3ee) 60%, #8b5cf6)); box-shadow: 0 0 14px -3px var(--sf, #22d3ee); }
 .alm-page .alm-sfin-row.is-death { border-color: rgba(192, 38, 211, .6); }

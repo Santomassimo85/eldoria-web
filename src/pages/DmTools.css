@@ -38,7 +38,7 @@
 .dmt-row > div { flex: 1; min-width: 0; }
 
 select.npcgen-input { cursor: pointer; }
-select.npcgen-input option { background: #161632; color: #edeaff; }
+select.npcgen-input option { background: #2d2841; color: #edeaff; }
 textarea.npcgen-input { resize: vertical; min-height: 76px; line-height: 1.5; }
 textarea.npcgen-input.dmt-prompt {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -56,7 +56,7 @@ textarea.npcgen-input.dmt-prompt {
 .dmt-li:last-child { border-bottom: none; }
 .dmt-li .n { color: #edeaff; font-size: 1.02rem; }
 .dmt-li .n b { color: #c4b5fd; }
-.dmt-li .d { color: #8f8bb8; font-size: 0.92rem; margin-top: 2px; }
+.dmt-li .d { color: #a6a1c2; font-size: 0.92rem; margin-top: 2px; }
 
 .npcgen-chip.dmt-pill {
   margin-left: 8px;
@@ -69,7 +69,7 @@ textarea.npcgen-input.dmt-prompt {
 .dmt-hint {
   display: block;
   margin-top: 8px;
-  color: #8f8bb8;
+  color: #a6a1c2;
   font-size: 0.85rem;
 }
 .dmt-hint b { color: #c4b5fd; }
@@ -102,7 +102,7 @@ textarea.npcgen-input.dmt-prompt {
   padding: 4px 0 4px 14px;
   border-left: 3px solid rgba(139, 92, 246, 0.55);
   font-style: italic;
-  color: #8f8bb8;
+  color: #a6a1c2;
 }
 
 .dmt-img-actions {

@@ -323,7 +323,7 @@ export default function Home() {
               <Countdown key={s.id} partyName={s.id} targetDate={s.date} />
             ))
           ) : (
-            <p style={{ textAlign: "center", color: "#8f8bb8" }}>
+            <p style={{ textAlign: "center", color: "#a6a1c2" }}>
               Nessuna sessione programmata.
             </p>
           )}

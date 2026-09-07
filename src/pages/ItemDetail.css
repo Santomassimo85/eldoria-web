@@ -45,7 +45,7 @@
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid rgba(139, 92, 246, .4);
-  background: rgba(13, 13, 31, .7);
+  background: rgba(20, 17, 31, .7);
   color: #c4b5fd;
   font-family: "Manrope", system-ui, sans-serif;
   font-size: .74rem;
@@ -82,7 +82,7 @@
   width: 100%; height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #0d0d1f;
+  border: 4px solid #14111f;
   display: block;
   transform: none !important;
 }
@@ -115,7 +115,7 @@
   margin: 10px 0 0;
   font-family: "Cinzel", Georgia, serif;
   font-size: .62rem; letter-spacing: .3em; text-transform: uppercase;
-  color: #8f8bb8;
+  color: #a6a1c2;
 }
 /* prezzo */
 .item-detail-page .ps-price-row {
@@ -129,7 +129,7 @@
 .item-detail-page .ps-price-label {
   font-family: "Cinzel", Georgia, serif;
   font-size: .6rem; letter-spacing: .24em; text-transform: uppercase;
-  color: #8f8bb8;
+  color: #a6a1c2;
 }
 .item-detail-page .ps-price-value {
   font-size: 1.7rem; font-weight: 800; line-height: 1;
@@ -180,11 +180,11 @@
 .item-detail-page .ps-set-head { display: flex; align-items: center; gap: 10px; }
 .item-detail-page .ps-set-icon { color: #c4b5fd; font-size: 1.1rem; }
 .item-detail-page .ps-set-name { color: #c4b5fd; font-family: "Cinzel", Georgia, serif; font-size: .9rem; }
-.item-detail-page .ps-set-size { color: #8f8bb8; }
+.item-detail-page .ps-set-size { color: #a6a1c2; }
 .item-detail-page .ps-set-bonus-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.item-detail-page .ps-set-bonus-item { display: flex; gap: 10px; align-items: baseline; color: #c9c4ea; font-size: .88rem; line-height: 1.5; }
+.item-detail-page .ps-set-bonus-item { display: flex; gap: 10px; align-items: baseline; color: #d6d2e6; font-size: .88rem; line-height: 1.5; }
 .item-detail-page .ps-set-bonus-frac { flex-shrink: 0; padding: 1px 8px; border-radius: 999px; background: rgba(34, 211, 238, .12); color: #22d3ee; font-weight: 800; font-size: .72rem; }
-.item-detail-page .ps-set-bonus-effect { color: #c9c4ea; }
+.item-detail-page .ps-set-bonus-effect { color: #d6d2e6; }
 
 /* acquisto / offerta */
 .item-detail-page .ps-buy-btn { width: 100%; padding: 14px 22px; font-size: .78rem; }
@@ -194,13 +194,13 @@
   padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid rgba(139, 92, 246, .4);
-  background: #0e0e22;
+  background: #14111f;
   color: #edeaff;
   font-family: "Manrope", system-ui, sans-serif;
   font-size: 1rem; font-weight: 700;
   box-shadow: none;
 }
-.item-detail-page .ps-offer-form input::placeholder { color: #8f8bb8; font-weight: 500; }
+.item-detail-page .ps-offer-form input::placeholder { color: #a6a1c2; font-weight: 500; }
 .item-detail-page .ps-offer-form input:focus { outline: none; border-color: #e879f9; box-shadow: 0 0 16px -4px rgba(232, 121, 249, .8); }
 .item-detail-page .ps-bid-btn { flex: 0 0 auto; padding: 12px 22px; }
 .item-detail-page .ps-your-bid {
@@ -213,11 +213,11 @@
 }
 .item-detail-page .ps-bid-tag { font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: #e879f9; }
 .item-detail-page .ps-your-bid strong { font-size: 1.3rem; color: #edeaff; }
-.item-detail-page .ps-your-bid small { color: #8f8bb8; }
+.item-detail-page .ps-your-bid small { color: #a6a1c2; }
 .item-detail-page .ps-sold-info {
   margin: 20px 0 0; padding: 12px 16px; border-radius: 14px;
   background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35);
-  color: #c9c4ea;
+  color: #d6d2e6;
 }
 .item-detail-page .ps-sold-info strong { color: #edeaff; }
 .item-detail-page .status-message { text-align: center; color: #c4b5fd; margin-top: 14px; }
@@ -229,7 +229,7 @@
   margin: 0 auto;
   border-radius: 18px;
   border: 1px solid rgba(139, 92, 246, .35);
-  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  background: linear-gradient(180deg, #201c2f, #14111f);
   box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
   padding: 22px 24px;
   color: #edeaff;
@@ -238,7 +238,7 @@
 .item-detail-page .mc-header { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: start; }
 .item-detail-page .mc-thumb {
   width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-  border: 3px solid #0d0d1f;
+  border: 3px solid #14111f;
   box-shadow: 0 0 0 3px var(--rarity-edge, #8b5cf6), 0 0 22px -4px var(--rarity-edge, #8b5cf6);
 }
 .item-detail-page .mc-title {
@@ -251,7 +251,7 @@
 .item-detail-page .mc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .item-detail-page .mc-tag {
   padding: 3px 10px; border-radius: 999px;
-  border: 1px solid rgba(139, 92, 246, .4); background: rgba(13, 13, 31, .7);
+  border: 1px solid rgba(139, 92, 246, .4); background: rgba(20, 17, 31, .7);
   color: #c4b5fd; font-size: .64rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
 }
 .item-detail-page .mc-tag[class*="rarity-"] { color: var(--rarity-edge, #e879f9); border-color: color-mix(in srgb, var(--rarity-edge, #e879f9) 60%, transparent); }
@@ -259,30 +259,30 @@
 .item-detail-page .mc-tag.tag-fixed { color: #22d3ee; border-color: rgba(34, 211, 238, .5); }
 .item-detail-page .mc-tag.tag-sold { color: #fb923c; border-color: rgba(251, 146, 60, .5); }
 .item-detail-page .mc-price { display: flex; align-items: baseline; gap: 8px; margin: 0; }
-.item-detail-page .mc-price span { color: #8f8bb8; font-size: .78rem; }
+.item-detail-page .mc-price span { color: #a6a1c2; font-size: .78rem; }
 .item-detail-page .mc-price strong { color: #22d3ee; font-size: 1.2rem; text-shadow: 0 0 12px rgba(34, 211, 238, .6); }
 .item-detail-page .mc-timer { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
-.item-detail-page .mc-timer-label { color: #8f8bb8; font-size: .78rem; }
+.item-detail-page .mc-timer-label { color: #a6a1c2; font-size: .78rem; }
 .item-detail-page .mc-description {
   margin: 18px 0 0; padding: 12px 14px; border-radius: 14px;
-  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
-  color: #c9c4ea; line-height: 1.7;
+  background: rgba(20, 17, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+  color: #d6d2e6; line-height: 1.7;
 }
 .item-detail-page .mc-description summary { cursor: pointer; color: #c4b5fd; font-weight: 700; }
 .item-detail-page .mc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
 .item-detail-page .mc-stat {
   display: flex; flex-direction: column; gap: 4px;
   padding: 12px 14px; border-radius: 14px;
-  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+  background: rgba(20, 17, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
 }
-.item-detail-page .mc-stat span { color: #8f8bb8; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.item-detail-page .mc-stat span { color: #a6a1c2; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
 .item-detail-page .mc-stat strong { color: #edeaff; font-size: 1.2rem; }
-.item-detail-page .mc-stat strong small { color: #8f8bb8; font-size: .7rem; }
+.item-detail-page .mc-stat strong small { color: #a6a1c2; font-size: .7rem; }
 .item-detail-page .mc-stat.highlight { border-color: rgba(34, 211, 238, .5); background: rgba(34, 211, 238, .08); }
 .item-detail-page .mc-stat.highlight strong { color: #22d3ee; }
 .item-detail-page .mc-bids {
   padding: 14px; border-radius: 14px;
-  background: rgba(13, 13, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
+  background: rgba(20, 17, 31, .7); border: 1px solid rgba(139, 92, 246, .3);
 }
 .item-detail-page .mc-bids-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .item-detail-page .mc-bids-head h3 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: #c4b5fd; }
@@ -294,10 +294,10 @@
 }
 .item-detail-page .mc-bids-table td { padding: 9px 10px; border-bottom: 1px solid rgba(139, 92, 246, .18); }
 .item-detail-page .mc-bids-table tr.top-bid td { background: rgba(34, 211, 238, .08); }
-.item-detail-page .mc-rank { color: #8f8bb8; }
+.item-detail-page .mc-rank { color: #a6a1c2; }
 .item-detail-page .mc-bid-amount { color: #22d3ee; font-weight: 800; }
-.item-detail-page .mc-bid-time { color: #8f8bb8; font-size: .78rem; }
-.item-detail-page .mc-empty { color: #8f8bb8; font-style: italic; margin: 0; }
+.item-detail-page .mc-bid-time { color: #a6a1c2; font-size: .78rem; }
+.item-detail-page .mc-empty { color: #a6a1c2; font-style: italic; margin: 0; }
 .item-detail-page .mc-btn {
   padding: 7px 14px; border-radius: 999px; cursor: pointer;
   font-family: "Manrope", system-ui, sans-serif; font-size: .74rem; font-weight: 700;
@@ -305,11 +305,11 @@
 }
 .item-detail-page .mc-btn.danger { background: linear-gradient(90deg, #e879f9, #c026d3); color: #070713; border: none; box-shadow: 0 0 20px -6px rgba(232, 121, 249, .8); }
 .item-detail-page .mc-btn.danger:hover { box-shadow: 0 0 30px -4px rgba(232, 121, 249, 1); transform: translateY(-2px); }
-.item-detail-page .mc-btn.ghost { background: rgba(13, 13, 31, .7); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, .4); }
+.item-detail-page .mc-btn.ghost { background: rgba(20, 17, 31, .7); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, .4); }
 .item-detail-page .mc-btn.ghost:hover { color: #edeaff; border-color: #22d3ee; }
 .item-detail-page .mc-sold-banner {
   margin: 18px 0 0; padding: 12px 16px; border-radius: 14px;
-  background: rgba(251, 146, 60, .1); border: 1px solid rgba(251, 146, 60, .45); color: #c9c4ea;
+  background: rgba(251, 146, 60, .1); border: 1px solid rgba(251, 146, 60, .45); color: #d6d2e6;
 }
 .item-detail-page .mc-sold-banner strong { color: #fb923c; }
 /* bonus-set dentro la console: stessi colori del pannello player */

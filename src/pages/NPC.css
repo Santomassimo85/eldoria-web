@@ -28,7 +28,7 @@
   max-width: 720px;
   margin: 0 auto 8px;
   padding: 8px 10px;
-  background: rgba(13, 13, 31, .7);
+  background: rgba(20, 17, 31, .7);
   border: 1px solid rgba(139, 92, 246, .3);
   border-radius: 999px;
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
@@ -38,7 +38,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #0e0e22;
+  background: #14111f;
   border: 1px solid rgba(139, 92, 246, .4);
   border-radius: 999px;
   padding: 6px 12px;
@@ -56,7 +56,7 @@
   font-size: .85rem;
   padding: 4px 0;
 }
-.npc-page .cine-search-input::placeholder { color: #8f8bb8; }
+.npc-page .cine-search-input::placeholder { color: #a6a1c2; }
 .npc-page .cine-search-clear {
   width: 24px; height: 24px;
   border-radius: 50%;
@@ -80,7 +80,7 @@
 }
 .npc-page .cine-empty {
   text-align: center;
-  color: #8f8bb8;
+  color: #a6a1c2;
   font-family: "Manrope", system-ui, sans-serif;
   padding: 30px 0;
 }
@@ -94,7 +94,7 @@
   font-size: .62rem;
   font-weight: 700;
   letter-spacing: .12em;
-  color: #8f8bb8;
+  color: #a6a1c2;
   white-space: nowrap;
 }
 

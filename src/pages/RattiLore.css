@@ -50,6 +50,6 @@
   margin-bottom: 8px;
 }
 .ratti-page .ratti-grado:last-child .orb { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 18px rgba(245, 158, 11, .8); }
-.ratti-page .ratti-grado:first-child .orb { background: #2c2c55; color: #8f8bb8; box-shadow: none; }
+.ratti-page .ratti-grado:first-child .orb { background: #3e3856; color: #a6a1c2; box-shadow: none; }
 .ratti-page .ratti-grado-nome { font-size: 1rem; }
 .ratti-page .ratti-grado-bonus { margin: 6px 0 0; }

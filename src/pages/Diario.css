@@ -25,14 +25,14 @@
   padding: 2.4rem 1.6rem;
 }
 .diario-gate-rune { font-size: 2.4rem; color: #22d3ee; display: block; margin-bottom: .4rem; text-shadow: 0 0 14px rgba(34, 211, 238, .8); }
-.diario-gate p { color: #8f8bb8; line-height: 1.6; margin: 0; }
+.diario-gate p { color: #a6a1c2; line-height: 1.6; margin: 0; }
 
 /* ── sigillo e nota sotto il varco ── */
 .diario-sub {
   display: inline-flex; align-items: center; gap: .5rem;
-  margin: .4rem 0 0; color: #c9c4ea; font-size: .96rem;
+  margin: .4rem 0 0; color: #d6d2e6; font-size: .96rem;
 }
-.diario-sub em { color: #8f8bb8; font-style: italic; }
+.diario-sub em { color: #a6a1c2; font-style: italic; }
 .diario-seal {
   width: 1.7rem; height: 1.7rem; border-radius: 50%;
   display: inline-grid; place-items: center;
@@ -40,7 +40,7 @@
   box-shadow: 0 0 14px rgba(139, 92, 246, .6);
 }
 .diario-note-hint {
-  max-width: 46ch; margin: .8rem auto 0; color: #8f8bb8;
+  max-width: 46ch; margin: .8rem auto 0; color: #a6a1c2;
   font-size: .86rem; line-height: 1.55;
 }
 .diario-note-hint strong { color: #22d3ee; }
@@ -64,22 +64,22 @@
   background: transparent; border: none; outline: none;
   padding: .2rem 0;
 }
-.diario-input::placeholder { color: #8f8bb8; font-style: italic; }
+.diario-input::placeholder { color: #a6a1c2; font-style: italic; }
 .diario-compose-foot {
   display: flex; align-items: center; justify-content: space-between;
   gap: .8rem; margin-top: .7rem; padding-top: .7rem;
   border-top: 1px dashed rgba(139, 92, 246, .35);
 }
-.diario-signature { color: #8f8bb8; font-size: .85rem; font-style: italic; }
+.diario-signature { color: #a6a1c2; font-size: .85rem; font-style: italic; }
 .diario-page .diario-add:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .diario-readonly {
-  text-align: center; color: #8f8bb8; font-size: .9rem; font-style: italic;
+  text-align: center; color: #a6a1c2; font-size: .9rem; font-style: italic;
   margin: 0 0 1.6rem;
 }
 .diario-readonly strong { color: #c4b5fd; }
 
 /* ── registro ── */
-.diario-empty { text-align: center; color: #8f8bb8; font-style: italic; padding: 2.4rem 1rem; }
+.diario-empty { text-align: center; color: #a6a1c2; font-style: italic; padding: 2.4rem 1rem; }
 .diario-day { margin-bottom: 1.4rem; }
 .diario-page .diario-day-rule { margin: 0 0 .8rem; }
 .diario-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
@@ -105,7 +105,7 @@
   text-transform: uppercase; box-shadow: 0 0 10px rgba(0, 0, 0, .5);
 }
 .diario-page .diario-author { font-size: .92rem; }
-.diario-page .diario-when { position: static; margin-left: auto; color: #8f8bb8; }
+.diario-page .diario-when { position: static; margin-left: auto; color: #a6a1c2; }
 .diario-page .diario-del {
   position: absolute; top: 10px; right: 10px;
   padding: 2px 9px; font-size: 1rem; line-height: 1;

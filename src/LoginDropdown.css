@@ -84,7 +84,7 @@
   top: calc(100% + 12px);
   right: 0;
   left: auto;
-  background: linear-gradient(180deg, #161632, #0d0d1f);
+  background: linear-gradient(180deg, #2d2841, #14111f);
   border: 1px solid color-mix(in srgb, var(--cls) 55%, transparent);
   border-radius: 20px;
   box-shadow: 0 24px 60px -16px #000, 0 0 40px -10px color-mix(in srgb, var(--cls) 60%, transparent);
@@ -108,13 +108,13 @@
   border-radius: 999px;
   font-family: "Manrope", system-ui, sans-serif;
   font-size: 0.9rem;
-  background: #0e0e22;
+  background: #14111f;
   color: #edeaff;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   margin: 0;
 }
-.ld-input::placeholder { color: #8f8bb8; }
+.ld-input::placeholder { color: #a6a1c2; }
 .ld-input:focus { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, 0.8); }
 .ld-submit-btn {
   background: linear-gradient(90deg, #22d3ee, #8b5cf6);
@@ -167,7 +167,7 @@
 }
 .ld-char-email {
   font-size: 0.72rem;
-  color: #8f8bb8;
+  color: #a6a1c2;
   margin: 2px 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -207,7 +207,7 @@
   text-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
 }
 .ld-stat-value--ratto { color: var(--cls); font-family: "Cinzel", Georgia, serif; font-size: 0.8rem; font-weight: 700; text-shadow: 0 0 10px color-mix(in srgb, var(--cls) 60%, transparent); }
-.ld-stat-label { font-size: 0.72rem; color: #8f8bb8; }
+.ld-stat-label { font-size: 0.72rem; color: #a6a1c2; }
 .ld-stat-divider { width: 1px; height: 22px; background: rgba(139, 92, 246, 0.35); }
 
 /* ---- Divider ---- */
@@ -246,7 +246,7 @@
 .ld-section-label {
   font-family: "Cinzel", Georgia, serif;
   font-size: 0.6rem;
-  color: #8f8bb8;
+  color: #a6a1c2;
   padding: 8px 16px 2px;
   letter-spacing: 0.3em;
   text-transform: uppercase;

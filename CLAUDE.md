@@ -9,6 +9,11 @@
 - Colori inline dal JS (party, classi, continenti) sul chiaro vengono scuriti con `filter: brightness(.55)` (lista in nesso-light.css §4).
 - Pannelli DM/Admin (`admin.css`, `GeneraNPC.css`, `DmTools.css`, `pgSheetEditor.css`, `WorldBossAdmin.css`, `DateTimePicker.css`, `SendNotification.css`) sono ora NATIVI Nesso (scuri): migrati il 2026-09-07 con `node tools/admin-to-nesso.mjs` (mappa pergamena→vuoto, una tantum; rilanciabile, è idempotente). Niente più sfondi crema hardcoded: il chiaro si genera da lì.
 
+## Scala di superfici Nesso (2026-09-07)
+- Token in `nesso.css` §0: `--nx-s1` (contenitori/input incassati) → `--nx-s2` (card) → `--nx-s3` (elevati: hover, tab attivi, modali, card DENTRO card) → `--nx-s4` (livello massimo). Deriva prugna, non più indaco piatto. Bordo "filo di luce" `--nx-hair` + riflesso `--nx-hair-hi`. Testo: `--nx-ink` / `--nx-body` / `--nx-muted` / `--nx-faint`.
+- Regola: un elemento annidato SALE di un gradino, mai lo stesso colore del contenitore. Il gradiente ciano→viola è solo per CTA e chip attive; i tab (`.dmt-tab`, `.mkadm-tab`, `.geoadm-tab`) sono binario S1 + segmento S4 con filo ciano (nesso.css §12).
+- Nuovi CSS: usare i token, non esadecimali. `node tools/nesso-surfaces.mjs` rimappa i vecchi grigi-indaco hardcoded (idempotente, esclude pagine di gioco); poi `node tools/gen-light-theme.mjs`.
+
 ## Regole restyle (sempre valide)
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.
 - NON toccare logica/link/route/href. Solo markup + CSS/animazioni.
