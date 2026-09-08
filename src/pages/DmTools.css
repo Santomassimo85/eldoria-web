@@ -27,7 +27,7 @@
 .dmt-tab:hover { background: rgba(var(--el-rgb), 0.18); }
 .dmt-tab.on {
   background: linear-gradient(180deg, var(--el-soft) 0%, var(--el-2) 45%, var(--el-2) 100%);
-  color: #0b0a0d;
+  color: var(--ossidiana);
   border-color: transparent;
   box-shadow: 0 3px 12px rgba(0,0,0, 0.18);
 }
@@ -38,7 +38,7 @@
 .dmt-row > div { flex: 1; min-width: 0; }
 
 select.npcgen-input { cursor: pointer; }
-select.npcgen-input option { background: #2e2a35; color: #ece5d6; }
+select.npcgen-input option { background: var(--roccia-3); color: var(--osso); }
 textarea.npcgen-input { resize: vertical; min-height: 76px; line-height: 1.5; }
 textarea.npcgen-input.dmt-prompt {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -54,9 +54,9 @@ textarea.npcgen-input.dmt-prompt {
   border-bottom: 1px solid rgba(var(--el-rgb), 0.20);
 }
 .dmt-li:last-child { border-bottom: none; }
-.dmt-li .n { color: #ece5d6; font-size: 1.02rem; }
+.dmt-li .n { color: var(--osso); font-size: 1.02rem; }
 .dmt-li .n b { color: var(--el-soft); }
-.dmt-li .d { color: #b9af9d; font-size: 0.92rem; margin-top: 2px; }
+.dmt-li .d { color: var(--osso-2); font-size: 0.92rem; margin-top: 2px; }
 
 .npcgen-chip.dmt-pill {
   margin-left: 8px;
@@ -69,7 +69,7 @@ textarea.npcgen-input.dmt-prompt {
 .dmt-hint {
   display: block;
   margin-top: 8px;
-  color: #b9af9d;
+  color: var(--osso-2);
   font-size: 0.85rem;
 }
 .dmt-hint b { color: var(--el-soft); }
@@ -87,7 +87,7 @@ textarea.npcgen-input.dmt-prompt {
   margin: 0 0 6px;
 }
 .dmt-cronaca-body {
-  color: #ece5d6;
+  color: var(--osso);
   line-height: 1.7;
   font-size: 1.02rem;
 }
@@ -102,7 +102,7 @@ textarea.npcgen-input.dmt-prompt {
   padding: 4px 0 4px 14px;
   border-left: 3px solid rgba(var(--el-rgb), 0.55);
   font-style: italic;
-  color: #b9af9d;
+  color: var(--osso-2);
 }
 
 .dmt-img-actions {
@@ -128,7 +128,7 @@ textarea.npcgen-input.dmt-prompt {
 }
 .dmt-style.on {
   background: linear-gradient(180deg, var(--el-soft) 0%, var(--el-2) 45%, var(--el-2) 100%);
-  color: #0b0a0d;
+  color: var(--ossidiana);
   border-color: transparent;
 }
 
@@ -186,14 +186,14 @@ textarea.npcgen-input.dmt-prompt {
   background: rgba(var(--el-rgb), 0.10);
   color: var(--el-soft);
 }
-.dmt-gcover.on { background: var(--el-2); color: #0b0a0d; border-color: transparent; }
+.dmt-gcover.on { background: var(--el-2); color: var(--ossidiana); border-color: transparent; }
 .dmt-grem {
   width: 30px;
   height: 30px;
   border-radius: 3px;
   cursor: pointer;
-  border: 1px solid rgba(232,197,106, 0.5);
-  background: rgba(232,197,106, 0.10);
+  border: 1px solid rgba(var(--oro-rgb), 0.5);
+  background: rgba(var(--oro-rgb), 0.10);
   color: var(--oro);
   font-weight: 700;
 }

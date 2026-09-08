@@ -9,7 +9,7 @@
   min-height: 60vh;
   width: 100%;
   padding: calc(var(--navbar-h, 66px) + 24px) 0 60px;
-  color: #ece5d6;
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
 }
 

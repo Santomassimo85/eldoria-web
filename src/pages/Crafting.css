@@ -13,9 +13,9 @@
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.6em; height: 1.6em; padding: 0 .35em; border-radius: 999px;
   font-family: "Cinzel", Georgia, serif; font-size: .62rem; font-weight: 700;
-  color: #0b0a0d; background: linear-gradient(135deg, var(--el-2), var(--el));
+  color: var(--ossidiana); background: linear-gradient(135deg, var(--el-2), var(--el));
 }
-.cr-page .nx-pillola.on .cr-pill-num { background: #0b0a0d; color: var(--el-2); }
+.cr-page .nx-pillola.on .cr-pill-num { background: var(--ossidiana); color: var(--el-2); }
 
 /* ── rubrica sticky ── */
 .cr-page .cr-rubrica { text-align: center; }
@@ -57,23 +57,23 @@
 .cr-page .cr-die {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 10px 18px; border-radius: 3px;
-  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1.3rem; color: #0b0a0d;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1.3rem; color: var(--ossidiana);
   background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 22px -4px rgba(var(--el-rgb), .8);
 }
 .cr-page .cr-plus { font-size: 1.4rem; color: var(--oro); }
 .cr-page .cr-formula-piece {
   padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(var(--el-rgb), .45);
-  font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .84rem; color: #ece5d6;
+  font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .84rem; color: var(--osso);
 }
 .cr-page .cr-formula-note { margin: 8px auto 0; max-width: 62ch; font-size: .92rem; }
 
 /* ── chip caratteristica/professione ── */
 .cr-page .cr-prof-chips { justify-content: flex-start; margin: 6px 0 0; }
 .cr-page .cr-prof-chip, .cr-page .cr-prof-card { --cs: color-mix(in srgb, var(--c, var(--el)) 45%, #fff); }
-.cr-page .cr-prof-chip { cursor: default; color: #ece5d6; border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
+.cr-page .cr-prof-chip { cursor: default; color: var(--osso); border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
 .cr-page .cr-prof-chip-stat {
   padding: 2px 8px; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .08em;
-  color: #0b0a0d; background: var(--cs, var(--el-soft));
+  color: var(--ossidiana); background: var(--cs, var(--el-soft));
 }
 
 /* ── vantaggio/svantaggio ── */
@@ -86,7 +86,7 @@
 .cr-page .cr-modifier-cond { font-size: .88rem; }
 
 /* ── crafting libero ── */
-.cr-page .cr-libero { border-color: rgba(232,197,106, .45); box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 34px -12px rgba(232,197,106, .5); }
+.cr-page .cr-libero { border-color: rgba(var(--oro-rgb), .45); box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 34px -12px rgba(var(--oro-rgb), .5); }
 .cr-page .cr-libero-badge { margin-bottom: 12px; }
 .cr-page .cr-libero-title { font-size: clamp(1.2rem, 3.4vw, 1.6rem); margin: 0 0 10px; }
 .cr-page .cr-libero-lead { margin: 0 0 14px; }
@@ -101,7 +101,7 @@
 .cr-page .orb {
   flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-family: "Alegreya", Georgia, serif; font-weight: 800; font-size: .76rem; color: #0b0a0d;
+  font-family: "Alegreya", Georgia, serif; font-weight: 800; font-size: .76rem; color: var(--ossidiana);
   background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 14px -2px rgba(var(--el-rgb), .7);
 }
 
@@ -113,7 +113,7 @@
   padding: 12px 16px; border-left: 4px solid var(--qs);
 }
 .cr-page .cr-cost-tier { color: var(--qs); }
-.cr-page .cr-cost-cell { font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: #ece5d6; }
+.cr-page .cr-cost-cell { font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: var(--osso); }
 .cr-page .cr-cost-label { display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); }
 @media (max-width: 700px) {
   .cr-page .cr-cost-row { grid-template-columns: 1fr 1fr; }
@@ -125,11 +125,11 @@
 .cr-page .cr-ing-head, .cr-page .cr-ing-row {
   display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px;
   padding: 10px 16px; border-bottom: 1px solid rgba(var(--el-rgb), .22);
-  font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: #d6cdbb;
+  font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: var(--osso-body);
 }
 .cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); font-weight: 700; }
 .cr-page .cr-ing-row:last-child { border-bottom: none; }
-.cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: #ece5d6; }
+.cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: var(--osso); }
 @media (max-width: 640px) { .cr-page .cr-ing-head, .cr-page .cr-ing-row { min-width: 560px; } }
 
 /* ── sentiero del maestro ── */
@@ -156,7 +156,7 @@
 .cr-page .cr-prof-icon { font-size: 1.5rem; }
 .cr-page .cr-prof-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cr-page .cr-prof-meta { display: flex; align-items: center; gap: 8px; }
-.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: #0b0a0d; background: var(--cs, var(--el-soft)); }
+.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: var(--ossidiana); background: var(--cs, var(--el-soft)); }
 .cr-page .cr-prof-toggle {
   width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid rgba(var(--el-rgb), .45); color: var(--el-2); font-size: 1.1rem; font-weight: 700;
@@ -164,18 +164,18 @@
 .cr-page .cr-prof-body { padding: 4px 16px 18px; border-top: 1px solid rgba(var(--el-rgb), .22); }
 .cr-page .cr-prof-quote { margin: 14px 0; }
 .cr-page .cr-scheda .nx-kicker { margin-bottom: 4px; }
-.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: #d6cdbb; font-size: .88rem; line-height: 1.55; }
+.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: var(--osso-body); font-size: .88rem; line-height: 1.55; }
 .cr-page .cr-scheda-spec-list strong { color: var(--el-2); }
 .cr-page .cr-creazioni-title { margin-top: 18px; }
 .cr-page .cr-tier-tabs { justify-content: flex-start; margin: 6px 0 12px; }
 .cr-page .cr-tier-tab { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); }
-.cr-page .cr-tier-tab.on { background: var(--qs); color: #0b0a0d; box-shadow: 0 0 18px -4px var(--qs); }
+.cr-page .cr-tier-tab.on { background: var(--qs); color: var(--ossidiana); box-shadow: 0 0 18px -4px var(--qs); }
 .cr-page .cr-tier-range { margin-left: 6px; font-size: .6rem; opacity: .8; }
 .cr-page .cr-d12-table { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); display: flex; flex-direction: column; gap: 6px; }
 .cr-page .cr-d12-row {
   display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
   border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .22); border-left: 3px solid var(--qs);
-  background: rgba(23,21,27, .6);
+  background: rgba(var(--roccia-rgb), .6);
 }
 .cr-page .cr-d12-num { background: var(--qs); box-shadow: none; }
 .cr-page .cr-d12-name { font-size: .86rem; }
@@ -183,9 +183,9 @@
 /* ── esempi di gioco ── */
 .cr-page .cr-example { display: flex; flex-direction: column; gap: 6px; }
 .cr-page .cr-example-title { padding-right: 70px; }
-.cr-page .cr-example-tiro { font-family: "Alegreya", Georgia, serif; font-size: .86rem; color: #ece5d6; margin-top: 4px; }
+.cr-page .cr-example-tiro { font-family: "Alegreya", Georgia, serif; font-size: .86rem; color: var(--osso); margin-top: 4px; }
 .cr-page .cr-example-tiro strong { color: var(--el-2); }
-.cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: var(--oro); text-shadow: 0 0 10px rgba(232,197,106, .5); }
+.cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: var(--oro); text-shadow: 0 0 10px rgba(var(--oro-rgb), .5); }
 .cr-page .cr-example-esito { margin-top: 6px; text-align: left; }
 
-.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Alegreya", Georgia, serif; color: #b9af9d; }
+.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Alegreya", Georgia, serif; color: var(--osso-2); }

@@ -12,7 +12,7 @@
   padding-top: calc(var(--navbar-h, 66px) + 70px);
   text-align: center;
   font-family: "Alegreya", Georgia, serif;
-  color: #b9af9d;
+  color: var(--osso-2);
   font-style: italic;
 }
 

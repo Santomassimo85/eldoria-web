@@ -9,13 +9,13 @@
 
 :root {
   /* ── Superfici (deep navy) ── */
-  --bg-0:#0b0a0d;   /* fondo app            */
-  --bg-1:#17151b;   /* superfici            */
-  --bg-2:#221f27;   /* card                 */
-  --bg-3:#2e2a35;   /* elementi elevati     */
-  --line:#3d3846;   /* bordi                */
-  --line-soft:#2e2a35;
-  --overlay:rgba(11,10,13,.66);
+  --bg-0:var(--ossidiana);   /* fondo app            */
+  --bg-1:var(--roccia);   /* superfici            */
+  --bg-2:var(--roccia-2);   /* card                 */
+  --bg-3:var(--roccia-3);   /* elementi elevati     */
+  --line:var(--roccia-4);   /* bordi                */
+  --line-soft:var(--roccia-3);
+  --overlay:rgba(var(--ossidiana-rgb),.66);
 
   /* ── Accenti ── */
   --amber:var(--oro);  --amber-deep:#b8933f;  --amber-soft:var(--oro-soft);
@@ -24,7 +24,7 @@
   --ok:#46c98b;     --warn:var(--oro);        --info:#5ab0ff;
 
   /* ── Testo ── */
-  --ink:#ece5d6;  --muted:#b9af9d;  --faint:#7d7566;
+  --ink:var(--osso);  --muted:var(--osso-2);  --faint:var(--osso-3);
 
   /* ── Tipografia (fantasy) ── */
   --font-display:"Grenze Gotisch", "Cinzel", serif;   /* hero ornato        */
@@ -43,7 +43,7 @@
   --shadow-1:0 2px 10px rgba(0,0,0,.35);
   --shadow-2:0 14px 44px -14px rgba(0,0,0,.65);
   --shadow-3:0 28px 70px -24px rgba(0,0,0,.75);
-  --glow-amber:0 0 0 1px rgba(232,197,106,.40), 0 10px 34px -10px rgba(232,197,106,.55);
+  --glow-amber:0 0 0 1px rgba(var(--oro-rgb),.40), 0 10px 34px -10px rgba(var(--oro-rgb),.55);
   --glow-arc:0 0 0 1px rgba(var(--el-rgb),.45), 0 10px 34px -10px rgba(var(--el-rgb),.60);
   --glow-crit:0 0 0 1px rgba(255,90,77,.45), 0 10px 34px -10px rgba(255,90,77,.55);
 
@@ -52,8 +52,8 @@
   --grad-arc:linear-gradient(135deg,var(--el-soft),var(--el) 45%,var(--el-deep));
   --grad-crit:linear-gradient(135deg,#ff7d72,#ff5a4d 45%,#c12d22);
   --grad-night:radial-gradient(1200px 800px at 75% -10%, rgba(var(--el-rgb),.12), transparent 60%),
-               radial-gradient(900px 700px at 10% 8%, rgba(232,197,106,.08), transparent 55%),
-               linear-gradient(180deg,#0b0a0d,#0f0e12 60%,#080c16);
+               radial-gradient(900px 700px at 10% 8%, rgba(var(--oro-rgb),.08), transparent 55%),
+               linear-gradient(180deg,var(--ossidiana),var(--ossidiana-2) 60%,#080c16);
 
   /* ── Motion ── */
   --dur-fast:.16s; --dur:.28s; --dur-slow:.5s;
@@ -156,7 +156,7 @@ body {
   font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
   background:rgba(var(--el-rgb),.12); color:var(--arc-soft); border:1px solid rgba(var(--el-rgb),.25);
 }
-.ch-chip--amber { background:rgba(232,197,106,.12); color:var(--amber-soft); border-color:rgba(232,197,106,.28); }
+.ch-chip--amber { background:rgba(var(--oro-rgb),.12); color:var(--amber-soft); border-color:rgba(var(--oro-rgb),.28); }
 .ch-chip--crit  { background:rgba(255,90,77,.12); color:#ff9a90; border-color:rgba(255,90,77,.30); }
 
 /* ── Campi form ── */

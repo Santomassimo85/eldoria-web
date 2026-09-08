@@ -81,7 +81,26 @@ if (ARENA) Object.assign(RGB, {
 });
 const ARENA_FILES = ["src/pages/Arena.css", "src/pages/ArenaHero.css", "src/pages/ArenaNessoViste.css", "src/pages/ArenaPalcoFight.css", "src/pages/ArenaBill.css", "src/pages/Arena.jsx"];
 
-const SKIP = /(Arena|Tcg|[\\/]tcg[\\/]|WorldBoss(?!Admin)|Pet(?!Points)|tactics|generated|nesso-light|light-theme\.css|covo)/;
+/* --tokenize (2026-09-08, per il DRAGO BIANCO = tema chiaro): i colori del covo
+   scritti in chiaro (#0b0a0d, #221f27, #ece5d6, rgba(11,10,13,…)…) diventano
+   token (var(--ossidiana), var(--roccia-2), var(--osso), rgba(var(--ossidiana-rgb),…)),
+   così ogni respiro può ribaltare le superfici. Salta i canvas (CovoOverlay). */
+const TOKENIZE = process.argv.includes("--tokenize");
+const TOK_HEX = {
+  "0b0a0d": "var(--ossidiana)", "0f0e12": "var(--ossidiana-2)", "17151b": "var(--roccia)", "221f27": "var(--roccia-2)",
+  "2e2a35": "var(--roccia-3)", "3a3542": "var(--roccia-4)", "3d3846": "var(--roccia-4)",
+  "ece5d6": "var(--osso)", "d6cdbb": "var(--osso-body)", "b9af9d": "var(--osso-2)", "7d7566": "var(--osso-3)",
+  "e8c56a": "var(--oro)", "f5e3a8": "var(--oro-soft)", "b3261e": "var(--sangue)",
+};
+const TOK_RGB = {
+  "11,10,13": "var(--ossidiana-rgb)", "15,14,18": "var(--ossidiana-rgb)", "23,21,27": "var(--roccia-rgb)", "34,31,39": "var(--roccia-2-rgb)",
+  "46,42,53": "var(--roccia-3-rgb)", "236,229,214": "var(--osso-rgb)", "232,197,106": "var(--oro-rgb)", "179,38,30": "var(--sangue-rgb)",
+};
+if (TOKENIZE) { for (const k of Object.keys(HEX)) delete HEX[k]; for (const k of Object.keys(RGB)) delete RGB[k]; Object.assign(HEX, TOK_HEX); Object.assign(RGB, TOK_RGB); }
+
+const SKIP = TOKENIZE
+  ? /(Tcg|[\\/]tcg[\\/]|WorldBoss(?!Admin)|Pet(?!Points)|tactics|generated|nesso-light|light-theme\.css|CovoOverlay|ArenaMarket)/
+  : /(Arena|Tcg|[\\/]tcg[\\/]|WorldBoss(?!Admin)|Pet(?!Points)|tactics|generated|nesso-light|light-theme\.css|covo)/;
 function walk(d, out = []) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name);
@@ -94,18 +113,21 @@ function walk(d, out = []) {
 let tot = 0, files = 0;
 for (const f of (ARENA ? ARENA_FILES.map((x) => path.join(ROOT, x)) : walk(path.join(ROOT, "src")))) {
   const src = fs.readFileSync(f, "utf8");
-  const isCss = f.endsWith(".css");
+  const isCss = f.endsWith(".css") && !TOKENIZE;
   let n = 0;
-  let out = src.replace(/#([0-9a-fA-F]{6})\b(?![0-9a-fA-F])/g, (m, h) => {
+  // in --tokenize le righe che DEFINISCONO i token (--roccia:#17151b) restano intatte (niente cicli)
+  const DEF = /--(ossidiana|roccia|osso|oro|sangue)(-[\w-]+)?\s*:/;
+  const guard = (txt, fn) => (TOKENIZE ? txt.split("\n").map((l) => (DEF.test(l) ? l : fn(l))).join("\n") : fn(txt));
+  let out = guard(src, (t) => t.replace(/#([0-9a-fA-F]{6})\b(?![0-9a-fA-F])/g, (m, h) => {
     const v = HEX[h.toLowerCase()];
     if (!v) return m;
     n++; return v;
-  });
-  out = out.replace(/(rgba?\(\s*)(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, (m, pre, r, g, b) => {
+  }));
+  out = guard(out, (t) => t.replace(/(rgba?\(\s*)(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, (m, pre, r, g, b) => {
     const v = RGB[`${r},${g},${b}`];
     if (!v) return m;
     n++; return pre + v;
-  });
+  }));
   if (isCss) {
     for (const [re, rep] of FONTS) out = out.replace(re, () => { n++; return rep; });
     // raggi: la pietra del covo è tagliata, non levigata (5..60px → 3px; pillole 999 e % intatti)

@@ -18,7 +18,7 @@
   background: rgba(var(--el-rgb), .22);
   color: var(--el-soft);
 }
-.npc-page .nx-pillola.on .npc-pillola-n { background: rgba(11,10,13, .25); color: #0b0a0d; }
+.npc-page .nx-pillola.on .npc-pillola-n { background: rgba(var(--ossidiana-rgb), .25); color: var(--ossidiana); }
 
 /* ── ricerca: toolbar a pillola scura ── */
 .npc-page .cine-toolbar {
@@ -28,7 +28,7 @@
   max-width: 720px;
   margin: 0 auto 8px;
   padding: 8px 10px;
-  background: rgba(23,21,27, .7);
+  background: rgba(var(--roccia-rgb), .7);
   border: 1px solid rgba(var(--el-rgb), .3);
   border-radius: 999px;
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
@@ -38,7 +38,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #17151b;
+  background: var(--roccia);
   border: 1px solid rgba(var(--el-rgb), .4);
   border-radius: 999px;
   padding: 6px 12px;
@@ -51,17 +51,17 @@
   background: none;
   border: none;
   outline: none;
-  color: #ece5d6;
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
   font-size: .85rem;
   padding: 4px 0;
 }
-.npc-page .cine-search-input::placeholder { color: #b9af9d; }
+.npc-page .cine-search-input::placeholder { color: var(--osso-2); }
 .npc-page .cine-search-clear {
   width: 24px; height: 24px;
   border-radius: 50%;
-  border: 1px solid rgba(232,197,106, .5);
-  background: rgba(232,197,106, .12);
+  border: 1px solid rgba(var(--oro-rgb), .5);
+  background: rgba(var(--oro-rgb), .12);
   color: var(--oro);
   font-size: .7rem;
   cursor: pointer;
@@ -80,7 +80,7 @@
 }
 .npc-page .cine-empty {
   text-align: center;
-  color: #b9af9d;
+  color: var(--osso-2);
   font-family: "Alegreya", Georgia, serif;
   padding: 30px 0;
 }
@@ -94,7 +94,7 @@
   font-size: .62rem;
   font-weight: 700;
   letter-spacing: .12em;
-  color: #b9af9d;
+  color: var(--osso-2);
   white-space: nowrap;
 }
 

@@ -270,7 +270,7 @@ export default function PetPointsAdmin() {
                         padding: "5px 12px",
                         borderRadius: 999,
                         border: "1.5px solid #f87171",
-                        background: petsOpen[char.id] ? "rgba(232,197,106, 0.14)" : "var(--bg-2)",
+                        background: petsOpen[char.id] ? "rgba(var(--oro-rgb), 0.14)" : "var(--bg-2)",
                         color: "#f87171",
                         fontWeight: 700,
                         fontSize: "0.84rem",
@@ -289,7 +289,7 @@ export default function PetPointsAdmin() {
                     flex: "1 1 100%",
                     marginTop: 8,
                     padding: 10,
-                    background: "rgba(232,197,106, 0.06)",
+                    background: "rgba(var(--oro-rgb), 0.06)",
                     border: "1px dashed var(--el-2)",
                     borderRadius: 10,
                     display: "grid",
@@ -316,10 +316,10 @@ export default function PetPointsAdmin() {
                             style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid var(--el-2)", flexShrink: 0 }}
                           />
                           <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
-                            <div style={{ fontWeight: 700, color: "#ece5d6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <div style={{ fontWeight: 700, color: "var(--osso)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {pet.nickname || sp?.name || "?"}
                             </div>
-                            <div style={{ fontSize: "0.74rem", color: "#7d7566" }}>
+                            <div style={{ fontSize: "0.74rem", color: "var(--osso-3)" }}>
                               Lv {lvl} · {sp ? `${TYPE_ICON[sp.type]} ${sp.name}` : "specie sconosciuta"}
                               {sp && (
                                 <span style={{ color: RARITY_COLOR[sp.rarity], marginLeft: 4 }}>

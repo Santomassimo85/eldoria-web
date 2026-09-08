@@ -68,7 +68,7 @@
 
 
 .toggle-title:hover {
-  background-color: #221f27; /* Effetto hover */
+  background-color: var(--roccia-2); /* Effetto hover */
 }
 /* h3.summaryTitle height override moved to Riassunti.css */
 

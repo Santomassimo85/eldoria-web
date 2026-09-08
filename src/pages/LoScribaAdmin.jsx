@@ -178,7 +178,7 @@ export default function LoScribaAdmin() {
     if (d.sent) setPicked(new Set());
   });
 
-  const btn = (label, onClick, color = "var(--gold)", textColor = "#0b0a0d") => (
+  const btn = (label, onClick, color = "var(--gold)", textColor = "var(--ossidiana)") => (
     <button type="button" onClick={onClick} disabled={busy}
       style={{ background: color, color: textColor, border: "none", fontWeight: 700, padding: "9px 14px", borderRadius: 6, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, marginRight: 8 }}>
       {label}
@@ -210,7 +210,7 @@ export default function LoScribaAdmin() {
 
       {/* Interruttore automatismo */}
       <div style={{ margin: "8px 0 20px" }}>
-        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "var(--el-soft)" : "var(--el-2)", "#0b0a0d")}
+        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "var(--el-soft)" : "var(--el-2)", "var(--ossidiana)")}
       </div>
 
       {/* Bozza in attesa */}

@@ -10,10 +10,10 @@
   --wb-red: var(--sangue);
   --wb-blood: var(--sangue);
   --wb-line: rgba(var(--el-rgb),.35);
-  --wb-ink: #ece5d6;
-  --wb-muted: #b9af9d;
-  --wb-panel: #221f27;
-  --wb-panel-2: #221f27;
+  --wb-ink: var(--osso);
+  --wb-muted: var(--osso-2);
+  --wb-panel: var(--roccia-2);
+  --wb-panel-2: var(--roccia-2);
   --wb-success: #34d399;
   --wb-danger: var(--sangue);
 }
@@ -29,7 +29,7 @@
 @media (min-width: 1700px) { .wb-admin-page.wb-redesign { max-width: 1460px; } }
 
 .wb-admin-page input::placeholder,
-.wb-admin-page textarea::placeholder { color: #b9af9d; opacity: 1; }
+.wb-admin-page textarea::placeholder { color: var(--osso-2); opacity: 1; }
 
 /* Campi: comodi e touch-friendly su tutta la pagina */
 .wb-admin-page .admin-field-input,
@@ -46,7 +46,7 @@
   padding: 22px clamp(18px, 3vw, 30px); margin-bottom: 24px;
   border-radius: 3px;
   border: 1px solid var(--wb-line); border-left: 6px solid var(--wb-red);
-  background: linear-gradient(135deg, rgba(34,31,39, .97), rgba(34,31,39, .94));
+  background: linear-gradient(135deg, rgba(var(--roccia-2-rgb), .97), rgba(var(--roccia-2-rgb), .94));
   box-shadow: 0 20px 50px -24px rgba(0,0,0, .55), 0 1px 0 rgba(255,255,255,.7) inset;
   color: var(--wb-ink);
   animation: wb-mast-in .6s cubic-bezier(.16,1,.3,1) both;
@@ -61,7 +61,7 @@
 .wb-hero-title {
   font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
   font-size: clamp(1.5rem, 3.6vw, 2.3rem); margin: 4px 0 4px; letter-spacing: .01em; line-height: 1.05;
-  background: linear-gradient(180deg, #ece5d6, var(--wb-red) 75%);
+  background: linear-gradient(180deg, var(--osso), var(--wb-red) 75%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .wb-hero-sub { margin: 0; font-style: italic; color: var(--wb-muted); font-size: .95rem; }
@@ -70,10 +70,10 @@
   background: var(--wb-panel); border: 1px solid color-mix(in srgb, var(--wb-red) 26%, var(--wb-line));
   border-radius: 3px; padding: 9px 16px; text-align: center; min-width: 78px;
 }
-.wb-hero-stat span { display: block; font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: #b9af9d; margin-bottom: 2px; }
+.wb-hero-stat span { display: block; font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); margin-bottom: 2px; }
 .wb-hero-stat strong { font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: 1.35rem; color: var(--wb-red); }
 .wb-hero-stat.active strong   { color: var(--wb-danger); }
-.wb-hero-stat.defeated strong { color: #b9af9d; }
+.wb-hero-stat.defeated strong { color: var(--osso-2); }
 
 /* ── WORKSHOP: forgia ampia + altare a fianco solo su schermi larghi ── */
 .wb-workshop { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px; }
@@ -125,7 +125,7 @@
 }
 .wb-actions-head > label small { color: var(--wb-muted); font-weight: normal; letter-spacing: .04em; font-size: .72rem; }
 .wb-add-action-btn {
-  background: linear-gradient(135deg, var(--el-2), var(--wb-gold)); border: none; color: #0b0a0d;
+  background: linear-gradient(135deg, var(--el-2), var(--wb-gold)); border: none; color: var(--ossidiana);
   padding: 8px 14px; border-radius: 3px; font-family: var(--font-head, "Cinzel"), serif;
   font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
   transition: filter .15s, transform .1s;
@@ -197,7 +197,7 @@
 .wb-aoe-shape-icon { font-size: 1.15rem; line-height: 1; }
 .wb-aoe-shape-lbl { font-size: .58rem; letter-spacing: .02em; }
 .wb-aoe-shape.on {
-  background: linear-gradient(180deg, #2e2a35, #3d3846); border-color: var(--wb-gold); color: var(--wb-ink);
+  background: linear-gradient(180deg, var(--roccia-3), var(--roccia-4)); border-color: var(--wb-gold); color: var(--wb-ink);
   box-shadow: 0 2px 8px -3px color-mix(in srgb, var(--wb-gold) 60%, transparent);
 }
 
@@ -225,16 +225,16 @@
 @keyframes wb-blast-pulse { 0%, 100% { filter: brightness(0.92); } 50% { filter: brightness(1.18); } }
 .wb-aoe-caption { font-size: .76rem; color: var(--wb-muted); text-align: center; }
 .wb-aoe-caption strong { color: var(--wb-gold); }
-.wb-aoe-dim { color: #b9af9d; }
+.wb-aoe-dim { color: var(--osso-2); }
 @media (prefers-reduced-motion: reduce) { .wb-cell.blast { animation: none; } .wb-hero { animation: none; } }
 
 /* ── Big evoke button ── */
 .wb-evoke-btn {
   margin-top: 4px; padding: 15px 22px;
-  background: linear-gradient(135deg, var(--wb-red), var(--wb-blood)); color: #ece5d6; border: none;
+  background: linear-gradient(135deg, var(--wb-red), var(--wb-blood)); color: var(--osso); border: none;
   border-radius: 3px; font-family: var(--font-head, "Cinzel"), serif; font-size: 1.02rem; font-weight: 700;
   letter-spacing: .06em; cursor: pointer;
-  box-shadow: 0 10px 26px -10px rgba(232,197,106, .6); transition: filter .15s, transform .1s;
+  box-shadow: 0 10px 26px -10px rgba(var(--oro-rgb), .6); transition: filter .15s, transform .1s;
 }
 .wb-evoke-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 .wb-evoke-btn:disabled { opacity: .55; cursor: wait; }
@@ -254,31 +254,31 @@
 .wb-drop {
   position: relative; width: 100%; aspect-ratio: 1; border: 2px dashed var(--wb-accent, var(--wb-gold));
   border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden;
-  background: radial-gradient(circle at center, #221f27, color-mix(in srgb, var(--wb-gold) 8%, #221f27));
+  background: radial-gradient(circle at center, var(--roccia-2), color-mix(in srgb, var(--wb-gold) 8%, var(--roccia-2)));
   transition: border-color .18s, transform .12s, box-shadow .18s;
 }
 .wb-drop:hover { border-style: solid; box-shadow: 0 0 0 4px color-mix(in srgb, var(--wb-gold) 18%, transparent), 0 8px 22px -10px rgba(0,0,0, .5); }
 .wb-drop.drag { border-style: solid; border-color: var(--wb-red); transform: scale(1.02); }
 .wb-drop.loading { cursor: wait; }
-.wb-drop.filled { border-style: solid; background: #17151b; border-color: var(--wb-accent, var(--wb-gold)); }
+.wb-drop.filled { border-style: solid; background: var(--roccia); border-color: var(--wb-accent, var(--wb-gold)); }
 .wb-drop-state { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; pointer-events: none; padding: 12px; color: var(--wb-gold); }
 .wb-drop-state strong { font-family: var(--font-head, "Cinzel"), serif; font-size: .82rem; color: var(--wb-red); letter-spacing: .04em; }
 .wb-drop-state small { font-size: .68rem; color: var(--wb-muted); font-style: italic; }
 .wb-drop-icon { font-size: 2.2rem; filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--wb-gold) 40%, transparent)); }
 .wb-drop-spinner { width: 30px; height: 30px; border: 3px solid color-mix(in srgb, var(--wb-gold) 30%, transparent); border-top-color: var(--wb-gold); border-radius: 50%; animation: wbSpin .8s linear infinite; }
 @keyframes wbSpin { to { transform: rotate(360deg); } }
-.wb-drop-preview { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; background: #0b0a0d; display: block; }
+.wb-drop-preview { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; background: var(--ossidiana); display: block; }
 .wb-drop-overlay {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  background: rgba(20, 8, 14, .62); color: #ece5d6; opacity: 0; transition: opacity .18s;
+  background: rgba(20, 8, 14, .62); color: var(--osso); opacity: 0; transition: opacity .18s;
   font-family: var(--font-head, "Cinzel"), serif; font-size: .78rem; letter-spacing: .04em;
 }
 .wb-drop:hover .wb-drop-overlay { opacity: 1; }
-.wb-drop-clear { background: var(--wb-red); color: #ece5d6; border: none; padding: 6px 14px; border-radius: 999px; font-family: var(--font-text); font-size: .72rem; cursor: pointer; transition: filter .15s; }
+.wb-drop-clear { background: var(--wb-red); color: var(--osso); border: none; padding: 6px 14px; border-radius: 999px; font-family: var(--font-text); font-size: .72rem; cursor: pointer; transition: filter .15s; }
 .wb-drop-clear:hover { filter: brightness(1.18); }
 
 /* Summary */
-.wb-summary { background: #221f27; border: 1px solid var(--wb-line); border-radius: 3px; padding: 14px; text-align: center; }
+.wb-summary { background: var(--roccia-2); border: 1px solid var(--wb-line); border-radius: 3px; padding: 14px; text-align: center; }
 .wb-summary-name { font-family: var(--font-head, "Cinzel"), serif; font-size: 1.05rem; color: var(--wb-red); margin-bottom: 8px; letter-spacing: .02em; }
 .wb-summary-stats { display: flex; justify-content: center; gap: 16px; margin-bottom: 8px; font-size: .85rem; color: var(--wb-muted); }
 .wb-summary-stats strong { color: var(--wb-red); font-family: var(--font-head, "Cinzel"), serif; margin-left: 3px; }
@@ -286,7 +286,7 @@
 .wb-summary-tag { padding: 3px 11px; border-radius: 999px; font-size: .7rem; letter-spacing: .04em; font-weight: 700; border: 1px solid; }
 .wb-summary-tag.ok { background: color-mix(in srgb, var(--wb-gold) 16%, transparent); color: var(--el-soft); border-color: var(--wb-gold); }
 .wb-summary-tag.ok.dead { background: color-mix(in srgb, var(--wb-red) 12%, transparent); color: var(--wb-red); border-color: var(--wb-red); }
-.wb-summary-tag.empty { background: #2e2a35; color: #b9af9d; border-color: var(--wb-line); font-style: italic; }
+.wb-summary-tag.empty { background: var(--roccia-3); color: var(--osso-2); border-color: var(--wb-line); font-style: italic; }
 
 /* ── CASERMA DEI MINION ── */
 .wb-minions { margin-top: 8px; }
@@ -306,54 +306,54 @@
 .wb-minion-chip.editing { border-color: var(--el); box-shadow: 0 0 0 1px rgba(111, 68, 201, .35); }
 .wb-minion-chip-main { flex: 1 1 auto; min-width: 0; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: none; background: transparent; color: var(--wb-ink); }
 .wb-minion-chip-main:hover { background: color-mix(in srgb, var(--wb-gold) 7%, transparent); }
-.wb-minion-thumb { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 3px; object-fit: cover; image-rendering: pixelated; background: #17151b; border: 1px solid var(--wb-line); }
-.wb-minion-thumb.placeholder { display: grid; place-items: center; font-weight: 800; color: #0b0a0d; background: linear-gradient(135deg, var(--sangue), var(--wb-red)); }
+.wb-minion-thumb { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 3px; object-fit: cover; image-rendering: pixelated; background: var(--roccia); border: 1px solid var(--wb-line); }
+.wb-minion-thumb.placeholder { display: grid; place-items: center; font-weight: 800; color: var(--ossidiana); background: linear-gradient(135deg, var(--sangue), var(--wb-red)); }
 .wb-minion-chip-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .wb-minion-chip-txt strong { font-size: .9rem; color: var(--wb-red); font-family: var(--font-head, "Cinzel"), serif; }
 .wb-minion-chip-txt > span { font-size: .72rem; color: var(--wb-muted); }
 .wb-minion-toggle, .wb-minion-del {
   flex: 0 0 auto; width: 42px; cursor: pointer; font-size: 1rem; border: none;
-  border-left: 1px solid var(--wb-line); background: #2e2a35; color: var(--wb-muted);
+  border-left: 1px solid var(--wb-line); background: var(--roccia-3); color: var(--wb-muted);
   transition: filter .12s, background .12s;
 }
-.wb-minion-toggle.active { background: linear-gradient(180deg, #2e2a35, var(--wb-gold)); color: #ece5d6; }
+.wb-minion-toggle.active { background: linear-gradient(180deg, var(--roccia-3), var(--wb-gold)); color: var(--osso); }
 .wb-minion-toggle:hover, .wb-minion-del:hover { filter: brightness(.97); }
-.wb-minion-del:hover { background: color-mix(in srgb, var(--wb-danger) 18%, #2e2a35); color: var(--wb-danger); }
+.wb-minion-del:hover { background: color-mix(in srgb, var(--wb-danger) 18%, var(--roccia-3)); color: var(--wb-danger); }
 @media (max-width: 760px) { .wb-minion-workshop { grid-template-columns: 1fr; } }
 
 /* ── BESTIARIO ── */
 .wb-bestiary { margin-top: 8px; }
-.wb-empty { text-align: center; padding: 50px 20px; color: #b9af9d; font-style: italic; }
+.wb-empty { text-align: center; padding: 50px 20px; color: var(--osso-2); font-style: italic; }
 .wb-bestiary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 18px; }
 
 .wb-card {
   position: relative; display: flex; flex-direction: column;
-  background: linear-gradient(180deg, #221f27, var(--wb-panel-2));
+  background: linear-gradient(180deg, var(--roccia-2), var(--wb-panel-2));
   border: 1px solid var(--wb-line); border-radius: 3px; overflow: hidden;
   box-shadow: 0 12px 30px -20px rgba(0,0,0, .5);
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
-.wb-card:hover { transform: translateY(-3px); box-shadow: 0 20px 42px -22px rgba(232,197,106, .35); }
+.wb-card:hover { transform: translateY(-3px); box-shadow: 0 20px 42px -22px rgba(var(--oro-rgb), .35); }
 .wb-card.active {
   border-color: var(--wb-red);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-red) 22%, transparent), 0 12px 32px -16px rgba(232,197,106, .5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-red) 22%, transparent), 0 12px 32px -16px rgba(var(--oro-rgb), .5);
   animation: wbActiveGlow 2.4s ease-in-out infinite;
 }
 @keyframes wbActiveGlow {
-  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-red) 20%, transparent), 0 10px 28px -16px rgba(232,197,106, .4); }
-  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--wb-red) 35%, transparent), 0 14px 38px -16px rgba(232,197,106, .55); }
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-red) 20%, transparent), 0 10px 28px -16px rgba(var(--oro-rgb), .4); }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--wb-red) 35%, transparent), 0 14px 38px -16px rgba(var(--oro-rgb), .55); }
 }
 .wb-card.defeated { opacity: .82; filter: saturate(.7); }
 
-.wb-card-sprite { position: relative; background: linear-gradient(180deg, #2e2a35, #17151b); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wb-card-sprite { position: relative; background: linear-gradient(180deg, var(--roccia-3), var(--roccia)); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .wb-card-sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .wb-card-sprite img.dead { filter: grayscale(.7) brightness(.7); }
-.wb-card-noimg { color: #b9af9d; font-size: 3rem; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.wb-card-noimg small { font-size: .7rem; color: #3d3846; font-family: var(--font-text); font-style: italic; }
+.wb-card-noimg { color: var(--osso-2); font-size: 3rem; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.wb-card-noimg small { font-size: .7rem; color: var(--roccia-4); font-family: var(--font-text); font-style: italic; }
 
 .wb-card-status { position: absolute; top: 10px; left: 10px; padding: 4px 11px; border-radius: 999px; font-family: var(--font-head, "Cinzel"), serif; font-size: .64rem; letter-spacing: .1em; backdrop-filter: blur(4px); }
-.wb-card-status.on { background: rgba(248, 113, 113, .9); color: #ece5d6; box-shadow: 0 0 10px rgba(248, 113, 113, .5); }
-.wb-card-status.off { background: rgba(40, 24, 24, .6); color: #2e2a35; }
+.wb-card-status.on { background: rgba(248, 113, 113, .9); color: var(--osso); box-shadow: 0 0 10px rgba(248, 113, 113, .5); }
+.wb-card-status.off { background: rgba(40, 24, 24, .6); color: var(--roccia-3); }
 .wb-card-defeated-stamp {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-12deg);
   padding: 6px 18px; background: rgba(20, 8, 8, .6); border: 3px solid #f87171; color: #f87171;
@@ -374,8 +374,8 @@
 .wb-card-map .map-click-area { cursor: crosshair; position: relative; display: block; }
 .wb-card-map .map-click-area img { width: 100%; display: block; }
 .wb-card-map .boss-ping {
-  position: absolute; width: 14px; height: 14px; background: var(--wb-red); border: 2px solid #221f27; border-radius: 50%;
-  transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(232,197,106, .4), 0 0 10px rgba(248, 113, 113, .7); z-index: 2;
+  position: absolute; width: 14px; height: 14px; background: var(--wb-red); border: 2px solid var(--roccia-2); border-radius: 50%;
+  transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(var(--oro-rgb), .4), 0 0 10px rgba(248, 113, 113, .7); z-index: 2;
 }
 
 .wb-card-actions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 4px; }
@@ -387,9 +387,9 @@
   transition: filter .15s, transform .1s, background .15s;
 }
 .wb-btn:hover { transform: translateY(-1px); }
-.wb-btn.primary { background: linear-gradient(135deg, var(--wb-red), var(--wb-blood)); color: #ece5d6; }
+.wb-btn.primary { background: linear-gradient(135deg, var(--wb-red), var(--wb-blood)); color: var(--osso); }
 .wb-btn.primary:hover { filter: brightness(1.1); }
-.wb-btn.warn { background: #221f27; color: var(--wb-red); border-color: var(--wb-red); }
+.wb-btn.warn { background: var(--roccia-2); color: var(--wb-red); border-color: var(--wb-red); }
 .wb-btn.warn:hover { background: color-mix(in srgb, var(--wb-red) 6%, transparent); }
 .wb-btn.ghost { background: color-mix(in srgb, var(--wb-gold) 16%, transparent); color: var(--wb-gold); border-color: color-mix(in srgb, var(--wb-gold) 40%, transparent); }
 .wb-btn.ghost:hover { background: color-mix(in srgb, var(--wb-gold) 26%, transparent); }
@@ -397,7 +397,7 @@
 .wb-btn.danger:hover { background: color-mix(in srgb, var(--wb-danger) 22%, transparent); }
 
 /* Edit mode (dentro una card) */
-.wb-edit { padding: 18px; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, #221f27, var(--wb-panel-2)); }
+.wb-edit { padding: 18px; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(180deg, var(--roccia-2), var(--wb-panel-2)); }
 .wb-edit-sprites { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .wb-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 420px) { .wb-edit-grid, .wb-edit-sprites { grid-template-columns: 1fr; } }
@@ -409,7 +409,7 @@
 .wb-ai-bar .admin-field-input { flex: 1; min-width: 180px; }
 .wb-ai-btn {
   flex: none; border: none; cursor: pointer; font-weight: 800; padding: 10px 14px; border-radius: 3px;
-  color: #0b0a0d; background: linear-gradient(135deg, var(--wb-gold-soft), var(--el-2));
+  color: var(--ossidiana); background: linear-gradient(135deg, var(--wb-gold-soft), var(--el-2));
   box-shadow: 0 2px 0 rgba(0,0,0,.12); white-space: nowrap;
 }
 .wb-ai-btn:hover { filter: brightness(1.06); }
@@ -419,15 +419,15 @@
 /* Pulsante "Genera pixel art" dentro lo slot sprite */
 .wb-drop-gen {
   margin-top: 8px; border: 1px solid color-mix(in srgb, var(--wb-gold) 45%, transparent);
-  background: color-mix(in srgb, var(--wb-gold) 14%, #221f27); color: var(--el-soft);
+  background: color-mix(in srgb, var(--wb-gold) 14%, var(--roccia-2)); color: var(--el-soft);
   border-radius: 3px; padding: 5px 10px; font-weight: 700; font-size: .8rem; cursor: pointer;
 }
-.wb-drop-gen:hover { background: color-mix(in srgb, var(--wb-gold) 24%, #221f27); }
+.wb-drop-gen:hover { background: color-mix(in srgb, var(--wb-gold) 24%, var(--roccia-2)); }
 
 /* shim legacy */
 .map-click-area { position: relative; display: block; cursor: crosshair; border-radius: 3px; overflow: hidden; }
 .map-click-area img { width: 100%; display: block; }
 .boss-ping {
-  position: absolute; width: 14px; height: 14px; background: var(--wb-red); border: 2px solid #221f27; border-radius: 50%;
+  position: absolute; width: 14px; height: 14px; background: var(--wb-red); border: 2px solid var(--roccia-2); border-radius: 50%;
   transform: translate(-50%, -50%); box-shadow: 0 0 8px rgba(248, 113, 113, .7); z-index: 2;
 }

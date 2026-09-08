@@ -5,7 +5,7 @@
    finché le immagini non vengono fornite.
    ============================================================ */
 
-.taro-page { --taro-ink: #ece5d6; }
+.taro-page { --taro-ink: var(--osso); }
 
 /* ── HERO ─────────────────────────────────────────────────── */
 .taro-hero {
@@ -76,7 +76,7 @@
   background: linear-gradient(180deg, #4a3a22, var(--el-soft));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.taro-hero-tagline { margin: 0; color: #d6cdbb; font-size: 1.02rem; max-width: 46ch; }
+.taro-hero-tagline { margin: 0; color: var(--osso-body); font-size: 1.02rem; max-width: 46ch; }
 
 /* ── SEZIONE ──────────────────────────────────────────────── */
 .taro-section { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
@@ -100,12 +100,12 @@
 }
 .taro-count {
   display: inline-flex; gap: 4px; padding: 5px;
-  background: #2e2a35; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--roccia-3); border: 1px solid var(--line); border-radius: 3px;
   box-shadow: inset 0 1px 4px rgba(86,64,30,.12);
 }
 .taro-count-btn {
   width: 40px; height: 40px; border: 0; border-radius: 3px; cursor: pointer;
-  background: transparent; color: #b9af9d; font-weight: 800; font-size: 1.05rem;
+  background: transparent; color: var(--osso-2); font-weight: 800; font-size: 1.05rem;
   transition: transform .12s, background .2s, color .2s;
 }
 .taro-count-btn:hover { background: rgba(var(--el-rgb),.12); color: var(--taro-ink); }
@@ -164,7 +164,7 @@
   border-radius: 3px; overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: 0 16px 36px -16px rgba(40,26,8,.65);
-  background: #2e2a35;
+  background: var(--roccia-3);
 }
 .taro-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .taro-face--back { transform: rotateY(180deg); }
@@ -191,7 +191,7 @@
 .taro-placeholder--front {
   background:
     radial-gradient(120% 80% at 50% 0%, rgba(var(--el-rgb),.16), transparent 60%),
-    linear-gradient(180deg, #221f27, #f0e4c4);
+    linear-gradient(180deg, var(--roccia-2), #f0e4c4);
 }
 .taro-ph-glifo {
   font-family: var(--font-title, serif); font-size: 2.6rem; font-weight: 800;
@@ -216,12 +216,12 @@
 }
 .taro-cap-orient--dir { background: rgba(74,222,128,.16); color: #4ade80; }
 .taro-cap-orient--rov { background: rgba(184,54,42,.16); color: var(--oro); }
-.taro-cap-senso { display: block; font-size: .9rem; color: #d6cdbb; line-height: 1.35; }
+.taro-cap-senso { display: block; font-size: .9rem; color: var(--osso-body); line-height: 1.35; }
 
 /* ── RESPONSO ─────────────────────────────────────────────── */
 .taro-responso {
   max-width: 760px; margin: 8px auto 0;
-  background: linear-gradient(180deg, #221f27, #17151b);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
   border: 1px solid var(--line); border-top: 3px solid var(--cine-accent);
   border-radius: 3px; padding: 20px 22px;
   box-shadow: 0 18px 44px -18px rgba(40,26,8,.5);
@@ -235,7 +235,7 @@
   color: var(--amber-deep, var(--el-soft)); font-size: 1.25rem;
 }
 .taro-copy {
-  border: 1px solid var(--line); background: #2e2a35; color: #b9af9d;
+  border: 1px solid var(--line); background: var(--roccia-3); color: var(--osso-2);
   padding: 8px 14px; border-radius: 3px; cursor: pointer; font-weight: 700;
   transition: background .2s, color .2s;
 }
@@ -243,7 +243,7 @@
 .taro-responso-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .taro-responso-list li {
   display: grid; grid-template-columns: 1fr; gap: 2px;
-  padding: 10px 12px; background: #2e2a35; border: 1px solid var(--line-soft, #dccfa6);
+  padding: 10px 12px; background: var(--roccia-3); border: 1px solid var(--line-soft, #dccfa6);
   border-radius: 3px;
 }
 .taro-responso-role {
@@ -276,7 +276,7 @@
 .taro-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 820px; margin-inline: auto; }
 .taro-queue-item {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  background: linear-gradient(180deg, var(--bg-2, #221f27), #f6eed6);
+  background: linear-gradient(180deg, var(--bg-2, var(--roccia-2)), #f6eed6);
   border: 1px solid var(--line); border-left: 4px solid var(--crit, var(--oro));
   border-radius: 3px; padding: 14px 16px;
 }
@@ -285,7 +285,7 @@
 .taro-queue-name { font-weight: 800; color: var(--amber-deep, var(--el-soft)); margin-right: 8px; }
 .taro-queue-date { font-size: .8rem; color: #8a7a58; }
 .taro-queue-q { margin: 6px 0 0; color: #5b4a30; font-style: italic; }
-.taro-queue-q--none { color: #b9af9d; }
+.taro-queue-q--none { color: var(--osso-2); }
 
 /* banner lettura attiva */
 .taro-active-banner {
@@ -305,7 +305,7 @@
 .taro-request { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
 .taro-q-input {
   width: 100%; resize: vertical; padding: 12px 14px; border-radius: 3px;
-  border: 1px solid var(--line); background: #2e2a35; color: var(--taro-ink);
+  border: 1px solid var(--line); background: var(--roccia-3); color: var(--taro-ink);
   font-family: inherit; font-size: 1rem;
 }
 .taro-q-input:focus { outline: none; border-color: var(--cine-accent); box-shadow: 0 0 0 3px rgba(var(--el-rgb),.18); }
@@ -316,15 +316,15 @@
 /* cronologia */
 .taro-hist { display: grid; gap: 16px; max-width: 880px; margin-inline: auto; }
 .taro-hist-card {
-  background: linear-gradient(180deg, #221f27, #17151b);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
   border: 1px solid var(--line); border-top: 3px solid var(--cine-accent);
   border-radius: 3px; padding: 16px 18px; box-shadow: 0 14px 36px -18px rgba(40,26,8,.4);
 }
 .taro-hist-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .taro-hist-who { display: block; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--el-2); font-weight: 800; }
 .taro-hist-title { font-family: var(--font-title, serif); font-weight: 800; color: var(--el-soft); font-size: 1.1rem; }
-.taro-hist-date { font-size: .8rem; color: #b9af9d; }
-.taro-hist-q { margin: 8px 0 12px; color: #d6cdbb; font-style: italic; }
+.taro-hist-date { font-size: .8rem; color: var(--osso-2); }
+.taro-hist-q { margin: 8px 0 12px; color: var(--osso-body); font-style: italic; }
 .taro-hist-foot {
   margin-top: 16px; padding-top: 14px;
   border-top: 1px dashed rgba(var(--el-rgb),.4);
@@ -341,7 +341,7 @@
   font-size: 1.16rem; font-weight: 700; color: var(--el-soft);
   text-shadow: 0 0 14px rgba(var(--el-rgb),.6); letter-spacing: .01em;
 }
-.taro-hist-foot-wink { font-size: .72rem; font-style: italic; color: #b9af9d; opacity: .9; }
+.taro-hist-foot-wink { font-size: .72rem; font-style: italic; color: var(--osso-2); opacity: .9; }
 
 /* riga di mini-carte */
 .taro-mini-row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -349,13 +349,13 @@
 .taro-mini-role { font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--el-soft); font-weight: 800; }
 .taro-mini-fig {
   width: 100%; aspect-ratio: 2 / 3.2; border-radius: 3px; overflow: hidden;
-  border: 1px solid var(--line); box-shadow: 0 8px 20px -12px rgba(40,26,8,.5); background: #2e2a35;
+  border: 1px solid var(--line); box-shadow: 0 8px 20px -12px rgba(40,26,8,.5); background: var(--roccia-3);
 }
 .taro-mini-fig img { width: 100%; height: 100%; object-fit: cover; }
 .taro-mini-fig.is-reversed img, .taro-mini-fig.is-reversed .taro-mini-ph { transform: rotate(180deg); }
 .taro-mini-ph {
   width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  background: linear-gradient(180deg, #221f27, #2e2a35);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia-3));
 }
 .taro-mini-ph span { font-family: var(--font-title, serif); font-weight: 800; font-size: 1.5rem; color: var(--amber-deep, var(--el-soft)); }
 .taro-mini-ph b { font-size: 1.4rem; }
@@ -366,7 +366,7 @@
 .taro-backs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .taro-back-opt {
   position: relative; width: 78px; aspect-ratio: 2/3.2; padding: 0; cursor: pointer;
-  border: 2px solid var(--line); border-radius: 3px; overflow: hidden; background: #2e2a35;
+  border: 2px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--roccia-3);
   transition: transform .12s, box-shadow .2s, border-color .2s;
 }
 .taro-back-opt img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -422,7 +422,7 @@
 .taro-tool-chk { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #5b4a30; font-weight: 700; cursor: pointer; }
 .taro-tool-note {
   width: 100%; padding: 7px 9px; border-radius: 3px; border: 1px solid var(--line);
-  background: #2e2a35; color: var(--taro-ink); font-size: .82rem; font-family: inherit; resize: vertical;
+  background: var(--roccia-3); color: var(--taro-ink); font-size: .82rem; font-family: inherit; resize: vertical;
 }
 .taro-tool-note:focus { outline: none; border-color: var(--cine-accent); box-shadow: 0 0 0 2px rgba(var(--el-rgb),.16); }
 .taro-cap-note { display: block; font-size: .8rem; color: var(--arc-deep, var(--el-deep)); font-style: italic; margin-top: 3px; }
@@ -433,7 +433,7 @@
 .taro-chip {
   text-align: left; cursor: pointer; font-family: inherit;
   padding: 6px 9px; border-radius: 3px; border: 1px solid var(--line-soft, #dccfa6);
-  background: #2e2a35; color: #4a3a22; font-size: .78rem; line-height: 1.28;
+  background: var(--roccia-3); color: #4a3a22; font-size: .78rem; line-height: 1.28;
   transition: background .15s, border-color .15s, transform .1s;
 }
 .taro-chip:hover { background: rgba(169,120,26,.1); border-color: var(--amber, var(--el-2)); transform: translateY(-1px); }
@@ -466,7 +466,7 @@
 /* spettatore live */
 .taro-table--spectate .taro-deck-col { gap: 10px; }
 .taro-spectate-state { font-size: .85rem; color: var(--arc-deep, var(--el-deep)); font-style: italic; text-align: center; max-width: 130px; }
-.taro-hist-msg { max-width: 700px; margin: 14px auto 0; padding: 12px 16px; background: rgba(var(--el-rgb),.1); border-left: 3px solid var(--cine-accent); border-radius: 3px; color: #d6cdbb; font-style: italic; }
+.taro-hist-msg { max-width: 700px; margin: 14px auto 0; padding: 12px 16px; background: rgba(var(--el-rgb),.1); border-left: 3px solid var(--cine-accent); border-radius: 3px; color: var(--osso-body); font-style: italic; }
 .taro-hist-msg--live { text-align: center; }
 
 /* badge */

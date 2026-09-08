@@ -11,7 +11,7 @@
   margin: 10px 0 0;
   font-family: "Alegreya", Georgia, serif;
   font-size: .92rem;
-  color: #b9af9d;
+  color: var(--osso-2);
 }
 .bacheca-page .bch-glacier-greet strong {
   font-family: "Cinzel", Georgia, serif;
@@ -35,13 +35,13 @@
   padding: 10px 16px;
   border-radius: 999px;
   border: 1px solid rgba(var(--el-rgb), .4);
-  background: #17151b;
-  color: #ece5d6;
+  background: var(--roccia);
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
   font-size: .86rem;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
-.bacheca-page .bch-search::placeholder { color: #b9af9d; }
+.bacheca-page .bch-search::placeholder { color: var(--osso-2); }
 .bacheca-page .bch-search:focus { outline: none; border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); }
 .bacheca-page .bch-filtri { margin: 0; justify-content: flex-start; }
 .bacheca-page .bch-count {
@@ -70,7 +70,7 @@
   position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
   width: 12px; height: 12px; border-radius: 50%; z-index: 3;
   background: radial-gradient(circle at 35% 30%, var(--oro-soft), var(--oro) 60%, #7e22ce);
-  box-shadow: 0 0 12px rgba(232,197,106, .8);
+  box-shadow: 0 0 12px rgba(var(--oro-rgb), .8);
 }
 .bacheca-page .quest-card.accepted { border-color: rgba(var(--el-rgb), .45); }
 .bacheca-page .quest-card.sealed {
@@ -136,7 +136,7 @@
   object-fit: cover;
   border-radius: 3px;
   border: 2px solid rgba(var(--el-rgb), .55);
-  background: #17151b;
+  background: var(--roccia);
   padding: 3px;
   box-shadow: 0 0 20px -4px rgba(var(--el-rgb), .6);
 }
@@ -158,7 +158,7 @@
 }
 .bacheca-page .quest-card-meta.private { color: var(--oro); }
 .bacheca-page .quest-card-meta.party   { color: var(--el-2); }
-.bacheca-page .quest-card-meta.sealed  { color: #b9af9d; text-transform: none; }
+.bacheca-page .quest-card-meta.sealed  { color: var(--osso-2); text-transform: none; }
 .bacheca-page .quest-card-accepted { margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .bacheca-page .quest-card-accepted p { margin: 0; }
 .bacheca-page .quest-card-accepted strong { font-family: "Cinzel", Georgia, serif; letter-spacing: .04em; }
@@ -167,12 +167,12 @@
 
 /* ── azioni ── */
 .bacheca-page .btn-quest-accept { margin-top: 10px; padding: 9px 18px; font-size: .64rem; }
-.bacheca-page .btn-quest-release { color: var(--oro); border-color: rgba(232,197,106, .5); }
-.bacheca-page .btn-quest-release:hover { border-color: var(--oro); box-shadow: 0 0 16px -4px rgba(232,197,106, .8); color: var(--oro-soft); }
+.bacheca-page .btn-quest-release { color: var(--oro); border-color: rgba(var(--oro-rgb), .5); }
+.bacheca-page .btn-quest-release:hover { border-color: var(--oro); box-shadow: 0 0 16px -4px rgba(var(--oro-rgb), .8); color: var(--oro-soft); }
 
 /* ── stati vuoti ── */
 .bacheca-page .cine-loading,
-.bacheca-page .cine-empty { color: #b9af9d; font-family: "Alegreya", Georgia, serif; }
+.bacheca-page .cine-empty { color: var(--osso-2); font-family: "Alegreya", Georgia, serif; }
 
 @media (max-width: 420px) {
   .bacheca-page .scrolls-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }

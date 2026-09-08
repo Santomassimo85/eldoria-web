@@ -378,11 +378,11 @@ export default function Geo() {
       {editingLoc && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          backgroundColor: "rgba(11,10,13,0.85)", zIndex: 9999,
+          backgroundColor: "rgba(var(--ossidiana-rgb),0.85)", zIndex: 9999,
           overflowY: "auto", padding: "20px"
         }}>
           <div style={{
-            backgroundColor: "#221f27", color: "#ece5d6", padding: "24px", borderRadius: "18px",
+            backgroundColor: "var(--roccia-2)", color: "var(--osso)", padding: "24px", borderRadius: "18px",
             maxWidth: "800px", margin: "0 auto",
             border: "1px solid rgba(var(--el-rgb),0.45)",
             boxShadow: "0 30px 70px -24px #000"
@@ -390,7 +390,7 @@ export default function Geo() {
             <button
               onClick={() => setEditingLoc(null)}
               style={{
-                float: "right", background: "linear-gradient(90deg,var(--oro),var(--sangue))", color: "#0b0a0d",
+                float: "right", background: "linear-gradient(90deg,var(--oro),var(--sangue))", color: "var(--ossidiana)",
                 border: "none", padding: "6px 14px", cursor: "pointer",
                 borderRadius: "6px", fontWeight: "bold"
               }}

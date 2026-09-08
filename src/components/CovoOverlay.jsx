@@ -63,7 +63,7 @@ export default function CovoOverlay() {
     const scia = []; // la SCIA: fiamme (Fuoco) o schegge di ghiaccio (Gelo) che seguono mouse e dito
     let ultimo = { x: -9999, y: -9999 };
     const nasceScia = (x, y, vx, vy) => {
-      const gelo = soffio() === "gelo";
+      const gelo = cristalli();
       return { x: x + (Math.random() - .5) * 6, y: y + (Math.random() - .5) * 6, vx: vx * .15 + (Math.random() - .5) * .6, vy: (gelo ? .6 : -1.2) + vy * .15 + (Math.random() - .5) * .5, r: 2 + Math.random() * (gelo ? 3 : 5), vita: 1, rot: Math.random() * Math.PI, spin: (Math.random() - .5) * .08 };
     };
     const tocca = (x, y) => {
@@ -75,16 +75,23 @@ export default function CovoOverlay() {
     };
     let rgb = elRgb();
     const soffio = () => document.documentElement.dataset.soffio || "fuoco";
+    const cristalli = () => soffio() === "gelo" || soffio() === "bianco"; // schegge che scendono, non braci
+    const coloriPelle = () => {
+      const cs = getComputedStyle(document.body);
+      const t = (k, d) => (cs.getPropertyValue(k).trim() || d);
+      return [t("--pelle-0", "#0b0a0d"), t("--pelle-1", "#1e1b23"), t("--pelle-2", "#121016")];
+    };
 
     const dipingiPelle = () => {
       const [R, G, B] = rgb;
       pc.setTransform(dpr, 0, 0, dpr, 0, 0);
       pc.clearRect(0, 0, W, H);
-      pc.fillStyle = "#0b0a0d"; pc.fillRect(0, 0, W, H);
+      const [p0, p1, p2] = coloriPelle();
+      pc.fillStyle = p0; pc.fillRect(0, 0, W, H);
       for (const q of squame) {
         const r = 26 * q.s;
         const g = pc.createRadialGradient(q.x, q.y - r * .4, 2, q.x, q.y, r);
-        g.addColorStop(0, "#1e1b23"); g.addColorStop(.7, "#121016"); g.addColorStop(1, "#0b0a0d");
+        g.addColorStop(0, p1); g.addColorStop(.7, p2); g.addColorStop(1, p0);
         pc.fillStyle = g;
         pc.beginPath(); pc.arc(q.x, q.y, r, 0, Math.PI * 2); pc.fill();
         pc.strokeStyle = `rgba(${R},${G},${B},.08)`; pc.lineWidth = 1;
@@ -104,7 +111,7 @@ export default function CovoOverlay() {
       dipingiPelle();
     };
     const nasce = () => {
-      const fuoco = soffio() !== "gelo";
+      const fuoco = !cristalli();
       return { x: Math.random() * W, y: fuoco ? H + 10 : -10, vx: (Math.random() - .5) * .35, vy: fuoco ? -(.4 + Math.random() * .9) : (.25 + Math.random() * .6), r: fuoco ? 1 + Math.random() * 2.2 : 1.2 + Math.random() * 2.6, vita: 1, rot: Math.random() * Math.PI, spin: (Math.random() - .5) * .03 };
     };
     const frame = () => {
@@ -132,7 +139,7 @@ export default function CovoOverlay() {
       }
       /* la scia */
       if (scia.length) {
-        const gelo = soffio() === "gelo";
+        const gelo = cristalli();
         for (let i = scia.length - 1; i >= 0; i--) {
           const f = scia[i];
           f.x += f.vx + Math.sin(fase * 6 + f.y * .05) * .4; f.y += f.vy; f.vy -= gelo ? -.01 : .04; f.vita -= .028; f.rot += f.spin;
@@ -154,7 +161,7 @@ export default function CovoOverlay() {
       if (!reduced) {
         const max = W < 600 ? 40 : 90;
         if (particelle.length < max && Math.random() < .5) particelle.push(nasce());
-        const gelo = soffio() === "gelo";
+        const gelo = cristalli();
         for (let i = particelle.length - 1; i >= 0; i--) {
           const p = particelle[i];
           p.x += p.vx + Math.sin(fase * 3 + p.y * .01) * .25; p.y += p.vy; p.vita -= .0035; p.rot += p.spin;

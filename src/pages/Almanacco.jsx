@@ -95,7 +95,7 @@ const CLASSI = [
 const ESITI = [
   { key: "disastro",  label: "Disastro",   mod: -20, ic: "☠️", col: "#ff8a7e", quando: "Tutti falliscono" },
   { key: "male",      label: "Male",       mod: -10, ic: "🌑", col: "#fb923c", quando: "Più fallimenti che successi" },
-  { key: "pari",      label: "Così così",  mod: 0,   ic: "⚖️", col: "#b9af9d", quando: "Successi e fallimenti alla pari" },
+  { key: "pari",      label: "Così così",  mod: 0,   ic: "⚖️", col: "var(--osso-2)", quando: "Successi e fallimenti alla pari" },
   { key: "bene",      label: "Bene",       mod: 10,  ic: "🌤️", col: "#4ade80", quando: "Più successi che fallimenti" },
   { key: "benedetto", label: "Benedetto",  mod: 20,  ic: "✨", col: "var(--oro)", quando: "Tutti riescono" },
 ];

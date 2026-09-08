@@ -30,7 +30,7 @@
   transition: box-shadow 0.2s, transform 0.2s;
 }
 .ld-avatar:hover { transform: translateY(-1px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cls) 25%, transparent), 0 0 18px -2px var(--cls); }
-.ld-avatar--notify { box-shadow: 0 0 0 3px rgba(232,197,106, 0.35), 0 0 14px -3px var(--cls); }
+.ld-avatar--notify { box-shadow: 0 0 0 3px rgba(var(--oro-rgb), 0.35), 0 0 14px -3px var(--cls); }
 
 .ld-badge {
   position: absolute;
@@ -45,13 +45,13 @@
   border-radius: 3px;
   line-height: 1.4;
   pointer-events: none;
-  box-shadow: 0 0 10px rgba(232,197,106, 0.7);
+  box-shadow: 0 0 10px rgba(var(--oro-rgb), 0.7);
 }
 
 /* ---- Login button (not logged in) ---- */
 .ld-login-btn {
   background: linear-gradient(90deg, var(--el-2), var(--el));
-  color: #0b0a0d;
+  color: var(--ossidiana);
   border: none;
   padding: 8px 18px;
   border-radius: 999px;
@@ -84,14 +84,14 @@
   top: calc(100% + 12px);
   right: 0;
   left: auto;
-  background: linear-gradient(180deg, #2e2a35, #17151b);
+  background: linear-gradient(180deg, var(--roccia-3), var(--roccia));
   border: 1px solid color-mix(in srgb, var(--cls) 55%, transparent);
   border-radius: 3px;
   box-shadow: 0 24px 60px -16px #000, 0 0 40px -10px color-mix(in srgb, var(--cls) 60%, transparent);
   z-index: 2000;
   min-width: 270px;
   overflow: hidden;
-  color: #ece5d6;
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
   transform-origin: top right;
   animation: ld-varco 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -108,17 +108,17 @@
   border-radius: 999px;
   font-family: "Alegreya", Georgia, serif;
   font-size: 0.9rem;
-  background: #17151b;
-  color: #ece5d6;
+  background: var(--roccia);
+  color: var(--osso);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   margin: 0;
 }
-.ld-input::placeholder { color: #b9af9d; }
+.ld-input::placeholder { color: var(--osso-2); }
 .ld-input:focus { border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), 0.8); }
 .ld-submit-btn {
   background: linear-gradient(90deg, var(--el-2), var(--el));
-  color: #0b0a0d;
+  color: var(--ossidiana);
   border: none;
   padding: 10px;
   border-radius: 3px;
@@ -167,7 +167,7 @@
 }
 .ld-char-email {
   font-size: 0.72rem;
-  color: #b9af9d;
+  color: var(--osso-2);
   margin: 2px 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -194,7 +194,7 @@
   justify-content: center;
   gap: 12px;
   padding: 11px 16px;
-  background: rgba(11,10,13, 0.35);
+  background: rgba(var(--ossidiana-rgb), 0.35);
   border-bottom: 1px solid rgba(var(--el-rgb), 0.22);
 }
 .ld-stat { display: flex; align-items: center; gap: 6px; }
@@ -207,7 +207,7 @@
   text-shadow: 0 0 10px rgba(var(--el-rgb), 0.6);
 }
 .ld-stat-value--ratto { color: var(--cls); font-family: "Cinzel", Georgia, serif; font-size: 0.8rem; font-weight: 700; text-shadow: 0 0 10px color-mix(in srgb, var(--cls) 60%, transparent); }
-.ld-stat-label { font-size: 0.72rem; color: #b9af9d; }
+.ld-stat-label { font-size: 0.72rem; color: var(--osso-2); }
 .ld-stat-divider { width: 1px; height: 22px; background: rgba(var(--el-rgb), 0.35); }
 
 /* ---- Divider ---- */
@@ -222,7 +222,7 @@
   padding: 11px 16px;
   background: transparent;
   border: none;
-  color: #ece5d6;
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
   font-size: 0.92rem;
   font-weight: 600;
@@ -234,7 +234,7 @@
 .ld-menu-item--gold { color: var(--cls); }
 .ld-menu-item--gold:hover { background: color-mix(in srgb, var(--cls) 18%, transparent); }
 .ld-menu-item--logout { color: var(--oro); font-size: 0.88rem; }
-.ld-menu-item--logout:hover { background: rgba(232,197,106, 0.12); color: var(--oro-soft); padding-left: 18px; }
+.ld-menu-item--logout:hover { background: rgba(var(--oro-rgb), 0.12); color: var(--oro-soft); padding-left: 18px; }
 .ld-inline-badge {
   background: linear-gradient(135deg, var(--oro), var(--sangue));
   color: #fff;
@@ -246,7 +246,7 @@
 .ld-section-label {
   font-family: "Cinzel", Georgia, serif;
   font-size: 0.6rem;
-  color: #b9af9d;
+  color: var(--osso-2);
   padding: 8px 16px 2px;
   letter-spacing: 0.3em;
   text-transform: uppercase;

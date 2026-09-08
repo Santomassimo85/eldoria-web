@@ -27,7 +27,7 @@
   --nx-vuoto:var(--ossidiana);
   --nx-s1:var(--roccia); --nx-s2:var(--roccia-2); --nx-s3:var(--roccia-3); --nx-s4:var(--roccia-4);
   --nx-pannello:var(--roccia-2); --nx-pannello-2:var(--roccia);
-  --nx-hair:rgba(236,229,214,.12); --nx-hair-hi:inset 0 1px 0 rgba(255,255,255,.05);
+  --nx-hair:rgba(var(--osso-rgb),.12); --nx-hair-hi:inset 0 1px 0 rgba(255,255,255,.05);
   --nx-viola:var(--el); --nx-viola-soft:var(--el-soft);
   --nx-ciano:var(--el-2); --nx-ciano-soft:var(--el-soft);
   --nx-magenta:var(--oro);
@@ -39,7 +39,7 @@
 
   /* ── token legacy (style/theme.css) ── */
   --bg-0:var(--ossidiana); --bg-1:var(--roccia); --bg-2:var(--roccia-2); --bg-3:var(--roccia-3);
-  --line:var(--roccia-3); --line-soft:var(--roccia-2); --overlay:rgba(11,10,13,.78);
+  --line:var(--roccia-3); --line-soft:var(--roccia-2); --overlay:rgba(var(--ossidiana-rgb),.78);
   --amber:var(--el-2); --amber-deep:var(--el-deep); --amber-soft:var(--el-soft);
   --arc:var(--el); --arc-deep:var(--el-deep); --arc-soft:var(--el-soft);
   --crit:#c9302c; --crit-deep:var(--sangue);
@@ -51,7 +51,7 @@
   --grad-crit:linear-gradient(180deg,#d9463b,var(--sangue));
   --glow-amber:0 0 0 1px rgba(var(--el-rgb),.45), 0 10px 30px -10px rgba(var(--el-rgb),.6);
   --glow-arc:var(--glow-amber);
-  --glow-crit:0 0 0 1px rgba(179,38,30,.45), 0 10px 30px -10px rgba(179,38,30,.6);
+  --glow-crit:0 0 0 1px rgba(var(--sangue-rgb),.45), 0 10px 30px -10px rgba(var(--sangue-rgb),.6);
   --shadow-1:0 2px 10px rgba(0,0,0,.6); --shadow-2:0 20px 40px -24px #000; --shadow-3:0 28px 70px -24px #000;
 
   /* ── tipografia del covo ── */
@@ -97,7 +97,7 @@ button { font: inherit; }
 .covo-fx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
 .covo-fx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .covo-fx .covo-soffio { z-index: 1; mix-blend-mode: screen; }
-.covo-fx .covo-velo { position: absolute; inset: 0; z-index: 2; background: radial-gradient(70% 60% at 50% 30%, transparent 40%, rgba(11,10,13,.72) 100%); }
+.covo-fx .covo-velo { position: absolute; inset: 0; z-index: 2; background: radial-gradient(70% 60% at 50% 30%, transparent 40%, rgba(var(--ossidiana-rgb),.72) 100%); }
 body.theme-dark:not(.covo-arena) .covo-fx { display: none; } /* le pagine di gioco hanno i propri FX (l'Arena no: veste il Covo) */
 body.covo-arena { background: transparent !important; } /* il fondale "notte" di theme.css coprirebbe le squame */
 /* il tasto YouTube del piè di pagina: lama del respiro, non viola */
@@ -130,7 +130,7 @@ body:not(.theme-dark)::-webkit-scrollbar-thumb { background: linear-gradient(180
    2) LA TESTATA — nome inciso, respiro, drawer, piè di pagina
    ══════════════════════════════════════════════════════════════════ */
 body:is(.theme-dark, :not(.theme-dark)) .app-nav {
-  background: linear-gradient(180deg, rgba(11,10,13,.96), rgba(11,10,13,.7) 70%, rgba(11,10,13,.35)) !important;
+  background: linear-gradient(180deg, rgba(var(--ossidiana-rgb),.96), rgba(var(--ossidiana-rgb),.7) 70%, rgba(var(--ossidiana-rgb),.35)) !important;
   border-bottom: 1px solid rgba(var(--el-rgb),.18) !important;
   box-shadow: none !important;
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -139,7 +139,7 @@ body .logo-img { filter: drop-shadow(0 0 12px rgba(var(--el-rgb),.55)); transiti
 .header-left { display: flex; align-items: center; gap: 12px; }
 
 /* il respiro: Fuoco / Gelo (sostituisce il tastino ☀/☾) */
-.respiro { display: inline-flex; border: 1px solid var(--roccia-3); background: rgba(23,21,27,.85); border-radius: 999px; padding: 3px; }
+.respiro { display: inline-flex; border: 1px solid var(--roccia-3); background: rgba(var(--roccia-rgb),.85); border-radius: 999px; padding: 3px; }
 .respiro button {
   appearance: none; border: 0; background: transparent; color: var(--osso-2); padding: 5px 12px; border-radius: 999px; cursor: pointer;
   font: 500 .8rem var(--font-sc); letter-spacing: .08em; display: flex; align-items: center; gap: 6px; transition: color .3s, background .3s;
@@ -163,7 +163,7 @@ body:is(.theme-dark, :not(.theme-dark)) nav.active {
   background: linear-gradient(180deg, var(--roccia), var(--ossidiana)) !important;
   border-left: 1px solid rgba(var(--el-rgb),.35) !important;
 }
-body .nav-backdrop { background: rgba(11,10,13,.75); }
+body .nav-backdrop { background: rgba(var(--ossidiana-rgb),.75); }
 nav a, .nav-dd-trigger, body:is(.theme-dark, :not(.theme-dark)) .nav-dd-menu a {
   font-family: var(--font-sc) !important; font-variant: normal; font-weight: 700 !important; font-size: 1rem !important; letter-spacing: .08em !important;
   border-radius: 3px !important;
@@ -176,7 +176,7 @@ body:not(.theme-dark) nav a.active { background: linear-gradient(180deg, var(--e
 body:not(.theme-dark) .nav-dd--open .nav-dd-trigger { background: var(--el-deep) !important; color: var(--el-soft) !important; }
 body:not(.theme-dark) nav a::before, body:not(.theme-dark) .nav-dd-trigger::before { background: var(--el); box-shadow: 0 0 12px rgba(var(--el-rgb),.7); }
 body:is(.theme-dark, :not(.theme-dark)) .nav-dd-menu {
-  background: rgba(11,10,13,.45) !important; border: 1px solid var(--roccia-3) !important; border-left: 3px solid var(--el) !important; border-radius: 0 !important; box-shadow: none !important;
+  background: rgba(var(--ossidiana-rgb),.45) !important; border: 1px solid var(--roccia-3) !important; border-left: 3px solid var(--el) !important; border-radius: 0 !important; box-shadow: none !important;
 }
 body:is(.theme-dark, :not(.theme-dark)) .nav-dd-menu a { color: var(--osso-body) !important; border-bottom: 1px solid var(--roccia-3) !important; font-weight: 500 !important; }
 body:is(.theme-dark, :not(.theme-dark)) .nav-dd-menu a:hover { background: rgba(var(--el-rgb),.12) !important; color: var(--osso) !important; }
@@ -257,7 +257,7 @@ footer::before { content: ""; display: block; width: min(320px, 60%); height: 4p
   .nesso-sat-g { width: 42px; height: 42px; font-size: 1rem !important; }
 }
 .nesso-sat { font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
-.nesso-hint { background: rgba(11,10,13,.85); padding: 3px 9px; }
+.nesso-hint { background: rgba(var(--ossidiana-rgb),.85); padding: 3px 9px; }
 @media (min-width: 700px) {
   .nesso-sat { width: 68px; left: -34px; }
   .nesso-sat-g { width: 54px; height: 54px; }
@@ -267,9 +267,9 @@ footer::before { content: ""; display: block; width: min(320px, 60%); height: 4p
 footer { margin-bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b, 0px) + 10px); }
 
 /* la costellazione → l'officina: pannello di roccia con bordi d'osso (leggibile) */
-.mnav-backdrop { background: rgba(11,10,13,.72); }
+.mnav-backdrop { background: rgba(var(--ossidiana-rgb),.72); }
 .mnav-sheet {
-  background: linear-gradient(180deg, #34303c, #221f27); border: 1px solid rgba(236,229,214,.32); border-top: 3px solid var(--el-2); border-radius: 0;
+  background: linear-gradient(180deg, #34303c, var(--roccia-2)); border: 1px solid rgba(var(--osso-rgb),.32); border-top: 3px solid var(--el-2); border-radius: 0;
   box-shadow: 0 30px 60px -24px #000, 0 0 0 1px rgba(0,0,0,.6), 0 0 44px -12px rgba(var(--el-rgb),.6); backdrop-filter: none; -webkit-backdrop-filter: none;
   bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b, 0px) + 18px);
 }
@@ -278,7 +278,7 @@ footer { margin-bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-
 .mnav-sheet-head::after { height: 4px; background: var(--el-2); clip-path: polygon(0 0, 100% 50%, 0 100%); opacity: .9; }
 .mnav-sheet-rune { color: var(--osso); }
 .mnav-sheet-link, .mnav-sheet-links > a {
-  background: rgba(236,229,214,.07); border: 1px solid rgba(236,229,214,.3); border-left: 4px solid var(--el-2); border-radius: 0;
+  background: rgba(var(--osso-rgb),.07); border: 1px solid rgba(var(--osso-rgb),.3); border-left: 4px solid var(--el-2); border-radius: 0;
   color: #fff; font: 600 1rem var(--font-ui); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); text-shadow: 0 1px 2px #000;
 }
 .mnav-sheet-link:hover { transform: none; border-color: var(--osso); border-left-color: var(--el-2); box-shadow: 0 0 18px -6px var(--el); color: #fff; background: rgba(var(--el-rgb),.16); }
@@ -348,7 +348,7 @@ body:not(.theme-dark) :is(.nx-pannello--tap, .cine-card, .ch-card, .deity-card):
 }
 /* card DENTRO card: incassata, non gradino sopra */
 body:not(.theme-dark) :is(.nx-pannello, .cine-card, .ch-card, .admin-card, .cine-panel, .ch-panel) :is(.nx-pannello, .cine-card, .ch-card, .admin-card) {
-  background: rgba(11,10,13,.45); border: 1px solid var(--roccia-3); border-top: 3px solid var(--el-deep); box-shadow: none;
+  background: rgba(var(--ossidiana-rgb),.45); border: 1px solid var(--roccia-3); border-top: 3px solid var(--el-deep); box-shadow: none;
 }
 /* artigli: tre graffi che si rivelano al passaggio */
 .blocco::after,
@@ -370,7 +370,7 @@ body:not(.theme-dark) :is(.nx-pannello--tap, .cine-card, .ch-card, .deity-card, 
 .blocco .riga b { font-weight: 700; color: var(--osso); }
 .blocco .riga span { color: var(--osso-2); }
 .carat { display: grid; grid-template-columns: repeat(6,1fr); gap: 4px; margin: 8px 0 6px; text-align: center; }
-.carat div { background: rgba(11,10,13,.5); border: 1px solid var(--roccia-3); padding: 5px 2px; }
+.carat div { background: rgba(var(--ossidiana-rgb),.5); border: 1px solid var(--roccia-3); padding: 5px 2px; }
 .carat b { display: block; font: 700 .68rem var(--font-sc); letter-spacing: .08em; color: var(--el-2); }
 .carat span { display: block; font: 600 .95rem var(--font-num); color: var(--osso); font-variant-numeric: tabular-nums; }
 .carat small { color: var(--osso-3); font-size: .72rem; }
@@ -385,7 +385,7 @@ body:not(.theme-dark) .gl-vetrata-riq .gl-seal { background: linear-gradient(180
 /* pannello incassato con bordo acceso (meta-box, citazioni, note) */
 .pannello, body:not(.theme-dark) :is(.nx-meta-box, .deity-modal-meta, .nx-citazione, .cine-quote, .ch-note, .admin-notice) {
   border-left: 3px solid var(--el); border-top: 0; border-right: 0; border-bottom: 0; border-radius: 0 !important; padding: 10px 16px;
-  background: rgba(11,10,13,.45); font-size: 1rem; line-height: 1.55; color: var(--osso-2);
+  background: rgba(var(--ossidiana-rgb),.45); font-size: 1rem; line-height: 1.55; color: var(--osso-2);
 }
 .pannello b, body:not(.theme-dark) :is(.nx-meta-box, .deity-modal-meta) strong { color: var(--el-2); font-weight: 700; }
 .campo, .pannello .campo { display: inline-block; margin: 6px 10px 0 0; padding: 4px 10px; border: 1px solid var(--roccia-3); background: var(--roccia); color: var(--osso); font-size: .9rem; }
@@ -398,13 +398,13 @@ body:not(.theme-dark) .nx-anello img, body:not(.theme-dark) .nx-anello .nx-anell
 /* le vetrate (band con immagine) */
 body:not(.theme-dark) .gl-vetrata { border: 1px solid var(--roccia-3); border-top: 3px solid var(--el); background: var(--roccia); box-shadow: 0 20px 40px -24px #000; }
 body:not(.theme-dark) .gl-vetrata:hover { transform: translateY(-4px); border-color: var(--roccia-3); border-top-color: var(--el); box-shadow: 0 26px 46px -22px #000, 0 0 40px -14px rgba(var(--el-rgb),.6); }
-body:not(.theme-dark) .gl-vetrata-velo { background: linear-gradient(180deg, transparent 30%, rgba(11,10,13,.96)); }
+body:not(.theme-dark) .gl-vetrata-velo { background: linear-gradient(180deg, transparent 30%, rgba(var(--ossidiana-rgb),.96)); }
 body:not(.theme-dark) .gl-vetrata-title { font-size: clamp(1.4rem, 3.6vw, 1.9rem); }
 body:not(.theme-dark) .gl-vetrata-img { filter: saturate(.9) brightness(.8) contrast(1.05); }
 
 /* tacche sulla parete (memorie / liste) */
 .parete { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 14px; }
-.tacca { position: relative; display: block; background: rgba(23,21,27,.85); border: 1px solid var(--roccia-3); padding: 14px 16px 12px 58px; overflow: hidden; text-decoration: none; transition: border-color .2s; color: var(--osso); }
+.tacca { position: relative; display: block; background: rgba(var(--roccia-rgb),.85); border: 1px solid var(--roccia-3); padding: 14px 16px 12px 58px; overflow: hidden; text-decoration: none; transition: border-color .2s; color: var(--osso); }
 .tacca:hover { border-color: var(--el); }
 .tacca .segni { position: absolute; left: 14px; top: 14px; width: 32px; height: 30px; background: repeating-linear-gradient(90deg, var(--el-2) 0 2px, transparent 2px 8px); opacity: .9; transform: skewX(-8deg); }
 .tacca .segni::after { content: ""; position: absolute; left: -4px; right: -2px; top: 50%; height: 2px; background: var(--el-2); transform: rotate(-28deg); }
@@ -440,7 +440,7 @@ body:not(.theme-dark) .gl-plunge { padding: 8px 14px; }
 body:not(.theme-dark) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea,
   .ch-input, .ch-select, .ch-textarea, .search-bar, .filter-select, .cine-search-input, .npcgen-input, .admin-input, .admin-select, .admin-textarea,
   .admin-field-input, .admin-field-select, .admin-field-textarea) {
-  background: rgba(11,10,13,.55) !important; color: var(--osso) !important;
+  background: rgba(var(--ossidiana-rgb),.55) !important; color: var(--osso) !important;
   border: 1px solid var(--roccia-3) !important; border-radius: 3px !important;
   box-shadow: inset 0 2px 6px rgba(0,0,0,.5) !important; font-family: var(--font-ui) !important;
 }
@@ -473,7 +473,7 @@ body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before {
   content: ""; display: block; width: 34px; height: 34px; border-radius: 6px; position: static; inset: auto; transform: none; opacity: 1;
   background:
-    radial-gradient(circle at 50% 50%, var(--ossidiana) 3.2px, transparent 3.8px),
+    radial-gradient(circle at 50% 50%, var(--pip, var(--ossidiana)) 3.2px, transparent 3.8px),
     linear-gradient(160deg, #f0e8d8, #c9bfa8);
   box-shadow: 0 4px 0 #6b6152, 0 8px 12px -6px #000, inset 0 1px 0 #fff;
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background .3s;
@@ -505,7 +505,7 @@ body:not(.theme-dark) .nx-pillole { justify-content: center; }
 /* ══════════════════════════════════════════════════════════════════
    9) MODALI — blocchi che si aprono nella tana
    ══════════════════════════════════════════════════════════════════ */
-body:not(.theme-dark) :is(.nx-modale-overlay, .deity-modal-overlay, .cine-modal-overlay, .modal-overlay, .admin-modal-overlay) { background: rgba(11,10,13,.8); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+body:not(.theme-dark) :is(.nx-modale-overlay, .deity-modal-overlay, .cine-modal-overlay, .modal-overlay, .admin-modal-overlay) { background: rgba(var(--ossidiana-rgb),.8); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 body:not(.theme-dark) :is(.nx-modale, .deity-modal, .cine-modal, .modal, .admin-modal, .npc-modal, .pg-modal, .item-modal) {
   background: linear-gradient(180deg, var(--roccia-2), var(--roccia)); border: 1px solid var(--roccia-3); border-top: 3px solid var(--el); border-radius: 0 !important;
   box-shadow: 0 40px 80px -30px #000, 0 0 60px -20px rgba(var(--el-rgb),.5); color: var(--osso);
@@ -518,7 +518,7 @@ body:not(.theme-dark) :is(.nx-modale-close, .deity-modal-close, .side-drawer-clo
 body:not(.theme-dark) :is(.nx-modale-img, .deity-modal-img) { border-radius: 0; border: 1px solid var(--roccia-3); border-bottom: 3px solid var(--el); }
 body:not(.theme-dark) .nx-modale .nx-titolo { font: 700 clamp(1.4rem, 4vw, 1.9rem)/1.05 var(--font-title); color: var(--el-2); background: none; -webkit-text-fill-color: var(--el-2); filter: none; }
 body:not(.theme-dark) .side-drawer { background: linear-gradient(180deg, var(--roccia-2), var(--roccia)); border-left: 3px solid var(--el); box-shadow: -24px 0 60px -20px #000; }
-body:not(.theme-dark) .side-drawer-backdrop { background: rgba(11,10,13,.6); }
+body:not(.theme-dark) .side-drawer-backdrop { background: rgba(var(--ossidiana-rgb),.6); }
 body:not(.theme-dark) .side-drawer .chatBotTitle { font: 700 1.3rem var(--font-title); color: var(--osso); }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -693,7 +693,7 @@ body:not(.theme-dark) .gl-actions, .azioni { justify-content: flex-start; gap: 1
 body:not(.theme-dark) .gl-hero--cielo { text-align: left; grid-template-columns: 1fr; }
 body:not(.theme-dark) .gl-hero--cielo .gl-lastra-titolo { padding-top: 12px; }
 /* placche hero delle pagine ristrutturate: niente vetro, blocco */
-body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) { background: linear-gradient(90deg, rgba(11,10,13,.8) 0%, rgba(11,10,13,.3) 50%, transparent 72%), linear-gradient(180deg, rgba(11,10,13,.1) 0%, rgba(11,10,13,.3) 55%, var(--ossidiana) 100%); }
+body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) { background: linear-gradient(90deg, rgba(var(--ossidiana-rgb),.8) 0%, rgba(var(--ossidiana-rgb),.3) 50%, transparent 72%), linear-gradient(180deg, rgba(var(--ossidiana-rgb),.1) 0%, rgba(var(--ossidiana-rgb),.3) 55%, var(--ossidiana) 100%); }
 body:not(.theme-dark) [class*="-hero-scroll-ic"] { border-radius: 0; border-color: var(--el); color: var(--el-2); background: var(--roccia); clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -702,7 +702,7 @@ body:not(.theme-dark) [class*="-hero-scroll-ic"] { border-radius: 0; border-colo
 .officina { background: linear-gradient(180deg, var(--roccia-2), var(--roccia)); border: 1px solid var(--roccia-3); padding: 18px 20px 20px; position: relative; }
 .dadi { display: flex; gap: 14px; align-items: flex-end; margin: 0 0 14px; flex-wrap: wrap; }
 body:not(.theme-dark) table { border-collapse: collapse; font-family: var(--font-ui); }
-body:not(.theme-dark) table thead th { background: rgba(11,10,13,.55) !important; color: var(--el-2) !important; font: 700 .7rem var(--font-sc); letter-spacing: .14em; border-bottom: 2px solid var(--el); }
+body:not(.theme-dark) table thead th { background: rgba(var(--ossidiana-rgb),.55) !important; color: var(--el-2) !important; font: 700 .7rem var(--font-sc); letter-spacing: .14em; border-bottom: 2px solid var(--el); }
 body:not(.theme-dark) table td { border-color: var(--roccia-3) !important; }
 body:not(.theme-dark) table tbody tr:nth-child(even) td { background: rgba(255,255,255,.025) !important; }
 body:not(.theme-dark) :is(.table-wrap, .admin-table-wrap) { overflow-x: auto; }
@@ -742,7 +742,7 @@ body.covo-admin :is(.admin-card, .nx-pannello, .cine-card) { background: linear-
 body.covo-admin :is(.admin-card h2, .admin-card h3, .admin-card-title, .admin-section-title) { font: 700 1.3rem/1.05 var(--font-title); color: var(--el-2); }
 body :is(.admin-back-link, .adm-back, .npcgen-back) {
   display: inline-block; padding: 6px 14px; border-radius: 3px !important; border: 1px solid var(--roccia-3) !important;
-  background: rgba(11,10,13,.5) !important; font: 700 .72rem var(--font-sc) !important; letter-spacing: .2em; color: var(--el-2) !important; text-decoration: none; box-shadow: none !important;
+  background: rgba(var(--ossidiana-rgb),.5) !important; font: 700 .72rem var(--font-sc) !important; letter-spacing: .2em; color: var(--el-2) !important; text-decoration: none; box-shadow: none !important;
 }
 body :is(.admin-back-link, .adm-back, .npcgen-back):hover { border-color: var(--el) !important; color: var(--osso) !important; }
 body.covo-admin :is(.admin-status-ok, .admin-ok) { color: #7fe0a0; }
@@ -778,3 +778,79 @@ body:not(.theme-dark) :is(.griglia, .nx-griglia, .deity-grid) { display: grid; g
   .nesso-orbe .d20-svg, .gl-finestra::before, .gl-finestra::after, .palpebra, .tiro svg, .covo-crit { animation: none !important; }
   .blocco, .blocco::after { transition: none; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   15) I CINQUE RESPIRI (2026-09-08) — Fuoco · Gelo · Arcano · Veleno ·
+       Bianco (il drago bianco = TEMA CHIARO). Ogni respiro ridefinisce il
+       colore acceso (--el*) e la pelle (--pelle-*, squame del canvas); il
+       Bianco ribalta anche le superfici (ossidiana ↔ osso). I token *-rgb
+       servono alle trasparenze (tools/covo-remap.mjs --tokenize).
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --ossidiana-2:#0f0e12;
+  --ossidiana-rgb:11,10,13; --roccia-rgb:23,21,27; --roccia-2-rgb:34,31,39; --roccia-3-rgb:46,42,53;
+  --osso-rgb:236,229,214; --oro-rgb:232,197,106; --sangue-rgb:179,38,30;
+  --pelle-0:#0b0a0d; --pelle-1:#1e1b23; --pelle-2:#121016; /* squame: fondo, cresta, ombra */
+  --pip:#0b0a0d;
+}
+html[data-soffio="gelo"] { --pelle-0:#0a0c11; --pelle-1:#1a2230; --pelle-2:#10151e; }
+html[data-soffio="arcano"] {
+  --el:#b06cff; --el-2:#d4b3ff; --el-soft:#efe3ff; --el-deep:#3b1466; --el-rgb:176,108,255;
+  --iride:radial-gradient(circle at 50% 50%, #f3e8ff 0 6%, #c79bff 22%, #6d28d9 48%, #2a0b4a 70%, #0c0416 100%);
+  --pelle-0:#0c0a12; --pelle-1:#241c33; --pelle-2:#140f1d;
+}
+html[data-soffio="veleno"] {
+  --el:#5ec24a; --el-2:#9ce87d; --el-soft:#dcffd2; --el-deep:#164a12; --el-rgb:94,194,74;
+  --iride:radial-gradient(circle at 50% 50%, #f0ffd8 0 6%, #9be86a 22%, #2f7a1e 48%, #10360c 70%, #041204 100%);
+  --pelle-0:#090c08; --pelle-1:#1b2618; --pelle-2:#0f160e;
+}
+/* IL DRAGO BIANCO — tema chiaro: la tana alla luce del giorno */
+html[data-soffio="bianco"] {
+  color-scheme: light;
+  --ossidiana:#efe8da; --ossidiana-2:#e7dfcf; --roccia:#e3dac7; --roccia-2:#f8f4ec; --roccia-3:#fffdf8; --roccia-4:#ffffff;
+  --ossidiana-rgb:239,232,218; --roccia-rgb:227,218,199; --roccia-2-rgb:248,244,236; --roccia-3-rgb:255,253,248;
+  --osso:#1c1712; --osso-body:#332c25; --osso-2:#5d5347; --osso-3:#8b8071; --osso-rgb:28,23,18;
+  --oro:#9a7418; --oro-soft:#6f5210; --oro-rgb:154,116,24;
+  --sangue:#a8231b; --sangue-rgb:168,35,27;
+  --el:#3f86b0; --el-2:#23648c; --el-soft:#12405e; --el-deep:#cfe4f0; --el-rgb:63,134,176;
+  --iride:radial-gradient(circle at 50% 50%, #ffffff 0 6%, #d8f0ff 22%, #7fb6d6 48%, #2c5f80 70%, #0d2536 100%);
+  --pelle-0:#efe8da; --pelle-1:#fbf8f1; --pelle-2:#e2d9c5;
+  --pip:#1a1512;
+  --nx-hair:rgba(28,23,18,.12); --nx-hair-hi:inset 0 1px 0 rgba(255,255,255,.8);
+  --shadow-1:0 2px 10px rgba(60,45,20,.15); --shadow-2:0 20px 40px -24px rgba(60,45,20,.45); --shadow-3:0 28px 70px -24px rgba(60,45,20,.5);
+}
+/* nel Bianco: ombre e veli più lievi, bordi visibili, testo forzato chiaro → inchiostro */
+html[data-soffio="bianco"] body:not(.theme-dark) :is(.nx-pannello, .cine-card, .ch-card, .admin-card, .deity-card, .blocco, [class*="-hero-plate"]) {
+  border-color: #cfc5b0; box-shadow: 0 14px 30px -22px rgba(60,45,20,.5), inset 0 1px 0 #fff;
+}
+html[data-soffio="bianco"] .covo-fx .covo-velo { background: radial-gradient(70% 60% at 50% 30%, transparent 40%, rgba(120,95,50,.22) 100%); }
+html[data-soffio="bianco"] body:not(.theme-dark) .app-nav { background: linear-gradient(180deg, rgba(239,232,218,.98), rgba(239,232,218,.85) 70%, rgba(239,232,218,.4)) !important; border-bottom-color: rgba(63,134,176,.25) !important; }
+html[data-soffio="bianco"] .logo-img { filter: drop-shadow(0 0 10px rgba(63,134,176,.45)); }
+html[data-soffio="bianco"] .respiro { background: rgba(255,253,248,.9); border-color: #cfc5b0; }
+html[data-soffio="bianco"] .nesso-sat, html[data-soffio="bianco"] .nesso-hint { color: var(--osso); text-shadow: none; }
+html[data-soffio="bianco"] .nesso-hint { background: rgba(248,244,236,.9); }
+html[data-soffio="bianco"] .nesso-orbe .d20-svg .faccia { fill: #fbf8f1; }
+html[data-soffio="bianco"] .nesso-orbe .d20-svg .faccia.alta { fill: #eee7d8; }
+html[data-soffio="bianco"] .nesso-orbe-glifo { color: var(--osso); text-shadow: none; }
+html[data-soffio="bianco"] .mnav-sheet { background: linear-gradient(180deg, #fffdf8, #f0eadc); border-color: #cfc5b0; }
+html[data-soffio="bianco"] .mnav-sheet-link, html[data-soffio="bianco"] .mnav-sheet-links > a { color: var(--osso); text-shadow: none; background: rgba(255,255,255,.7); border-color: #cfc5b0; }
+html[data-soffio="bianco"] .mnav-sheet-link:hover { color: var(--el-soft); }
+html[data-soffio="bianco"] .mnav-sheet-rune { color: var(--el-2); }
+html[data-soffio="bianco"] :is(.tiro svg path) { fill: #fffdf8; }
+html[data-soffio="bianco"] .carat div { background: rgba(255,255,255,.6); }
+html[data-soffio="bianco"] :is(.pannello, .campo) { background: rgba(255,255,255,.55); }
+html[data-soffio="bianco"] body:not(.theme-dark) :is(input, select, textarea) { background: #fffdf8 !important; box-shadow: inset 0 2px 6px rgba(60,45,20,.12) !important; }
+html[data-soffio="bianco"] .esito, html[data-soffio="bianco"] .tiro b { text-shadow: none; }
+html[data-soffio="bianco"] :is(.gl-vetrata-title, .gl-vetrata-sub) { color: #fff !important; text-shadow: 0 2px 8px #000; }
+html[data-soffio="bianco"] :is(.gl-vetrata-velo) { background: linear-gradient(180deg, transparent 30%, rgba(20,16,12,.92)); }
+html[data-soffio="bianco"] .titolo, html[data-soffio="bianco"] body:not(.theme-dark) :is(.gl-title, .ch-h1, .cine-hero-title, [class*="-hero-title"]) { background: linear-gradient(180deg, var(--osso) 55%, var(--osso-2)); -webkit-background-clip: text; background-clip: text; }
+html[data-soffio="bianco"] .home-page .sala-img img { filter: saturate(1) brightness(1); }
+html[data-soffio="bianco"] body:not(.theme-dark) .gl-finestra, html[data-soffio="bianco"] .occhio { box-shadow: inset 0 0 46px rgba(0,0,0,.6), 0 0 60px -10px rgba(var(--el-rgb),.5), 0 0 0 6px #d8cfbb, 0 0 0 8px #bfb39c; }
+html[data-soffio="bianco"] body:not(.theme-dark) .gl-finestra::before, html[data-soffio="bianco"] body:not(.theme-dark) .gl-finestra::after, html[data-soffio="bianco"] .palpebra {
+  background: radial-gradient(circle at 50% 120%, transparent 0 46%, rgba(0,0,0,.18) 49%, transparent 54%) 0 0 / 26px 20px, radial-gradient(circle at 50% 30%, #e9e1cf, #cbbfa6 70%);
+  border-color: #8d8168;
+}
+html[data-soffio="bianco"] footer::before { opacity: .9; }
+/* l'admin resta Arcano anche col Bianco (viola scuro su chiaro) */
+html[data-soffio="bianco"] body.covo-admin { --el:#7c3fd6; --el-2:#5b2db0; --el-soft:#3b1466; --el-deep:#e8dcff; --el-rgb:124,63,214; }

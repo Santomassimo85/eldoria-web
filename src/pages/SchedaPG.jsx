@@ -96,7 +96,7 @@ const CSS = `
 .spg-skills{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .spg-skill{display:flex;align-items:center;gap:9px;padding:7px 2px;border-bottom:1px solid var(--line)}
 .spg-skill .pip{width:8px;height:8px;border-radius:50%;border:1px solid var(--gold-dim);flex:0 0 8px}
-.spg-skill.prof .pip{background:var(--gold);box-shadow:0 0 6px rgba(232,197,106,.6)}
+.spg-skill.prof .pip{background:var(--gold);box-shadow:0 0 6px rgba(var(--oro-rgb),.6)}
 .spg-skill .sn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
 .spg-skill .sm{font-family:'Cinzel',serif;color:var(--gold);font-size:15px}
 .spg-cards{display:grid;grid-template-columns:1fr;gap:8px;align-items:start}
@@ -107,7 +107,7 @@ const CSS = `
 .spg-card .cn{flex:1;min-width:0;font-size:16px}
 .spg-badge{font-family:'Cinzel',serif;font-size:12px;padding:3px 8px;border-radius:3px;white-space:nowrap}
 .spg-badge.dmg{background:rgba(217,70,59,.14);color:#d9463b;border:1px solid rgba(217,70,59,.4)}
-.spg-badge.hit{background:rgba(232,197,106,.14);color:var(--gold);border:1px solid rgba(232,197,106,.3)}
+.spg-badge.hit{background:rgba(var(--oro-rgb),.14);color:var(--gold);border:1px solid rgba(var(--oro-rgb),.3)}
 .spg-chev{color:var(--muted);transition:.2s;flex:0 0 auto}
 .spg-card[open] .spg-chev{transform:rotate(90deg)}
 .spg-body{padding:0 14px 14px;color:var(--muted);font-size:15px;line-height:1.55}

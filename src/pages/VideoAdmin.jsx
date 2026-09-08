@@ -120,7 +120,7 @@ export default function VideoAdmin() {
                 <div key={video.id} className="adm-row">
                   <div style={{ minWidth: 0 }}>
                     <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif", display: "block" }}>{video.title}</strong>
-                    <small style={{ color: "#b9af9d" }}>{video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}</small>
+                    <small style={{ color: "var(--osso-2)" }}>{video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}</small>
                   </div>
                   <button onClick={() => handleDelete(video.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
                 </div>

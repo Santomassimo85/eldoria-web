@@ -5,7 +5,7 @@
    come pannelli di vetro scuro (fascia immagine o anello) · dettaglio
    nella MODALE-VARCO con i link interattivi. Il kit (.nx-*) vive in
    styles/nesso.css; qui solo le regole specifiche della pagina.
-   Palette testo: #ece5d6 · #b9af9d · var(--el-soft) · var(--el-2) · var(--oro).
+   Palette testo: var(--osso) · var(--osso-2) · var(--el-soft) · var(--el-2) · var(--oro).
    ============================================================ */
 
 .geo-page > * { position: relative; z-index: 1; }
@@ -27,13 +27,13 @@
 @media (min-width: 900px) { .geo-page .gl-hero-body .geo-export-row { justify-content: flex-start; } }
 .geo-page .geo-export-btn {
   display: inline-flex; align-items: center; gap: 7px;
-  background: rgba(23,21,27, .7); color: var(--el-soft);
+  background: rgba(var(--roccia-rgb), .7); color: var(--el-soft);
   border: 1px solid rgba(var(--el-rgb), .45); border-radius: 999px; padding: 8px 14px;
   font-family: "Alegreya", Georgia, serif; font-weight: 600; font-size: .72rem; letter-spacing: .04em;
   cursor: pointer; transition: all .2s ease;
 }
-.geo-page .geo-export-btn:hover { color: #ece5d6; border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); transform: translateY(-2px); }
-.geo-page .geo-export-btn--alt { color: #b9af9d; }
+.geo-page .geo-export-btn:hover { color: var(--osso); border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); transform: translateY(-2px); }
+.geo-page .geo-export-btn--alt { color: var(--osso-2); }
 
 /* ── indice a pillole ── */
 .geo-page .geo-index { margin: 4px 0 0; scroll-margin-top: 90px; }
@@ -43,10 +43,10 @@
   font-size: .6rem; font-weight: 800;
   background: rgba(var(--el-rgb), .25); color: var(--el-soft);
 }
-.geo-page .nx-pillola.on .geo-pill-n { background: rgba(11,10,13, .3); color: #0b0a0d; }
+.geo-page .nx-pillola.on .geo-pill-n { background: rgba(var(--ossidiana-rgb), .3); color: var(--ossidiana); }
 
 /* ── nessun risultato ── */
-.geo-page .cine-empty { color: #b9af9d; text-align: center; font-family: "Alegreya", Georgia, serif; }
+.geo-page .cine-empty { color: var(--osso-2); text-align: center; font-family: "Alegreya", Georgia, serif; }
 
 /* ── l'atlante: rubrica + flusso ── */
 .geo-page .geo-atlante { margin-top: 18px; }
@@ -59,13 +59,13 @@
 .geo-page .geo-rubrica-voce {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
   padding: 9px 12px; border-radius: 3px;
-  background: rgba(23,21,27, .7); border: 1px solid rgba(var(--el-rgb), .3);
+  background: rgba(var(--roccia-rgb), .7); border: 1px solid rgba(var(--el-rgb), .3);
   color: var(--el-soft); font-family: "Alegreya", Georgia, serif; font-size: .78rem; font-weight: 600;
   cursor: pointer; transition: all .2s ease;
 }
 .geo-page .geo-rubrica-voce b { color: var(--el-2); font-weight: 800; }
-.geo-page .geo-rubrica-voce:hover { color: #ece5d6; border-color: var(--el-2); transform: translateX(4px); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .6); }
-.geo-page .geo-rubrica-voce--tutte { justify-content: center; margin-top: 8px; color: #b9af9d; }
+.geo-page .geo-rubrica-voce:hover { color: var(--osso); border-color: var(--el-2); transform: translateX(4px); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .6); }
+.geo-page .geo-rubrica-voce--tutte { justify-content: center; margin-top: 8px; color: var(--osso-2); }
 
 .geo-page .geo-flusso { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .geo-page .geo-continente:first-child .gl-sezlabel { margin-top: 0; }
@@ -75,7 +75,7 @@
 .geo-page .geo-luogo {
   display: flex; flex-direction: column; align-items: center;
   padding: 0 0 16px; overflow: hidden;
-  font: inherit; color: #ece5d6;
+  font: inherit; color: var(--osso);
   scroll-margin-top: 90px;
 }
 .geo-page .geo-luogo-fascia {
@@ -87,7 +87,7 @@
   filter: saturate(1.05) brightness(.85); transition: transform .6s ease, filter .25s ease;
 }
 .geo-page .geo-luogo:hover .geo-luogo-fascia img { transform: scale(1.07); filter: saturate(1.2) brightness(1); }
-.geo-page .geo-luogo-velo { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(23,21,27, .95)); }
+.geo-page .geo-luogo-velo { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(var(--roccia-rgb), .95)); }
 .geo-page .geo-luogo-anello { margin: 18px auto 12px; }
 .geo-page .geo-luogo .nx-tag { top: 10px; right: 12px; z-index: 2; text-shadow: 0 1px 6px rgba(0, 0, 0, .9); }
 .geo-page .geo-luogo-nome { padding: 0 16px; text-transform: uppercase; letter-spacing: .08em; text-shadow: 0 0 12px rgba(var(--el-rgb), .8); }
@@ -114,7 +114,7 @@
 /* ── modale-varco del luogo ── */
 .geo-page .geo-modale { max-width: 680px; }
 .geo-page .geo-modale .nx-titolo { margin-bottom: 12px; }
-.geo-page .geo-description { color: #d6cdbb; line-height: 1.8; font-size: .96rem; }
+.geo-page .geo-description { color: var(--osso-body); line-height: 1.8; font-size: .96rem; }
 .geo-page .geo-description p { margin: 0 0 .9em; }
 .geo-page .geo-description img {
   width: 100% !important; height: auto; border-radius: 3px; margin: 14px 0;
@@ -122,23 +122,23 @@
 }
 .geo-page .geo-edit-btn {
   display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px;
-  background: linear-gradient(90deg, var(--oro), var(--sangue)); color: #0b0a0d;
+  background: linear-gradient(90deg, var(--oro), var(--sangue)); color: var(--ossidiana);
   border: none; border-radius: 3px; padding: 8px 16px;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
-  cursor: pointer; box-shadow: 0 0 22px -6px rgba(232,197,106, .8);
+  cursor: pointer; box-shadow: 0 0 22px -6px rgba(var(--oro-rgb), .8);
 }
 .geo-page .geo-edit-btn:hover { filter: brightness(1.08); }
 
 /* ── link interattivi nelle descrizioni (PG / NPC / città) ── */
 .geo-description .lore-link {
-  color: #ece5d6; text-decoration: none; cursor: pointer; font-weight: 600;
+  color: var(--osso); text-decoration: none; cursor: pointer; font-weight: 600;
   padding: 0 2px; border-radius: 4px; white-space: nowrap;
   box-shadow: inset 0 -1px 0 var(--lore-c, var(--el-2));
   transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
 }
 .geo-description .lore-link:hover,
 .geo-description .lore-link:focus-visible {
-  color: #0b0a0d; background-color: var(--lore-c, var(--el-2));
+  color: var(--ossidiana); background-color: var(--lore-c, var(--el-2));
   box-shadow: inset 0 -1.5em 0 var(--lore-c, var(--el-2)); outline: none;
 }
 .geo-description .lore-link::before { margin-right: 2px; font-size: .82em; opacity: .85; color: var(--lore-c, var(--el-2)); }
@@ -151,19 +151,19 @@
 .geo-description .lore-link--city::before { content: "⌖"; }
 
 /* ── popup interattivo (definito globalmente in Riassunti.css): vestito del vuoto, sopra la modale ── */
-.geo-page .lore-popup-overlay { z-index: 1200; background: rgba(11,10,13, .72); }
+.geo-page .lore-popup-overlay { z-index: 1200; background: rgba(var(--ossidiana-rgb), .72); }
 .geo-page .lore-popup {
-  background: linear-gradient(180deg, #2e2a35, #17151b) !important;
+  background: linear-gradient(180deg, var(--roccia-3), var(--roccia)) !important;
   border: 1px solid rgba(var(--el-rgb), .45) !important; border-radius: 3px !important;
-  color: #ece5d6 !important; box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(var(--el-rgb), .6) !important;
+  color: var(--osso) !important; box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(var(--el-rgb), .6) !important;
 }
-.geo-page .lore-popup-close { background: rgba(23,21,27, .9) !important; color: var(--oro) !important; border: 1px solid rgba(var(--el-rgb), .4) !important; }
+.geo-page .lore-popup-close { background: rgba(var(--roccia-rgb), .9) !important; color: var(--oro) !important; border: 1px solid rgba(var(--el-rgb), .4) !important; }
 .geo-page .lore-popup-kind { color: var(--el-2) !important; font-family: "Cinzel", Georgia, serif; letter-spacing: .3em; text-transform: uppercase; font-size: .58rem; }
-.geo-page .lore-popup-name { color: #ece5d6 !important; font-family: "Cinzel", Georgia, serif; }
+.geo-page .lore-popup-name { color: var(--osso) !important; font-family: "Cinzel", Georgia, serif; }
 .geo-page .lore-popup-meta { color: var(--el-soft) !important; }
-.geo-page .lore-popup-desc { color: #d6cdbb !important; }
+.geo-page .lore-popup-desc { color: var(--osso-body) !important; }
 .geo-page .lore-popup-go {
-  background: linear-gradient(90deg, var(--el-2), var(--el)) !important; color: #0b0a0d !important; border: none !important;
+  background: linear-gradient(90deg, var(--el-2), var(--el)) !important; color: var(--ossidiana) !important; border: none !important;
   border-radius: 3px !important; font-family: "Cinzel", Georgia, serif; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .66rem;
   box-shadow: 0 0 22px -6px rgba(var(--el-rgb), .8);
 }
@@ -180,9 +180,9 @@
    colore del continente si allarga dall'origine.
    ══════════════════════════════════════════════════════════════════ */
 /* pillole */
-.geo-page .geo-pillola { color: var(--g); border-color: color-mix(in srgb, var(--g) 55%, transparent); background: color-mix(in srgb, var(--g) 8%, rgba(23,21,27, .7)); }
+.geo-page .geo-pillola { color: var(--g); border-color: color-mix(in srgb, var(--g) 55%, transparent); background: color-mix(in srgb, var(--g) 8%, rgba(var(--roccia-rgb), .7)); }
 .geo-page .geo-pillola:hover { border-color: var(--g); box-shadow: 0 0 16px -4px var(--g); color: #fff; }
-.geo-page .geo-pillola.on { background: var(--g); color: #0b0a0d; border-color: transparent; box-shadow: 0 0 22px -4px var(--g); }
+.geo-page .geo-pillola.on { background: var(--g); color: var(--ossidiana); border-color: transparent; box-shadow: 0 0 22px -4px var(--g); }
 .geo-page .geo-pillola .geo-pill-n { color: inherit; }
 /* rubrica */
 .geo-page .geo-rubrica { border-color: color-mix(in srgb, var(--g, var(--el-2)) 50%, transparent); box-shadow: 0 14px 44px -14px rgba(0,0,0,.8), 0 0 34px -12px color-mix(in srgb, var(--g, var(--el-2)) 60%, transparent); }
@@ -202,7 +202,7 @@
 .geo-page .geo-luogo-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--g) 70%, transparent); }
 .geo-page .geo-luogo-cue { color: var(--g); }
 .geo-page .geo-luogo-anello::before { background: conic-gradient(var(--g), var(--el) 45%, var(--g) 75%, #fff 88%, var(--g)); }
-.geo-page .geo-luogo-velo { background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--g) 10%, rgba(23,21,27, .95))); }
+.geo-page .geo-luogo-velo { background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--g) 10%, rgba(var(--roccia-rgb), .95))); }
 /* la carta cliccata "si apre": pulsa e si accende mentre il varco sboccia */
 .geo-page .geo-luogo--warp { animation: geo-carta-warp .6s cubic-bezier(.34, 1.56, .64, 1) both; border-color: var(--g); }
 @keyframes geo-carta-warp {
@@ -249,7 +249,7 @@
 /* ── Testo del popup SEMPRE bianco (il markup arriva da Firestore con
       colori/inline-style pergamena): tutto in chiaro, i LINK colorati ── */
 .geo-page .geo-description,
-.geo-page .geo-description *:not(a):not(.lore-link) { color: #ece5d6 !important; background: transparent !important; }
+.geo-page .geo-description *:not(a):not(.lore-link) { color: var(--osso) !important; background: transparent !important; }
 .geo-page .geo-description strong, .geo-page .geo-description b { color: #fff !important; }
 .geo-page .geo-description em, .geo-page .geo-description i { color: var(--el-soft) !important; }
 .geo-page .geo-description a:not(.lore-link) { color: var(--el-2) !important; text-decoration: underline; text-underline-offset: 3px; }
@@ -271,16 +271,16 @@
 .geo-page .geo-varco-back {
   display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
-  color: #0b0a0d; background: var(--g); border: none; box-shadow: 0 0 18px -4px var(--g);
+  color: var(--ossidiana); background: var(--g); border: none; box-shadow: 0 0 18px -4px var(--g);
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .geo-page .geo-varco-back:hover { transform: translateX(-3px); box-shadow: 0 0 26px -2px var(--g); }
 .geo-page .geo-varco-briciole { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .geo-page .geo-varco-briciole li { display: flex; align-items: center; }
-.geo-page .geo-varco-briciole li + li::before { content: "›"; color: #b9af9d; margin: 0 4px; }
+.geo-page .geo-varco-briciole li + li::before { content: "›"; color: var(--osso-2); margin: 0 4px; }
 .geo-page .geo-varco-crumb {
-  padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(var(--el-rgb), .35); background: rgba(23,21,27, .7);
-  color: #b9af9d; font-family: "Alegreya", Georgia, serif; font-size: .66rem; font-weight: 600; cursor: pointer;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(var(--el-rgb), .35); background: rgba(var(--roccia-rgb), .7);
+  color: var(--osso-2); font-family: "Alegreya", Georgia, serif; font-size: .66rem; font-weight: 600; cursor: pointer;
   transition: all .15s ease; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .geo-page button.geo-varco-crumb:hover { color: #fff; border-color: var(--g); box-shadow: 0 0 12px -4px var(--g); }

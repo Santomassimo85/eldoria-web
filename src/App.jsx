@@ -79,6 +79,16 @@ import DiceRollHost from "./components/DiceRoll";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
+
+// I CINQUE RESPIRI del drago (tema del sito, html[data-soffio]): Fuoco, Gelo,
+// Arcano (viola), Veleno (drago verde), Bianco (drago bianco = tema chiaro).
+const SOFFI = [
+  { key: "fuoco",  label: "Fuoco",  title: "Drago rosso: braci",          d: "M8 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s0 2 1.5 2C7 6 6 4 8 1z" },
+  { key: "gelo",   label: "Gelo",   title: "Drago blu: cristalli",        d: "M7.3 1h1.4v3.2l2-1.2.7 1.2-2.7 1.6V8l2.3 1.3 2-1.2.7 1.2-1.6.9 2.5 1.5-.7 1.2-2.6-1.5v2l-1.4.1v-3.1L8.7 9.1v2.7l2 1.2-.7 1.2L8 13.1 6.3 14.2l-.7-1.2 2-1.2V9.1l-1.3-.7v3.1L4.9 11.6v-2L2.3 11.1l-.7-1.2 2.5-1.5-1.6-.9.7-1.2 2 1.2L7.3 6.3V4.6L4.6 4.2l.7-1.2 2 1.2z" },
+  { key: "arcano", label: "Arcano", title: "Drago arcano: scintille viola", d: "M8 1l1.6 4.4L14 7l-4.4 1.6L8 13l-1.6-4.4L2 7l4.4-1.6z" },
+  { key: "veleno", label: "Veleno", title: "Drago verde: spore",           d: "M13 2c-6 0-10 3-10 9 0 1 .2 2 .6 3 .9-3 3-6 6.4-8-2.5 2.5-4 5-4.6 8 1 .3 2 .5 3 .5 5 0 6-5 4.6-12.5z" },
+  { key: "bianco", label: "Bianco", title: "Drago bianco: la tana alla luce", d: "M8 4.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM7.3 0h1.4v2.6H7.3zM7.3 13.4h1.4V16H7.3zM0 7.3h2.6v1.4H0zM13.4 7.3H16v1.4h-2.6zM2.3 3.3l1-1 1.8 1.8-1 1zM10.9 11.9l1-1 1.8 1.8-1 1zM2.3 12.7l1.8-1.8 1 1-1.8 1.8zM10.9 4.1l1.8-1.8 1 1-1.8 1.8z" },
+];
 const APP_VERSION = "2.2.1"; // <--- CAMBIA QUESTO NUMERO PER FORZARE IL REFRESH GLOBALE
 
 // --- Dropdown menu component ---
@@ -583,7 +593,7 @@ export default function App() {
   // in localStorage "covo_soffio" -> html[data-soffio]. I pannelli DM/Admin
   // respirano sempre ARCANO (body.covo-admin, vedi styles/covo.css).
   const [soffio, setSoffio] = useState(() => {
-    try { return localStorage.getItem("covo_soffio") === "gelo" ? "gelo" : "fuoco"; } catch { return "fuoco"; }
+    try { const v = localStorage.getItem("covo_soffio"); return SOFFI.some((x) => x.key === v) ? v : "fuoco"; } catch { return "fuoco"; }
   });
   const cambiaSoffio = (s) => {
     setSoffio(s);
@@ -603,7 +613,7 @@ export default function App() {
     document.body.classList.toggle("covo-admin", isAdminPage);
     // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
     document.body.classList.toggle("covo-arena", p === "/arena");
-    document.documentElement.dataset.theme = "dark";
+    document.documentElement.dataset.theme = soffio === "bianco" ? "light" : "dark";
     document.documentElement.dataset.soffio = soffio;
     return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
   }, [location.pathname, soffio]);
@@ -657,12 +667,11 @@ export default function App() {
             <img src="/logo.png" alt="Crit Happens" className="logo-img" />
           </NavLink>
           <div className="respiro" role="group" aria-label="Respiro del drago">
-            <button type="button" data-soffio="fuoco" aria-pressed={soffio === "fuoco"} onClick={() => cambiaSoffio("fuoco")} title="Fuoco: braci">
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s0 2 1.5 2C7 6 6 4 8 1z"/></svg><span>Fuoco</span>
-            </button>
-            <button type="button" data-soffio="gelo" aria-pressed={soffio === "gelo"} onClick={() => cambiaSoffio("gelo")} title="Gelo: cristalli">
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7.3 1h1.4v3.2l2-1.2.7 1.2-2.7 1.6V8l2.3 1.3 2-1.2.7 1.2-1.6.9 2.5 1.5-.7 1.2-2.6-1.5v2l-1.4.1v-3.1L8.7 9.1v2.7l2 1.2-.7 1.2L8 13.1 6.3 14.2l-.7-1.2 2-1.2V9.1l-1.3-.7v3.1L4.9 11.6v-2L2.3 11.1l-.7-1.2 2.5-1.5-1.6-.9.7-1.2 2 1.2L7.3 6.3V4.6L4.6 4.2l.7-1.2 2 1.2z"/></svg><span>Gelo</span>
-            </button>
+            {SOFFI.map((r) => (
+              <button key={r.key} type="button" data-soffio={r.key} aria-pressed={soffio === r.key} onClick={() => cambiaSoffio(r.key)} title={r.title}>
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d={r.d} /></svg><span>{r.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

@@ -15,7 +15,7 @@
   margin: 0 auto;
   padding: calc(var(--navbar-h, 66px) + 24px) 0 80px;
   font-family: "Alegreya", Georgia, serif;
-  color: #ece5d6;
+  color: var(--osso);
 }
 .item-detail-page .loading-text,
 .item-detail-page .error-text {
@@ -45,7 +45,7 @@
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid rgba(var(--el-rgb), .4);
-  background: rgba(23,21,27, .7);
+  background: rgba(var(--roccia-rgb), .7);
   color: var(--el-soft);
   font-family: "Alegreya", Georgia, serif;
   font-size: .74rem;
@@ -55,7 +55,7 @@
   box-shadow: none;
   transition: all .2s ease;
 }
-.item-detail-page .back-button:hover { color: #ece5d6; border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); transform: translateY(-2px); }
+.item-detail-page .back-button:hover { color: var(--osso); border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); transform: translateY(-2px); }
 
 /* ══════════ VISTA PLAYER ══════════ */
 .item-detail-page .ps-varco { align-items: start; }
@@ -82,7 +82,7 @@
   width: 100%; height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #17151b;
+  border: 4px solid var(--roccia);
   display: block;
   transform: none !important;
 }
@@ -90,11 +90,11 @@
   position: absolute; inset: 0; z-index: 2;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  background: rgba(11,10,13, .62);
+  background: rgba(var(--ossidiana-rgb), .62);
   color: var(--oro);
   font-family: "Cinzel", Georgia, serif;
   font-weight: 700; font-size: 1.1rem; letter-spacing: .14em;
-  text-shadow: 0 0 12px rgba(232,197,106, .8);
+  text-shadow: 0 0 12px rgba(var(--oro-rgb), .8);
   transform: rotate(-12deg);
 }
 .item-detail-page .ps-sold-overlay.expired { color: #fb923c; text-shadow: 0 0 12px rgba(251, 146, 60, .8); }
@@ -105,7 +105,7 @@
   padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--oro)) 60%, transparent);
-  background: rgba(11,10,13, .6);
+  background: rgba(var(--ossidiana-rgb), .6);
   color: var(--rarity-edge, var(--oro));
   font-size: .68rem;
   letter-spacing: .18em;
@@ -115,7 +115,7 @@
   margin: 10px 0 0;
   font-family: "Cinzel", Georgia, serif;
   font-size: .62rem; letter-spacing: .3em; text-transform: uppercase;
-  color: #b9af9d;
+  color: var(--osso-2);
 }
 /* prezzo */
 .item-detail-page .ps-price-row {
@@ -129,7 +129,7 @@
 .item-detail-page .ps-price-label {
   font-family: "Cinzel", Georgia, serif;
   font-size: .6rem; letter-spacing: .24em; text-transform: uppercase;
-  color: #b9af9d;
+  color: var(--osso-2);
 }
 .item-detail-page .ps-price-value {
   font-size: 1.7rem; font-weight: 800; line-height: 1;
@@ -143,8 +143,8 @@
   margin: 12px 0 0;
   padding: 10px 14px;
   border-radius: 3px;
-  background: rgba(232,197,106, .08);
-  border: 1px solid rgba(232,197,106, .4);
+  background: rgba(var(--oro-rgb), .08);
+  border: 1px solid rgba(var(--oro-rgb), .4);
 }
 .item-detail-page .ps-timer-label { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--el-soft); }
 .item-detail-page .ps-timer .countdown-timer,
@@ -152,7 +152,7 @@
   font-family: "Cinzel", Georgia, serif;
   font-weight: 700; font-size: 1.15rem; letter-spacing: .08em;
   color: var(--oro);
-  text-shadow: 0 0 12px rgba(232,197,106, .8);
+  text-shadow: 0 0 12px rgba(var(--oro-rgb), .8);
 }
 .item-detail-page .ps-ratto-req {
   margin: 12px 0 0;
@@ -167,7 +167,7 @@
 .item-detail-page .ps-sezlabel { margin: 22px 0 10px; }
 .item-detail-page .ps-description { font-size: .98rem; }
 .item-detail-page .ps-description p { margin: 0 0 10px; }
-.item-detail-page .ps-description strong { color: #ece5d6; }
+.item-detail-page .ps-description strong { color: var(--osso); }
 
 /* bonus set: pannello a filetto viola */
 .item-detail-page .ps-set-block {
@@ -180,11 +180,11 @@
 .item-detail-page .ps-set-head { display: flex; align-items: center; gap: 10px; }
 .item-detail-page .ps-set-icon { color: var(--el-soft); font-size: 1.1rem; }
 .item-detail-page .ps-set-name { color: var(--el-soft); font-family: "Cinzel", Georgia, serif; font-size: .9rem; }
-.item-detail-page .ps-set-size { color: #b9af9d; }
+.item-detail-page .ps-set-size { color: var(--osso-2); }
 .item-detail-page .ps-set-bonus-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.item-detail-page .ps-set-bonus-item { display: flex; gap: 10px; align-items: baseline; color: #d6cdbb; font-size: .88rem; line-height: 1.5; }
+.item-detail-page .ps-set-bonus-item { display: flex; gap: 10px; align-items: baseline; color: var(--osso-body); font-size: .88rem; line-height: 1.5; }
 .item-detail-page .ps-set-bonus-frac { flex-shrink: 0; padding: 1px 8px; border-radius: 999px; background: rgba(var(--el-rgb), .12); color: var(--el-2); font-weight: 800; font-size: .72rem; }
-.item-detail-page .ps-set-bonus-effect { color: #d6cdbb; }
+.item-detail-page .ps-set-bonus-effect { color: var(--osso-body); }
 
 /* acquisto / offerta */
 .item-detail-page .ps-buy-btn { width: 100%; padding: 14px 22px; font-size: .78rem; }
@@ -194,32 +194,32 @@
   padding: 12px 16px;
   border-radius: 3px;
   border: 1px solid rgba(var(--el-rgb), .4);
-  background: #17151b;
-  color: #ece5d6;
+  background: var(--roccia);
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
   font-size: 1rem; font-weight: 700;
   box-shadow: none;
 }
-.item-detail-page .ps-offer-form input::placeholder { color: #b9af9d; font-weight: 500; }
-.item-detail-page .ps-offer-form input:focus { outline: none; border-color: var(--oro); box-shadow: 0 0 16px -4px rgba(232,197,106, .8); }
+.item-detail-page .ps-offer-form input::placeholder { color: var(--osso-2); font-weight: 500; }
+.item-detail-page .ps-offer-form input:focus { outline: none; border-color: var(--oro); box-shadow: 0 0 16px -4px rgba(var(--oro-rgb), .8); }
 .item-detail-page .ps-bid-btn { flex: 0 0 auto; padding: 12px 22px; }
 .item-detail-page .ps-your-bid {
   display: flex; flex-direction: column; gap: 4px;
   margin: 20px 0 0;
   padding: 14px 16px;
   border-radius: 3px;
-  background: rgba(232,197,106, .08);
-  border: 1px solid rgba(232,197,106, .4);
+  background: rgba(var(--oro-rgb), .08);
+  border: 1px solid rgba(var(--oro-rgb), .4);
 }
 .item-detail-page .ps-bid-tag { font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--oro); }
-.item-detail-page .ps-your-bid strong { font-size: 1.3rem; color: #ece5d6; }
-.item-detail-page .ps-your-bid small { color: #b9af9d; }
+.item-detail-page .ps-your-bid strong { font-size: 1.3rem; color: var(--osso); }
+.item-detail-page .ps-your-bid small { color: var(--osso-2); }
 .item-detail-page .ps-sold-info {
   margin: 20px 0 0; padding: 12px 16px; border-radius: 3px;
   background: rgba(var(--el-rgb), .1); border: 1px solid rgba(var(--el-rgb), .35);
-  color: #d6cdbb;
+  color: var(--osso-body);
 }
-.item-detail-page .ps-sold-info strong { color: #ece5d6; }
+.item-detail-page .ps-sold-info strong { color: var(--osso); }
 .item-detail-page .status-message { text-align: center; color: var(--el-soft); margin-top: 14px; }
 
 /* ══════════ VISTA MASTER: console nel vuoto ══════════ */
@@ -229,16 +229,16 @@
   margin: 0 auto;
   border-radius: 3px;
   border: 1px solid rgba(var(--el-rgb), .35);
-  background: linear-gradient(180deg, #221f27, #17151b);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
   box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
   padding: 22px 24px;
-  color: #ece5d6;
+  color: var(--osso);
   font-family: "Alegreya", Georgia, serif;
 }
 .item-detail-page .mc-header { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: start; }
 .item-detail-page .mc-thumb {
   width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-  border: 3px solid #17151b;
+  border: 3px solid var(--roccia);
   box-shadow: 0 0 0 3px var(--rarity-edge, var(--el)), 0 0 22px -4px var(--rarity-edge, var(--el));
 }
 .item-detail-page .mc-title {
@@ -251,65 +251,65 @@
 .item-detail-page .mc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .item-detail-page .mc-tag {
   padding: 3px 10px; border-radius: 999px;
-  border: 1px solid rgba(var(--el-rgb), .4); background: rgba(23,21,27, .7);
+  border: 1px solid rgba(var(--el-rgb), .4); background: rgba(var(--roccia-rgb), .7);
   color: var(--el-soft); font-size: .64rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
 }
 .item-detail-page .mc-tag[class*="rarity-"] { color: var(--rarity-edge, var(--oro)); border-color: color-mix(in srgb, var(--rarity-edge, var(--oro)) 60%, transparent); }
-.item-detail-page .mc-tag.tag-auction { color: var(--oro); border-color: rgba(232,197,106, .5); }
+.item-detail-page .mc-tag.tag-auction { color: var(--oro); border-color: rgba(var(--oro-rgb), .5); }
 .item-detail-page .mc-tag.tag-fixed { color: var(--el-2); border-color: rgba(var(--el-rgb), .5); }
 .item-detail-page .mc-tag.tag-sold { color: #fb923c; border-color: rgba(251, 146, 60, .5); }
 .item-detail-page .mc-price { display: flex; align-items: baseline; gap: 8px; margin: 0; }
-.item-detail-page .mc-price span { color: #b9af9d; font-size: .78rem; }
+.item-detail-page .mc-price span { color: var(--osso-2); font-size: .78rem; }
 .item-detail-page .mc-price strong { color: var(--el-2); font-size: 1.2rem; text-shadow: 0 0 12px rgba(var(--el-rgb), .6); }
 .item-detail-page .mc-timer { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
-.item-detail-page .mc-timer-label { color: #b9af9d; font-size: .78rem; }
+.item-detail-page .mc-timer-label { color: var(--osso-2); font-size: .78rem; }
 .item-detail-page .mc-description {
   margin: 18px 0 0; padding: 12px 14px; border-radius: 3px;
-  background: rgba(23,21,27, .7); border: 1px solid rgba(var(--el-rgb), .3);
-  color: #d6cdbb; line-height: 1.7;
+  background: rgba(var(--roccia-rgb), .7); border: 1px solid rgba(var(--el-rgb), .3);
+  color: var(--osso-body); line-height: 1.7;
 }
 .item-detail-page .mc-description summary { cursor: pointer; color: var(--el-soft); font-weight: 700; }
 .item-detail-page .mc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
 .item-detail-page .mc-stat {
   display: flex; flex-direction: column; gap: 4px;
   padding: 12px 14px; border-radius: 3px;
-  background: rgba(23,21,27, .7); border: 1px solid rgba(var(--el-rgb), .3);
+  background: rgba(var(--roccia-rgb), .7); border: 1px solid rgba(var(--el-rgb), .3);
 }
-.item-detail-page .mc-stat span { color: #b9af9d; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
-.item-detail-page .mc-stat strong { color: #ece5d6; font-size: 1.2rem; }
-.item-detail-page .mc-stat strong small { color: #b9af9d; font-size: .7rem; }
+.item-detail-page .mc-stat span { color: var(--osso-2); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.item-detail-page .mc-stat strong { color: var(--osso); font-size: 1.2rem; }
+.item-detail-page .mc-stat strong small { color: var(--osso-2); font-size: .7rem; }
 .item-detail-page .mc-stat.highlight { border-color: rgba(var(--el-rgb), .5); background: rgba(var(--el-rgb), .08); }
 .item-detail-page .mc-stat.highlight strong { color: var(--el-2); }
 .item-detail-page .mc-bids {
   padding: 14px; border-radius: 3px;
-  background: rgba(23,21,27, .7); border: 1px solid rgba(var(--el-rgb), .3);
+  background: rgba(var(--roccia-rgb), .7); border: 1px solid rgba(var(--el-rgb), .3);
 }
 .item-detail-page .mc-bids-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .item-detail-page .mc-bids-head h3 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: var(--el-soft); }
 .item-detail-page .mc-bids-table-wrap { overflow-x: auto; }
-.item-detail-page .mc-bids-table { width: 100%; border-collapse: collapse; color: #ece5d6; font-size: .88rem; }
+.item-detail-page .mc-bids-table { width: 100%; border-collapse: collapse; color: var(--osso); font-size: .88rem; }
 .item-detail-page .mc-bids-table th {
   background: rgba(var(--el-rgb), .18); color: var(--el-soft);
   padding: 9px 10px; text-align: left; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
 }
 .item-detail-page .mc-bids-table td { padding: 9px 10px; border-bottom: 1px solid rgba(var(--el-rgb), .18); }
 .item-detail-page .mc-bids-table tr.top-bid td { background: rgba(var(--el-rgb), .08); }
-.item-detail-page .mc-rank { color: #b9af9d; }
+.item-detail-page .mc-rank { color: var(--osso-2); }
 .item-detail-page .mc-bid-amount { color: var(--el-2); font-weight: 800; }
-.item-detail-page .mc-bid-time { color: #b9af9d; font-size: .78rem; }
-.item-detail-page .mc-empty { color: #b9af9d; font-style: italic; margin: 0; }
+.item-detail-page .mc-bid-time { color: var(--osso-2); font-size: .78rem; }
+.item-detail-page .mc-empty { color: var(--osso-2); font-style: italic; margin: 0; }
 .item-detail-page .mc-btn {
   padding: 7px 14px; border-radius: 999px; cursor: pointer;
   font-family: "Alegreya", Georgia, serif; font-size: .74rem; font-weight: 700;
   transition: all .2s ease;
 }
-.item-detail-page .mc-btn.danger { background: linear-gradient(90deg, var(--oro), var(--sangue)); color: #0b0a0d; border: none; box-shadow: 0 0 20px -6px rgba(232,197,106, .8); }
-.item-detail-page .mc-btn.danger:hover { box-shadow: 0 0 30px -4px rgba(232,197,106, 1); transform: translateY(-2px); }
-.item-detail-page .mc-btn.ghost { background: rgba(23,21,27, .7); color: var(--el-soft); border: 1px solid rgba(var(--el-rgb), .4); }
-.item-detail-page .mc-btn.ghost:hover { color: #ece5d6; border-color: var(--el-2); }
+.item-detail-page .mc-btn.danger { background: linear-gradient(90deg, var(--oro), var(--sangue)); color: var(--ossidiana); border: none; box-shadow: 0 0 20px -6px rgba(var(--oro-rgb), .8); }
+.item-detail-page .mc-btn.danger:hover { box-shadow: 0 0 30px -4px rgba(var(--oro-rgb), 1); transform: translateY(-2px); }
+.item-detail-page .mc-btn.ghost { background: rgba(var(--roccia-rgb), .7); color: var(--el-soft); border: 1px solid rgba(var(--el-rgb), .4); }
+.item-detail-page .mc-btn.ghost:hover { color: var(--osso); border-color: var(--el-2); }
 .item-detail-page .mc-sold-banner {
   margin: 18px 0 0; padding: 12px 16px; border-radius: 3px;
-  background: rgba(251, 146, 60, .1); border: 1px solid rgba(251, 146, 60, .45); color: #d6cdbb;
+  background: rgba(251, 146, 60, .1); border: 1px solid rgba(251, 146, 60, .45); color: var(--osso-body);
 }
 .item-detail-page .mc-sold-banner strong { color: #fb923c; }
 /* bonus-set dentro la console: stessi colori del pannello player */

@@ -27,14 +27,14 @@
    ============================================================ */
 * {
      scrollbar-width: thin;
-     scrollbar-color: var(--gold) rgba(232,197,106, 0.08);
+     scrollbar-color: var(--gold) rgba(var(--oro-rgb), 0.08);
 }
 *::-webkit-scrollbar {
      width: 8px;
      height: 8px;
 }
 *::-webkit-scrollbar-track {
-     background: rgba(232,197,106, 0.08);
+     background: rgba(var(--oro-rgb), 0.08);
      border-radius: 3px;
 }
 *::-webkit-scrollbar-thumb {
@@ -348,7 +348,7 @@ nav a.active {
      left: 50%;
      transform: translateX(-50%);
      background: #fff;
-     border: 1px solid rgba(232,197,106,0.3);
+     border: 1px solid rgba(var(--oro-rgb),0.3);
      border-top: 3px solid var(--red);
      border-radius: 0 0 3px 3px;
      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
@@ -370,7 +370,7 @@ nav a.active {
      border-radius: 0;
      transition: background 0.15s, color 0.15s, padding-left 0.15s;
      white-space: nowrap;
-     border-bottom: 1px solid rgba(232,197,106,0.1);
+     border-bottom: 1px solid rgba(var(--oro-rgb),0.1);
 }
 
 .nav-dd-menu a:last-child {
@@ -844,7 +844,7 @@ input {
      text-transform: uppercase;
      letter-spacing: 8px;
      margin-bottom: 20px;
-     border-bottom: 1px solid rgba(232,197,106, 0.2);
+     border-bottom: 1px solid rgba(var(--oro-rgb), 0.2);
      padding-bottom: 15px;
 }
 
@@ -1311,13 +1311,13 @@ input {
 .rarity-Raro          { color: #fff; background: linear-gradient(135deg, #2c8fd6, #1a5d99); }
 .rarity-Magico        { color: #fff; background: linear-gradient(135deg, var(--el), #5b21b6); }
 .rarity-Epico         { color: #fff; background: linear-gradient(135deg, #d97706, #92400e); }
-.rarity-Leggendario   { color: #2a1a00; background: linear-gradient(135deg, #ffd76a, var(--oro)); box-shadow: 0 0 10px rgba(232,197,106,0.5); }
+.rarity-Leggendario   { color: #2a1a00; background: linear-gradient(135deg, #ffd76a, var(--oro)); box-shadow: 0 0 10px rgba(var(--oro-rgb),0.5); }
 
 .rarity-bg-Comune       { --rarity-tint: rgba(107,107,107,0.18); --rarity-edge: #6b6b6b; }
 .rarity-bg-Raro         { --rarity-tint: rgba(44,143,214,0.18); --rarity-edge: #2c8fd6; }
 .rarity-bg-Magico       { --rarity-tint: rgba(var(--el-rgb),0.18); --rarity-edge: var(--el); }
 .rarity-bg-Epico        { --rarity-tint: rgba(217,119,6,0.18);  --rarity-edge: #d97706; }
-.rarity-bg-Leggendario  { --rarity-tint: rgba(232,197,106,0.22); --rarity-edge: var(--oro); }
+.rarity-bg-Leggendario  { --rarity-tint: rgba(var(--oro-rgb),0.22); --rarity-edge: var(--oro); }
 
 /* New rarity scheme — matches mercato-nero-pricing.html
    (item.class is stripped of spaces: "Non comune" → "Noncomune" etc.) */
@@ -1439,7 +1439,7 @@ input {
      border: 1.5px solid var(--gold);
      border-radius: 3px;
      margin: 0 0 18px;
-     box-shadow: 0 2px 8px rgba(232,197,106,0.12);
+     box-shadow: 0 2px 8px rgba(var(--oro-rgb),0.12);
 }
 .ps-price-label {
      font-size: 0.75rem;
@@ -1578,7 +1578,7 @@ input {
 .ps-buy-btn {
      background: linear-gradient(135deg, var(--gold), #b8860b);
      color: #2a1a00;
-     box-shadow: 0 6px 20px rgba(232,197,106,0.35);
+     box-shadow: 0 6px 20px rgba(var(--oro-rgb),0.35);
 }
 .ps-buy-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
 
@@ -1597,7 +1597,7 @@ input {
 .ps-offer-form input:focus {
      outline: none;
      border-color: var(--gold);
-     box-shadow: 0 0 0 3px rgba(232,197,106,0.18);
+     box-shadow: 0 0 0 3px rgba(var(--oro-rgb),0.18);
 }
 .ps-bid-btn {
      background: linear-gradient(135deg, #4a1a1a, var(--red));
@@ -1611,7 +1611,7 @@ input {
      flex-direction: column;
      gap: 4px;
      padding: 16px 18px;
-     background: linear-gradient(135deg, rgba(232,197,106,0.15), rgba(232,197,106,0.05));
+     background: linear-gradient(135deg, rgba(var(--oro-rgb),0.15), rgba(var(--oro-rgb),0.05));
      border: 1.5px solid var(--gold);
      border-radius: 3px;
      margin-top: 14px;
@@ -1659,7 +1659,7 @@ input {
      grid-template-columns: 140px 1fr;
      gap: 22px;
      padding-bottom: 18px;
-     border-bottom: 1.5px solid rgba(232,197,106,0.4);
+     border-bottom: 1.5px solid rgba(var(--oro-rgb),0.4);
      margin-bottom: 18px;
 }
 .mc-thumb {
@@ -1767,7 +1767,7 @@ input {
 .mc-stat.highlight {
      background: linear-gradient(135deg, #fff8e1, #fdeec7);
      border-color: var(--gold);
-     box-shadow: 0 2px 10px rgba(232,197,106,0.18);
+     box-shadow: 0 2px 10px rgba(var(--oro-rgb),0.18);
 }
 .mc-stat.highlight strong { color: var(--red); }
 
@@ -1814,7 +1814,7 @@ input {
      background: #faf6ec;
 }
 .mc-bids-table tbody tr:hover { background: #fbf9f0; }
-.mc-bids-table tr.top-bid { background: rgba(232,197,106,0.12); }
+.mc-bids-table tr.top-bid { background: rgba(var(--oro-rgb),0.12); }
 .mc-bids-table tr.top-bid .mc-bid-amount { color: var(--red); font-weight: 700; }
 .mc-rank {
      font-family: var(--font-title);
@@ -2602,7 +2602,7 @@ input {
      border-radius: 50%;
      background: linear-gradient(135deg, var(--red), #c41a1a);
      color: #fff;
-     border: 2px solid rgba(232,197,106, 0.55);
+     border: 2px solid rgba(var(--oro-rgb), 0.55);
      box-shadow: 0 4px 14px rgba(130, 10, 10, 0.35);
      font-size: 20px;
      cursor: pointer;
@@ -2619,7 +2619,7 @@ input {
      background: linear-gradient(135deg, var(--gold), #bf9b30);
      color: #1a1a1a;
      border-color: rgba(130, 10, 10, 0.4);
-     box-shadow: 0 6px 20px rgba(232,197,106, 0.5);
+     box-shadow: 0 6px 20px rgba(var(--oro-rgb), 0.5);
 }
 
 /* Side Drawer */
@@ -2705,7 +2705,7 @@ input {
      width: 320px;
      height: 420px;
      background: #fff;
-     border: 1px solid rgba(232,197,106, 0.5);
+     border: 1px solid rgba(var(--oro-rgb), 0.5);
      border-radius: 3px;
      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
      z-index: 1999;
@@ -2731,7 +2731,7 @@ input {
      align-items: center;
      padding: 10px 14px;
      background: #fdfaf3;
-     border-bottom: 1px solid rgba(232,197,106, 0.4);
+     border-bottom: 1px solid rgba(var(--oro-rgb), 0.4);
      flex-shrink: 0;
 }
 
@@ -2782,7 +2782,7 @@ input {
      align-self: flex-end;
      background: #fef9ec;
      border-radius: 3px 3px 2px 3px;
-     border: 1px solid rgba(232,197,106, 0.3);
+     border: 1px solid rgba(var(--oro-rgb), 0.3);
 }
 
 .chat-msg.master-msg {
@@ -2841,7 +2841,7 @@ input {
      display: flex;
      gap: 6px;
      padding: 8px 10px;
-     border-top: 1px solid rgba(232,197,106, 0.3);
+     border-top: 1px solid rgba(var(--oro-rgb), 0.3);
      background: #fdfaf3;
      flex-shrink: 0;
 }
@@ -2849,7 +2849,7 @@ input {
 .chat-input {
      flex: 1;
      background: #fff;
-     border: 1px solid rgba(232,197,106, 0.4);
+     border: 1px solid rgba(var(--oro-rgb), 0.4);
      color: #111;
      padding: 7px 10px;
      border-radius: 3px;
@@ -3007,7 +3007,7 @@ pg-editor-container {
 .toggle-button {
      width: 100%;
      padding: 12px 20px;
-     background: rgba(232,197,106, 0.2);
+     background: rgba(var(--oro-rgb), 0.2);
      color: rgb(83, 81, 81);
      border: none;
      display: flex;
@@ -3563,7 +3563,7 @@ nav.active a {
   height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, #2d8a2d, #1a6a1a);
-  border: 2px solid rgba(232,197,106,0.5);
+  border: 2px solid rgba(var(--oro-rgb),0.5);
   box-shadow: 0 4px 14px rgba(30,100,30,0.4);
   cursor: pointer;
   z-index: 1001;

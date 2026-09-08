@@ -81,7 +81,7 @@ export default function NessoOverlay() {
         const al = Math.min(0.8, s.d / 300);
         ctx.fillStyle = light
           ? `rgba(91,63,196,${(al * 0.7).toFixed(2)})`
-          : `rgba(236,229,214,${al.toFixed(2)})`;
+          : `rgba(var(--osso-rgb),${al.toFixed(2)})`;
         ctx.beginPath();
         ctx.arc(x, y, s.r, 0, Math.PI * 2);
         ctx.fill();

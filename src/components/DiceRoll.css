@@ -98,7 +98,7 @@
   position: absolute;
   inset: -28%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,197,106, 0.55), transparent 65%);
+  background: radial-gradient(circle, rgba(var(--oro-rgb), 0.55), transparent 65%);
   opacity: 0;
   filter: blur(6px);
   animation: dice-glow-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;

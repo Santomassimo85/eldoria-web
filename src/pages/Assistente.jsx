@@ -163,11 +163,11 @@ const CSS = `
 .ast-head .orb{
   width:50px;height:50px;border-radius:50%;flex:0 0 50px;
   background:radial-gradient(circle at 38% 32%,#ffe7a8,var(--oro) 55%,#820a0a);
-  box-shadow:0 0 16px rgba(232,197,106,.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5);
+  box-shadow:0 0 16px rgba(var(--oro-rgb),.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5);
   display:flex;align-items:center;justify-content:center;font-size:24px;
   animation:ast-orb-glow 3s ease-in-out infinite;
 }
-@keyframes ast-orb-glow{0%,100%{box-shadow:0 0 16px rgba(232,197,106,.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5)}50%{box-shadow:0 0 26px rgba(232,197,106,.7), inset 0 0 6px rgba(255,255,255,.5), 0 0 0 2px rgba(255,240,210,.6)}}
+@keyframes ast-orb-glow{0%,100%{box-shadow:0 0 16px rgba(var(--oro-rgb),.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5)}50%{box-shadow:0 0 26px rgba(var(--oro-rgb),.7), inset 0 0 6px rgba(255,255,255,.5), 0 0 0 2px rgba(255,240,210,.6)}}
 .ast-head .info .eyebrow{
   display:block;font-family:var(--font-title),'Cinzel',serif;
   font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-deep);margin:0 0 3px;
@@ -184,7 +184,7 @@ const CSS = `
   transition:max-height .3s ease;
 }
 .ast-trace.empty{display:none}
-.ast-trace-row{padding:2px 0; border-bottom:1px solid rgba(232,197,106,.2); display:flex; gap:8px}
+.ast-trace-row{padding:2px 0; border-bottom:1px solid rgba(var(--oro-rgb),.2); display:flex; gap:8px}
 .ast-trace-row:last-child{border:none}
 .ast-trace-row .t-icon{flex:0 0 auto}
 .ast-trace-row .t-text{color:#6b5f47}
@@ -267,7 +267,7 @@ const CSS = `
   resize:none;height:46px;max-height:120px;overflow-y:auto;line-height:1.4;margin:0;
 }
 .ast-bar textarea::placeholder{color:#a89a7a}
-.ast-bar textarea:focus{outline:none;border-color:var(--gold-deep);box-shadow:0 0 0 3px rgba(232,197,106,.18)}
+.ast-bar textarea:focus{outline:none;border-color:var(--gold-deep);box-shadow:0 0 0 3px rgba(var(--oro-rgb),.18)}
 .ast-bar button{
   width:46px;height:46px;border-radius:11px;border:none;
   background:linear-gradient(135deg,var(--red-soft),var(--red));

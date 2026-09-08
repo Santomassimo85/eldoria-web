@@ -139,7 +139,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   font-size: .56rem;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: #b9af9d;
+  color: var(--osso-2);
   white-space: nowrap;
   opacity: .8;
   pointer-events: none;
@@ -159,7 +159,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   border: 1px solid rgba(var(--el-rgb),.5);
   cursor: pointer;
   padding: 0;
-  background: radial-gradient(circle at 40% 34%, #3a3542, #17151b);
+  background: radial-gradient(circle at 40% 34%, var(--roccia-4), var(--roccia));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -207,7 +207,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 .nesso-sat:hover { color: #fff; box-shadow: 0 0 22px rgba(var(--el-rgb),.8); border-color: var(--el-2); }
 .nesso-sat.on,
 .nesso-sat.active {
-  color: #0b0a0d;
+  color: var(--ossidiana);
   background: radial-gradient(circle at 40% 34%, var(--el-soft), var(--el-2) 60%, var(--el-deep));
   box-shadow: 0 0 26px rgba(var(--el-rgb),1);
   border-color: transparent;
@@ -219,7 +219,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;
-  background: rgba(11,10,13,.62);
+  background: rgba(var(--ossidiana-rgb),.62);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   animation: mnav-fade .25s ease both;
 }
@@ -232,7 +232,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   width: min(560px, calc(100% - 20px));
   bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b) + 22px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(46,42,53,.96), rgba(15,14,18,.98));
+  background: linear-gradient(180deg, rgba(var(--roccia-3-rgb),.96), rgba(var(--ossidiana-rgb),.98));
   border: 1px solid rgba(var(--el-rgb),.45);
   border-radius: 3px;
   box-shadow:
@@ -277,9 +277,9 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
   padding: 10px 14px; border-radius: 3px;
-  background: linear-gradient(180deg, #221f27, #17151b);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
   border: 1px solid rgba(var(--el-rgb),.3);
-  color: #d6cdbb; text-decoration: none;
+  color: var(--osso-body); text-decoration: none;
   font-family: "Alegreya", Georgia, serif; font-size: .9rem; font-weight: 600;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,.85);
   transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, border-color .2s ease, color .2s ease;
@@ -289,7 +289,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 .mnav-sheet-link.active {
   background: linear-gradient(90deg, var(--el-2), var(--el));
   border-color: transparent;
-  color: #0b0a0d;
+  color: var(--ossidiana);
   box-shadow: 0 0 22px -4px rgba(var(--el-rgb),.8);
 }
 /* l'ultima voce dispari occupa l'intera riga */
@@ -304,7 +304,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 }
 
 /* ── Satelliti dell'Orbe: ogni runa con la sua tinta (stessa mappa del drawer) ── */
-.nesso-sat.s1 { --rune: #ece5d6; }   /* ✦ Nesso   — bianco stellare */
+.nesso-sat.s1 { --rune: var(--osso); }   /* ✦ Nesso   — bianco stellare */
 .nesso-sat.s2 { --rune: #34d399; }   /* ᛗ Mondo   — smeraldo */
 .nesso-sat.s3 { --rune: #fbbf24; }   /* ᛒ Libri   — ambra */
 .nesso-sat.s4 { --rune: var(--oro); }   /* ᛖ Eroi    — magenta */
@@ -321,4 +321,4 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   background: radial-gradient(circle at 40% 34%, #fff, var(--rune, var(--el-2)) 60%, color-mix(in srgb, var(--rune, var(--el-2)) 60%, #000));
   box-shadow: 0 0 26px var(--rune, var(--el-2));
 }
-.nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: #0b0a0d; text-shadow: none; }
+.nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: var(--ossidiana); text-shadow: none; }

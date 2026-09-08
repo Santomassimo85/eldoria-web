@@ -4,7 +4,7 @@
    casate = etichetta di sezione + GRIGLIA di pannelli con
    anello-ritratto · scheda eroe = modale-varco.
    Il kit (.nx-*) vive in styles/nesso.css: qui solo la pagina.
-   Palette testo: #ece5d6 ink · #b9af9d muted · var(--el-soft) viola-soft ·
+   Palette testo: var(--osso) ink · var(--osso-2) muted · var(--el-soft) viola-soft ·
    var(--el-2) ciano · var(--oro) magenta. Nessuno sfondo chiaro.
    ============================================================ */
 
@@ -16,7 +16,7 @@
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem;
   color: var(--el-soft); border: 1px solid rgba(var(--el-rgb), .5);
 }
-.party-page .nx-pillola.on .party-pill-code { color: #0b0a0d; border-color: rgba(11,10,13, .4); }
+.party-page .nx-pillola.on .party-pill-code { color: var(--ossidiana); border-color: rgba(var(--ossidiana-rgb), .4); }
 
 /* ── ricerca (CineToolbar) riabbigliata: pillola scura ── */
 .party-page .cine-toolbar {
@@ -24,22 +24,22 @@
   padding: 6px 0 2px; max-width: 640px; margin: 0 auto;
 }
 .party-page .cine-search {
-  background: #17151b; border: 1px solid rgba(var(--el-rgb), .4); border-radius: 999px;
+  background: var(--roccia); border: 1px solid rgba(var(--el-rgb), .4); border-radius: 999px;
   box-shadow: none; transition: border-color .2s ease, box-shadow .2s ease;
 }
 .party-page .cine-search:focus-within { border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); }
-.party-page .cine-search-icon { color: #b9af9d; }
+.party-page .cine-search-icon { color: var(--osso-2); }
 .party-page .cine-search-input {
-  background: none; border: none; color: #ece5d6;
+  background: none; border: none; color: var(--osso);
   font-family: "Alegreya", Georgia, serif; font-size: .88rem;
 }
-.party-page .cine-search-input::placeholder { color: #b9af9d; }
-.party-page .cine-search-clear { background: rgba(var(--el-rgb), .25); color: #ece5d6; }
+.party-page .cine-search-input::placeholder { color: var(--osso-2); }
+.party-page .cine-search-clear { background: rgba(var(--el-rgb), .25); color: var(--osso); }
 .party-page .cine-result-count {
   font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .68rem;
   letter-spacing: .16em; text-transform: uppercase; color: var(--el-2);
 }
-.party-page .cine-empty { color: #b9af9d; text-align: center; font-family: "Alegreya", Georgia, serif; }
+.party-page .cine-empty { color: var(--osso-2); text-align: center; font-family: "Alegreya", Georgia, serif; }
 
 /* ── casate ── */
 .party-page .casate { display: flex; flex-direction: column; gap: 6px; }
@@ -72,14 +72,14 @@
 .eroe-vital {
   display: flex; flex-direction: column; align-items: center; min-width: 64px;
   padding: 8px 12px; border-radius: 3px;
-  background: linear-gradient(180deg, #221f27, #17151b); border: 1px solid rgba(var(--el-rgb), .3);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)); border: 1px solid rgba(var(--el-rgb), .3);
 }
 .eroe-vital b { font-family: "Cinzel", Georgia, serif; font-size: 1.15rem; color: var(--el-2); text-shadow: 0 0 12px rgba(var(--el-rgb), .6); }
-.eroe-vital i { font-style: normal; font-family: "Alegreya", Georgia, serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: #b9af9d; }
+.eroe-vital i { font-style: normal; font-family: "Alegreya", Georgia, serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: var(--osso-2); }
 .eroe-abilities { margin: 0; }
 .eroe-ability { gap: 6px; cursor: default; }
 .eroe-ability i { font-style: normal; color: var(--el-soft); font-size: .62rem; letter-spacing: .14em; }
-.eroe-ability b { color: #ece5d6; font-size: .82rem; }
+.eroe-ability b { color: var(--osso); font-size: .82rem; }
 .eroe-ability em { font-style: normal; color: var(--el-2); font-size: .72rem; }
 .eroe-ability:hover { transform: none; }
 .eroe-bio { margin: 10px 0 14px; }
@@ -107,7 +107,7 @@
 }
 .party-page .eroe-card .nx-tag { color: var(--cls, var(--oro)); }
 .party-page .eroe-card .nx-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--cls, var(--el)) 45%, transparent); }
-.party-page .eroe-card .nx-meta { color: #b9af9d; }
+.party-page .eroe-card .nx-meta { color: var(--osso-2); }
 .eroe-classe {
   display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
   font-family: "Alegreya", Georgia, serif; font-weight: 700;
@@ -125,4 +125,4 @@
 .eroe-modale { border-color: color-mix(in srgb, var(--cls, var(--el)) 55%, transparent); box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px color-mix(in srgb, var(--cls, var(--el)) 70%, transparent); }
 .eroe-modale .nx-modale-img { border-color: color-mix(in srgb, var(--cls, var(--el)) 55%, transparent); }
 .eroe-modale .nx-kicker { color: var(--cls, var(--el-2)); text-shadow: 0 0 14px color-mix(in srgb, var(--cls, var(--el-2)) 70%, transparent); }
-.eroe-modale .eroe-livello { background: var(--cls, var(--el-2)); color: #0b0a0d; box-shadow: 0 0 22px -4px var(--cls, var(--el-2)); }
+.eroe-modale .eroe-livello { background: var(--cls, var(--el-2)); color: var(--ossidiana); box-shadow: 0 0 22px -4px var(--cls, var(--el-2)); }
