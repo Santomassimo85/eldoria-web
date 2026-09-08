@@ -177,7 +177,7 @@ function HeroModal({ hero, party, char, onClose }) {
         <span className="nx-kicker">{party.code} · {party.name}</span>
         <h3 className="nx-titolo">{hero.name}</h3>
         {Number.isFinite(level) && (
-          <span className="nx-pillola on eroe-livello">Livello {level}</span>
+          <span className="nx-tag nx-tag--inline eroe-livello">Livello {level}</span>
         )}
 
         <div className="nx-meta-box">
@@ -207,9 +207,12 @@ function HeroModal({ hero, party, char, onClose }) {
                 if (!a || !Number.isFinite(a.score)) return null;
                 const mod = Number.isFinite(a.mod) ? a.mod : Math.floor((a.score - 10) / 2);
                 return (
-                  <span key={key} className="nx-pillola eroe-ability">
+                  <span key={key} className="eroe-ability" title={`${label} ${a.score} (${mod >= 0 ? "+" : ""}${mod})`}>
                     <i>{label}</i>
-                    <b>{a.score}</b>
+                    <span className="eroe-d20" aria-hidden="true">
+                      <svg viewBox="0 0 100 100"><path d="M50 4 92 28v44L50 96 8 72V28z" /><path className="eroe-d20-facce" d="M50 4v18M50 22 92 28M50 22 8 28M50 22 78 66M50 22 22 66M22 66h56M22 66 8 72M78 66l14 6M22 66 50 96M78 66 50 96" /></svg>
+                      <b>{a.score}</b>
+                    </span>
                     <em>{mod >= 0 ? `+${mod}` : mod}</em>
                   </span>
                 );
