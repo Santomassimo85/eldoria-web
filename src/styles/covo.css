@@ -252,8 +252,8 @@ footer::before { content: ""; display: block; width: min(320px, 60%); height: 4p
 @media (max-width: 699px) {
   .nesso-sat { width: 54px; left: -27px; font-size: .58rem; gap: 2px; }
   .nesso-sat-g { width: 42px; height: 42px; font-size: 1rem !important; }
-  .nesso-sat > b, .nesso-sat > span:not(.nesso-sat-g) { background: rgba(11,10,13,.85); padding: 1px 5px; }
 }
+.nesso-sat { font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
 .nesso-hint { background: rgba(11,10,13,.85); padding: 3px 9px; }
 @media (min-width: 700px) {
   .nesso-sat { width: 68px; left: -34px; }
@@ -263,23 +263,23 @@ footer::before { content: ""; display: block; width: min(320px, 60%); height: 4p
 }
 footer { margin-bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b, 0px) + 10px); }
 
-/* la costellazione → l'officina: pannello di roccia col bordo acceso */
-.mnav-backdrop { background: rgba(11,10,13,.7); }
+/* la costellazione → l'officina: pannello di roccia con bordi d'osso (leggibile) */
+.mnav-backdrop { background: rgba(11,10,13,.72); }
 .mnav-sheet {
-  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)); border: 1px solid var(--roccia-3); border-top: 3px solid var(--el); border-radius: 0;
-  box-shadow: 0 30px 60px -24px #000, 0 0 40px -14px rgba(var(--el-rgb),.5); backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: linear-gradient(180deg, #34303c, #221f27); border: 1px solid rgba(236,229,214,.32); border-top: 3px solid var(--el-2); border-radius: 0;
+  box-shadow: 0 30px 60px -24px #000, 0 0 0 1px rgba(0,0,0,.6), 0 0 44px -12px rgba(var(--el-rgb),.6); backdrop-filter: none; -webkit-backdrop-filter: none;
   bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b, 0px) + 18px);
 }
-.mnav-sheet::after { background: linear-gradient(180deg, var(--el), transparent); }
-.mnav-sheet-head { font: 700 1.25rem/1 var(--font-title); letter-spacing: .03em; text-transform: none; color: var(--osso); text-shadow: none; }
-.mnav-sheet-head::after { height: 4px; background: var(--el); clip-path: polygon(0 0, 100% 50%, 0 100%); opacity: .85; }
-.mnav-sheet-rune { color: var(--el-2); }
+.mnav-sheet::after { background: linear-gradient(180deg, var(--el-2), transparent); width: 2px; }
+.mnav-sheet-head { font: 700 1.3rem/1 var(--font-title); letter-spacing: .03em; text-transform: none; color: var(--el-2); text-shadow: none; }
+.mnav-sheet-head::after { height: 4px; background: var(--el-2); clip-path: polygon(0 0, 100% 50%, 0 100%); opacity: .9; }
+.mnav-sheet-rune { color: var(--osso); }
 .mnav-sheet-link, .mnav-sheet-links > a {
-  background: rgba(11,10,13,.45); border: 1px solid var(--roccia-3); border-left: 3px solid var(--roccia-4); border-radius: 0;
-  color: var(--osso); font: 500 .95rem var(--font-ui); box-shadow: none;
+  background: rgba(236,229,214,.07); border: 1px solid rgba(236,229,214,.3); border-left: 4px solid var(--el-2); border-radius: 0;
+  color: #fff; font: 600 1rem var(--font-ui); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); text-shadow: 0 1px 2px #000;
 }
-.mnav-sheet-link:hover { transform: none; border-color: var(--roccia-3); border-left-color: var(--el); box-shadow: none; color: var(--el-2); background: rgba(var(--el-rgb),.08); }
-.mnav-sheet-link.active { background: linear-gradient(180deg, var(--el-2), var(--el)); border-color: transparent; color: var(--ossidiana); box-shadow: 0 0 22px -6px var(--el); }
+.mnav-sheet-link:hover { transform: none; border-color: var(--osso); border-left-color: var(--el-2); box-shadow: 0 0 18px -6px var(--el); color: #fff; background: rgba(var(--el-rgb),.16); }
+.mnav-sheet-link.active { background: linear-gradient(180deg, var(--el-2), var(--el)); border-color: var(--el-soft); color: var(--ossidiana); text-shadow: none; box-shadow: 0 0 22px -6px var(--el); }
 
 /* ══════════════════════════════════════════════════════════════════
    4) RUBRICHE — il filetto rasato del manuale (freccia piena)

@@ -334,9 +334,9 @@ export default function Home() {
       {/* ── L'INGRESSO: il drago ti guarda entrare (occhio che segue il cursore) ── */}
       <section id="home-top" className="ingresso" aria-label="Ingresso del covo">
         <div className="ingresso-testo">
-          <span className="kicker">Cronache di Exanthia · il covo</span>
-          <h1 className="titolo">Il drago <em>ti guarda</em> entrare.</h1>
-          <p className="sotto">Quattro compagnie, i loro eroi e <b>le memorie</b> incise sulle pareti della tana. Tira il d20 qui sotto per scegliere dove andare: il covo risponde a chi osa.</p>
+          <span className="kicker">Cronache di Exanthia · Genesi del covo</span>
+          <h1 className="titolo">In principio era il Drago, e il Drago <em>vide te</em>.</h1>
+          <p className="sotto">E disse: <b>«Chi entra con il dado in mano sarà pesato, e la tana lo conoscerà.»</b> Quattro compagnie, i loro eroi e le memorie incise nella roccia. Tira il d20 qui sotto, e sia fatta la tua sorte.</p>
           <div className="azioni">
             <Link className="cta" to="/party">Sfoglia il registro</Link>
             <Link className="cta spento" to="/riassunti">Le memorie</Link>
