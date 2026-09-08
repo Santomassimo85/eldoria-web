@@ -350,7 +350,15 @@ function NessoNav({ openMenu }) {
 
   const group = NESSO_GROUP_OF(p);
   const g = sheet ? NESSO_GROUPS[sheet] : null;
-  const canHover = typeof window !== "undefined" && window.matchMedia?.("(hover: hover)").matches;
+  // Niente hover: anche su PC il d20 si TIRA col click (come sul cellulare).
+  // Un click fuori dal d20 richiude le sfaccettature.
+  const navRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (navRef.current && !navRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
+  }, [open]);
 
   // Il pannello "sale" in .32s: un tap dato subito dove la voce sta per
   // arrivare colpirebbe il backdrop e chiuderebbe tutto → i primi 400ms li ignora.
@@ -390,13 +398,12 @@ function NessoNav({ openMenu }) {
         </div>
       )}
       {/* L'ORBE: <div role="navigation">, NON <nav> (shell.css trasforma ogni
-          <nav> nel drawer di sito). Su desktop sboccia al passaggio del mouse. */}
+          <nav> nel drawer di sito). Si apre SOLO col click/tap: il dado rotola. */}
       <div
+        ref={navRef}
         className={`nesso-nav${open ? " aperto" : ""}`}
         role="navigation"
         aria-label="Il d20 del Covo"
-        onMouseEnter={canHover ? () => setOpen(true) : undefined}
-        onMouseLeave={canHover ? () => setOpen(false) : undefined}
       >
         {!sheet && <span className="nesso-hint" aria-hidden="true">{d20.crit ? "critico! il covo si apre" : "tira il d20"}</span>}
         {sats.map((s, i) => (
@@ -414,7 +421,7 @@ function NessoNav({ openMenu }) {
         <button
           type="button"
           className={`nesso-orbe${d20.tira ? " tira" : ""}${d20.crit ? " crit" : ""}`}
-          onClick={() => { setSheet(null); if (!open || !canHover) tiraD20(); setOpen((v) => (canHover ? true : !v)); }}
+          onClick={() => { setSheet(null); if (!open) tiraD20(); setOpen((v) => !v); }}
           aria-label={open ? "Chiudi il menu" : "Tira il d20 e apri il menu"}
           aria-expanded={open}
         >
