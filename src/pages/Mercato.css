@@ -959,3 +959,23 @@
 }
 .mercato-page .ic-rarity-stars { font-size: .7rem; color: var(--rarity-edge, #ffe08a); text-shadow: 0 0 8px var(--rarity-edge, transparent); }
 .mercato-page .item-card.sold .ic-rarity-label, .mercato-page .item-card.sold .ic-rarity-stars { opacity: .6; }
+
+/* ── SMARTPHONE (2026-09-08): una merce per riga, mercante compatto, statistiche
+      Master a due colonne, box "chiuso" più stretto; niente lastre chiare ── */
+.mercato-page .mat-stat.visits { background: linear-gradient(135deg, var(--roccia-3), var(--roccia-2)); }
+.mercato-page .mat-stat { background: linear-gradient(135deg, var(--roccia-2), var(--roccia)); border: 1px solid var(--roccia-3); border-top: 3px solid var(--el); border-radius: 0; }
+@media (max-width: 600px) {
+  .mercato-page .items-grid { grid-template-columns: 1fr; gap: 14px; }
+  .mercato-page .bazar { gap: 14px; }
+  .mercato-page .mercante { padding: 14px 12px; }
+  .mercato-page .mercato-controls { gap: 8px; }
+  .mercato-page .mat-stats { gap: 6px; }
+  .mercato-page .mat-stat { flex: 1 1 calc(50% - 6px); min-width: 0; padding: 8px 6px; }
+  .mercato-page .mat-stat strong { font-size: 1rem; }
+  .mercato-page .market-closed-container { padding: 26px 16px; margin: 14px auto; }
+  .mercato-page .closed-title { font-size: 1.3rem; letter-spacing: .06em; }
+  .mercato-page .timer-display { font-size: 1.2rem; }
+  .mercato-page .ic-admin-actions { flex-direction: row; flex-wrap: wrap; }
+  .mercato-page .ic-act { flex: 1 1 auto; }
+  .mercato-page .item-card .item-name { font-size: .95rem; }
+}

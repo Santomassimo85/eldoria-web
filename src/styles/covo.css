@@ -189,7 +189,9 @@ nav a.nav-agent { color: var(--el-2) !important; }
 .nav-dd-trigger[data-dd="dmtools"] .nav-dd-arrow { color: #d4b3ff !important; }
 body .nav-close { color: var(--el-2); }
 .nav-rune, .mnav-sheet-rune, .nesso-sat-g { text-shadow: none !important; }
-[data-g="mondo"], [data-g="biblioteca"], [data-g="guide"], [data-g="eroi"], [data-g="gilda"], [data-g="battaglia"] { --rune: var(--el-2); }
+/* rune a colori: ogni gruppo tiene la sua tinta (mappa in nesso.css §11/layout.css), ben visibile nel drawer e sulle sfaccettature */
+.nav-rune[data-g], .mnav-sheet-rune[data-g] { color: var(--rune) !important; text-shadow: 0 0 10px color-mix(in srgb, var(--rune) 70%, transparent) !important; font-size: 1.15em; }
+.nav-dd-trigger:hover .nav-rune[data-g], .nav-dd--open .nav-rune[data-g] { text-shadow: 0 0 14px var(--rune), 0 0 26px color-mix(in srgb, var(--rune) 60%, transparent) !important; }
 
 /* login / avatar */
 body .login-button, body .logged-user-button {
@@ -243,13 +245,15 @@ footer::before { content: ""; display: block; width: min(320px, 60%); height: 4p
   clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
   background: linear-gradient(160deg, var(--roccia-3), var(--roccia));
   box-shadow: 0 0 0 1px var(--el);
-  font-size: 1.15rem !important; color: var(--el-2) !important; font-family: "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Runic", "Apple Symbols", sans-serif !important;
+  font-size: 1.25rem !important; color: var(--rune, var(--el-2)) !important; font-family: "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Runic", "Apple Symbols", sans-serif !important;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rune, var(--el-2)) 80%, transparent) !important;
+  box-shadow: 0 0 0 1px var(--rune, var(--el));
   transition: background .2s, color .2s;
 }
-.nesso-sat-g::after { content: ""; position: absolute; inset: 1px; clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); box-shadow: inset 0 0 0 1px var(--el); pointer-events: none; }
+.nesso-sat-g::after { content: ""; position: absolute; inset: 1px; clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); box-shadow: inset 0 0 0 1px var(--rune, var(--el)); pointer-events: none; }
 .nesso-sat > .nesso-sat-g { position: relative; }
-.nesso-sat:hover .nesso-sat-g, .nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { background: linear-gradient(160deg, var(--el-2), var(--el)); color: var(--ossidiana) !important; }
-.nesso-sat.on, .nesso-sat.active { color: var(--el-2); background: none; box-shadow: none; }
+.nesso-sat:hover .nesso-sat-g, .nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { background: linear-gradient(160deg, color-mix(in srgb, var(--rune, var(--el)) 55%, #fff), var(--rune, var(--el))); color: var(--ossidiana) !important; text-shadow: none !important; }
+.nesso-sat.on, .nesso-sat.active { color: var(--rune, var(--el-2)); background: none; box-shadow: none; }
 .nesso-sat.s1 { --sx: -150px; --sy: 6px; } .nesso-sat.s2 { --sx: -124px; --sy: -78px; } .nesso-sat.s3 { --sx: -66px; --sy: -140px; }
 .nesso-sat.s4 { --sx: 0px; --sy: -168px; } .nesso-sat.s5 { --sx: 66px; --sy: -140px; } .nesso-sat.s6 { --sx: 124px; --sy: -78px; } .nesso-sat.s7 { --sx: 150px; --sy: 6px; }
 @media (max-width: 699px) {
