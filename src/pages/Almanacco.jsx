@@ -20,7 +20,8 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+// I due Master del tavolo: la Tavola del Destino la vedono entrambi.
+const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
 // Pronunce dei giorni della settimana (accento tonico in MAIUSCOLO).
 const GIORNI_PRONUNCIA = {
@@ -256,7 +257,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export default function Almanacco() {
   useParallaxScroll();
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = MASTER_EMAILS.includes(currentUser?.email);
 
   // ── il tiro del Master sulla Tavola ──
   const [esito, setEsito] = useState("pari");
