@@ -858,7 +858,7 @@ html[data-soffio="bianco"] body.covo-admin { --el:#7c3fd6; --el-2:#5b2db0; --el-
 /* ── il semicerchio dietro le sfaccettature del d20: pietra scura (chiara col Bianco) ── */
 .nesso-nav.aperto::before {
   content: ""; position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
-  width: 440px; height: 250px; border-radius: 220px 220px 0 0; z-index: 0;
+  width: 490px; height: 300px; border-radius: 245px 245px 0 0; z-index: 0;
   background: radial-gradient(ellipse at 50% 100%, rgba(var(--roccia-2-rgb), .97) 0%, rgba(var(--roccia-rgb), .96) 55%, rgba(var(--ossidiana-rgb), .94) 100%);
   border: 1px solid rgba(var(--osso-rgb), .28); border-bottom: 0;
   box-shadow: 0 -24px 60px -24px #000, 0 0 44px -14px rgba(var(--el-rgb), .55), inset 0 1px 0 rgba(255,255,255,.06);
@@ -869,5 +869,5 @@ html[data-soffio="bianco"] body.covo-admin { --el:#7c3fd6; --el-2:#5b2db0; --el-
 .nesso-sat { z-index: 2; }
 .nesso-orbe { z-index: 3; }
 .nesso-nav.aperto .nesso-hint { display: none; }
-@media (max-width: 699px) { .nesso-nav.aperto::before { width: 360px; height: 222px; border-radius: 180px 180px 0 0; } }
+@media (max-width: 699px) { .nesso-nav.aperto::before { width: 400px; height: 262px; border-radius: 200px 200px 0 0; } }
 @media (prefers-reduced-motion: reduce) { .nesso-nav.aperto::before { animation: none; } }
