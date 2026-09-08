@@ -32,12 +32,13 @@ function elRgb() {
 export default function CovoOverlay() {
   const pelleRef = useRef(null);
   const soffioRef = useRef(null);
-  const [enabled, setEnabled] = useState(() => !document.body.classList.contains("theme-dark"));
+  const acceso = () => !document.body.classList.contains("theme-dark") || document.body.classList.contains("covo-arena");
+  const [enabled, setEnabled] = useState(acceso);
   const [reduced, setReduced] = useState(prefersReduced);
 
   // segue body.theme-dark (App lo aggiorna al cambio rotta)
   useEffect(() => {
-    const update = () => setEnabled(!document.body.classList.contains("theme-dark"));
+    const update = () => setEnabled(acceso());
     const mo = new MutationObserver(update);
     mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     update();

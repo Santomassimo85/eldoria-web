@@ -601,9 +601,11 @@ export default function App() {
     const isAdminPage = p.startsWith("/dm-admin") || p.startsWith("/dm/") || p === "/agenti" || p.startsWith("/sessions/");
     document.body.classList.toggle("theme-dark", isDarkGamePage);
     document.body.classList.toggle("covo-admin", isAdminPage);
+    // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
+    document.body.classList.toggle("covo-arena", p === "/arena");
     document.documentElement.dataset.theme = "dark";
     document.documentElement.dataset.soffio = soffio;
-    return () => { document.body.classList.remove("theme-dark"); document.body.classList.remove("covo-admin"); };
+    return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
   }, [location.pathname, soffio]);
 
   // --- LOGICA REFRESH & CACHE BUSTING ---

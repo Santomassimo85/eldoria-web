@@ -11,6 +11,7 @@
 - Palette meccanica: `node tools/covo-remap.mjs` (idempotente; esclude Arena/TCG/WorldBoss/Pet): hex Nesso → Covo, viola/ciano → `var(--el*)`, magenta → oro, raggi 5–60px → 3px, Manrope → Alegreya. Nuovi CSS: usare i token del covo, MAI esadecimali del Nesso.
 - Font: Grenze Gotisch (titoli, `--font-title/head/display`), Alegreya (`--font-ui/text`), Alegreya SC (`--font-sc`, etichette), Cinzel (`--font-num`, numeri/CTA). Link in index.html.
 - **Tema chiaro "Alba del Nesso" DISMESSO**: `nesso-light*.css` non più importati (file e `tools/gen-light-theme.mjs` restano su disco), tastino ☀/☾ sostituito dal respiro. Pagine di gioco (`body.theme-dark`) ricevono solo i token/header.
+- **Arena** (2026-09-08): stesso Covo, STRUTTURA INVARIATA (hub bento, le due card del fight nel palco, sottomenu — piacciono all'utente). `node tools/covo-remap.mjs --arena` ha rimappato Arena.css/ArenaHero/ArenaNessoViste/ArenaPalcoFight/ArenaBill (oro → `--el`, pietra → roccia, pergamena → osso); `src/pages/ArenaCovo.css` (ULTIMO import in Arena.jsx) toglie il fondale e mette i font; `body.covo-arena` (solo rotta /arena) accende CovoOverlay pur restando theme-dark. Bottega Arena, TCG, World Boss restano com'erano.
 - Scheda PG: CSS inline in SchedaPG.jsx già rimappato al covo. Scriba: l'overlay nero all'apertura è l'intro-video (feature esistente), non un bug del tema.
 
 ## Scala di superfici Nesso (2026-09-07)
@@ -21,7 +22,7 @@
 ## Regole restyle (sempre valide)
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.
 - NON toccare logica/link/route/href. Solo markup + CSS/animazioni.
-- NON toccare: TCG, Arena, World Boss Fight.
+- NON toccare: TCG, World Boss Fight. Arena: solo pelle (ArenaCovo.css), mai la struttura.
 - Tema unico: "R · Il Covo del Drago" (scuro; Fuoco/Gelo; admin Arcano). Pergamena e Nesso sono storia.
 - Parallax: mai background-attachment:fixed (rotto iOS). Usa translateY/sticky.
 - Lavora su UN pezzo alla volta, committa, poi fermati.

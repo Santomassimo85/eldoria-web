@@ -19,6 +19,7 @@ import "./ArenaHero.css";
 import "./ArenaBill.css";
 import "./ArenaNessoViste.css";   // viste interne (join/loadout/libera/bracket/albo/regole/master) nel Nesso
 import "./ArenaPalcoFight.css";   // scontro INLINE nel palco dell'hub + palette Nesso del combat
+import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura, pelle del covo (per ULTIMO)
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
 // Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
@@ -10040,7 +10041,7 @@ export default function Arena() {
           <h3 className="arena-info-title">🏅 Classifica Generale <small style={{ fontWeight: 400 }}>(vittoria +3 · 2° posto +2 · partecipazione +1)</small></h3>
           <ol className="arena-lead-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {arenaLeaderboard.map((e, i) => (
-              <li key={e.uid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: e.uid === currentUser?.uid ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)", marginBottom: 6 }}>
+              <li key={e.uid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: e.uid === currentUser?.uid ? "rgba(var(--el-rgb),0.18)" : "rgba(255,255,255,0.04)", marginBottom: 6 }}>
                 <span style={{ width: 26, textAlign: "center", fontWeight: 700, opacity: 0.8 }}>{i + 1}</span>
                 <span style={{ flex: 1, fontWeight: 600 }}>{e.name || "—"}</span>
                 <span style={{ fontSize: "0.8rem", opacity: 0.75 }}>🏆 {e.wins} · 🥈 {e.seconds} · 🎟 {e.plays}</span>
@@ -12282,7 +12283,7 @@ export default function Arena() {
                             <div
                               className="fighter-kite"
                               title={`Tiratore: da vicino puoi sparare arretrando (tiro a svantaggio, riapre la distanza). Cariche di arretramento rimaste: ${ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}.`}
-                              style={{ fontSize: "0.62rem", fontWeight: 700, color: "#ffd98a", marginTop: "0.15rem" }}
+                              style={{ fontSize: "0.62rem", fontWeight: 700, color: "var(--el-2)", marginTop: "0.15rem" }}
                             >
                               🏹 Arretramento ×{ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}
                             </div>
@@ -13879,9 +13880,9 @@ const CLASS_ICONS = {
 
 // Colore per classe (grafici Gesta). Chiave = classe lowercase (IT o EN).
 const CLASS_COLORS = {
-  fighter: "#c0392b", guerriero: "#c0392b",
+  fighter: "#d9463b", guerriero: "#d9463b",
   barbarian: "#8e44ad", barbaro: "#8e44ad",
-  paladin: "#d4af37", paladino: "#d4af37",
+  paladin: "var(--oro)", paladino: "var(--oro)",
   ranger: "#27ae60", pattugliatore: "#27ae60",
   monk: "#16a085", monaco: "#16a085",
   rogue: "#7f8c8d", ladro: "#7f8c8d",

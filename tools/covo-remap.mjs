@@ -58,6 +58,29 @@ const FONTS = [
   [/"Cinzel Decorative",\s*serif/g, '"Grenze Gotisch", "Cinzel", serif'],
 ];
 
+/* --arena: anche l'Arena (2026-09-08, "stesso tema, stessa struttura"): l'oro
+   di Pietra & Rune diventa il respiro (--el), la pietra diventa roccia, la
+   pergamena diventa osso, il sangue resta sangue. */
+const ARENA = process.argv.includes("--arena");
+if (ARENA) Object.assign(HEX, {
+  "ecd487": "var(--el-soft)", "ffd97a": "var(--el-2)", "fde68a": "var(--el-2)", "ffd98a": "var(--el-2)", "e3c558": "var(--el-2)", "fbbf24": "var(--el-2)", "f59e0b": "var(--el)",
+  "b8892a": "var(--el)", "b08820": "var(--el)", "ab862e": "var(--el)", "7a5d1f": "var(--el-deep)", "92400e": "var(--el-deep)", "7a5a1a": "var(--el-deep)", "b47a4e": "var(--el-deep)", "2a1d00": "var(--el-deep)",
+  "f5e6c8": "var(--osso)", "fff7e6": "var(--osso)", "fff3d6": "var(--osso)", "fffdf6": "var(--osso)", "ebe3d2": "var(--osso)", "f3e3b0": "var(--osso)", "f0e3c2": "var(--osso)", "ece3d0": "var(--osso)",
+  "1f1f1f": "#221f27", "0e0c0a": "#0b0a0d", "1b1714": "#17151b", "26201c": "#221f27", "14070a": "#0b0a0d", "1d0a0a": "#17151b", "150707": "#0f0e12", "100404": "#0b0a0d",
+  "8a0e0e": "var(--sangue)", "5a0808": "#6e1711", "6a0808": "#6e1711", "7f1d1d": "#6e1711", "c0392b": "#d9463b", "dc2626": "#d9463b", "d6452f": "#d9463b", "ffb4a0": "#ff8a7e",
+  "0d0d1f": "#17151b", "14142c": "#221f27", "12122a": "#221f27", "262650": "#3a3542", "241c05": "#221f27", "2d2418": "#2e2a35", "2a1500": "#221f27",
+  "fff8e1": "var(--osso)", "fdf2dc": "var(--osso)", "f3e6c8": "var(--osso)", "fffbf0": "var(--osso)", "fafafa": "var(--osso)", "f6f0e3": "var(--osso)",
+  "9a7a20": "var(--el-deep)", "754c0f": "var(--el-deep)", "89562f": "var(--el-deep)", "c8a86f": "var(--el-soft)",
+});
+if (ARENA) Object.assign(RGB, { "245,230,200": "236,229,214", "180,122,78": "var(--el-rgb)", "198,158,70": "var(--el-rgb)", "255,230,180": "var(--el-rgb)", "20,7,7": "11,10,13", "40,14,14": "11,10,13" });
+if (ARENA) Object.assign(RGB, {
+  "236,212,135": "var(--el-rgb)", "227,197,88": "var(--el-rgb)", "255,217,122": "var(--el-rgb)", "232,198,106": "var(--el-rgb)", "180,140,80": "var(--el-rgb)", "253,230,138": "var(--el-rgb)",
+  "120,80,20": "var(--el-rgb)", "180,140,40": "var(--el-rgb)", "180,130,30": "var(--el-rgb)", "212,175,55": "var(--el-rgb)", "170,150,120": "var(--el-rgb)", "185,170,150": "236,229,214",
+  "192,57,43": "217,70,59", "130,10,10": "179,38,30", "178,58,44": "217,70,59", "138,14,14": "179,38,30", "220,38,38": "217,70,59", "140,30,30": "179,38,30", "214,69,47": "217,70,59",
+  "255,252,245": "236,229,214", "40,12,12": "11,10,13",
+});
+const ARENA_FILES = ["src/pages/Arena.css", "src/pages/ArenaHero.css", "src/pages/ArenaNessoViste.css", "src/pages/ArenaPalcoFight.css", "src/pages/ArenaBill.css", "src/pages/Arena.jsx"];
+
 const SKIP = /(Arena|Tcg|[\\/]tcg[\\/]|WorldBoss(?!Admin)|Pet(?!Points)|tactics|generated|nesso-light|light-theme\.css|covo)/;
 function walk(d, out = []) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -69,7 +92,7 @@ function walk(d, out = []) {
 }
 
 let tot = 0, files = 0;
-for (const f of walk(path.join(ROOT, "src"))) {
+for (const f of (ARENA ? ARENA_FILES.map((x) => path.join(ROOT, x)) : walk(path.join(ROOT, "src")))) {
   const src = fs.readFileSync(f, "utf8");
   const isCss = f.endsWith(".css");
   let n = 0;

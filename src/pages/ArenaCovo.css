@@ -1,0 +1,71 @@
+/* ============================================================
+   ARENA · "R · IL COVO DEL DRAGO" (2026-09-08)
+   Stesso tema del sito, STESSA STRUTTURA dell'Arena (hub bento, palco
+   con le due card del fight, viste interne, sottomenu): qui solo la
+   pelle. I colori sono già rimappati nei CSS dell'Arena da
+   `node tools/covo-remap.mjs --arena` (oro → respiro --el, pietra →
+   roccia, pergamena → osso). Questo file, importato per ULTIMO in
+   Arena.jsx, fa il resto: il fondo diventa trasparente (sotto ci sono
+   le squame di CovoOverlay, attive su body.covo-arena), i titoli in
+   Grenze Gotisch, il corpo in Alegreya, le etichette in Alegreya SC.
+   ============================================================ */
+
+/* ── il fondo è la pelle del drago (CovoOverlay) ── */
+body.covo-arena .arena-page,
+body.covo-arena .arena-page.arena-page {
+  background: transparent !important;
+  color: var(--osso) !important;
+  --nx-font-t: "Grenze Gotisch", "Cinzel", serif;
+  --nx-font-b: "Alegreya", Georgia, serif;
+  --parch: var(--osso);
+  --gold-r: var(--el-2);
+  --blood-r: #d9463b;
+  --stone-0: var(--ossidiana);
+  --stone-1: var(--roccia);
+  --stone-2: var(--roccia-2);
+  font-family: "Alegreya", Georgia, serif;
+}
+body.covo-arena .arena-page::after { display: none !important; }   /* niente texture a puntini sopra le squame */
+body.covo-arena .arena-page::before { display: none !important; }
+body.covo-arena .ambient-fx { display: none !important; }
+
+/* ── tipografia del covo: titoli incisi, etichette in maiuscoletto ── */
+body.covo-arena .arena-page :is(h1, h2, h3, .nx-titolo, .arena-hero-title, .arena-title, [class*="-title"]:not([class*="modal-title"]):not([class*="card-title"])) {
+  font-family: "Grenze Gotisch", "Cinzel", serif !important;
+  letter-spacing: .02em;
+  text-transform: none;
+}
+body.covo-arena .arena-page :is(.nx-kicker, .arena-eyebrow, .arena-kicker, [class*="-eyebrow"], [class*="-kicker"]) {
+  font-family: "Alegreya SC", "Alegreya", serif !important;
+  text-transform: lowercase;
+  font-variant: small-caps;
+  letter-spacing: .3em;
+}
+body.covo-arena .arena-page :is(p, li, td, th, label, small, span, div) { font-family: inherit; }
+body.covo-arena .arena-page :is(button, .nx-pillola, .arena-btn, [class*="-btn"]) { font-family: "Cinzel", Georgia, serif; }
+body.covo-arena .arena-page :is(input, select, textarea) { font-family: "Alegreya", Georgia, serif; }
+
+/* ── il sigillo del covo sui pannelli: bordo alto acceso (la struttura resta) ── */
+body.covo-arena .arena-page :is(.nx-pannello, .arena-panel, .arena-card, .arena-hub-tile, .arena-bento-tile, .arena-reward-panel) {
+  border-top-color: var(--el) !important;
+  border-top-width: 3px !important;
+}
+
+/* ── titolo a gradiente osso, parola accesa nel respiro (come in Home) ── */
+body.covo-arena .arena-page :is(.nx-titolo, .arena-hero-title) {
+  background: linear-gradient(180deg, var(--osso) 55%, var(--osso-2)) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  color: transparent !important; -webkit-text-fill-color: transparent !important;
+  filter: none !important; text-shadow: none !important;
+}
+body.covo-arena .arena-page :is(.nx-titolo, .arena-hero-title) :is(em, span, i) {
+  color: var(--el) !important; -webkit-text-fill-color: var(--el) !important; font-style: normal;
+  text-shadow: 0 0 30px rgba(var(--el-rgb), .55);
+}
+
+/* ── scrollbar e selezione ── */
+body.covo-arena ::selection { background: rgba(var(--el-rgb), .55); color: var(--ossidiana); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.covo-arena .arena-page * { animation-duration: .01ms !important; }
+}

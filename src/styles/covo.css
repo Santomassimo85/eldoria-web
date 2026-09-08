@@ -98,7 +98,10 @@ button { font: inherit; }
 .covo-fx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .covo-fx .covo-soffio { z-index: 1; mix-blend-mode: screen; }
 .covo-fx .covo-velo { position: absolute; inset: 0; z-index: 2; background: radial-gradient(70% 60% at 50% 30%, transparent 40%, rgba(11,10,13,.72) 100%); }
-body.theme-dark .covo-fx { display: none; } /* le pagine di gioco hanno i propri FX */
+body.theme-dark:not(.covo-arena) .covo-fx { display: none; } /* le pagine di gioco hanno i propri FX (l'Arena no: veste il Covo) */
+body.covo-arena { background: transparent !important; } /* il fondale "notte" di theme.css coprirebbe le squame */
+/* il tasto YouTube del piè di pagina: lama del respiro, non viola */
+body .footer-yt { background: linear-gradient(180deg, var(--el-2), var(--el)) !important; color: var(--ossidiana) !important; border-radius: 4px !important; font-family: var(--font-num); letter-spacing: .1em; box-shadow: 0 0 24px -8px var(--el) !important; }
 
 /* la colonna */
 body:not(.theme-dark) main { width: min(1120px, calc(100% - 32px)); }
