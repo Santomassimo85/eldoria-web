@@ -1,6 +1,7 @@
 /* L'OCCHIO DEL DRAGO IN PIXEL ART (2026-09-08)
    Un canvas 96×88 disegnato pixel per pixel in JS e scalato senza sfocatura
-   (image-rendering: pixelated). Niente immagini: squame blu a placche
+   (image-rendering: pixelated). Niente immagini: squame a placche COL COLORE
+   DEL RESPIRO (Fuoco rosso · Gelo blu · Arcano viola · Veleno verde · Bianco avorio)
    (celle di Voronoi + bande di luce dal bordo), fessura a mandorla nera,
    iride ambra a tratteggio ordinato (Bayer 4×4), pupilla a lama che SEGUE
    IL CURSORE e si DILATA sulle schede (CovoOverlay scrive --dil sullo
@@ -13,10 +14,19 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 // iride: dal bordo scuro (0) al cuore giallo (7)
 const IRIDE = ["#2e0f04", "#6b2606", "#a4440a", "#d2700f", "#ee9a14", "#f8bd22", "#ffd84a", "#ffee8c"].map(hex);
-// pelle: dal filo di luce sul bordo (0) verso l'ombra (5)
-const PELLE = ["#5a78ff", "#3352e6", "#2238b4", "#172a84", "#111d5e", "#0b1340"].map(hex);
-const BIANCO = [255, 255, 255], LUCE = [214, 224, 255], NERO = [0, 0, 0];
-const FONDO = [5, 7, 15], FONDO2 = [12, 16, 44];
+const BIANCO = [255, 255, 255], NERO = [0, 0, 0];
+// la pelle cambia col RESPIRO (html[data-soffio]): pelle = dal filo di luce sul
+// bordo (0) verso l'ombra (5); fondo/fondo2 = la roccia puntinata agli angoli;
+// luce = riflessi sulle placche; scintilla = i punti sul bordo della palpebra
+const mkPal = (pelle, fondo, fondo2, luce, scintilla) => ({ pelle: pelle.map(hex), fondo: hex(fondo), fondo2: hex(fondo2), luce: hex(luce), scintilla: hex(scintilla) });
+const PALETTE = {
+  fuoco:  mkPal(["#ff7a5a", "#e0402a", "#b32a1e", "#7d1a14", "#4d100e", "#2a0a09"], "#0f0607", "#2a0d0f", "#ffd0b8", "#ffffff"),
+  gelo:   mkPal(["#5a78ff", "#3352e6", "#2238b4", "#172a84", "#111d5e", "#0b1340"], "#05070f", "#0c102c", "#d6e0ff", "#ffffff"),
+  arcano: mkPal(["#d4a6ff", "#a86cf0", "#7a3fc4", "#52288c", "#341a5c", "#1e0f38"], "#0a0612", "#1d1030", "#efe3ff", "#ffffff"),
+  veleno: mkPal(["#a8f08a", "#5ec24a", "#3b9430", "#256b1f", "#164a12", "#0d2c0b"], "#050c05", "#0f2410", "#dcffd2", "#ffffff"),
+  bianco: mkPal(["#ffffff", "#f3eee2", "#ddd4c0", "#c2b79f", "#a1957c", "#7d7159"], "#efe8da", "#e0d7c4", "#ffffff", "#3f86b0"),
+};
+const soffioAttivo = () => PALETTE[document.documentElement.dataset.soffio] || PALETTE.fuoco;
 
 const hash = (x, y) => {
   let n = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263)) | 0;
@@ -66,6 +76,7 @@ function disegna(img, plac, st) {
   const wmax = 3.2 + st.dil * 4.2;                 // larghezza della lama
   const Hs = R * 0.78;
   const hx = ix + 3, hy = iy - 10;                 // il riflesso
+  const { pelle: PELLE, fondo: FONDO, fondo2: FONDO2, luce: LUCE, scintilla: SCINTILLA } = st.pal;
   let p = 0;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++, p += 4) {
     const fx = x + 0.5, fy = y + 0.5;
@@ -118,7 +129,7 @@ function disegna(img, plac, st) {
         if (e && idx < 5) idx += 1;                                   // la fessura tra le placche
         col = PELLE[idx];
         const hz = hash(x, y);
-        if (dist < 2.2 && v < 0 && hz < 0.09) col = BIANCO;          // scintille sul bordo della palpebra
+        if (dist < 2.2 && v < 0 && hz < 0.09) col = SCINTILLA;          // scintille sul bordo della palpebra
         else if (e && idx <= 3 && hz > 0.955) col = LUCE;            // riflessi sulle placche
       }
     }
@@ -136,7 +147,7 @@ export default function PixelDragonEye() {
     const img = ctx.createImageData(W, H);
     const plac = placche();
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const st = { ox: 0, oy: 0, tx: 0, ty: 0, dil: 0, tdil: 0, c: 0 };
+    const st = { ox: 0, oy: 0, tx: 0, ty: 0, dil: 0, tdil: 0, c: 0, pal: soffioAttivo() };
     let raf = 0, visible = true, lastPointer = 0, blinkAt = performance.now() + 2800, blinkT0 = -1, wanderAt = 0;
     let lastKey = "";
 
@@ -185,6 +196,12 @@ export default function PixelDragonEye() {
     const mo = new MutationObserver(() => { st.tdil = dil.style.getPropertyValue("--dil") ? 1 : 0; wake(); });
     if (dil) mo.observe(dil, { attributes: true, attributeFilter: ["style"] });
 
+    // cambio di respiro → nuova pelle, ridisegno subito
+    const moSoffio = new MutationObserver(() => {
+      st.pal = soffioAttivo(); disegna(img, plac, st); ctx.putImageData(img, 0, 0); wake();
+    });
+    moSoffio.observe(document.documentElement, { attributes: true, attributeFilter: ["data-soffio"] });
+
     const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; wake(); });
     io.observe(cv);
     const onVis = () => wake();
@@ -196,7 +213,7 @@ export default function PixelDragonEye() {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
       document.removeEventListener("visibilitychange", onVis);
-      mo.disconnect(); io.disconnect();
+      mo.disconnect(); moSoffio.disconnect(); io.disconnect();
     };
   }, []);
 
