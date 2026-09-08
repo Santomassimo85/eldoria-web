@@ -204,7 +204,7 @@ export default function Diario() {
   return (
     <section
       className="diario-page cine-page cine-compact"
-      style={{ "--cine-accent": meta?.color || "#8b5cf6" }}
+      style={{ "--cine-accent": meta?.color || "var(--el)" }}
     >
       <AmbientFX variant="cosmos" />
 
@@ -220,7 +220,7 @@ export default function Diario() {
       >
         {isAllView ? (
           <p className="diario-sub">
-            <span className="diario-seal" style={{ background: "#8b5cf6" }}>✶</span>
+            <span className="diario-seal" style={{ background: "var(--el)" }}>✶</span>
             Tutti i gruppi · <em>vista del Master</em>
           </p>
         ) : meta && (
@@ -245,7 +245,7 @@ export default function Diario() {
             role="tab"
             aria-selected={isAllView}
             className={"nx-pillola diario-tab" + (isAllView ? " on" : "")}
-            style={{ "--tab-color": "#c4b5fd" }}
+            style={{ "--tab-color": "var(--el-soft)" }}
             onClick={() => setViewParty("ALL")}
           >
             <span className="diario-tab-rune" aria-hidden="true">✶</span>

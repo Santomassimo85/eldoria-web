@@ -8,8 +8,7 @@ import "./styles/shell.css"; // restyle header/navigazione (scuro premium + draw
 import "./styles/light-theme.css"; // tema chiaro "Pergamena Antica" — caricato per ultimo (vince)
 import "./styles/layout.css"; // posizionamento flottanti coerente + safe-area iOS
 import "./styles/nesso.css"; // Prototipo J "Il Nesso" — il vuoto arcano, varchi esagonali (solo tema chiaro)
-import "./styles/nesso-light.generated.css"; // tema chiaro "Alba del Nesso" — mappatura meccanica (node tools/gen-light-theme.mjs)
-import "./styles/nesso-light.css"; // tema chiaro — token, fondo, tastino (a mano, vince sul generato)
+import "./styles/covo.css"; // "R · Il Covo del Drago" — il tema di TUTTO il sito (caricato per ultimo, vince)
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

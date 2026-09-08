@@ -289,7 +289,7 @@
   font-size: 0.7rem;
   letter-spacing: 0.05em;
   font-family: var(--font-title, sans-serif);
-  border-radius: 8px;
+  border-radius: 3px;
   border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
   white-space: nowrap;
   opacity: 0;
@@ -436,7 +436,7 @@
 @media (max-width: 760px) {
   .cine-scrolly { height: 70vh; min-height: 400px; }
   .cine-scrolly-content { padding: 4vh 16px; }
-  .cine-scrolly-frame { padding: 24px 20px; border-radius: 18px; }
+  .cine-scrolly-frame { padding: 24px 20px; border-radius: 3px; }
 }
 
 /* ============================================================
@@ -536,7 +536,7 @@
   text-transform: uppercase;
   font-weight: 700;
   padding: 10px 20px;
-  border-radius: 12px;
+  border-radius: 3px;
   cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--cine-accent) 45%, transparent);
   background: linear-gradient(135deg, var(--cine-accent-2), var(--cine-accent));
@@ -736,7 +736,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 12px;
-  border-radius: 16px;
+  border-radius: 3px;
   background: linear-gradient(180deg, rgba(255, 250, 235, 0.94), rgba(247, 238, 214, 0.97));
   border: 1px solid color-mix(in srgb, var(--cine-gold) 32%, transparent);
   backdrop-filter: blur(14px) saturate(120%);
@@ -760,7 +760,7 @@
 .cine-search-input {
   width: 100%;
   padding: 11px 38px 11px 40px;
-  border-radius: 12px;
+  border-radius: 3px;
   border: 1px solid color-mix(in srgb, var(--cine-gold) 34%, transparent);
   background: #fffdf5;
   color: #33281a;

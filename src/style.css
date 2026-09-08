@@ -3,10 +3,10 @@
     ======================================== */
 :root {
      --red: #820a0a;
-     --gold: #d4af37;
+     --gold: var(--oro);
      --bg: #ffffff;
      --text: #111111;
-     --font-title: "Cinzel Decorative", serif;
+     --font-title: "Grenze Gotisch", "Cinzel", serif;
      --font-text: "Cardo", serif;
      --navbar-h: 80px;
 }
@@ -27,19 +27,19 @@
    ============================================================ */
 * {
      scrollbar-width: thin;
-     scrollbar-color: var(--gold) rgba(212, 175, 55, 0.08);
+     scrollbar-color: var(--gold) rgba(232,197,106, 0.08);
 }
 *::-webkit-scrollbar {
      width: 8px;
      height: 8px;
 }
 *::-webkit-scrollbar-track {
-     background: rgba(212, 175, 55, 0.08);
-     border-radius: 8px;
+     background: rgba(232,197,106, 0.08);
+     border-radius: 3px;
 }
 *::-webkit-scrollbar-thumb {
      background: linear-gradient(180deg, var(--gold), var(--red));
-     border-radius: 8px;
+     border-radius: 3px;
      border: 1px solid rgba(255,255,255,0.4);
      background-clip: padding-box;
 }
@@ -192,7 +192,7 @@ section.active {
      height: 34px;
      display: grid;
      place-items: center;
-     border-radius: 8px;
+     border-radius: 3px;
      border: 2px solid #7a1f1f;
      background: #b02b2b;
      color: #fff;
@@ -279,7 +279,7 @@ nav a {
      font-size: 0.9rem;
      color: var(--text);
      padding: 6px 12px;
-     border-radius: 20px;
+     border-radius: 3px;
      transition: background 0.2s;
 }
 
@@ -312,7 +312,7 @@ nav a.active {
      font-size: 0.9rem;
      color: var(--text);
      padding: 6px 12px;
-     border-radius: 20px;
+     border-radius: 3px;
      transition: background 0.2s;
      display: flex;
      align-items: center;
@@ -348,9 +348,9 @@ nav a.active {
      left: 50%;
      transform: translateX(-50%);
      background: #fff;
-     border: 1px solid rgba(212,175,55,0.3);
+     border: 1px solid rgba(232,197,106,0.3);
      border-top: 3px solid var(--red);
-     border-radius: 0 0 10px 10px;
+     border-radius: 0 0 3px 3px;
      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
      min-width: 190px;
      overflow: hidden;
@@ -370,7 +370,7 @@ nav a.active {
      border-radius: 0;
      transition: background 0.15s, color 0.15s, padding-left 0.15s;
      white-space: nowrap;
-     border-bottom: 1px solid rgba(212,175,55,0.1);
+     border-bottom: 1px solid rgba(232,197,106,0.1);
 }
 
 .nav-dd-menu a:last-child {
@@ -424,7 +424,7 @@ nav a.active {
      width: 100%;
      height: 3px;
      background: var(--red);
-     border-radius: 5px;
+     border-radius: 3px;
      transition: all 0.3s ease-in-out;
      transform-origin: left;
 }
@@ -485,7 +485,7 @@ footer p {
      height: 30px;
      width: 30px;
      display: block;
-     border-radius: 8px;
+     border-radius: 3px;
      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -541,7 +541,7 @@ footer strong {
      color: white;
      padding: 8px 25px;
      border: none;
-     border-radius: 20px;
+     border-radius: 3px;
      cursor: pointer;
      font-size: 1.1rem;
      margin: 20px 0;
@@ -567,7 +567,7 @@ a.scheda,
      color: white;
      padding: 8px 15px;
      border: none;
-     border-radius: 20px;
+     border-radius: 3px;
      cursor: pointer;
      font-size: 0.9rem;
      margin-left: 10px;
@@ -599,7 +599,7 @@ a.scheda {
      color: white;
      padding: 12px 25px;
      border: none;
-     border-radius: 20px;
+     border-radius: 3px;
      margin: 10px auto;
      cursor: pointer;
      font-size: 0.9rem;
@@ -615,7 +615,7 @@ button.submit {
      color: white;
      border: none;
      padding: 8px 15px;
-     border-radius: 20px;
+     border-radius: 3px;
      cursor: pointer;
      font-size: 0.9rem;
      margin-top: 10px;
@@ -632,7 +632,7 @@ button.submit:hover {
 input {
      padding: 10px;
      border: 1px solid var(--gold);
-     border-radius: 5px;
+     border-radius: 3px;
      font-size: 1rem;
      width: 100%;
      margin-top: 10px;
@@ -642,7 +642,7 @@ input {
 .mercato-controls select {
      padding: 10px;
      border: 1px solid var(--gold);
-     border-radius: 5px;
+     border-radius: 3px;
      font-size: 1rem;
      flex-grow: 1;
      min-width: 150px;
@@ -658,7 +658,7 @@ input {
 .admin-form textarea {
      padding: 10px;
      border: 1px solid #ccc;
-     border-radius: 5px;
+     border-radius: 3px;
      font-size: 1rem;
      width: 100%;
 }
@@ -669,7 +669,7 @@ input {
      max-width: 600px;
      margin: 20px auto;
      padding: 20px;
-     border-radius: 8px;
+     border-radius: 3px;
 }
 
 /* Login Form */
@@ -765,7 +765,7 @@ input {
      width: 40%;
      max-width: 600px;
      margin-bottom: 20px;
-     border-radius: 10px;
+     border-radius: 3px;
      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
      transition: opacity 0.6s ease, transform 0.6s ease;
      opacity: 1;
@@ -814,7 +814,7 @@ input {
 .city img.city-img {
      width: 80%;
      max-width: 800px;
-     border-radius: 18px;
+     border-radius: 3px;
      margin-bottom: 30px;
      cursor: pointer;
 }
@@ -844,7 +844,7 @@ input {
      text-transform: uppercase;
      letter-spacing: 8px;
      margin-bottom: 20px;
-     border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+     border-bottom: 1px solid rgba(232,197,106, 0.2);
      padding-bottom: 15px;
 }
 
@@ -924,7 +924,7 @@ input {
      align-items: center;
      padding: 20px;
      /* border: 2px solid var(--gold); */
-     border-radius: 10px;
+     border-radius: 3px;
      background-color: #3f3c3c;
      max-width: 600px;
      margin: 0 auto;
@@ -939,7 +939,7 @@ input {
     font-size: 0.9rem;
     color: #1a1a1a !important;
     border: 2px solid goldenrod;
-    border-radius: 15px;
+    border-radius: 3px;
     padding: 5px;
 }
 .item-details .item-bids-summary {
@@ -972,7 +972,7 @@ input {
 
 .item-card {
      background-color: #fcfcfc;
-     border-radius: 18px;
+     border-radius: 3px;
      position: relative;
      overflow: hidden;
      cursor: pointer;
@@ -1057,7 +1057,7 @@ input {
      height: 65%;
      object-fit: cover;
      border-bottom: 1px solid var(--gold);
-     border-radius: 16px 16px 0 0;
+     border-radius: 3px 3px 0 0;
 }
 
 .item-details {
@@ -1179,7 +1179,7 @@ input {
           flex-shrink: 0;
           border-bottom: none;
           border-right: 1px solid var(--gold);
-          border-radius: 18px 0 0 18px;
+          border-radius: 3px 0 0 3px;
           object-fit: cover;
      }
      .item-details {
@@ -1235,7 +1235,7 @@ input {
           height: 160px;
           border-right: none;
           border-bottom: 1px solid var(--gold);
-          border-radius: 18px 18px 0 0;
+          border-radius: 3px 3px 0 0;
      }
 }
 
@@ -1257,7 +1257,7 @@ input {
      align-items: center;
      padding: 30px;
      border: 2px solid var(--gold);
-     border-radius: 10px;
+     border-radius: 3px;
      background-color: #fff;
 }
 
@@ -1265,7 +1265,7 @@ input {
      width: 100%;
      max-width: 350px;
      height: auto;
-     border-radius: 8px;
+     border-radius: 3px;
      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -1309,15 +1309,15 @@ input {
 /* Legacy class names — kept for items already in DB */
 .rarity-Comune        { color: #f5f5f5; background: linear-gradient(135deg, #6b6b6b, #4a4a4a); }
 .rarity-Raro          { color: #fff; background: linear-gradient(135deg, #2c8fd6, #1a5d99); }
-.rarity-Magico        { color: #fff; background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
+.rarity-Magico        { color: #fff; background: linear-gradient(135deg, var(--el), #5b21b6); }
 .rarity-Epico         { color: #fff; background: linear-gradient(135deg, #d97706, #92400e); }
-.rarity-Leggendario   { color: #2a1a00; background: linear-gradient(135deg, #ffd76a, #d4af37); box-shadow: 0 0 10px rgba(212,175,55,0.5); }
+.rarity-Leggendario   { color: #2a1a00; background: linear-gradient(135deg, #ffd76a, var(--oro)); box-shadow: 0 0 10px rgba(232,197,106,0.5); }
 
 .rarity-bg-Comune       { --rarity-tint: rgba(107,107,107,0.18); --rarity-edge: #6b6b6b; }
 .rarity-bg-Raro         { --rarity-tint: rgba(44,143,214,0.18); --rarity-edge: #2c8fd6; }
-.rarity-bg-Magico       { --rarity-tint: rgba(139,92,246,0.18); --rarity-edge: #8b5cf6; }
+.rarity-bg-Magico       { --rarity-tint: rgba(var(--el-rgb),0.18); --rarity-edge: var(--el); }
 .rarity-bg-Epico        { --rarity-tint: rgba(217,119,6,0.18);  --rarity-edge: #d97706; }
-.rarity-bg-Leggendario  { --rarity-tint: rgba(212,175,55,0.22); --rarity-edge: #d4af37; }
+.rarity-bg-Leggendario  { --rarity-tint: rgba(232,197,106,0.22); --rarity-edge: var(--oro); }
 
 /* New rarity scheme — matches mercato-nero-pricing.html
    (item.class is stripped of spaces: "Non comune" → "Noncomune" etc.) */
@@ -1341,7 +1341,7 @@ input {
      max-width: 760px;
      background: linear-gradient(180deg, var(--rarity-tint, rgba(0,0,0,0.05)) 0%, #fff 220px);
      border: 2px solid var(--rarity-edge, var(--gold));
-     border-radius: 18px;
+     border-radius: 3px;
      overflow: hidden;
      box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.6) inset;
 }
@@ -1391,7 +1391,7 @@ input {
      transform: rotate(-8deg);
      border: 4px solid #ff5252;
      margin: 30px;
-     border-radius: 12px;
+     border-radius: 3px;
      pointer-events: none;
 }
 .ps-sold-overlay.expired { color: #f39c12; border-color: #f39c12; }
@@ -1437,9 +1437,9 @@ input {
      padding: 14px 18px;
      background: #faf6ec;
      border: 1.5px solid var(--gold);
-     border-radius: 12px;
+     border-radius: 3px;
      margin: 0 0 18px;
-     box-shadow: 0 2px 8px rgba(212,175,55,0.12);
+     box-shadow: 0 2px 8px rgba(232,197,106,0.12);
 }
 .ps-price-label {
      font-size: 0.75rem;
@@ -1463,7 +1463,7 @@ input {
      padding: 10px 16px;
      background: rgba(130,10,10,0.08);
      border-left: 4px solid var(--red);
-     border-radius: 6px;
+     border-radius: 3px;
      margin-bottom: 18px;
      font-family: monospace;
 }
@@ -1496,9 +1496,9 @@ input {
 .ps-set-block {
      margin: 0 0 22px;
      padding: 14px 16px;
-     border: 1.5px solid rgba(124, 58, 237, 0.4);
-     background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.02));
-     border-radius: 12px;
+     border: 1.5px solid rgba(var(--el-rgb), 0.4);
+     background: linear-gradient(180deg, rgba(var(--el-rgb), 0.08), rgba(var(--el-rgb), 0.02));
+     border-radius: 3px;
 }
 .ps-set-head {
      display: flex;
@@ -1508,7 +1508,7 @@ input {
 }
 .ps-set-icon {
      font-size: 1.4rem;
-     color: #7c3aed;
+     color: var(--el);
      line-height: 1;
 }
 .ps-set-name {
@@ -1518,7 +1518,7 @@ input {
      letter-spacing: 0.02em;
 }
 .ps-set-size {
-     color: #7c3aed;
+     color: var(--el);
      opacity: 0.85;
      font-weight: 600;
 }
@@ -1540,7 +1540,7 @@ input {
 }
 .ps-set-bonus-frac {
      font-weight: 700;
-     color: #7c3aed;
+     color: var(--el);
      font-family: var(--font-text);
      text-align: right;
 }
@@ -1554,7 +1554,7 @@ input {
      margin: 4px 0 6px;
      padding: 2px 8px;
      border-radius: 999px;
-     background: rgba(124, 58, 237, 0.12);
+     background: rgba(var(--el-rgb), 0.12);
      color: #6d28d9;
      font-size: 0.72rem;
      font-weight: 600;
@@ -1568,7 +1568,7 @@ input {
      width: 100%;
      padding: 14px 20px;
      border: none;
-     border-radius: 12px;
+     border-radius: 3px;
      font-family: var(--font-title);
      font-size: 1.05rem;
      letter-spacing: 0.08em;
@@ -1578,7 +1578,7 @@ input {
 .ps-buy-btn {
      background: linear-gradient(135deg, var(--gold), #b8860b);
      color: #2a1a00;
-     box-shadow: 0 6px 20px rgba(212,175,55,0.35);
+     box-shadow: 0 6px 20px rgba(232,197,106,0.35);
 }
 .ps-buy-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
 
@@ -1590,14 +1590,14 @@ input {
 .ps-offer-form input {
      padding: 12px 14px;
      border: 2px solid #ccc;
-     border-radius: 10px;
+     border-radius: 3px;
      font-size: 1rem;
      width: 100%;
 }
 .ps-offer-form input:focus {
      outline: none;
      border-color: var(--gold);
-     box-shadow: 0 0 0 3px rgba(212,175,55,0.18);
+     box-shadow: 0 0 0 3px rgba(232,197,106,0.18);
 }
 .ps-bid-btn {
      background: linear-gradient(135deg, #4a1a1a, var(--red));
@@ -1611,9 +1611,9 @@ input {
      flex-direction: column;
      gap: 4px;
      padding: 16px 18px;
-     background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05));
+     background: linear-gradient(135deg, rgba(232,197,106,0.15), rgba(232,197,106,0.05));
      border: 1.5px solid var(--gold);
-     border-radius: 12px;
+     border-radius: 3px;
      margin-top: 14px;
 }
 .ps-your-bid .ps-bid-tag {
@@ -1633,7 +1633,7 @@ input {
 .ps-sold-info {
      padding: 14px;
      background: #f4f4f4;
-     border-radius: 10px;
+     border-radius: 3px;
      text-align: center;
      color: #555;
      margin-top: 14px;
@@ -1648,7 +1648,7 @@ input {
      background: #fff;
      color: var(--text);
      border: 1.5px solid rgba(130,10,10,0.18);
-     border-radius: 12px;
+     border-radius: 3px;
      padding: 24px;
      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
      font-family: var(--font-text);
@@ -1659,14 +1659,14 @@ input {
      grid-template-columns: 140px 1fr;
      gap: 22px;
      padding-bottom: 18px;
-     border-bottom: 1.5px solid rgba(212,175,55,0.4);
+     border-bottom: 1.5px solid rgba(232,197,106,0.4);
      margin-bottom: 18px;
 }
 .mc-thumb {
      width: 140px;
      height: 140px;
      object-fit: cover;
-     border-radius: 10px;
+     border-radius: 3px;
      border: 1.5px solid var(--gold);
 }
 .mc-meta { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -1721,7 +1721,7 @@ input {
 .mc-description {
      background: #faf6ec;
      border: 1px solid #e8dfc8;
-     border-radius: 8px;
+     border-radius: 3px;
      padding: 10px 14px;
      margin-bottom: 18px;
      color: #444;
@@ -1746,7 +1746,7 @@ input {
 .mc-stat {
      background: #faf6ec;
      border: 1px solid #e8dfc8;
-     border-radius: 8px;
+     border-radius: 3px;
      padding: 14px;
      text-align: center;
 }
@@ -1767,14 +1767,14 @@ input {
 .mc-stat.highlight {
      background: linear-gradient(135deg, #fff8e1, #fdeec7);
      border-color: var(--gold);
-     box-shadow: 0 2px 10px rgba(212,175,55,0.18);
+     box-shadow: 0 2px 10px rgba(232,197,106,0.18);
 }
 .mc-stat.highlight strong { color: var(--red); }
 
 .mc-bids {
      background: #fff;
      border: 1.5px solid rgba(130,10,10,0.18);
-     border-radius: 10px;
+     border-radius: 3px;
      padding: 16px;
 }
 .mc-bids-head {
@@ -1814,7 +1814,7 @@ input {
      background: #faf6ec;
 }
 .mc-bids-table tbody tr:hover { background: #fbf9f0; }
-.mc-bids-table tr.top-bid { background: rgba(212,175,55,0.12); }
+.mc-bids-table tr.top-bid { background: rgba(232,197,106,0.12); }
 .mc-bids-table tr.top-bid .mc-bid-amount { color: var(--red); font-weight: 700; }
 .mc-rank {
      font-family: var(--font-title);
@@ -1836,7 +1836,7 @@ input {
 .mc-btn {
      padding: 6px 12px;
      border: 1px solid transparent;
-     border-radius: 6px;
+     border-radius: 3px;
      cursor: pointer;
      font-size: 0.78rem;
      letter-spacing: 0.04em;
@@ -1853,7 +1853,7 @@ input {
      padding: 14px;
      background: linear-gradient(135deg, #eaf6da, #d6ecbb);
      border: 1.5px solid #8bb84a;
-     border-radius: 8px;
+     border-radius: 3px;
      color: #3a5810;
      text-align: center;
      font-size: 1.05rem;
@@ -1877,7 +1877,7 @@ input {
 .mat-stat {
      background: #fff;
      border: 1.5px solid rgba(130,10,10,0.18);
-     border-radius: 8px;
+     border-radius: 3px;
      padding: 10px;
      text-align: center;
      color: var(--text);
@@ -1904,7 +1904,7 @@ input {
 .market-admin-table-wrap {
      background: #fff;
      border: 1.5px solid rgba(130,10,10,0.18);
-     border-radius: 10px;
+     border-radius: 3px;
      overflow-x: auto;
      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
@@ -1941,7 +1941,7 @@ input {
      width: 48px;
      height: 48px;
      object-fit: cover;
-     border-radius: 6px;
+     border-radius: 3px;
      border: 1px solid #ddd;
 }
 .mat-name {
@@ -1989,7 +1989,7 @@ input {
 }
 .mat-btn {
      padding: 5px 9px;
-     border-radius: 6px;
+     border-radius: 3px;
      border: 1px solid transparent;
      cursor: pointer;
      font-size: 0.85rem;
@@ -2124,7 +2124,7 @@ input {
      margin-top: 8px;
      background: rgba(232, 239, 205, 0.4);
      padding: 5px;
-     border-radius: 5px;
+     border-radius: 3px;
 }
 
 .text-green {
@@ -2142,7 +2142,7 @@ input {
     ======================================== */
 .countdown-container {
      background-color: #f7f7f7;
-     border-radius: 8px;
+     border-radius: 3px;
      padding: 15px;
      text-align: center;
      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -2193,7 +2193,7 @@ input {
      background-color: var(--red);
      color: white;
      border: none;
-     border-radius: 35px;
+     border-radius: 3px;
      cursor: pointer;
      font-family: var(--font-title);
      font-size: 1rem;
@@ -2202,7 +2202,7 @@ input {
 
 .market-countdown-container {
      border: 2px solid var(--gold);
-     border-radius: 15px;
+     border-radius: 3px;
      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
      margin-top: 20px;
 }
@@ -2235,7 +2235,7 @@ input {
      max-width: 600px;
      height: auto;
      border: 1px solid var(--gold);
-     border-radius: 8px;
+     border-radius: 3px;
      margin: 20px 0;
 }
 
@@ -2267,7 +2267,7 @@ input {
      margin: 20px auto;
      padding: 20px;
      border: 1px solid var(--gold);
-     border-radius: 8px;
+     border-radius: 3px;
 }
 
 .admin-form button {
@@ -2275,7 +2275,7 @@ input {
      color: white;
      padding: 12px;
      border: none;
-     border-radius: 5px;
+     border-radius: 3px;
      cursor: pointer;
      transition: background-color 0.3s;
 }
@@ -2293,7 +2293,7 @@ input {
      text-align: center;
      margin-top: 20px;
      padding: 10px;
-     border-radius: 5px;
+     border-radius: 3px;
      font-weight: bold;
 }
 
@@ -2319,7 +2319,7 @@ input {
      cursor: pointer;
      border: 1px solid var(--gold);
      padding: 20px;
-     border-radius: 8px;
+     border-radius: 3px;
      flex: 1 1 calc(20% - 24px);
      min-width: 200px;
      height: 150px;
@@ -2344,7 +2344,7 @@ input {
      transform: translateX(-50%);
      padding: 10px 15px;
      border: none;
-     border-radius: 5px;
+     border-radius: 3px;
      cursor: pointer;
      font-size: 1rem;
      transition: background-color 0.3s;
@@ -2363,7 +2363,7 @@ input {
      margin: 5px;
      box-shadow: #272727 2px 2px 5px;
      color: rgb(255, 255, 255);
-     border-radius: 5px;
+     border-radius: 3px;
      padding: 5px;
 }
 
@@ -2420,7 +2420,7 @@ input {
      padding: 2px 9px;
      height: 20px;
      margin: 10px;
-     border-radius: 5px;
+     border-radius: 3px;
      cursor: pointer;
      transition: background-color 0.3s;
 }
@@ -2433,7 +2433,7 @@ input {
      width: 20px;
      margin: 10px;
      padding: 3px;
-     border-radius: 50px;
+     border-radius: 3px;
      cursor: pointer;
      transition: background-color 0.3s;
 }
@@ -2445,7 +2445,7 @@ input {
      padding: 2px 9px;
      height: auto;
      margin: 10px;
-     border-radius: 5px;
+     border-radius: 3px;
      cursor: pointer;
      transition: background-color 0.3s;
 }
@@ -2465,7 +2465,7 @@ input {
      border: none;
      padding: 5px 10px;
      margin: 0 10px;
-     border-radius: 5px;
+     border-radius: 3px;
      cursor: pointer;
      transition: background-color 0.3s;
 }
@@ -2503,7 +2503,7 @@ input {
      padding: 15px;
      background: rgba(253, 228, 228, 0.808);
      border: 1px solid var(--gold);
-     border-radius: 8px;
+     border-radius: 3px;
      text-align: center;
 }
 
@@ -2522,14 +2522,14 @@ input {
      width: 100%;
      height: 10px;
      background: #222;
-     border-radius: 5px;
+     border-radius: 3px;
      overflow: hidden;
      border: 1px solid #444;
 }
 
 .progress-bar-fill {
      height: 100%;
-     background: linear-gradient(90deg, #d4af37, #f1c40f);
+     background: linear-gradient(90deg, var(--oro), #f1c40f);
      transition: width 0.5s ease;
 }
 
@@ -2568,7 +2568,7 @@ input {
      margin-bottom: 10px;
      text-align: center;
      background-color: #222222e1;
-     border-radius: 15px;
+     border-radius: 3px;
      width: 50%;
      margin: 10px auto;
      padding: 15px 0;
@@ -2602,7 +2602,7 @@ input {
      border-radius: 50%;
      background: linear-gradient(135deg, var(--red), #c41a1a);
      color: #fff;
-     border: 2px solid rgba(212, 175, 55, 0.55);
+     border: 2px solid rgba(232,197,106, 0.55);
      box-shadow: 0 4px 14px rgba(130, 10, 10, 0.35);
      font-size: 20px;
      cursor: pointer;
@@ -2619,7 +2619,7 @@ input {
      background: linear-gradient(135deg, var(--gold), #bf9b30);
      color: #1a1a1a;
      border-color: rgba(130, 10, 10, 0.4);
-     box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+     box-shadow: 0 6px 20px rgba(232,197,106, 0.5);
 }
 
 /* Side Drawer */
@@ -2705,8 +2705,8 @@ input {
      width: 320px;
      height: 420px;
      background: #fff;
-     border: 1px solid rgba(212, 175, 55, 0.5);
-     border-radius: 12px;
+     border: 1px solid rgba(232,197,106, 0.5);
+     border-radius: 3px;
      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
      z-index: 1999;
      display: flex;
@@ -2731,7 +2731,7 @@ input {
      align-items: center;
      padding: 10px 14px;
      background: #fdfaf3;
-     border-bottom: 1px solid rgba(212, 175, 55, 0.4);
+     border-bottom: 1px solid rgba(232,197,106, 0.4);
      flex-shrink: 0;
 }
 
@@ -2774,21 +2774,21 @@ input {
      max-width: 82%;
      align-self: flex-start;
      background: #f3f3f3;
-     border-radius: 10px 10px 10px 2px;
+     border-radius: 3px 3px 3px 2px;
      padding: 6px 10px;
 }
 
 .chat-msg.own {
      align-self: flex-end;
      background: #fef9ec;
-     border-radius: 10px 10px 2px 10px;
-     border: 1px solid rgba(212, 175, 55, 0.3);
+     border-radius: 3px 3px 2px 3px;
+     border: 1px solid rgba(232,197,106, 0.3);
 }
 
 .chat-msg.master-msg {
      background: #fdf0f0;
      border-left: 2px solid var(--red);
-     border-radius: 0 10px 10px 0;
+     border-radius: 0 3px 3px 0;
 }
 
 .msg-meta {
@@ -2841,7 +2841,7 @@ input {
      display: flex;
      gap: 6px;
      padding: 8px 10px;
-     border-top: 1px solid rgba(212, 175, 55, 0.3);
+     border-top: 1px solid rgba(232,197,106, 0.3);
      background: #fdfaf3;
      flex-shrink: 0;
 }
@@ -2849,10 +2849,10 @@ input {
 .chat-input {
      flex: 1;
      background: #fff;
-     border: 1px solid rgba(212, 175, 55, 0.4);
+     border: 1px solid rgba(232,197,106, 0.4);
      color: #111;
      padding: 7px 10px;
-     border-radius: 7px;
+     border-radius: 3px;
      font-family: var(--font-text);
      font-size: 0.85rem;
      outline: none;
@@ -2867,7 +2867,7 @@ input {
      background: var(--gold);
      border: none;
      padding: 7px 14px;
-     border-radius: 7px;
+     border-radius: 3px;
      cursor: pointer;
      font-family: var(--font-title);
      font-size: 0.7rem;
@@ -2916,7 +2916,7 @@ pg-editor-container {
      background: var(--gold);
      color: #000;
      padding: 5px 15px;
-     border-radius: 8px;
+     border-radius: 3px;
      font-weight: bold;
      font-size: 1.2rem;
      border: 2px solid #fff;
@@ -2938,7 +2938,7 @@ pg-editor-container {
 .slot-badge {
      background: rgba(217, 215, 215, 0.139);
      padding: 8px 15px;
-     border-radius: 8px;
+     border-radius: 3px;
      color: rgb(156, 99, 99);
      text-align: center;
      min-width: 85px;
@@ -2961,7 +2961,7 @@ pg-editor-container {
 .stat-box {
      background: rgba(255, 255, 255, 0.1);
      padding: 15px;
-     border-radius: 10px;
+     border-radius: 3px;
      text-align: center;
      flex: 1;
      min-width: 120px;
@@ -3000,14 +3000,14 @@ pg-editor-container {
 /* Character Sheet Sections */
 .section-wrapper {
      margin-bottom: 15px;
-     border-radius: 8px;
+     border-radius: 3px;
      overflow: hidden;
 }
 
 .toggle-button {
      width: 100%;
      padding: 12px 20px;
-     background: rgba(212, 175, 55, 0.2);
+     background: rgba(232,197,106, 0.2);
      color: rgb(83, 81, 81);
      border: none;
      display: flex;
@@ -3032,7 +3032,7 @@ pg-editor-container {
 
 .action-card {
      padding: 12px;
-     border-radius: 8px;
+     border-radius: 3px;
      color: black;
      border-left: 5px solid #8b0000;
      display: flex;
@@ -3128,7 +3128,7 @@ pg-editor-container {
      margin: 40px auto;
      padding: 30px;
      background: rgba(238, 167, 3, 0.133);
-     border-radius: 8px;
+     border-radius: 3px;
      text-align: center;
 }
 
@@ -3159,7 +3159,7 @@ pg-editor-container {
      font-size: 3rem;
      padding: 12px 20px;
      border: none;
-     border-radius: 50px;
+     border-radius: 3px;
      cursor: pointer;
      z-index: 1000;
      transition: background-color 0.3s ease, transform 0.3s ease;
@@ -3340,7 +3340,7 @@ a {
           left: 10%;
           right: 0;
           flex-direction: column;
-          border-radius: 0 0 15px 15px;
+          border-radius: 0 0 3px 3px;
           align-items: center;
           gap: 10px;
           padding: 15px 0;
@@ -3563,7 +3563,7 @@ nav.active a {
   height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, #2d8a2d, #1a6a1a);
-  border: 2px solid rgba(212,175,55,0.5);
+  border: 2px solid rgba(232,197,106,0.5);
   box-shadow: 0 4px 14px rgba(30,100,30,0.4);
   cursor: pointer;
   z-index: 1001;
@@ -3597,7 +3597,7 @@ nav.active a {
   right: -4px;
   min-width: 18px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: 3px;
   background: var(--red);
   color: #fff;
   font-family: var(--font-title);
@@ -3618,7 +3618,7 @@ nav.active a {
   width: 220px;
   background: #fff;
   border: 1px solid rgba(60,160,60,0.35);
-  border-radius: 12px;
+  border-radius: 3px;
   box-shadow: 0 6px 24px rgba(0,0,0,0.14);
   z-index: 1002;
   padding: 10px 0 6px;

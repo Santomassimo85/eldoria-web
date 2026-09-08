@@ -31,7 +31,7 @@ const PARTIES = [
   { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe" },
   { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Zethir, Aksel, Dago" },
   { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Makenna, Temistocle, Alaric, Lael" },
-  { key: "Unico", label: "Storia del Mondo", color: "#d4af37", roster: "Cronache globali" },
+  { key: "Unico", label: "Storia del Mondo", color: "var(--oro)", roster: "Cronache globali" },
 ];
 
 const initialFormData = {

@@ -98,7 +98,7 @@
     background: linear-gradient(135deg, #c0392b 0%, #6e1810 100%);
 }
 .ambient-fx--leaves .afx-p:nth-child(4n) {
-    background: linear-gradient(135deg, #d4af37 0%, #8a6310 100%);
+    background: linear-gradient(135deg, var(--oro) 0%, #8a6310 100%);
 }
 @keyframes afx-fall-leaf {
     0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }

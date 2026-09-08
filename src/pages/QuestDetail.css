@@ -11,8 +11,8 @@
 .quest-detail-page .qd-stato {
   padding-top: calc(var(--navbar-h, 66px) + 70px);
   text-align: center;
-  font-family: "Manrope", system-ui, sans-serif;
-  color: #a6a1c2;
+  font-family: "Alegreya", Georgia, serif;
+  color: #b9af9d;
   font-style: italic;
 }
 
@@ -31,14 +31,14 @@
 .quest-detail-page .qd-sez { margin: 6px 0 14px; }
 .quest-detail-page .qd-meta { margin: 0 0 16px; }
 .quest-detail-page .quest-detail-lore { margin: 0; white-space: pre-wrap; }
-.quest-detail-page .qd-ricompense { margin: 18px 0 0; border-color: rgba(34, 211, 238, .4); background: rgba(34, 211, 238, .07); }
-.quest-detail-page .qd-ricompense strong { color: #22d3ee; }
+.quest-detail-page .qd-ricompense { margin: 18px 0 0; border-color: rgba(var(--el-rgb), .4); background: rgba(var(--el-rgb), .07); }
+.quest-detail-page .qd-ricompense strong { color: var(--el-2); }
 
 .quest-detail-page .qd-azioni { margin-top: 22px; }
 .quest-detail-page .qd-presa { margin-top: 20px; }
 .quest-detail-page .qd-presa p { margin: 0; }
-.quest-detail-page .qd-presa strong.mine { color: #22d3ee; }
-.quest-detail-page .qd-presa strong.others { color: #e879f9; }
+.quest-detail-page .qd-presa strong.mine { color: var(--el-2); }
+.quest-detail-page .qd-presa strong.others { color: var(--oro); }
 .quest-detail-page .qd-presa .nx-nota { margin-top: 4px; font-style: normal; }
 
 /* ── missiva sigillata ── */

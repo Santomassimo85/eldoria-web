@@ -93,7 +93,7 @@ export default function LoScribaAdmin() {
 
   if (!isMaster) {
     return (
-      <section className="adm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
+      <section className="adm" style={{ "--cine-accent": "var(--oro)", "--cine-accent-2": "var(--oro-soft)" }}>
         <div className="adm-masthead"><div className="adm-mast-main">
           <span className="adm-eyebrow">✦ Accesso riservato ✦</span>
           <h1 className="adm-title">Accesso Negato</h1>
@@ -178,7 +178,7 @@ export default function LoScribaAdmin() {
     if (d.sent) setPicked(new Set());
   });
 
-  const btn = (label, onClick, color = "var(--gold)", textColor = "#070713") => (
+  const btn = (label, onClick, color = "var(--gold)", textColor = "#0b0a0d") => (
     <button type="button" onClick={onClick} disabled={busy}
       style={{ background: color, color: textColor, border: "none", fontWeight: 700, padding: "9px 14px", borderRadius: 6, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, marginRight: 8 }}>
       {label}
@@ -186,7 +186,7 @@ export default function LoScribaAdmin() {
   );
 
   return (
-    <section className="adm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
+    <section className="adm" style={{ "--cine-accent": "var(--oro)", "--cine-accent-2": "var(--oro-soft)" }}>
       <div className="adm-masthead">
         <div className="adm-mast-main">
           <span className="adm-eyebrow">✦ Redazione ✦</span>
@@ -210,7 +210,7 @@ export default function LoScribaAdmin() {
 
       {/* Interruttore automatismo */}
       <div style={{ margin: "8px 0 20px" }}>
-        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "#c4b5fd" : "#22d3ee", "#070713")}
+        {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "var(--el-soft)" : "var(--el-2)", "#0b0a0d")}
       </div>
 
       {/* Bozza in attesa */}

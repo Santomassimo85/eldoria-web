@@ -9,28 +9,28 @@
 
 :root {
   /* ── Superfici (deep navy) ── */
-  --bg-0:#0b1220;   /* fondo app            */
-  --bg-1:#0f1729;   /* superfici            */
-  --bg-2:#141d33;   /* card                 */
-  --bg-3:#1b2742;   /* elementi elevati     */
-  --line:#293a5e;   /* bordi                */
-  --line-soft:#1d2a45;
-  --overlay:rgba(7,11,22,.66);
+  --bg-0:#0b0a0d;   /* fondo app            */
+  --bg-1:#17151b;   /* superfici            */
+  --bg-2:#221f27;   /* card                 */
+  --bg-3:#2e2a35;   /* elementi elevati     */
+  --line:#3d3846;   /* bordi                */
+  --line-soft:#2e2a35;
+  --overlay:rgba(11,10,13,.66);
 
   /* ── Accenti ── */
-  --amber:#f0a93b;  --amber-deep:#c07e1e;  --amber-soft:#f8cd7e;
-  --arc:#b07cff;    --arc-deep:#7d4fd6;    --arc-soft:#cdb0ff;
+  --amber:var(--oro);  --amber-deep:#b8933f;  --amber-soft:var(--oro-soft);
+  --arc:var(--el);    --arc-deep:var(--el-deep);    --arc-soft:var(--el-soft);
   --crit:#ff5a4d;   --crit-deep:#c12d22;
-  --ok:#46c98b;     --warn:#f0a93b;        --info:#5ab0ff;
+  --ok:#46c98b;     --warn:var(--oro);        --info:#5ab0ff;
 
   /* ── Testo ── */
-  --ink:#eef2ff;  --muted:#9fabcb;  --faint:#6c789b;
+  --ink:#ece5d6;  --muted:#b9af9d;  --faint:#7d7566;
 
   /* ── Tipografia (fantasy) ── */
-  --font-display:"Cinzel Decorative", serif;   /* hero ornato        */
+  --font-display:"Grenze Gotisch", "Cinzel", serif;   /* hero ornato        */
   --font-head:"Cinzel", Georgia, serif;         /* titoli / nav       */
   --font-ui:"EB Garamond", Georgia, serif;      /* UI / testo (serif fantasy) */
-  --font-sans:"Manrope", system-ui, sans-serif; /* fallback per dati densi */
+  --font-sans:"Alegreya", Georgia, serif; /* fallback per dati densi */
   --font-lore:"EB Garamond", Georgia, serif;    /* narrativa lunga    */
 
   /* ── Raggi ── */
@@ -43,17 +43,17 @@
   --shadow-1:0 2px 10px rgba(0,0,0,.35);
   --shadow-2:0 14px 44px -14px rgba(0,0,0,.65);
   --shadow-3:0 28px 70px -24px rgba(0,0,0,.75);
-  --glow-amber:0 0 0 1px rgba(240,169,59,.40), 0 10px 34px -10px rgba(240,169,59,.55);
-  --glow-arc:0 0 0 1px rgba(176,124,255,.45), 0 10px 34px -10px rgba(176,124,255,.60);
+  --glow-amber:0 0 0 1px rgba(232,197,106,.40), 0 10px 34px -10px rgba(232,197,106,.55);
+  --glow-arc:0 0 0 1px rgba(var(--el-rgb),.45), 0 10px 34px -10px rgba(var(--el-rgb),.60);
   --glow-crit:0 0 0 1px rgba(255,90,77,.45), 0 10px 34px -10px rgba(255,90,77,.55);
 
   /* ── Gradienti firma ── */
-  --grad-amber:linear-gradient(135deg,#f8cd7e,#f0a93b 45%,#c07e1e);
-  --grad-arc:linear-gradient(135deg,#cdb0ff,#b07cff 45%,#7d4fd6);
+  --grad-amber:linear-gradient(135deg,var(--oro-soft),var(--oro) 45%,#b8933f);
+  --grad-arc:linear-gradient(135deg,var(--el-soft),var(--el) 45%,var(--el-deep));
   --grad-crit:linear-gradient(135deg,#ff7d72,#ff5a4d 45%,#c12d22);
-  --grad-night:radial-gradient(1200px 800px at 75% -10%, rgba(176,124,255,.12), transparent 60%),
-               radial-gradient(900px 700px at 10% 8%, rgba(240,169,59,.08), transparent 55%),
-               linear-gradient(180deg,#0b1220,#0a0f1c 60%,#080c16);
+  --grad-night:radial-gradient(1200px 800px at 75% -10%, rgba(var(--el-rgb),.12), transparent 60%),
+               radial-gradient(900px 700px at 10% 8%, rgba(232,197,106,.08), transparent 55%),
+               linear-gradient(180deg,#0b0a0d,#0f0e12 60%,#080c16);
 
   /* ── Motion ── */
   --dur-fast:.16s; --dur:.28s; --dur-slow:.5s;
@@ -81,7 +81,7 @@ body {
   font-family:var(--font-ui);
   letter-spacing:.1px;
 }
-::selection { background:rgba(176,124,255,.35); color:#fff; }
+::selection { background:rgba(var(--el-rgb),.35); color:#fff; }
 
 /* Scrollbar coerente */
 * { scrollbar-width:thin; scrollbar-color:var(--arc-deep) transparent; }
@@ -140,7 +140,7 @@ body {
 }
 .ch-card::before { /* bagliore d'angolo */
   content:""; position:absolute; inset:0; pointer-events:none; opacity:.0;
-  background:radial-gradient(420px 220px at 100% 0%, rgba(176,124,255,.16), transparent 60%);
+  background:radial-gradient(420px 220px at 100% 0%, rgba(var(--el-rgb),.16), transparent 60%);
   transition:opacity var(--dur) var(--ease);
 }
 .ch-card:hover { transform:translateY(-4px); border-color:var(--arc-deep); box-shadow:var(--shadow-2); }
@@ -154,9 +154,9 @@ body {
 .ch-chip {
   display:inline-flex; align-items:center; gap:.4em; padding:5px 12px; border-radius:var(--r-pill);
   font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
-  background:rgba(176,124,255,.12); color:var(--arc-soft); border:1px solid rgba(176,124,255,.25);
+  background:rgba(var(--el-rgb),.12); color:var(--arc-soft); border:1px solid rgba(var(--el-rgb),.25);
 }
-.ch-chip--amber { background:rgba(240,169,59,.12); color:var(--amber-soft); border-color:rgba(240,169,59,.28); }
+.ch-chip--amber { background:rgba(232,197,106,.12); color:var(--amber-soft); border-color:rgba(232,197,106,.28); }
 .ch-chip--crit  { background:rgba(255,90,77,.12); color:#ff9a90; border-color:rgba(255,90,77,.30); }
 
 /* ── Campi form ── */
@@ -168,7 +168,7 @@ body {
   transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur);
 }
 .ch-input:focus, .ch-select:focus, .ch-textarea:focus {
-  outline:none; border-color:var(--arc); box-shadow:0 0 0 3px rgba(176,124,255,.18); background:var(--bg-1);
+  outline:none; border-color:var(--arc); box-shadow:0 0 0 3px rgba(var(--el-rgb),.18); background:var(--bg-1);
 }
 .ch-input::placeholder, .ch-textarea::placeholder { color:#5e6b8e; }
 
@@ -184,7 +184,7 @@ body {
 @keyframes ch-fade-up   { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
 @keyframes ch-fade-in   { from { opacity:0; } to { opacity:1; } }
 @keyframes ch-pop       { 0% { opacity:0; transform:scale(.92) translateY(10px); } 100% { opacity:1; transform:none; } }
-@keyframes ch-glow-pulse{ 0%,100% { box-shadow:0 0 0 0 rgba(176,124,255,.0); } 50% { box-shadow:0 0 26px -4px rgba(176,124,255,.55); } }
+@keyframes ch-glow-pulse{ 0%,100% { box-shadow:0 0 0 0 rgba(var(--el-rgb),.0); } 50% { box-shadow:0 0 26px -4px rgba(var(--el-rgb),.55); } }
 @keyframes ch-shimmer   { 100% { background-position:200% 0; } }
 @keyframes ch-float     { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
 @keyframes ch-spin-rune { to { transform:rotate(360deg); } }
@@ -217,7 +217,7 @@ body {
 
 /* ── Anello rune per stati "caricamento" pieni ── */
 .ch-rune-spin { width:42px; height:42px; border-radius:50%;
-  border:2px solid rgba(176,124,255,.18); border-top-color:var(--amber); animation:ch-spin-rune .9s linear infinite; }
+  border:2px solid rgba(var(--el-rgb),.18); border-top-color:var(--amber); animation:ch-spin-rune .9s linear infinite; }
 
 /* ============================================================================
    ACCESSIBILITÀ: rispetta prefers-reduced-motion

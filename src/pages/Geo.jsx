@@ -23,9 +23,9 @@ const CONTINENT_IMAGES = {
 const CONTINENT_COLORS = {
   Vathriddon: "#4ade80", // verde delle foreste
   Ehkia: "#fb923c",      // arancio delle terre di fuoco
-  Ohzkie: "#a78bfa",     // viola delle spore
+  Ohzkie: "var(--el-soft)",     // viola delle spore
 };
-const contColor = (c) => CONTINENT_COLORS[c] || "#22d3ee";
+const contColor = (c) => CONTINENT_COLORS[c] || "var(--el-2)";
 const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 // HTML → testo semplice (per l'anteprima nel popup interattivo)
 const stripHtml = (html) => {
@@ -153,7 +153,7 @@ export default function Geo() {
   // Luogo aperto nella modale-varco (solo presentazione)
   const [openLoc, setOpenLoc] = useState(null);
   // origine del VARCO: il popup sboccia dal punto della carta cliccata
-  const [warp, setWarp] = useState({ x: "50vw", y: "50vh", g: "#22d3ee" });
+  const [warp, setWarp] = useState({ x: "50vw", y: "50vh", g: "var(--el-2)" });
   const apriVarco = (loc, contName, e) => {
     const r = e?.currentTarget?.getBoundingClientRect?.();
     const g = contColor(loc.continent || contName);
@@ -378,26 +378,26 @@ export default function Geo() {
       {editingLoc && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          backgroundColor: "rgba(4,4,12,0.85)", zIndex: 9999,
+          backgroundColor: "rgba(11,10,13,0.85)", zIndex: 9999,
           overflowY: "auto", padding: "20px"
         }}>
           <div style={{
-            backgroundColor: "#201c2f", color: "#edeaff", padding: "24px", borderRadius: "18px",
+            backgroundColor: "#221f27", color: "#ece5d6", padding: "24px", borderRadius: "18px",
             maxWidth: "800px", margin: "0 auto",
-            border: "1px solid rgba(139,92,246,0.45)",
+            border: "1px solid rgba(var(--el-rgb),0.45)",
             boxShadow: "0 30px 70px -24px #000"
           }}>
             <button
               onClick={() => setEditingLoc(null)}
               style={{
-                float: "right", background: "linear-gradient(90deg,#e879f9,#c026d3)", color: "#070713",
+                float: "right", background: "linear-gradient(90deg,var(--oro),var(--sangue))", color: "#0b0a0d",
                 border: "none", padding: "6px 14px", cursor: "pointer",
                 borderRadius: "6px", fontWeight: "bold"
               }}
             >
               ✕ Chiudi
             </button>
-            <h2 style={{ color: "#c4b5fd", fontFamily: "Cinzel, serif", marginBottom: "16px" }}>
+            <h2 style={{ color: "var(--el-soft)", fontFamily: "Cinzel, serif", marginBottom: "16px" }}>
               Modifica — {editingLoc.name}
             </h2>
             <GeoAdmin editTarget={editingLoc} onComplete={() => setEditingLoc(null)} />
@@ -419,7 +419,7 @@ export default function Geo() {
               ? activeContinent
               : (visibleContinents.length === 1 ? visibleContinents[0].cont : null);
             return (
-          <aside className="nx-pannello nx-pannello--sticky geo-rubrica" aria-label="Rubrica" style={{ "--g": rubCont ? contColor(rubCont) : "#22d3ee" }}>
+          <aside className="nx-pannello nx-pannello--sticky geo-rubrica" aria-label="Rubrica" style={{ "--g": rubCont ? contColor(rubCont) : "var(--el-2)" }}>
             {(() => {
               const cont = rubCont;
               const img = cont ? (CONTINENT_IMAGES[cont] || HERO_IMAGE) : HERO_IMAGE;
@@ -502,7 +502,7 @@ export default function Geo() {
         const top = pila.length ? pila[pila.length - 1] : { kind: "loc", loc: openLoc };
         const gTop = top.kind === "loc"
           ? contColor(top.loc.continent || "Vathriddon")
-          : (top.detail.type === "char" ? "#e879f9" : "#c4b5fd");
+          : (top.detail.type === "char" ? "var(--oro)" : "var(--el-soft)");
         const nomeDi = (e) => (e.kind === "loc" ? e.loc.name : e.detail.name);
         const briciole = [{ kind: "loc", loc: openLoc }, ...pila];
         const pagKey = `${top.kind}-${top.kind === "loc" ? top.loc.id : top.detail.name}-${pila.length}`;

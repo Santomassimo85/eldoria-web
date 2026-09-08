@@ -105,17 +105,17 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   border: none;
   cursor: pointer;
   padding: 0;
-  background: radial-gradient(circle at 38% 32%, #c9b8ff, #8b5cf6 55%, #2a1660);
-  box-shadow: 0 0 0 3px rgba(139,92,246,.25), 0 0 40px rgba(139,92,246,.8), 0 14px 30px -10px #000;
+  background: radial-gradient(circle at 38% 32%, #c9b8ff, var(--el) 55%, #2a1660);
+  box-shadow: 0 0 0 3px rgba(var(--el-rgb),.25), 0 0 40px rgba(var(--el-rgb),.8), 0 14px 30px -10px #000;
   animation: orbe-batte 3.4s ease-in-out infinite alternate;
   transition: transform .2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .nesso-orbe:hover { transform: scale(1.08); }
-.nesso-nav.aperto .nesso-orbe { animation: none; box-shadow: 0 0 0 6px rgba(34,211,238,.18), 0 0 60px rgba(139,92,246,1), 0 14px 30px -10px #000; }
+.nesso-nav.aperto .nesso-orbe { animation: none; box-shadow: 0 0 0 6px rgba(var(--el-rgb),.18), 0 0 60px rgba(var(--el-rgb),1), 0 14px 30px -10px #000; }
 @keyframes orbe-batte {
-  from { box-shadow: 0 0 0 3px rgba(139,92,246,.25), 0 0 30px rgba(139,92,246,.6), 0 14px 30px -10px #000; }
-  to   { box-shadow: 0 0 0 6px rgba(139,92,246,.15), 0 0 60px rgba(139,92,246,1), 0 14px 30px -10px #000; }
+  from { box-shadow: 0 0 0 3px rgba(var(--el-rgb),.25), 0 0 30px rgba(var(--el-rgb),.6), 0 14px 30px -10px #000; }
+  to   { box-shadow: 0 0 0 6px rgba(var(--el-rgb),.15), 0 0 60px rgba(var(--el-rgb),1), 0 14px 30px -10px #000; }
 }
 .nesso-orbe-glifo {
   position: absolute;
@@ -135,11 +135,11 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   left: 50%;
   bottom: calc(var(--orbe-size) + 8px);
   transform: translateX(-50%);
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Alegreya", Georgia, serif;
   font-size: .56rem;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: #a6a1c2;
+  color: #b9af9d;
   white-space: nowrap;
   opacity: .8;
   pointer-events: none;
@@ -156,17 +156,17 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 1px solid rgba(34,211,238,.5);
+  border: 1px solid rgba(var(--el-rgb),.5);
   cursor: pointer;
   padding: 0;
-  background: radial-gradient(circle at 40% 34%, #3b3555, #14111f);
+  background: radial-gradient(circle at 40% 34%, #3a3542, #17151b);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
   color: #fff;
-  text-shadow: 0 1px 3px #000, 0 0 10px rgba(139,92,246,.8);
+  text-shadow: 0 1px 3px #000, 0 0 10px rgba(var(--el-rgb),.8);
   font-family: "Cinzel", Georgia, serif;
   font-weight: 700;
   font-size: .46rem;
@@ -204,12 +204,12 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   .nesso-sat.s6 { --sx: 135px;  --sy: -82px; }
   .nesso-sat.s7 { --sx: 156px;  --sy: -6px; }
 }
-.nesso-sat:hover { color: #fff; box-shadow: 0 0 22px rgba(34,211,238,.8); border-color: #22d3ee; }
+.nesso-sat:hover { color: #fff; box-shadow: 0 0 22px rgba(var(--el-rgb),.8); border-color: var(--el-2); }
 .nesso-sat.on,
 .nesso-sat.active {
-  color: #070713;
-  background: radial-gradient(circle at 40% 34%, #9ff0ff, #22d3ee 60%, #0e7490);
-  box-shadow: 0 0 26px rgba(34,211,238,1);
+  color: #0b0a0d;
+  background: radial-gradient(circle at 40% 34%, var(--el-soft), var(--el-2) 60%, var(--el-deep));
+  box-shadow: 0 0 26px rgba(var(--el-rgb),1);
   border-color: transparent;
 }
 .nesso-sat.on, .nesso-sat.active { text-shadow: none; }
@@ -219,7 +219,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;
-  background: rgba(4,4,12,.62);
+  background: rgba(11,10,13,.62);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   animation: mnav-fade .25s ease both;
 }
@@ -232,12 +232,12 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   width: min(560px, calc(100% - 20px));
   bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b) + 22px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(45, 40, 65,.96), rgba(10,10,26,.98));
-  border: 1px solid rgba(139,92,246,.45);
-  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(46,42,53,.96), rgba(15,14,18,.98));
+  border: 1px solid rgba(var(--el-rgb),.45);
+  border-radius: 3px;
   box-shadow:
-    0 0 44px -10px rgba(139,92,246,.5),
-    0 0 30px -12px rgba(34,211,238,.35),
+    0 0 44px -10px rgba(var(--el-rgb),.5),
+    0 0 30px -12px rgba(var(--el-rgb),.35),
     0 24px 60px -20px rgba(0,0,0,.95);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -253,7 +253,7 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   top: 100%;
   width: 1px;
   height: 22px;
-  background: linear-gradient(180deg, rgba(34,211,238,.7), transparent);
+  background: linear-gradient(180deg, rgba(var(--el-rgb),.7), transparent);
 }
 .mnav-sheet-grip { display: none; }
 .mnav-sheet-head {
@@ -262,35 +262,35 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   gap: 10px;
   font-family: "Cinzel", Georgia, serif;
   font-size: .66rem; letter-spacing: .34em; text-transform: uppercase;
-  color: #22d3ee; text-shadow: 0 0 12px rgba(34,211,238,.6);
+  color: var(--el-2); text-shadow: 0 0 12px rgba(var(--el-rgb),.6);
   padding: 0 4px 10px; margin-bottom: 8px;
 }
-.mnav-sheet-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(139,92,246,.6), transparent); }
+.mnav-sheet-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(var(--el-rgb),.6), transparent); }
 .mnav-sheet-rune {
   display: inline-block;
   font-size: 1.05em; line-height: 1;
-  color: #c4b5fd;
-  text-shadow: 0 0 10px rgba(139,92,246,.8);
+  color: var(--el-soft);
+  text-shadow: 0 0 10px rgba(var(--el-rgb),.8);
 }
 .mnav-sheet-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mnav-sheet-link,
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
-  padding: 10px 14px; border-radius: 14px;
-  background: linear-gradient(180deg, #201c2f, #14111f);
-  border: 1px solid rgba(139,92,246,.3);
-  color: #dcd8ff; text-decoration: none;
-  font-family: "Manrope", system-ui, sans-serif; font-size: .9rem; font-weight: 600;
+  padding: 10px 14px; border-radius: 3px;
+  background: linear-gradient(180deg, #221f27, #17151b);
+  border: 1px solid rgba(var(--el-rgb),.3);
+  color: #d6cdbb; text-decoration: none;
+  font-family: "Alegreya", Georgia, serif; font-size: .9rem; font-weight: 600;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,.85);
   transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, border-color .2s ease, color .2s ease;
 }
-.mnav-sheet-link:hover { transform: translateY(-3px); border-color: rgba(34,211,238,.6); box-shadow: 0 0 18px -4px rgba(34,211,238,.6); color: #fff; }
+.mnav-sheet-link:hover { transform: translateY(-3px); border-color: rgba(var(--el-rgb),.6); box-shadow: 0 0 18px -4px rgba(var(--el-rgb),.6); color: #fff; }
 .mnav-sheet-link:active { transform: scale(.98); }
 .mnav-sheet-link.active {
-  background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+  background: linear-gradient(90deg, var(--el-2), var(--el));
   border-color: transparent;
-  color: #070713;
-  box-shadow: 0 0 22px -4px rgba(34,211,238,.8);
+  color: #0b0a0d;
+  box-shadow: 0 0 22px -4px rgba(var(--el-rgb),.8);
 }
 /* l'ultima voce dispari occupa l'intera riga */
 .mnav-sheet-links > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -304,21 +304,21 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
 }
 
 /* ── Satelliti dell'Orbe: ogni runa con la sua tinta (stessa mappa del drawer) ── */
-.nesso-sat.s1 { --rune: #f8fafc; }   /* ✦ Nesso   — bianco stellare */
+.nesso-sat.s1 { --rune: #ece5d6; }   /* ✦ Nesso   — bianco stellare */
 .nesso-sat.s2 { --rune: #34d399; }   /* ᛗ Mondo   — smeraldo */
 .nesso-sat.s3 { --rune: #fbbf24; }   /* ᛒ Libri   — ambra */
-.nesso-sat.s4 { --rune: #e879f9; }   /* ᛖ Eroi    — magenta */
-.nesso-sat.s5 { --rune: #22d3ee; }   /* ᚷ Gilda   — ciano */
+.nesso-sat.s4 { --rune: var(--oro); }   /* ᛖ Eroi    — magenta */
+.nesso-sat.s5 { --rune: var(--el-2); }   /* ᚷ Gilda   — ciano */
 .nesso-sat.s6 { --rune: #fb7185; }   /* ᚦ Arena   — rubino */
-.nesso-sat.s7 { --rune: #c4b5fd; }   /* ☰ Altro   — lilla */
-.nesso-sat { border-color: color-mix(in srgb, var(--rune, #22d3ee) 55%, transparent); }
+.nesso-sat.s7 { --rune: var(--el-soft); }   /* ☰ Altro   — lilla */
+.nesso-sat { border-color: color-mix(in srgb, var(--rune, var(--el-2)) 55%, transparent); }
 .nesso-sat .nesso-sat-g {
   color: var(--rune, #fff);
-  text-shadow: 0 0 10px var(--rune, #22d3ee), 0 0 20px color-mix(in srgb, var(--rune, #22d3ee) 55%, transparent);
+  text-shadow: 0 0 10px var(--rune, var(--el-2)), 0 0 20px color-mix(in srgb, var(--rune, var(--el-2)) 55%, transparent);
 }
-.nesso-sat:hover { border-color: var(--rune, #22d3ee); box-shadow: 0 0 22px color-mix(in srgb, var(--rune, #22d3ee) 80%, transparent); }
+.nesso-sat:hover { border-color: var(--rune, var(--el-2)); box-shadow: 0 0 22px color-mix(in srgb, var(--rune, var(--el-2)) 80%, transparent); }
 .nesso-sat.on, .nesso-sat.active {
-  background: radial-gradient(circle at 40% 34%, #fff, var(--rune, #22d3ee) 60%, color-mix(in srgb, var(--rune, #22d3ee) 60%, #000));
-  box-shadow: 0 0 26px var(--rune, #22d3ee);
+  background: radial-gradient(circle at 40% 34%, #fff, var(--rune, var(--el-2)) 60%, color-mix(in srgb, var(--rune, var(--el-2)) 60%, #000));
+  box-shadow: 0 0 26px var(--rune, var(--el-2));
 }
-.nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: #070713; text-shadow: none; }
+.nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: #0b0a0d; text-shadow: none; }

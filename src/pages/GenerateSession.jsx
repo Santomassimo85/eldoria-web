@@ -412,7 +412,7 @@ export default function GenerateSession() {
                 title="Anteprima sessione"
                 srcDoc={withSessionRuntime(generated.html)}
                 sandbox="allow-scripts allow-popups"
-                style={{ width: "100%", height: "70vh", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, background: "#050807" }}
+                style={{ width: "100%", height: "70vh", border: "1px solid rgba(232,197,106,0.4)", borderRadius: 12, background: "#050807" }}
               />
               <div className="sumadm-actions" style={{ marginTop: 14 }}>
                 <button className="sumadm-btn primary" onClick={handleSave} disabled={saving}>

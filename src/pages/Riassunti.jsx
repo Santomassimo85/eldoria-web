@@ -40,8 +40,8 @@ const stripImages = (html) =>
 
 // Colore del party (per pillole, rubriche e filo delle memorie): la tinta
 // ufficiale di parties.js, schiarita per reggere sul vuoto del Nesso.
-const PARTY_ACCENT = { AMEA: "#f87171", LEAF: "#34d399", ENOX: "#c084fc", LAC: "#22d3ee" };
-const PARTY_FALLBACK = ["#22d3ee", "#8b5cf6", "#e879f9", "#f59e0b", "#fb7185"];
+const PARTY_ACCENT = { AMEA: "#f87171", LEAF: "#34d399", ENOX: "#c084fc", LAC: "var(--el-2)" };
+const PARTY_FALLBACK = ["var(--el-2)", "var(--el)", "var(--oro)", "#f59e0b", "#fb7185"];
 const partyAccent = (key, i = 0) =>
     PARTY_ACCENT[String(key || "").toUpperCase()] || partyById(key)?.color || PARTY_FALLBACK[i % PARTY_FALLBACK.length];
 

@@ -39,7 +39,7 @@
   justify-content: center;
   background:
     radial-gradient(circle at 30% 25%, #fff5d2, transparent 55%),
-    linear-gradient(135deg, #f0c250 0%, #d4af37 45%, #8c6a17 100%);
+    linear-gradient(135deg, #f0c250 0%, var(--oro) 45%, #8c6a17 100%);
   border: 3px solid #6b4f0e;
   /* d20-ish silhouette via clip-path: hexagon-pointed */
   clip-path: polygon(
@@ -75,7 +75,7 @@
 
 /* ── Number ─────────────────────────────────────────────────── */
 .dice-d20-num {
-  font-family: "Cinzel Decorative", serif;
+  font-family: "Grenze Gotisch", "Cinzel", serif;
   font-size: 3.6rem;
   font-weight: 700;
   color: #1a1208;
@@ -98,7 +98,7 @@
   position: absolute;
   inset: -28%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.55), transparent 65%);
+  background: radial-gradient(circle, rgba(232,197,106, 0.55), transparent 65%);
   opacity: 0;
   filter: blur(6px);
   animation: dice-glow-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;
@@ -135,7 +135,7 @@
 
 /* ── Caption + tag ─────────────────────────────────────────── */
 .dice-label {
-  font-family: "Cinzel Decorative", serif;
+  font-family: "Grenze Gotisch", "Cinzel", serif;
   font-size: 0.78rem;
   letter-spacing: 0.18em;
   color: #33281a;
@@ -151,12 +151,12 @@
 }
 
 .dice-tag {
-  font-family: "Cinzel Decorative", serif;
+  font-family: "Grenze Gotisch", "Cinzel", serif;
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   padding: 6px 18px;
-  border-radius: 22px;
+  border-radius: 3px;
   opacity: 0;
   transform: scale(0.85);
   animation: dice-tag-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)
@@ -165,7 +165,7 @@
 }
 
 .dice-tag.crit {
-  background: linear-gradient(135deg, #ffd96b, #d4af37);
+  background: linear-gradient(135deg, #ffd96b, var(--oro));
   color: #1a1208;
   border: 1.5px solid #5a3d00;
   text-shadow: 0 1px 0 rgba(255,255,255,0.4);
@@ -349,7 +349,7 @@
   margin: 0 0 14px;
 }
 .dice-picker-section-label {
-  font-family: "Cinzel Decorative", serif;
+  font-family: "Grenze Gotisch", "Cinzel", serif;
   font-size: 0.78rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -368,7 +368,7 @@
   align-items: center;
   gap: 6px;
   padding: 12px 8px 10px;
-  border-radius: 12px;
+  border-radius: 3px;
   border: 1.5px solid var(--line, #c9b78a);
   background: var(--bg-2, #fbf4e0);
   cursor: pointer;
@@ -411,7 +411,7 @@
   clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
   background:
     radial-gradient(circle at 30% 25%, #fff5d2, transparent 55%),
-    linear-gradient(135deg, #f0c250 0%, #d4af37 45%, #8c6a17 100%);
+    linear-gradient(135deg, #f0c250 0%, var(--oro) 45%, #8c6a17 100%);
 }
 .dice-swatch.skin-rubino {
   border-color: #5a1010;

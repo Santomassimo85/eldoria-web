@@ -27,7 +27,7 @@ export default function RattiLore() {
   useParallaxScroll();
 
   return (
-    <section className="cine-page ratti-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page ratti-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
 
       {/* ── VARCO (prototipo J): il drider nel portale esagonale ── */}
       <GlacierHero

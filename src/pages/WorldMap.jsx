@@ -190,7 +190,7 @@ export default function WorldMap() {
   const countOf = (name) => npcs.filter(n => n.linkedCity === name).length;
 
   return (
-    <div className="cine-page map-page" style={{ "--cine-accent": "#22d3ee", "--cine-accent-2": "#8b5cf6" }}>
+    <div className="cine-page map-page" style={{ "--cine-accent": "var(--el-2)", "--cine-accent-2": "var(--el)" }}>
       <header className="map-testata">
         <span className="nx-kicker">Archivio Cartografico</span>
         <h1 className="nx-titolo map-titolo">Mappa di Exanthia</h1>

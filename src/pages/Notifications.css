@@ -5,7 +5,7 @@
    titolo, testo, CTA. Non letti = bordo ciano + punto luminoso.
    Kit condiviso in styles/nesso.css. Solo presentazione.
    ============================================================ */
-.notifications-page { font-family: "Manrope", system-ui, sans-serif; }
+.notifications-page { font-family: "Alegreya", Georgia, serif; }
 .notifications-page .notif-glhero { margin-bottom: 6px; }
 .notifications-page .notif-body { max-width: 760px; margin: 0 auto; padding: 0 0 20px; }
 
@@ -14,22 +14,22 @@
 .notifications-page .notif-sezlabel .btn-clear-all {
   order: 99;
   margin-left: 6px;
-  color: #e879f9;
-  border-color: rgba(232, 121, 249, .45);
+  color: var(--oro);
+  border-color: rgba(232,197,106, .45);
   letter-spacing: .06em;
   text-transform: none;
   font-size: .68rem;
 }
 .notifications-page .notif-sezlabel .btn-clear-all:hover {
   color: #fff;
-  border-color: #e879f9;
-  box-shadow: 0 0 16px -4px rgba(232, 121, 249, .9);
+  border-color: var(--oro);
+  box-shadow: 0 0 16px -4px rgba(232,197,106, .9);
 }
 
 .notifications-page .notifications-empty {
   text-align: center;
   padding: 50px 20px;
-  color: #a6a1c2;
+  color: #b9af9d;
   font-style: italic;
 }
 
@@ -42,13 +42,13 @@
 }
 .notifications-page .notification-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(34, 211, 238, .6);
-  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34, 211, 238, .55);
+  border-color: rgba(var(--el-rgb), .6);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(var(--el-rgb), .55);
 }
 /* non letta: bordo ciano acceso e punto che pulsa */
 .notifications-page .notification-card.unread {
-  border-color: rgba(34, 211, 238, .65);
-  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 24px -8px rgba(34, 211, 238, .6);
+  border-color: rgba(var(--el-rgb), .65);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 24px -8px rgba(var(--el-rgb), .6);
 }
 .notifications-page .notification-card.read { opacity: .72; }
 .notifications-page .notif-dot {
@@ -56,15 +56,15 @@
   width: 9px; height: 9px;
   margin-right: 8px;
   border-radius: 50%;
-  background: #22d3ee;
-  box-shadow: 0 0 10px #22d3ee;
+  background: var(--el-2);
+  box-shadow: 0 0 10px var(--el-2);
   vertical-align: middle;
   animation: notif-pulsa 1.8s ease-in-out infinite alternate;
 }
 @keyframes notif-pulsa { from { opacity: .6; transform: scale(.9); } to { opacity: 1; transform: scale(1.15); } }
 
 .notifications-page .notification-card-time {
-  color: #a6a1c2;
+  color: #b9af9d;
   text-transform: none;
   letter-spacing: .04em;
   font-size: .64rem;
@@ -72,12 +72,12 @@
 .notifications-page .notification-card-title {
   margin: 0 120px 8px 0;
   font-size: 1rem;
-  color: #edeaff;
+  color: #ece5d6;
 }
 .notifications-page .notification-card-msg {
   margin: 0 0 12px;
   font-size: .95rem;
-  color: #d6d2e6;
+  color: #d6cdbb;
   line-height: 1.65;
   white-space: pre-line;
 }
@@ -91,18 +91,18 @@
   margin-left: auto;
   width: 30px; height: 30px;
   border-radius: 50%;
-  background: rgba(20, 17, 31, .8);
-  border: 1px solid rgba(232, 121, 249, .45);
-  color: #e879f9;
+  background: rgba(23,21,27, .8);
+  border: 1px solid rgba(232,197,106, .45);
+  color: var(--oro);
   font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
   transition: background .15s, transform .15s, box-shadow .15s;
 }
 .notifications-page .notification-card-delete:hover {
-  background: rgba(232, 121, 249, .18);
+  background: rgba(232,197,106, .18);
   transform: scale(1.1);
-  box-shadow: 0 0 14px -4px rgba(232, 121, 249, .8);
+  box-shadow: 0 0 14px -4px rgba(232,197,106, .8);
 }
 
 @media (max-width: 520px) {

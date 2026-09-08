@@ -795,7 +795,7 @@ export default function Feedback() {
 
   if (!currentUser) {
     return (
-      <section className="cine-page fb-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <section className="cine-page fb-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
         <div className="fb-locked-wrap nx-testata">
           <span className="nx-kicker">La tua voce conta</span>
           <h1 className="nx-titolo fb-title">Feedback</h1>
@@ -806,7 +806,7 @@ export default function Feedback() {
   }
 
   return (
-    <section className="cine-page fb-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page fb-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       {/* ── VARCO (prototipo J): Milo nel portale esagonale ── */}
       <GlacierHero
         className="fb-glhero"

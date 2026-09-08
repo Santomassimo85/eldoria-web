@@ -4,8 +4,8 @@
    casate = etichetta di sezione + GRIGLIA di pannelli con
    anello-ritratto · scheda eroe = modale-varco.
    Il kit (.nx-*) vive in styles/nesso.css: qui solo la pagina.
-   Palette testo: #edeaff ink · #a6a1c2 muted · #c4b5fd viola-soft ·
-   #22d3ee ciano · #e879f9 magenta. Nessuno sfondo chiaro.
+   Palette testo: #ece5d6 ink · #b9af9d muted · var(--el-soft) viola-soft ·
+   var(--el-2) ciano · var(--oro) magenta. Nessuno sfondo chiaro.
    ============================================================ */
 
 /* ── indice ── */
@@ -14,9 +14,9 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem;
-  color: #c4b5fd; border: 1px solid rgba(139, 92, 246, .5);
+  color: var(--el-soft); border: 1px solid rgba(var(--el-rgb), .5);
 }
-.party-page .nx-pillola.on .party-pill-code { color: #070713; border-color: rgba(7, 7, 19, .4); }
+.party-page .nx-pillola.on .party-pill-code { color: #0b0a0d; border-color: rgba(11,10,13, .4); }
 
 /* ── ricerca (CineToolbar) riabbigliata: pillola scura ── */
 .party-page .cine-toolbar {
@@ -24,22 +24,22 @@
   padding: 6px 0 2px; max-width: 640px; margin: 0 auto;
 }
 .party-page .cine-search {
-  background: #14111f; border: 1px solid rgba(139, 92, 246, .4); border-radius: 999px;
+  background: #17151b; border: 1px solid rgba(var(--el-rgb), .4); border-radius: 999px;
   box-shadow: none; transition: border-color .2s ease, box-shadow .2s ease;
 }
-.party-page .cine-search:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
-.party-page .cine-search-icon { color: #a6a1c2; }
+.party-page .cine-search:focus-within { border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); }
+.party-page .cine-search-icon { color: #b9af9d; }
 .party-page .cine-search-input {
-  background: none; border: none; color: #edeaff;
-  font-family: "Manrope", system-ui, sans-serif; font-size: .88rem;
+  background: none; border: none; color: #ece5d6;
+  font-family: "Alegreya", Georgia, serif; font-size: .88rem;
 }
-.party-page .cine-search-input::placeholder { color: #a6a1c2; }
-.party-page .cine-search-clear { background: rgba(139, 92, 246, .25); color: #edeaff; }
+.party-page .cine-search-input::placeholder { color: #b9af9d; }
+.party-page .cine-search-clear { background: rgba(var(--el-rgb), .25); color: #ece5d6; }
 .party-page .cine-result-count {
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .68rem;
-  letter-spacing: .16em; text-transform: uppercase; color: #22d3ee;
+  font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .68rem;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--el-2);
 }
-.party-page .cine-empty { color: #a6a1c2; text-align: center; font-family: "Manrope", system-ui, sans-serif; }
+.party-page .cine-empty { color: #b9af9d; text-align: center; font-family: "Alegreya", Georgia, serif; }
 
 /* ── casate ── */
 .party-page .casate { display: flex; flex-direction: column; gap: 6px; }
@@ -57,12 +57,12 @@
 .party-page .eroe-card .nx-nome { line-height: 1.15; }
 .party-page .eroe-cue {
   margin-top: 8px;
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 700;
+  font-family: "Alegreya", Georgia, serif; font-weight: 700;
   font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
-  color: #22d3ee; opacity: .8; transition: opacity .2s ease, transform .2s ease;
+  color: var(--el-2); opacity: .8; transition: opacity .2s ease, transform .2s ease;
 }
 .party-page .eroe-card:hover .eroe-cue { opacity: 1; transform: translateX(3px); }
-.party-page .eroe-card:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
+.party-page .eroe-card:focus-visible { outline: 2px solid var(--el-2); outline-offset: 3px; }
 
 /* ── scheda eroe (modale-varco) ── */
 .eroe-modale .nx-kicker { margin-top: 2px; }
@@ -71,16 +71,16 @@
 .eroe-vitals { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
 .eroe-vital {
   display: flex; flex-direction: column; align-items: center; min-width: 64px;
-  padding: 8px 12px; border-radius: 14px;
-  background: linear-gradient(180deg, #201c2f, #14111f); border: 1px solid rgba(139, 92, 246, .3);
+  padding: 8px 12px; border-radius: 3px;
+  background: linear-gradient(180deg, #221f27, #17151b); border: 1px solid rgba(var(--el-rgb), .3);
 }
-.eroe-vital b { font-family: "Cinzel", Georgia, serif; font-size: 1.15rem; color: #22d3ee; text-shadow: 0 0 12px rgba(34, 211, 238, .6); }
-.eroe-vital i { font-style: normal; font-family: "Manrope", system-ui, sans-serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: #a6a1c2; }
+.eroe-vital b { font-family: "Cinzel", Georgia, serif; font-size: 1.15rem; color: var(--el-2); text-shadow: 0 0 12px rgba(var(--el-rgb), .6); }
+.eroe-vital i { font-style: normal; font-family: "Alegreya", Georgia, serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: #b9af9d; }
 .eroe-abilities { margin: 0; }
 .eroe-ability { gap: 6px; cursor: default; }
-.eroe-ability i { font-style: normal; color: #c4b5fd; font-size: .62rem; letter-spacing: .14em; }
-.eroe-ability b { color: #edeaff; font-size: .82rem; }
-.eroe-ability em { font-style: normal; color: #22d3ee; font-size: .72rem; }
+.eroe-ability i { font-style: normal; color: var(--el-soft); font-size: .62rem; letter-spacing: .14em; }
+.eroe-ability b { color: #ece5d6; font-size: .82rem; }
+.eroe-ability em { font-style: normal; color: var(--el-2); font-size: .72rem; }
 .eroe-ability:hover { transform: none; }
 .eroe-bio { margin: 10px 0 14px; }
 .eroe-bio .nx-kicker { margin-bottom: 6px; }
@@ -96,33 +96,33 @@
 
 /* ── COLORE DI CLASSE (--cls impostata dal JSX): anello, bordo, tag,
       pillola della classe e alone del nome ── */
-.party-page .eroe-card { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 45%, transparent); }
+.party-page .eroe-card { border-color: color-mix(in srgb, var(--cls, var(--el)) 45%, transparent); }
 .party-page .eroe-card:hover {
-  border-color: var(--cls, #22d3ee);
-  box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--cls, #22d3ee) 70%, transparent);
+  border-color: var(--cls, var(--el-2));
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--cls, var(--el-2)) 70%, transparent);
 }
 .party-page .eroe-card .nx-anello::before {
-  background: conic-gradient(var(--cls, #22d3ee), #8b5cf6 40%, var(--cls, #22d3ee) 70%, #fff 82%, var(--cls, #22d3ee));
-  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--cls, #22d3ee) 80%, transparent);
+  background: conic-gradient(var(--cls, var(--el-2)), var(--el) 40%, var(--cls, var(--el-2)) 70%, #fff 82%, var(--cls, var(--el-2)));
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--cls, var(--el-2)) 80%, transparent);
 }
-.party-page .eroe-card .nx-tag { color: var(--cls, #e879f9); }
-.party-page .eroe-card .nx-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--cls, #8b5cf6) 45%, transparent); }
-.party-page .eroe-card .nx-meta { color: #a6a1c2; }
+.party-page .eroe-card .nx-tag { color: var(--cls, var(--oro)); }
+.party-page .eroe-card .nx-nome { text-shadow: 0 0 14px color-mix(in srgb, var(--cls, var(--el)) 45%, transparent); }
+.party-page .eroe-card .nx-meta { color: #b9af9d; }
 .eroe-classe {
   display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 700;
+  font-family: "Alegreya", Georgia, serif; font-weight: 700;
   font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--cls, #c4b5fd);
-  border: 1px solid color-mix(in srgb, var(--cls, #c4b5fd) 55%, transparent);
-  background: color-mix(in srgb, var(--cls, #c4b5fd) 12%, transparent);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--cls, #c4b5fd) 60%, transparent);
+  color: var(--cls, var(--el-soft));
+  border: 1px solid color-mix(in srgb, var(--cls, var(--el-soft)) 55%, transparent);
+  background: color-mix(in srgb, var(--cls, var(--el-soft)) 12%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--cls, var(--el-soft)) 60%, transparent);
 }
 .eroe-classe--inline { margin: 0 0 0 4px; }
 /* legenda sotto l'indice */
 .party-page .eroe-legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 10px; }
 .party-page .eroe-legenda .eroe-classe { margin: 0; }
 /* la scheda-varco prende il colore della classe */
-.eroe-modale { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 55%, transparent); box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px color-mix(in srgb, var(--cls, #8b5cf6) 70%, transparent); }
-.eroe-modale .nx-modale-img { border-color: color-mix(in srgb, var(--cls, #8b5cf6) 55%, transparent); }
-.eroe-modale .nx-kicker { color: var(--cls, #22d3ee); text-shadow: 0 0 14px color-mix(in srgb, var(--cls, #22d3ee) 70%, transparent); }
-.eroe-modale .eroe-livello { background: var(--cls, #22d3ee); color: #070713; box-shadow: 0 0 22px -4px var(--cls, #22d3ee); }
+.eroe-modale { border-color: color-mix(in srgb, var(--cls, var(--el)) 55%, transparent); box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px color-mix(in srgb, var(--cls, var(--el)) 70%, transparent); }
+.eroe-modale .nx-modale-img { border-color: color-mix(in srgb, var(--cls, var(--el)) 55%, transparent); }
+.eroe-modale .nx-kicker { color: var(--cls, var(--el-2)); text-shadow: 0 0 14px color-mix(in srgb, var(--cls, var(--el-2)) 70%, transparent); }
+.eroe-modale .eroe-livello { background: var(--cls, var(--el-2)); color: #0b0a0d; box-shadow: 0 0 22px -4px var(--cls, var(--el-2)); }

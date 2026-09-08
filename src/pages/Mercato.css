@@ -33,15 +33,15 @@
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background:
     linear-gradient(90deg, rgba(22,8,20,.58) 0%, rgba(22,8,20,.18) 52%, transparent 76%),
-    linear-gradient(180deg, rgba(22,8,20,.08) 0%, rgba(22,8,20,.32) 55%, var(--cine-bg-bot, #14111f) 100%);
+    linear-gradient(180deg, rgba(22,8,20,.08) 0%, rgba(22,8,20,.32) 55%, var(--cine-bg-bot, #17151b) 100%);
 }
 .mercato-page .merc-hero-plate {
   position: relative; z-index: 2;
   margin: 0 14px;
   background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
-  border: 1px solid var(--line, rgba(139,92,246,.35));
+  border: 1px solid var(--line, rgba(var(--el-rgb),.35));
   border-left: 5px solid var(--cine-accent);
-  border-radius: 18px;
+  border-radius: 3px;
   box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
   padding: 22px 20px;
   animation: merc-plate-in .7s cubic-bezier(.16,1,.3,1) both;
@@ -51,7 +51,7 @@
   display: inline-block;
   font-family: var(--font-head, "Cinzel"), serif;
   font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
-  color: #e879f9; padding: 6px 14px;
+  color: var(--oro); padding: 6px 14px;
   border: 1px solid rgba(122,46,110,.45); border-radius: 999px;
   background: rgba(122,46,110,.08);
 }
@@ -60,26 +60,26 @@
   font-weight: 900;
   font-size: clamp(1.9rem, 7vw, 3.7rem);
   line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
-  background: linear-gradient(180deg, #34112f 0%, #e879f9 58%, #f5b8ff 100%);
+  background: linear-gradient(180deg, #34112f 0%, var(--oro) 58%, var(--oro-soft) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .mercato-page .merc-hero-tagline {
   font-family: var(--font-ui, Georgia), serif;
-  color: #dcd8f2; font-size: clamp(.96rem, 2.4vw, 1.08rem); line-height: 1.6;
+  color: #d6cdbb; font-size: clamp(.96rem, 2.4vw, 1.08rem); line-height: 1.6;
   margin: 0; max-width: 46ch;
 }
 .mercato-page .merc-hero-scroll {
   position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
   z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  text-decoration: none; color: #c4b5fd;
+  text-decoration: none; color: var(--el-soft);
   font-family: var(--font-head, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
   text-shadow: 0 1px 6px rgba(255,248,230,.7);
 }
 .mercato-page .merc-hero-scroll-ic {
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
   border-radius: 50%; border: 1.5px solid rgba(122,46,110,.5);
-  background: color-mix(in srgb, var(--cine-bg-top, #201c2f) 78%, transparent);
-  color: #e879f9; font-size: 1rem;
+  background: color-mix(in srgb, var(--cine-bg-top, #221f27) 78%, transparent);
+  color: var(--oro); font-size: 1rem;
   animation: merc-bob 2.2s ease-in-out infinite;
 }
 @keyframes merc-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
@@ -89,7 +89,7 @@
   .mercato-page .merc-hero-wash {
     background:
       linear-gradient(90deg, rgba(22,8,20,.7) 0%, rgba(22,8,20,.24) 42%, transparent 66%),
-      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #14111f) 100%);
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #17151b) 100%);
   }
   .mercato-page .merc-hero-plate { margin: 0 0 0 7vw; max-width: 520px; padding: 34px 32px; }
 }
@@ -105,7 +105,7 @@
 .mercato-page .merc-rubric-eyebrow {
   display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
   font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: #e879f9;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--oro);
 }
 .mercato-page .merc-rubric-eyebrow::before,
 .mercato-page .merc-rubric-eyebrow::after {
@@ -118,12 +118,12 @@
   margin: 0;
   font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
   font-size: clamp(1.5rem, 5vw, 2.6rem); line-height: 1.05;
-  background: linear-gradient(180deg, #34112f 0%, #e879f9 70%, #f5b8ff 100%);
+  background: linear-gradient(180deg, #34112f 0%, var(--oro) 70%, var(--oro-soft) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .mercato-page .merc-rubric-sub {
   margin: 4px 0 0; font-family: var(--font-ui, Georgia), serif; font-style: italic;
-  color: #a6a1c2; font-size: clamp(.9rem, 2vw, 1.02rem);
+  color: #b9af9d; font-size: clamp(.9rem, 2vw, 1.02rem);
 }
 
 /* ── RANGO RATTO (pannello glass scuro) ── */
@@ -133,9 +133,9 @@
   margin: 0 auto 18px;
   padding: 16px 20px 16px 56px;
   border-radius: var(--cine-radius);
-  border: 1px solid rgba(139,92,246,.35);
+  border: 1px solid rgba(var(--el-rgb),.35);
   border-left: 5px solid var(--cine-accent);
-  background: linear-gradient(135deg, #201c2f, #14111f);
+  background: linear-gradient(135deg, #221f27, #17151b);
   box-shadow: 0 14px 38px rgba(86, 64, 30, 0.18);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -151,9 +151,9 @@
   box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
 }
 .mercato-page .ratto-info { display: flex; align-items: baseline; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.mercato-page .ratto-label { font-family: var(--font-title); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.74rem; color: #a6a1c2; }
-.mercato-page .ratto-name { font-family: var(--font-title); color: #c4b5fd; font-size: 1.05rem; letter-spacing: 0.04em; }
-.mercato-page .ratto-points { color: #22d3ee; font-size: 0.85rem; }
+.mercato-page .ratto-label { font-family: var(--font-title); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.74rem; color: #b9af9d; }
+.mercato-page .ratto-name { font-family: var(--font-title); color: var(--el-soft); font-size: 1.05rem; letter-spacing: 0.04em; }
+.mercato-page .ratto-points { color: var(--el-2); font-size: 0.85rem; }
 .mercato-page .progress-bar-container {
   margin: 12px 0 6px;
   height: 8px;
@@ -167,7 +167,7 @@
   background: linear-gradient(90deg, var(--cine-accent), var(--cine-gold));
   box-shadow: 0 0 10px color-mix(in srgb, var(--cine-accent) 60%, transparent);
 }
-.mercato-page .ratto-next-info { display: block; text-align: center; color: #a6a1c2; font-style: italic; }
+.mercato-page .ratto-next-info { display: block; text-align: center; color: #b9af9d; font-style: italic; }
 
 .mercato-page .admin-notice {
   text-align: center;
@@ -177,7 +177,7 @@
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(155, 45, 58, 0.16), rgba(138, 38, 28, 0.12));
   border: 1px solid rgba(155, 45, 58, 0.45);
-  color: #e879f9;
+  color: var(--oro);
   font-family: var(--font-title);
   letter-spacing: 0.1em;
   font-size: 0.78rem;
@@ -194,17 +194,17 @@
 }
 .mercato-page .search-bar,
 .mercato-page .filter-select {
-  background: #201c2f;
-  border: 1px solid rgba(139,92,246,.35);
-  border-radius: 10px;
-  color: #edeaff;
+  background: #221f27;
+  border: 1px solid rgba(var(--el-rgb),.35);
+  border-radius: 3px;
+  color: #ece5d6;
   padding: 10px 14px;
   font-family: var(--font-text);
   font-size: 0.9rem;
 }
 .mercato-page .search-bar { flex: 1 1 240px; }
-.mercato-page .search-bar::placeholder { color: #a6a1c2; }
-.mercato-page .filter-select option { background: #201c2f; color: #edeaff; }
+.mercato-page .search-bar::placeholder { color: #b9af9d; }
+.mercato-page .filter-select option { background: #221f27; color: #ece5d6; }
 .mercato-page .search-bar:focus,
 .mercato-page .filter-select:focus {
   outline: none;
@@ -219,13 +219,13 @@
   margin: 30px auto;
   padding: 40px 24px;
   border-radius: var(--cine-radius);
-  border: 1px solid rgba(139,92,246,.35);
-  background: linear-gradient(135deg, #201c2f, #14111f);
+  border: 1px solid rgba(var(--el-rgb),.35);
+  background: linear-gradient(135deg, #221f27, #17151b);
   box-shadow: 0 14px 38px rgba(86, 64, 30, 0.18);
 }
 .mercato-page .closed-title {
   font-family: var(--font-title);
-  color: #c4b5fd;
+  color: var(--el-soft);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   margin: 0 0 12px;
@@ -233,7 +233,7 @@
 .mercato-page .timer-display {
   font-family: var(--font-title);
   font-size: 1.6rem;
-  color: #edeaff;
+  color: #ece5d6;
   letter-spacing: 0.06em;
 }
 
@@ -256,9 +256,9 @@
   text-align: left;
   cursor: pointer;
   overflow: hidden;
-  border-radius: 14px;
-  background: linear-gradient(160deg, #201c2f 0%, #14111f 100%);
-  border: 2px solid var(--rarity-edge, rgba(139,92,246,.35));
+  border-radius: 3px;
+  background: linear-gradient(160deg, #221f27 0%, #17151b 100%);
+  border: 2px solid var(--rarity-edge, rgba(var(--el-rgb),.35));
   box-shadow:
     0 10px 26px rgba(86, 64, 30, 0.18),
     0 0 0 1px rgba(86, 64, 30, 0.1) inset,
@@ -269,14 +269,14 @@
 .mercato-page .item-card::before { display: none; }
 .mercato-page .item-card:hover {
   transform: translateY(-5px);
-  border-color: var(--rarity-edge, #22d3ee);
+  border-color: var(--rarity-edge, var(--el-2));
   box-shadow:
     0 18px 40px rgba(86, 64, 30, 0.28),
     0 0 28px -2px var(--rarity-edge, rgba(169, 120, 26, 0.4));
 }
 .mercato-page .item-card:focus-visible {
   outline: none;
-  border-color: var(--rarity-edge, #22d3ee);
+  border-color: var(--rarity-edge, var(--el-2));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--rarity-edge) 60%, transparent),
               0 18px 40px rgba(86, 64, 30, 0.28);
 }
@@ -342,7 +342,7 @@
   padding: 5px 14px;
   border-radius: 999px;
   background: rgba(45, 32, 14, 0.8);
-  border: 1px solid var(--rarity-edge, #2d2841);
+  border: 1px solid var(--rarity-edge, #2e2a35);
   color: #ffe9c7;
   font-family: var(--font-title);
   font-size: 0.66rem;
@@ -362,7 +362,7 @@
   background: rgba(45, 32, 14, 0.78);
   border: 1px solid color-mix(in srgb, var(--cine-gold) 55%, transparent);
   color: #e9d8ff;
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 3px 8px;
   font-size: 0.66rem;
 }
@@ -372,7 +372,7 @@
   right: 8px;
   z-index: 2;
   background: rgba(45, 32, 14, 0.8);
-  border: 1px solid color-mix(in srgb, #22d3ee 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--el-2) 60%, transparent);
   color: #ffe1b0;
   border-radius: 999px;
   padding: 3px 9px;
@@ -393,7 +393,7 @@
 .mercato-page .item-card .item-name {
   margin: 0;
   font-family: var(--font-title);
-  color: #edeaff;
+  color: #ece5d6;
   font-size: 0.98rem;
   line-height: 1.2;
   text-shadow: 0 1px 1px rgba(255, 253, 245, 0.6);
@@ -406,7 +406,7 @@
 }
 .mercato-page .item-card .item-price {
   margin: 0;
-  color: #e879f9;
+  color: var(--oro);
   font-weight: 700;
   font-size: 0.9rem;
 }
@@ -415,15 +415,15 @@
   font-size: 0.64rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--rarity-edge, #a6a1c2) 75%, #edeaff);
+  color: color-mix(in srgb, var(--rarity-edge, #b9af9d) 75%, #ece5d6);
   opacity: 0.9;
 }
 .mercato-page .item-card .your-bid-tag {
   align-self: flex-start;
   background: rgba(155, 45, 58, 0.16);
   border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, transparent);
-  color: #e879f9;
-  border-radius: 6px;
+  color: var(--oro);
+  border-radius: 3px;
   padding: 2px 8px;
   font-size: 0.72rem;
 }
@@ -438,10 +438,10 @@
   z-index: 3;
   transform: translate(-50%, -50%) rotate(-14deg);
   padding: 4px 16px;
-  border: 3px solid #e879f9;
-  border-radius: 8px;
+  border: 3px solid var(--oro);
+  border-radius: 3px;
   background: rgba(184, 54, 42, 0.14);
-  color: #e879f9;
+  color: var(--oro);
   font-family: var(--font-title);
   font-size: 1.25rem;
   letter-spacing: 0.1em;
@@ -572,28 +572,28 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 3px;
   background: rgba(86, 64, 30, 0.06);
   border: 1px solid rgba(169, 120, 26, 0.25);
   font-size: 0.78rem;
 }
 .mercato-page .ic-bid-who {
-  color: #edeaff;
+  color: #ece5d6;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mercato-page .ic-bid-amount { color: #e879f9; font-weight: 700; }
+.mercato-page .ic-bid-amount { color: var(--oro); font-weight: 700; }
 .mercato-page .ic-bid-refund {
   width: 22px;
   height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 3px;
   border: 1px solid rgba(184, 54, 42, 0.5);
   background: rgba(184, 54, 42, 0.16);
-  color: #e879f9;
+  color: var(--oro);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -605,12 +605,12 @@
   text-align: center;
   font-style: italic;
   font-size: 0.8rem;
-  color: #a6a1c2;
+  color: #b9af9d;
 }
 .mercato-page .ic-admin-actions { display: flex; flex-direction: column; gap: 6px; }
 .mercato-page .ic-act {
   border: none;
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 8px 10px;
   font-family: var(--font-title);
   font-size: 0.74rem;
@@ -625,34 +625,34 @@
 .mercato-page .ic-act.refund-all { background: linear-gradient(135deg, #b45309, #d97706); color: #fff7e8; }
 .mercato-page .ic-act.detail {
   background: rgba(86, 64, 30, 0.06);
-  color: #edeaff;
+  color: #ece5d6;
   border: 1px solid rgba(169, 120, 26, 0.4);
 }
 
 /* ── TABELLA ADMIN (glass scuro) ── */
-.mercato-page .market-admin-wrap { color: #edeaff; }
+.mercato-page .market-admin-wrap { color: #ece5d6; }
 .mercato-page .mat-stats { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 16px; }
 .mercato-page .mat-stat {
   display: flex; flex-direction: column; align-items: center;
-  padding: 10px 18px; border-radius: 12px;
-  background: #201c2f;
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 25%, rgba(139,92,246,.35));
+  padding: 10px 18px; border-radius: 3px;
+  background: #221f27;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 25%, rgba(var(--el-rgb),.35));
 }
-.mercato-page .mat-stat span { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: #a6a1c2; }
-.mercato-page .mat-stat strong { font-family: var(--font-title); color: #c4b5fd; font-size: 1.2rem; }
+.mercato-page .mat-stat span { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: #b9af9d; }
+.mercato-page .mat-stat strong { font-family: var(--font-title); color: var(--el-soft); font-size: 1.2rem; }
 .mercato-page .mat-stat.highlight strong { color: #27753f; }
 .mercato-page .mat-stat.visits {
   background: linear-gradient(135deg, #efe6fb, #f6efe0);
-  border-color: color-mix(in srgb, #e879f9 35%, rgba(139,92,246,.35));
+  border-color: color-mix(in srgb, var(--oro) 35%, rgba(var(--el-rgb),.35));
 }
-.mercato-page .mat-stat.visits strong { color: #e879f9; }
+.mercato-page .mat-stat.visits strong { color: var(--oro); }
 .mercato-page .market-admin-table-wrap {
   border-radius: var(--cine-radius);
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 28%, rgba(139,92,246,.35));
-  background: linear-gradient(135deg, #201c2f, #14111f);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 28%, rgba(var(--el-rgb),.35));
+  background: linear-gradient(135deg, #221f27, #17151b);
   overflow: auto;
 }
-.mercato-page .market-admin-table { width: 100%; border-collapse: collapse; color: #edeaff; }
+.mercato-page .market-admin-table { width: 100%; border-collapse: collapse; color: #ece5d6; }
 .mercato-page .market-admin-table th {
   background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
   color: #fff; padding: 12px 10px; text-align: left; font-family: var(--font-title);
@@ -661,9 +661,9 @@
 .mercato-page .market-admin-table td { padding: 10px; border-bottom: 1px solid rgba(169, 120, 26, 0.2); font-size: 0.86rem; }
 .mercato-page .mat-row { cursor: pointer; transition: background 0.15s; }
 .mercato-page .mat-row:hover td { background: color-mix(in srgb, var(--cine-gold) 12%, transparent); }
-.mercato-page .mat-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(169,120,26,0.45); }
+.mercato-page .mat-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 3px; border: 1px solid rgba(169,120,26,0.45); }
 .mercato-page .mat-badge { background: var(--cine-accent); color: #fff; border-radius: 999px; padding: 2px 8px; font-weight: 700; font-size: 0.78rem; }
-.mercato-page .mat-btn { background: #201c2f; border: 1px solid rgba(169,120,26,0.4); border-radius: 8px; padding: 5px 9px; margin: 0 2px; cursor: pointer; color: #edeaff; }
+.mercato-page .mat-btn { background: #221f27; border: 1px solid rgba(169,120,26,0.4); border-radius: 3px; padding: 5px 9px; margin: 0 2px; cursor: pointer; color: #ece5d6; }
 
 @media (max-width: 540px) {
   .mercato-page .items-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -675,11 +675,11 @@
    ereditavano i colori del tema chiaro originale (#111 / rosso /
    verde scuro) → testo scuro su fondo scuro. Le rendo chiare.
    ============================================================ */
-.mercato-page .market-admin-table .mat-name        { color: #edeaff; }
-.mercato-page .market-admin-table .mat-type        { color: #a6a1c2; }
-.mercato-page .market-admin-table .mat-price strong { color: #e879f9; }
-.mercato-page .market-admin-table .mat-price small  { color: #a6a1c2; }
-.mercato-page .market-admin-table .mat-status.sold   { color: #a6a1c2; }
+.mercato-page .market-admin-table .mat-name        { color: #ece5d6; }
+.mercato-page .market-admin-table .mat-type        { color: #b9af9d; }
+.mercato-page .market-admin-table .mat-price strong { color: var(--oro); }
+.mercato-page .market-admin-table .mat-price small  { color: #b9af9d; }
+.mercato-page .market-admin-table .mat-status.sold   { color: #b9af9d; }
 .mercato-page .market-admin-table .mat-status.active { color: #27753f; }
 
 /* ── GLACIER ── */
@@ -709,18 +709,18 @@
   display: block;
   font-family: "Cinzel", Georgia, serif;
   font-size: .6rem; letter-spacing: .44em; text-transform: uppercase;
-  color: #22d3ee; text-shadow: 0 0 14px rgba(34,211,238,.7);
+  color: var(--el-2); text-shadow: 0 0 14px rgba(var(--el-rgb),.7);
 }
 .mercato-page .merc-titolo {
   font-family: "Cinzel", Georgia, serif; font-weight: 700;
   font-size: clamp(1.9rem, 6vw, 3rem); line-height: 1.05; margin: 10px 0 6px;
-  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  background: linear-gradient(90deg, var(--el-2), var(--el) 50%, var(--oro));
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0 24px rgba(139,92,246,.45));
+  filter: drop-shadow(0 0 24px rgba(var(--el-rgb),.45));
 }
 .mercato-page .merc-sotto {
-  font-family: "Manrope", system-ui, sans-serif;
-  color: #a6a1c2; max-width: 52ch; margin: 0 auto; line-height: 1.6;
+  font-family: "Alegreya", Georgia, serif;
+  color: #b9af9d; max-width: 52ch; margin: 0 auto; line-height: 1.6;
 }
 
 /* ── griglia bazar ── */
@@ -730,39 +730,39 @@
 }
 .mercato-page .merci-col { min-width: 0; }
 .mercato-page .merci-col .gl-sezlabel { margin-top: 0; }
-.mercato-page .merc-sezsub { text-align: left; margin: -6px 0 16px; padding: 0; max-width: none; color: #a6a1c2; }
+.mercato-page .merc-sezsub { text-align: left; margin: -6px 0 16px; padding: 0; max-width: none; color: #b9af9d; }
 
 /* ── il mercante ── */
 .mercato-page .mercante {
   position: sticky; top: calc(var(--navbar-h, 66px) + 14px);
-  background: linear-gradient(180deg, #2d2841, #14111f);
-  border: 1px solid rgba(139,92,246,.35);
-  border-radius: 20px; padding: 20px; text-align: center;
+  background: linear-gradient(180deg, #2e2a35, #17151b);
+  border: 1px solid rgba(var(--el-rgb),.35);
+  border-radius: 3px; padding: 20px; text-align: center;
   box-shadow: 0 14px 44px -14px rgba(0,0,0,.8);
 }
 @media (max-width: 819px) { .mercato-page .mercante { position: static; } }
 .mercato-page .occhio {
   position: relative; width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #e879f9, #8b5cf6 55%, #1d1040);
-  box-shadow: 0 0 34px rgba(139,92,246,.7);
+  background: radial-gradient(circle at 40% 35%, var(--oro), var(--el) 55%, #1d1040);
+  box-shadow: 0 0 34px rgba(var(--el-rgb),.7);
   animation: merc-respiro 5s ease-in-out infinite alternate;
 }
 @keyframes merc-respiro { from { transform: scale(1); } to { transform: scale(1.06); } }
 .mercato-page .occhio::after {
   content: "🐀"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem;
 }
-.mercato-page .mercante-nome { font-family: "Cinzel", Georgia, serif; font-size: 1rem; letter-spacing: .08em; color: #edeaff; margin: 0; }
+.mercato-page .mercante-nome { font-family: "Cinzel", Georgia, serif; font-size: 1rem; letter-spacing: .08em; color: #ece5d6; margin: 0; }
 .mercato-page .rango {
   display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 999px;
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 600;
-  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: #22d3ee;
-  border: 1px solid rgba(34,211,238,.45);
+  font-family: "Alegreya", Georgia, serif; font-weight: 600;
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--el-2);
+  border: 1px solid rgba(var(--el-rgb),.45);
 }
-.mercato-page .mercante .progress-bar-container { margin: 12px 0 4px; height: 6px; background: #2d2841; }
-.mercato-page .mercante .progress-bar-fill { background: linear-gradient(90deg, #22d3ee, #e879f9); box-shadow: 0 0 10px rgba(34,211,238,.6); }
-.mercato-page .mercante .ratto-next-info { color: #a6a1c2; font-style: normal; font-size: .74rem; }
+.mercato-page .mercante .progress-bar-container { margin: 12px 0 4px; height: 6px; background: #2e2a35; }
+.mercato-page .mercante .progress-bar-fill { background: linear-gradient(90deg, var(--el-2), var(--oro)); box-shadow: 0 0 10px rgba(var(--el-rgb),.6); }
+.mercato-page .mercante .ratto-next-info { color: #b9af9d; font-style: normal; font-size: .74rem; }
 .mercato-page .mercante .admin-notice {
-  margin: 12px auto 0; background: rgba(232,121,249,.12); border-color: rgba(232,121,249,.5); color: #e879f9;
+  margin: 12px auto 0; background: rgba(232,197,106,.12); border-color: rgba(232,197,106,.5); color: var(--oro);
 }
 /* filtri in colonna: pillole scure */
 .mercato-page .mercante .mercato-controls {
@@ -771,25 +771,25 @@
 .mercato-page .mercante .search-bar,
 .mercato-page .mercante .filter-select {
   width: 100%; flex: none;
-  background: #14111f; border: 1px solid rgba(139,92,246,.4); border-radius: 999px;
-  color: #edeaff; padding: 9px 14px;
-  font-family: "Manrope", system-ui, sans-serif; font-size: .78rem; font-weight: 600;
+  background: #17151b; border: 1px solid rgba(var(--el-rgb),.4); border-radius: 999px;
+  color: #ece5d6; padding: 9px 14px;
+  font-family: "Alegreya", Georgia, serif; font-size: .78rem; font-weight: 600;
   transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
-.mercato-page .mercante .search-bar::placeholder { color: #a6a1c2; }
-.mercato-page .mercante .filter-select option { background: #14111f; color: #edeaff; }
+.mercato-page .mercante .search-bar::placeholder { color: #b9af9d; }
+.mercato-page .mercante .filter-select option { background: #17151b; color: #ece5d6; }
 .mercato-page .mercante .search-bar:hover,
-.mercato-page .mercante .filter-select:hover { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34,211,238,.8); transform: translateY(-1px); }
+.mercato-page .mercante .filter-select:hover { border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb),.8); transform: translateY(-1px); }
 .mercato-page .mercante .search-bar:focus,
-.mercato-page .mercante .filter-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34,211,238,.8); }
+.mercato-page .mercante .filter-select:focus { outline: none; border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb),.8); }
 
 /* ── mercato chiuso ── */
 .mercato-page .market-closed-container {
-  background: linear-gradient(180deg, #201c2f, #14111f); border: 1px solid rgba(139,92,246,.35);
-  border-radius: 20px; box-shadow: 0 14px 44px -14px rgba(0,0,0,.8); margin: 10px auto;
+  background: linear-gradient(180deg, #221f27, #17151b); border: 1px solid rgba(var(--el-rgb),.35);
+  border-radius: 3px; box-shadow: 0 14px 44px -14px rgba(0,0,0,.8); margin: 10px auto;
 }
-.mercato-page .closed-title { color: #c4b5fd; }
-.mercato-page .timer-display { color: #22d3ee; text-shadow: 0 0 12px rgba(34,211,238,.6); }
+.mercato-page .closed-title { color: var(--el-soft); }
+.mercato-page .timer-display { color: var(--el-2); text-shadow: 0 0 12px rgba(var(--el-rgb),.6); }
 
 /* ── le merci: card con anello di rarità ── */
 .mercato-page .items-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; padding: 0; }
@@ -799,9 +799,9 @@
 .mercato-page .item-card.rarity-bg-Artefatto {
   display: flex; flex-direction: column; align-items: center; text-align: center;
   overflow: visible;
-  background: linear-gradient(180deg, #201c2f, #14111f);
-  border: 1px solid rgba(139,92,246,.28);
-  border-radius: 18px; padding: 18px 16px 16px;
+  background: linear-gradient(180deg, #221f27, #17151b);
+  border: 1px solid rgba(var(--el-rgb),.28);
+  border-radius: 3px; padding: 18px 16px 16px;
   box-shadow: 0 14px 44px -14px rgba(0,0,0,.8);
   transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, border-color .25s ease;
 }
@@ -809,10 +809,10 @@
 .mercato-page .item-card.rarity-bg-Leggendario:hover,
 .mercato-page .item-card.rarity-bg-Artefatto:hover {
   transform: translateY(-7px);
-  border-color: rgba(34,211,238,.6);
-  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34,211,238,.55), 0 0 22px -8px var(--rarity-edge, transparent);
+  border-color: rgba(var(--el-rgb),.6);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(var(--el-rgb),.55), 0 0 22px -8px var(--rarity-edge, transparent);
 }
-.mercato-page .item-card:focus-visible { border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,.45); }
+.mercato-page .item-card:focus-visible { border-color: var(--el-2); box-shadow: 0 0 0 3px rgba(var(--el-rgb),.45); }
 /* rarità: etichetta magenta in alto a destra (le stelle restano a sinistra, piccole) */
 .mercato-page .ic-rarity-banner {
   position: absolute; top: 10px; left: 12px; right: 12px;
@@ -820,7 +820,7 @@
   display: flex; justify-content: space-between; align-items: center;
 }
 .mercato-page .ic-rarity-stars { font-size: .6rem; color: var(--rarity-edge, #ffe08a); text-shadow: 0 0 6px var(--rarity-edge, transparent); }
-.mercato-page .ic-rarity-label { font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .58rem; letter-spacing: .16em; color: #e879f9; text-shadow: none; }
+.mercato-page .ic-rarity-label { font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .58rem; letter-spacing: .16em; color: var(--oro); text-shadow: none; }
 /* l'ANELLO: gradiente conico che orbita, accelera al passaggio */
 .mercato-page .ic-image-frame {
   position: relative; width: 110px; height: 110px; aspect-ratio: auto;
@@ -828,7 +828,7 @@
 }
 .mercato-page .ic-image-frame::before {
   content: ""; position: absolute; inset: 0; border-radius: 50%; opacity: 1; mix-blend-mode: normal; background-size: auto;
-  background: conic-gradient(#22d3ee, #8b5cf6, #e879f9, #22d3ee);
+  background: conic-gradient(var(--el-2), var(--el), var(--oro), var(--el-2));
   animation: merc-orbita 6s linear infinite;
 }
 .mercato-page .item-card:hover .ic-image-frame::before { animation-duration: 1.6s; }
@@ -836,7 +836,7 @@
 .mercato-page .ic-image-frame::after { display: none; }
 .mercato-page .ic-image-frame .item-image {
   position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%;
-  object-fit: cover; border: 3px solid #14111f; transform: none !important;
+  object-fit: cover; border: 3px solid #17151b; transform: none !important;
 }
 /* badge: sotto l'anello, in fila */
 .mercato-page .ic-image-frame .item-set-badge,
@@ -845,28 +845,28 @@
 .mercato-page .ic-views-badge {
   position: absolute; top: auto; bottom: -8px; left: 50%; right: auto; transform: translateX(-50%);
   z-index: 2; white-space: nowrap;
-  background: #14111f; border: 1px solid rgba(34,211,238,.45); color: #9ff0ff;
+  background: #17151b; border: 1px solid rgba(var(--el-rgb),.45); color: var(--el-soft);
   border-radius: 999px; padding: 2px 8px; font-size: .58rem; font-weight: 700;
 }
-.mercato-page .ic-image-frame .item-set-badge { bottom: auto; top: -10px; border-color: rgba(232,121,249,.5); color: #f5b8ff; }
+.mercato-page .ic-image-frame .item-set-badge { bottom: auto; top: -10px; border-color: rgba(232,197,106,.5); color: var(--oro-soft); }
 .mercato-page .ic-views-badge { left: auto; right: -30px; transform: none; bottom: 30px; }
 .mercato-page .ic-inspect { display: none; }
 .mercato-page .ic-footer { background: none; padding: 0; gap: 4px; align-items: center; width: 100%; }
-.mercato-page .item-card .item-name { font-family: "Cinzel", Georgia, serif; font-size: .9rem; letter-spacing: .05em; color: #edeaff; text-shadow: none; }
+.mercato-page .item-card .item-name { font-family: "Cinzel", Georgia, serif; font-size: .9rem; letter-spacing: .05em; color: #ece5d6; text-shadow: none; }
 .mercato-page .ic-meta { flex-direction: column; gap: 6px; }
-.mercato-page .item-card .item-price { font-family: "Manrope", system-ui, sans-serif; font-weight: 800; color: #22d3ee; font-size: .9rem; text-shadow: 0 0 12px rgba(34,211,238,.6); }
+.mercato-page .item-card .item-price { font-family: "Alegreya", Georgia, serif; font-weight: 800; color: var(--el-2); font-size: .9rem; text-shadow: 0 0 12px rgba(var(--el-rgb),.6); }
 .mercato-page .ic-open {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 9px 20px; border-radius: 12px;
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 9px 20px; border-radius: 3px;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .66rem; letter-spacing: .16em; text-transform: uppercase;
-  color: #070713; opacity: 1; background: linear-gradient(90deg, #22d3ee, #8b5cf6);
-  box-shadow: 0 0 26px -6px rgba(34,211,238,.8); transition: transform .2s ease, box-shadow .2s ease;
+  color: #0b0a0d; opacity: 1; background: linear-gradient(90deg, var(--el-2), var(--el));
+  box-shadow: 0 0 26px -6px rgba(var(--el-rgb),.8); transition: transform .2s ease, box-shadow .2s ease;
 }
-.mercato-page .item-card:hover .ic-open { transform: translateY(-2px); box-shadow: 0 0 40px -4px rgba(34,211,238,1); }
-.mercato-page .ic-topbid { color: #e879f9; font-size: .76rem; font-weight: 700; }
-.mercato-page .item-card .your-bid-tag { align-self: center; background: rgba(232,121,249,.12); border-color: rgba(232,121,249,.45); color: #f5b8ff; border-radius: 999px; }
+.mercato-page .item-card:hover .ic-open { transform: translateY(-2px); box-shadow: 0 0 40px -4px rgba(var(--el-rgb),1); }
+.mercato-page .ic-topbid { color: var(--oro); font-size: .76rem; font-weight: 700; }
+.mercato-page .item-card .your-bid-tag { align-self: center; background: rgba(232,197,106,.12); border-color: rgba(232,197,106,.45); color: var(--oro-soft); border-radius: 999px; }
 /* ASTA: riga intera, anello a sinistra, CTA magenta */
 /* le ASTE hanno CTA magenta; quelle leggendarie/artefatto (.is-asta-clou) occupano la riga intera */
-.mercato-page .item-card.is-auction .ic-open { background: linear-gradient(90deg, #e879f9, #c026d3); box-shadow: 0 0 26px -6px rgba(232,121,249,.8); }
+.mercato-page .item-card.is-auction .ic-open { background: linear-gradient(90deg, var(--oro), var(--sangue)); box-shadow: 0 0 26px -6px rgba(232,197,106,.8); }
 .mercato-page .item-card.is-auction.rarity-bg-Leggendario,
 .mercato-page .item-card.is-auction.rarity-bg-Leggendaria,
 .mercato-page .item-card.is-auction.rarity-bg-Artefatto { grid-column: 1 / -1; flex-direction: row; text-align: left; align-items: center; gap: 18px; padding: 18px 20px; }
@@ -884,7 +884,7 @@
 .mercato-page .item-card.is-auction.rarity-bg-Artefatto .ic-open { margin-top: 0; }
 .mercato-page .item-card.is-auction .item-name::after {
   content: "Asta in corso — il Nesso trattiene il respiro."; display: block;
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 400; font-size: .8rem; letter-spacing: 0; text-transform: none; color: #a6a1c2; margin-top: 4px;
+  font-family: "Alegreya", Georgia, serif; font-weight: 400; font-size: .8rem; letter-spacing: 0; text-transform: none; color: #b9af9d; margin-top: 4px;
 }
 .mercato-page .item-card.is-auction.sold .item-name::after { content: none; }
 @media (max-width: 480px) {
@@ -897,16 +897,16 @@
 }
 /* venduto */
 .mercato-page .item-card.sold { filter: brightness(.6) saturate(.5); }
-.mercato-page .item-card.sold .ic-image-frame::before { animation: none; background: #3e3856; }
-.mercato-page .ic-sold-stamp { border-color: #e879f9; color: #e879f9; background: rgba(7,7,19,.7); }
+.mercato-page .item-card.sold .ic-image-frame::before { animation: none; background: #3d3846; }
+.mercato-page .ic-sold-stamp { border-color: var(--oro); color: var(--oro); background: rgba(11,10,13,.7); }
 /* foil leggendari: lamina dentro l'anello */
 .mercato-page .item-card.rarity-bg-Leggendario .ic-image-frame::before,
 .mercato-page .item-card.rarity-bg-Leggendaria .ic-image-frame::before,
 .mercato-page .item-card.rarity-bg-Artefatto   .ic-image-frame::before {
-  background: conic-gradient(#ffe08a, #e879f9, #22d3ee, #ffe08a);
+  background: conic-gradient(#ffe08a, var(--oro), var(--el-2), #ffe08a);
 }
 /* tabella master: pannello del vuoto */
-.mercato-page .market-admin-wrap, .mercato-page .market-admin-table { color: #edeaff; }
+.mercato-page .market-admin-wrap, .mercato-page .market-admin-table { color: #ece5d6; }
 @media (prefers-reduced-motion: reduce) {
   .mercato-page .occhio, .mercato-page .ic-image-frame::before { animation: none !important; }
 }
@@ -918,7 +918,7 @@
 .mercato-page .rarity-bg-Noncomune    { --rarity-edge: #4ade80; }
 .mercato-page .rarity-bg-Raro,
 .mercato-page .rarity-bg-Rara         { --rarity-edge: #60a5fa; }
-.mercato-page .rarity-bg-Magico       { --rarity-edge: #a78bfa; }
+.mercato-page .rarity-bg-Magico       { --rarity-edge: var(--el-soft); }
 .mercato-page .rarity-bg-Moltorara    { --rarity-edge: #d8b4fe; }
 .mercato-page .rarity-bg-Epico        { --rarity-edge: #fb923c; }
 .mercato-page .rarity-bg-Leggendario,
@@ -929,33 +929,33 @@
 .mercato-page .item-card.rarity-bg-Leggendario,
 .mercato-page .item-card.rarity-bg-Leggendaria,
 .mercato-page .item-card.rarity-bg-Artefatto {
-  border-color: color-mix(in srgb, var(--rarity-edge, #8b5cf6) 55%, transparent);
-  box-shadow: 0 14px 44px -14px rgba(0,0,0,.8), inset 0 1px 0 color-mix(in srgb, var(--rarity-edge, #8b5cf6) 35%, transparent);
+  border-color: color-mix(in srgb, var(--rarity-edge, var(--el)) 55%, transparent);
+  box-shadow: 0 14px 44px -14px rgba(0,0,0,.8), inset 0 1px 0 color-mix(in srgb, var(--rarity-edge, var(--el)) 35%, transparent);
 }
 .mercato-page .item-card:hover,
 .mercato-page .item-card.rarity-bg-Leggendario:hover,
 .mercato-page .item-card.rarity-bg-Leggendaria:hover,
 .mercato-page .item-card.rarity-bg-Artefatto:hover {
-  border-color: var(--rarity-edge, #22d3ee);
-  box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--rarity-edge, #22d3ee) 70%, transparent);
+  border-color: var(--rarity-edge, var(--el-2));
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -6px color-mix(in srgb, var(--rarity-edge, var(--el-2)) 70%, transparent);
 }
 /* l'anello prende il colore della rarità (con il viola del Nesso a fare da cerniera) */
 .mercato-page .ic-image-frame::before,
 .mercato-page .item-card.rarity-bg-Leggendario .ic-image-frame::before,
 .mercato-page .item-card.rarity-bg-Leggendaria .ic-image-frame::before,
 .mercato-page .item-card.rarity-bg-Artefatto   .ic-image-frame::before {
-  background: conic-gradient(var(--rarity-edge, #22d3ee), #8b5cf6 40%, var(--rarity-edge, #22d3ee) 70%, #fff 82%, var(--rarity-edge, #22d3ee));
-  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--rarity-edge, #22d3ee) 80%, transparent);
+  background: conic-gradient(var(--rarity-edge, var(--el-2)), var(--el) 40%, var(--rarity-edge, var(--el-2)) 70%, #fff 82%, var(--rarity-edge, var(--el-2)));
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--rarity-edge, var(--el-2)) 80%, transparent);
 }
 /* etichetta: grande, del colore della rarità, con alone */
 .mercato-page .ic-rarity-banner { top: 12px; left: 14px; right: 14px; }
 .mercato-page .ic-rarity-label {
   font-size: .68rem; letter-spacing: .18em;
-  color: var(--rarity-edge, #e879f9);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--rarity-edge, #e879f9) 80%, transparent);
+  color: var(--rarity-edge, var(--oro));
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rarity-edge, var(--oro)) 80%, transparent);
   padding: 3px 9px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--rarity-edge, #e879f9) 55%, transparent);
-  background: rgba(7,7,19,.6);
+  border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--oro)) 55%, transparent);
+  background: rgba(11,10,13,.6);
 }
 .mercato-page .ic-rarity-stars { font-size: .7rem; color: var(--rarity-edge, #ffe08a); text-shadow: 0 0 8px var(--rarity-edge, transparent); }
 .mercato-page .item-card.sold .ic-rarity-label, .mercato-page .item-card.sold .ic-rarity-stars { opacity: .6; }

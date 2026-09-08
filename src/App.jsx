@@ -73,7 +73,7 @@ import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
-import NessoOverlay from "./components/NessoOverlay";
+import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -319,8 +319,20 @@ const NESSO_GROUP_OF = (p) =>
 function NessoNav({ openMenu }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);   // anello di satelliti sbocciato
-  const [sheet, setSheet] = useState(null);  // costellazione aperta
+  const [open, setOpen] = useState(false);   // sfaccettature sbocciate
+  const [sheet, setSheet] = useState(null);  // officina aperta
+  const [d20, setD20] = useState({ n: 20, tira: false, crit: false }); // il d20 del menu
+  const tiraD20 = () => {
+    // il menu si apre SUBITO (voci cliccabili), il dado rotola per conto suo
+    setD20({ n: 1 + Math.floor(Math.random() * 20), tira: true, crit: false });
+    let t = 0;
+    const iv = setInterval(() => {
+      t += 1;
+      const v = 1 + Math.floor(Math.random() * 20);
+      if (t > 9) { clearInterval(iv); setD20({ n: v, tira: false, crit: v === 20 }); }
+      else setD20((d) => ({ ...d, n: v }));
+    }, 55);
+  };
   const p = location.pathname;
 
   // chiudi tutto a ogni cambio rotta
@@ -341,7 +353,7 @@ function NessoNav({ openMenu }) {
   // TCG entra nella costellazione Battaglia solo se il link esiste nel drawer
   // (TcgNavLink decide da solo; qui replichiamo la rotta pubblica /tcg).
   const sats = [
-    { key: "home", g: "✦", label: "Nesso", onClick: goHome },
+    { key: "home", g: "✦", label: "Covo", onClick: goHome },
     { key: "mondo", g: "ᛗ", label: "Mondo", onClick: () => openGroup("mondo") },
     { key: "biblioteca", g: "ᛒ", label: "Libri", onClick: () => openGroup("biblioteca") },
     { key: "eroi", g: "ᛖ", label: "Eroi", onClick: () => openGroup("eroi") },
@@ -372,11 +384,11 @@ function NessoNav({ openMenu }) {
       <div
         className={`nesso-nav${open ? " aperto" : ""}`}
         role="navigation"
-        aria-label="L'Orbe del Nesso"
+        aria-label="Il d20 del Covo"
         onMouseEnter={canHover ? () => setOpen(true) : undefined}
         onMouseLeave={canHover ? () => setOpen(false) : undefined}
       >
-        {!sheet && <span className="nesso-hint" aria-hidden="true">tocca l'orbe</span>}
+        {!sheet && <span className="nesso-hint" aria-hidden="true">{d20.crit ? "critico! il covo si apre" : "tira il d20"}</span>}
         {sats.map((s, i) => (
           <button
             key={s.key}
@@ -391,12 +403,22 @@ function NessoNav({ openMenu }) {
         ))}
         <button
           type="button"
-          className="nesso-orbe"
-          onClick={() => { setSheet(null); setOpen((v) => (canHover ? true : !v)); }}
-          aria-label={open ? "Chiudi il Nesso" : "Apri il Nesso"}
+          className={`nesso-orbe${d20.tira ? " tira" : ""}${d20.crit ? " crit" : ""}`}
+          onClick={() => { setSheet(null); if (!open || !canHover) tiraD20(); setOpen((v) => (canHover ? true : !v)); }}
+          aria-label={open ? "Chiudi il menu" : "Tira il d20 e apri il menu"}
           aria-expanded={open}
         >
-          <span className="nesso-orbe-glifo" aria-hidden="true">✦</span>
+          <svg className="d20-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <polygon className="faccia" points="50,4 92,28 92,72 50,96 8,72 8,28" />
+            <polygon className="faccia alta" points="50,22 78,66 22,66" />
+            <polygon className="faccia" points="50,4 50,22 92,28" /><polygon className="faccia" points="50,4 50,22 8,28" />
+            <polygon className="faccia" points="92,28 78,66 92,72" /><polygon className="faccia" points="8,28 22,66 8,72" />
+            <polygon className="faccia" points="78,66 50,96 92,72" /><polygon className="faccia" points="22,66 50,96 8,72" />
+            <polygon className="faccia" points="50,22 92,28 78,66" /><polygon className="faccia" points="50,22 8,28 22,66" />
+            <polygon className="faccia" points="22,66 78,66 50,96" />
+            <polygon className="bordo" points="50,4 92,28 92,72 50,96 8,72 8,28" />
+          </svg>
+          <span className="nesso-orbe-glifo" aria-hidden="true">{d20.n}</span>
         </button>
       </div>
     </>
@@ -557,15 +579,15 @@ export default function App() {
   // (arena, tcg, world boss tattico, pet) restano scure → body.theme-dark.
   // Tema chiaro "Alba del Nesso": scelta dell'utente (☀/☾ nell'header),
   // salvata in localStorage; le pagine di gioco scure lo ignorano sempre.
-  const [lightTheme, setLightTheme] = useState(() => {
-    try { return localStorage.getItem("nx_theme") === "light"; } catch { return false; }
+  // IL RESPIRO DEL DRAGO (Covo): Fuoco o Gelo, scelto nell'header e salvato
+  // in localStorage "covo_soffio" -> html[data-soffio]. I pannelli DM/Admin
+  // respirano sempre ARCANO (body.covo-admin, vedi styles/covo.css).
+  const [soffio, setSoffio] = useState(() => {
+    try { return localStorage.getItem("covo_soffio") === "gelo" ? "gelo" : "fuoco"; } catch { return "fuoco"; }
   });
-  const toggleTheme = () => {
-    setLightTheme((v) => {
-      const next = !v;
-      try { localStorage.setItem("nx_theme", next ? "light" : "dark"); } catch { /* ignora */ }
-      return next;
-    });
+  const cambiaSoffio = (s) => {
+    setSoffio(s);
+    try { localStorage.setItem("covo_soffio", s); } catch { /* ignora */ }
   };
   useEffect(() => {
     const p = location.pathname;
@@ -576,10 +598,13 @@ export default function App() {
       p === "/boss-tactics" ||
       p.startsWith("/pet") ||
       p === "/dm-admin/battle-maps";
+    const isAdminPage = p.startsWith("/dm-admin") || p.startsWith("/dm/") || p === "/agenti" || p.startsWith("/sessions/");
     document.body.classList.toggle("theme-dark", isDarkGamePage);
-    document.documentElement.dataset.theme = lightTheme && !isDarkGamePage ? "light" : "dark";
-    return () => document.body.classList.remove("theme-dark");
-  }, [location.pathname, lightTheme]);
+    document.body.classList.toggle("covo-admin", isAdminPage);
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.dataset.soffio = soffio;
+    return () => { document.body.classList.remove("theme-dark"); document.body.classList.remove("covo-admin"); };
+  }, [location.pathname, soffio]);
 
   // --- LOGICA REFRESH & CACHE BUSTING ---
   useEffect(() => {
@@ -624,25 +649,19 @@ export default function App() {
       )}
       {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
-        {/* Sinistra header: logo + tastino tema ☀/☾ */}
+        {/* Sinistra header: logo + respiro del drago (Fuoco/Gelo) */}
         <div className="header-left">
           <NavLink to="/" className="logo logo--img-only" onClick={closeMenu} aria-label="Crit Happens — Home">
             <img src="/logo.png" alt="Crit Happens" className="logo-img" />
           </NavLink>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={lightTheme ? "Passa al tema scuro" : "Passa al tema chiaro"}
-            title={lightTheme ? "Tema scuro (il vuoto)" : "Tema chiaro (l'alba)"}
-            aria-pressed={lightTheme}
-          >
-            {lightTheme ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-            )}
-          </button>
+          <div className="respiro" role="group" aria-label="Respiro del drago">
+            <button type="button" data-soffio="fuoco" aria-pressed={soffio === "fuoco"} onClick={() => cambiaSoffio("fuoco")} title="Fuoco: braci">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s0 2 1.5 2C7 6 6 4 8 1z"/></svg><span>Fuoco</span>
+            </button>
+            <button type="button" data-soffio="gelo" aria-pressed={soffio === "gelo"} onClick={() => cambiaSoffio("gelo")} title="Gelo: cristalli">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7.3 1h1.4v3.2l2-1.2.7 1.2-2.7 1.6V8l2.3 1.3 2-1.2.7 1.2-1.6.9 2.5 1.5-.7 1.2-2.6-1.5v2l-1.4.1v-3.1L8.7 9.1v2.7l2 1.2-.7 1.2L8 13.1 6.3 14.2l-.7-1.2 2-1.2V9.1l-1.3-.7v3.1L4.9 11.6v-2L2.3 11.1l-.7-1.2 2.5-1.5-1.6-.9.7-1.2 2 1.2L7.3 6.3V4.6L4.6 4.2l.7-1.2 2 1.2z"/></svg><span>Gelo</span>
+            </button>
+          </div>
         </div>
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
@@ -793,7 +812,7 @@ export default function App() {
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
-      <NessoOverlay />
+      <CovoOverlay />
 
       {!hideChrome && <NessoNav openMenu={() => setMenuOpen(true)} />}
 

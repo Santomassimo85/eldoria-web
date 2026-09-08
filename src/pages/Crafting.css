@@ -13,9 +13,9 @@
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.6em; height: 1.6em; padding: 0 .35em; border-radius: 999px;
   font-family: "Cinzel", Georgia, serif; font-size: .62rem; font-weight: 700;
-  color: #070713; background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+  color: #0b0a0d; background: linear-gradient(135deg, var(--el-2), var(--el));
 }
-.cr-page .nx-pillola.on .cr-pill-num { background: #070713; color: #22d3ee; }
+.cr-page .nx-pillola.on .cr-pill-num { background: #0b0a0d; color: var(--el-2); }
 
 /* ── rubrica sticky ── */
 .cr-page .cr-rubrica { text-align: center; }
@@ -32,19 +32,19 @@
 .cr-page .cr-subtitle {
   margin: 22px 0 10px;
   font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .95rem; letter-spacing: .05em;
-  color: #c4b5fd;
+  color: var(--el-soft);
 }
 
 /* ── recap "in due parole" ── */
 .cr-page .cr-recap-badge { margin-bottom: 12px; }
 .cr-page .cr-recap-lead { margin: 0 0 14px; }
-.cr-page .cr-recap-lead strong, .cr-page .nx-prosa strong { color: #22d3ee; }
+.cr-page .cr-recap-lead strong, .cr-page .nx-prosa strong { color: var(--el-2); }
 .cr-page .cr-recap-steps { list-style: none; padding: 0; margin: 0; counter-reset: passo; }
 .cr-page .cr-passo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 12px; }
-.cr-page .cr-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(34, 211, 238, .7)); }
+.cr-page .cr-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(var(--el-rgb), .7)); }
 
 /* ── pregiature: colore della qualità schiarito ── */
-.cr-page .cr-preg-card { --qs: color-mix(in srgb, var(--q, #8b5cf6) 45%, #fff); border-color: color-mix(in srgb, var(--qs) 45%, transparent); }
+.cr-page .cr-preg-card { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); border-color: color-mix(in srgb, var(--qs) 45%, transparent); }
 .cr-page .cr-preg-card:hover { border-color: var(--qs); box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px color-mix(in srgb, var(--qs) 70%, transparent); }
 .cr-page .cr-preg-card .nx-tag { color: var(--qs); }
 .cr-page .cr-preg-icon { font-size: 1.7rem; margin: 6px 0 8px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--qs) 70%, transparent)); }
@@ -56,24 +56,24 @@
 .cr-page .cr-formula { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin: 12px 0; }
 .cr-page .cr-die {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 10px 18px; border-radius: 14px;
-  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1.3rem; color: #070713;
-  background: linear-gradient(135deg, #22d3ee, #8b5cf6); box-shadow: 0 0 22px -4px rgba(34, 211, 238, .8);
+  padding: 10px 18px; border-radius: 3px;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1.3rem; color: #0b0a0d;
+  background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 22px -4px rgba(var(--el-rgb), .8);
 }
-.cr-page .cr-plus { font-size: 1.4rem; color: #e879f9; }
+.cr-page .cr-plus { font-size: 1.4rem; color: var(--oro); }
 .cr-page .cr-formula-piece {
-  padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .45);
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 700; font-size: .84rem; color: #edeaff;
+  padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(var(--el-rgb), .45);
+  font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .84rem; color: #ece5d6;
 }
 .cr-page .cr-formula-note { margin: 8px auto 0; max-width: 62ch; font-size: .92rem; }
 
 /* ── chip caratteristica/professione ── */
 .cr-page .cr-prof-chips { justify-content: flex-start; margin: 6px 0 0; }
-.cr-page .cr-prof-chip, .cr-page .cr-prof-card { --cs: color-mix(in srgb, var(--c, #8b5cf6) 45%, #fff); }
-.cr-page .cr-prof-chip { cursor: default; color: #edeaff; border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
+.cr-page .cr-prof-chip, .cr-page .cr-prof-card { --cs: color-mix(in srgb, var(--c, var(--el)) 45%, #fff); }
+.cr-page .cr-prof-chip { cursor: default; color: #ece5d6; border-color: color-mix(in srgb, var(--cs) 55%, transparent); }
 .cr-page .cr-prof-chip-stat {
   padding: 2px 8px; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .08em;
-  color: #070713; background: var(--cs, #c4b5fd);
+  color: #0b0a0d; background: var(--cs, var(--el-soft));
 }
 
 /* ── vantaggio/svantaggio ── */
@@ -86,7 +86,7 @@
 .cr-page .cr-modifier-cond { font-size: .88rem; }
 
 /* ── crafting libero ── */
-.cr-page .cr-libero { border-color: rgba(232, 121, 249, .45); box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 34px -12px rgba(232, 121, 249, .5); }
+.cr-page .cr-libero { border-color: rgba(232,197,106, .45); box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8), 0 0 34px -12px rgba(232,197,106, .5); }
 .cr-page .cr-libero-badge { margin-bottom: 12px; }
 .cr-page .cr-libero-title { font-size: clamp(1.2rem, 3.4vw, 1.6rem); margin: 0 0 10px; }
 .cr-page .cr-libero-lead { margin: 0 0 14px; }
@@ -101,20 +101,20 @@
 .cr-page .orb {
   flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-family: "Manrope", system-ui, sans-serif; font-weight: 800; font-size: .76rem; color: #070713;
-  background: linear-gradient(135deg, #22d3ee, #8b5cf6); box-shadow: 0 0 14px -2px rgba(34, 211, 238, .7);
+  font-family: "Alegreya", Georgia, serif; font-weight: 800; font-size: .76rem; color: #0b0a0d;
+  background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 14px -2px rgba(var(--el-rgb), .7);
 }
 
 /* ── costi: righe-pannello con filo della qualità ── */
 .cr-page .cr-cost-table { display: flex; flex-direction: column; gap: 10px; }
 .cr-page .cr-cost-row {
-  --qs: color-mix(in srgb, var(--q, #8b5cf6) 45%, #fff);
+  --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff);
   display: grid; grid-template-columns: 150px 1fr 1fr 2fr; gap: 10px 16px; align-items: center;
   padding: 12px 16px; border-left: 4px solid var(--qs);
 }
 .cr-page .cr-cost-tier { color: var(--qs); }
-.cr-page .cr-cost-cell { font-family: "Manrope", system-ui, sans-serif; font-size: .88rem; color: #edeaff; }
-.cr-page .cr-cost-label { display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: #22d3ee; }
+.cr-page .cr-cost-cell { font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: #ece5d6; }
+.cr-page .cr-cost-label { display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); }
 @media (max-width: 700px) {
   .cr-page .cr-cost-row { grid-template-columns: 1fr 1fr; }
   .cr-page .cr-cost-tier, .cr-page .cr-cost-note { grid-column: 1 / -1; }
@@ -124,12 +124,12 @@
 .cr-page .cr-ingredients-table { padding: 6px 0 0; overflow-x: auto; }
 .cr-page .cr-ing-head, .cr-page .cr-ing-row {
   display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px;
-  padding: 10px 16px; border-bottom: 1px solid rgba(139, 92, 246, .22);
-  font-family: "Manrope", system-ui, sans-serif; font-size: .84rem; color: #d6d2e6;
+  padding: 10px 16px; border-bottom: 1px solid rgba(var(--el-rgb), .22);
+  font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: #d6cdbb;
 }
-.cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: #22d3ee; font-weight: 700; }
+.cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); font-weight: 700; }
 .cr-page .cr-ing-row:last-child { border-bottom: none; }
-.cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: #edeaff; }
+.cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: #ece5d6; }
 @media (max-width: 640px) { .cr-page .cr-ing-head, .cr-page .cr-ing-row { min-width: 560px; } }
 
 /* ── sentiero del maestro ── */
@@ -137,7 +137,7 @@
 .cr-page .cr-sentiero-num { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .cr-page .cr-sentiero-icon { font-size: 1.3rem; }
 .cr-page .cr-sentiero-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.cr-page .cr-sentiero-body strong, .cr-page .cr-example-row strong { color: #c4b5fd; }
+.cr-page .cr-sentiero-body strong, .cr-page .cr-example-row strong { color: var(--el-soft); }
 .cr-page .cr-lv-card { text-align: center; }
 .cr-page .cr-lv-badge { margin-bottom: 8px; }
 
@@ -145,37 +145,37 @@
 .cr-page .cr-filter-row { justify-content: flex-start; margin: 4px 0 16px; }
 .cr-page .cr-prof-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 900px) { .cr-page .cr-prof-grid { grid-template-columns: 1fr 1fr; } }
-.cr-page .cr-prof-card { padding: 0; overflow: hidden; --cs: color-mix(in srgb, var(--c, #8b5cf6) 45%, #fff); }
-.cr-page .cr-prof-card--open { grid-column: 1 / -1; border-color: rgba(34, 211, 238, .5); }
+.cr-page .cr-prof-card { padding: 0; overflow: hidden; --cs: color-mix(in srgb, var(--c, var(--el)) 45%, #fff); }
+.cr-page .cr-prof-card--open { grid-column: 1 / -1; border-color: rgba(var(--el-rgb), .5); }
 .cr-page .cr-prof-head {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 14px 16px; background: none; border: none; cursor: pointer; text-align: left; color: inherit;
   transition: background .2s ease;
 }
-.cr-page .cr-prof-head:hover { background: rgba(139, 92, 246, .1); }
+.cr-page .cr-prof-head:hover { background: rgba(var(--el-rgb), .1); }
 .cr-page .cr-prof-icon { font-size: 1.5rem; }
 .cr-page .cr-prof-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cr-page .cr-prof-meta { display: flex; align-items: center; gap: 8px; }
-.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: #070713; background: var(--cs, #c4b5fd); }
+.cr-page .cr-prof-pill { padding: 2px 8px; border-radius: 999px; font-size: .6rem; font-weight: 800; letter-spacing: .08em; color: #0b0a0d; background: var(--cs, var(--el-soft)); }
 .cr-page .cr-prof-toggle {
   width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(34, 211, 238, .45); color: #22d3ee; font-size: 1.1rem; font-weight: 700;
+  border: 1px solid rgba(var(--el-rgb), .45); color: var(--el-2); font-size: 1.1rem; font-weight: 700;
 }
-.cr-page .cr-prof-body { padding: 4px 16px 18px; border-top: 1px solid rgba(139, 92, 246, .22); }
+.cr-page .cr-prof-body { padding: 4px 16px 18px; border-top: 1px solid rgba(var(--el-rgb), .22); }
 .cr-page .cr-prof-quote { margin: 14px 0; }
 .cr-page .cr-scheda .nx-kicker { margin-bottom: 4px; }
-.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: #d6d2e6; font-size: .88rem; line-height: 1.55; }
-.cr-page .cr-scheda-spec-list strong { color: #22d3ee; }
+.cr-page .cr-scheda-spec-list { margin: 6px 0 0; padding-left: 18px; color: #d6cdbb; font-size: .88rem; line-height: 1.55; }
+.cr-page .cr-scheda-spec-list strong { color: var(--el-2); }
 .cr-page .cr-creazioni-title { margin-top: 18px; }
 .cr-page .cr-tier-tabs { justify-content: flex-start; margin: 6px 0 12px; }
-.cr-page .cr-tier-tab { --qs: color-mix(in srgb, var(--q, #8b5cf6) 45%, #fff); }
-.cr-page .cr-tier-tab.on { background: var(--qs); color: #070713; box-shadow: 0 0 18px -4px var(--qs); }
+.cr-page .cr-tier-tab { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); }
+.cr-page .cr-tier-tab.on { background: var(--qs); color: #0b0a0d; box-shadow: 0 0 18px -4px var(--qs); }
 .cr-page .cr-tier-range { margin-left: 6px; font-size: .6rem; opacity: .8; }
-.cr-page .cr-d12-table { --qs: color-mix(in srgb, var(--q, #8b5cf6) 45%, #fff); display: flex; flex-direction: column; gap: 6px; }
+.cr-page .cr-d12-table { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); display: flex; flex-direction: column; gap: 6px; }
 .cr-page .cr-d12-row {
   display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
-  border-radius: 12px; border: 1px solid rgba(139, 92, 246, .22); border-left: 3px solid var(--qs);
-  background: rgba(20, 17, 31, .6);
+  border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .22); border-left: 3px solid var(--qs);
+  background: rgba(23,21,27, .6);
 }
 .cr-page .cr-d12-num { background: var(--qs); box-shadow: none; }
 .cr-page .cr-d12-name { font-size: .86rem; }
@@ -183,9 +183,9 @@
 /* ── esempi di gioco ── */
 .cr-page .cr-example { display: flex; flex-direction: column; gap: 6px; }
 .cr-page .cr-example-title { padding-right: 70px; }
-.cr-page .cr-example-tiro { font-family: "Manrope", system-ui, sans-serif; font-size: .86rem; color: #edeaff; margin-top: 4px; }
-.cr-page .cr-example-tiro strong { color: #22d3ee; }
-.cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: #e879f9; text-shadow: 0 0 10px rgba(232, 121, 249, .5); }
+.cr-page .cr-example-tiro { font-family: "Alegreya", Georgia, serif; font-size: .86rem; color: #ece5d6; margin-top: 4px; }
+.cr-page .cr-example-tiro strong { color: var(--el-2); }
+.cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: var(--oro); text-shadow: 0 0 10px rgba(232,197,106, .5); }
 .cr-page .cr-example-esito { margin-top: 6px; text-align: left; }
 
-.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Manrope", system-ui, sans-serif; color: #a6a1c2; }
+.cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Alegreya", Georgia, serif; color: #b9af9d; }

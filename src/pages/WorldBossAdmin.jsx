@@ -440,7 +440,7 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
 /* ──────────────────────────────────────────────────────────────
    SpriteDropzone — drag & drop slot for a boss sprite
    ────────────────────────────────────────────────────────────── */
-const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "#d4af37" }) => {
+const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "var(--oro)" }) => {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = React.useRef(null);
 
@@ -1137,7 +1137,7 @@ export default function WorldBossAdmin() {
                   cleanupStorageUrl(newBoss.imageUrl);
                   setNewBoss((b) => ({ ...b, imageUrl: "" }));
                 }}
-                accent="#d4af37"
+                accent="var(--oro)"
               />
             </div>
             <div className="wb-sprite-slot">
@@ -1227,7 +1227,7 @@ export default function WorldBossAdmin() {
                   onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: false, slotKey: "genMinionAlive", apply: (url) => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: url })); } })}
                   onFile={onMinionAlive}
                   onClear={() => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: "" })); }}
-                  accent="#d4af37"
+                  accent="var(--oro)"
                 />
               </div>
               <div className="wb-sprite-slot">
@@ -1413,7 +1413,7 @@ export default function WorldBossAdmin() {
                             cleanupStorageUrl(editData.imageUrl);
                             setEditData((d) => ({ ...d, imageUrl: "" }));
                           }}
-                          accent="#d4af37"
+                          accent="var(--oro)"
                         />
                         <SpriteDropzone
                           label="Sprite Morto"

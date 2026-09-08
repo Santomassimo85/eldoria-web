@@ -79,7 +79,7 @@ export default function NPC() {
   const isFiltering = q !== "" || activeCity != null;
 
   return (
-    <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <AmbientFX variant="cosmos" />
 
       {/* ── VARCO: il portale esagonale della taverna + testata ── */}

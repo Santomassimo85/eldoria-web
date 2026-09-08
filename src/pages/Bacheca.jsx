@@ -158,7 +158,7 @@ export default function Bacheca() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <AmbientFX variant="fireflies" />
 
       {/* ── HERO = VARCO (prototipo J): il tesoro nel portale esagonale,

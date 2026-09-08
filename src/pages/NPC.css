@@ -15,10 +15,10 @@
   border-radius: 999px;
   font-size: .62rem;
   font-weight: 800;
-  background: rgba(139, 92, 246, .22);
-  color: #c4b5fd;
+  background: rgba(var(--el-rgb), .22);
+  color: var(--el-soft);
 }
-.npc-page .nx-pillola.on .npc-pillola-n { background: rgba(7, 7, 19, .25); color: #070713; }
+.npc-page .nx-pillola.on .npc-pillola-n { background: rgba(11,10,13, .25); color: #0b0a0d; }
 
 /* ── ricerca: toolbar a pillola scura ── */
 .npc-page .cine-toolbar {
@@ -28,8 +28,8 @@
   max-width: 720px;
   margin: 0 auto 8px;
   padding: 8px 10px;
-  background: rgba(20, 17, 31, .7);
-  border: 1px solid rgba(139, 92, 246, .3);
+  background: rgba(23,21,27, .7);
+  border: 1px solid rgba(var(--el-rgb), .3);
   border-radius: 999px;
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
 }
@@ -38,12 +38,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #14111f;
-  border: 1px solid rgba(139, 92, 246, .4);
+  background: #17151b;
+  border: 1px solid rgba(var(--el-rgb), .4);
   border-radius: 999px;
   padding: 6px 12px;
 }
-.npc-page .cine-search:focus-within { border-color: #22d3ee; box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8); }
+.npc-page .cine-search:focus-within { border-color: var(--el-2); box-shadow: 0 0 16px -4px rgba(var(--el-rgb), .8); }
 .npc-page .cine-search-icon { font-size: .85rem; opacity: .8; }
 .npc-page .cine-search-input {
   flex: 1 1 auto;
@@ -51,37 +51,37 @@
   background: none;
   border: none;
   outline: none;
-  color: #edeaff;
-  font-family: "Manrope", system-ui, sans-serif;
+  color: #ece5d6;
+  font-family: "Alegreya", Georgia, serif;
   font-size: .85rem;
   padding: 4px 0;
 }
-.npc-page .cine-search-input::placeholder { color: #a6a1c2; }
+.npc-page .cine-search-input::placeholder { color: #b9af9d; }
 .npc-page .cine-search-clear {
   width: 24px; height: 24px;
   border-radius: 50%;
-  border: 1px solid rgba(232, 121, 249, .5);
-  background: rgba(232, 121, 249, .12);
-  color: #e879f9;
+  border: 1px solid rgba(232,197,106, .5);
+  background: rgba(232,197,106, .12);
+  color: var(--oro);
   font-size: .7rem;
   cursor: pointer;
 }
 .npc-page .cine-chips { display: none; }
 .npc-page .cine-result-count {
   flex: 0 0 auto;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Alegreya", Georgia, serif;
   font-size: .7rem;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: #22d3ee;
+  color: var(--el-2);
   padding-right: 8px;
   white-space: nowrap;
 }
 .npc-page .cine-empty {
   text-align: center;
-  color: #a6a1c2;
-  font-family: "Manrope", system-ui, sans-serif;
+  color: #b9af9d;
+  font-family: "Alegreya", Georgia, serif;
   padding: 30px 0;
 }
 
@@ -90,11 +90,11 @@
 .npc-page .npc-city .gl-sezlabel { margin-bottom: 14px; }
 .npc-page .npc-city-n {
   order: 3;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Alegreya", Georgia, serif;
   font-size: .62rem;
   font-weight: 700;
   letter-spacing: .12em;
-  color: #a6a1c2;
+  color: #b9af9d;
   white-space: nowrap;
 }
 
@@ -121,26 +121,26 @@
 }
 .npc-page .npc-volto-cue {
   margin-top: 8px;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Alegreya", Georgia, serif;
   font-weight: 700;
   font-size: .6rem;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: #22d3ee;
+  color: var(--el-2);
   opacity: .75;
   transition: opacity .2s ease, transform .2s ease;
 }
 .npc-page .npc-volto:hover .npc-volto-cue { opacity: 1; transform: translateX(3px); }
-.npc-page .npc-volto:focus-visible { outline: 2px solid #22d3ee; outline-offset: 3px; }
+.npc-page .npc-volto:focus-visible { outline: 2px solid var(--el-2); outline-offset: 3px; }
 
 /* arrivo da link (?focus=): il pannello lampeggia di ciano */
 .npc-page .npc-dossier--focus {
   animation: npc-focus 1.4s ease-in-out 2;
-  border-color: #22d3ee;
+  border-color: var(--el-2);
 }
 @keyframes npc-focus {
   0%, 100% { box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8); }
-  50% { box-shadow: 0 0 0 4px rgba(34, 211, 238, .35), 0 0 40px -4px rgba(34, 211, 238, .9); }
+  50% { box-shadow: 0 0 0 4px rgba(var(--el-rgb), .35), 0 0 40px -4px rgba(var(--el-rgb), .9); }
 }
 
 /* ── scheda-varco ── */
@@ -148,7 +148,7 @@
 .npc-page .npc-scheda .nx-prosa { margin: 0; white-space: pre-line; }
 
 @media (max-width: 560px) {
-  .npc-page .cine-toolbar { border-radius: 22px; flex-wrap: wrap; }
+  .npc-page .cine-toolbar { border-radius: 3px; flex-wrap: wrap; }
   .npc-page .cine-search { flex-basis: 100%; }
   .npc-page .cine-result-count { padding: 0 0 0 6px; }
   .npc-page .npc-volti { grid-template-columns: repeat(2, 1fr); gap: 10px; }

@@ -24,7 +24,7 @@ function splitDeityName(nome) {
 }
 
 // Pantheon: griglia di carte + scheda-dettaglio al tap (solo presentazione).
-function PantheonGrid({ list }) {
+function PantheonGrid({ list, tag }) {
   const [openIdx, setOpenIdx] = useState(null);
   const open = openIdx != null ? list[openIdx] : null;
   return (
@@ -44,6 +44,7 @@ function PantheonGrid({ list }) {
                 <span className="deity-card-dominio">{dio.dominio}</span>
               </span>
               <span className="deity-card-cue" aria-hidden="true">Scopri ›</span>
+              {tag && <span className="compagnia">{tag}</span>}
             </button>
           );
         })}
@@ -305,7 +306,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#9a7bff", "--cine-accent-2": "#bfaaff" }}>
+    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -323,30 +324,49 @@ export default function Home() {
               <Countdown key={s.id} partyName={s.id} targetDate={s.date} />
             ))
           ) : (
-            <p style={{ textAlign: "center", color: "#a6a1c2" }}>
+            <p style={{ textAlign: "center", color: "#b9af9d" }}>
               Nessuna sessione programmata.
             </p>
           )}
         </div>
       </div>
 
-      {/* ── TESTATA: kicker + titolo a gradiente (mockup J) ── */}
-      <header id="home-top" className="home-testata">
-        <span className="home-kicker">Cronache di Exanthia</span>
-        <h1 className="home-titolo">Il Nesso dei Mondi</h1>
-        <p className="home-sotto">Sei portali, un solo varco. Attraversa l'esagono che ti chiama — o apri l'Orbe qui sotto.</p>
-      </header>
+      {/* ── L'INGRESSO: il drago ti guarda entrare (occhio che segue il cursore) ── */}
+      <section id="home-top" className="ingresso" aria-label="Ingresso del covo">
+        <div className="ingresso-testo">
+          <span className="kicker">Cronache di Exanthia · il covo</span>
+          <h1 className="titolo">Il drago <em>ti guarda</em> entrare.</h1>
+          <p className="sotto">Quattro compagnie, i loro eroi e <b>le memorie</b> incise sulle pareti della tana. Tira il d20 qui sotto per scegliere dove andare: il covo risponde a chi osa.</p>
+          <div className="azioni">
+            <Link className="cta" to="/party">Sfoglia il registro</Link>
+            <Link className="cta spento" to="/riassunti">Le memorie</Link>
+          </div>
+        </div>
+        <div className="occhio-wrap">
+          <div className="occhio">
+            <div className="palpebra su" />
+            <div className="iride covo-iride"><div className="pupilla" /></div>
+            <div className="palpebra giu" />
+          </div>
+          <span className="occhio-nota">segue il cursore · si dilata sulle schede</span>
+        </div>
+      </section>
 
-      {/* ── LA SALA DEI PORTALI: griglia esagonale delle sei mete ── */}
-      <ul className="esagoni" aria-label="Portali di Exanthia">
+      {/* ── LE SALE DEL COVO: le sei mete come blocchi che tirano al passaggio ── */}
+      <div className="rubrica" id="home-sale"><h2>Le sale <span>del covo</span></h2><span className="filo" /><small>Sei mete · ogni scheda tira</small></div>
+      <ul className="griglia sale" aria-label="Sale del covo">
         {PORTALI.map((pt) => (
-          <li key={pt.to} className="porta-cella">
-            <Link to={pt.to} className="porta" aria-label={pt.nome}>
-              <img src={pt.img} alt="" loading="lazy" style={pt.pos ? { objectPosition: pt.pos } : undefined}
-                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
-              <span className="velo" aria-hidden="true" />
-              <span className="porta-nome">{pt.nome}</span>
-              <span className="porta-nota">{pt.nota}</span>
+          <li key={pt.to}>
+            <Link to={pt.to} className="blocco sala" data-tiro="" aria-label={pt.nome}>
+              <span className="sala-img" aria-hidden="true">
+                <img src={pt.img} alt="" loading="lazy" style={pt.pos ? { objectPosition: pt.pos } : undefined}
+                     onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              </span>
+              <h3 className="nome">{pt.nome}</h3>
+              <p className="tipo">{pt.nota}</p>
+              <div className="taglio" />
+              <p className="riga"><b>Entra</b> <span>nella sala ›</span></p>
+              <span className="compagnia">Sala</span>
             </Link>
           </li>
         ))}
@@ -355,7 +375,7 @@ export default function Home() {
       {/* ── LORE: pagina di manoscritto (rubrica + illustrazione + colonne) ── */}
       <section id="home-lore" className="home-lore">
         <aside className="home-lore-aside">
-          <span className="home-lore-orn" aria-hidden="true">✦</span>
+          <span className="home-lore-orn segni" aria-hidden="true" />
           <span className="home-lore-chapter">Capitolo&nbsp;I</span>
           <span className="home-lore-note">La Caduta<br />delle Stelle</span>
           <span className="home-lore-age">1852 anni fa</span>
@@ -464,7 +484,7 @@ export default function Home() {
           <span className="gl-seal">{antichiDei.length} divinità</span>
         </div>
       </section>
-      <div className="cine-wrap"><PantheonGrid list={antichiDei} /></div>
+      <div className="cine-wrap"><PantheonGrid list={antichiDei} tag="Antico" /></div>
 
       {/* --- NUOVI DEI: vetrata panoramica + griglia --- */}
       <div className="gl-sezlabel">Pantheon · I Custodi dell'Era Spezzata</div>
@@ -478,7 +498,7 @@ export default function Home() {
           <span className="gl-seal">{nuoviDei.length} divinità</span>
         </div>
       </section>
-      <div className="cine-wrap"><PantheonGrid list={nuoviDei} /></div>
+      <div className="cine-wrap"><PantheonGrid list={nuoviDei} tag="Custode" /></div>
 
       {/* --- DEI MALVAGI: vetrata panoramica + griglia --- */}
       <div className="gl-sezlabel">Pantheon · Le Ombre del Vuoto</div>
@@ -492,7 +512,7 @@ export default function Home() {
           <span className="gl-seal">{deiMalvagi.length} piaghe</span>
         </div>
       </section>
-      <div className="cine-wrap"><PantheonGrid list={deiMalvagi} /></div>
+      <div className="cine-wrap"><PantheonGrid list={deiMalvagi} tag="Piaga" /></div>
     </div>
   );
 }

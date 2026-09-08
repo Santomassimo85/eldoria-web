@@ -42,7 +42,7 @@ export default function AdminPanel() {
       ],
     },
     {
-      label: "Cronache & Media", color: "#a78bfa", glyph: "📜",
+      label: "Cronache & Media", color: "var(--el-soft)", glyph: "📜",
       items: [
         { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle ultime avventure.",               path: "/dm-admin/summaries" },
         { icon: "✒️", label: "Lo Scriba",        desc: "La gazzetta del mondo: genera un'anteprima.",         path: "/dm-admin/scriba" },
@@ -50,7 +50,7 @@ export default function AdminPanel() {
       ],
     },
     {
-      label: "Sessioni & Comunicazioni", color: "#22d3ee", glyph: "📅",
+      label: "Sessioni & Comunicazioni", color: "var(--el-2)", glyph: "📅",
       items: [
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
         { icon: "🔮", label: "Genera Sessione",  desc: "Prep-sessione dei party con Claude.",                 path: "/dm/generate-session" },
@@ -66,7 +66,7 @@ export default function AdminPanel() {
       ],
     },
     {
-      label: "Officina del DM", color: "#e879f9", glyph: "🛠",
+      label: "Officina del DM", color: "var(--oro)", glyph: "🛠",
       items: [
         { icon: "🛠", label: "Strumenti DM",     desc: "Cronaca, generatori e utilità del Master.",           path: "/dm-admin/strumenti" },
         { icon: "📦", label: "Oggetto → Foundry",desc: "Esporta un oggetto in formato Foundry.",              path: "/dm-admin/foundry-item" },

@@ -2,14 +2,14 @@
 .toggle-section {
   margin: 1.5rem 0;
   /* border: 1px solid var(--gold); Bordo per distinguere la sezione */
-  border-radius: 5px;
+  border-radius: 3px;
   overflow: hidden; /* Fondamentale per l'animazione di altezza */
 }
 
 .toggle-section img {
   width: 60%;
   height: auto;
-  border-radius: 15px;
+  border-radius: 3px;
   margin: 20px 0;
 }
 
@@ -17,7 +17,7 @@
 /* Stile del titolo cliccabile */
 .toggle-title {
   background-color: #ffe15a; /* Sfondo del titolo */
-  border-radius: 15px;
+  border-radius: 3px;
   padding: 15px 20px;
   margin: 0 auto;
   /* width: 50%; */
@@ -36,7 +36,7 @@
 .toggle-content.summary-content-padding img {
   width: 100%;
   height: auto;
-  border-radius: 15px;
+  border-radius: 3px;
   margin: 20px auto; /* Aggiunto 'auto' per centrare le immagini */
   display: block;
 }
@@ -68,7 +68,7 @@
 
 
 .toggle-title:hover {
-  background-color: #201c2f; /* Effetto hover */
+  background-color: #221f27; /* Effetto hover */
 }
 /* h3.summaryTitle height override moved to Riassunti.css */
 

@@ -95,7 +95,7 @@ export default function SessionDetail() {
             style={{
               width: "100%",
               height: "85vh",
-              border: "1px solid rgba(212,175,55,0.4)",
+              border: "1px solid rgba(232,197,106,0.4)",
               borderRadius: 12,
               background: "#050807",
             }}

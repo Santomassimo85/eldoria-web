@@ -97,7 +97,7 @@ export default function Cinema() {
 
   if (!currentUser) {
     return (
-      <section className="cine-page theatrum theatrum--locked" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <section className="cine-page theatrum theatrum--locked" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
         <div className="nx-pannello theatrum-locked-card">
           <div className="theatrum-locked-glyph">🎭</div>
           <h2 className="nx-titolo theatrum-locked-title">Sala Chiusa</h2>
@@ -108,7 +108,7 @@ export default function Cinema() {
   }
 
   return (
-    <section className="cine-page theatrum" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page theatrum" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       {/* ── HERO = VARCO (prototipo J): la locandina-fantasma nel portale esagonale ── */}
       <GlacierHero
         ariaLabel="Teatro delle Cronache"

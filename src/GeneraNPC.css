@@ -10,10 +10,10 @@
   width: 100%;
   padding: calc(var(--navbar-h, 80px) + 34px) 18px 100px;
   background:
-    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse at 50% 40%, #2d2841 0%, #2d2841 48%, #3e3856 100%),
-    #2d2841;
-  color: #edeaff;
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(var(--el-rgb), 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 40%, #2e2a35 0%, #2e2a35 48%, #3d3846 100%),
+    #2e2a35;
+  color: #ece5d6;
   font-family: var(--font-text, "Cardo", serif);
 }
 
@@ -24,11 +24,11 @@
 
 /* ---------- intestazione ---------- */
 .npcgen-title {
-  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-family: var(--font-title, "Grenze Gotisch", "Cinzel", serif);
   font-size: clamp(1.6rem, 4.5vw, 2.2rem);
   margin: 0 0 10px;
   text-align: center;
-  background: linear-gradient(180deg, #22d3ee 0%, #0e7490 55%, #0e7490 100%);
+  background: linear-gradient(180deg, var(--el-2) 0%, var(--el-deep) 55%, var(--el-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -38,12 +38,12 @@
   content: "";
   display: block;
   width: 120px; height: 2px; margin: 10px auto 0;
-  background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+  background: linear-gradient(90deg, transparent, var(--el-2), transparent);
 }
 
 .npcgen-sub {
   text-align: center;
-  color: #a6a1c2;
+  color: #b9af9d;
   font-size: 1rem;
   margin: 0 0 26px;
   line-height: 1.5;
@@ -55,27 +55,27 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #d6d2e6;
+  color: #d6cdbb;
   margin: 0 0 6px 2px;
 }
 
 .npcgen-input {
   width: 100%;
   padding: 13px 14px;
-  border-radius: 10px;
-  border: 1px solid #3e3856;
-  background: #201c2f;
-  color: #edeaff;
+  border-radius: 3px;
+  border: 1px solid #3d3846;
+  background: #221f27;
+  color: #ece5d6;
   font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.npcgen-input::placeholder { color: #a6a1c2; }
+.npcgen-input::placeholder { color: #b9af9d; }
 .npcgen-input:focus {
-  border-color: #22d3ee;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+  border-color: var(--el-2);
+  box-shadow: 0 0 0 3px rgba(var(--el-rgb), 0.18);
 }
 
 .npcgen-btn {
@@ -83,15 +83,15 @@
   width: 100%;
   padding: 14px;
   border: none;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #9ff0ff 0%, #22d3ee 45%, #22d3ee 100%);
-  color: #070713;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--el-soft) 0%, var(--el-2) 45%, var(--el-2) 100%);
+  color: #0b0a0d;
   font-size: 1.05rem;
   font-weight: 700;
   font-family: inherit;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(0, 0, 8, 0.18);
+  box-shadow: 0 3px 12px rgba(0,0,0, 0.18);
   transition: filter 0.15s, transform 0.1s;
 }
 .npcgen-btn:hover:not(:disabled) { filter: brightness(1.08); }
@@ -99,14 +99,14 @@
 .npcgen-btn:disabled { opacity: 0.55; cursor: default; }
 
 .npcgen-btn--ghost {
-  background: rgba(139, 92, 246, 0.10);
-  border: 1px solid rgba(139, 92, 246, 0.45);
-  color: #9ff0ff;
+  background: rgba(var(--el-rgb), 0.10);
+  border: 1px solid rgba(var(--el-rgb), 0.45);
+  color: var(--el-soft);
   font-weight: 600;
   box-shadow: none;
 }
 .npcgen-btn--ghost:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.18);
+  background: rgba(var(--el-rgb), 0.18);
   filter: none;
 }
 
@@ -116,7 +116,7 @@
   min-height: 22px;
   text-align: center;
   font-style: italic;
-  color: #9ff0ff;
+  color: var(--el-soft);
   font-size: 0.98rem;
 }
 .npcgen-status--error { color: #f87171; font-style: normal; }
@@ -125,24 +125,24 @@
 .npcgen-card {
   margin-top: 26px;
   background:
-    linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, transparent 120px),
-    #201c2f;
-  border: 1px solid #3e3856;
-  border-radius: 16px;
+    linear-gradient(180deg, rgba(var(--el-rgb), 0.06) 0%, transparent 120px),
+    #221f27;
+  border: 1px solid #3d3846;
+  border-radius: 3px;
   padding: 24px 22px;
-  box-shadow: 0 12px 34px rgba(0, 0, 8, 0.18);
+  box-shadow: 0 12px 34px rgba(0,0,0, 0.18);
 }
 
 .npcgen-name {
-  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-family: var(--font-title, "Grenze Gotisch", "Cinzel", serif);
   font-size: 1.5rem;
-  color: #9ff0ff;
+  color: var(--el-soft);
   margin: 0 0 2px;
   line-height: 1.25;
 }
 
 .npcgen-role {
-  color: #a6a1c2;
+  color: #b9af9d;
   font-size: 1rem;
   margin: 0 0 6px;
 }
@@ -150,7 +150,7 @@
 .npcgen-divider {
   height: 1px;
   margin: 14px 0 4px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(var(--el-rgb), 0.55), transparent);
   border: none;
 }
 
@@ -159,14 +159,14 @@
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #9ff0ff;
+  color: var(--el-soft);
   margin: 16px 0 3px;
 }
 
 .npcgen-v,
 .npcgen-card .npcgen-v {
   font-size: 1.04rem;
-  color: #edeaff;
+  color: #ece5d6;
   margin: 0;
   line-height: 1.65;
 }
@@ -182,9 +182,9 @@
   display: inline-block;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  color: #9ff0ff;
+  background: rgba(var(--el-rgb), 0.12);
+  border: 1px solid rgba(var(--el-rgb), 0.4);
+  color: var(--el-soft);
   font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -192,7 +192,7 @@
 
 /* ---------- scheda d'archivio (campi modificabili) ---------- */
 .npcgen-archive-hint {
-  color: #a6a1c2;
+  color: #b9af9d;
   font-size: 0.92rem;
   font-style: italic;
   margin: 0 0 14px;
@@ -236,42 +236,42 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
   align-items: flex-start;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 11px;
-  border: 1px solid #3e3856;
-  background: #201c2f;
-  color: #edeaff;
+  border-radius: 3px;
+  border: 1px solid #3d3846;
+  background: #221f27;
+  color: #ece5d6;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.1s;
 }
-.npcgen-style:hover:not(:disabled) { border-color: #22d3ee; }
+.npcgen-style:hover:not(:disabled) { border-color: var(--el-2); }
 .npcgen-style:active:not(:disabled) { transform: translateY(1px); }
 .npcgen-style:disabled { opacity: 0.55; cursor: default; }
 .npcgen-style--on {
-  border-color: #22d3ee;
-  background: rgba(139, 92, 246, 0.14);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.28) inset;
+  border-color: var(--el-2);
+  background: rgba(var(--el-rgb), 0.14);
+  box-shadow: 0 0 0 2px rgba(var(--el-rgb), 0.28) inset;
 }
 .npcgen-style-label {
   font-size: 0.96rem;
   font-weight: 700;
-  color: #9ff0ff;
+  color: var(--el-soft);
   line-height: 1.2;
 }
 .npcgen-style-hint {
   font-size: 0.78rem;
-  color: #a6a1c2;
+  color: #b9af9d;
   line-height: 1.25;
 }
 
 /* ---------- ritratto ---------- */
 .npcgen-img {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 3px;
   margin-top: 18px;
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  box-shadow: 0 8px 24px rgba(0, 0, 8, 0.18);
+  border: 1px solid rgba(var(--el-rgb), 0.4);
+  box-shadow: 0 8px 24px rgba(0,0,0, 0.18);
   display: block;
 }
 
@@ -289,11 +289,11 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
   width: min(100%, 560px);
   aspect-ratio: auto;
   min-height: clamp(140px, 26vw, 180px);
-  border-radius: clamp(90px, 22vw, 150px) clamp(90px, 22vw, 150px) 12px 12px;
+  border-radius: clamp(90px, 22vw, 150px) clamp(90px, 22vw, 150px) 3px 3px;
 }
 .npcgen-glhero .gl-sotto { padding: 12px 6px 0; }
 .npcgen-glhero .gl-tagline { margin-bottom: 4px; }
 
 /* testata del varco: viola chiaro sul vuoto */
-.npcgen-page .gl-eyebrow { color: #c4b5fd; }
-.npcgen-page .gl-tagline { color: #a6a1c2; }
+.npcgen-page .gl-eyebrow { color: var(--el-soft); }
+.npcgen-page .gl-tagline { color: #b9af9d; }

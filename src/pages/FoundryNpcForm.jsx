@@ -37,7 +37,7 @@ const OTHER = "Altrove";
 const CONTINENT_STYLE = {
   Vathriddon: { slug: "vathriddon", color: "#f87171", icon: "🔥" },
   Ehkia:      { slug: "ehkia",      color: "#4ade80", icon: "🌿" },
-  Ohzkie:     { slug: "ohzkie",     color: "#a78bfa", icon: "🔮" },
+  Ohzkie:     { slug: "ohzkie",     color: "var(--el-soft)", icon: "🔮" },
   Altrove:    { slug: "altrove",    color: "#fbbf24", icon: "🧭" },
 };
 const contStyle = (c) => CONTINENT_STYLE[c] || CONTINENT_STYLE.Altrove;

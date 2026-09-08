@@ -9,8 +9,8 @@
   min-height: 60vh;
   width: 100%;
   padding: calc(var(--navbar-h, 66px) + 24px) 0 60px;
-  color: #edeaff;
-  font-family: "Manrope", system-ui, sans-serif;
+  color: #ece5d6;
+  font-family: "Alegreya", Georgia, serif;
 }
 
 /* il documento */
@@ -33,7 +33,7 @@
 /* copertina + testata */
 .rsx-cover { margin: 0 0 6px; }
 .rsx-cover .nx-modale-img { height: auto; max-height: 360px; margin: 0; }
-.rsx-head { padding: 12px 0 18px; border-bottom: 1px solid rgba(139, 92, 246, .28); margin-bottom: 20px; }
+.rsx-head { padding: 12px 0 18px; border-bottom: 1px solid rgba(var(--el-rgb), .28); margin-bottom: 20px; }
 .rsx-title { margin: 8px 0 6px; font-size: clamp(1.5rem, 5vw, 2.3rem); }
 .rsx-date { margin: 0 0 4px; }
 .rsx-sub { margin: 0; font-style: italic; font-size: clamp(.95rem, 2.3vw, 1.05rem); }
@@ -45,10 +45,10 @@
 .rsx-body img {
   width: 100% !important;
   height: auto;
-  border-radius: 12px !important;
+  border-radius: 3px !important;
   margin: 18px 0 !important;
   display: block;
-  border: 1px solid rgba(139, 92, 246, .35);
+  border: 1px solid rgba(var(--el-rgb), .35);
 }
 
 .rsx-gallery { margin-top: 28px; }
@@ -57,7 +57,7 @@
 .rsx-foot {
   margin-top: 34px;
   padding-top: 20px;
-  border-top: 1px solid rgba(139, 92, 246, .28);
+  border-top: 1px solid rgba(var(--el-rgb), .28);
   text-align: center;
 }
 
@@ -68,7 +68,7 @@
   text-align: center;
   padding: 40px 28px;
 }
-.rsx-missing-seal { font-size: 2.2rem; color: #22d3ee; display: block; margin-bottom: 10px; text-shadow: 0 0 16px rgba(34, 211, 238, .8); }
+.rsx-missing-seal { font-size: 2.2rem; color: var(--el-2); display: block; margin-bottom: 10px; text-shadow: 0 0 16px rgba(var(--el-rgb), .8); }
 .rsx-missing h1 { margin: 0 0 8px; }
 .rsx-missing p { margin: 0 0 22px; }
 

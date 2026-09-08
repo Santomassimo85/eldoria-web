@@ -11,7 +11,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.6em; height: 1.6em; padding: 0 .35em; border-radius: 999px;
   font-family: "Cinzel", Georgia, serif; font-size: .62rem; font-weight: 700;
-  color: #070713; background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+  color: #0b0a0d; background: linear-gradient(135deg, var(--el-2), var(--el));
 }
 
 /* ── rubrica sticky ── */
@@ -32,24 +32,24 @@
 /* ── prosa ── */
 .ratti-page .ratti-lore .nx-prosa { margin: 0 0 14px; }
 .ratti-page .ratti-lore .nx-prosa:last-child { margin-bottom: 0; }
-.ratti-page .ratti-lore strong, .ratti-page .ratti-lore b { color: #22d3ee; }
+.ratti-page .ratti-lore strong, .ratti-page .ratti-lore b { color: var(--el-2); }
 .ratti-page .ratti-quote { margin: 4px 0 16px; }
 
 /* ── i tre passi ── */
 .ratti-page .ratti-passi { margin-top: 16px; }
 .ratti-page .ratti-passo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 12px; }
-.ratti-page .ratti-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(34, 211, 238, .7)); }
+.ratti-page .ratti-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(var(--el-rgb), .7)); }
 
 /* ── scala dei gradi: orbe numerata come nella classifica dell'Arena ── */
 .ratti-page .ratti-grado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 22px; }
 .ratti-page .orb {
   width: 44px; height: 44px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1rem; color: #070713;
-  background: linear-gradient(135deg, #22d3ee, #8b5cf6); box-shadow: 0 0 18px -2px rgba(34, 211, 238, .8);
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 1rem; color: #0b0a0d;
+  background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 18px -2px rgba(var(--el-rgb), .8);
   margin-bottom: 8px;
 }
 .ratti-page .ratti-grado:last-child .orb { background: linear-gradient(135deg, #fde68a, #f59e0b); box-shadow: 0 0 18px rgba(245, 158, 11, .8); }
-.ratti-page .ratti-grado:first-child .orb { background: #3e3856; color: #a6a1c2; box-shadow: none; }
+.ratti-page .ratti-grado:first-child .orb { background: #3d3846; color: #b9af9d; box-shadow: none; }
 .ratti-page .ratti-grado-nome { font-size: 1rem; }
 .ratti-page .ratti-grado-bonus { margin: 6px 0 0; }

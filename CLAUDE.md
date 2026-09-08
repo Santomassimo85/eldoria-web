@@ -3,14 +3,15 @@
 - Strumento privato (solo master + co-master) per generare/archiviare le prep-sessioni dei party AMEA/LEAF/ENOX con Claude Opus 4.8.
 - Collezione `dm_sessions` (NON la `sessions` esistente = calendario). Isolamento per party sempre. `reference_sessions/*.html` = solo guscio grafico.
 
-## Tema chiaro "Alba del Nesso" (2026-09-06)
-- Tastino ☀/☾ nell'header (`App.jsx`, `.theme-toggle`), scelta in localStorage `nx_theme`; attivo via `html[data-theme="light"]`. Le pagine di gioco (`body.theme-dark`) restano SEMPRE scure.
-- `src/styles/nesso-light.generated.css` è GENERATO: dopo aver toccato colori in nesso.css/layout/shell o nei CSS di pagina, rilanciare `node tools/gen-light-theme.mjs` (mappa vuoto→alba, vedi MAP nello script). Regole a mano in `src/styles/nesso-light.css`.
-- Colori inline dal JS (party, classi, continenti) sul chiaro vengono scuriti con `filter: brightness(.55)` (lista in nesso-light.css §4).
-- Pannelli DM/Admin (`admin.css`, `GeneraNPC.css`, `DmTools.css`, `pgSheetEditor.css`, `WorldBossAdmin.css`, `DateTimePicker.css`, `SendNotification.css`) sono ora NATIVI Nesso (scuri): migrati il 2026-09-07 con `node tools/admin-to-nesso.mjs` (mappa pergamena→vuoto, una tantum; rilanciabile, è idempotente). Niente più sfondi crema hardcoded: il chiaro si genera da lì.
-
-## NUOVA GRAFICA — savepoint 2026-09-07
-- Mockup `public/mockups/r-covo.html` ("R · Il Covo del Drago": squame, occhio, d20-menu, Fuoco/Gelo, blocchi statistiche, effetto standard "Tiro") IN ATTESA DI GIUDIZIO. I 5 "Cinque vie" (`m-q-cinque-vie.html`) sono bocciati. Se approvato: porting una pagina alla volta (Home + nav prima), FASE 0 prima di ogni pagina.
+## TEMA LIVE: "R · Il Covo del Drago" (2026-09-08) — TUTTO il sito
+- Mockup approvato `public/mockups/r-covo.html` → portato su tutto il sito in un colpo. Layer globale `src/styles/covo.css` (caricato PER ULTIMO in main.jsx, dopo nesso.css): token del covo (`--ossidiana/--roccia*/--osso*/--oro/--sangue` + respiro `--el/--el-2/--el-soft/--el-deep/--el-rgb`), rimappa i token Nesso (`--nx-*`) e legacy, testata, d20-menu, rubriche col filo a freccia, blocchi (bordo alto acceso + artigli al hover), CTA "lama", input incassati, tab = dadi d6 (::before), modali, tiro, occhio, responsive.
+- **Respiro**: tastino Fuoco/Gelo nell'header (`.respiro` in App.jsx, localStorage `covo_soffio`, `html[data-soffio]`). **Admin/DM = respiro ARCANO (viola)** via `body.covo-admin` (rotte /dm-admin, /dm/, /agenti, /sessions/) — stesso tema, colori diversi.
+- `CovoOverlay.jsx` (sostituisce NessoOverlay): canvas squame + braci/cristalli + squame accese al mouse; gesti globali delegati: l'IRIDE (`.gl-finestra-img`, `.covo-iride`) segue il cursore; il TIRO inietta `<span class="tiro">` su `.nx-pannello--tap, .cine-card, .ch-card, .deity-card, .gl-vetrata, .admin-card, .tacca, [data-tiro]` (20 = `.covo-crit`, 1 = `.covo-fumble`). Spento su `body.theme-dark`.
+- Il menu resta `NessoNav` (stessi handler) ma l'Orbe è il D20 (svg + numero che rotola; sfaccettature = esagoni). GlacierHero: il varco è l'OCCHIO (`.gl-finestra-wrap` > `.gl-finestra` ellisse con palpebre ::before/::after, immagine = iride, `.gl-finestra-velo` = pupilla).
+- Palette meccanica: `node tools/covo-remap.mjs` (idempotente; esclude Arena/TCG/WorldBoss/Pet): hex Nesso → Covo, viola/ciano → `var(--el*)`, magenta → oro, raggi 5–60px → 3px, Manrope → Alegreya. Nuovi CSS: usare i token del covo, MAI esadecimali del Nesso.
+- Font: Grenze Gotisch (titoli, `--font-title/head/display`), Alegreya (`--font-ui/text`), Alegreya SC (`--font-sc`, etichette), Cinzel (`--font-num`, numeri/CTA). Link in index.html.
+- **Tema chiaro "Alba del Nesso" DISMESSO**: `nesso-light*.css` non più importati (file e `tools/gen-light-theme.mjs` restano su disco), tastino ☀/☾ sostituito dal respiro. Pagine di gioco (`body.theme-dark`) ricevono solo i token/header.
+- Scheda PG: CSS inline in SchedaPG.jsx già rimappato al covo. Scriba: l'overlay nero all'apertura è l'intro-video (feature esistente), non un bug del tema.
 
 ## Scala di superfici Nesso (2026-09-07)
 - Token in `nesso.css` §0: `--nx-s1` (contenitori/input incassati) → `--nx-s2` (card) → `--nx-s3` (elevati: hover, tab attivi, modali, card DENTRO card) → `--nx-s4` (livello massimo). Deriva prugna, non più indaco piatto. Bordo "filo di luce" `--nx-hair` + riflesso `--nx-hair-hi`. Testo: `--nx-ink` / `--nx-body` / `--nx-muted` / `--nx-faint`.
@@ -21,7 +22,7 @@
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.
 - NON toccare logica/link/route/href. Solo markup + CSS/animazioni.
 - NON toccare: TCG, Arena, World Boss Fight.
-- Tema unico: "Pergamena Antica" (chiaro).
+- Tema unico: "R · Il Covo del Drago" (scuro; Fuoco/Gelo; admin Arcano). Pergamena e Nesso sono storia.
 - Parallax: mai background-attachment:fixed (rotto iOS). Usa translateY/sticky.
 - Lavora su UN pezzo alla volta, committa, poi fermati.
 - Test di accettazione B&N: "prima" e "dopo" devono sembrare due siti diversi anche in bianco e nero.

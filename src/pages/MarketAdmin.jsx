@@ -963,7 +963,7 @@ export default function MarketAdmin() {
   }
 
   return (
-    <section className="adm mkadm" style={{ "--cine-accent": "#e879f9", "--cine-accent-2": "#f5b8ff" }}>
+    <section className="adm mkadm" style={{ "--cine-accent": "var(--oro)", "--cine-accent-2": "var(--oro-soft)" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ─── HERO STATS BAR ─── */}
@@ -1220,7 +1220,7 @@ export default function MarketAdmin() {
                     </option>
                   ))}
                 </select>
-                <p className="mkadm-price-hint" style={{ color: "#7c3aed", borderColor: "#a78bfa55" }}>
+                <p className="mkadm-price-hint" style={{ color: "var(--el)", borderColor: "#a78bfa55" }}>
                   <span className="mkadm-price-hint-icon">🥚</span>
                   <span>
                     Verrà consegnato come <strong>uovo {RARITY_LABEL[formData.petRarity]}</strong> nello zaino del vincitore.
@@ -1419,7 +1419,7 @@ export default function MarketAdmin() {
                 </div>
 
                 {formData.setName && formData.setBonuses.some(b => b.effect.trim()) && (
-                  <p className="mkadm-price-hint" style={{ color: "#7c3aed", borderColor: "#a78bfa55" }}>
+                  <p className="mkadm-price-hint" style={{ color: "var(--el)", borderColor: "#a78bfa55" }}>
                     <span className="mkadm-price-hint-icon">⛓</span>
                     <span>
                       <strong>{formData.setName}</strong> ({formData.setSize} pezzi) ·{" "}

@@ -1,4 +1,7 @@
-/* Prototipo J "Il Nesso" — HERO STRUTTURALE condiviso = IL VARCO.
+/* "R · Il Covo del Drago" (2026-09-08): il varco è diventato L'OCCHIO del
+   drago — l'immagine della pagina è l'iride, segue il cursore e si dilata
+   sulle schede (CovoOverlay), le palpebre sbattono (covo.css §11).
+   Prototipo J "Il Nesso" — HERO STRUTTURALE condiviso = IL VARCO.
    Un portale ESAGONALE con l'immagine che respira (Ken Burns lento) e un
    bordo di luce ciano→viola→magenta; sotto (a destra su desktop) la
    testata: sigillo, kicker ciano, titolo Cinzel a gradiente, tagline e
@@ -24,18 +27,20 @@ export default function GlacierHero({
   return (
     <section id={id} className={`gl-hero ${className}`.trim()} aria-label={ariaLabel}>
       {/* il portale: clip-path esagonale → il titolo vive FUORI, nel corpo */}
-      <div className="gl-finestra" aria-hidden="true">
-        {image && (
-          <img
-            className="gl-finestra-img"
-            src={image}
-            alt={imgAlt}
-            style={imgPos ? { objectPosition: imgPos } : undefined}
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
-        )}
-        <div className="gl-finestra-velo" />
-        {hint && <span className="gl-hint">{hint}</span>}
+      <div className="gl-finestra-wrap occhio-wrap" aria-hidden="true">
+        <div className={`gl-finestra${image ? "" : " gl-finestra--vuota"}`}>
+          {image && (
+            <img
+              className="gl-finestra-img"
+              src={image}
+              alt={imgAlt}
+              style={imgPos ? { objectPosition: imgPos } : undefined}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
+          <div className="gl-finestra-velo" />
+        </div>
+        {hint && <span className="gl-hint occhio-nota">{hint}</span>}
       </div>
       <div className="gl-hero-body">
         <div className="gl-lastra-titolo">

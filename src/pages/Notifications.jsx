@@ -63,7 +63,7 @@ export default function Notifications() {
   };
 
   return (
-    <section className="cine-page notifications-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page notifications-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       {/* ── VARCO (prototipo J): Tanagar nel portale esagonale ── */}
       <GlacierHero
         className="notif-glhero"

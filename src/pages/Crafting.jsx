@@ -79,7 +79,7 @@ export default function Crafting() {
   );
 
   return (
-    <section className="cine-page cr-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page cr-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       {/* ── VARCO (prototipo J): la forgia dei nani nel portale esagonale ── */}
       <GlacierHero
         id="cr-top"

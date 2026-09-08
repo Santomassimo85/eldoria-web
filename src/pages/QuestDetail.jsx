@@ -95,7 +95,7 @@ export default function QuestDetail() {
   // ── Render ─────────────────────────────────────────────────
   if (loading || userCharName === null) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
         <p className="qd-stato">Leggendo i sigilli...</p>
       </section>
     );
@@ -103,7 +103,7 @@ export default function QuestDetail() {
 
   if (!quest) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
         <p className="qd-stato">Incarico non trovato.</p>
       </section>
     );
@@ -113,7 +113,7 @@ export default function QuestDetail() {
 
   if (access === false) {
     return (
-      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
         <div className="qd-corpo qd-corpo--stato">
           <button onClick={() => navigate("/bacheca")} className="nx-pillola qd-back">← Torna alla Bacheca</button>
           <div className="nx-pannello qd-sigillata">
@@ -130,7 +130,7 @@ export default function QuestDetail() {
   const isAcceptedByMyParty = quest.acceptedParty === userParty;
 
   return (
-    <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page quest-detail-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       {/* ── HERO = VARCO (prototipo J): la copertina della missiva nel portale
             esagonale, sigillo con la zona, titolo a gradiente accanto ── */}
       <GlacierHero

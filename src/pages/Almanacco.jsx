@@ -89,7 +89,7 @@ const RUOLI = [
     ko: "Niente da mangiare o cibo avariato: nessun rifornimento quel giorno.",
   },
   {
-    nome: "Sentinella", ic: "🛡️", color: "#c4b5fd", ab: "Percezione passiva + 1d20 (stanchezza)",
+    nome: "Sentinella", ic: "🛡️", color: "var(--el-soft)", ab: "Percezione passiva + 1d20 (stanchezza)",
     cosa: "Monta la guardia di notte. La Percezione passiva fa da baseline, ma ogni notte tira anche 1d20 di stanchezza: se esce basso, il sonno ha la meglio anche su una guardia attenta.",
     ok: "Resta vigile (d20 alto) e la sua passiva basta: sente arrivare il pericolo, il gruppo non viene colto di sorpresa.",
     ko: "Colpo di sonno (1–5 al d20) o pericolo più furtivo della sua passiva: l'attacco arriva nel sonno, il gruppo parte svantaggiato.",
@@ -134,7 +134,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 4, ic: "🌊", tipo: "Sfida d'ambiente", color: "#22d3ee", voci: [
+    n: 4, ic: "🌊", tipo: "Sfida d'ambiente", color: "var(--el-2)", voci: [
       "Guado in piena",
       "Frana / passo chiuso",
       "Tempesta",
@@ -144,7 +144,7 @@ const EVENTI = [
     ],
   },
   {
-    n: 5, ic: "🎭", tipo: "Momento di personaggio", color: "#c4b5fd", voci: [
+    n: 5, ic: "🎭", tipo: "Momento di personaggio", color: "var(--el-soft)", voci: [
       "Sogno premonitore",
       "Un oggetto reagisce",
       "Un ricordo riaffiora",
@@ -203,7 +203,7 @@ const TIRI = [
 // Etichetta colorata per «chi» tira.
 const TIRO_TAG = {
   giocatori: { label: "Giocatore", color: "#60a5fa" },
-  master:    { label: "Master",    color: "#e879f9" },
+  master:    { label: "Master",    color: "var(--oro)" },
   gruppo:    { label: "Gruppo",    color: "#4ade80" },
 };
 
@@ -221,8 +221,8 @@ const SFINIMENTO = [
   { lv: 2, col: "#fbbf24", eff: "Velocità dimezzata" },
   { lv: 3, col: "#fb923c", eff: "Svantaggio ai tiri per colpire e ai tiri salvezza" },
   { lv: 4, col: "#f87171", eff: "Massimo dei punti ferita dimezzato" },
-  { lv: 5, col: "#e879f9", eff: "Velocità ridotta a 0" },
-  { lv: 6, col: "#c026d3", eff: "Morte" },
+  { lv: 5, col: "var(--oro)", eff: "Velocità ridotta a 0" },
+  { lv: 6, col: "var(--sangue)", eff: "Morte" },
 ];
 
 export default function Almanacco() {
@@ -230,7 +230,7 @@ export default function Almanacco() {
   const [openEvento, setOpenEvento] = useState(null);
 
   return (
-    <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "#8b5cf6", "--cine-accent-2": "#c4b5fd" }}>
+    <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <AmbientFX variant="cosmos" />
 
       {/* ── HERO = VARCO (prototipo J): Aen-Lor nel portale esagonale ── */}
