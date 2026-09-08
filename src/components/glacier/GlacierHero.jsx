@@ -29,6 +29,7 @@ export default function GlacierHero({
       {/* il portale: clip-path esagonale → il titolo vive FUORI, nel corpo */}
       <div className="gl-finestra-wrap occhio-wrap" aria-hidden="true">
         <div className={`gl-finestra${image ? "" : " gl-finestra--vuota"}`}>
+          <span className="vene" />
           {image && (
             <img
               className="gl-finestra-img"
@@ -38,7 +39,9 @@ export default function GlacierHero({
               onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
           )}
-          <div className="gl-finestra-velo" />
+          <span className="fibre covo-iride" />
+          <div className="gl-finestra-velo covo-iride" />
+          <span className="lucido" />
         </div>
         {hint && <span className="gl-hint occhio-nota">{hint}</span>}
       </div>

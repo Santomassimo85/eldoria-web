@@ -565,42 +565,111 @@ body:not(.theme-dark) .gl-hero { display: grid; grid-template-columns: 1fr; gap:
 .occhio, body:not(.theme-dark) .gl-finestra {
   position: absolute; inset: 0; width: auto; max-width: none; height: auto; aspect-ratio: auto; margin: 0; padding: 0;
   clip-path: none; border-radius: 50%; overflow: hidden; border: 0; animation: none;
-  background: radial-gradient(circle at 50% 50%, #f1e3c8 0 30%, #d8c5a2 55%, #6b5539 80%, #241a12 100%);
-  box-shadow: inset 0 0 40px rgba(0,0,0,.7), 0 0 60px -10px rgba(var(--el-rgb),.55), 0 0 0 6px #141118, 0 0 0 8px #2a2530;
+  /* la sclera: giallastra, malata, che si scurisce e si arrossa verso i bordi */
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 44%, rgba(140,22,12,.32) 74%, rgba(70,6,4,.8) 100%),
+    radial-gradient(ellipse at 42% 40%, #efe3c4 0 22%, #d4bf92 44%, #9c7448 70%, #3a1d0e 90%, #120704 100%);
+  box-shadow: inset 0 0 46px rgba(0,0,0,.85), inset 0 -14px 30px rgba(60,10,5,.45), 0 0 70px -10px rgba(var(--el-rgb),.6), 0 0 0 6px #141118, 0 0 0 8px #2a2530;
   transition: box-shadow .6s;
 }
 body:not(.theme-dark) .gl-hero--cielo .gl-finestra-wrap { display: none; }
-/* palpebre (::before = su, ::after = giù) — sbattono ogni tanto */
-body:not(.theme-dark) .gl-finestra::before, body:not(.theme-dark) .gl-finestra::after, .palpebra {
-  content: ""; position: absolute; left: -5%; right: -5%; height: 55%; background: #141118; z-index: 4; pointer-events: none;
-  clip-path: none; -webkit-mask: none; mask: none; padding: 0; width: auto;
+/* le vene: capillari rossi che partono dal bordo e si perdono verso l'iride */
+.vene {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 3deg at 50% 50%, rgba(150,22,14,.38) 0deg .45deg, transparent .45deg 17deg),
+    repeating-conic-gradient(from 11deg at 46% 54%, rgba(120,16,10,.3) 0deg .3deg, transparent .3deg 23deg),
+    repeating-conic-gradient(from 25deg at 54% 47%, rgba(170,30,20,.28) 0deg .6deg, transparent .6deg 37deg);
+  -webkit-mask: radial-gradient(ellipse at 50% 50%, transparent 30%, #000 58%, #000 100%);
+  mask: radial-gradient(ellipse at 50% 50%, transparent 30%, #000 58%, #000 100%);
+  filter: blur(.7px);
 }
-body:not(.theme-dark) .gl-finestra::before, .palpebra.su { top: -5%; bottom: auto; border-radius: 0 0 50% 50% / 0 0 100% 100%; transform: translateY(-100%); animation: batti-su 6s ease-in-out infinite; }
-body:not(.theme-dark) .gl-finestra::after, .palpebra.giu { bottom: -5%; top: auto; border-radius: 50% 50% 0 0 / 100% 100% 0 0; transform: translateY(100%); animation: batti-giu 6s ease-in-out infinite; }
-@keyframes batti-su { 0%, 92%, 100% { transform: translateY(-100%); } 96% { transform: translateY(0); } }
-@keyframes batti-giu { 0%, 92%, 100% { transform: translateY(100%); } 96% { transform: translateY(0); } }
-/* l'iride: l'immagine della pagina, rotonda, che segue il cursore */
+/* palpebre (::before = su, ::after = giù): pelle squamosa, SEMICHIUSE (lo sguardo cattivo) e sbattono ogni tanto */
+body:not(.theme-dark) .gl-finestra::before, body:not(.theme-dark) .gl-finestra::after, .palpebra {
+  content: ""; position: absolute; left: -6%; right: -6%; height: 58%; z-index: 4; pointer-events: none;
+  clip-path: none; -webkit-mask: none; mask: none; padding: 0; width: auto;
+  background:
+    radial-gradient(circle at 50% 120%, transparent 0 46%, rgba(0,0,0,.35) 49%, transparent 54%) 0 0 / 26px 20px,
+    radial-gradient(circle at 50% 30%, #2c2731, #17131b 70%);
+}
+body:not(.theme-dark) .gl-finestra::before, .palpebra.su {
+  top: -4%; bottom: auto; border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  border-bottom: 4px solid #07050a; box-shadow: 0 10px 22px rgba(0,0,0,.75), inset 0 -8px 10px -6px rgba(var(--el-rgb),.25);
+  transform: translateY(-62%) rotate(-3deg); transform-origin: 50% 100%;
+  animation: batti-su 7s ease-in-out infinite;
+}
+body:not(.theme-dark) .gl-finestra::after, .palpebra.giu {
+  bottom: -4%; top: auto; border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  border-top: 3px solid #07050a; box-shadow: 0 -8px 18px rgba(0,0,0,.6);
+  transform: translateY(84%); transform-origin: 50% 0;
+  animation: batti-giu 7s ease-in-out infinite;
+}
+@keyframes batti-su  { 0%, 91%, 100% { transform: translateY(-62%) rotate(-3deg); } 94.5% { transform: translateY(0) rotate(0); } }
+@keyframes batti-giu { 0%, 91%, 100% { transform: translateY(84%); } 94.5% { transform: translateY(0); } }
+/* l'iride: rotonda, con l'anello scuro al bordo, che segue il cursore */
 body:not(.theme-dark) .gl-finestra-img, .iride {
   position: absolute; left: 50%; top: 50%; right: auto; bottom: auto; inset: auto auto auto 50%; top: 50%;
-  width: 58%; height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover; object-position: center;
-  transform: translate(-50%,-50%); animation: none; filter: saturate(1.1) contrast(1.05); clip-path: none;
-  box-shadow: 0 0 0 3px rgba(0,0,0,.6), 0 0 30px rgba(var(--el-rgb),.5); transition: box-shadow .6s; will-change: transform;
+  width: 56%; height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover; object-position: center;
+  transform: translate(-50%,-50%); animation: none; filter: saturate(1.15) contrast(1.12); clip-path: none;
+  box-shadow: inset 0 0 0 5px rgba(0,0,0,.6), inset 0 0 26px rgba(0,0,0,.85), 0 0 0 2px rgba(0,0,0,.7), 0 0 38px rgba(var(--el-rgb),.55);
+  transition: box-shadow .6s; will-change: transform; z-index: 2;
   background: var(--iride);
 }
 .iride { display: grid; place-items: center; overflow: hidden; }
-.iride::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(0,0,0,.28) 0 2deg, transparent 2deg 7deg); mix-blend-mode: multiply; }
-.pupilla { width: var(--dil, 17%); height: 82%; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #1a0a05, #000 70%); transition: width .35s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 0 8px #000; position: relative; z-index: 1; }
-/* nel GlacierHero la pupilla è il velo (riusato): fessura nera al centro dell'iride */
-body:not(.theme-dark) .gl-finestra-velo {
-  inset: auto auto auto 50%; top: 50%; width: var(--dil, 10%); height: 46%; border-radius: 50%; transform: translate(-50%,-50%); z-index: 3;
-  background: radial-gradient(ellipse at 50% 40%, #1a0a05, #000 70%); box-shadow: 0 0 8px #000; transition: width .35s cubic-bezier(.34,1.56,.64,1);
+/* le fibre dell'iride: raggi scuri e fili chiari, sopra il colore (o sopra l'immagine della pagina) */
+.fibre, .iride .fibre {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 16%, rgba(255,236,190,.22) 19%, transparent 26%),
+    repeating-conic-gradient(from 0deg, rgba(0,0,0,.42) 0deg 1.1deg, transparent 1.1deg 4.6deg),
+    repeating-conic-gradient(from 2deg, rgba(255,255,255,.13) 0deg .5deg, transparent .5deg 7.3deg),
+    radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,.55) 82%, rgba(0,0,0,.9) 100%);
+  mix-blend-mode: multiply;
 }
-body:not(.theme-dark) .gl-hero:hover .gl-finestra-velo { --dil: 18%; }
+body:not(.theme-dark) .gl-finestra > .fibre {
+  inset: auto auto auto 50%; top: 50%; width: 56%; height: auto; aspect-ratio: 1; transform: translate(-50%,-50%); z-index: 2;
+  mix-blend-mode: normal; will-change: transform;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 16%, rgba(255,236,190,.2) 19%, transparent 26%),
+    repeating-conic-gradient(from 0deg, rgba(0,0,0,.45) 0deg 1.1deg, transparent 1.1deg 4.6deg),
+    repeating-conic-gradient(from 2deg, rgba(255,255,255,.1) 0deg .5deg, transparent .5deg 7.3deg),
+    radial-gradient(circle at 50% 50%, transparent 30%, rgba(var(--el-rgb),.28) 52%, rgba(0,0,0,.6) 80%, rgba(0,0,0,.95) 100%);
+}
+/* la pupilla: fessura verticale, respira piano, si dilata sulle schede */
+.pupilla {
+  width: var(--dil, 13%); height: 88%; border-radius: 50%; position: relative; z-index: 2;
+  background: radial-gradient(ellipse at 50% 45%, #150803, #000 70%);
+  box-shadow: 0 0 12px 3px rgba(0,0,0,.9), inset 0 0 6px rgba(var(--el-rgb),.35);
+  transition: width .35s cubic-bezier(.34,1.56,.64,1);
+  animation: pupilla-respira 5.5s ease-in-out infinite;
+}
+@keyframes pupilla-respira { 0%, 100% { height: 88%; } 50% { height: 92%; } }
+/* nel GlacierHero la pupilla è il velo (riusato): fessura nera al centro dell'iride, segue il cursore */
+body:not(.theme-dark) .gl-finestra-velo {
+  inset: auto auto auto 50%; top: 50%; width: var(--dil, 8%); height: 48%; border-radius: 50%; transform: translate(-50%,-50%); z-index: 3;
+  background: radial-gradient(ellipse at 50% 45%, #150803, #000 70%); box-shadow: 0 0 12px 3px rgba(0,0,0,.9), inset 0 0 6px rgba(var(--el-rgb),.35);
+  transition: width .35s cubic-bezier(.34,1.56,.64,1); will-change: transform;
+}
+body:not(.theme-dark) .gl-hero:hover .gl-finestra-velo { --dil: 15%; }
+/* il riflesso bagnato: una mezzaluna di luce in alto a sinistra */
+.lucido {
+  position: absolute; z-index: 3; pointer-events: none; left: 33%; top: 27%; width: 16%; height: 30%; border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 35%, rgba(255,255,255,.7), rgba(255,255,255,.14) 50%, transparent 70%);
+  filter: blur(1px); transform: rotate(-18deg);
+}
 /* senza immagine: l'iride è il respiro stesso */
 body:not(.theme-dark) .gl-finestra--vuota::before, body:not(.theme-dark) .gl-finestra--vuota::after { z-index: 4; }
-body:not(.theme-dark) .gl-finestra--vuota .gl-finestra-velo {
-  width: 58%; height: auto; aspect-ratio: 1; background: var(--iride); box-shadow: 0 0 0 3px rgba(0,0,0,.6), 0 0 30px rgba(var(--el-rgb),.5);
+body:not(.theme-dark) .gl-finestra--vuota > .fibre { background: var(--iride); z-index: 1; }
+body:not(.theme-dark) .gl-finestra--vuota > .fibre::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 16%, rgba(255,236,190,.2) 19%, transparent 26%),
+    repeating-conic-gradient(from 0deg, rgba(0,0,0,.45) 0deg 1.1deg, transparent 1.1deg 4.6deg),
+    repeating-conic-gradient(from 2deg, rgba(255,255,255,.1) 0deg .5deg, transparent .5deg 7.3deg),
+    radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,.55) 82%, rgba(0,0,0,.9) 100%);
+  box-shadow: inset 0 0 0 5px rgba(0,0,0,.6), inset 0 0 26px rgba(0,0,0,.85);
 }
+@media (prefers-reduced-motion: reduce) { .pupilla, .palpebra, .gl-finestra::before, .gl-finestra::after { animation: none !important; } }
 body:not(.theme-dark) .gl-hint, .occhio-nota {
   position: absolute; left: 50%; bottom: -28px; top: auto; transform: translateX(-50%); z-index: 4;
   font: italic .82rem var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--osso-3); background: none; border: 0; padding: 0; white-space: nowrap; animation: none;

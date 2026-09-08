@@ -344,8 +344,10 @@ export default function Home() {
         </div>
         <div className="occhio-wrap">
           <div className="occhio">
+            <div className="vene" aria-hidden="true" />
+            <div className="iride covo-iride"><div className="fibre" /><div className="pupilla" /></div>
+            <div className="lucido" aria-hidden="true" />
             <div className="palpebra su" />
-            <div className="iride covo-iride"><div className="pupilla" /></div>
             <div className="palpebra giu" />
           </div>
           <span className="occhio-nota">segue il cursore · si dilata sulle schede</span>
