@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
+import PixelDragonEye from "../components/PixelDragonEye";
 import { Link } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -342,14 +343,9 @@ export default function Home() {
             <Link className="cta spento" to="/riassunti">Le memorie</Link>
           </div>
         </div>
-        <div className="occhio-wrap">
-          <div className="occhio">
-            <div className="vene" aria-hidden="true" />
-            <div className="iride covo-iride"><div className="fibre" /><div className="pupilla" /></div>
-            <div className="lucido" aria-hidden="true" />
-            <div className="palpebra su" />
-            <div className="palpebra giu" />
-          </div>
+        <div className="occhio-wrap occhio-wrap--pixel">
+          {/* l'occhio in pixel art: canvas disegnato in JS (PixelDragonEye) */}
+          <PixelDragonEye />
           <span className="occhio-nota">segue il cursore · si dilata sulle schede</span>
         </div>
       </section>

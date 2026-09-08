@@ -674,6 +674,16 @@ body:not(.theme-dark) .gl-finestra--vuota > .fibre::after {
   box-shadow: inset 0 0 0 5px rgba(0,0,0,.6), inset 0 0 26px rgba(0,0,0,.85);
 }
 @media (prefers-reduced-motion: reduce) { .pupilla, .palpebra, .gl-finestra::before, .gl-finestra::after { animation: none !important; } }
+/* l'occhio in PIXEL ART (Home, 2026-09-08): canvas 96×88 disegnato in JS (PixelDragonEye.jsx),
+   scalato a pixel netti; la cornice è una lastra squadrata, non più l'ellisse */
+.occhio-wrap--pixel { aspect-ratio: 96 / 88; width: min(340px, 72vw); }
+.occhio--pixel {
+  border-radius: 4px; background: #05070f; overflow: hidden;
+  box-shadow: 0 0 0 3px #141118, 0 0 0 5px #2a2530, 0 0 70px -8px rgba(var(--el-rgb),.55), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.occhio--pixel canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+html[data-soffio="bianco"] .occhio--pixel { box-shadow: 0 0 0 3px #d8cfbb, 0 0 0 5px #bfb39c, 0 0 60px -10px rgba(var(--el-rgb),.5); }
+@media (max-width: 480px) { .occhio-wrap--pixel { width: min(280px, 78vw); } }
 body:not(.theme-dark) .gl-hint, .occhio-nota {
   position: absolute; left: 50%; bottom: -28px; top: auto; transform: translateX(-50%); z-index: 4;
   font: italic .82rem var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--osso-3); background: none; border: 0; padding: 0; white-space: nowrap; animation: none;
