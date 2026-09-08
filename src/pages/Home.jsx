@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Countdown from "../components/Countdown";
 import PixelDragonEye from "../components/PixelDragonEye";
 import { Link } from "react-router-dom";
@@ -306,14 +307,25 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // il tastino AGENDA vive nella testata (slot #header-agenda, a sinistra
+  // dell'avatar) così non copre mai i respiri sui telefoni stretti
+  const [agendaSlot, setAgendaSlot] = useState(null);
+  useEffect(() => { setAgendaSlot(document.getElementById("header-agenda")); }, []);
+  const agendaBtn = (
+    <button
+      type="button"
+      className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
+      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      aria-label={isSidebarOpen ? "Chiudi le prossime sessioni" : "Prossime sessioni"}
+      title="Prossime sessioni"
+    >
+      {isSidebarOpen ? "✕" : "📅"}
+    </button>
+  );
+
   return (
     <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
-      <button
-        className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
-        {isSidebarOpen ? "✕" : "📅"}
-      </button>
+      {agendaSlot ? createPortal(agendaBtn, agendaSlot) : agendaBtn}
 
       {isSidebarOpen && <div className="side-drawer-backdrop" onClick={() => setIsSidebarOpen(false)} aria-hidden="true" />}
       <div className={`side-drawer ${isSidebarOpen ? "open" : ""}`} role="dialog" aria-label="Prossime sessioni">

@@ -684,6 +684,8 @@ export default function App() {
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
         <div className="header-right">
+          {/* slot per il tastino AGENDA della Home (portale da Home.jsx): subito a sinistra dell'avatar */}
+          <span id="header-agenda" className="header-agenda" />
           <LoginDropdown closeMenu={closeMenu} />
 
           <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">

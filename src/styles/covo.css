@@ -732,6 +732,17 @@ body:not(.theme-dark) :is(.chat-toggle-btn, .online-fab):hover { background: lin
   background: linear-gradient(160deg, var(--roccia-3), var(--roccia)) !important; color: var(--el-2) !important; border: 0 !important; box-shadow: none !important;
 }
 .floating-sidebar-btn:hover, .floating-sidebar-btn.active { background: linear-gradient(160deg, var(--el-2), var(--el)) !important; color: var(--ossidiana) !important; }
+/* il tastino AGENDA nella testata (slot #header-agenda, a sinistra dell'avatar): in flusso, niente più
+   posizione fissa al centro (nesso.css) né in basso a sinistra (style.css) — sui telefoni stretti copriva i respiri */
+.header-agenda { display: inline-flex; align-items: center; }
+.header-agenda:empty { display: none; }
+.header-agenda .floating-sidebar-btn {
+  position: static !important; inset: auto !important; transform: none !important; margin: 0 !important;
+  width: 36px !important; height: 36px !important; font-size: 16px !important; opacity: 1 !important; pointer-events: auto !important;
+}
+.header-agenda .floating-sidebar-btn:hover, .header-agenda .floating-sidebar-btn.active { transform: scale(1.06) !important; }
+/* con le sfaccettature del d20 aperte (in basso) il tastino nella testata resta visibile */
+body:has(.nesso-nav.aperto) .header-agenda .floating-sidebar-btn { opacity: 1 !important; pointer-events: auto !important; }
 body:not(.theme-dark) :is(.global-chat-window, .online-popup) { background: linear-gradient(180deg, var(--roccia-2), var(--roccia)) !important; border: 1px solid var(--roccia-3) !important; border-top: 3px solid var(--el) !important; box-shadow: 0 30px 60px -24px #000 !important; }
 
 /* ══════════════════════════════════════════════════════════════════
