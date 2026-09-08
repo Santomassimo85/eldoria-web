@@ -2,19 +2,25 @@
 //
 // "Almanacco del Mondo" — pagina di consultazione (sezione Mondo).
 //   1) Calendario di Exanthia (mesi colorati per stagione + i 5 giorni con pronuncia)
-//   2) Le Vie del Mondo — il sistema di viaggio, spiegato passo per passo
-//
-// La sotto-sezione "Gli Eventi" è riservata ai Master (DM screen).
+//   2) Le Vie del Mondo — il sistema di viaggio SEMPLIFICATO (2026-09-08):
+//        a) ogni giocatore sceglie una CLASSE DI VIAGGIO
+//        b) fa UN SOLO TIRO con l'abilità della classe (CD 12)
+//        c) si contano successi e fallimenti → l'ESITO DEL GRUPPO (da Disastro a Benedetto)
+//        d) il Master tira 1d100 (+/− l'esito) sulla TAVOLA DEL DESTINO
+//   La Tavola del Destino (100 voci: nemici, ambiente, incontri, scoperte, fortune,
+//   sventure…) è visibile SOLO al Master (DM screen), con tasto per tirare.
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MESI_EXANTHIA, GIORNI_SETTIMANA, SOTTOTITOLO_TESTATA } from "../data/exanthiaCalendar";
 import GlacierHero from "../components/glacier/GlacierHero";
+import { useAuth } from "../AuthContext";
 import "./Almanacco.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 // Pronunce dei giorni della settimana (accento tonico in MAIUSCOLO).
 const GIORNI_PRONUNCIA = {
@@ -49,173 +55,78 @@ const MESI_INFO = {
   Lamafredda: { st: "inverno",   ic: "🌬️" },
 };
 
-// ── Le Vie del Mondo: dati ─────────────────────────────────────────────────
-const VEGLIE = [
-  { ic: "🌅", nome: "Alba", ore: "06–12", chi: "Si parte: il gruppo leva il campo e si mette in marcia." },
-  { ic: "☀️", nome: "Giorno", ore: "12–18", chi: "Si cammina: è qui che di norma si tira l'evento della giornata." },
-  { ic: "🌆", nome: "Tramonto", ore: "18–24", chi: "Ci si accampa: cena, riposo, scene tra compagni." },
-  { ic: "🌙", nome: "Notte", ore: "24–06", chi: "Si dorme a turni: entra in gioco la guardia (la Sentinella)." },
-];
-
-const ROTTE = [
-  { nome: "La via maestra", pro: "Strade battute, locande dove dormire e contatti da incontrare.", contro: "È la più lenta ed è sorvegliata: chi vi cerca sa dove guardare." },
-  { nome: "La scorciatoia", pro: "Taglia un giorno di cammino (−1 giorno).", contro: "Terreno infido o instabile: più alta la probabilità di guai." },
-  { nome: "La via nascosta", pro: "Aggira i nemici noti e i posti di blocco.", contro: "Niente villaggi né rifornimenti: le provviste calano più in fretta." },
-];
-
-const PASSI = [
-  { nome: "Lento", effetto: "Si va piano e attenti: vantaggio a Percezione e Furtività, ma il viaggio dura +50%." },
-  { nome: "Normale", effetto: "Andatura standard, nessun bonus né malus." },
-  { nome: "Forzato", effetto: "Si stringono i tempi (meno giorni), ma a fine giornata ognuno fa un TS Costituzione o prende 1 livello di Sfinimento." },
-];
-
-const RUOLI = [
+// ── Le Vie del Mondo: le CLASSI di viaggio (una a testa, un solo tiro) ─────
+const CD_VIAGGIO = 12;
+const CLASSI = [
   {
     nome: "Guida", ic: "🧭", color: "#60a5fa", ab: "Sopravvivenza (Saggezza)",
-    cosa: "Tiene la rotta e legge il territorio. Una volta al giorno tira per scegliere la strada giusta.",
-    ok: "Trova la via più rapida: il gruppo guadagna tempo (−1 Veglia) o evita del tutto l'evento del giorno.",
-    ko: "Vi perdete: si spreca tempo (+1 Veglia) o salta fuori un evento in più.",
+    cosa: "Tiene la rotta e legge il territorio: sceglie la strada giusta.",
+    ok: "Trova la via più rapida: si guadagna tempo.",
+    ko: "Vi perdete: si spreca tempo e il Master può aggiungere un guaio.",
   },
   {
     nome: "Esploratore", ic: "🔭", color: "#4ade80", ab: "Percezione / Furtività",
-    cosa: "Va in avanscoperta davanti al gruppo per fiutare agguati, trappole e nemici prima che colpiscano.",
-    ok: "Vede il pericolo per tempo: niente sorprese per il gruppo (anzi, è lui a sorprendere).",
+    cosa: "Va in avanscoperta per fiutare agguati, trappole e nemici prima che colpiscano.",
+    ok: "Vede il pericolo per tempo: niente sorprese per il gruppo.",
     ko: "Cade nell'imboscata: i nemici attaccano per primi e con vantaggio.",
   },
   {
     nome: "Cacciatore", ic: "🏹", color: "#fb923c", ab: "Natura",
     cosa: "Procura cibo e acqua lungo il cammino: caccia, raccoglie, riempie le borracce.",
-    ok: "Buona caccia: +2 tacche di provviste (la fame si allontana).",
-    ko: "Niente da mangiare o cibo avariato: nessun rifornimento quel giorno.",
+    ok: "Buona caccia: provviste piene, la fame si allontana.",
+    ko: "Niente da mangiare o cibo avariato: nessun rifornimento.",
   },
   {
-    nome: "Sentinella", ic: "🛡️", color: "var(--el-soft)", ab: "Percezione passiva + 1d20 (stanchezza)",
-    cosa: "Monta la guardia di notte. La Percezione passiva fa da baseline, ma ogni notte tira anche 1d20 di stanchezza: se esce basso, il sonno ha la meglio anche su una guardia attenta.",
-    ok: "Resta vigile (d20 alto) e la sua passiva basta: sente arrivare il pericolo, il gruppo non viene colto di sorpresa.",
-    ko: "Colpo di sonno (1–5 al d20) o pericolo più furtivo della sua passiva: l'attacco arriva nel sonno, il gruppo parte svantaggiato.",
+    nome: "Sentinella", ic: "🛡️", color: "var(--el-soft)", ab: "Percezione",
+    cosa: "Monta la guardia di notte e tiene gli occhi aperti quando gli altri dormono.",
+    ok: "Resta vigile: il gruppo non viene colto di sorpresa nel sonno.",
+    ko: "Colpo di sonno: se arriva qualcosa di notte, arriva nel sonno.",
   },
   {
-    nome: "Cronista / Morale", ic: "🎺", color: "#f87171", ab: "Intrattenere / Persuasione",
-    cosa: "Tiene su l'umore con storie, canti e parole giuste, e annota le gesta del viaggio.",
-    ok: "+1 morale: il gruppo ha vantaggio al prossimo tiro salvezza di squadra.",
+    nome: "Cronista", ic: "🎺", color: "#f87171", ab: "Intrattenere / Persuasione",
+    cosa: "Tiene su l'umore con storie, canti e parole giuste, e tratta con chi si incontra.",
+    ok: "Morale alto: vantaggio al prossimo tiro salvezza di squadra.",
     ko: "Nasce un battibecco tra compagni da appianare.",
   },
 ];
 
-const EVENTI = [
-  {
-    n: 1, ic: "⚔️", tipo: "Combattimento", color: "#f87171", voci: [
-      "Predoni che bloccano la strada",
-      "Bestia territoriale ferita",
-      "Resti di una carovana + i mostri che l'hanno distrutta",
-      "Pattuglia ostile",
-      "Imboscata dall'alto",
-      "Qualcosa che li seguiva si fa avanti",
-    ],
-  },
-  {
-    n: 2, ic: "🔍", tipo: "Scoperta", color: "#60a5fa", voci: [
-      "Rovina / altare con un'iscrizione",
-      "Carovana abbandonata (loot + mistero)",
-      "Cadavere con una mappa / lettera",
-      "Confine naturale spettacolare",
-      "Tracce di un mostro più grande",
-      "Un seme di trama futura",
-    ],
-  },
-  {
-    n: 3, ic: "💬", tipo: "Incontro sociale", color: "#4ade80", voci: [
-      "Viandante che chiede un passaggio",
-      "Pellegrino con voci e notizie",
-      "Truffatore / mercante troppo gentile",
-      "Rifugiati in fuga da qualcosa",
-      "Esattore / guardia che vuole un pedaggio",
-      "Un volto noto fuori posto (gancio personale)",
-    ],
-  },
-  {
-    n: 4, ic: "🌊", tipo: "Sfida d'ambiente", color: "var(--el-2)", voci: [
-      "Guado in piena",
-      "Frana / passo chiuso",
-      "Tempesta",
-      "Palude / terreno infido",
-      "Nebbia che disorienta",
-      "Notte gelida senza riparo",
-    ],
-  },
-  {
-    n: 5, ic: "🎭", tipo: "Momento di personaggio", color: "var(--el-soft)", voci: [
-      "Sogno premonitore",
-      "Un oggetto reagisce",
-      "Un ricordo riaffiora",
-      "Una piccola scelta morale",
-      "Tensione tra due PG da sciogliere",
-      "Un PG riceve un «sussurro» segreto",
-    ],
-  },
-  {
-    n: 6, ic: "😄", tipo: "Simpatico", color: "#fbbf24", voci: [
-      "Mercante che giura che i suoi formaggi sono magici",
-      "Un animale del party ruba qualcosa a un PG",
-      "Menestrello che canta malissimo le gesta del gruppo",
-      "Due contadini litigano per una capra e chiedono un arbitrato",
-      "Un bambino scambia un PG per un eroe famoso",
-      "Il burlone del tavolo insiste per fermarsi a far festa",
-    ],
-  },
+// ── L'esito del gruppo: quanti successi → il modificatore al d100 del Master ─
+const ESITI = [
+  { key: "disastro",  label: "Disastro",   mod: -20, ic: "☠️", col: "#ff8a7e", quando: "Tutti falliscono" },
+  { key: "male",      label: "Male",       mod: -10, ic: "🌑", col: "#fb923c", quando: "Più fallimenti che successi" },
+  { key: "pari",      label: "Così così",  mod: 0,   ic: "⚖️", col: "#b9af9d", quando: "Successi e fallimenti alla pari" },
+  { key: "bene",      label: "Bene",       mod: 10,  ic: "🌤️", col: "#4ade80", quando: "Più successi che fallimenti" },
+  { key: "benedetto", label: "Benedetto",  mod: 20,  ic: "✨", col: "var(--oro)", quando: "Tutti riescono" },
 ];
 
-// ── Lo specchietto dei tiri: chi tira, quando, cosa, a cosa serve ──────────
-// È la risposta rapida alla domanda «che tiri vanno fatti e chi li fa».
+// ── Lo specchietto dei tiri (due righe: i giocatori, il Master) ────────────
 const TIRI = [
   {
     ic: "🎲", chi: "Ogni giocatore", chiTag: "giocatori",
-    quando: "1 volta al giorno, nel proprio Ruolo",
-    tiro: "Abilità del suo Ruolo",
-    scopo: "Costruisce la scena del giorno: chi guida, chi esplora, chi caccia, chi tiene il morale. Vedi la tabella dei Ruoli.",
+    quando: "1 volta per viaggio, nella propria classe",
+    tiro: `Abilità della classe · CD ${CD_VIAGGIO}`,
+    scopo: "Riesce = +1 successo per il gruppo; fallisce = +1 fallimento. Il risultato colora la scena.",
   },
   {
     ic: "🎯", chi: "Il Master", chiTag: "master",
-    quando: "1 volta al giorno",
-    tiro: "1d6 + 1d6",
-    scopo: "Il 1º d6 sceglie il tipo di evento, il 2º d6 pesca lo spunto preciso. Vedi la tabella degli Eventi.",
-  },
-  {
-    ic: "🌊", chi: "Tutto il gruppo", chiTag: "gruppo",
-    quando: "Solo se l'evento del giorno è una Sfida d'Ambiente",
-    tiro: "Un'abilità diversa a testa · CD 12–15",
-    scopo: "3 successi = superata; 3 fallimenti prima = passate comunque, ma pagando un prezzo.",
-  },
-  {
-    ic: "⏱️", chi: "Tutto il gruppo", chiTag: "gruppo",
-    quando: "Solo con Passo Forzato, a fine giornata",
-    tiro: "Tiro Salvezza su Costituzione",
-    scopo: "Chi fallisce prende 1 livello di Sfinimento (il prezzo per correre).",
-  },
-  {
-    ic: "🛡️", chi: "La Sentinella", chiTag: "giocatori",
-    quando: "Di notte",
-    tiro: "1d20 stanchezza + Percezione passiva",
-    scopo: "Con 1–5 al d20 si assopisce e il gruppo è colto di sorpresa; altrimenti la sua passiva si confronta col pericolo notturno.",
+    quando: "Dopo i tiri dei giocatori",
+    tiro: "1d100 + esito del gruppo",
+    scopo: "Pesca sulla Tavola del Destino: nemici, ambiente, incontri, scoperte, fortune e sventure. Più è alto, meglio va.",
   },
 ];
-
-// Etichetta colorata per «chi» tira.
 const TIRO_TAG = {
   giocatori: { label: "Giocatore", color: "#60a5fa" },
   master:    { label: "Master",    color: "var(--oro)" },
-  gruppo:    { label: "Gruppo",    color: "#4ade80" },
 };
 
-// ── Recap lampo: cosa succede in una giornata, in 4 passi semplicissimi ────
+// ── Recap lampo: tre passi ─────────────────────────────────────────────────
 const RECAP = [
-  { ic: "🗺️", k: "Scegliete",  t: "la strada e l'andatura" },
-  { ic: "🎲", k: "Ognuno",     t: "fa la sua mossa, con un tiro" },
-  { ic: "🎯", k: "Il Master",  t: "fa capitare qualcosa" },
-  { ic: "🎬", k: "Giocate",    t: "la scena, poi al giorno dopo" },
+  { ic: "🧭", k: "Scegliete",  t: "una classe di viaggio a testa" },
+  { ic: "🎲", k: "Un tiro",    t: "a testa, CD 12: si contano i successi" },
+  { ic: "🎯", k: "Il Master",  t: "tira il d100 sulla Tavola del Destino" },
 ];
 
-// ── La Scala dello Sfinimento: effetti cumulativi per livello ──────────────
+// ── La Scala dello Sfinimento (richiamata da alcune voci della Tavola) ─────
 const SFINIMENTO = [
   { lv: 1, col: "#fbbf24", eff: "Svantaggio alle prove di caratteristica" },
   { lv: 2, col: "#fbbf24", eff: "Velocità dimezzata" },
@@ -225,15 +136,163 @@ const SFINIMENTO = [
   { lv: 6, col: "var(--sangue)", eff: "Morte" },
 ];
 
+// ── LA TAVOLA DEL DESTINO (d100, solo Master): dal peggio (1) al meglio (100) ─
+const CAT = {
+  sventura:    { ic: "☠️", nome: "Sventura",      col: "#ff8a7e" },
+  nemici:      { ic: "⚔️", nome: "Nemici",        col: "#f87171" },
+  ambiente:    { ic: "🌊", nome: "Ambiente",      col: "var(--el-2)" },
+  incontri:    { ic: "💬", nome: "Incontro",      col: "#4ade80" },
+  personaggio: { ic: "🎭", nome: "Personaggio",   col: "var(--el-soft)" },
+  scoperte:    { ic: "🔍", nome: "Scoperta",      col: "#60a5fa" },
+  curiosi:     { ic: "😄", nome: "Curioso",       col: "#fbbf24" },
+  fortuna:     { ic: "✨", nome: "Fortuna",       col: "var(--oro)" },
+};
+const T = (cat, testo) => ({ cat, testo });
+const TAVOLA = [
+  T("sventura", "Imboscata notturna: predoni colpiscono nel sonno, il gruppo è sorpreso e senza armatura."),
+  T("sventura", "Frana sul sentiero: TS Destrezza CD 13 o 2d6 danni contundenti; la via è chiusa (+1 giorno)."),
+  T("sventura", "Acqua avvelenata: chi ha bevuto fa TS Costituzione CD 13 o è avvelenato per 24 ore."),
+  T("sventura", "Branco di lupi affamati (1 per PG): attaccano prima i cavalli."),
+  T("sventura", "Tempesta di fulmini in campo aperto: chi non trova riparo prende 1 livello di Sfinimento."),
+  T("sventura", "Ladri nella notte: sparisce l'oggetto più prezioso non indossato (si può inseguire la pista)."),
+  T("sventura", "Ponte marcio: crolla mentre lo attraversate (TS Destrezza CD 12 o caduta, 2d6 danni)."),
+  T("sventura", "Un mostro grande (troll, orso-gufo) ha fatto la tana proprio sulla via."),
+  T("sventura", "Febbre di palude: 1d4 PG a caso fanno TS Costituzione CD 12 o 1 livello di Sfinimento."),
+  T("sventura", "Il sentiero sparisce: siete persi, +1 giorno e provviste dimezzate."),
+  T("nemici", "Pattuglia ostile (guardie corrotte o soldati nemici) chiede il pedaggio con la spada."),
+  T("nemici", "Banditi con un arciere sull'altura: «la borsa o la vita»."),
+  T("nemici", "Sciame di insetti giganti sbuca da un tronco cavo."),
+  T("nemici", "Goblin tendono una trappola con corde e pietre."),
+  T("nemici", "Bestia territoriale ferita (cinghiale gigante, orso): carica a vista."),
+  T("nemici", "Ragni giganti tra gli alberi: ragnatele sul sentiero."),
+  T("nemici", "Un cavaliere errante folle sfida a duello il PG più corazzato."),
+  T("nemici", "Non-morti risvegliati da un cimitero dimenticato lungo la via."),
+  T("nemici", "Mercenari assoldati da un vecchio nemico del gruppo."),
+  T("nemici", "Cultisti in rito attorno a un fuoco: non gradiscono spettatori."),
+  T("nemici", "Un drago giovane sorvola la zona in cerca di preda (si evita solo nascondendosi)."),
+  T("nemici", "Resti di una carovana distrutta: le creature che l'hanno assalita sono ancora lì."),
+  T("nemici", "Qualcosa che vi seguiva da giorni decide di farsi avanti."),
+  T("nemici", "Elementale di terra disturbato dal vostro passaggio."),
+  T("nemici", "Coccatrice nel sottobosco: pericolo a sorpresa."),
+  T("ambiente", "Nebbia fitta: Percezione dimezzata per la giornata, facile perdersi."),
+  T("ambiente", "Pioggia battente: strade fangose, mezza giornata di marcia in più."),
+  T("ambiente", "Guado in piena: prova di gruppo (Atletica o Sopravvivenza CD 13, servono 3 successi)."),
+  T("ambiente", "Notte gelida senza riparo: TS Costituzione CD 12 o 1 livello di Sfinimento."),
+  T("ambiente", "Caldo torrido: consumo d'acqua doppio."),
+  T("ambiente", "Terremoto leggero: crepe sul terreno, cavalli spaventati."),
+  T("ambiente", "Sentiero cancellato da una frana: deviazione di mezza giornata."),
+  T("ambiente", "Bufera di sabbia o neve: visibilità zero, si marcia legati."),
+  T("ambiente", "Palude infida: chi fallisce Sopravvivenza CD 12 perde uno stivale… e 1d4 PF."),
+  T("ambiente", "Grandine improvvisa: 1d4 danni a chi è senza elmo, i cavalli fuggono."),
+  T("ambiente", "Bosco «che si muove»: gli alberi cambiano posto, la Guida ritira."),
+  T("ambiente", "Ponte di corda che dondola sul burrone: Acrobazia CD 12 a testa."),
+  T("ambiente", "Un fiume da attraversare in barca: il traghettatore vuole 5 mo a testa."),
+  T("ambiente", "Eclissi inattesa: buio per un'ora, gli animali impazziscono."),
+  T("ambiente", "Miraggio: il gruppo cammina in tondo e perde mezza giornata."),
+  T("incontri", "Esattore che pretende un pedaggio «legale» di 10 mo a testa."),
+  T("incontri", "Mercante troppo gentile: vende merce truccata (Intuizione CD 13 per accorgersene)."),
+  T("incontri", "Rifugiati in fuga da qualcosa: chiedono cibo e portano notizie."),
+  T("incontri", "Un pellegrino cieco che «sa» il nome di un PG."),
+  T("incontri", "Contadini che litigano per una capra e chiedono un arbitrato."),
+  T("incontri", "Cacciatore di taglie con un manifesto: assomiglia a un PG."),
+  T("incontri", "Carovana di nani disposti a scortarvi… a un prezzo."),
+  T("incontri", "Bardo vagabondo che canta (malissimo) le gesta del gruppo."),
+  T("incontri", "Un bambino scambia un PG per un eroe famoso e vuole seguirlo."),
+  T("incontri", "Viandante che chiede un passaggio: è più di quel che sembra."),
+  T("incontri", "Guardie di confine: controllo documenti, un PG non è «in regola»."),
+  T("incontri", "Eremita che offre riparo in cambio di una storia vera."),
+  T("incontri", "Un volto noto del passato di un PG, fuori posto."),
+  T("incontri", "Circo itinerante: distrazioni, giochi e un borseggiatore."),
+  T("incontri", "Messaggero a cavallo con una lettera… per la persona sbagliata."),
+  T("personaggio", "Sogno premonitore per un PG: un'immagine della prossima sessione."),
+  T("personaggio", "Un oggetto del gruppo reagisce: si scalda, brilla, sussurra."),
+  T("personaggio", "Un ricordo riaffiora: flashback di due minuti, giocato."),
+  T("personaggio", "Tensione tra due PG: una scena da sciogliere prima di dormire."),
+  T("personaggio", "Un PG riceve un «sussurro» segreto dal Master (biglietto)."),
+  T("personaggio", "Una piccola scelta morale: un ladro ferito chiede aiuto."),
+  T("personaggio", "Un animale selvatico si affeziona a un PG (possibile compagno)."),
+  T("personaggio", "Il Cronista trova le parole giuste: vantaggio al prossimo TS di squadra."),
+  T("personaggio", "Un vecchio compagno appare in sogno con un avvertimento."),
+  T("personaggio", "Un PG scopre un talento nascosto: oggi un tiro con vantaggio a scelta."),
+  T("scoperte", "Rovina con un'iscrizione in una lingua antica."),
+  T("scoperte", "Carovana abbandonata: 1d6×10 mo di bottino e un mistero."),
+  T("scoperte", "Cadavere con una mappa o una lettera che porta da qualche parte."),
+  T("scoperte", "Altare dimenticato: chi offre qualcosa riceve una benedizione (o no)."),
+  T("scoperte", "Tracce di un mostro più grande di qualunque cosa vista finora."),
+  T("scoperte", "Grotta con cristalli di Arcanite grezza (materiale da crafting)."),
+  T("scoperte", "Vista mozzafiato da un confine naturale: ispirazione a tutti."),
+  T("scoperte", "Statua che indica una direzione diversa ogni alba."),
+  T("scoperte", "Nascondiglio di contrabbandieri: rifornimenti… e problemi futuri."),
+  T("scoperte", "Un seme di trama: un simbolo già visto, inciso su un albero."),
+  T("scoperte", "Fonte d'acqua pura: cura 1d8 PF e toglie 1 livello di Sfinimento."),
+  T("scoperte", "Vecchio campo abbandonato con tende ancora buone."),
+  T("scoperte", "Erbe rare: il Cacciatore trova ingredienti per 2 pozioni."),
+  T("scoperte", "Torre di guardia in rovina: rifugio sicuro per la notte."),
+  T("scoperte", "Un carro con una piccola biblioteca dimenticata: un tomo di conoscenza."),
+  T("curiosi", "Un mercante giura che i suoi formaggi sono magici (uno lo è davvero)."),
+  T("curiosi", "Un animale del party ruba qualcosa a un PG e scappa."),
+  T("curiosi", "Il burlone del tavolo insiste per fermarsi a far festa in un villaggio."),
+  T("curiosi", "Gara di bevute in una locanda di strada: chi vince ha un favore."),
+  T("curiosi", "Un gatto nero segue il gruppo per un giorno intero."),
+  T("curiosi", "Una pioggia di rane. Davvero."),
+  T("curiosi", "Un cartello con le indicazioni sbagliate, opera di un burlone."),
+  T("curiosi", "Un nano ubriaco dice di essere il re di un regno che nessuno conosce."),
+  T("curiosi", "Concorso di poesia in una fattoria: in premio, una torta magica."),
+  T("curiosi", "Un draghetto di trenta centimetri chiede di essere adottato."),
+  T("fortuna", "Riposo perfetto: tutti recuperano PF e 1 livello di Sfinimento."),
+  T("fortuna", "Locanda accogliente e gratuita: l'oste deve un favore a un PG."),
+  T("fortuna", "Un viandante regala una mappa: −1 giorno di viaggio."),
+  T("fortuna", "Buona caccia: provviste al massimo."),
+  T("fortuna", "Un mercante onesto: sconto vero (−20%) sul prossimo acquisto."),
+  T("fortuna", "Cielo limpido e buoni venti: il viaggio scorre senza intoppi, mezza giornata guadagnata."),
+  T("fortuna", "Un alleato inatteso si unisce fino alla prossima città."),
+  T("fortuna", "Trovate un oggetto magico minore abbandonato."),
+  T("fortuna", "Benedizione di un santuario: vantaggio al primo tiro della prossima sessione."),
+  T("fortuna", "Presagio degli dèi: una visione chiara della meta, ispirazione a tutti."),
+].map((v, i) => ({ ...v, n: i + 1 }));
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
 export default function Almanacco() {
   useParallaxScroll();
-  const [openEvento, setOpenEvento] = useState(null);
+  const { currentUser } = useAuth();
+  const isMaster = currentUser?.email === MASTER_EMAIL;
+
+  // ── il tiro del Master sulla Tavola ──
+  const [esito, setEsito] = useState("pari");
+  const [tiro, setTiro] = useState(null);       // { nat, tot }
+  const [rotola, setRotola] = useState(false);
+  const [mostra, setMostra] = useState(null);   // filtro categoria
+  const righeRef = useRef({});
+  const mod = ESITI.find((e) => e.key === esito)?.mod ?? 0;
+
+  const tiraD100 = () => {
+    if (rotola) return;
+    setRotola(true);
+    let t = 0;
+    const iv = setInterval(() => {
+      const nat = 1 + Math.floor(Math.random() * 100);
+      setTiro({ nat, tot: clamp(nat + mod, 1, 100), finto: true });
+      if (++t > 12) {
+        clearInterval(iv);
+        const n = 1 + Math.floor(Math.random() * 100);
+        const tot = clamp(n + mod, 1, 100);
+        setTiro({ nat: n, tot });
+        setRotola(false);
+        setMostra(null);
+        setTimeout(() => righeRef.current[tot]?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+      }
+    }, 60);
+  };
+
+  const righe = useMemo(() => (mostra ? TAVOLA.filter((r) => r.cat === mostra) : TAVOLA), [mostra]);
+  const conteggi = useMemo(() => TAVOLA.reduce((a, r) => ((a[r.cat] = (a[r.cat] || 0) + 1), a), {}), []);
 
   return (
     <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <AmbientFX variant="cosmos" />
 
-      {/* ── HERO = VARCO (prototipo J): Aen-Lor nel portale esagonale ── */}
+      {/* ── HERO: l'occhio del drago con Aen-Lor ── */}
       <GlacierHero
         id="alm-top"
         ariaLabel="Almanacco del Mondo"
@@ -244,14 +303,13 @@ export default function Almanacco() {
         tagline="Il computo dei giorni e le vie del mondo: ciò che ogni viandante dovrebbe sapere prima di mettersi in cammino."
       />
 
-      {/* ── INDICE A PILLOLE (satelliti della pagina) ── */}
+      {/* ── INDICE A PILLOLE ── */}
       <nav className="nx-pillole alm-indice" aria-label="Indice">
         <a href="#alm-calendario" className="nx-pillola">📅 Calendario</a>
         <a href="#alm-mesi" className="nx-pillola">🌙 I Mesi</a>
         <a href="#alm-viaggio" className="nx-pillola">🜂 Le Vie del Mondo</a>
-        <a href="#alm-tiri" className="nx-pillola">🎲 I Tiri</a>
-        <a href="#alm-ruoli" className="nx-pillola">🧭 I Ruoli</a>
-        <a href="#alm-eventi" className="nx-pillola">🎯 Gli Eventi</a>
+        <a href="#alm-classi" className="nx-pillola">🧭 Le Classi</a>
+        {isMaster && <a href="#alm-tavola" className="nx-pillola">🎯 La Tavola</a>}
       </nav>
 
       {/* ════════ SEZIONE 1 — CALENDARIO ════════ */}
@@ -267,7 +325,6 @@ export default function Almanacco() {
           </p>
         </header>
 
-        {/* Giorni della settimana: cinque orbe */}
         <h3 className="alm-h3">I Cinque Giorni della Settimana</h3>
         <ol className="nx-griglia alm-giorni">
           {GIORNI_SETTIMANA.map((g, i) => (
@@ -279,7 +336,6 @@ export default function Almanacco() {
           ))}
         </ol>
 
-        {/* Mesi dell'anno, colorati per stagione */}
         <h3 id="alm-mesi" className="alm-h3">I Dodici Mesi dell'Anno</h3>
         <div className="nx-pillole alm-stagioni" aria-label="Stagioni">
           {Object.values(STAGIONI).map((s) => (
@@ -305,27 +361,21 @@ export default function Almanacco() {
         </ol>
       </section>
 
-      {/* ════════ SEZIONE 2 — LE VIE DEL MONDO ════════ */}
+      {/* ════════ SEZIONE 2 — LE VIE DEL MONDO (semplificato) ════════ */}
       <section id="alm-viaggio" className="alm-section" aria-label="Le Vie del Mondo">
         <div className="gl-sezlabel">Sezione II · Sistema di Viaggio</div>
         <header className="nx-testata alm-testata">
           <h2 className="nx-titolo">🜂 Le Vie del Mondo</h2>
           <p className="nx-sotto alm-lead">
-            Il modo in cui giochiamo gli spostamenti tra una meta e l'altra, senza ridurli a un
-            «arrivate dopo tre giorni». La regola d'oro: <strong>ogni giornata di viaggio contiene
-            una decisione e una scoperta</strong>. Sotto trovi prima il <strong>recap lampo</strong>,
-            poi <strong>chi tira e cosa</strong>, infine il dettaglio.
+            Tre passi e via. <strong>Ogni giocatore sceglie una classe di viaggio</strong> e fa
+            <strong> un solo tiro</strong>; si contano i successi per capire com'è andata; poi
+            <strong> il Master tira un d100</strong> e il destino decide cosa capita sulla strada.
           </p>
         </header>
 
-        {/* ── RECAP LAMPO — il senso del viaggio in 4 passi ── */}
+        {/* ── RECAP LAMPO — tre passi ── */}
         <div className="nx-pannello alm-recap">
           <span className="nx-tag">⚡ In due parole</span>
-          <p className="nx-prosa alm-recap-lead">
-            Il viaggio è un <strong>mini-gioco a giornate</strong>: invece di dire soltanto «arrivate
-            dopo tre giorni», <strong>ogni giorno</strong> il gruppo decide come procedere, ognuno fa
-            la sua mossa e succede qualcosa. Si gioca il momento importante e si passa al giorno dopo.
-          </p>
           <ol className="alm-recap-steps">
             {RECAP.map((r, i) => (
               <li key={i}>
@@ -335,16 +385,11 @@ export default function Almanacco() {
               </li>
             ))}
           </ol>
-          <p className="nx-nota alm-recap-foot">Tutto il resto della pagina serve solo ad approfondire questi quattro passi.</p>
         </div>
 
-        {/* ── LO SPECCHIETTO DEI TIRI — chi tira, quando, cosa, perché ── */}
+        {/* ── LO SPECCHIETTO DEI TIRI ── */}
         <div id="alm-tiri" className="nx-pannello alm-tiri" aria-label="Chi tira e cosa">
-          <h3 className="alm-block-title"><span className="orb" aria-hidden="true">🎲</span> Lo specchietto dei tiri</h3>
-          <p className="nx-nota alm-block-note">
-            Tutto il viaggio si regge su pochissimi tiri. Ecco chi li fa e quando — il resto della
-            pagina serve solo ad approfondirli.
-          </p>
+          <h3 className="alm-block-title"><span className="orb" aria-hidden="true">🎲</span> Chi tira e cosa</h3>
           <div className="alm-tiri-table">
             <div className="alm-tiri-head" aria-hidden="true">
               <span>Chi</span><span>Quando</span><span>Cosa tira</span><span>A cosa serve</span>
@@ -367,80 +412,23 @@ export default function Almanacco() {
           </div>
         </div>
 
-        {/* Le Quattro Veglie */}
-        <div className="nx-pannello alm-block">
-          <h3 className="alm-block-title"><span className="orb">1</span> Come è fatta una giornata: le Quattro Veglie</h3>
+        {/* ── 1 · LE CLASSI DI VIAGGIO ── */}
+        <div id="alm-classi" className="alm-block alm-block--nudo">
+          <h3 className="alm-block-title"><span className="orb">1</span> Le Classi di Viaggio — una a testa</h3>
           <p className="nx-prosa alm-block-note">
-            Ogni giornata di cammino si spezza in 4 «Veglie» da 6 ore l'una: servono a dare ritmo e
-            a sapere quando può succedere qualcosa. Di norma capita <strong>un evento al giorno</strong>,
-            di solito durante la Veglia del Giorno. Se vuoi un viaggio teso ne tiri fino a 2; se vuoi
-            correre, nessun evento e salti avanti con un «montaggio» (vedi punto 6).
-          </p>
-          <div className="nx-griglia alm-veglie">
-            {VEGLIE.map((v) => (
-              <div key={v.nome} className="alm-veglia">
-                <span className="alm-veglia-ic" aria-hidden="true">{v.ic}</span>
-                <span className="nx-nome alm-veglia-nome">{v.nome}</span>
-                <span className="nx-meta alm-veglia-ore">{v.ore}</span>
-                <span className="nx-nota alm-veglia-chi">{v.chi}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* La partenza */}
-        <div className="nx-pannello alm-block">
-          <h3 className="alm-block-title"><span className="orb">2</span> Prima di partire: tre scelte rapide</h3>
-          <p className="nx-prosa alm-block-note">
-            All'inizio del viaggio il gruppo decide tre cose. Sono scelte con conseguenze meccaniche
-            chiare: ognuna ha un vantaggio e un prezzo.
-          </p>
-          <div className="nx-griglia alm-trio">
-            <div className="alm-mini">
-              <h4>A · La Rotta — che strada prendete?</h4>
-              <ul className="alm-defs">
-                {ROTTE.map((r) => (
-                  <li key={r.nome}><strong>{r.nome}.</strong> {r.pro} <em>Lo scotto:</em> {r.contro}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="alm-mini">
-              <h4>B · Il Passo — a che andatura?</h4>
-              <ul className="alm-defs">
-                {PASSI.map((p) => (
-                  <li key={p.nome}><strong>{p.nome}.</strong> {p.effetto}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="alm-mini">
-              <h4>C · Le Provviste — quanto resistete?</h4>
-              <p>
-                Si segna una barra di <strong>6 tacche</strong> che rappresenta cibo, acqua e luce
-                (torce, olio). Ogni giorno di viaggio cala di <strong>1 tacca</strong>; il Cacciatore
-                può ricaricarla. Se arriva a <strong>0</strong>, il gruppo soffre la fame e ognuno
-                rischia un livello di <strong>Sfinimento</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* I ruoli di viaggio */}
-        <div id="alm-ruoli" className="alm-block alm-block--nudo">
-          <h3 className="alm-block-title"><span className="orb">3</span> I Ruoli di Viaggio — il compito di ciascuno</h3>
-          <p className="nx-prosa alm-block-note">
-            Questo è il cuore «giocabile»: all'inizio del viaggio <strong>ogni giocatore sceglie un
-            ruolo</strong> (uno a testa). Poi, <strong>ogni giornata di cammino, tira una volta col
-            proprio ruolo</strong>. Che riesca o fallisca, quel risultato diventa un pezzo della scena
-            di quel giorno — così nessuno resta a guardare, anche fuori dal combattimento.
+            All'inizio del viaggio <strong>ogni giocatore sceglie una classe</strong> (una per persona,
+            si può cambiare al viaggio successivo). Poi fa <strong>un solo tiro</strong> con l'abilità
+            della classe, <strong>CD {CD_VIAGGIO}</strong>. Che riesca o fallisca, quel risultato diventa
+            un pezzo della scena: così nessuno resta a guardare.
           </p>
           <div className="nx-griglia nx-griglia--larga alm-roles">
-            {RUOLI.map((r) => (
+            {CLASSI.map((r) => (
               <div key={r.nome} className="nx-pannello alm-role" style={{ "--r-color": r.color }}>
                 <div className="alm-role-head">
                   <span className="alm-role-ic" aria-hidden="true">{r.ic}</span>
                   <span className="nx-nome alm-role-name">{r.nome}</span>
                 </div>
-                <span className="nx-pillola alm-role-skill">{r.passivo ? `non tira — ${r.ab}` : `tira: ${r.ab}`}</span>
+                <span className="nx-pillola alm-role-skill">tira: {r.ab} · CD {CD_VIAGGIO}</span>
                 <p className="nx-nota alm-role-cosa">{r.cosa}</p>
                 <p className="alm-role-ok"><span aria-hidden="true">✓ Riesce</span> — {r.ok}</p>
                 <p className="alm-role-ko"><span aria-hidden="true">✗ Fallisce</span> — {r.ko}</p>
@@ -449,110 +437,120 @@ export default function Almanacco() {
           </div>
         </div>
 
-        {/* Gli eventi — visibili a tutti */}
-        <div id="alm-eventi" className="alm-block alm-block--nudo">
-          <h3 className="alm-block-title"><span className="orb">4</span> Gli Eventi</h3>
+        {/* ── 2 · L'ESITO DEL GRUPPO ── */}
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">2</span> L'esito del gruppo — com'è andata?</h3>
           <p className="nx-prosa alm-block-note">
-            Per scegliere cosa succede in una giornata il Master tira
-            <strong> 1d6 per il tipo di evento</strong> (le sei categorie qui sotto), poi
-            <strong> un altro 1d6</strong> per pescare lo spunto preciso nella sotto-tabella.
-            Tocca una categoria per aprirla.
+            Si contano i <strong>successi</strong> e i <strong>fallimenti</strong> di tutti. L'esito
+            sposta il d100 del Master: <strong>più è alto, meglio va</strong>. Un viaggio benedetto
+            allontana i guai; un disastro li chiama.
           </p>
-          <div className="nx-griglia alm-eventi">
-            {EVENTI.map((e) => {
-              const isOpen = openEvento === e.n;
-              return (
-                <div key={e.n} className={`nx-pannello alm-evento${isOpen ? " is-open" : ""}`} style={{ "--e-color": e.color }}>
-                  <button
-                    type="button"
-                    className="alm-evento-head"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpenEvento(isOpen ? null : e.n)}
-                  >
-                    <span className="orb alm-evento-die" aria-hidden="true">{e.n}</span>
-                    <span className="alm-evento-ic" aria-hidden="true">{e.ic}</span>
-                    <span className="nx-nome alm-evento-tipo">{e.tipo}</span>
-                    <span className="alm-evento-caret" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+          <ol className="alm-esiti">
+            {ESITI.map((e) => (
+              <li key={e.key} className="alm-esito" style={{ "--e-col": e.col }}>
+                <span className="alm-esito-ic" aria-hidden="true">{e.ic}</span>
+                <span className="alm-esito-nome">{e.label}</span>
+                <span className="alm-esito-quando">{e.quando}</span>
+                <span className="alm-esito-mod">{e.mod > 0 ? `+${e.mod}` : e.mod === 0 ? "±0" : e.mod} al d100</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* ── 3 · IL D100 DEL MASTER ── */}
+        <div className="nx-pannello alm-block">
+          <h3 className="alm-block-title"><span className="orb">3</span> Il d100 del Master — la Tavola del Destino</h3>
+          <p className="nx-prosa alm-block-note">
+            Il Master tira <strong>1d100</strong>, somma l'esito del gruppo e legge la voce sulla sua
+            Tavola: <strong>cento cose diverse</strong> che possono capitare, mescolate — nemici,
+            effetti dell'ambiente, incontri, scoperte, momenti di personaggio, sventure e fortune.
+            Dall'1 (il peggio) al 100 (il meglio). {isMaster ? "La Tavola è qui sotto, solo per te." : "La Tavola la conosce solo il Master: voi scoprite cosa esce."}
+          </p>
+          {!isMaster && (
+            <p className="alm-callout alm-callout--lock">
+              <strong>🔒 Riservato al Master.</strong> La Tavola del Destino non si sbircia: tirate bene,
+              e il destino sarà gentile.
+            </p>
+          )}
+        </div>
+
+        {/* ── LA TAVOLA DEL DESTINO — SOLO MASTER ── */}
+        {isMaster && (
+          <div id="alm-tavola" className="nx-pannello alm-block alm-tavola" aria-label="La Tavola del Destino (solo Master)">
+            <span className="nx-tag">🎯 Solo Master</span>
+            <h3 className="alm-block-title"><span className="orb orb--warn">d100</span> La Tavola del Destino</h3>
+
+            {/* il banco del tiro */}
+            <div className="alm-banco">
+              <div className="alm-banco-esiti" role="group" aria-label="Esito del gruppo">
+                {ESITI.map((e) => (
+                  <button key={e.key} type="button" className={`alm-banco-esito${esito === e.key ? " on" : ""}`} style={{ "--e-col": e.col }} onClick={() => setEsito(e.key)}>
+                    <span aria-hidden="true">{e.ic}</span> {e.label} <small>{e.mod > 0 ? `+${e.mod}` : e.mod === 0 ? "±0" : e.mod}</small>
                   </button>
-                  {isOpen && (
-                    <ol className="alm-evento-list">
-                      {e.voci.map((v, i) => (
-                        <li key={i}><span className="alm-evento-subdie" aria-hidden="true">{i + 1}</span>{v}</li>
-                      ))}
-                    </ol>
+                ))}
+              </div>
+              <div className="alm-banco-tiro">
+                <button type="button" className="cta alm-banco-btn" onClick={tiraD100} disabled={rotola}>
+                  {rotola ? "…rotola" : "Tira il d100"}
+                </button>
+                <div className={`alm-banco-ris${rotola ? " rotola" : ""}`} aria-live="polite">
+                  {tiro ? (
+                    <>
+                      <b>{tiro.tot}</b>
+                      <small>d100 {tiro.nat}{mod ? ` ${mod > 0 ? "+" : "−"} ${Math.abs(mod)}` : ""}</small>
+                    </>
+                  ) : (
+                    <small>tira e leggi la voce</small>
                   )}
                 </div>
-              );
-            })}
+              </div>
+              {tiro && !tiro.finto && (
+                <p className="alm-banco-esito-txt" style={{ "--e-col": CAT[TAVOLA[tiro.tot - 1].cat].col }}>
+                  <span aria-hidden="true">{CAT[TAVOLA[tiro.tot - 1].cat].ic}</span>
+                  <b>{tiro.tot} · {CAT[TAVOLA[tiro.tot - 1].cat].nome}.</b> {TAVOLA[tiro.tot - 1].testo}
+                </p>
+              )}
+            </div>
+
+            {/* filtro per categoria */}
+            <div className="nx-pillole alm-tavola-filtri" aria-label="Filtra per tipo">
+              <button type="button" className={`nx-pillola${!mostra ? " on" : ""}`} onClick={() => setMostra(null)}>Tutte · 100</button>
+              {Object.entries(CAT).map(([k, c]) => (
+                <button key={k} type="button" className={`nx-pillola${mostra === k ? " on" : ""}`} style={{ "--e-col": c.col }} onClick={() => setMostra(mostra === k ? null : k)}>
+                  <span aria-hidden="true">{c.ic}</span> {c.nome} · {conteggi[k]}
+                </button>
+              ))}
+            </div>
+
+            {/* le cento voci */}
+            <ol className="alm-tavola-righe">
+              {righe.map((r) => {
+                const c = CAT[r.cat];
+                const hit = tiro && !tiro.finto && tiro.tot === r.n;
+                return (
+                  <li
+                    key={r.n}
+                    ref={(el) => { righeRef.current[r.n] = el; }}
+                    className={`alm-riga${hit ? " is-hit" : ""}`}
+                    style={{ "--e-col": c.col }}
+                  >
+                    <span className="alm-riga-n">{String(r.n).padStart(2, "0")}</span>
+                    <span className="alm-riga-cat" title={c.nome} aria-label={c.nome}>{c.ic}</span>
+                    <span className="alm-riga-txt">{r.testo}</span>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-        </div>
+        )}
 
-        {/* Sfide d'ambiente */}
-        <div className="nx-pannello alm-block">
-          <h3 className="alm-block-title"><span className="orb">5</span> Le Sfide d'Ambiente — superare un ostacolo insieme</h3>
-          <p className="nx-prosa alm-block-note">
-            Quando l'evento del giorno è di tipo ambientale (un fiume in piena, una frana, una
-            tempesta) non si combatte: si supera l'ostacolo con un piccolo gioco di squadra. A turno
-            ogni PG <strong>racconta come prova a superarlo e tira un'abilità diversa</strong>
-            {" "}(difficoltà di solito 12–15). Bastano <strong>3 successi</strong> per farcela; ma se
-            arrivano <strong>3 fallimenti</strong> prima, passate comunque, pagando però un prezzo.
-          </p>
-          <div className="alm-duo">
-            <p className="alm-callout alm-callout--ok">
-              <strong>3 successi</strong> → passate, magari con un piccolo premio.
-            </p>
-            <p className="alm-callout alm-callout--ko">
-              <strong>3 fallimenti</strong> → passate lo stesso, ma con un costo: −tacche di provviste,
-              danni, Sfinimento o un evento extra.
-            </p>
-          </div>
-          <p className="nx-citazione alm-example">
-            <strong>Esempio — guado in piena:</strong> uno nuota per primo (Atletica), uno cerca il
-            punto meno profondo (Sopravvivenza), uno calma i cavalli (Addestrare Animali), uno tiene
-            le scorte all'asciutto (Arcano). Tutti partecipano, in pochi minuti reali.
-          </p>
-        </div>
-
-        {/* Ritmo */}
-        <div className="nx-pannello alm-block">
-          <h3 className="alm-block-title"><span className="orb">6</span> Il Ritmo — quando giocare e quando saltare</h3>
-          <p className="nx-prosa alm-block-note">
-            Non tutto il viaggio va giocato minuto per minuto: alterna due velocità a seconda di
-            quanto è interessante il momento.
-          </p>
-          <div className="alm-duo">
-            <p className="alm-callout">
-              <strong>Montaggio</strong> — i tratti vuoti. Una frase a giocatore («Raccontami
-              un'immagine del vostro viaggio in questi giorni») e si salta avanti.
-            </p>
-            <p className="alm-callout">
-              <strong>Zoom</strong> — i momenti caldi. La scena si gioca battuta per battuta, come in
-              un normale incontro.
-            </p>
-          </div>
-          <p className="nx-prosa alm-block-note">Regola pratica: <strong>fai lo zoom solo dove c'è una scelta o una tensione</strong>. Tutto il resto è montaggio.</p>
-        </div>
-
-        {/* Ricompense */}
-        <div className="nx-pannello alm-block">
-          <h3 className="alm-block-title"><span className="orb">7</span> Cosa Lascia il Viaggio</h3>
-          <p className="nx-prosa alm-block-note">Un viaggio deve dare qualcosa, altrimenti resta tempo perso. Di solito porta:</p>
-          <ul className="alm-rewards">
-            <li>Un <strong>gancio di trama</strong> (di norma nasce da una Scoperta).</li>
-            <li>Una <strong>scorciatoia</strong> o un <strong>contatto</strong> da usare la volta dopo.</li>
-            <li>Piccolo <strong>loot</strong> o <strong>materiali da crafting</strong>.</li>
-            <li><strong>Lore a rate</strong>, sbloccata man mano col livello.</li>
-          </ul>
-        </div>
-
-        {/* La Scala dello Sfinimento */}
+        {/* La Scala dello Sfinimento (richiamata da alcune voci) */}
         <div className="nx-pannello alm-block">
           <h3 className="alm-block-title"><span className="orb orb--warn">⚠</span> La Scala dello Sfinimento</h3>
           <p className="nx-prosa alm-block-note">
-            Correre col <strong>Passo Forzato</strong> o restare a <strong>provviste 0</strong> fa
-            accumulare livelli di <strong>Sfinimento</strong>. Gli effetti sono <strong>cumulativi</strong>:
-            chi è al livello 3 subisce anche quelli dell'1 e del 2. Un <strong>riposo lungo</strong> con
-            cibo e acqua a sufficienza toglie <strong>1 livello</strong>.
+            Alcune sventure della strada danno livelli di <strong>Sfinimento</strong>. Gli effetti sono
+            <strong> cumulativi</strong>: chi è al livello 3 subisce anche quelli dell'1 e del 2. Un
+            <strong> riposo lungo</strong> con cibo e acqua a sufficienza toglie <strong>1 livello</strong>.
           </p>
           <ol className="alm-sfin">
             {SFINIMENTO.map((s) => (
@@ -564,16 +562,15 @@ export default function Almanacco() {
           </ol>
         </div>
 
-        {/* Quick reference */}
+        {/* In breve */}
         <div className="nx-pannello alm-block alm-quick">
-          <h3 className="alm-block-title"><span className="orb">★</span> In breve: la sequenza di una giornata</h3>
+          <h3 className="alm-block-title"><span className="orb">★</span> In breve: un viaggio</h3>
           <ol className="alm-quick-steps">
-            <li>Scegliete la Rotta (2 strade con un «ma»)</li>
-            <li>Scegliete il Passo (lento / normale / forzato)</li>
-            <li>Ogni giocatore tira il proprio Ruolo</li>
-            <li>Il Master tira 1d6 + 1d6 per l'evento</li>
-            <li>Giocate la scena (zoom) o saltate (montaggio)</li>
-            <li>Aggiornate progresso e provviste</li>
+            <li>Ognuno sceglie la sua classe di viaggio</li>
+            <li>Un solo tiro a testa con l'abilità della classe (CD {CD_VIAGGIO})</li>
+            <li>Si contano successi e fallimenti → esito del gruppo</li>
+            <li>Il Master tira 1d100 + esito sulla Tavola del Destino</li>
+            <li>Si gioca la scena, poi si arriva</li>
           </ol>
         </div>
       </section>
