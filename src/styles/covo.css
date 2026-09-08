@@ -871,3 +871,37 @@ html[data-soffio="bianco"] body.covo-admin { --el:#7c3fd6; --el-2:#5b2db0; --el-
 .nesso-nav.aperto .nesso-hint { display: none; }
 @media (max-width: 699px) { .nesso-nav.aperto::before { width: 400px; height: 262px; border-radius: 200px 200px 0 0; } }
 @media (prefers-reduced-motion: reduce) { .nesso-nav.aperto::before { animation: none; } }
+
+/* ── presenza online (tastino verde del Master): niente più scatti.
+      Il clip-path esagonale + scale al hover + badge fuori dal bordo facevano
+      "vibrare" il tasto: qui il tasto è un esagono di roccia con filo verde,
+      il hover accende solo il colore (nessun transform), il pallino pulsa in
+      opacità (non in box-shadow, che il clip tagliava), il contatore sta dentro. ── */
+body .online-fab {
+  width: 52px !important; height: 52px !important; border-radius: 0 !important; border: 0 !important;
+  clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+  background: linear-gradient(160deg, var(--roccia-3), var(--roccia)) !important;
+  box-shadow: none !important; transform: none !important;
+  transition: background .2s ease, opacity .2s ease !important;
+  animation: none !important; overflow: hidden;
+}
+body .online-fab::before {
+  content: ""; position: absolute; inset: 1px; clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+  box-shadow: inset 0 0 0 1px #4fbf5a; pointer-events: none;
+}
+body .online-fab:hover, body .online-fab.open { transform: none !important; background: linear-gradient(160deg, #3f9a49, #1f5a26) !important; box-shadow: none !important; }
+body .online-fab-dot { width: 12px; height: 12px; background: #8cff8c; box-shadow: 0 0 6px #8cff8c; animation: online-respira 2.2s ease-in-out infinite; }
+@keyframes online-respira { 0%, 100% { opacity: .55; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
+body .online-fab-count {
+  top: 6px !important; right: 9px !important; min-width: 16px; height: 16px; border-radius: 2px; border: 0;
+  background: var(--el) !important; color: var(--ossidiana) !important; font: 800 .6rem var(--font-num) !important; padding: 0 4px;
+}
+/* il pannello: pietra e osso, testo leggibile (era bianco con verde scuro) */
+body:not(.theme-dark) .online-popup { padding: 12px 0 6px; font-family: var(--font-ui); color: var(--osso); }
+body:not(.theme-dark) .online-popup-title { color: var(--el-2); font: 700 .68rem var(--font-sc); letter-spacing: .16em; text-transform: uppercase; border-bottom: 1px solid var(--roccia-3); }
+body:not(.theme-dark) .online-dot-sm { background: #8cff8c; box-shadow: 0 0 6px #8cff8c; }
+body:not(.theme-dark) .online-popup-empty { color: var(--osso-2); font-style: italic; }
+body:not(.theme-dark) .online-popup-row { border-bottom: 1px solid var(--roccia-3); }
+body:not(.theme-dark) .online-popup-name { color: var(--osso); font-family: var(--font-ui); }
+body:not(.theme-dark) .online-popup-time { color: #8cff8c; font-family: var(--font-sc); letter-spacing: .06em; }
+@media (prefers-reduced-motion: reduce) { body .online-fab-dot { animation: none; } }
