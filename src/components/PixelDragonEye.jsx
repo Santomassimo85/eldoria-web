@@ -168,10 +168,14 @@ export default function PixelDragonEye() {
       const r = cv.getBoundingClientRect();
       if (!r.width) return;
       lastPointer = performance.now();
-      const dx = (e.clientX - (r.left + r.width / 2)) / window.innerWidth;
-      const dy = (e.clientY - (r.top + r.height / 2)) / window.innerHeight;
-      st.tx = Math.max(-6, Math.min(6, dx * 14));
-      st.ty = Math.max(-4, Math.min(4, dy * 10));
+      // normalizzato sulla distanza tra l'occhio e il bordo dello schermo in
+      // quella direzione: ogni angolo dello schermo = sguardo tutto da quel lato
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const ex = e.clientX - cx, ey = e.clientY - cy;
+      const dx = ex / Math.max(80, ex > 0 ? window.innerWidth - cx : cx);
+      const dy = ey / Math.max(80, ey > 0 ? window.innerHeight - cy : cy);
+      st.tx = Math.max(-9, Math.min(9, dx * 9));
+      st.ty = Math.max(-6, Math.min(6, dy * 6));
       wake();
     };
     window.addEventListener("pointermove", onMove, { passive: true });
