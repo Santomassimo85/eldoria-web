@@ -1290,3 +1290,158 @@ body .arena-page.arena-page .arena-reward-deco {
 @media (prefers-reduced-motion: reduce) {
   .arena-page .vs, .arena-page .fulmine, .arena-page .nx-btn--turno { animation: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER 11 — HUB SEMPLIFICATO nel COVO (2026-09-09)
+   "Tutto molto caotico": stessi pezzi (testata, palco VS, programma,
+   classifica) ma con DUE pesi visivi invece di dieci blocchi uguali.
+   · Testata: il tabellone non è più una pila di pillole-input ma UNA riga di
+     fatti separati da punti (fase · sfidanti · campioni · in palio).
+   · Programma: 4 piastrelle grandi (lizza, tabellone, bottega, libera) +
+     una fila di targhette a una riga per le voci minori ("Altro").
+   · Classifica: un blocco solo, righe separate da filo, numero in Cinzel.
+   · Rubriche: titolo in Grenze Gotisch (come tutto il sito), filo del respiro.
+   Solo token del covo. Importato dopo LAYER 10 → vince in cascata.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.arena-page .arena-bill-mast { gap: 10px; padding: 22px 16px 4px; }
+.arena-page .abm-eyebrow {
+  font-family: "Alegreya SC", "Alegreya", serif; font-weight: 700;
+  font-size: .74rem; letter-spacing: .3em; text-transform: lowercase; font-variant: small-caps;
+  color: var(--el-2); text-shadow: none; margin-bottom: 2px;
+}
+.arena-page .abm-title {
+  font-family: "Grenze Gotisch", "Cinzel", serif;
+  font-size: clamp(2.3rem, 6.5vw, 3.8rem); line-height: .98; letter-spacing: .01em;
+  background: linear-gradient(180deg, var(--osso) 55%, var(--osso-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: none;
+}
+.arena-page .abm-tag { color: var(--osso-2); font-size: 1rem; max-width: 46ch; }
+
+/* il tabellone: UNA riga di fatti, niente scatole */
+.arena-page .abm-board {
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 4px 0; margin-top: 6px; padding: 8px 6px;
+  border-top: 1px solid var(--roccia-3); border-bottom: 1px solid var(--roccia-3);
+  max-width: 720px; width: 100%;
+}
+.arena-page .abm-board-row {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 12px; border: 0; border-radius: 0; background: none;
+  font-family: "Alegreya", Georgia, serif; font-size: .92rem; font-weight: 400; color: var(--osso-2);
+}
+.arena-page .abm-board-row + .abm-board-row { position: relative; }
+.arena-page .abm-board-row + .abm-board-row::before {
+  content: "·"; position: absolute; left: -3px; top: 50%; transform: translateY(-50%);
+  color: var(--el-2); font-weight: 700;
+}
+.arena-page .abm-board-phase { padding: 2px 12px; }
+.arena-page .abm-board-phase .arune-pill { padding: 3px 10px; font-size: .7rem; border-radius: 0; letter-spacing: .12em; }
+.arena-page .abm-board-lab {
+  font-family: "Alegreya SC", "Alegreya", serif; font-weight: 700;
+  font-size: .78rem; letter-spacing: .14em; text-transform: lowercase; font-variant: small-caps; color: var(--osso-3);
+}
+.arena-page .abm-board-val { font-family: "Cinzel", Georgia, serif; font-size: .95rem; font-weight: 700; color: var(--osso); text-shadow: none; font-variant-numeric: tabular-nums; }
+/* il premio sta sempre su una riga sua, centrata, senza il punto separatore */
+.arena-page .abm-board-prize { flex-basis: 100%; justify-content: center; flex-wrap: wrap; max-width: 100%; }
+.arena-page .abm-board-prize::before { display: none; }
+.arena-page .abm-board-prizetxt { color: var(--el-2); font-size: .92rem; text-align: center; }
+
+/* rubriche: titolo del covo + filo del respiro */
+.arena-page .sezione-t { margin: 30px 0 12px; }
+.arena-page .sezione-t h2 {
+  font-family: "Grenze Gotisch", "Cinzel", serif; font-weight: 700;
+  font-size: 1.5rem; letter-spacing: .01em; text-transform: none;
+  color: var(--osso); text-shadow: none;
+}
+.arena-page .sezione-t i { background: linear-gradient(90deg, rgba(var(--el-rgb), .7), transparent); }
+
+/* PROGRAMMA: 4 piastrelle grandi = blocchi del covo (bordo alto acceso, artigli) */
+.arena-page .arena-portali { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.arena-page .pozione {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--roccia-3); border-top: 3px solid var(--el); border-radius: 0;
+  padding: 18px 16px 16px;
+  box-shadow: 0 20px 40px -24px #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+  transition: transform .25s, box-shadow .25s, border-color .6s;
+}
+.arena-page .pozione:hover:not(:disabled) {
+  transform: translateY(-4px); border-color: var(--roccia-3); border-top-color: var(--el);
+  box-shadow: 0 26px 46px -22px #000, 0 0 40px -14px rgba(var(--el-rgb), .6);
+}
+.arena-page .pozione::after {
+  content: ""; position: absolute; right: -40px; top: -20px; width: 140px; height: 140px; pointer-events: none; opacity: 0; z-index: 1;
+  transform: translate(30px, -30px) rotate(-25deg); transition: opacity .35s, transform .45s ease-out;
+  background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(var(--el-rgb), .55) 22px 26px, transparent 26px 48px);
+  -webkit-mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent); mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
+  filter: blur(.4px);
+}
+.arena-page .pozione:hover:not(:disabled)::after { opacity: 1; transform: translate(0, 0) rotate(-25deg); }
+.arena-page .pozione .ico { font-size: 1.6rem; filter: drop-shadow(0 0 10px rgba(var(--el-rgb), .6)); }
+.arena-page .pozione h4 {
+  font-family: "Grenze Gotisch", "Cinzel", serif; font-weight: 700;
+  font-size: 1.3rem; line-height: 1.05; letter-spacing: .01em; color: var(--el-2); margin-top: 6px;
+}
+.arena-page .pozione .sub { font-size: .88rem; color: var(--osso-2); margin-top: 5px; }
+.arena-page .pozione--off { opacity: .45; }
+.arena-page .pozione--off h4 { color: var(--osso-3); }
+
+/* voci MINORI: una fila di targhette a una riga */
+.arena-page .arena-portali--minori {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 12px;
+}
+.arena-page .arena-portali-lab {
+  font-family: "Alegreya SC", "Alegreya", serif; font-weight: 700;
+  font-size: .78rem; letter-spacing: .22em; text-transform: lowercase; font-variant: small-caps;
+  color: var(--osso-3); margin-right: 6px;
+}
+.arena-page .pozione--minore {
+  flex-direction: row; align-items: center; gap: 8px;
+  padding: 7px 12px 7px 9px;
+  background: rgba(var(--roccia-rgb), .85);
+  border: 1px solid var(--roccia-3); border-top-width: 1px; border-top-color: var(--roccia-3);
+  box-shadow: none; overflow: visible;
+}
+.arena-page .pozione--minore::after { display: none; }
+.arena-page .pozione--minore:hover:not(:disabled) { transform: none; border-color: var(--el); box-shadow: none; }
+.arena-page .pozione--minore .ico { font-size: .95rem; filter: none; }
+.arena-page .pozione--minore h4 { margin: 0; font-family: "Alegreya", Georgia, serif; font-weight: 600; font-size: .9rem; color: var(--osso); letter-spacing: 0; }
+.arena-page .pozione--minore:hover:not(:disabled) h4 { color: var(--el-2); }
+
+/* CLASSIFICA: un blocco solo, righe a filo */
+.arena-page .scala {
+  gap: 0;
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
+  border: 1px solid var(--roccia-3); border-top: 3px solid var(--el);
+  box-shadow: 0 20px 40px -24px #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+  padding: 2px 16px;
+}
+.arena-page .grado {
+  gap: 14px; padding: 11px 0; border-radius: 0;
+  background: none; border: 0; border-bottom: 1px solid var(--roccia-3);
+  transition: background .2s;
+}
+.arena-page .grado:last-child { border-bottom: 0; }
+.arena-page .grado:hover { transform: none; background: rgba(var(--el-rgb), .05); }
+.arena-page .grado .orb {
+  width: 26px; height: 26px; border-radius: 0;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .8rem;
+  color: var(--el-2); background: none; border: 1px solid var(--roccia-3);
+}
+.arena-page .grado:first-child .orb { color: var(--ossidiana); background: linear-gradient(180deg, var(--el-2), var(--el)); border-color: transparent; box-shadow: 0 0 18px -4px var(--el); }
+.arena-page .grado b { font-family: "Alegreya", Georgia, serif; font-size: 1rem; }
+.arena-page .grado > span:last-child { font-family: "Cinzel", Georgia, serif; font-size: .78rem; color: var(--osso-2); font-variant-numeric: tabular-nums; }
+
+/* palco VS: le sagome vuote non urlano */
+.arena-page .gladiatore--vuoto { opacity: .55; }
+.arena-page .vs-attesa { font-size: 1rem; color: var(--osso-2); font-style: italic; }
+
+@media (max-width: 640px) {
+  .arena-page .arena-portali { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .arena-page .pozione { padding: 14px 10px 12px; }
+  .arena-page .pozione h4 { font-size: 1.1rem; }
+  .arena-page .pozione .sub { font-size: .8rem; }
+  .arena-page .pozione--minore { padding: 6px 10px 6px 8px; }
+  .arena-page .pozione--minore h4 { font-size: .84rem; }
+}

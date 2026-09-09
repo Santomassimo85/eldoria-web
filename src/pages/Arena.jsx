@@ -9640,7 +9640,7 @@ export default function Arena() {
           },
           {
             key: "bottega", title: "Bottega Settimanale",
-            sub: "Oggetti, spell, armi e pet in vendita fino a domenica — solo tornei",
+            sub: "Armi, incantesimi, oggetti e pet · fino a domenica",
             href: "/arena-bottega",
           },
           { key: "libera", title: "Arena Libera", sub: "Sfide 1v1 d'allenamento, senza bonus della Bottega", onClick: () => setArenaView("libera") },
@@ -9738,27 +9738,44 @@ export default function Arena() {
               </div>
             )}
 
-            {/* Programma della serata: PIASTRELLE (prototipo J), una per voce.
+            {/* Programma della serata (Covo, 2026-09-09): DUE pesi, non dieci
+                piastrelle uguali. Le 4 voci che portano a GIOCARE (lizza,
+                tabellone, bottega, libera) restano piastrelle con la nota; le
+                altre (gesta, albo, regole, dadi, scommesse, master) sono una
+                fila di targhette a una riga sotto la rubrica "Altro".
                 NB: <div role="navigation">, NON <nav> — shell.css trasforma ogni
                 <nav> nel drawer di sito. */}
-            <div className="sezione-t"><h2>Programma della Serata</h2><i aria-hidden="true" /></div>
-            <div role="navigation" className="arena-portali" aria-label="Programma dell'Arena">
-              {program.map((row) => {
+            {(() => {
+              const PRIMARIE = ["join", "bracket", "bottega", "libera"];
+              const primari = program.filter((r) => PRIMARIE.includes(r.key));
+              const minori = program.filter((r) => !PRIMARIE.includes(r.key));
+              const voce = (row, compatta) => {
+                const cls = `pozione${compatta ? " pozione--minore" : ""}${row.disabled ? " pozione--off" : ""}`;
                 const inner = (<>
                   <span className="ico" aria-hidden="true">{ICO[row.key] || "✦"}</span>
                   <h4>{row.title}</h4>
-                  <div className="sub">{row.sub}</div>
+                  {!compatta && <div className="sub">{row.sub}</div>}
                 </>);
-                if (row.href) {
-                  return <a key={row.key} className="pozione" href={row.href}>{inner}</a>;
-                }
+                if (row.href) return <a key={row.key} className={cls} href={row.href} title={compatta ? row.sub : undefined}>{inner}</a>;
                 return (
-                  <button key={row.key} type="button" className={`pozione${row.disabled ? " pozione--off" : ""}`} disabled={row.disabled} onClick={row.onClick}>
+                  <button key={row.key} type="button" className={cls} disabled={row.disabled} onClick={row.onClick} title={compatta ? row.sub : undefined}>
                     {inner}
                   </button>
                 );
-              })}
-            </div>
+              };
+              return (<>
+                <div className="sezione-t"><h2>Programma della Serata</h2><i aria-hidden="true" /></div>
+                <div role="navigation" className="arena-portali" aria-label="Programma dell'Arena">
+                  {primari.map((row) => voce(row, false))}
+                </div>
+                {minori.length > 0 && (
+                  <div role="navigation" className="arena-portali arena-portali--minori" aria-label="Altre voci dell'Arena">
+                    <span className="arena-portali-lab">Altro</span>
+                    {minori.map((row) => voce(row, true))}
+                  </div>
+                )}
+              </>);
+            })()}
 
             {/* La SCALA: classifica generale a punti dei tornei (già calcolata) */}
             {arenaLeaderboard.length > 0 && (<>
