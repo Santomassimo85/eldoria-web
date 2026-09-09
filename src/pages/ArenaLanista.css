@@ -1,0 +1,265 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   src/pages/ArenaLanista.css — REGISTRO DEL LANISTA (vista "master") LEGGIBILE
+   (2026-09-09). Per il master "Entra in Lizza" apre questo pannello: era
+   4.500px sul telefono (editor premi a tre riquadri, card annidate, toolbar
+   a scatole dentro scatole, zona pericolo sempre aperta, etichette in Grenze
+   maiuscolo spaziato). Ora, importato per ULTIMO:
+   · ISCRITTI in cima: righe strette, "Solo Campioni" a una riga, gestione a
+     tastini fantasma
+   · le DUE LEVE (entra / dai inizio) affiancate
+   · Riserve · Ricompensa · Pericolo = PIEGHE (details) — aperte su desktop,
+     chiuse sul telefono; il pericolo è sempre chiuso
+   · strumenti (titoli / statistiche) = 3 chip in una riga
+   · etichette in Alegreya SC, titoli in Grenze Gotisch, CTA lama del covo
+   Solo token del covo. L'#id batte la specificità 3×.arena-page del Nesso;
+   !important dove il Nesso lo usa.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── CONTENITORE: un solo foglio, niente doppi filetti ── */
+body .arena-page #arena-master-panel {
+  border: 0 !important; padding: 8px 0 18px !important; margin: 0 auto 10px !important;
+  max-width: 920px !important;
+  display: flex; flex-direction: column; gap: 10px;
+}
+body .arena-page #arena-master-panel .master-mast { margin: 0 0 2px !important; padding: 0 !important; border: 0 !important; text-align: left !important; }
+body .arena-page #arena-master-panel .master-mast-eyebrow {
+  font-family: var(--font-sc, "Alegreya SC", serif) !important; font-variant: small-caps !important; text-transform: lowercase !important;
+  font-size: .84rem !important; letter-spacing: .14em !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2) !important; margin: 0 !important;
+  text-shadow: none !important;
+}
+body .arena-page #arena-master-panel .master-panel-title {
+  font-family: var(--font-title, "Grenze Gotisch", serif) !important; font-size: 1.7rem !important;
+  text-transform: none !important; letter-spacing: 0 !important; line-height: 1.1;
+  text-align: left !important; border: 0 !important; padding: 0 !important;
+  background: linear-gradient(180deg, var(--osso) 55%, var(--osso-2)) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  color: var(--osso) !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important;
+}
+body .arena-page #arena-master-panel .master-panel-title::after, body .arena-page #arena-master-panel .master-mast::after { display: none !important; }
+body .arena-page #arena-master-panel .master-crown { font-size: 1.1rem; vertical-align: .12em; }
+
+/* ── BLOCCHI del covo (bordo alto acceso) ── */
+body .arena-page #arena-master-panel :is(.lan-blocco, .master-toolbar, .lan-piega, .master-join-setup) {
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)) !important;
+  border: 1px solid var(--roccia-3) !important; border-top: 3px solid var(--el) !important; border-radius: 0 !important;
+  box-shadow: 0 20px 40px -24px #000, inset 0 1px 0 rgba(255, 255, 255, .05) !important;
+  margin: 0 !important; padding: 12px 14px 14px !important;
+}
+body .arena-page #arena-master-panel .lan-pericolo { border-top-color: var(--sangue) !important; }
+body .arena-page #arena-master-panel .master-join-setup { border-top-color: var(--el-2) !important; }
+
+/* ── ETICHETTE: maiuscoletto Alegreya SC, niente Grenze spaziato ── */
+body .arena-page #arena-master-panel :is(.col-label, .master-group-label, .reserve-slot-idx, .arena-prize-tier-label,
+  .arena-reward-label, .arena-prize-field > span, .loadout-save-label, .p-class) {
+  font-family: var(--font-sc, "Alegreya SC", serif) !important; font-variant: small-caps !important; text-transform: lowercase !important;
+  letter-spacing: .1em !important; font-size: .84rem !important; font-weight: 700 !important;
+  color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2);
+  text-shadow: none !important; background: none !important;
+}
+body .arena-page #arena-master-panel :is(.col-label, .master-group-label)::after { display: none !important; }
+body .arena-page #arena-master-panel .master-group-label { display: block; margin: 0 0 4px !important; padding: 0 !important; line-height: 1.2 !important; }
+body .arena-page #arena-master-panel .col-label { margin: 0 0 6px !important; padding: 0 0 4px !important; border-bottom: 1px solid var(--roccia-3) !important; }
+body .arena-page #arena-master-panel .empty-note { font-family: var(--font-ui, "Alegreya", serif); font-size: .88rem; color: var(--osso-3); margin: 2px 0 8px; }
+
+/* ── ISCRITTI: due colonne piatte (niente card nella card) ── */
+body .arena-page #arena-master-panel .master-sections {
+  border: 0 !important; padding: 0 !important; margin: 0 !important; gap: 8px 18px !important;
+}
+body .arena-page #arena-master-panel .master-col { padding: 0 !important; border: 0 !important; background: none !important; }
+body .arena-page #arena-master-panel :is(.participant-tag, .approval-row) {
+  padding: 6px 8px !important; margin: 0 0 4px !important; gap: 8px !important;
+  background: rgba(var(--ossidiana-rgb), .45) !important; border: 1px solid var(--roccia-3) !important; border-radius: 0 !important;
+  font-family: var(--font-ui, "Alegreya", serif) !important; flex-wrap: nowrap !important;
+}
+body .arena-page #arena-master-panel .p-name { font-size: .95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body .arena-page #arena-master-panel .p-class { font-size: .74rem !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3); font-weight: 400 !important; }
+body .arena-page #arena-master-panel .p-title-badge { font-size: .7rem; }
+/* "solo campioni": una riga, l'etichetta "opzioni" sparisce */
+body .arena-page #arena-master-panel .prize-editor { padding: 6px 0 0 !important; margin: 0 !important; border: 0 !important; background: none !important; }
+body .arena-page #arena-master-panel .prize-editor > .col-label { display: none !important; }
+body .arena-page #arena-master-panel .champions-only-toggle {
+  border: 0 !important; background: none !important; padding: 4px 0 !important; margin: 0 !important;
+  font-family: var(--font-ui, "Alegreya", serif) !important; font-size: .9rem !important; color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2);
+}
+body .arena-page #arena-master-panel .champions-only-toggle input { accent-color: var(--el) !important; width: 17px !important; height: 17px !important; flex: 0 0 auto; }
+/* gestione: tastini fantasma in riga; sparisce se non c'è nulla da fare */
+body .arena-page #arena-master-panel .lan-iscritti .master-action-group { flex: none; gap: 4px; padding: 6px 0 0 !important; }
+body .arena-page #arena-master-panel .lan-iscritti .master-action-group:not(:has(button)) { display: none !important; }
+body .arena-page #arena-master-panel .lan-iscritti .master-action-group .master-group-label { font-size: .74rem !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3); }
+
+/* ── AZIONI: niente scatole dentro scatole ── */
+body .arena-page #arena-master-panel .master-actions {
+  display: flex !important; flex-wrap: wrap; gap: 6px !important;
+  padding: 0 !important; margin: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important;
+  justify-content: flex-start !important;
+}
+body .arena-page #arena-master-panel .master-action-group { padding: 0 !important; border: 0 !important; background: none !important; gap: 6px; flex: 1 1 auto; }
+body .arena-page #arena-master-panel .master-toolbar { display: flex !important; gap: 8px !important; }
+body .arena-page #arena-master-panel .master-toolbar .master-group-label { flex: 1 1 100%; }
+body .arena-page #arena-master-panel .master-toolbar .master-actions > * { flex: 1 1 200px; }
+body .arena-page #arena-master-panel .master-join-status {
+  font-family: var(--font-ui, "Alegreya", serif); font-size: .9rem; color: var(--osso-2); padding: 8px 10px;
+  border: 1px dashed var(--roccia-4); background: rgba(var(--ossidiana-rgb), .4);
+}
+
+/* ── BOTTONI: lama (avanti) e fantasma (utility) ── */
+body .arena-page #arena-master-panel :is(.btn-master-join, .btn-start-tournament, .btn-advance-round, .btn-approve, .arena-reward-save, .btn-timer-play, .btn-timer-pause, .btn-join) {
+  border-radius: 4px !important; border: 0 !important;
+  font-family: var(--font-num, "Cinzel", serif) !important; font-weight: 700 !important;
+  font-size: .7rem !important; letter-spacing: .1em !important; text-transform: uppercase !important;
+  color: var(--ossidiana) !important; -webkit-text-fill-color: var(--ossidiana);
+  background: linear-gradient(180deg, var(--el-2), var(--el)) !important;
+  box-shadow: 0 0 24px -8px var(--el), inset 0 1px 0 rgba(255, 255, 255, .4) !important;
+  text-shadow: none !important; padding: 11px 16px !important; justify-content: center;
+}
+body .arena-page #arena-master-panel :is(.btn-master-join, .btn-start-tournament, .btn-advance-round, .btn-approve, .arena-reward-save, .btn-timer-play, .btn-timer-pause, .btn-join)::before,
+body .arena-page #arena-master-panel :is(.btn-master-join, .btn-start-tournament, .btn-advance-round, .btn-approve, .arena-reward-save, .btn-timer-play, .btn-timer-pause, .btn-join)::after { display: none !important; }
+body .arena-page #arena-master-panel :is(.btn-start-tournament, .btn-advance-round, .btn-join):disabled {
+  background: transparent !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3);
+  border: 1px solid var(--roccia-3) !important; box-shadow: none !important; opacity: 1 !important;
+}
+body .arena-page #arena-master-panel .btn-approve { padding: 6px 12px !important; font-size: .62rem !important; flex: 0 0 auto; }
+body .arena-page #arena-master-panel :is(.btn-bench-all, .btn-clear-waiting, .btn-bench-one, .btn-reset, .reserve-slot-recreate, .reserve-slot-del, .reserve-slot-plus, .btn-cancel-loadout, .btn-auto-generate, .btn-save-slot) {
+  border-radius: 4px !important; background: transparent !important;
+  border: 1px solid var(--roccia-4) !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso);
+  font-family: var(--font-num, "Cinzel", serif) !important; font-size: .64rem !important; letter-spacing: .08em !important; text-transform: uppercase !important;
+  box-shadow: none !important; text-shadow: none !important; padding: 8px 12px !important; opacity: 1 !important;
+}
+body .arena-page #arena-master-panel :is(.btn-bench-all, .btn-clear-waiting, .btn-reset, .reserve-slot-recreate, .btn-cancel-loadout, .btn-auto-generate, .btn-save-slot):hover { border-color: var(--el) !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); }
+body .arena-page #arena-master-panel .btn-bench-one { width: 28px !important; height: 28px !important; padding: 0 !important; border-radius: 4px !important; flex: 0 0 auto; }
+body .arena-page #arena-master-panel .btn-reset { border-color: rgba(var(--sangue-rgb, 179, 38, 30), .6) !important; color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2); }
+body .arena-page #arena-master-panel .btn-reset:hover { border-color: var(--sangue) !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso); background: rgba(var(--sangue-rgb, 179, 38, 30), .12) !important; }
+body .arena-page #arena-master-panel .lan-pericolo .master-actions { flex-direction: column; align-items: stretch !important; }
+body .arena-page #arena-master-panel .lan-pericolo .btn-reset { width: 100%; align-self: stretch !important; }
+body .arena-page #arena-master-panel .lan-pericolo .master-danger-group { border: 0 !important; background: none !important; padding: 0 !important; }
+
+/* ── PIEGHE (details): testata cliccabile con freccia ── */
+body .arena-page #arena-master-panel .lan-piega { padding: 0 !important; }
+body .arena-page #arena-master-panel .lan-piega > :not(summary) { margin: 0 14px 14px !important; }
+body .arena-page #arena-master-panel .lan-piega-testa {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px; min-width: 0;
+  font-family: var(--font-title, "Grenze Gotisch", serif); font-size: 1.15rem; font-weight: 700; color: var(--osso);
+}
+body .arena-page #arena-master-panel .lan-piega-testa::-webkit-details-marker { display: none; }
+body .arena-page #arena-master-panel .lan-piega-testa::after {
+  content: ""; margin-left: auto; flex: 0 0 auto;
+  width: 8px; height: 8px; border-right: 2px solid var(--el-2); border-bottom: 2px solid var(--el-2);
+  transform: rotate(-45deg); transition: transform .25s ease;
+}
+body .arena-page #arena-master-panel .lan-piega[open] > .lan-piega-testa::after { transform: rotate(45deg); }
+body .arena-page #arena-master-panel .lan-piega[open] > .lan-piega-testa { border-bottom: 1px solid var(--roccia-3); margin-bottom: 12px; }
+body .arena-page #arena-master-panel .lan-piega-ico { font-size: 1.05rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(var(--el-rgb), .5)); }
+body .arena-page #arena-master-panel .lan-piega-tit { white-space: nowrap; }
+body .arena-page #arena-master-panel .lan-piega-sub {
+  font-family: var(--font-ui, "Alegreya", serif); font-size: .84rem; font-weight: 400; color: var(--osso-3);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+body .arena-page #arena-master-panel .lan-pericolo .lan-piega-testa::after { border-color: var(--sangue); }
+
+/* ── RISERVE: chip compatti ── */
+body .arena-page #arena-master-panel .reserve-slots-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important; gap: 8px !important; }
+body .arena-page #arena-master-panel .reserve-slot {
+  padding: 8px 10px !important; gap: 2px !important; border-radius: 0 !important;
+  background: rgba(var(--ossidiana-rgb), .45) !important; border: 1px solid var(--roccia-3) !important;
+  font-family: var(--font-ui, "Alegreya", serif) !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso);
+}
+body .arena-page #arena-master-panel .reserve-slot--filled { border-left: 3px solid var(--el) !important; }
+body .arena-page #arena-master-panel .reserve-slot--empty { border-style: dashed !important; flex-direction: row !important; justify-content: center; gap: 8px !important; min-height: 44px; cursor: pointer; }
+body .arena-page #arena-master-panel .reserve-slot--empty:hover { border-color: var(--el) !important; }
+body .arena-page #arena-master-panel .reserve-slot-plus { border: 0 !important; padding: 0 !important; font-size: 1rem !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); background: none !important; }
+body .arena-page #arena-master-panel .reserve-slot-idx { font-size: .74rem !important; letter-spacing: .08em !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3); }
+body .arena-page #arena-master-panel .reserve-slot--empty .reserve-slot-idx { color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2); font-size: .84rem !important; }
+body .arena-page #arena-master-panel .reserve-slot-name { font-family: var(--font-title, "Grenze Gotisch", serif) !important; font-size: 1.05rem !important; line-height: 1.1; }
+body .arena-page #arena-master-panel .reserve-slot-meta { font-size: .78rem !important; color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2); }
+body .arena-page #arena-master-panel .reserve-slot-actions { margin-top: 5px; gap: 5px; }
+body .arena-page #arena-master-panel :is(.reserve-slot-recreate, .reserve-slot-del) { padding: 5px 10px !important; font-size: .6rem !important; }
+
+/* ── RICOMPENSA: righe, non riquadri ── */
+body .arena-page #arena-master-panel .arena-reward-editor { display: flex; flex-direction: column; gap: 8px; }
+body .arena-page #arena-master-panel .arena-reward-textarea {
+  border-radius: 0 !important; border: 1px solid var(--roccia-3) !important; background: rgba(var(--ossidiana-rgb), .55) !important;
+  color: var(--osso) !important; -webkit-text-fill-color: var(--osso); font-family: var(--font-ui, "Alegreya", serif) !important; font-size: .9rem !important;
+  padding: 8px 10px !important; box-shadow: none !important; margin: 0 !important;
+}
+body .arena-page #arena-master-panel .arena-prize-tiers { display: flex !important; flex-direction: column; gap: 6px !important; }
+body .arena-page #arena-master-panel .arena-prize-tier {
+  display: grid; grid-template-columns: 120px 1fr; align-items: start; gap: 4px 10px;
+  padding: 8px 10px !important; border-radius: 0 !important;
+  background: rgba(var(--ossidiana-rgb), .45) !important; border: 1px solid var(--roccia-3) !important; border-left: 3px solid var(--el) !important;
+}
+body .arena-page #arena-master-panel .arena-prize-tier-label { margin: 0 !important; padding-top: 6px; font-size: .9rem !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso); }
+body .arena-page #arena-master-panel .arena-prize-tier-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+body .arena-page #arena-master-panel .arena-prize-field { display: flex !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; font-size: .78rem !important; }
+body .arena-page #arena-master-panel .arena-prize-field--wide { flex-direction: column !important; align-items: stretch !important; gap: 3px !important; }
+body .arena-page #arena-master-panel .arena-prize-field--wide input { width: 100% !important; text-align: left; }
+body .arena-page #arena-master-panel .arena-prize-field > span { flex: 0 0 auto; font-size: .76rem !important; font-weight: 400 !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3); }
+body .arena-page #arena-master-panel .arena-prize-field--wide { grid-column: 1 / -1; }
+body .arena-page #arena-master-panel .arena-prize-field input {
+  flex: 1 1 auto; min-width: 0; width: auto !important; padding: 6px 8px !important; border-radius: 0 !important;
+  border: 1px solid var(--roccia-3) !important; background: rgba(var(--ossidiana-rgb), .55) !important;
+  color: var(--osso) !important; -webkit-text-fill-color: var(--osso); font-family: var(--font-num, "Cinzel", serif) !important; font-size: .85rem !important; box-shadow: none !important;
+}
+body .arena-page #arena-master-panel .arena-prize-field input[type="text"] { font-family: var(--font-ui, "Alegreya", serif) !important; font-size: .88rem !important; }
+body .arena-page #arena-master-panel .arena-reward-hint { font-family: var(--font-ui, "Alegreya", serif); font-size: .82rem; line-height: 1.4; color: var(--osso-3); margin: 0; border-left: 3px solid var(--el-deep); padding: 2px 0 2px 10px; }
+body .arena-page #arena-master-panel .arena-reward-save { align-self: flex-start; margin: 2px 0 0 !important; }
+body .arena-page #arena-master-panel .arena-reward-current { margin: 0 !important; font-size: .84rem !important; color: var(--osso-2) !important; -webkit-text-fill-color: var(--osso-2); }
+
+/* ── ENTRA NELL'ARENA (nome + classe) ── */
+body .arena-page #arena-master-panel .master-join-setup { display: flex; flex-direction: column; gap: 8px; }
+body .arena-page #arena-master-panel .master-join-setup-title { font-family: var(--font-title, "Grenze Gotisch", serif) !important; font-size: 1.2rem !important; margin: 0 !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso); text-transform: none !important; letter-spacing: 0 !important; }
+body .arena-page #arena-master-panel :is(.master-join-input, .master-join-select) {
+  border-radius: 0 !important; border: 1px solid var(--roccia-3) !important; background: rgba(var(--ossidiana-rgb), .55) !important;
+  color: var(--osso) !important; -webkit-text-fill-color: var(--osso); font-family: var(--font-ui, "Alegreya", serif) !important; font-size: .95rem !important; padding: 9px 10px !important; box-shadow: none !important;
+}
+body .arena-page #arena-master-panel .master-join-setup-actions { gap: 6px; }
+body .arena-page #arena-master-panel .master-join-setup-actions .btn-join { margin-left: auto; }
+
+/* ── STRUMENTI (titoli / statistiche): chip in una riga ── */
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-row { max-width: 920px !important; gap: 8px !important; margin: 0 auto 16px !important; grid-template-columns: repeat(3, 1fr) !important; }
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger {
+  padding: 10px 12px !important; gap: 10px !important; border-radius: 0 !important;
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)) !important; border: 1px solid var(--roccia-3) !important; border-top: 3px solid var(--roccia-4) !important;
+}
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger:hover { transform: none !important; border-top-color: var(--el) !important; box-shadow: 0 0 22px -10px rgba(var(--el-rgb), .8) !important; }
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-icon { width: 34px !important; height: 34px !important; border-radius: 0 !important; font-size: 1rem !important; background: rgba(var(--ossidiana-rgb), .5) !important; border: 1px solid var(--roccia-4) !important; box-shadow: none !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); }
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-title { font-family: var(--font-title, "Grenze Gotisch", serif) !important; font-size: 1rem !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso); }
+body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-sub { font-family: var(--font-ui, "Alegreya", serif) !important; font-size: .78rem !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SMARTPHONE (≤760px): una schermata — testata via, pieghe chiuse, tutto stretto
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+  body .arena-page #arena-master-panel { padding: 0 0 10px !important; gap: 8px; }
+  body .arena-page #arena-master-panel .master-panel-title { font-size: 1.45rem !important; }
+  body .arena-page #arena-master-panel :is(.lan-blocco, .master-toolbar, .master-join-setup) { padding: 10px 10px 12px !important; }
+  body .arena-page #arena-master-panel .master-sections { gap: 8px !important; }
+  body .arena-page #arena-master-panel :is(.participant-tag, .approval-row) { padding: 5px 8px !important; }
+  body .arena-page #arena-master-panel .p-title-badge { display: none; }
+  body .arena-page #arena-master-panel .champions-only-toggle { font-size: .84rem !important; }
+  body .arena-page #arena-master-panel .lan-iscritti .master-action-group { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  body .arena-page #arena-master-panel .lan-iscritti .master-group-label { display: none !important; }
+  /* le due leve: affiancate, il centro resta libero */
+  body .arena-page #arena-master-panel .master-toolbar .master-group-label { display: none !important; }
+  body .arena-page #arena-master-panel .master-toolbar .master-actions > * { flex: 1 1 calc(50% - 4px); }
+  body .arena-page #arena-master-panel :is(.btn-master-join, .btn-start-tournament, .btn-advance-round, .btn-timer-play, .btn-timer-pause) { padding: 11px 8px !important; font-size: .62rem !important; letter-spacing: .06em !important; }
+  /* pieghe */
+  body .arena-page #arena-master-panel .lan-piega-testa { padding: 10px 10px; font-size: 1.05rem; gap: 8px; }
+  body .arena-page #arena-master-panel .lan-piega > :not(summary) { margin: 0 10px 12px !important; }
+  body .arena-page #arena-master-panel .lan-piega-sub { font-size: .78rem; }
+  body .arena-page #arena-master-panel .reserve-slots-grid { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+  body .arena-page #arena-master-panel .reserve-slot { padding: 7px 8px !important; }
+  body .arena-page #arena-master-panel .reserve-slot-name { font-size: .98rem !important; }
+  body .arena-page #arena-master-panel .reserve-slot-meta { font-size: .72rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body .arena-page #arena-master-panel .arena-prize-tier { grid-template-columns: 1fr; gap: 4px; }
+  body .arena-page #arena-master-panel .arena-prize-tier-fields { grid-template-columns: 1fr; gap: 4px; }
+  body .arena-page #arena-master-panel .arena-prize-field > span { min-width: 118px; }
+  body .arena-page #arena-master-panel .arena-prize-tier-label { padding-top: 0; }
+  body .arena-page #arena-master-panel .arena-reward-save { align-self: stretch; }
+  /* strumenti: tre chip icona+titolo, niente sottotitolo */
+  body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-row { gap: 6px !important; margin: 0 0 12px !important; }
+  body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger { flex-direction: column !important; align-items: center; text-align: center !important; padding: 8px 4px !important; gap: 6px !important; }
+  body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-icon { width: 30px !important; height: 30px !important; font-size: .9rem !important; }
+  body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-title { font-size: .86rem !important; line-height: 1.1; }
+  body .arena-page.arena-page.arena-page.arena-page--lanista .arena-modal-trigger-sub { display: none !important; }
+}

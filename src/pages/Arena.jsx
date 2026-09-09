@@ -19,7 +19,9 @@ import "./ArenaHero.css";
 import "./ArenaBill.css";
 import "./ArenaNessoViste.css";   // viste interne (join/loadout/libera/bracket/albo/regole/master) nel Nesso
 import "./ArenaPalcoFight.css";   // scontro INLINE nel palco dell'hub + palette Nesso del combat
-import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura, pelle del covo (per ULTIMO)
+import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura, pelle del covo
+import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi con icona, righe compatte, mobile
+import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
 // Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
@@ -9518,8 +9520,11 @@ export default function Arena() {
     return { winnerId: null, participants, phase: arenaMeta.phase };
   })();
 
+  // Pieghe del Registro del Lanista: aperte su desktop, chiuse sul telefono (solo markup).
+  const lanAperto = !(typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
+
   return (
-    <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}`}>
+    <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}${arenaView === "join" ? " arena-page--lizza" : arenaView === "master" ? " arena-page--lanista" : ""}`}>
 
       {/* ── VFX pixelati (stile World Boss isometrico): overlay sopra le card ── */}
       <ArenaVfxLayer messages={vfxMessages} />
@@ -9794,74 +9799,6 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── RICOMPENSA — editor solo nel Pannello Master (display premi è nell'hub) ── */}
-      {arenaView === "master" && isMaster && (
-        <div className="arena-reward-panel">
-          <div className="arena-reward-deco" aria-hidden="true">🏆</div>
-          <div className="arena-reward-body">
-            <div className="arena-reward-label">Ricompensa della prossima Arena</div>
-            {isMaster ? (
-              <div className="arena-reward-editor">
-                <textarea
-                  className="arena-reward-textarea"
-                  rows={2}
-                  placeholder="Nota generale sulla ricompensa (facoltativa, la vedono tutti nell'hub)…"
-                  value={prizeText}
-                  onChange={e => setPrizeText(e.target.value)}
-                />
-                {/* ── Premi strutturati per fascia (distribuiti in automatico a fine Arena, tranne i vantaggi live) ── */}
-                <div className="arena-prize-tiers">
-                  {[
-                    { key: "first",       label: "🥇 1° posto" },
-                    { key: "second",      label: "🥈 2° posto" },
-                    { key: "participant", label: "🎟 Partecipanti" },
-                  ].map(t => (
-                    <div key={t.key} className="arena-prize-tier">
-                      <div className="arena-prize-tier-label">{t.label}</div>
-                      <div className="arena-prize-tier-fields">
-                        <label className="arena-prize-field">
-                          <span>👑 Corone</span>
-                          <input type="number" min={0} inputMode="numeric"
-                            value={prizeConfig[t.key].crowns}
-                            onChange={e => setPrizeField(t.key, "crowns", e.target.value)} />
-                        </label>
-                        <label className="arena-prize-field">
-                          <span>🪙 Monete Arena</span>
-                          <input type="number" min={0} inputMode="numeric"
-                            value={prizeConfig[t.key].coins}
-                            onChange={e => setPrizeField(t.key, "coins", e.target.value)} />
-                        </label>
-                        <label className="arena-prize-field arena-prize-field--wide">
-                          <span>🎁 Vantaggi sessioni live (a mano)</span>
-                          <input type="text"
-                            placeholder="es. un favore dal DM, +1 tiro fortuna…"
-                            value={prizeConfig[t.key].perks}
-                            onChange={e => setPrizeField(t.key, "perks", e.target.value)} />
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="arena-reward-hint">
-                  Corone e Monete Arena vengono <strong>assegnate in automatico a fine Arena</strong> (1°, 2° e partecipanti).
-                  I <strong>vantaggi sessioni live</strong> sono solo un promemoria: li applichi tu.
-                </p>
-                <button className="arena-reward-save" onClick={savePrizes}>💾 Salva premi</button>
-                {formatPrizeConfig(arenaMeta.prizeConfig) && (
-                  <p className="arena-reward-current">Premi impostati: <strong>{formatPrizeConfig(arenaMeta.prizeConfig)}</strong></p>
-                )}
-                {arenaMeta.prizes && arenaMeta.prizes.trim() && (
-                  <p className="arena-reward-current">Nota: <strong>{arenaMeta.prizes}</strong></p>
-                )}
-              </div>
-            ) : (
-              <div className="arena-reward-text">{arenaMeta.prizes}</div>
-            )}
-          </div>
-          <div className="arena-reward-deco" aria-hidden="true">🏆</div>
-        </div>
-      )}
-
       {/* ── VISTA REGOLE & CLASSI ── */}
       {arenaView === "regole" && (
       <div id="arena-info-anchor" className="arena-info-section arena-info-section--view">
@@ -10096,43 +10033,9 @@ export default function Arena() {
             <h3 className="master-panel-title"><span className="master-crown">♛</span> Pannello del Master</h3>
           </div>
 
-          {arenaMeta.phase === "registration" && (
-            <div className="prize-editor">
-              <p className="col-label">♛ Opzioni Iscrizioni</p>
-              <label className="champions-only-toggle">
-                <input
-                  type="checkbox"
-                  checked={!!arenaMeta.championsOnly}
-                  onChange={async (e) => {
-                    const enabling = e.target.checked;
-                    await updateDoc(doc(db, "arena_meta", "global"), { championsOnly: enabling });
-                    if (enabling && champions.length > 0) {
-                      const sendInvites = window.confirm(
-                        `Inviare un invito ai ${champions.length} campioni della Sala?`
-                      );
-                      if (sendInvites) {
-                        for (const c of champions) {
-                          try {
-                            await addDoc(collection(db, "notifications"), {
-                              userId: c.uid,
-                              read: false,
-                              timestamp: serverTimestamp(),
-                              title: "♛ Arena dei Campioni — Iscrizioni Aperte",
-                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!`,
-                            });
-                          } catch (err) { console.error("champion invite:", err); }
-                        }
-                        alert(`✔ Inviati ${champions.length} inviti.`);
-                      }
-                    }
-                  }}
-                />
-                <span>♛ Solo Campioni — solo chi ha già vinto un torneo può iscriversi</span>
-              </label>
-            </div>
-          )}
-
-
+          {/* ── ISCRITTI (2026-09-09): prima cosa in pagina — approvati, in attesa, opzione
+                "solo campioni" e i tastini di gestione. Solo markup riordinato. ── */}
+          <section className="lan-blocco lan-iscritti" aria-label="Iscritti">
           <div className="master-sections">
             <div className="master-col">
               <p className="col-label">Approvati ({arenaMeta.participants?.length || 0})</p>
@@ -10170,38 +10073,80 @@ export default function Arena() {
               ))}
             </div>
           </div>
-
-
           {arenaMeta.phase === "registration" && (
-            <div className="reserve-panel">
-              <div className="reserve-panel-title">🎭 PG di Riserva <span>— bot inseriti quando gli iscritti sono dispari (ne entra 1 a caso)</span></div>
-              <div className="reserve-slots-grid">
-                {Array.from({ length: MASTER_RESERVE_SLOTS }, (_, i) => i).map(i => {
-                  const r = masterReserves[i];
-                  if (r) {
-                    return (
-                      <div key={i} className={`reserve-slot reserve-slot--filled reserve-slot--${i}`}>
-                        <div className="reserve-slot-idx">Riserva {i + 1}</div>
-                        <div className="reserve-slot-name">{r.name}</div>
-                        <div className="reserve-slot-meta">{r.class} · ❤ {r.rolledHp ?? r.stats?.maxHp} · 🛡 {r.stats?.ac}</div>
-                        <div className="reserve-slot-actions">
-                          <button className="reserve-slot-recreate" onClick={() => openReserveCreate(i)}>Ricrea</button>
-                          <button className="reserve-slot-del" title="Elimina" onClick={() => deleteReserve(i)}>🗑</button>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <button key={i} className={`reserve-slot reserve-slot--empty reserve-slot--${i}`} onClick={() => openReserveCreate(i)}>
-                      <span className="reserve-slot-plus">＋</span>
-                      <span className="reserve-slot-idx">Crea Riserva {i + 1}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="prize-editor">
+              <p className="col-label">♛ Opzioni Iscrizioni</p>
+              <label className="champions-only-toggle">
+                <input
+                  type="checkbox"
+                  checked={!!arenaMeta.championsOnly}
+                  onChange={async (e) => {
+                    const enabling = e.target.checked;
+                    await updateDoc(doc(db, "arena_meta", "global"), { championsOnly: enabling });
+                    if (enabling && champions.length > 0) {
+                      const sendInvites = window.confirm(
+                        `Inviare un invito ai ${champions.length} campioni della Sala?`
+                      );
+                      if (sendInvites) {
+                        for (const c of champions) {
+                          try {
+                            await addDoc(collection(db, "notifications"), {
+                              userId: c.uid,
+                              read: false,
+                              timestamp: serverTimestamp(),
+                              title: "♛ Arena dei Campioni — Iscrizioni Aperte",
+                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!`,
+                            });
+                          } catch (err) { console.error("champion invite:", err); }
+                        }
+                        alert(`✔ Inviati ${champions.length} inviti.`);
+                      }
+                    }
+                  }}
+                />
+                <span>♛ Solo Campioni — solo chi ha già vinto un torneo può iscriversi</span>
+              </label>
             </div>
           )}
+          <div className="master-action-group">
+            <span className="master-group-label">👥 Gestione iscritti &amp; partite</span>
+            <div className="master-actions">
+            {(arenaMeta.participants?.length || 0) > 0 && (
+              <button className="btn-bench-all" onClick={benchAllParticipants} title="Sposta tutti i partecipanti nella lista d'attesa">
+                ↩ Tutti in attesa
+              </button>
+            )}
+            {(arenaMeta.waitingList?.length || 0) > 0 && (
+              <button className="btn-clear-waiting" onClick={clearWaitingList} title="Svuota la lista d'attesa">
+                🗑 Svuota attesa
+              </button>
+            )}
+            {(() => {
+              const archivedIds = new Set((arenaMeta.funMatchHistory || []).map(e => e.matchId));
+              const prunable = (arenaMeta.matches || []).filter(
+                m => m.kind === "fun" && m.status === "finished" && archivedIds.has(m.matchId)
+              );
+              if (prunable.length === 0) return null;
+              return (
+                <button
+                  className="btn-clear-waiting"
+                  title="Rimuove dalle partite live le Sfide Libere finite e già archiviate (i vincitori restano nello storico)"
+                  onClick={async () => {
+                    if (!window.confirm(`Pulire ${prunable.length} sfida/e libera/e finite dall'arena? I vincitori restano nello storico.`)) return;
+                    const prunableIds = new Set(prunable.map(m => m.matchId));
+                    const kept = (arenaMeta.matches || []).filter(m => !prunableIds.has(m.matchId));
+                    await commitArenaMatches(kept);
+                  }}
+                >
+                  🧹 Pulisci partite finite ({prunable.length})
+                </button>
+              );
+            })()}
+            </div>
+          </div>
+          </section>
 
+          {/* ── LE DUE LEVE: entra / dai inizio (e avanza round, timer) ── */}
           <div className="master-toolbar">
           <div className="master-action-group">
             <span className="master-group-label">⚔ Flusso del torneo</span>
@@ -10245,44 +10190,148 @@ export default function Arena() {
             )}
             </div>
           </div>
-          <div className="master-action-group">
-            <span className="master-group-label">👥 Gestione iscritti &amp; partite</span>
-            <div className="master-actions">
-            {(arenaMeta.participants?.length || 0) > 0 && (
-              <button className="btn-bench-all" onClick={benchAllParticipants} title="Sposta tutti i partecipanti nella lista d'attesa">
-                ↩ Tutti in attesa
-              </button>
-            )}
-            {(arenaMeta.waitingList?.length || 0) > 0 && (
-              <button className="btn-clear-waiting" onClick={clearWaitingList} title="Svuota la lista d'attesa">
-                🗑 Svuota attesa
-              </button>
-            )}
-            {(() => {
-              const archivedIds = new Set((arenaMeta.funMatchHistory || []).map(e => e.matchId));
-              const prunable = (arenaMeta.matches || []).filter(
-                m => m.kind === "fun" && m.status === "finished" && archivedIds.has(m.matchId)
-              );
-              if (prunable.length === 0) return null;
-              return (
-                <button
-                  className="btn-clear-waiting"
-                  title="Rimuove dalle partite live le Sfide Libere finite e già archiviate (i vincitori restano nello storico)"
-                  onClick={async () => {
-                    if (!window.confirm(`Pulire ${prunable.length} sfida/e libera/e finite dall'arena? I vincitori restano nello storico.`)) return;
-                    const prunableIds = new Set(prunable.map(m => m.matchId));
-                    const kept = (arenaMeta.matches || []).filter(m => !prunableIds.has(m.matchId));
-                    await commitArenaMatches(kept);
-                  }}
-                >
-                  🧹 Pulisci partite finite ({prunable.length})
-                </button>
-              );
-            })()}
-            </div>
           </div>
+
+          {masterJoinSetup && arenaMeta.phase === "registration" && (
+            <div className="master-join-setup">
+              <h4 className="master-join-setup-title">Crea il tuo personaggio</h4>
+              <input
+                className="master-join-input"
+                placeholder="Nome personaggio…"
+                value={masterJoinName}
+                onChange={e => setMasterJoinName(e.target.value)}
+                maxLength={30}
+              />
+              <select
+                className="master-join-select"
+                value={masterJoinClass}
+                onChange={e => setMasterJoinClass(e.target.value)}
+              >
+                <option value="">— Scegli Classe —</option>
+                {MASTER_JOIN_CLASSES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <div className="master-join-setup-actions">
+                <button className="btn-cancel-loadout" onClick={() => setMasterJoinSetup(false)}>Annulla</button>
+                <button className="btn-auto-generate" onClick={() => {
+                  const RANDOM_NAMES = ["Caelus", "Selene Vale", "Thorin Vex", "Lyra Sangueforte", "Argus Nera-Lama", "Kael Ombravento", "Mira Spaccaossa", "Borin Hammerstein", "Vesper Ombracorvo", "Auron Ferrosaldo", "Nyx Velocelama", "Roric Cuoredrago", "Sylas Forgiatuono", "Elara Ventoluce", "Garrick Pugnoreale"];
+                  const randName = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+                  const randClass = MASTER_JOIN_CLASSES[Math.floor(Math.random() * MASTER_JOIN_CLASSES.length)];
+                  setMasterJoinName(randName);
+                  setMasterJoinClass(randClass);
+                }} title="Riempie nome e classe casuali">
+                  🎲 Genera
+                </button>
+                <button className="btn-join" onClick={startMasterLoadout} disabled={!masterJoinName.trim() || !masterJoinClass}>
+                  Continua →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── RISERVE, RICOMPENSA, PERICOLO: pieghe richiudibili (aperte su desktop,
+                chiuse sul telefono; la zona pericolo è sempre chiusa) ── */}
+          {arenaMeta.phase === "registration" && (
+            <details className="reserve-panel lan-piega" open={lanAperto}>
+              <summary className="lan-piega-testa"><span className="lan-piega-ico" aria-hidden="true">🎭</span><span className="lan-piega-tit">PG di Riserva</span><span className="lan-piega-sub">{masterReserves.filter(Boolean).length}/{MASTER_RESERVE_SLOTS} · bot per gli iscritti dispari</span></summary>
+              <div className="reserve-slots-grid">
+                {Array.from({ length: MASTER_RESERVE_SLOTS }, (_, i) => i).map(i => {
+                  const r = masterReserves[i];
+                  if (r) {
+                    return (
+                      <div key={i} className={`reserve-slot reserve-slot--filled reserve-slot--${i}`}>
+                        <div className="reserve-slot-idx">Riserva {i + 1}</div>
+                        <div className="reserve-slot-name">{r.name}</div>
+                        <div className="reserve-slot-meta">{r.class} · ❤ {r.rolledHp ?? r.stats?.maxHp} · 🛡 {r.stats?.ac}</div>
+                        <div className="reserve-slot-actions">
+                          <button className="reserve-slot-recreate" onClick={() => openReserveCreate(i)}>Ricrea</button>
+                          <button className="reserve-slot-del" title="Elimina" onClick={() => deleteReserve(i)}>🗑</button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button key={i} className={`reserve-slot reserve-slot--empty reserve-slot--${i}`} onClick={() => openReserveCreate(i)}>
+                      <span className="reserve-slot-plus">＋</span>
+                      <span className="reserve-slot-idx">Crea Riserva {i + 1}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </details>
+          )}
+
+          <details className="lan-piega lan-premi" open={lanAperto}>
+            <summary className="lan-piega-testa">
+              <span className="lan-piega-ico" aria-hidden="true">🏆</span>
+              <span className="lan-piega-tit">Ricompensa della prossima Arena</span>
+              {formatPrizeConfig(arenaMeta.prizeConfig)
+                ? <span className="lan-piega-sub">{formatPrizeConfig(arenaMeta.prizeConfig)}</span>
+                : <span className="lan-piega-sub">nessun premio impostato</span>}
+            </summary>
+          <div className="arena-reward-editor">
+            <textarea
+              className="arena-reward-textarea"
+              rows={2}
+              placeholder="Nota generale sulla ricompensa (facoltativa, la vedono tutti nell'hub)…"
+              value={prizeText}
+              onChange={e => setPrizeText(e.target.value)}
+            />
+            {/* ── Premi strutturati per fascia (distribuiti in automatico a fine Arena, tranne i vantaggi live) ── */}
+            <div className="arena-prize-tiers">
+              {[
+                { key: "first",       label: "🥇 1° posto" },
+                { key: "second",      label: "🥈 2° posto" },
+                { key: "participant", label: "🎟 Partecipanti" },
+              ].map(t => (
+                <div key={t.key} className="arena-prize-tier">
+                  <div className="arena-prize-tier-label">{t.label}</div>
+                  <div className="arena-prize-tier-fields">
+                    <label className="arena-prize-field">
+                      <span>👑 Corone</span>
+                      <input type="number" min={0} inputMode="numeric"
+                        value={prizeConfig[t.key].crowns}
+                        onChange={e => setPrizeField(t.key, "crowns", e.target.value)} />
+                    </label>
+                    <label className="arena-prize-field">
+                      <span>🪙 Monete Arena</span>
+                      <input type="number" min={0} inputMode="numeric"
+                        value={prizeConfig[t.key].coins}
+                        onChange={e => setPrizeField(t.key, "coins", e.target.value)} />
+                    </label>
+                    <label className="arena-prize-field arena-prize-field--wide">
+                      <span>🎁 Vantaggi sessioni live (a mano)</span>
+                      <input type="text"
+                        placeholder="es. un favore dal DM, +1 tiro fortuna…"
+                        value={prizeConfig[t.key].perks}
+                        onChange={e => setPrizeField(t.key, "perks", e.target.value)} />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="arena-reward-hint">
+              Corone e Monete Arena vengono <strong>assegnate in automatico a fine Arena</strong> (1°, 2° e partecipanti).
+              I <strong>vantaggi sessioni live</strong> sono solo un promemoria: li applichi tu.
+            </p>
+            <button className="arena-reward-save" onClick={savePrizes}>💾 Salva premi</button>
+            {formatPrizeConfig(arenaMeta.prizeConfig) && (
+              <p className="arena-reward-current">Premi impostati: <strong>{formatPrizeConfig(arenaMeta.prizeConfig)}</strong></p>
+            )}
+            {arenaMeta.prizes && arenaMeta.prizes.trim() && (
+              <p className="arena-reward-current">Nota: <strong>{arenaMeta.prizes}</strong></p>
+            )}
+          </div>
+          </details>
+
+          <details className="lan-piega lan-pericolo">
+            <summary className="lan-piega-testa">
+              <span className="lan-piega-ico" aria-hidden="true">⚠</span>
+              <span className="lan-piega-tit">Zona pericolo</span>
+              <span className="lan-piega-sub">azioni irreversibili</span>
+            </summary>
           <div className="master-action-group master-danger-group">
-            <span className="master-group-label master-danger-label">⚠ Zona pericolo · azioni irreversibili</span>
             <div className="master-actions master-reset-zone">
             <button className="btn-reset" onClick={async () => {
               const inCombat = arenaMeta.phase === "combat";
@@ -10362,45 +10411,7 @@ export default function Arena() {
             }}>🏆 Azzera vincitori Arena (tutti)</button>
             </div>
           </div>
-          </div>
-
-          {masterJoinSetup && arenaMeta.phase === "registration" && (
-            <div className="master-join-setup">
-              <h4 className="master-join-setup-title">Crea il tuo personaggio</h4>
-              <input
-                className="master-join-input"
-                placeholder="Nome personaggio…"
-                value={masterJoinName}
-                onChange={e => setMasterJoinName(e.target.value)}
-                maxLength={30}
-              />
-              <select
-                className="master-join-select"
-                value={masterJoinClass}
-                onChange={e => setMasterJoinClass(e.target.value)}
-              >
-                <option value="">— Scegli Classe —</option>
-                {MASTER_JOIN_CLASSES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <div className="master-join-setup-actions">
-                <button className="btn-cancel-loadout" onClick={() => setMasterJoinSetup(false)}>Annulla</button>
-                <button className="btn-auto-generate" onClick={() => {
-                  const RANDOM_NAMES = ["Caelus", "Selene Vale", "Thorin Vex", "Lyra Sangueforte", "Argus Nera-Lama", "Kael Ombravento", "Mira Spaccaossa", "Borin Hammerstein", "Vesper Ombracorvo", "Auron Ferrosaldo", "Nyx Velocelama", "Roric Cuoredrago", "Sylas Forgiatuono", "Elara Ventoluce", "Garrick Pugnoreale"];
-                  const randName = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
-                  const randClass = MASTER_JOIN_CLASSES[Math.floor(Math.random() * MASTER_JOIN_CLASSES.length)];
-                  setMasterJoinName(randName);
-                  setMasterJoinClass(randClass);
-                }} title="Riempie nome e classe casuali">
-                  🎲 Genera
-                </button>
-                <button className="btn-join" onClick={startMasterLoadout} disabled={!masterJoinName.trim() || !masterJoinClass}>
-                  Continua →
-                </button>
-              </div>
-            </div>
-          )}
+          </details>
         </div>
       )}
 
@@ -10491,6 +10502,22 @@ export default function Arena() {
             </div>
           )}
 
+          {/* ── I PASSI (2026-09-09): stepper sempre visibile sopra la fase,
+                così si sa dove si è e quanto manca. Solo markup + CSS. ── */}
+          {loadoutPhase !== "idle" && (() => {
+            const passi = [["class-select", "Classe"], ["stat-assign", "Caratteristiche"], ["rolling", "Punti Vita"], ["selecting", "Equipaggio"]];
+            const idx = passi.findIndex(([k]) => k === loadoutPhase);
+            return (
+              <ol className="lizza-passi" aria-label="Passi dell'iscrizione">
+                {passi.map(([k, lab], i) => (
+                  <li key={k} className={`lizza-passo${i < idx ? " fatto" : i === idx ? " attivo" : ""}`} aria-current={i === idx ? "step" : undefined}>
+                    <span className="n">{i < idx ? "✓" : i + 1}</span><span className="lab">{lab}</span>
+                  </li>
+                ))}
+              </ol>
+            );
+          })()}
+
           {/* ── Fase CLASS-SELECT: scelta classe ── */}
           {loadoutPhase === "class-select" && charPreview && (
             <div className="hp-roll-panel">
@@ -10531,7 +10558,13 @@ export default function Arena() {
                   <div className="saved-chars-hint">…oppure crea un nuovo personaggio scegliendo la classe qui sotto.</div>
                 </div>
               )}
-              <div className="hp-roll-title">Classe</div>
+              {/* Titolo + scorciatoia "Genera a caso" sulla stessa riga: la via veloce è a portata di pollice */}
+              <div className="lizza-classe-testa">
+                <div className="hp-roll-title">Classe</div>
+                <button className="btn-join btn-auto-pg" onClick={autoGeneratePg} title="Crea un personaggio completo e casuale, pronto da rivedere">
+                  ⚡ Genera a caso
+                </button>
+              </div>
               <div className="class-select-grid">
                 {MASTER_JOIN_CLASSES.map(cls => (
                   <button
@@ -10544,13 +10577,11 @@ export default function Arena() {
                       setLoadoutPhase("stat-assign");
                     }}
                   >
-                    {cls}
+                    <span className="lizza-classe-ico" aria-hidden="true">{CLASS_ICONS[cls.toLowerCase()] || "✦"}</span>
+                    <span className="lizza-classe-nome">{CLASS_IT[cls] || cls}</span>
                   </button>
                 ))}
               </div>
-              <button className="btn-join btn-auto-pg" onClick={autoGeneratePg} title="Crea un personaggio completo e casuale, pronto da rivedere">
-                ⚡ Genera a caso
-              </button>
               <button className="btn-cancel-loadout" style={{ marginTop: 18 }} onClick={cancelLoadout}>
                 Annulla
               </button>
@@ -13893,6 +13924,13 @@ const CLASS_ICONS = {
   druid: "🌿", druido: "🌿",
   cleric: "✨", chierico: "✨",
   bard: "🎵", bardo: "🎵",
+};
+
+// Nome italiano delle classi (solo etichetta a video; la chiave interna resta inglese).
+const CLASS_IT = {
+  Fighter: "Guerriero", Barbarian: "Barbaro", Paladin: "Paladino", Ranger: "Ranger",
+  Monk: "Monaco", Rogue: "Ladro", Wizard: "Mago", Sorcerer: "Stregone",
+  Warlock: "Warlock", Druid: "Druido", Cleric: "Chierico", Bard: "Bardo", Artificer: "Artefice",
 };
 
 // Colore per classe (grafici Gesta). Chiave = classe lowercase (IT o EN).

@@ -1,0 +1,277 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   src/pages/ArenaLizza.css — "ENTRA IN LIZZA" LEGGIBILE (2026-09-09)
+   La creazione del campione (classe → caratteristiche → punti vita →
+   equipaggio) era "caotica": niente indicazione del passo, 12 piastrelle
+   enormi tutte con la stessa scintilla, etichette in Grenze Gotisch maiuscolo
+   spaziato (illeggibili), righe alte, tab appiccicate SOTTO la testata del
+   sito, footer coperto dalla barra mobile. Qui, importato per ULTIMO:
+   · STEPPER "1 Classe · 2 Caratteristiche · 3 Punti Vita · 4 Equipaggio"
+   · classi = piastrelle piccole con ICONA + nome italiano
+   · etichette in Alegreya SC (maiuscoletto), titoli in Grenze Gotisch
+   · CTA = lama del covo, secondari = fantasma
+   · smartphone: testata nascosta, tutto compatto, armi/spell a RIGHE
+   Solo token del covo. Stessa specificità (3×.arena-page + !important)
+   di ArenaNessoViste.css, perché quelle regole vanno vinte.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── STEPPER ── */
+body .arena-page.arena-page.arena-page .lizza-passi {
+  list-style: none; margin: 0 auto 10px; padding: 0;
+  max-width: 960px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  counter-reset: passo;
+}
+body .arena-page.arena-page.arena-page .lizza-passo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: rgba(var(--roccia-rgb), .85);
+  border: 1px solid var(--roccia-3); border-top: 3px solid var(--roccia-3);
+  color: var(--osso-3);
+  font-family: var(--font-ui, "Alegreya", Georgia, serif); font-size: .88rem;
+  min-width: 0;
+}
+body .arena-page.arena-page.arena-page .lizza-passo .n {
+  flex: 0 0 22px; width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--roccia-4);
+  font-family: var(--font-num, "Cinzel", serif); font-size: .72rem; font-weight: 700;
+  color: var(--osso-3);
+}
+body .arena-page.arena-page.arena-page .lizza-passo .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body .arena-page.arena-page.arena-page .lizza-passo.fatto { color: var(--osso-2); border-top-color: var(--el-deep); }
+body .arena-page.arena-page.arena-page .lizza-passo.fatto .n { color: var(--el-2); border-color: var(--el-deep); }
+body .arena-page.arena-page.arena-page .lizza-passo.attivo {
+  color: var(--osso); border-top-color: var(--el);
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
+  box-shadow: 0 0 30px -14px rgba(var(--el-rgb), .7);
+}
+body .arena-page.arena-page.arena-page .lizza-passo.attivo .n { color: var(--ossidiana); background: linear-gradient(180deg, var(--el-2), var(--el)); border-color: transparent; }
+
+/* ── ETICHETTE: maiuscoletto Alegreya SC (basta Grenze maiuscolo spaziato) ── */
+body .arena-page.arena-page.arena-page #arena-loadout :is(.loadout-char-class, .stat-budget-badge, .saved-char-slot, .spell-level-header, .hp-result-label,
+  .loadout-tab-label, .my-loadout-label, .prize-display-label, .saved-char-card.saved-char-empty, .loadout-item-dmgtype, .stat-key-tag, .loadout-tab-count) {
+  font-family: var(--font-sc, "Alegreya SC", "Alegreya", serif) !important;
+  text-transform: lowercase !important; font-variant: small-caps !important;
+  letter-spacing: .12em !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-class { font-size: .84rem !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); text-shadow: none !important; margin-top: 2px; }
+body .arena-page.arena-page.arena-page #arena-loadout .stat-budget-badge { font-size: .82rem !important; }
+/* titoli di sezione: Grenze Gotisch come le rubriche del sito */
+body .arena-page.arena-page.arena-page #arena-loadout :is(.hp-roll-title, .loadout-section-title) {
+  font-family: var(--font-title, "Grenze Gotisch", "Cinzel", serif) !important;
+  font-size: 1.3rem !important; font-weight: 700 !important;
+  letter-spacing: .01em !important; text-transform: none !important;
+  color: var(--osso) !important; -webkit-text-fill-color: var(--osso);
+  text-shadow: none !important;
+  margin: 16px 0 10px !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: nowrap; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-testa .hp-roll-title { flex: 1 1 auto; min-width: 0; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-testa .btn-auto-pg { flex: 0 0 auto; white-space: nowrap; }
+/* nome PG: gradiente osso, come i titoli del sito */
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-name {
+  font-family: var(--font-title, "Grenze Gotisch", serif) !important;
+  background: linear-gradient(180deg, var(--osso) 55%, var(--osso-2)) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-avatar {
+  border-radius: 0 !important; border: 0 !important; box-shadow: none !important; background: var(--el) !important;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); padding: 2px;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .hp-dice-formula {
+  font-family: var(--font-num, "Cinzel", serif) !important;
+  background: none !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2) !important;
+}
+
+/* ── BOTTONI: lama (avanti) e fantasma (indietro/utility) ── */
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-join, .btn-roll-hp, .btn-auto-pg) {
+  border-radius: 4px !important; border: 0 !important;
+  font-family: var(--font-num, "Cinzel", serif) !important; font-weight: 700 !important;
+  font-size: .74rem !important; letter-spacing: .12em !important; text-transform: uppercase !important;
+  color: var(--ossidiana) !important; -webkit-text-fill-color: var(--ossidiana);
+  background: linear-gradient(180deg, var(--el-2), var(--el)) !important;
+  box-shadow: 0 0 28px -8px var(--el), inset 0 1px 0 rgba(255, 255, 255, .4) !important;
+  text-shadow: none !important; padding: 11px 18px !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-join, .btn-roll-hp, .btn-auto-pg)::before,
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-join, .btn-roll-hp, .btn-auto-pg)::after { display: none !important; }
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-join, .btn-roll-hp):disabled {
+  background: transparent !important; color: var(--osso-3) !important; -webkit-text-fill-color: var(--osso-3);
+  border: 1px solid var(--roccia-3) !important; box-shadow: none !important; opacity: 1 !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .btn-auto-pg { padding: 8px 14px !important; font-size: .64rem !important; }
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-cancel-loadout, .btn-auto-generate, .btn-reroll, .saved-char-del, .btn-save-slot) {
+  border-radius: 4px !important; background: transparent !important;
+  border: 1px solid var(--roccia-3) !important; color: var(--osso) !important; -webkit-text-fill-color: var(--osso);
+  font-family: var(--font-num, "Cinzel", serif) !important; font-size: .66rem !important; letter-spacing: .1em !important; text-transform: uppercase !important;
+  box-shadow: none !important; text-shadow: none !important; padding: 9px 14px !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout :is(.btn-cancel-loadout, .btn-auto-generate, .btn-reroll):hover:not(:disabled) { border-color: var(--el) !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); }
+
+/* ── PANNELLI di fase: blocco del covo ── */
+body .arena-page.arena-page.arena-page #arena-loadout .hp-roll-panel,
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-panel--tabbed {
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)) !important;
+  border: 1px solid var(--roccia-3) !important; border-top: 3px solid var(--el) !important; border-radius: 0 !important;
+  box-shadow: 0 20px 40px -24px #000, inset 0 1px 0 rgba(255, 255, 255, .05) !important;
+}
+
+/* ── CLASSI: piastrelle piccole con icona + nome ── */
+body .arena-page.arena-page.arena-page #arena-loadout .class-select-grid {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)) !important; gap: 8px !important; margin: 0 0 12px !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .class-select-btn {
+  min-height: 0 !important; gap: 6px !important; padding: 12px 8px 10px !important;
+  background: rgba(var(--ossidiana-rgb), .45) !important; border: 1px solid var(--roccia-3) !important;
+  text-transform: none !important; letter-spacing: 0 !important;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .class-select-btn::before { display: none !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .class-select-btn:hover { transform: translateY(-3px) !important; border-color: var(--el) !important; box-shadow: 0 0 22px -10px rgba(var(--el-rgb), .8) !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-ico { font-size: 1.5rem; line-height: 1; filter: drop-shadow(0 0 10px rgba(var(--el-rgb), .55)); }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-nome {
+  font-family: var(--font-title, "Grenze Gotisch", serif); font-size: 1.05rem; font-weight: 700; line-height: 1; color: var(--osso); -webkit-text-fill-color: var(--osso);
+}
+
+/* ── CARATTERISTICHE: righe più basse ── */
+body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-row { padding: 10px 12px !important; gap: 4px 10px !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-label {
+  font-family: var(--font-num, "Cinzel", serif) !important; font-size: .9rem !important; letter-spacing: .1em !important;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-val { font-family: var(--font-num, "Cinzel", serif) !important; color: var(--el-2) !important; -webkit-text-fill-color: var(--el-2); text-shadow: none !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .stat-adj-btn { border-radius: 3px !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-hint { font-size: .84rem !important; border-left: 3px solid var(--el-deep) !important; border-top: 0 !important; border-right: 0 !important; border-bottom: 0 !important; border-radius: 0 !important; }
+
+/* ── EQUIPAGGIO: tab sotto la testata del sito, footer sopra la barra mobile ── */
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-tabs { top: var(--navbar-h, 66px) !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab { border-radius: 3px !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab.active { background: linear-gradient(180deg, var(--el-2), var(--el)) !important; color: var(--ossidiana) !important; -webkit-text-fill-color: var(--ossidiana); }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-item-name { font-family: var(--font-title, "Grenze Gotisch", serif) !important; font-size: .98rem !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-item-dmgtype { border-radius: 0 !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-section-hint { font-size: .84rem !important; line-height: 1.45; }
+/* ArenaHero.css mette overflow-x:clip su .arena-page: in Chrome spegne lo sticky
+   (tab e footer non restavano mai fermi). Nella lizza il clip non serve. */
+.arena-page.arena-page.arena-page--lizza { overflow: visible !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky { bottom: 0 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SMARTPHONE (≤760px): niente testata, tutto compatto
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+  /* la testata dell'Arena (titolo + tabellone) non serve mentre si crea il PG */
+  .arena-page:is(.arena-page--lizza, .arena-page--lanista) .arena-bill-mast { display: none !important; }
+  .arena-page:is(.arena-page--lizza, .arena-page--lanista) .arena-hub-fab {
+    position: static !important; display: inline-flex; margin: 2px 0 8px;
+    padding: 6px 12px 6px 9px !important; font-size: .62rem !important;
+    background: transparent !important; color: var(--osso) !important; border: 1px solid var(--roccia-3) !important;
+    box-shadow: none !important; text-shadow: none !important; border-radius: 3px !important;
+  }
+  body .arena-page.arena-page.arena-page .join-zone { margin: 0 auto !important; }
+
+  body .arena-page.arena-page.arena-page .lizza-passi { gap: 3px; margin-bottom: 8px; }
+  body .arena-page.arena-page.arena-page .lizza-passo { flex-direction: column; gap: 4px; padding: 6px 4px; font-size: .66rem; text-align: center; }
+  body .arena-page.arena-page.arena-page .lizza-passo .n { width: 20px; height: 20px; flex-basis: 20px; font-size: .66rem; }
+  body .arena-page.arena-page.arena-page .lizza-passo .lab { max-width: 100%; font-family: var(--font-sc, "Alegreya SC", serif); font-size: .62rem; letter-spacing: 0; }
+
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-roll-panel { padding: 12px 12px 14px !important; gap: 2px; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-preview { gap: 10px; margin: 0 0 4px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-avatar { width: 48px !important; height: 48px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-name { font-size: 1.25rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-class { font-size: .78rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout :is(.hp-roll-title, .loadout-section-title) { font-size: 1.15rem !important; margin: 10px 0 8px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .reserve-create-banner,
+  body .arena-page.arena-page.arena-page #arena-loadout .fun-loadout-banner { font-size: .8rem !important; padding: 8px 10px !important; }
+
+  /* PG salvati: due slot affiancati, stretti */
+  body .arena-page.arena-page.arena-page #arena-loadout .saved-chars-block { padding: 0 !important; margin: 0 0 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .saved-chars-grid { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .saved-char-card { padding: 8px 10px !important; gap: 3px; }
+  body .arena-page.arena-page.arena-page #arena-loadout .saved-chars-hint { font-size: .78rem; }
+
+  /* classi: 3 per riga */
+  body .arena-page.arena-page.arena-page #arena-loadout .class-select-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .class-select-btn { padding: 10px 4px 8px !important; gap: 4px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-ico { font-size: 1.3rem; }
+  body .arena-page.arena-page.arena-page #arena-loadout .lizza-classe-nome { font-size: .92rem; }
+
+  /* caratteristiche: una colonna, descrizione su una riga */
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-grid { grid-template-columns: 1fr !important; gap: 6px !important; margin-bottom: 10px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-row { padding: 8px 10px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-desc { font-size: .72rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-adj-btn { width: 32px !important; height: 32px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-val { min-width: 36px; font-size: 1.1rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-assign-hint { font-size: .78rem !important; padding: 8px 10px !important; margin-bottom: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .stat-budget-badge { margin-bottom: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-roll-buttons { gap: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-roll-buttons .btn-join { flex: 1 1 100%; order: 9; margin: 4px 0 0 !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-roll-buttons :is(.btn-cancel-loadout, .btn-auto-generate, .btn-reroll) { flex: 1 1 auto; }
+
+  /* punti vita */
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-rolled-result { width: 130px; height: 130px; }
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-result-number { font-size: 2.6rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .hp-dice-formula { margin-bottom: 10px !important; }
+
+  /* equipaggio: testata stretta, tab piccole, ARTICOLI A RIGHE */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-preview--top { padding: 12px 12px 10px !important; gap: 10px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-char-stats { font-size: .74rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-tabs { padding: 6px 8px !important; gap: 4px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab { padding: 6px 9px !important; gap: 4px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab-icon { font-size: .9rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab-label { font-size: .7rem !important; letter-spacing: .06em !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-tab-body { padding: 2px 10px 12px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-section-hint { font-size: .76rem !important; line-height: 1.4; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-item {
+    flex-direction: row !important; flex-wrap: wrap; align-items: center;
+    gap: 2px 8px !important; padding: 8px 40px 8px 46px !important; min-height: 50px;
+  }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-item-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); margin: 0 !important; font-size: 1.35rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-item-name { flex: 1 1 100%; font-size: .95rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout :is(.loadout-item-damage, .loadout-item-info, .loadout-auto-dmg) { font-size: .74rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-check { top: 50% !important; transform: translateY(-50%); }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-lock-icon { top: 50%; transform: translateY(-50%); }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-optimal-tag { top: 6px; right: 8px; }
+  body .arena-page.arena-page.arena-page #arena-loadout .item-counter-row { flex: 1 1 100%; margin-top: 4px; }
+  /* ARMI e MAGIE (liste lunghe, 30+ voci): piastrelle su DUE colonne invece di righe → metà scroll */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) { grid-template-columns: 1fr 1fr !important; gap: 5px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item {
+    flex-direction: row !important; flex-wrap: wrap !important; align-items: center; align-content: center;
+    gap: 1px 6px !important; padding: 6px 24px 6px 34px !important; min-height: 50px;
+  }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item > * { flex: 0 0 auto !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item-name { flex: 1 1 100% !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item-icon { left: 8px; font-size: 1.15rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item-name { font-size: .88rem !important; line-height: 1.1; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) :is(.loadout-item-damage, .loadout-item-info) { font-size: .7rem !important; line-height: 1.15; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-item-dmgtype { font-size: .56rem !important; padding: 1px 4px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-check { right: 6px; font-size: .8rem; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-grid:not(.armor-grid) .loadout-optimal-tag { top: 3px; right: 5px; font-size: .7rem; }
+  /* suggerimento di sezione: due righe, il resto è ripetuto nelle Regole */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-section-hint { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* abilità speciali automatiche: titolo sopra, targhette in fila */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-auto-block { display: flex !important; flex-wrap: wrap; gap: 4px; padding: 8px 10px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-auto-block .loadout-section-title { flex: 1 1 100%; margin: 0 0 2px !important; font-size: 1rem !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-auto-tag {
+    flex: 1 1 calc(50% - 4px); display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+    margin: 0; padding: 5px 8px; font-size: .72rem; line-height: 1.2; min-width: 0;
+  }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-auto-name { font-weight: 700; }
+  body .arena-page.arena-page.arena-page #arena-loadout :is(.loadout-auto-dmg, .loadout-auto-info) { font-size: .68rem; opacity: .85; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-auto-info { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* salva PG: etichetta + 4 slot in una riga */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-save-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-save-label { flex: 1 1 100%; font-size: .74rem; }
+  body .arena-page.arena-page.arena-page #arena-loadout .btn-save-slot { flex: 1 1 auto; padding: 7px 4px !important; font-size: .6rem !important; }
+  /* footer fisso: il D20 del menu sta in basso al centro (84px) → i due tasti ai lati, centro libero */
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky {
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important; gap: 6px !important;
+    justify-content: space-between !important;
+  }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky { flex-direction: row !important; flex-wrap: nowrap !important; align-items: stretch; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky .btn-cancel-loadout { flex: 0 0 auto !important; width: auto !important; max-width: 108px; padding: 10px 12px !important; }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky .btn-join {
+    flex: 0 1 calc(50% - 48px) !important; width: auto !important; margin-left: auto !important;
+    padding: 8px 8px !important; font-size: .6rem !important; letter-spacing: .06em !important; white-space: normal !important; line-height: 1.25 !important; text-align: center;
+  }
+  body .arena-page.arena-page.arena-page #arena-loadout .loadout-save-row { padding: 8px 10px !important; }
+}
