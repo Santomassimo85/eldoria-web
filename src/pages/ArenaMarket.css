@@ -447,18 +447,96 @@
 .bt-page .am-mp-weekly-x { color: var(--sangue); margin-left: 2px; }
 
 /* ══ responsive ══ */
-@media (max-width: 560px) {
-  .bt-page .bt-griglia { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .bt-page .bt-merce { padding: 32px 10px 12px; }
-  .bt-page .bt-anello { width: 60px; height: 60px; }
-  .bt-page .bt-anello span { font-size: 1.7rem; }
-  .bt-page .bt-merce-nome { font-size: 1.05rem; }
-  .bt-page .bt-sez-t h2 { font-size: 1.25rem; }
-  .bt-page .am-hub-fab { padding: 7px 12px 7px 9px; font-size: .6rem; }
+/* ══ SMARTPHONE (≤760px): la Bottega in colonna, corta e leggibile ══
+   Prima: 6.000px di scroll (7 schermate) con forziere, ricevuta e filtri
+   impilati PRIMA delle merci. Ora: testata a una riga, FORZIERE a striscia
+   (monete + campione su una riga), FILTRI compatti, CLASSI su un binario
+   orizzontale, MERCI a RIGHE (icona | nome + descrizione | prezzo + Acquista),
+   ricevuta spostata in fondo. `.bt-lato` diventa display:contents così i suoi
+   figli si riordinano nel flusso del bazar. */
+@media (max-width: 760px) {
+  .cine-page.bt-page { position: relative; padding-top: calc(var(--navbar-h, 66px) + 4px); }
+  .bt-page .am-hub-fab { position: absolute; top: calc(var(--navbar-h, 66px) + 10px); left: 12px; padding: 6px 10px 6px 8px; font-size: .6rem; }
+  .bt-page .bt-testata { padding: 44px 12px 4px; }
+  .bt-page .bt-titolo { font-size: 2rem; margin: 4px 0 4px; }
+  .bt-page .bt-kicker { font-size: .64rem; letter-spacing: .2em; }
+  .bt-page .bt-sotto { display: none; }
+  .bt-page .bt-pillole { margin-top: 8px; gap: 4px; }
+  .bt-page .bt-pillola { font-size: .64rem; padding: 3px 8px; }
+  .bt-page .bt-pillola:not(.bt-pillola--timer):not(.bt-pillola--on):not(.bt-pillola--off) { display: none; }
   .bt-page .bt-wrap { padding: 0 12px; }
-  /* colonna laterale più corta sui telefoni: forziere e ricevuta affiancati */
-  .bt-page .bt-lato { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
-  .bt-page .bt-lato .am-message, .bt-page .bt-lato .bt-filtri { grid-column: 1 / -1; }
+  .bt-page .bt-wrap--tabs { margin-top: 10px; }
+  .bt-page .am-mp-tabs { gap: 4px; margin-bottom: 6px; }
+  .bt-page .am-mp-tab { padding: 6px 10px; font-size: .58rem; }
+
+  /* il bazar in colonna: forziere → messaggi → filtri → merci → ricevuta */
+  .bt-page .bt-bazar { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .bt-page .bt-lato { display: contents; }
+  .bt-page .bt-forziere { order: 1; }
+  .bt-page .bt-lato > .am-message { order: 2; }
+  .bt-page .bt-filtri { order: 3; }
+  .bt-page .bt-merci { order: 4; gap: 18px; }
+  .bt-page .bt-ricevuta { order: 5; }
+
+  /* FORZIERE a striscia */
+  .bt-page .bt-forziere {
+    display: grid; grid-template-columns: 40px auto 1fr; align-items: center; gap: 10px;
+    padding: 8px 12px; text-align: left;
+  }
+  .bt-page .bt-orbe { width: 40px; height: 40px; margin: 0; font-size: 1.1rem; }
+  .bt-page .bt-monete { display: flex; align-items: baseline; gap: 6px; }
+  .bt-page .bt-monete b { font-size: 1.4rem; text-shadow: none; }
+  .bt-page .bt-monete span { margin: 0; font-size: .66rem; }
+  .bt-page .bt-campione { margin: 0; padding: 0; border: 0; gap: 8px; justify-self: end; min-width: 0; }
+  .bt-page .bt-campione img, .bt-page .bt-campione-sil { flex-basis: 32px; width: 32px; height: 32px; }
+  .bt-page .bt-campione-nome { font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32vw; }
+  .bt-page .bt-campione-meta { display: none; }
+
+  /* FILTRI compatti: cerca su una riga, chip sotto */
+  .bt-page .bt-filtri { padding: 10px 12px; }
+  .bt-page .bt-filtri .bt-lato-t { display: none; }
+  .bt-page .bt-filtri .cine-toolbar { gap: 6px; }
+  .bt-page .cine-search-input { padding: 8px 32px 8px 34px; font-size: .86rem; }
+  .bt-page .cine-chip { padding: 6px 8px; font-size: .58rem; }
+  .bt-page .cine-result-count { display: none; }
+
+  /* rubriche */
+  .bt-page .bt-sez-t { margin-bottom: 8px; gap: 10px; }
+  .bt-page .bt-sez-t h2 { font-size: 1.2rem; }
+  .bt-page .bt-sez-sub { font-size: .84rem; margin: -2px 0 8px; }
+
+  /* CLASSI su un binario orizzontale (una riga) */
+  .bt-page .bt-classi {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    margin: 0 -12px; padding: 0 12px 4px;
+  }
+  .bt-page .bt-classi::-webkit-scrollbar { display: none; }
+  .bt-page .bt-classe { flex: 0 0 auto; font-size: .82rem; padding: 5px 10px 5px 7px; }
+
+  /* MERCI a righe: icona | nome + descrizione | prezzo + Acquista */
+  .bt-page .bt-griglia { grid-template-columns: 1fr; gap: 8px; }
+  .bt-page .bt-merce {
+    display: grid; grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-areas: "ico nome" "ico desc" "foot foot";
+    column-gap: 12px; row-gap: 2px; align-items: start;
+    padding: 24px 12px 10px; text-align: left;
+  }
+  .bt-page .bt-merce-cat { font-size: .56rem; padding: 2px 8px; }
+  .bt-page .bt-merce-mia { font-size: .56rem; padding: 2px 8px; }
+  .bt-page .bt-anello { grid-area: ico; width: 52px; height: 52px; margin: 0; }
+  .bt-page .bt-anello span { font-size: 1.6rem; }
+  .bt-page .bt-merce-nome { grid-area: nome; font-size: 1.05rem; }
+  .bt-page .bt-merce-desc {
+    grid-area: desc; margin: 0; font-size: .82rem; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bt-page .bt-merce-foot { grid-area: foot; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .bt-page .bt-prezzo { justify-content: flex-start; font-size: .95rem; }
+  .bt-page .bt-merce .am-buy-btn { padding: 8px 14px; font-size: .62rem; }
+
+  /* manuale e pannelli */
+  .bt-page .bt-soffietto > summary { font-size: 1.02rem; padding: 10px 0; }
+  .bt-page .am-master-panel { padding: 14px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bt-page .bt-pillola--timer i, .bt-page .bt-merce::after { animation: none !important; transition: none !important; }

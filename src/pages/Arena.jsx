@@ -9580,7 +9580,7 @@ export default function Arena() {
       <header className="arena-bill-mast" id="arena-hero-top">
         <div className="abm-brand">
           <span className="abm-eyebrow">Cronache di Exanthia · Grande Colosseo</span>
-          <h1 className="abm-title">Arena<br />dei Campioni</h1>
+          <h1 className="abm-title">Arena <br />dei Campioni</h1>
           <p className="abm-tag">Nessun livello, nessun archetipo: solo la tua classe, l'astuzia e il bottino della settimana.</p>
         </div>
         <div className="abm-board" role="status" aria-label="Stato dell'Arena">
@@ -9679,7 +9679,7 @@ export default function Arena() {
               );
               const palcoLive = combatModalOpen && !!palcoSlot;
               return (
-                <section className={`vs-palco-wrap${palcoLive ? " vs-palco-wrap--live" : ""}`} aria-label="Palco dello scontro">
+                <section className={`vs-palco-wrap${palcoLive ? " vs-palco-wrap--live" : ""}${live ? "" : " vs-palco-wrap--vuoto"}`} aria-label="Palco dello scontro">
                   <div className="vs-palco">
                     {glad(P(0), "sx")}
                     <span className="vs" aria-hidden="true">VS</span>
