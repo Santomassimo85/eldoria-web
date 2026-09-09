@@ -155,7 +155,7 @@ export default function ArenaMarket() {
   const pgName = charData?.name || currentUser?.displayName || "Il tuo campione";
   const pgImg  = charData?.image || charData?.imageUrl || charData?.avatar || null;
 
-  // ── BOTTEGA DEL NESSO: testata a gradiente → BAZAR (colonna sticky con
+  // ── BOTTEGA DEL COVO (pelle in ArenaMarket.css): testata → BAZAR (colonna sticky con
   //    forziere/PG/ricevuta/filtri | merci con anello conico di categoria) ──
   return (
     <div className="cine-page am-page bt-page">
@@ -168,8 +168,8 @@ export default function ArenaMarket() {
 
       {/* ── TESTATA ── */}
       <header className="bt-testata" aria-label="Bottega dell'Arena">
-        <span className="bt-kicker">Colosseo Astrale · Vetrina della Settimana</span>
-        <h1 className="bt-titolo">Bottega dell'Arena</h1>
+        <span className="bt-kicker">Il Covo del Drago · Vetrina della Settimana</span>
+        <h1 className="bt-titolo">Bottega <em>dell'Arena</em></h1>
         <p className="bt-sotto">
           La vetrina si rinnova ogni settimana: ciò che compri vale fino a <strong>{weekEndLabel(weekKey)}</strong>, solo nei tornei.
         </p>

@@ -619,7 +619,7 @@ export default function App() {
     document.body.classList.toggle("theme-dark", isDarkGamePage);
     document.body.classList.toggle("covo-admin", isAdminPage);
     // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
-    document.body.classList.toggle("covo-arena", p === "/arena");
+    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega");
     document.documentElement.dataset.theme = soffio === "bianco" ? "light" : "dark";
     document.documentElement.dataset.soffio = soffio;
     return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
