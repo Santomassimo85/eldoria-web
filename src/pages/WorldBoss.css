@@ -491,7 +491,16 @@
   border: 1px solid var(--rpg-border); border-top: 3px solid var(--el); border-radius: var(--rpg-r);
   overflow-y: auto; scrollbar-width: thin;
 }
-.rpg-action-panel.locked { opacity: .6; pointer-events: none; }
+/* bloccato (turno del boss / già agito / a terra): il pannello resta LEGGIBILE,
+   si spengono solo i comandi — un'opacità sul blocco intero, su fondo scuro, diventava "nero" */
+.rpg-action-panel.locked { pointer-events: none; }
+.rpg-action-panel.locked .rpg-player-panel > :not(.rpg-panel-title):not(.rpg-locked-note):not(.rpg-condition-badge) { opacity: .45; }
+.rpg-locked-note {
+  padding: 8px 10px; border-radius: var(--rpg-r);
+  font-family: var(--rpg-font-sc); font-size: .9rem; letter-spacing: .04em;
+  color: var(--el-soft); background: rgba(var(--el-rgb), .1);
+  border: 1px solid rgba(var(--el-rgb), .4); border-left: 4px solid var(--el);
+}
 .rpg-master-panel, .rpg-player-panel { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .rpg-panel-title { font-family: var(--rpg-font-px); font-size: 1.4rem; line-height: 1.1; color: var(--osso); }
 .rpg-locked-tag { font-family: var(--rpg-font-sc); font-size: .8rem; letter-spacing: .1em; color: var(--rpg-dim); }

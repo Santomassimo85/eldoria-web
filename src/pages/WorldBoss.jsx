@@ -208,8 +208,10 @@ export default function WorldBoss() {
   }, [activeBosses, nowTs, livingEnemies]);
 
   const chatEndRef = useRef(null);
+  // Solo in sviluppo: `?vista=player` mostra la pagina come la vede un giocatore (controllo grafico).
   const isMaster = useMemo(
-    () => currentUser?.email === MASTER_EMAIL,
+    () => currentUser?.email === MASTER_EMAIL
+      && !(import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player"),
     [currentUser],
   );
 
@@ -542,8 +544,9 @@ export default function WorldBoss() {
     });
     // Sagome della Caserma (solo quelle attive) — servono al Master per evocare.
     const unsubDefs = onSnapshot(collection(db, "minions"), (snap) => {
-      const defs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive);
-      defs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      // TUTTE le sagome della Caserma: quelle segnate ⚡ per prime, ma si può evocare qualunque
+      const defs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      defs.sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || (a.name || "").localeCompare(b.name || ""));
       setMinionDefs(defs);
       setSpawnDefId((cur) => (defs.some((d) => d.id === cur) ? cur : (defs[0]?.id || "")));
     });
@@ -1443,35 +1446,9 @@ export default function WorldBoss() {
                   <button className="rpg-btn rpg-btn--boss" onClick={() => handleManualTurnChange("boss")}>🔥 Boss</button>
                 </div>
 
-                {/* ── Boss ── */}
-                {boss && (
-                  <>
-                    <div className="rpg-section-label rpg-section-label--boss">Boss</div>
-                    {(Array.isArray(boss.actions) && boss.actions.length > 0
-                      ? boss.actions
-                      : [boss.action1, boss.action2, boss.action3, boss.action4, boss.action5]
-                    )
-                      .filter((a) => a && a.name)
-                      .map((action, idx) => (
-                        <button
-                          key={idx}
-                          className="rpg-btn rpg-btn--atk"
-                          onClick={() => handleBossRoll(boss, action)}
-                        >
-                          {action.name}
-                        </button>
-                      ))}
-                    <div className="rpg-btn-row">
-                      <button className="rpg-sm-btn" onClick={() => healBossManual(5)}>+5 HP</button>
-                      <button className="rpg-sm-btn" onClick={() => healBossManual(10)}>+10 HP</button>
-                      <button className="rpg-sm-btn" onClick={shieldBossManual}>🛡 Scudo</button>
-                    </div>
-                  </>
-                )}
-
                 {/* ── Minion: evoca dalla Caserma, poi ogni servo ha i suoi attacchi ── */}
                 <div className="rpg-section-label rpg-section-label--minion">
-                  <span>Minion <span className="rpg-section-count">({minionInstances.length})</span></span>
+                  <span>🪓 Minion in campo <span className="rpg-section-count">({minionInstances.length})</span></span>
                   {minionInstances.length > 0 && (
                     <span className="rpg-section-tools">
                       <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={clearMinions}>🗑 Tutti</button>
@@ -1481,14 +1458,16 @@ export default function WorldBoss() {
                 <div className="rpg-minion-spawn">
                   <select className="rpg-select" value={spawnDefId} onChange={(e) => setSpawnDefId(e.target.value)} disabled={!minionDefs.length}>
                     {minionDefs.length === 0
-                      ? <option value="">Nessun minion attivo in Caserma</option>
-                      : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.hp} HP · CA {d.ac}</option>)}
+                      ? <option value="">Nessuna sagoma in Caserma</option>
+                      : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.isActive ? "⚡ " : ""}{d.name} · {d.hp} HP · CA {d.ac}</option>)}
                   </select>
-                  <button className="rpg-btn rpg-btn--atk rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>➕ Evoca</button>
+                  <button className="rpg-btn rpg-btn--hero rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>➕ Evoca</button>
                 </div>
-                {minionDefs.length === 0 && (
-                  <p className="rpg-hint">Crea e attiva (⚡) i minion nella Caserma: DM Admin → World Boss Fight.</p>
-                )}
+                <p className="rpg-hint">
+                  {minionDefs.length === 0
+                    ? "Nessuna sagoma: creala nella Caserma (DM Admin → World Boss Fight), poi torna qui."
+                    : "Scegli una sagoma e premi Evoca: il servo compare in scena accanto al boss, con i suoi attacchi qui sotto. Puoi evocarne più copie."}
+                </p>
                 {minionInstances.map((m) => {
                   const dead = (m.hp ?? 0) <= 0;
                   const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
@@ -1527,6 +1506,33 @@ export default function WorldBoss() {
                     </div>
                   );
                 })}
+
+                {/* ── Boss ── */}
+                {boss && (
+                  <>
+                    <div className="rpg-section-label rpg-section-label--boss">Boss</div>
+                    {(Array.isArray(boss.actions) && boss.actions.length > 0
+                      ? boss.actions
+                      : [boss.action1, boss.action2, boss.action3, boss.action4, boss.action5]
+                    )
+                      .filter((a) => a && a.name)
+                      .map((action, idx) => (
+                        <button
+                          key={idx}
+                          className="rpg-btn rpg-btn--atk"
+                          onClick={() => handleBossRoll(boss, action)}
+                        >
+                          {action.name}
+                        </button>
+                      ))}
+                    <div className="rpg-btn-row">
+                      <button className="rpg-sm-btn" onClick={() => healBossManual(5)}>+5 HP</button>
+                      <button className="rpg-sm-btn" onClick={() => healBossManual(10)}>+10 HP</button>
+                      <button className="rpg-sm-btn" onClick={shieldBossManual}>🛡 Scudo</button>
+                    </div>
+                  </>
+                )}
+
 
                 {/* ── Giocatori (unificato: target + HP + controlli) ── */}
                 <div className="rpg-section-label rpg-section-label--toggle rpg-section-label--players" onClick={() => setPlayersOpen(o => !o)}>
@@ -1614,6 +1620,15 @@ export default function WorldBoss() {
             {!isMaster && (
               <div className="rpg-player-panel">
                 <div className="rpg-panel-title">{charData?.name || "Eroe"}{isUserLocked && <span className="rpg-locked-tag"> — Attendi</span>}</div>
+                {isUserLocked && (
+                  <div className="rpg-locked-note">
+                    {isFightOver ? "⚑ La battaglia è finita."
+                      : isPlayerDead ? "☠ Sei a terra: non puoi agire finché non vieni curato."
+                      : !fightStarted ? "⏳ In attesa che il Master dia inizio alla battaglia."
+                      : turnState.phase === "boss" ? "🔥 Turno del Boss: le tue azioni tornano al turno degli Eroi."
+                      : "✓ Hai già agito in questo turno: attendi il prossimo."}
+                  </div>
+                )}
                 {charData?.nextTurnCondition && (
                   <div className={`rpg-condition-badge rpg-condition-badge--${charData.nextTurnCondition}`}>
                     {charData.nextTurnCondition === "advantage" ? "⬆ Prossimo tiro: VANTAGGIO" : "⬇ Prossimo tiro: SVANTAGGIO"}
