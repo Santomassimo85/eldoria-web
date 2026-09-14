@@ -19,8 +19,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
-import { makeFlatMap, tilesWithinRange } from "./tactics/isoCore";
-import { aoeCells, DMG_TYPE_OPTIONS } from "./tactics/battleModel";
+import { DMG_TYPE_OPTIONS } from "./tactics/battleModel";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
@@ -210,71 +209,11 @@ const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
 });
 
 /* ──────────────────────────────────────────────────────────────
-   AoePreview — top-down mini-grid that visualises the tiles an
-   action covers. Uses the SAME geometry as the live battle
-   (aoeCells / tilesWithinRange) so it is WYSIWYG.
-   ────────────────────────────────────────────────────────────── */
-const AoePreview = ({ range, shape, size }) => {
-  const R = clamp(parseInt(range) || 1, 1, 12);
-  const Z = clamp(parseInt(size) || 1, 1, 6);
-  const isAoe = shape && shape !== "single";
-
-  const grid = useMemo(() => {
-    const span = isAoe ? R + Z : R;
-    const S = clamp(span * 2 + 1, 5, 13);
-    const c = Math.floor(S / 2);
-    const map = makeFlatMap(S, S, "grass");
-    const caster = { x: c, y: c };
-    const reach = tilesWithinRange(map, c, c, 1, R);   // tiles you can hit/aim
-    let blast = new Set();
-    if (isAoe) {
-      const aimX = clamp(c + R, 0, S - 1);             // aim east at max range
-      blast = aoeCells(map, caster, aimX, c, { shape, size: Z, range: R });
-    }
-    return { S, c, reach, blast };
-  }, [R, Z, shape, isAoe]);
-
-  const { S, c, reach, blast } = grid;
-  const covered = isAoe ? blast.size : reach.size;
-
-  return (
-    <div className="wb-aoe-preview">
-      <div
-        className="wb-aoe-grid"
-        style={{ gridTemplateColumns: `repeat(${S}, 1fr)` }}
-      >
-        {Array.from({ length: S * S }, (_, i) => {
-          const x = i % S, y = Math.floor(i / S);
-          const key = `${x},${y}`;
-          const isCaster = x === c && y === c;
-          const inBlast = blast.has(key);
-          const inReach = reach.has(key);
-          let cls = "wb-cell";
-          if (isCaster) cls += " caster";
-          else if (inBlast) cls += " blast";
-          else if (inReach) cls += isAoe ? " reach" : " target";
-          return <span key={i} className={cls}>{isCaster ? "👹" : ""}</span>;
-        })}
-      </div>
-      <div className="wb-aoe-caption">
-        {isAoe
-          ? <>🎇 Copre <strong>{covered}</strong> tile · gittata <strong>{R}</strong></>
-          : <>🎯 Colpisce entro <strong>{R}</strong> tile <span className="wb-aoe-dim">({covered} caselle)</span></>}
-      </div>
-    </div>
-  );
-};
-
-/* ──────────────────────────────────────────────────────────────
    ActionEditor — single boss action card with type-specific fields
    ────────────────────────────────────────────────────────────── */
 const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
   const type = action.type || "attack";
   const meta = ACTION_TYPES.find((t) => t.value === type) || ACTION_TYPES[0];
-  const targeted = TARGETED_TYPES.includes(type);   // has a range + tile preview
-  const canAoE = type === "attack";                 // only attacks can be areas
-  const shape = canAoE ? (action.aoeShape || "single") : "single";
-  const isAoe = shape !== "single";
   return (
     <div className={`wb-action-block wb-action-block--${type}`}>
       <div className="wb-action-block-head">
@@ -362,77 +301,6 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
         </div>
       )}
 
-      {/* ── Gittata + Area + anteprima tile ── */}
-      {targeted && (
-        <div className="wb-aoe-box">
-          <div className="wb-aoe-line">
-            <label className="wb-inline-label">📏 Gittata</label>
-            <input
-              className="admin-field-input wb-num"
-              type="number" min={1} max={12}
-              value={action.range ?? 1}
-              onChange={(e) => onChange({ range: clamp(parseInt(e.target.value) || 1, 1, 12) })}
-            />
-            <span className="wb-aoe-unit">tile</span>
-          </div>
-
-          {canAoE && (
-            <>
-              <div className="wb-aoe-shapes">
-                {AOE_SHAPES.map((s) => (
-                  <button
-                    type="button"
-                    key={s.value}
-                    className={`wb-aoe-shape ${shape === s.value ? "on" : ""}`}
-                    title={s.label}
-                    onClick={() => onChange({ aoeShape: s.value })}
-                  >
-                    <span className="wb-aoe-shape-icon">{s.icon}</span>
-                    <span className="wb-aoe-shape-lbl">{s.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {isAoe && (
-                <>
-                  <div className="wb-aoe-line">
-                    <label className="wb-inline-label">
-                      {shape === "line" || shape === "cone" ? "📐 Lunghezza" : "⬚ Raggio"}
-                    </label>
-                    <input
-                      className="admin-field-input wb-num"
-                      type="number" min={1} max={6}
-                      value={action.aoeSize ?? 1}
-                      onChange={(e) => onChange({ aoeSize: clamp(parseInt(e.target.value) || 1, 1, 6) })}
-                    />
-                    <span className="wb-aoe-unit">tile</span>
-                  </div>
-                  <div className="wb-aoe-line">
-                    <label className="wb-inline-label">🎲 TS</label>
-                    <select
-                      className="admin-field-input wb-num-wide"
-                      value={action.saveAbility || "dex"}
-                      onChange={(e) => onChange({ saveAbility: e.target.value })}
-                    >
-                      {SAVES.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
-                    </select>
-                    <label className="wb-aoe-check">
-                      <input
-                        type="checkbox"
-                        checked={action.halfOnSave !== false}
-                        onChange={(e) => onChange({ halfOnSave: e.target.checked })}
-                      />
-                      ½ danni se supera
-                    </label>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          <AoePreview range={action.range ?? 1} shape={shape} size={action.aoeSize ?? 1} />
-        </div>
-      )}
     </div>
   );
 };

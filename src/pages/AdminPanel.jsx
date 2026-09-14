@@ -62,7 +62,6 @@ export default function AdminPanel() {
       items: [
         { icon: "👹", label: "World Boss Fight", desc: "Crea boss, attivali e gestisci gli HP live.",         path: "/dm-admin/world-boss" },
         { icon: "🧝", label: "Sprite Personaggi",desc: "Sprite di PG e minion per il Boss Fight.",            path: "/dm-admin/player-sprites" },
-        { icon: "🗺", label: "Editor Mappe",     desc: "Mappe tattiche: terreni, quote, ostacoli, spawn.",    path: "/dm-admin/battle-maps" },
       ],
     },
     {

@@ -1,3 +1,8 @@
+## WORLD BOSS FIGHT = scena testo + sprite (2026-09-14, mappa tattica DISMESSA)
+- `/world-boss-fight` → `src/pages/WorldBoss.jsx` (la versione "com'era": banner, scena boss sx / eroi dx, tab Status·Azioni·Log). `src/pages/tactics/*` (BossTactics/IsoBoard/BattleMapEditor) NON è più routato (rotte `/boss-tactics` e `/dm-admin/battle-maps` tolte); resta su disco solo per `DMG_TYPE_OPTIONS` in battleModel.js. L'admin non ha più gittata/area/anteprima caselle.
+- `WorldBoss.css` riscritto nel Covo a token (Grenze/Alegreya/Cinzel, `--rpg-*` alias dei token del covo). La rotta è `theme-dark` + `covo-arena` (squame accese), la testata resta visibile (niente fullscreen).
+- **Minion**: sagome in `minions` (Caserma dell'admin, solo quelle ⚡attive) → il Master le EVOCA dal pannello Azioni in `world_boss_minions` (istanze vive: hp/maxHp/ac/shield/actions/sprite). Ogni minion ha i suoi attacchi (stessa `handleBossRoll`). I giocatori scelgono il BERSAGLIO (chip "Bersaglio" nel pannello o click sullo sprite; `currentTarget`, default primo vivo). VITTORIA solo quando boss + tutti i minion sono a 0 (`areAllEnemiesDead`); boss morto con servi vivi = banner "abbattete i suoi servi". Regole Firestore deployate (update giocatori limitato a hp/shield/nextTurnCondition/debuffSource su bosses e world_boss_minions).
+
 ## FEATURE ATTIVA: Generatore Sessioni DM (2026-07-03)
 - Piano completo + stato: `docs/generate-session/PLAN.md` e `docs/generate-session/progress.md`.
 - Strumento privato (solo master + co-master) per generare/archiviare le prep-sessioni dei party AMEA/LEAF/ENOX con Claude Opus 4.8.

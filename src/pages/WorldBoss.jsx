@@ -135,18 +135,52 @@ export default function WorldBoss() {
   // Shape: { action, intent: "heal" | "buff", selected: string[] }
   const [spellPicker, setSpellPicker] = useState(null);
 
+  // ── MINION ──
+  // `minionDefs`      = sagome salvate nella Caserma (collection `minions`, solo attive)
+  // `minionInstances` = servi EVOCATI in questa battaglia (collection `world_boss_minions`):
+  //                     copia viva con hp/scudo propri. Il Master li evoca dal pannello,
+  //                     i giocatori scelgono chi colpire (boss o minion). La vittoria
+  //                     arriva solo quando TUTTI i nemici sono a terra.
+  const [minionDefs, setMinionDefs] = useState([]);
+  const [minionInstances, setMinionInstances] = useState([]);
+  const [spawnDefId, setSpawnDefId] = useState("");
+  const [targetId, setTargetId] = useState(null); // bersaglio scelto dal giocatore (id boss o minion)
+
   const fightStarted = turnState.fightStarted === true;
 
+  // Tutti i nemici in scena: il boss per primo, poi i minion evocati.
+  const enemies = useMemo(() => {
+    const list = [];
+    if (activeBosses[0]) list.push({ ...activeBosses[0], kind: "boss", vfxKey: "boss" });
+    minionInstances.forEach((m) => list.push({ ...m, kind: "minion", vfxKey: `minion-${m.id}` }));
+    return list;
+  }, [activeBosses, minionInstances]);
+  const livingEnemies = useMemo(() => enemies.filter((e) => (e.hp ?? 0) > 0), [enemies]);
+
+  // Il boss è a terra (sprite morto) — ma la battaglia continua finché vivono i servi.
   const isBossDefeated = useMemo(() => {
     return activeBosses.length > 0 && activeBosses[0].hp <= 0;
   }, [activeBosses]);
+  // VITTORIA: boss E minion tutti a zero.
+  const areAllEnemiesDead = useMemo(
+    () => enemies.length > 0 && livingEnemies.length === 0,
+    [enemies, livingEnemies],
+  );
 
   const areAllPlayersDead = useMemo(() => {
     if (!players.length) return false;
     return players.every((p) => (p.stats?.hp ?? 0) <= 0);
   }, [players]);
 
-  const isFightOver = isBossDefeated || areAllPlayersDead;
+  const isFightOver = areAllEnemiesDead || areAllPlayersDead;
+
+  // Bersaglio corrente del giocatore: quello scelto se è ancora vivo, altrimenti il primo vivo.
+  const currentTarget = useMemo(
+    () => livingEnemies.find((e) => e.id === targetId) || livingEnemies[0] || null,
+    [livingEnemies, targetId],
+  );
+  const enemyRef = (e) => doc(db, e.kind === "minion" ? "world_boss_minions" : "bosses", e.id);
+  const enemyOf = (id) => enemies.find((e) => e.id === id) || null;
 
   // Live clock — ticks every second so the boss deadline (expiryDate) countdown
   // and isTimeExpired recompute even with no Firestore change on the page.
@@ -169,8 +203,9 @@ export default function WorldBoss() {
     if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return false;
     const expiry = new Date(activeBosses[0].expiryDate).getTime();
     if (Number.isNaN(expiry)) return false;
-    return nowTs >= expiry && activeBosses[0].hp > 0;
-  }, [activeBosses, nowTs]);
+    // scaduto = tempo finito con almeno un nemico (boss o minion) ancora in piedi
+    return nowTs >= expiry && livingEnemies.length > 0;
+  }, [activeBosses, nowTs, livingEnemies]);
 
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
@@ -250,7 +285,7 @@ export default function WorldBoss() {
 
   useEffect(() => {
     lastAutoFireRef.current = 0;
-    if (!turnState?.expiryDate || isBossDefeated || !fightStarted) {
+    if (!turnState?.expiryDate || areAllEnemiesDead || !fightStarted) {
       setTimeLeft(0);
       return;
     }
@@ -265,7 +300,7 @@ export default function WorldBoss() {
       const diff = expiry - now;
       if (diff <= 0) {
         setTimeLeft(0);
-        if (!isBossDefeated) {
+        if (!areAllEnemiesDead) {
           const now2 = Date.now();
           if (now2 - lastAutoFireRef.current > 12000) {
             lastAutoFireRef.current = now2;
@@ -279,7 +314,7 @@ export default function WorldBoss() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [turnState?.expiryDate, turnState?.phase, isMaster, isBossDefeated, fightStarted, handleAutoTurnChange]);
+  }, [turnState?.expiryDate, turnState?.phase, isMaster, areAllEnemiesDead, fightStarted, handleAutoTurnChange]);
 
   const formatTime = (ms) => {
     const seconds = Math.floor((ms / 1000) % 60);
@@ -299,19 +334,20 @@ export default function WorldBoss() {
   }, []);
 
   useEffect(() => {
-    if (!isMaster || !isBossDefeated || activeBosses.length === 0) return;
+    if (!isMaster || !areAllEnemiesDead || activeBosses.length === 0) return;
     const boss = activeBosses[0];
     if (boss.victoryNotified) return;
     const notify = async () => {
+      const servi = minionInstances.length ? ` e i suoi ${minionInstances.length} servi` : "";
       await sendBattleNotification(
         "🏆 VITTORIA DEGLI EROI!",
-        `Avete sconfitto ${boss.name}! ${boss.rewards ? "Ricompense: " + boss.rewards : "Il Master vi assegnerà le ricompense."}`
+        `Avete sconfitto ${boss.name}${servi}! ${boss.rewards ? "Ricompense: " + boss.rewards : "Il Master vi assegnerà le ricompense."}`
       );
       await updateDoc(doc(db, "bosses", boss.id), { victoryNotified: true });
     };
     notify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBossDefeated]);
+  }, [areAllEnemiesDead]);
 
   useEffect(() => {
     if (!isMaster || !isTimeExpired || activeBosses.length === 0) return;
@@ -329,7 +365,7 @@ export default function WorldBoss() {
   }, [isTimeExpired]);
 
   const handleManualDamageToBoss = async (die) => {
-    const boss = activeBosses[0];
+    const boss = currentTarget; // boss o minion scelto dal giocatore
     if (!boss || isUserLocked) return;
     const sides = parseInt(die.replace("d", ""));
     let totalRoll = 0;
@@ -365,24 +401,27 @@ export default function WorldBoss() {
       newHp = Math.max(0, currentHp - remainingDamage);
     }
     try {
-      await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
+      await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
       let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
       if (statMod !== 0) detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
       if (isRogue) detailString += ` + ${sneakDiceCount}d6 Ladro (${sneakRolls.join("+")})`;
       let shieldNote = currentShield > 0 ? ` (Scudo colpito! Rimanente: ${newShield})` : "";
+      if (newHp <= 0) shieldNote += ` ☠ ${boss.name} cade!`;
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
-        actionName: `Danno Arma${isRogue ? " (Furtivo)" : ""}`,
+        actionName: `Danno Arma${isRogue ? " (Furtivo)" : ""} → ${boss.name}`,
         damageRoll: `💥 INFLITTI ${finalDamage} DANNI!${shieldNote}`,
         description: `Tiro: ${detailString}`, uid: currentUser.uid,
         category: "Danno", timestamp: serverTimestamp(),
-        effect: "slash", effectTargets: ["boss"],
+        effect: "slash", effectTargets: [boss.vfxKey],
       });
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
-      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-        [`attackCounts.${boss.id}.${currentUser.uid}`]: increment(1),
-      });
+      if (activeBosses[0]?.id) {
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
+        });
+      }
       await endMyTurn();
     } catch (err) {
       console.error("Errore durante l'applicazione del danno:", err);
@@ -495,11 +534,24 @@ export default function WorldBoss() {
       const bosses = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => b.isActive);
       setActiveBosses(bosses);
     });
+    // Servi evocati in questa battaglia (ordine di evocazione).
+    const unsubMinions = onSnapshot(collection(db, "world_boss_minions"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.createdAt?.seconds ?? Infinity) - (b.createdAt?.seconds ?? Infinity));
+      setMinionInstances(list);
+    });
+    // Sagome della Caserma (solo quelle attive) — servono al Master per evocare.
+    const unsubDefs = onSnapshot(collection(db, "minions"), (snap) => {
+      const defs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive);
+      defs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setMinionDefs(defs);
+      setSpawnDefId((cur) => (defs.some((d) => d.id === cur) ? cur : (defs[0]?.id || "")));
+    });
     const q = query(collection(db, "world_boss_chat"), orderBy("timestamp", "desc"), limit(100));
     const unsubChat = onSnapshot(q, (snap) => {
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
-    return () => { unsubChar(); unsubBoss(); unsubChat(); };
+    return () => { unsubChar(); unsubBoss(); unsubChat(); unsubMinions(); unsubDefs(); };
   }, [currentUser]);
 
 
@@ -608,23 +660,23 @@ export default function WorldBoss() {
     }
   };
 
-  // ── DEBUFF SPELL: applies disadvantage to the boss's next attack roll ──
+  // ── DEBUFF SPELL: applies disadvantage to the chosen enemy's next attack roll ──
   const castDebuffOnBoss = async (action) => {
-    const boss = activeBosses[0];
+    const boss = currentTarget;
     if (!boss || isUserLocked) return;
     try {
-      await updateDoc(doc(db, "bosses", boss.id), {
+      await updateDoc(enemyRef(boss), {
         nextTurnCondition: "disadvantage",
         debuffSource: action.name || null,
       });
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
-        actionName: `${action.name} (Debuff)`,
+        actionName: `${action.name} (Debuff) → ${boss.name}`,
         damageRoll: `🌑 ${boss.name}: svantaggio al prossimo attacco!`,
-        description: action.description || `${charData?.name || "Eroe"} ostacola il Boss.`,
+        description: action.description || `${charData?.name || "Eroe"} ostacola ${boss.kind === "minion" ? boss.name : "il Boss"}.`,
         uid: currentUser.uid, category: action.category || "Incantesimo",
         timestamp: serverTimestamp(),
-        effect: "debuff", effectTargets: ["boss"],
+        effect: "debuff", effectTargets: [boss.vfxKey],
       });
       await endMyTurn();
     } catch (err) {
@@ -633,7 +685,7 @@ export default function WorldBoss() {
   };
 
   const handleActionRoll = async (action) => {
-    const boss = activeBosses[0];
+    const boss = currentTarget; // il nemico scelto (boss o minion)
     if (!boss || isUserLocked) return;
 
     // Route spells by intent (self_buff/heal/buff/debuff). Weapons always fall through to attack.
@@ -659,7 +711,7 @@ export default function WorldBoss() {
       return;
     }
     if (intent === "debuff") {
-      const ok = window.confirm(`Lanciare "${action.name}" sul Boss? Applicherà svantaggio al suo prossimo attacco.`);
+      const ok = window.confirm(`Lanciare "${action.name}" su ${boss.name}? Applicherà svantaggio al suo prossimo attacco.`);
       if (!ok) return;
       await castDebuffOnBoss(action);
       return;
@@ -700,7 +752,7 @@ export default function WorldBoss() {
     const isCritical = d20 === 20;
     let actionData = {
       type: "action", senderName: charData?.name || "Eroe",
-      actionName: action.name + (isCritical ? " (CRITICO!)" : ""),
+      actionName: action.name + (isCritical ? " (CRITICO!)" : "") + (isAttack ? ` → ${boss.name}` : ""),
       timestamp: serverTimestamp(), uid: currentUser.uid, category: action.category,
       hitRoll: `🎲 ${rollLabel} + ${bonusLabel} = ${hitTotal} `,
     };
@@ -745,18 +797,21 @@ export default function WorldBoss() {
           if (currentShield >= dmgRem) { newShield -= dmgRem; dmgRem = 0; }
           else { dmgRem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - dmgRem); }
         } else { newHp = Math.max(0, currentHp - dmgRem); }
-        await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
+        await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
         actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
+        if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
         actionData.effect = effectKey;
-        actionData.effectTargets = ["boss"];
+        actionData.effectTargets = [boss.vfxKey];
       } else {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
       }
       await addDoc(collection(db, "world_boss_chat"), actionData);
-      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-        [`attackCounts.${boss.id}.${currentUser.uid}`]: increment(1),
-      });
+      if (activeBosses[0]?.id) {
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
+        });
+      }
       await endMyTurn();
     } else {
       actionData.effect = pickEffectForAction(action);
@@ -769,8 +824,12 @@ export default function WorldBoss() {
     setSelectedTargets((prev) => prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]);
   };
 
-  const handleBossRoll = async (boss, action) => {
+  // Attacco/abilità di un NEMICO (boss o minion evocato): stessa logica, cambia il doc.
+  const handleBossRoll = async (bossOrMinion, action) => {
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
+    const boss = bossOrMinion.kind ? bossOrMinion : { ...bossOrMinion, kind: "boss", vfxKey: "boss" };
+    if ((boss.hp ?? 0) <= 0) return alert(`${boss.name} è a terra: non può agire.`);
+    const who = boss.kind === "minion" ? boss.name : "Il Boss";
     const actionType = action.type || "attack";
 
     // ── HEAL: boss restores HP by NdT + bonus ──
@@ -778,12 +837,12 @@ export default function WorldBoss() {
       const formula = `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}+${parseInt(action.bonus) || 0}`;
       const healed = rollDice(formula);
       const newHp = Math.min(boss.maxHp ?? boss.hp ?? 0, (boss.hp || 0) + healed);
-      await updateDoc(doc(db, "bosses", boss.id), { hp: newHp });
+      await updateDoc(enemyRef(boss), { hp: newHp });
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Cura Boss",
         actionName: action.name,
-        description: `Il Boss invoca ${action.name} e si cura di 💖 ${healed} HP (${formula}). HP: ${newHp}/${boss.maxHp ?? "?"}.`,
-        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        description: `${who} invoca ${action.name} e si cura di 💖 ${healed} HP (${formula}). HP: ${newHp}/${boss.maxHp ?? "?"}.`,
+        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
         timestamp: serverTimestamp(),
       });
       return;
@@ -794,12 +853,12 @@ export default function WorldBoss() {
       const bump = parseInt(action.acBonus) || 0;
       if (bump <= 0) return alert("Imposta un bonus CA > 0 per questa abilità.");
       const newAc = (boss.ac || 10) + bump;
-      await updateDoc(doc(db, "bosses", boss.id), { ac: newAc });
+      await updateDoc(enemyRef(boss), { ac: newAc });
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
-        description: `Il Boss usa ${action.name}: 🛡 CA +${bump} (ora ${newAc}).`,
-        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        description: `${who} usa ${action.name}: 🛡 CA +${bump} (ora ${newAc}).`,
+        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
         timestamp: serverTimestamp(),
       });
       return;
@@ -807,12 +866,12 @@ export default function WorldBoss() {
 
     // ── BUFF advantage: boss gains advantage on its next attack ──
     if (actionType === "buff_adv") {
-      await updateDoc(doc(db, "bosses", boss.id), { nextTurnCondition: "advantage", debuffSource: action.name || null });
+      await updateDoc(enemyRef(boss), { nextTurnCondition: "advantage", debuffSource: action.name || null });
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
-        description: `Il Boss invoca ${action.name}: ⬆ vantaggio sul prossimo attacco.`,
-        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        description: `${who} invoca ${action.name}: ⬆ vantaggio sul prossimo attacco.`,
+        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
         timestamp: serverTimestamp(),
       });
       return;
@@ -833,7 +892,7 @@ export default function WorldBoss() {
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Debuff Boss",
         actionName: action.name,
-        description: `Il Boss colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
+        description: `${who} colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
         effect: pickEffectForAction(action), effectTargets: selectedTargets.map((uid) => `player-${uid}`),
         timestamp: serverTimestamp(),
       });
@@ -852,7 +911,7 @@ export default function WorldBoss() {
       d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"}[${r1},${r2}]→${d20}`;
       // Clear after use so it only applies to one roll.
-      try { await updateDoc(doc(db, "bosses", boss.id), { nextTurnCondition: null, debuffSource: null }); } catch (_) {}
+      try { await updateDoc(enemyRef(boss), { nextTurnCondition: null, debuffSource: null }); } catch (_) {}
     } else {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
@@ -893,7 +952,7 @@ export default function WorldBoss() {
     await addDoc(collection(db, "world_boss_chat"), {
       uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
       actionName: action.name,
-      description: `Il Boss scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
+      description: `${who} scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
       masterDetails: results, timestamp: serverTimestamp(),
       ...(hitTargetIds.length > 0 ? { effect: pickEffectForAction(action), effectTargets: hitTargetIds } : {}),
     });
@@ -917,6 +976,49 @@ export default function WorldBoss() {
     if (val && !isNaN(val)) {
       await updateDoc(doc(db, "bosses", boss.id), { shield: increment(parseInt(val)) });
     }
+  };
+
+  // ── MINION (solo Master): evoca dalla Caserma, cura/scuda/congeda ──
+  const spawnMinion = async () => {
+    const def = minionDefs.find((d) => d.id === spawnDefId) || minionDefs[0];
+    if (!def) return alert("Nessun minion attivo in Caserma: crealo e attivalo in DM Admin → World Boss.");
+    const sameKind = minionInstances.filter((m) => m.defId === def.id).length;
+    const name = sameKind > 0 ? `${def.name} ${sameKind + 1}` : def.name;
+    try {
+      await addDoc(collection(db, "world_boss_minions"), {
+        defId: def.id, name,
+        hp: parseInt(def.hp) || 1, maxHp: parseInt(def.hp) || 1, ac: parseInt(def.ac) || 10, shield: 0,
+        imageUrl: def.imageUrl || "", deadImageUrl: def.deadImageUrl || "",
+        actions: Array.isArray(def.actions) ? def.actions.filter((a) => a && a.name) : [],
+        nextTurnCondition: null, debuffSource: null,
+        createdAt: serverTimestamp(),
+      });
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: "Master System", type: "notification",
+        content: `🪓 ${name} entra in battaglia al fianco di ${activeBosses[0]?.name || "del Boss"}!`,
+        timestamp: serverTimestamp(), isSystem: true,
+      });
+    } catch (e) {
+      console.error("Errore evocazione minion:", e);
+      alert("Evocazione fallita: " + (e.message || e));
+    }
+  };
+  const healMinionManual = async (m, amount) => {
+    await updateDoc(doc(db, "world_boss_minions", m.id), { hp: Math.min(m.maxHp ?? m.hp, (m.hp || 0) + amount) });
+  };
+  const shieldMinionManual = async (m) => {
+    const val = prompt(`Quanti HP di scudo vuoi dare a ${m.name}?`);
+    if (val && !isNaN(val)) await updateDoc(doc(db, "world_boss_minions", m.id), { shield: increment(parseInt(val)) });
+  };
+  const removeMinion = async (m) => {
+    if (!window.confirm(`Congedare ${m.name} dalla battaglia?`)) return;
+    await deleteDoc(doc(db, "world_boss_minions", m.id));
+  };
+  const clearMinions = async () => {
+    if (!minionInstances.length || !window.confirm("Congedare TUTTI i minion evocati?")) return;
+    const batch = writeBatch(db);
+    minionInstances.forEach((m) => batch.delete(doc(db, "world_boss_minions", m.id)));
+    await batch.commit();
   };
 
   const clearChat = async () => {
@@ -991,7 +1093,7 @@ export default function WorldBoss() {
   const lastActionText = useMemo(() => {
     const actionMsgs = messages.filter(m => m.type === "action" && m.actionName);
     if (!actionMsgs.length) return null;
-    const last = actionMsgs[actionMsgs.length - 1];
+    const last = actionMsgs[0]; // i messaggi arrivano dal più recente (orderBy desc)
     return `${last.senderName} · ${last.actionName}`;
   }, [messages]);
 
@@ -1003,7 +1105,9 @@ export default function WorldBoss() {
   if (!currentUser) return <div className="rpg-denied">Loggati per entrare.</div>;
 
   const boss = activeBosses[0] ?? null;
-  const isGameOver = isBossDefeated || isTimeExpired || areAllPlayersDead;
+  const isGameOver = areAllEnemiesDead || isTimeExpired || areAllPlayersDead;
+  // il giocatore può scegliere il bersaglio solo se in scena c'è più di un nemico vivo
+  const canPickTarget = !isMaster && livingEnemies.length > 1 && !isGameOver;
   const partyForDisplay = players.length > 0
     ? players
     : charData ? [{ id: currentUser.uid, ...charData }] : [];
@@ -1015,12 +1119,14 @@ export default function WorldBoss() {
       {/* ── ACTION BANNER ── */}
       <div className="rpg-action-banner">
         <span className="rpg-banner-text">
-          {lastActionText
+          {(areAllEnemiesDead ? "🏆 VITTORIA DEGLI EROI!" : null)
+            || (isBossDefeated && !areAllEnemiesDead && !isTimeExpired ? `⚔ ${boss?.name || "Il Boss"} è caduto! Abbattete i suoi servi!` : null)
+            || lastActionText
             || (boss && !fightStarted ? `${boss.name} minaccia Exanthia!` : null)
             || (fightStarted && !isGameOver
               ? (turnState.phase === "players" ? "⚔ Turno degli Eroi" : "🔥 Il Boss Attacca!")
               : null)
-            || (isBossDefeated ? "🏆 VITTORIA DEGLI EROI!" : isTimeExpired ? "💀 IL BOSS HA PREVALSO!" : areAllPlayersDead ? "💀 GLI EROI SONO CADUTI!" : "—")}
+            || (isTimeExpired ? "💀 IL BOSS HA PREVALSO!" : areAllPlayersDead ? "💀 GLI EROI SONO CADUTI!" : "—")}
         </span>
         {isMaster && (
           <div className="rpg-dm-topbar">
@@ -1037,17 +1143,54 @@ export default function WorldBoss() {
       >
 
         {/* Boss — left */}
-        <div className="rpg-boss-zone">
+        <div className={`rpg-boss-zone ${minionInstances.length > 0 ? "has-minions" : ""}`}>
           {!boss ? (
             <p className="rpg-no-boss-msg">Nessun boss attivo</p>
           ) : (
-            <div data-vfx-target="boss" className={`rpg-boss-sprite-wrap ${isBossDefeated ? "dead" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver ? "boss-turn" : ""}`}>
+            <div
+              data-vfx-target="boss"
+              className={`rpg-boss-sprite-wrap ${isBossDefeated ? "dead" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver ? "boss-turn" : ""} ${canPickTarget && currentTarget?.id === boss.id ? "is-target" : ""} ${canPickTarget && !isBossDefeated ? "pickable" : ""}`}
+              onClick={() => { if (canPickTarget && !isBossDefeated) setTargetId(boss.id); }}
+              role={canPickTarget && !isBossDefeated ? "button" : undefined}
+              title={canPickTarget && !isBossDefeated ? `Bersaglio: ${boss.name}` : undefined}
+            >
+              {canPickTarget && currentTarget?.id === boss.id && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
               <img
                 className="rpg-boss-sprite"
                 src={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
                 alt={boss.name}
               />
               {isBossDefeated && <div className="rpg-torn-overlay" />}
+            </div>
+          )}
+
+          {/* Servi evocati: fila di sprite più piccoli ai piedi del boss */}
+          {minionInstances.length > 0 && (
+            <div className="rpg-minion-row">
+              {minionInstances.map((m) => {
+                const dead = (m.hp ?? 0) <= 0;
+                const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
+                const isTgt = canPickTarget && currentTarget?.id === m.id;
+                const pickable = canPickTarget && !dead;
+                const sprite = dead ? (m.deadImageUrl || m.imageUrl) : m.imageUrl;
+                return (
+                  <div
+                    key={m.id}
+                    data-vfx-target={`minion-${m.id}`}
+                    className={`rpg-minion-wrap ${dead ? "dead" : ""} ${isTgt ? "is-target" : ""} ${pickable ? "pickable" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver && !dead ? "boss-turn" : ""}`}
+                    onClick={() => { if (pickable) setTargetId(m.id); }}
+                    role={pickable ? "button" : undefined}
+                    title={pickable ? `Bersaglio: ${m.name}` : m.name}
+                  >
+                    {isTgt && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
+                    {sprite
+                      ? <img className="rpg-minion-sprite" src={sprite} alt={m.name} />
+                      : <div className="rpg-minion-placeholder">{dead ? "☠" : "🪓"}</div>}
+                    <span className="rpg-minion-tag">{m.name}</span>
+                    <span className="rpg-minion-hpbar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1091,13 +1234,13 @@ export default function WorldBoss() {
         </div>
 
         {/* Game over overlays */}
-        {isBossDefeated && (
+        {areAllEnemiesDead && (
           <div className="rpg-scene-banner rpg-scene-banner--victory">🏆 VITTORIA DEGLI EROI 🏆</div>
         )}
         {isTimeExpired && (
           <div className="rpg-scene-banner rpg-scene-banner--defeat">💀 IL BOSS HA PREVALSO 💀</div>
         )}
-        {areAllPlayersDead && !isBossDefeated && !isTimeExpired && (
+        {areAllPlayersDead && !areAllEnemiesDead && !isTimeExpired && (
           <div className="rpg-scene-banner rpg-scene-banner--defeat">💀 GLI EROI SONO CADUTI 💀</div>
         )}
 
@@ -1148,6 +1291,26 @@ export default function WorldBoss() {
               </div>
               {isMaster && <span className="rpg-hud-hp-val">{boss.hp} / {boss.maxHp}</span>}
             </div>
+            {minionInstances.length > 0 && (
+              <div className="rpg-hud-minions">
+                {minionInstances.map((m) => {
+                  const dead = (m.hp ?? 0) <= 0;
+                  const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
+                  return (
+                    <div key={m.id} className={`rpg-hud-minion ${dead ? "dead" : ""}`}>
+                      <span className="rpg-hud-minion-name">{dead ? "☠" : "🪓"} {m.name}</span>
+                      <div className="rpg-bar-track rpg-bar-track--sm">
+                        <div className={`rpg-bar-hp ${pct < 25 ? "crit" : pct < 50 ? "low" : ""}`} style={{ width: `${pct}%` }} />
+                        {(m.shield ?? 0) > 0 && (
+                          <div className="rpg-bar-shield" style={{ width: `${Math.min(100, (m.shield / Math.max(1, m.maxHp ?? 1)) * 100)}%` }} />
+                        )}
+                      </div>
+                      {isMaster && <span className="rpg-hud-hp-val">{m.hp} / {m.maxHp}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {fightStarted && !isGameOver && (
               <div className="rpg-hud-turn-row">
                 <span className={`rpg-phase-pill ${turnState.phase}`}>
@@ -1197,7 +1360,7 @@ export default function WorldBoss() {
       {/* ── STAKES BANNER (solo status tab) ── */}
       {mobileTab === "status" && boss && (boss.rewards || boss.penalties) && (
         <div className="rpg-stakes-bar">
-          {boss.penalties && !isBossDefeated && (
+          {boss.penalties && !areAllEnemiesDead && (
             <div className="rpg-stake-block rpg-stake-block--penalty">
               <span className="rpg-stake-icon">💀</span>
               <div>
@@ -1306,6 +1469,65 @@ export default function WorldBoss() {
                   </>
                 )}
 
+                {/* ── Minion: evoca dalla Caserma, poi ogni servo ha i suoi attacchi ── */}
+                <div className="rpg-section-label rpg-section-label--minion">
+                  <span>Minion <span className="rpg-section-count">({minionInstances.length})</span></span>
+                  {minionInstances.length > 0 && (
+                    <span className="rpg-section-tools">
+                      <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={clearMinions}>🗑 Tutti</button>
+                    </span>
+                  )}
+                </div>
+                <div className="rpg-minion-spawn">
+                  <select className="rpg-select" value={spawnDefId} onChange={(e) => setSpawnDefId(e.target.value)} disabled={!minionDefs.length}>
+                    {minionDefs.length === 0
+                      ? <option value="">Nessun minion attivo in Caserma</option>
+                      : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.hp} HP · CA {d.ac}</option>)}
+                  </select>
+                  <button className="rpg-btn rpg-btn--atk rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>➕ Evoca</button>
+                </div>
+                {minionDefs.length === 0 && (
+                  <p className="rpg-hint">Crea e attiva (⚡) i minion nella Caserma: DM Admin → World Boss Fight.</p>
+                )}
+                {minionInstances.map((m) => {
+                  const dead = (m.hp ?? 0) <= 0;
+                  const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
+                  const hpCls = pct < 25 ? "crit" : pct < 50 ? "low" : "";
+                  const acts = Array.isArray(m.actions) ? m.actions.filter((a) => a && a.name) : [];
+                  return (
+                    <div key={m.id} className={`rpg-master-row rpg-master-row--minion ${dead ? "dead" : ""}`}>
+                      <div className="rpg-master-row-head rpg-master-row-head--static">
+                        <span className="rpg-master-row-name">
+                          {dead ? "☠" : "🪓"} {m.name}
+                          <span className="rpg-attack-counter" title="Classe Armatura">CA {m.ac}</span>
+                          {m.nextTurnCondition === "disadvantage" && <span className="rpg-dead-mark" title={m.debuffSource || "Svantaggio"}>🌑</span>}
+                          {m.nextTurnCondition === "advantage" && <span className="rpg-check-mark" title="Vantaggio">⬆</span>}
+                        </span>
+                        <span className={`rpg-master-row-hp ${hpCls}`}>
+                          {m.hp}/{m.maxHp}{(m.shield ?? 0) > 0 ? ` 🛡${m.shield}` : ""}
+                        </span>
+                        <div className="rpg-bar-track rpg-bar-track--sm">
+                          <div className={`rpg-bar-hp ${hpCls}`} style={{ width: `${pct}%` }} />
+                          {(m.shield ?? 0) > 0 && (
+                            <div className="rpg-bar-shield" style={{ width: `${Math.min(100, (m.shield / Math.max(1, m.maxHp ?? 1)) * 100)}%` }} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="rpg-master-row-btns">
+                        {acts.map((a, i) => (
+                          <button key={i} className="rpg-sm-btn rpg-sm-btn--atk" disabled={dead} onClick={() => handleBossRoll(enemyOf(m.id) || { ...m, kind: "minion", vfxKey: `minion-${m.id}` }, a)}>
+                            ⚔ {a.name}
+                          </button>
+                        ))}
+                        {acts.length === 0 && <span className="rpg-hint">nessun attacco salvato</span>}
+                        <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healMinionManual(m, 5)}>+5</button>
+                        <button className="rpg-sm-btn" onClick={() => shieldMinionManual(m)}>🛡</button>
+                        <button className="rpg-sm-btn rpg-sm-btn--danger" title="Congeda" onClick={() => removeMinion(m)}>✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
+
                 {/* ── Giocatori (unificato: target + HP + controlli) ── */}
                 <div className="rpg-section-label rpg-section-label--toggle rpg-section-label--players" onClick={() => setPlayersOpen(o => !o)}>
                   <span>{playersOpen ? "▼" : "▶"} Giocatori <span className="rpg-section-count">({players.length})</span></span>
@@ -1341,7 +1563,7 @@ export default function WorldBoss() {
                           <span className={`rpg-master-row-hp ${hpCls}`}>
                             {hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}
                             {(p.selfAcBonus ?? 0) > 0 && (
-                              <span title={p.selfAcSource || "Buff CA attivo"} style={{ marginLeft: 6, fontSize: "0.78em", color: "#1f5532", background: "rgba(58,122,74,0.16)", padding: "1px 6px", borderRadius: 999 }}>
+                              <span className="rpg-ca-badge" title={p.selfAcSource || "Buff CA attivo"}>
                                 🛡 +{p.selfAcBonus} CA
                               </span>
                             )}
@@ -1402,6 +1624,25 @@ export default function WorldBoss() {
                     onClick={endMyTurn} disabled={turnState.actedPlayers?.includes(currentUser.uid)}>
                     {turnState.actedPlayers?.includes(currentUser.uid) ? "✓ Azione Eseguita" : "⏩ Fine Turno"}
                   </button>
+                )}
+                {/* ── Bersaglio: chi colpire, quando in scena c'è più di un nemico ── */}
+                {livingEnemies.length > 1 && (
+                  <>
+                    <div className="rpg-section-label rpg-section-label--target">Bersaglio</div>
+                    <div className="rpg-target-chips">
+                      {livingEnemies.map((e) => {
+                        const pct = Math.max(0, Math.min(100, Math.round(((e.hp ?? 0) / Math.max(1, e.maxHp ?? 1)) * 100)));
+                        const on = currentTarget?.id === e.id;
+                        return (
+                          <button key={e.id} type="button" className={`rpg-target-chip ${on ? "on" : ""} ${e.kind}`} onClick={() => setTargetId(e.id)}>
+                            <span className="rpg-target-chip-ico">{e.kind === "boss" ? "👹" : "🪓"}</span>
+                            <span className="rpg-target-chip-name">{e.name}</span>
+                            <span className="rpg-target-chip-hp"><i style={{ width: `${pct}%` }} /></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
                 <div className="rpg-mode-toggle">
                   <button

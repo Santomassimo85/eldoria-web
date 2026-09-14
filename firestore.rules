@@ -62,7 +62,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource'])
       );
     }
 
@@ -72,6 +72,18 @@ service cloud.firestore {
     match /minions/{minionId} {
       allow read: if true;
       allow create, update, delete: if isMaster();
+    }
+
+    // Minion EVOCATI nella battaglia corrente (World Boss, scena testo + sprite):
+    // copia viva di una sagoma della Caserma con hp/scudo propri. Il Master li
+    // evoca e congeda; i giocatori possono solo ferirli/scudarli/indebolirli.
+    match /world_boss_minions/{instanceId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn() && (
+        isMaster() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource'])
+      );
     }
 
     // ── Presence (online status) ─────────────────────────────────────────────

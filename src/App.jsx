@@ -51,8 +51,6 @@ import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
-import BossTactics from "./pages/tactics/BossTactics";
-import BattleMapEditor from "./pages/tactics/BattleMapEditor";
 import DmTools from "./pages/DmTools";
 import Assistente from "./pages/Assistente";
 import Concilio from "./pages/Concilio";
@@ -331,7 +329,7 @@ const NESSO_GROUP_OF = (p) =>
   : ["/scriba", "/riassunti", "/diario", "/almanacco", "/crafting", "/ratti-lore", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
   : ["/party", "/scheda-pg", "/my-pg", "/npc"].some((x) => p.startsWith(x)) ? "eroi"
   : ["/mercato", "/bacheca", "/cinema", "/tarocchi", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
-  : ["/arena", "/arena-bottega", "/world-boss", "/tcg", "/boss-tactics"].some((x) => p.startsWith(x)) ? "battaglia"
+  : ["/arena", "/arena-bottega", "/world-boss", "/tcg"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
 function NessoNav({ openMenu }) {
@@ -593,7 +591,8 @@ export default function App() {
   }, [openDd]);
 
   // Fullscreen battle pages hide the top nav to give the fight more room.
-  const FULLSCREEN_ROUTES = ["/boss-tactics", "/world-boss-fight", "/dm-admin/battle-maps"];
+  // (nessuna rotta a tutto schermo dal 2026-09-14: il World Boss è tornato alla scena testo + sprite con la testata)
+  const FULLSCREEN_ROUTES = [];
   const hideChrome = FULLSCREEN_ROUTES.includes(location.pathname);
   // Nella pagina Arena (e sottosezioni: fight, tabellone, ecc.) nascondi la chat globale.
   const isArenaPage = location.pathname.startsWith("/arena");
@@ -620,14 +619,13 @@ export default function App() {
       p.startsWith("/arena") ||
       p === "/tcg" ||
       p.startsWith("/world-boss") ||
-      p === "/boss-tactics" ||
-      p.startsWith("/pet") ||
-      p === "/dm-admin/battle-maps";
+      p.startsWith("/pet");
     const isAdminPage = p.startsWith("/dm-admin") || p.startsWith("/dm/") || p === "/agenti" || p.startsWith("/sessions/");
     document.body.classList.toggle("theme-dark", isDarkGamePage);
     document.body.classList.toggle("covo-admin", isAdminPage);
     // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
-    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega");
+    // Il World Boss (scena testo + sprite) veste il Covo come l'Arena: squame e respiro accesi
+    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega" || p === "/world-boss-fight");
     document.documentElement.dataset.theme = soffio === "bianco" ? "light" : "dark";
     document.documentElement.dataset.soffio = soffio;
     return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
@@ -807,9 +805,7 @@ export default function App() {
           {/* <Route path="/pet-arena" element={<PetArena />} /> */}
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
-          <Route path="/world-boss-fight" element={<BossTactics />} />
-          <Route path="/world-boss-old" element={<WorldBoss />} />
-          <Route path="/boss-tactics" element={<BossTactics />} />
+          <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/updates" element={<Updates />} />
@@ -833,7 +829,6 @@ export default function App() {
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
           <Route path="/dm-admin/send-notif" element={<SendNotification />} />
           <Route path="/dm-admin/player-sprites" element={<PlayerSpritesAdmin />} />
-          <Route path="/dm-admin/battle-maps" element={<BattleMapEditor />} />
         </Routes>
       </main>
 
