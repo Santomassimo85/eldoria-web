@@ -1154,7 +1154,13 @@ exports.scribaUnsubscribe = onRequest({ region: "us-central1" }, async (req, res
     return;
   }
   try {
-    await admin.firestore().doc(`characters/${uid}`).set({ newsletterOptIn: false }, { merge: true });
+    if (uid.startsWith("mail:")) {
+      // Lettore per email diretta (EXTRA_EMAILS in scriba/recipients.js): opt-out in scriba_optouts.
+      const email = uid.slice(5).trim().toLowerCase();
+      await admin.firestore().doc(`scriba_optouts/${email}`).set({ email, at: FieldValue.serverTimestamp() }, { merge: true });
+    } else {
+      await admin.firestore().doc(`characters/${uid}`).set({ newsletterOptIn: false }, { merge: true });
+    }
   } catch (e) {
     console.error("[scriba] unsubscribe:", e);
     res.status(500).send(page("Errore momentaneo. Riprova più tardi."));

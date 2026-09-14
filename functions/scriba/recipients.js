@@ -14,6 +14,14 @@ const SCRIBA_LIST = [
 ];
 const DM_EMAIL = "santomassimo85@gmail.com"; // "master"
 
+// Lettori aggiunti per EMAIL diretta (non hanno un personaggio in `characters`).
+// Opt-out: link "Disiscriviti" → scribaUnsubscribe con uid "mail:<email>" →
+// documento in `scriba_optouts` (id = email in minuscolo).
+const EXTRA_EMAILS = [
+    "vbuonanova@gmail.com",
+    "russo.marialessandra@gmail.com",
+];
+
 const norm = (s) => String(s || "").trim().toLowerCase();
 
 /**
@@ -75,6 +83,22 @@ async function getScribaRecipients(db, admin) {
         out.push({ uid: "master", email: DM_EMAIL, name: "Master" });
     }
 
+    // Lettori per email diretta: salvo opt-out (scriba_optouts) e salvo già presenti.
+    let optedOut = new Set();
+    try {
+        const snap = await db.collection("scriba_optouts").get();
+        optedOut = new Set(snap.docs.map((d) => d.id));
+    } catch (e) {
+        console.error("[scriba] lettura scriba_optouts:", e);
+    }
+    for (const raw of EXTRA_EMAILS) {
+        const email = norm(raw);
+        if (!email) continue;
+        if (optedOut.has(email)) { console.log(`[scriba] "${email}" disiscritto, salto.`); continue; }
+        if (out.some((o) => norm(o.email) === email)) continue;
+        out.push({ uid: `mail:${email}`, email, name: "" });
+    }
+
     if (unmatched.length) {
         console.warn("[scriba] destinatari NON trovati tra i characters:", unmatched.join(", "));
     }
@@ -82,4 +106,4 @@ async function getScribaRecipients(db, admin) {
     return out;
 }
 
-module.exports = { getScribaRecipients, SCRIBA_LIST };
+module.exports = { getScribaRecipients, SCRIBA_LIST, EXTRA_EMAILS };

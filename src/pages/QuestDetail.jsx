@@ -9,7 +9,7 @@ import "./QuestDetail.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import GlacierHero from "../components/glacier/GlacierHero";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"]; // master + co-master
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png";
 
 // ── Unica fonte di verità per i party ─────────────────────────
@@ -38,7 +38,7 @@ export default function QuestDetail() {
   const [userCharName, setUserCharName] = useState(null); // null = ancora in caricamento
   const [userParty, setUserParty]     = useState("");
 
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = MASTER_EMAILS.includes(currentUser?.email);
 
   useEffect(() => {
     if (!currentUser) { setUserCharName(""); return; }

@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"]; // master + co-master
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
 
 // ── Unica fonte di verità per i party ─────────────────────────
@@ -42,7 +42,7 @@ export default function Bacheca() {
   const [statusFilter, setStatusFilter] = useState(null); // null | "available" | "accepted"
 
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = MASTER_EMAILS.includes(currentUser?.email);
   useParallaxScroll();
 
   useEffect(() => {

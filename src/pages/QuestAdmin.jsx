@@ -15,6 +15,7 @@ import {
   deleteObject,
 } from "firebase/storage";
 import { Link } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import "./admin.css";
 
@@ -127,7 +128,12 @@ const DropZone = ({ value, uploading, onFile, onClear, label, icon = "📜" }) =
   );
 };
 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
 export default function QuestAdmin() {
+  const { currentUser } = useAuth();
+  // Il co-master non ha accesso alla Console (/dm-admin): torna agli Strumenti DM.
+  const isMainMaster = currentUser?.email === MASTER_EMAIL;
   const [quests, setQuests] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -310,7 +316,9 @@ export default function QuestAdmin() {
 
   return (
     <section className="admin-quest-page qstadm">
-      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
+      <Link to={isMainMaster ? "/dm-admin" : "/dm-admin/strumenti"} className="adm-back">
+        {isMainMaster ? "← Console del Master" : "← Strumenti DM"}
+      </Link>
 
       {/* ── HERO ── */}
       <header className="qstadm-hero">

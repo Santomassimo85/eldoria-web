@@ -219,7 +219,7 @@ const AdminNavLink = ({ closeMenu }) => {
   return null;
 };
 
-// --- Link DM dedicati al co-master (summaries + black market) ---
+// --- Link DM dedicati al co-master (summaries + black market + bacheca missioni) ---
 const SummaryAdminNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!CO_MASTER_EMAILS.includes(currentUser?.email)) return null;
@@ -241,6 +241,14 @@ const SummaryAdminNavLink = ({ closeMenu }) => {
         style={linkStyle}
       >
         MARKET
+      </NavLink>
+      <NavLink
+        to="/dm-admin/quests"
+        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+        onClick={closeMenu}
+        style={linkStyle}
+      >
+        BACHECA
       </NavLink>
       <NavLink
         to="/dm/generate-session"
