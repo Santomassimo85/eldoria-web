@@ -67,7 +67,7 @@ const blankAction = (i = 0) => ({
 });
 
 // A saved minion: simplified boss — name, HP, CA, attacks + alive/dead sprites.
-const blankMinion = () => ({ name: "", hp: 12, ac: 11, imageUrl: "", deadImageUrl: "", actions: [blankAction(0)] });
+const blankMinion = () => ({ name: "", hp: 12, ac: 11, imageUrl: "", deadImageUrl: "", facing: "left", actions: [blankAction(0)] });
 
 const initialBossState = {
   name: "",
@@ -77,6 +77,7 @@ const initialBossState = {
   penalties: "",
   imageUrl: "",
   deadImageUrl: "",
+  facing: "left", // verso del disegno: "left" = lo sprite guarda a sinistra → in battaglia viene specchiato
   description: "",
   gradoSfida: "",
   size: 1,
@@ -308,6 +309,41 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
 /* ──────────────────────────────────────────────────────────────
    SpriteDropzone — drag & drop slot for a boss sprite
    ────────────────────────────────────────────────────────────── */
+// Verso dello sprite. In battaglia gli eroi stanno a DESTRA: se il disegno guarda a sinistra
+// (com'è quasi sempre per le immagini generate dall'IA) la pagina lo specchia; se guarda già a
+// destra va lasciato com'è. L'anteprima mostra ESATTAMENTE come apparirà in scena.
+const FacingPicker = ({ value, onChange, imageUrl, name }) => {
+  const facing = value === "right" ? "right" : "left";
+  return (
+    <div className="wb-facing">
+      <div className="wb-facing-head">
+        <label>Verso in battaglia</label>
+        <small>gli eroi stanno a destra: il nemico deve guardarli</small>
+      </div>
+      <div className="wb-facing-row">
+        <div className="wb-facing-opts" role="radiogroup" aria-label="Verso dello sprite">
+          <button type="button" role="radio" aria-checked={facing === "left"}
+            className={`wb-facing-opt${facing === "left" ? " on" : ""}`} onClick={() => onChange("left")}>
+            <span className="wb-facing-ico">🪞</span>
+            <span><b>Specchia</b><i>il disegno guarda a sinistra</i></span>
+          </button>
+          <button type="button" role="radio" aria-checked={facing === "right"}
+            className={`wb-facing-opt${facing === "right" ? " on" : ""}`} onClick={() => onChange("right")}>
+            <span className="wb-facing-ico">🖼</span>
+            <span><b>Lascia com'è</b><i>guarda già a destra</i></span>
+          </button>
+        </div>
+        <div className="wb-facing-preview" title="Anteprima: così apparirà in scena">
+          {imageUrl
+            ? <img src={imageUrl} alt={name || "sprite"} className={`wb-facing-img${facing === "left" ? " mirror" : ""}`} />
+            : <span className="wb-facing-empty">nessuno sprite</span>}
+          <span className="wb-facing-heroes" aria-hidden="true">⟶ eroi</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "var(--oro)" }) => {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = React.useRef(null);
@@ -679,6 +715,7 @@ export default function WorldBossAdmin() {
     setMinionForm({
       name: m.name || "", hp: m.hp ?? 12, ac: m.ac ?? 11,
       imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "",
+      facing: m.facing === "right" ? "right" : "left",
       actions: m.actions?.length ? m.actions.map((a) => ({ ...blankAction(0), ...a })) : [blankAction(0)],
     });
     window.scrollTo({ top: document.querySelector(".wb-minions")?.offsetTop || 0, behavior: "smooth" });
@@ -693,6 +730,7 @@ export default function WorldBossAdmin() {
       ac: parseInt(minionForm.ac) || 10,
       imageUrl: minionForm.imageUrl || "",
       deadImageUrl: minionForm.deadImageUrl || "",
+      facing: minionForm.facing === "right" ? "right" : "left",
       actions: minionForm.actions,
       updatedAt: serverTimestamp(),
     };
@@ -1027,6 +1065,9 @@ export default function WorldBossAdmin() {
             </div>
           </div>
 
+          <FacingPicker value={newBoss.facing} imageUrl={newBoss.imageUrl} name={newBoss.name}
+            onChange={(f) => setNewBoss((b) => ({ ...b, facing: f }))} />
+
           <div className="wb-summary">
             <div className="wb-summary-name">{newBoss.name || "Nome ignoto"}</div>
             <div className="wb-summary-stats">
@@ -1112,6 +1153,8 @@ export default function WorldBossAdmin() {
                 />
               </div>
             </div>
+            <FacingPicker value={minionForm.facing} imageUrl={minionForm.imageUrl} name={minionForm.name}
+              onChange={(f) => setMinionForm((m) => ({ ...m, facing: f }))} />
 
             <div className="wb-actions-section">
               <div className="wb-actions-head">
@@ -1298,6 +1341,8 @@ export default function WorldBossAdmin() {
                           accent="#7a0808"
                         />
                       </div>
+                      <FacingPicker value={editData.facing} imageUrl={editData.imageUrl} name={editData.name}
+                        onChange={(f) => setEditData((d) => ({ ...d, facing: f }))} />
 
                       <div className="wb-edit-grid">
                         <div className="wb-field">

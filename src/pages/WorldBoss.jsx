@@ -88,14 +88,36 @@ function selfBuffAcBonus(action) {
   return 2;
 }
 
+// Caratteristiche del PG: formato nuovo {score, mod, save} (sync Foundry) oppure vecchio
+// (numero = modificatore). In pagina la costituzione è "cos", nel documento può essere "con".
+// Mai passare il valore grezzo al JSX: un oggetto renderizzato come figlio manda React in crash
+// (pagina nera per il giocatore).
+function readStat(charData, key) {
+  const s = charData?.stats || {};
+  const raw = s[key] ?? (key === "cos" ? s.con : key === "con" ? s.cos : undefined);
+  if (raw == null) return { mod: 0, save: 0 };
+  if (typeof raw === "object") {
+    const score = raw.score != null ? Number(raw.score) : null;
+    const mod = raw.mod != null ? (Number(raw.mod) || 0) : (score != null ? Math.floor((score - 10) / 2) : 0);
+    const save = raw.save != null ? (Number(raw.save) || 0) : mod;
+    return { mod, save };
+  }
+  const n = Number(raw) || 0;
+  return { mod: n, save: n };
+}
+const statMod = (charData, key) => readStat(charData, key).mod;
+const statSave = (charData, key) => readStat(charData, key).save;
+
 // Spellcasting modifier: highest of INT/WIS/CHA — works for any caster class.
 function getSpellMod(charData) {
-  const s = charData?.stats || {};
-  return Math.max(s.int ?? 0, s.wis ?? 0, s.cha ?? 0);
+  return Math.max(statMod(charData, "int"), statMod(charData, "wis"), statMod(charData, "cha"));
 }
 
-// 5e proficiency bonus by level: 1-4 → +2, 5-8 → +3, 9-12 → +4, 13-16 → +5, 17+ → +6.
+// 5e proficiency bonus: quello salvato dalla sync (stats.prof) se c'è, altrimenti dal livello
+// (1-4 → +2, 5-8 → +3, 9-12 → +4, 13-16 → +5, 17+ → +6).
 function getProfBonus(charData) {
+  const saved = parseInt(charData?.stats?.prof);
+  if (saved > 0) return saved;
   const lvl = Math.max(1, parseInt(charData?.level) || 1);
   return Math.ceil(lvl / 4) + 1;
 }
@@ -214,6 +236,9 @@ export default function WorldBoss() {
       && !(import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player"),
     [currentUser],
   );
+  // Solo in sviluppo: `&pg=<uid>` carica la scheda di QUEL personaggio (azioni vere) al posto della propria.
+  const devPgUid = import.meta.env.DEV ? (new URLSearchParams(window.location.search).get("pg") || null) : null;
+  const myUid = devPgUid || currentUser?.uid;
 
   const [timeLeft, setTimeLeft] = useState(0);
   const [isUrgent, setIsUrgent] = useState(false);
@@ -377,7 +402,7 @@ export default function WorldBoss() {
       totalRoll += roll;
       rollsDetail.push(roll);
     }
-    const statMod = dmgSelectedStat ? (charData?.stats?.[dmgSelectedStat] ?? 0) : 0;
+    const abilityBonus = dmgSelectedStat ? readStat(charData, dmgSelectedStat).mod : 0;
     let sneakDamage = 0;
     const characterClass = charData?.class?.toLowerCase() || "";
     const isRogue = characterClass === "ladro" || characterClass === "rogue";
@@ -390,7 +415,7 @@ export default function WorldBoss() {
         sneakDamage += r;
       }
     }
-    const finalDamage = totalRoll + statMod + sneakDamage;
+    const finalDamage = totalRoll + abilityBonus + sneakDamage;
     const currentShield = boss.shield || 0;
     const currentHp = boss.hp || 0;
     let remainingDamage = finalDamage;
@@ -405,7 +430,7 @@ export default function WorldBoss() {
     try {
       await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
       let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
-      if (statMod !== 0) detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
+      if (abilityBonus !== 0) detailString += ` ${abilityBonus > 0 ? "+ " + abilityBonus : abilityBonus}`;
       if (isRogue) detailString += ` + ${sneakDiceCount}d6 Ladro (${sneakRolls.join("+")})`;
       let shieldNote = currentShield > 0 ? ` (Scudo colpito! Rimanente: ${newShield})` : "";
       if (newHp <= 0) shieldNote += ` ☠ ${boss.name} cade!`;
@@ -444,7 +469,7 @@ export default function WorldBoss() {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
     }
-    const mod = charData.stats[statKey] || 0;
+    const mod = statSave(charData, statKey);
     await addDoc(collection(db, "world_boss_chat"), {
       type: "action", senderName: charData.name || "Eroe",
       actionName: `Tiro Salvezza ${statKey.toUpperCase()}`,
@@ -529,7 +554,7 @@ export default function WorldBoss() {
 
   useEffect(() => {
     if (!currentUser) return;
-    const unsubChar = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+    const unsubChar = onSnapshot(doc(db, "characters", devPgUid || currentUser.uid), (snap) => {
       setCharData(snap.data());
     });
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) => {
@@ -555,7 +580,7 @@ export default function WorldBoss() {
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => { unsubChar(); unsubBoss(); unsubChat(); unsubMinions(); unsubDefs(); };
-  }, [currentUser]);
+  }, [currentUser, devPgUid]);
 
 
   const rollDice = (formula) => {
@@ -764,7 +789,7 @@ export default function WorldBoss() {
       if (isCritical || hitTotal >= (boss.ac || 10)) {
         let formulaRaw = action.damage && action.damage !== "0" ? action.damage : "1d6";
         const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || action.name?.toLowerCase().includes("arco") || action.name?.toLowerCase().includes("scimitar");
-        const modValue = isFinesseOrRanged ? charData?.stats?.dex || 0 : charData?.stats?.str || 0;
+        const modValue = statMod(charData, isFinesseOrRanged ? "dex" : "str");
         let cleanFormula = formulaRaw.replace(/@mod/g, modValue).replace(/\s+/g, "");
         const parts = cleanFormula.split("+");
         const diePart = parts[0];
@@ -992,6 +1017,7 @@ export default function WorldBoss() {
         defId: def.id, name,
         hp: parseInt(def.hp) || 1, maxHp: parseInt(def.hp) || 1, ac: parseInt(def.ac) || 10, shield: 0,
         imageUrl: def.imageUrl || "", deadImageUrl: def.deadImageUrl || "",
+        facing: def.facing === "right" ? "right" : "left",
         actions: Array.isArray(def.actions) ? def.actions.filter((a) => a && a.name) : [],
         nextTurnCondition: null, debuffSource: null,
         createdAt: serverTimestamp(),
@@ -1103,7 +1129,7 @@ export default function WorldBoss() {
   const isPlayerDead = !isMaster && (charData?.stats?.hp ?? 0) <= 0;
 
   const isUserLocked =
-    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(currentUser?.uid) || isPlayerDead || isFightOver);
+    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(myUid) || isPlayerDead || isFightOver);
 
   if (!currentUser) return <div className="rpg-denied">Loggati per entrare.</div>;
 
@@ -1159,7 +1185,7 @@ export default function WorldBoss() {
             >
               {canPickTarget && currentTarget?.id === boss.id && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
               <img
-                className="rpg-boss-sprite"
+                className={`rpg-boss-sprite${boss.facing === "right" ? " faces-right" : ""}`}
                 src={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
                 alt={boss.name}
               />
@@ -1187,7 +1213,7 @@ export default function WorldBoss() {
                   >
                     {isTgt && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
                     {sprite
-                      ? <img className="rpg-minion-sprite" src={sprite} alt={m.name} />
+                      ? <img className={`rpg-minion-sprite${m.facing === "right" ? " faces-right" : ""}`} src={sprite} alt={m.name} />
                       : <div className="rpg-minion-placeholder">{dead ? "☠" : "🪓"}</div>}
                     <span className="rpg-minion-tag">{m.name}</span>
                     <span className="rpg-minion-hpbar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
@@ -1671,12 +1697,15 @@ export default function WorldBoss() {
                 </div>
                 {playerActionMode === "saves" ? (
                   <div className="rpg-saves-grid">
-                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
-                      <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
-                        <span className="rpg-save-key">{s.toUpperCase()}</span>
-                        <span className="rpg-save-mod">{charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s] ?? 0}</span>
-                      </button>
-                    ))}
+                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
+                      const save = statSave(charData, s);
+                      return (
+                        <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
+                          <span className="rpg-save-key">{s.toUpperCase()}</span>
+                          <span className="rpg-save-mod">{save >= 0 ? "+" : ""}{save}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <>
@@ -1714,7 +1743,7 @@ export default function WorldBoss() {
                             {groupedActions[cat].map((action, idx) => (
                               <button key={idx} className="rpg-action-btn" onClick={() => handleActionRoll(action)} disabled={isUserLocked}>
                                 <span className="rpg-action-name">{action.name}</span>
-                                {action.bonus && <span className="rpg-action-bonus"> +{action.bonus}</span>}
+                                {action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
                               </button>
                             ))}
                           </div>

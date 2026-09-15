@@ -167,6 +167,13 @@
   background: transparent;
 }
 .rpg-boss-zone.has-minions .rpg-boss-sprite { height: clamp(150px, 34vh, 400px); }
+/* facing="right" (scelto in DM Admin): il disegno guarda già verso gli eroi, niente specchio */
+.rpg-boss-sprite.faces-right { transform: none; }
+.rpg-boss-sprite-wrap:not(.dead):not(.boss-turn) .rpg-boss-sprite.faces-right { animation-name: rpgBossBreatheR; }
+@keyframes rpgBossBreatheR {
+  0%, 100% { transform: translateY(0)    scale(1, 1); }
+  50%      { transform: translateY(-6px) scale(1.015, 1.015); }
+}
 .rpg-boss-sprite-wrap.dead .rpg-boss-sprite {
   filter: grayscale(100%) brightness(.35) drop-shadow(0 8px 14px rgba(0, 0, 0, .9));
   animation: none;
@@ -216,6 +223,13 @@
   animation: rpgMinionBreathe 3.4s ease-in-out infinite;
   transform-origin: bottom center;
 }
+.rpg-minion-sprite.faces-right { transform: none; animation-name: rpgMinionBreatheR; }
+.rpg-minion-wrap.boss-turn .rpg-minion-sprite.faces-right { animation-name: rpgMinionBobR; }
+@keyframes rpgMinionBreatheR {
+  0%, 100% { transform: translateY(0)    scale(1, 1); }
+  45%, 55% { transform: translateY(-4px) scale(1.012, 1.012); }
+}
+@keyframes rpgMinionBobR { from { transform: translateY(0); } to { transform: translateY(-6px); } }
 .rpg-minion-placeholder {
   width: clamp(56px, 7vw, 110px); height: clamp(56px, 7vw, 110px);
   display: flex; align-items: center; justify-content: center;
