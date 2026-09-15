@@ -1,78 +1,51 @@
 import { useEffect, useRef } from "react";
-import { getToken, onMessage } from "firebase/messaging";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { db, getMessagingIfSupported, VAPID_KEY } from "../firebase";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { App as CapApp } from "@capacitor/app";
+import { resumePush, isNativeApp } from "../push/pushClient";
 
 /**
- * Auto-prompts the logged-in user for notification permission and
- * registers their FCM token to characters/{uid}.fcmTokens.
- * Renders nothing.
+ * Al login: rinnova (o chiede la prima volta) le notifiche push di questo
+ * dispositivo — web, PWA o app Android — rispettando lo spegnimento fatto
+ * dall'utente nell'interruttore in /notifications. Sull'app Android ascolta
+ * anche il tocco sulla notifica e porta alla pagina giusta. Non renderizza nulla.
  */
 export default function NotificationOptIn() {
   const { currentUser } = useAuth();
-  const triedRef = useRef(false);
+  const navigate = useNavigate();
+  const triedFor = useRef(null);
 
   useEffect(() => {
-    if (!currentUser?.uid) return;
-    if (triedRef.current) return;
-    triedRef.current = true;
-
-    (async () => {
-      if (!("Notification" in window)) return;
-      if (!VAPID_KEY) {
-        console.warn("[fcm] VITE_FIREBASE_VAPID_KEY missing in env");
-        return;
-      }
-
-      const messaging = await getMessagingIfSupported();
-      if (!messaging) return;
-
-      // Auto-prompt if status is "default" (never asked).
-      let perm = Notification.permission;
-      if (perm === "default") {
-        try { perm = await Notification.requestPermission(); }
-        catch { return; }
-      }
-      if (perm !== "granted") return;
-
-      try {
-        const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        const token = await getToken(messaging, {
-          vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: reg,
-        });
-        if (!token) return;
-
-        // Save token on the character doc (array — supports multiple devices).
-        await updateDoc(doc(db, "characters", currentUser.uid), {
-          fcmTokens: arrayUnion(token),
-        }).catch(async () => {
-          // Doc might not exist; create minimal stub
-          const { setDoc } = await import("firebase/firestore");
-          await setDoc(doc(db, "characters", currentUser.uid), { fcmTokens: [token] }, { merge: true });
-        });
-
-        // Foreground messages — show a small in-page toast via the SW so
-        // the OS notification is consistent whether app is open or not.
-        onMessage(messaging, (payload) => {
-          const title = payload?.notification?.title || payload?.data?.title || "Crit Happens";
-          const body  = payload?.notification?.body  || payload?.data?.body  || "";
-          const url   = payload?.data?.url || "/";
-          if (reg && reg.showNotification) {
-            reg.showNotification(title, {
-              body,
-              icon: "/logo192.png",
-              badge: "/logo192.png",
-              data: { url },
-            });
-          }
-        });
-      } catch (err) {
-        console.warn("[fcm] setup failed:", err);
-      }
-    })();
+    const uid = currentUser?.uid;
+    if (!uid || triedFor.current === uid) return;
+    triedFor.current = uid;
+    resumePush(uid).catch((e) => console.warn("[push] resume:", e));
   }, [currentUser?.uid]);
+
+  // App Android: il tasto Indietro di sistema torna alla pagina precedente
+  // invece di chiudere l'app (esce solo quando non c'è più storia).
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let handle = null;
+    CapApp.addListener("backButton", ({ canGoBack }) => {
+      if (canGoBack || window.history.length > 1) window.history.back();
+      else CapApp.exitApp();
+    }).then((h) => { handle = h; });
+    return () => { handle?.remove?.(); };
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    const onOpen = (e) => {
+      const url = e.detail?.url || "/notifications";
+      try {
+        const u = new URL(url, window.location.origin);
+        navigate(u.pathname + u.search + u.hash);
+      } catch { navigate("/notifications"); }
+    };
+    window.addEventListener("ch-push-open", onOpen);
+    return () => window.removeEventListener("ch-push-open", onOpen);
+  }, [navigate]);
 
   return null;
 }

@@ -342,9 +342,22 @@ async function sendPush({ uids, title, body, url, tag }) {
   // but put title/body inside webpush.notification so the OS can render the
   // notification even when the service worker is asleep (much more reliable
   // than data-only payloads on installed PWAs).
+  // `notification` + `android` servono all'APP ANDROID (guscio Capacitor, token
+  // FCM nativi nello stesso array): con l'app chiusa è il sistema a mostrare
+  // l'avviso. Sul web vale `webpush.notification` (già presente); il service
+  // worker non raddoppia perché salta i messaggi che portano `notification`.
   const message = {
     tokens,
     data: { url: url || "/" },
+    notification: { title: safeTitle, body: safeBody },
+    android: {
+      priority: "high",
+      notification: {
+        title: safeTitle, body: safeBody, sound: "default",
+        color: "#c9a24a",
+        ...(tag ? { tag } : {}),
+      },
+    },
     webpush: {
       notification: {
         title: safeTitle,

@@ -37,3 +37,11 @@ functions/scriba/_preview.html
 functions/scriba/_archive_preview.html
 # Cache locale Firebase CLI
 .firebase/
+
+# App Android (guscio Capacitor): firma e config Firebase restano fuori dal repo
+# (repo pubblico). Backup del keystore a parte: senza, gli aggiornamenti
+# dell'APK non si installano sopra la versione precedente.
+android/keystore/
+android/keystore.properties
+android/app/google-services.json
+android/local.properties

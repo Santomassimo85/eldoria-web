@@ -109,3 +109,32 @@
   .notifications-page .notification-card-title { margin-right: 0; margin-top: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { .notifications-page .notif-dot { animation: none; } }
+
+/* ── Interruttore notifiche push (stesso su web, PWA e app Android) ── */
+.notifications-page .push-toggle { margin: 0 0 18px; padding: 14px 16px; }
+.notifications-page .push-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.notifications-page .push-toggle-text { flex: 1; min-width: 0; }
+.notifications-page .push-toggle-title { margin: 0 0 4px; font-size: 1.05rem; }
+.notifications-page .push-toggle-desc { margin: 0; font-size: .92rem; color: var(--osso-body); }
+.notifications-page .push-toggle-msg { margin: 6px 0 0; font-size: .86rem; color: var(--el-2); }
+.notifications-page .push-toggle-apk { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid rgba(var(--osso-rgb), .12); font-size: .88rem; color: var(--osso-body); }
+.notifications-page .push-toggle-apk a { color: var(--oro); text-decoration: underline; text-underline-offset: 3px; }
+.notifications-page .push-switch {
+  position: relative; flex-shrink: 0;
+  width: 78px; height: 34px; border-radius: 17px;
+  border: 1px solid rgba(var(--osso-rgb), .22); background: var(--roccia);
+  cursor: pointer; padding: 0; transition: background .2s, border-color .2s;
+  font-family: var(--font-num, "Cinzel", serif); font-size: .68rem; letter-spacing: .12em; color: var(--osso-2);
+}
+.notifications-page .push-switch.is-on { background: rgba(var(--el-rgb), .28); border-color: rgba(var(--el-rgb), .7); color: var(--osso); }
+.notifications-page .push-switch:disabled { opacity: .45; cursor: not-allowed; }
+.notifications-page .push-switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--osso-2); box-shadow: 0 2px 6px rgba(0,0,0,.5); transition: transform .2s, background .2s;
+}
+.notifications-page .push-switch.is-on .push-switch-knob { transform: translateX(44px); background: var(--el-2); box-shadow: 0 0 10px rgba(var(--el-rgb), .8); }
+.notifications-page .push-switch-label { position: absolute; top: 50%; transform: translateY(-50%); right: 12px; }
+.notifications-page .push-switch.is-on .push-switch-label { right: auto; left: 12px; }
+@media (max-width: 520px) {
+  .notifications-page .push-toggle-row { align-items: flex-start; }
+}

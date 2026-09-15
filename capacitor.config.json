@@ -1,0 +1,19 @@
+{
+  "appId": "com.crithappens.app",
+  "appName": "Crit Happens",
+  "webDir": "www-shell",
+  "server": {
+    "url": "https://eldoria-web-delta.vercel.app",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0b0a0d"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

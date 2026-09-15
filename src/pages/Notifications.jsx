@@ -11,6 +11,7 @@ import "../styles/cinematic.css";
 import "./Notifications.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import GlacierHero from "../components/glacier/GlacierHero";
+import PushToggle from "../components/PushToggle";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar3.png";
 
@@ -76,6 +77,7 @@ export default function Notifications() {
       />
 
       <div className="notif-body">
+        <PushToggle />
         <div className="gl-sezlabel notif-sezlabel">
           <span>Missive ricevute</span>
           {list.length > 0 && (

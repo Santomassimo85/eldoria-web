@@ -8,9 +8,15 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "changelog": "node scripts/changelog.mjs"
+    "changelog": "node scripts/changelog.mjs",
+    "android:sync": "cap sync android",
+    "android:apk": "cap sync android && cd android && gradlew.bat assembleRelease && cd .. && node scripts/copy-apk.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/push-notifications": "^8.1.2",
     "@google/generative-ai": "^0.24.1",
     "@vercel/analytics": "^1.5.0",
     "dotenv": "^17.2.3",
@@ -24,6 +30,8 @@
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@eslint/js": "^9.36.0",
     "@google-cloud/storage": "^7.19.0",
     "@types/react": "^19.1.16",
