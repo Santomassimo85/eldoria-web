@@ -686,6 +686,12 @@
 .rpg-action-btn:hover:not(:disabled) { background: rgba(var(--el-rgb), .1); color: var(--osso); border-color: rgba(var(--el-rgb), .5); }
 .rpg-action-name { flex: 1; }
 .rpg-action-bonus { font-family: var(--rpg-font-num); font-size: .78rem; color: var(--el-2); flex-shrink: 0; }
+/* magia ad area: colpisce tutti i nemici in campo */
+.rpg-action-aoe {
+  font-family: var(--rpg-font-sc); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--oro); border: 1px solid rgba(var(--oro-rgb, 201, 162, 74), .55); border-radius: var(--rpg-r);
+  padding: 0 5px; margin-right: 6px; flex-shrink: 0; line-height: 1.35;
+}
 
 /* ════════════════════════════════════════════
    SPELL TARGET PICKER — modale del covo

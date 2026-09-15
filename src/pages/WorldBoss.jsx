@@ -26,7 +26,22 @@ import {
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
-import { VfxLayer, pickEffectForAction } from "./WorldBossVfx";
+import { VfxLayer } from "./WorldBossVfx";
+import { pickEffectForAction, areaSpellFor, damageFormulaFor, SAVE_LABEL_IT } from "./worldBossSpells";
+
+// Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
+// `kind` forza la forma (heal/buff/shield/debuff); altrimenti la decide l'azione.
+const fxFields = (action, targets, { kind = null, from = null, miss = [], kill = [] } = {}) => {
+  const fx = pickEffectForAction(action, kind);
+  const out = { effect: fx.kind, effectEl: fx.el, effectTargets: targets };
+  if (from) out.effectFrom = from;
+  if (miss.length) out.effectMissTargets = miss;
+  if (kill.length) out.effectKill = kill;
+  return out;
+};
+// Modificatore al tiro salvezza di un nemico (boss/minion): se il doc lo porta, altrimenti 0.
+const enemySaveMod = (enemy, ab) => Number(enemy?.saves?.[ab] ?? enemy?.abilities?.[ab] ?? enemy?.[ab] ?? 0) || 0;
+const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const BOSS_SYSTEM_UID = "BOSS_MSG";
@@ -440,7 +455,8 @@ export default function WorldBoss() {
         damageRoll: `💥 INFLITTI ${finalDamage} DANNI!${shieldNote}`,
         description: `Tiro: ${detailString}`, uid: currentUser.uid,
         category: "Danno", timestamp: serverTimestamp(),
-        effect: "slash", effectTargets: [boss.vfxKey],
+        effect: "slash", effectEl: "physical", effectTargets: [boss.vfxKey], effectFrom: `player-${myUid}`,
+        ...(newHp <= 0 ? { effectKill: [boss.vfxKey] } : {}),
       });
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
@@ -652,7 +668,7 @@ export default function WorldBoss() {
         description: action.description || `${charData?.name || "Eroe"} si protegge magicamente.`,
         uid: currentUser.uid, category: action.category || "Incantesimo",
         timestamp: serverTimestamp(),
-        effect: "buff", effectTargets: [`player-${currentUser.uid}`],
+        effect: "shield", effectEl: "arcane", effectTargets: [`player-${currentUser.uid}`],
       });
       await endMyTurn();
     } catch (err) {
@@ -704,11 +720,66 @@ export default function WorldBoss() {
         description: action.description || `${charData?.name || "Eroe"} ostacola ${boss.kind === "minion" ? boss.name : "il Boss"}.`,
         uid: currentUser.uid, category: action.category || "Incantesimo",
         timestamp: serverTimestamp(),
-        effect: "debuff", effectTargets: [boss.vfxKey],
+        effect: "debuff", effectEl: "darkness", effectTargets: [boss.vfxKey], effectFrom: `player-${myUid}`,
       });
       await endMyTurn();
     } catch (err) {
       console.error("Errore debuff:", err);
+    }
+  };
+
+  // ── MAGIA AD AREA (giocatore): un solo tiro di danno, OGNI nemico vivo tira il
+  // suo TS contro la CD del PG (8 + competenza + mod magia). TS superato = metà
+  // danni (o nessuno, se la magia lo dice); fallito = danno pieno. Scudo prima degli HP.
+  const castAreaSpell = async (action, aoe) => {
+    if (isUserLocked || !livingEnemies.length) return;
+    const spellMod = getSpellMod(charData);
+    const dc = 8 + getProfBonus(charData) + spellMod;
+    const formula = damageFormulaFor(action, "1d6").replace(/@mod/g, spellMod);
+    const total = rollDice(formula);
+    const results = [];
+    for (const enemy of livingEnemies) {
+      const roll = rollD20();
+      const mod = enemySaveMod(enemy, aoe.save);
+      const saved = roll + mod >= dc;
+      const dmg = saved ? (aoe.half ? Math.floor(total / 2) : 0) : total;
+      const currentShield = enemy.shield || 0;
+      const currentHp = enemy.hp || 0;
+      let rem = dmg, newShield = currentShield, newHp = currentHp;
+      if (currentShield > 0) {
+        if (currentShield >= rem) { newShield -= rem; rem = 0; }
+        else { rem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - rem); }
+      } else { newHp = Math.max(0, currentHp - rem); }
+      results.push({ enemy, roll, mod, saved, dmg, newShield, newHp, shieldHit: newShield < currentShield, killed: newHp <= 0 && currentHp > 0 });
+    }
+    try {
+      const batch = writeBatch(db);
+      results.forEach((r) => batch.update(enemyRef(r.enemy), { hp: r.newHp, shield: r.newShield }));
+      await batch.commit();
+      const saveLbl = SAVE_LABEL_IT[aoe.save] || aoe.save.toUpperCase();
+      const tsLine = results.map((r) => `${r.enemy.name}: d20(${r.roll})${r.mod ? (r.mod > 0 ? "+" : "") + r.mod : ""}=${r.roll + r.mod} ${r.saved ? "✅" : "❌"}`).join(" · ");
+      const dmgLine = results.map((r) => `${r.enemy.name} −${r.dmg}${r.saved ? (aoe.half ? " (metà)" : " (evitato)") : ""}${r.shieldHit ? " 🛡️" : ""}${r.killed ? " ☠" : ""}`).join(", ");
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (AREA) → ${results.length === 1 ? results[0].enemy.name : `${results.length} nemici`}`,
+        hitRoll: `🎲 CD ${dc} · TS ${saveLbl} — ${tsLine}`,
+        damageRoll: `💥 ${formula} = ${total} · ${dmgLine}`,
+        uid: currentUser.uid, category: action.category,
+        timestamp: serverTimestamp(),
+        ...fxFields(action, results.map((r) => r.enemy.vfxKey), {
+          kind: "aoe", from: `player-${myUid}`,
+          miss: results.filter((r) => r.dmg === 0).map((r) => r.enemy.vfxKey),
+          kill: results.filter((r) => r.killed).map((r) => r.enemy.vfxKey),
+        }),
+      });
+      if (activeBosses[0]?.id) {
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
+        });
+      }
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore magia ad area:", err);
     }
   };
 
@@ -742,6 +813,14 @@ export default function WorldBoss() {
       const ok = window.confirm(`Lanciare "${action.name}" su ${boss.name}? Applicherà svantaggio al suo prossimo attacco.`);
       if (!ok) return;
       await castDebuffOnBoss(action);
+      return;
+    }
+
+    // Magia AD AREA (Onda di Tuono, Mani Brucianti, Frantumare, Palla di Fuoco…):
+    // colpisce TUTTI i nemici in campo, ognuno tira il suo TS contro la CD del PG.
+    const aoe = areaSpellFor(action);
+    if (aoe && livingEnemies.length > 0) {
+      await castAreaSpell(action, aoe);
       return;
     }
 
@@ -785,7 +864,6 @@ export default function WorldBoss() {
       hitRoll: `🎲 ${rollLabel} + ${bonusLabel} = ${hitTotal} `,
     };
     if (isAttack) {
-      const effectKey = pickEffectForAction(action);
       if (isCritical || hitTotal >= (boss.ac || 10)) {
         let formulaRaw = action.damage && action.damage !== "0" ? action.damage : "1d6";
         const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || action.name?.toLowerCase().includes("arco") || action.name?.toLowerCase().includes("scimitar");
@@ -829,10 +907,11 @@ export default function WorldBoss() {
         actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
         if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
-        actionData.effect = effectKey;
-        actionData.effectTargets = [boss.vfxKey];
+        Object.assign(actionData, fxFields(action, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }));
       } else {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
+        // il colpo parte lo stesso, ma sul bersaglio compare "mancato" invece dello scoppio
+        Object.assign(actionData, fxFields(action, [boss.vfxKey], { from: `player-${myUid}`, miss: [boss.vfxKey] }));
       }
       await addDoc(collection(db, "world_boss_chat"), actionData);
       if (activeBosses[0]?.id) {
@@ -842,8 +921,7 @@ export default function WorldBoss() {
       }
       await endMyTurn();
     } else {
-      actionData.effect = pickEffectForAction(action);
-      actionData.effectTargets = [`player-${currentUser.uid}`];
+      Object.assign(actionData, fxFields(action, [`player-${myUid}`], { kind: "buff" }));
       await addDoc(collection(db, "world_boss_chat"), actionData);
     }
   };
@@ -870,7 +948,7 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Cura Boss",
         actionName: action.name,
         description: `${who} invoca ${action.name} e si cura di 💖 ${healed} HP (${formula}). HP: ${newHp}/${boss.maxHp ?? "?"}.`,
-        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
+        ...fxFields(action, [boss.vfxKey], { kind: "heal" }),
         timestamp: serverTimestamp(),
       });
       return;
@@ -886,7 +964,7 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
         description: `${who} usa ${action.name}: 🛡 CA +${bump} (ora ${newAc}).`,
-        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
+        ...fxFields(action, [boss.vfxKey], { kind: "shield" }),
         timestamp: serverTimestamp(),
       });
       return;
@@ -899,7 +977,7 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
         description: `${who} invoca ${action.name}: ⬆ vantaggio sul prossimo attacco.`,
-        effect: pickEffectForAction(action), effectTargets: [boss.vfxKey],
+        ...fxFields(action, [boss.vfxKey], { kind: "buff" }),
         timestamp: serverTimestamp(),
       });
       return;
@@ -921,8 +999,49 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Debuff Boss",
         actionName: action.name,
         description: `${who} colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
-        effect: pickEffectForAction(action), effectTargets: selectedTargets.map((uid) => `player-${uid}`),
+        ...fxFields(action, selectedTargets.map((uid) => `player-${uid}`), { kind: "debuff", from: boss.vfxKey }),
         timestamp: serverTimestamp(),
+      });
+      setSelectedTargets([]);
+      return;
+    }
+
+    // ── ATTACCO AD AREA (forma scelta nell'editor): colpisce TUTTI gli eroi vivi
+    // (o solo i selezionati, se il Master ne ha scelti); ognuno tira il TS contro
+    // la CD del nemico (spellDC del doc, default 13). Superato = metà (o niente).
+    const bossAoe = areaSpellFor(action);
+    if (bossAoe) {
+      const alive = players.filter((p) => (p.stats?.hp ?? 0) > 0);
+      const pool = selectedTargets.length ? alive.filter((p) => selectedTargets.includes(p.id)) : alive;
+      if (!pool.length) return alert("Nessun eroe in piedi da colpire.");
+      const dc = parseInt(boss.spellDC) || 13;
+      const formula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
+      const total = rollDice(formula);
+      const results = [];
+      for (const p of pool) {
+        const roll = rollD20();
+        const mod = statSave(p, bossAoe.save);
+        const saved = roll + mod >= dc;
+        const dmg = saved ? (bossAoe.half ? Math.floor(total / 2) : 0) : total;
+        let rem = dmg;
+        let shield = p.stats?.shield || 0;
+        const hp = p.stats?.hp || 0;
+        if (shield > 0) { if (shield >= rem) { shield -= rem; rem = 0; } else { rem -= shield; shield = 0; } }
+        const newHp = Math.max(0, hp - rem);
+        if (dmg > 0) await updateDoc(doc(db, "characters", p.id), { "stats.hp": newHp, "stats.shield": shield });
+        results.push({ id: p.id, name: (p.name || "Eroe").split(" ")[0], hit: dmg > 0, roll: `TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} d20(${roll})${mod ? (mod > 0 ? "+" : "") + mod : ""}=${roll + mod} vs CD ${dc}${saved ? " ✅" : " ❌"}`, dmg, killed: newHp <= 0 && hp > 0 });
+      }
+      const line = results.map((r) => `${r.name} −${r.dmg}${r.dmg === 0 ? " (evitato)" : r.dmg < total ? " (metà)" : ""}${r.killed ? " ☠" : ""}`).join(", ");
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
+        actionName: `${action.name} (AREA)`,
+        description: `${who} scatena ${action.name} su tutta la zona · CD ${dc}, TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · Danni ${formula} = ${total} → ${line}`,
+        masterDetails: results, timestamp: serverTimestamp(),
+        ...fxFields(action, results.map((r) => `player-${r.id}`), {
+          kind: "aoe", from: boss.vfxKey,
+          miss: results.filter((r) => r.dmg === 0).map((r) => `player-${r.id}`),
+          kill: results.filter((r) => r.killed).map((r) => `player-${r.id}`),
+        }),
       });
       setSelectedTargets([]);
       return;
@@ -971,18 +1090,20 @@ export default function WorldBoss() {
       const caStr = buffBonus > 0
         ? `CA ${playerCA} (${baseCA}+${buffBonus} ${p.selfAcSource || "buff"})`
         : `CA ${playerCA}`;
-      results.push({ id: targetId, name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs ${caStr}`, dmg: isHit ? damageDealt : 0 });
+      results.push({ id: targetId, name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs ${caStr}`, dmg: isHit ? damageDealt : 0, killed: isHit && (p.stats?.hp || 0) > 0 && Math.max(0, (p.stats?.hp || 0) - Math.max(0, damageDealt - (p.stats?.shield || 0))) <= 0 });
     }
     const hitTargets = results.filter((r) => r.hit).map((r) => r.name).join(", ");
     const missedTargets = results.filter((r) => !r.hit).map((r) => r.name).join(", ");
-    const hitTargetIds = results.filter((r) => r.hit).map((r) => `player-${r.id}`);
+    const allTargetIds = results.map((r) => `player-${r.id}`);
+    const missTargetIds = results.filter((r) => !r.hit).map((r) => `player-${r.id}`);
+    const killTargetIds = results.filter((r) => r.killed).map((r) => `player-${r.id}`);
     const condTag = condition === "disadvantage" ? " 🌑(svantaggio)" : condition === "advantage" ? " ⬆(vantaggio)" : "";
     await addDoc(collection(db, "world_boss_chat"), {
       uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
       actionName: action.name,
       description: `${who} scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
       masterDetails: results, timestamp: serverTimestamp(),
-      ...(hitTargetIds.length > 0 ? { effect: pickEffectForAction(action), effectTargets: hitTargetIds } : {}),
+      ...fxFields(action, allTargetIds, { from: boss.vfxKey, miss: missTargetIds, kill: killTargetIds }),
     });
     setSelectedTargets([]);
   };
@@ -1741,8 +1862,10 @@ export default function WorldBoss() {
                         {openSections[cat] && (
                           <div className="rpg-acc-content">
                             {groupedActions[cat].map((action, idx) => (
-                              <button key={idx} className="rpg-action-btn" onClick={() => handleActionRoll(action)} disabled={isUserLocked}>
+                              <button key={idx} className="rpg-action-btn" onClick={() => handleActionRoll(action)} disabled={isUserLocked}
+                                title={areaSpellFor(action) ? "Magia ad area: colpisce tutti i nemici in campo" : undefined}>
                                 <span className="rpg-action-name">{action.name}</span>
+                                {areaSpellFor(action) && <span className="rpg-action-aoe">area</span>}
                                 {action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
                               </button>
                             ))}
