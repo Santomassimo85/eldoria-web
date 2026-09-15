@@ -4,10 +4,41 @@ import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc, addDoc, deleteD
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+// Avatar del PG → data URL ridotto (max 640px, jpeg): è il riferimento visivo che
+// passiamo a Gemini così lo sprite somiglia davvero al personaggio.
+async function avatarToDataUrl(url) {
+  if (/^data:/i.test(url)) return url;
+  const resp = await fetch(url);
+  const blob = await resp.blob();
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * scale));
+  const h = Math.max(1, Math.round(bmp.height * scale));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  return cv.toDataURL("image/jpeg", 0.85);
+}
+
+// Prompt dello sprite pixel-art dell'eroe (stesso stile di boss e minion in
+// WorldBossAdmin): soggetto SOLO su fondo magenta uniforme, che poi togliamo lato
+// client con il chroma key. L'avatar allegato dice all'IA com'è fatto il PG.
+const heroSpritePrompt = (char, dead) => {
+  const who = [char.name, char.race, char.class].filter(Boolean).join(", ");
+  return `Pixel art sprite of a single fantasy RPG hero for a tactical RPG game, drawn from the attached reference portrait.
+Subject: ${who || "fantasy hero"}. Reproduce faithfully the appearance in the reference: face, hair, skin, colours, clothing/armour style and any distinctive detail. Same character, same outfit.
+${dead
+    ? "Pose: DEFEATED — the hero lies collapsed on the ground beside a small stone gravestone (tomb), eyes closed, weapon dropped. Muted, sombre colours."
+    : "Pose: a SINGLE idle standing pose, full body from head to feet, three-quarter view facing the viewer, relaxed and ready."}
+Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.
+CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
+};
 
 export default function PlayerSpritesAdmin() {
   const { currentUser } = useAuth();
@@ -131,6 +162,39 @@ export default function PlayerSpritesAdmin() {
 
   const removeDeadSprite = async (charId) => {
     await updateDoc(doc(db, "characters", charId), { deadSpriteUrl: "" });
+  };
+
+  // ── Sprite dall'avatar con Gemini ──
+  // Una richiesta per volta per slot (`genBusy["<id>:vivo"]`). Il PNG trasparente
+  // finisce nel doc del PG come un caricamento a mano (data URL ≤ 256px).
+  const [genBusy, setGenBusy] = useState({});
+  const generateHeroSprite = async (char, dead) => {
+    const key = `${char.id}:${dead ? "morto" : "vivo"}`;
+    if (genBusy[key]) return;
+    if (!char.image) { alert(`${char.name} non ha un avatar: caricalo dalla scheda PG, poi riprova.`); return; }
+    const field = dead ? "deadSpriteUrl" : "spriteUrl";
+    if (char[field] && !window.confirm(`Sostituire lo sprite ${dead ? "da morto" : "vivo"} di ${char.name} con uno generato dall'avatar?`)) return;
+    setGenBusy((s) => ({ ...s, [key]: true }));
+    try {
+      const ref = await avatarToDataUrl(char.image);
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prompt: heroSpritePrompt(char, dead),
+          refs: [ref],
+          characters: [{ name: char.name, race: char.race, class: char.class }],
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      const png = await dataUrlToTransparentDataUrl(data.immagine, 256);
+      await updateDoc(doc(db, "characters", char.id), { [field]: png });
+    } catch (e) {
+      alert("Generazione sprite fallita: " + (e.message || e));
+    } finally {
+      setGenBusy((s) => ({ ...s, [key]: false }));
+    }
   };
 
   const loadBattleBg = (file) => {
@@ -291,10 +355,14 @@ export default function PlayerSpritesAdmin() {
       {/* ── Sprite eroi ── */}
       <div className="adm-panel">
         <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
+        <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion). Serve un avatar sulla scheda.</small>
         <div className="wbs-grid">
           {characters.map((char) => (
             <div key={char.id} className="wbs-card">
               <div className="wbs-card-head">
+                {char.image
+                  ? <img src={char.image} alt="" className="wbs-avatar" title="Avatar usato come riferimento" />
+                  : <span className="wbs-avatar wbs-avatar--none" title="Nessun avatar">?</span>}
                 <h3 className="wbs-card-name">{char.name}</h3>
                 <span className="wbs-card-tag">{char.class || "—"}</span>
               </div>
@@ -309,6 +377,9 @@ export default function PlayerSpritesAdmin() {
                     onChange={(e) => loadSprite(e.target.files[0], char.id)} />
                   <div className="adm-btn-row">
                     <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => fileRefs.current[char.id]?.click()}>📁 {char.spriteUrl ? "Cambia" : "Carica"}</button>
+                    <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={!!genBusy[`${char.id}:vivo`] || !char.image}
+                      title={char.image ? "Genera lo sprite dall'avatar con Gemini" : "Serve un avatar sulla scheda PG"}
+                      onClick={() => generateHeroSprite(char, false)}>{genBusy[`${char.id}:vivo`] ? "⏳ Disegno…" : "✨ Genera"}</button>
                     {char.spriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeSprite(char.id)}>✖</button>}
                   </div>
                 </div>
@@ -322,6 +393,9 @@ export default function PlayerSpritesAdmin() {
                     onChange={(e) => loadDeadSprite(e.target.files[0], char.id)} />
                   <div className="adm-btn-row">
                     <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => deadFileRefs.current[char.id]?.click()}>💀 {char.deadSpriteUrl ? "Cambia" : "Carica"}</button>
+                    <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={!!genBusy[`${char.id}:morto`] || !char.image}
+                      title={char.image ? "Genera la tomba dall'avatar con Gemini" : "Serve un avatar sulla scheda PG"}
+                      onClick={() => generateHeroSprite(char, true)}>{genBusy[`${char.id}:morto`] ? "⏳ Disegno…" : "✨ Genera"}</button>
                     {char.deadSpriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeDeadSprite(char.id)}>✖</button>}
                   </div>
                 </div>

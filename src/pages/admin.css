@@ -5061,6 +5061,24 @@
 .adm .wbs-in:focus { border-color: var(--cine-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-accent) 16%, transparent); }
 .adm .wbs-name { font-weight: 700; margin-bottom: 6px; }
 .adm .wbs-mini-btn { padding: 4px 9px; font-size: .72rem; border-radius: 3px; }
+/* avatar del PG (riferimento per Gemini) nella testa della card */
+.adm .wbs-avatar {
+  width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  border: 1.5px solid color-mix(in srgb, var(--cine-accent) 55%, transparent);
+}
+.adm .wbs-avatar--none {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .8rem; color: var(--osso-2);
+  background: var(--roccia); border-style: dashed;
+}
+.adm .wbs-card-head .wbs-card-name { flex: 1; }
+/* ✨ Genera: tastino arcano (viola) — disabilitato quando manca l'avatar o sta disegnando */
+.adm .wbs-ai-btn {
+  background: linear-gradient(180deg, rgba(var(--el-rgb), .28), rgba(var(--el-rgb), .12));
+  border: 1px solid rgba(var(--el-rgb), .6); color: var(--osso);
+}
+.adm .wbs-ai-btn:hover:not(:disabled) { background: rgba(var(--el-rgb), .4); }
+.adm .wbs-ai-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ── MARKET ADMIN — sezione "Dati per Foundry" ── */
 .mkadm-foundry {
