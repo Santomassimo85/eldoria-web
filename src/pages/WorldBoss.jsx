@@ -49,6 +49,14 @@ const BOSS_SYSTEM_UID = "BOSS_MSG";
 const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000;
 
+// QUORUM del turno degli eroi: quando ha agito almeno questa quota degli eroi
+// VIVI (2/3: 8 su 12), il turno si chiude entro 10 minuti invece di aspettare
+// le 3 ore — se mancano meno di 10 minuti il timer resta com'è. Scatta una
+// sola volta per turno (`quorumTurn` = turnNumber sul turn_tracker).
+const QUORUM_RATIO = 2 / 3;
+const QUORUM_WINDOW_MS = 10 * 60 * 1000;
+const quorumTarget = (n) => Math.max(1, Math.ceil(n * QUORUM_RATIO));
+
 // Detect what a spell does so we can route it correctly:
 //   self_buff → +AC on caster (Mage Armor, Shield, Barkskin, …)
 //   heal      → restore HP to a chosen ally
@@ -615,6 +623,46 @@ export default function WorldBoss() {
   const endMyTurn = async () => {
     if (turnState.actedPlayers.includes(currentUser.uid)) return;
     await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(currentUser.uid) });
+    try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
+  };
+
+  // Eroi vivi (quelli che possono ancora agire) e quorum del turno corrente.
+  const alivePlayerIds = useMemo(() => players.filter((p) => (p.stats?.hp ?? 0) > 0).map((p) => p.id), [players]);
+  const actedAlive = useMemo(
+    () => (turnState.actedPlayers || []).filter((id) => alivePlayerIds.includes(id)).length,
+    [turnState.actedPlayers, alivePlayerIds],
+  );
+  const quorumNeeded = quorumTarget(alivePlayerIds.length);
+  const quorumReached = fightStarted && turnState.phase === "players" && turnState.quorumTurn === turnState.turnNumber;
+
+  // Chi fa scattare il quorum (l'ottavo eroe su dodici) accorcia il timer del turno
+  // a 10 minuti con una transazione: se un altro client lo ha già fatto, o se
+  // mancano meno di 10 minuti, non tocca nulla. Avvisa tutti in chat.
+  const checkQuorum = async () => {
+    const turnRef = doc(db, "battle_meta", "turn_tracker");
+    const alive = alivePlayerIds;
+    const target = quorumTarget(alive.length);
+    let fired = null;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(turnRef);
+      const d = snap.exists() ? snap.data() : null;
+      if (!d || !d.fightStarted || d.phase !== "players") return;
+      if (d.quorumTurn === d.turnNumber) return;
+      const acted = (d.actedPlayers || []).filter((id) => alive.includes(id)).length;
+      if (acted < target) return;
+      const expiry = d.expiryDate?.toMillis ? d.expiryDate.toMillis() : new Date(d.expiryDate).getTime();
+      const newExpiry = Date.now() + QUORUM_WINDOW_MS;
+      if (!(expiry > newExpiry)) { tx.update(turnRef, { quorumTurn: d.turnNumber }); return; }
+      tx.update(turnRef, { expiryDate: new Date(newExpiry), quorumTurn: d.turnNumber });
+      fired = { acted, total: alive.length };
+    });
+    if (fired) {
+      const msg = `⏱ ${fired.acted} eroi su ${fired.total} hanno agito: il turno si chiude tra 10 minuti! Chi manca, si sbrighi.`;
+      await addDoc(collection(db, "world_boss_chat"), {
+        text: msg, content: msg, senderName: "Master System", uid: BOSS_SYSTEM_UID,
+        category: "Turno", timestamp: serverTimestamp(), isSystem: true,
+      });
+    }
   };
 
   // ── HEAL SPELL: roll heal dice + spell mod, apply to a single ally (capped at maxHp) ──
@@ -1469,6 +1517,16 @@ export default function WorldBoss() {
                 <span className={`rpg-hud-timer ${isUrgent ? "urgent" : ""}`}>
                   T{turnState.turnNumber} · {formatTime(timeLeft)}
                 </span>
+                {turnState.phase === "players" && (
+                  <span
+                    className={`rpg-hud-quorum ${quorumReached ? "reached" : ""}`}
+                    title={quorumReached
+                      ? "Quorum raggiunto: il turno si chiude entro 10 minuti"
+                      : `Hanno agito ${actedAlive} eroi su ${alivePlayerIds.length}: al ${quorumNeeded}° il turno si chiude in 10 minuti`}
+                  >
+                    {quorumReached ? `⏱ ${actedAlive}/${alivePlayerIds.length} · chiusura in 10 min` : `⚔ ${actedAlive}/${alivePlayerIds.length} · quorum ${quorumNeeded}`}
+                  </span>
+                )}
               </div>
             )}
             {!isGameOver && boss.expiryDate && (
@@ -1587,7 +1645,10 @@ export default function WorldBoss() {
                 <div className="rpg-panel-title">♛ Master</div>
 
                 {/* ── Turno ── */}
-                <div className="rpg-section-label rpg-section-label--turn">Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}</div>
+                <div className="rpg-section-label rpg-section-label--turn">
+                  Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}
+                  <small className="rpg-quorum-note"> · quorum {quorumNeeded} su {alivePlayerIds.length} vivi → chiusura in 10 min{quorumReached ? " (raggiunto)" : ""}</small>
+                </div>
                 <div className="rpg-btn-row">
                   <button className="rpg-btn rpg-btn--hero" onClick={() => handleManualTurnChange("players")}>⚔ Eroi</button>
                   <button className="rpg-btn rpg-btn--boss" onClick={() => handleManualTurnChange("boss")}>🔥 Boss</button>

@@ -33,7 +33,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts', 'quorumTurn'])
       );
     }
 

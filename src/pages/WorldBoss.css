@@ -403,6 +403,14 @@
 .rpg-phase-pill.boss    { background: var(--rpg-sangue); color: var(--osso); }
 .rpg-hud-timer { font-family: var(--rpg-font-num); font-size: .9rem; color: var(--osso); letter-spacing: .06em; }
 .rpg-hud-timer.urgent { color: var(--rpg-red); animation: rpgPulse .7s ease-in-out infinite alternate; }
+/* quorum del turno: quanti eroi hanno agito e a quanti scatta la chiusura in 10 min */
+.rpg-hud-quorum {
+  font-family: var(--rpg-font-sc); font-size: .72rem; letter-spacing: .08em;
+  color: var(--rpg-dim); border: 1px solid rgba(var(--osso-rgb), .16); border-radius: var(--rpg-r);
+  padding: 2px 8px; white-space: nowrap;
+}
+.rpg-hud-quorum.reached { color: var(--oro); border-color: rgba(var(--oro-rgb, 232, 197, 106), .6); animation: rpgPulse 1.2s ease-in-out infinite alternate; }
+.rpg-quorum-note { font-weight: 400; font-size: .72rem; color: var(--rpg-dim); letter-spacing: .04em; }
 .rpg-event-expiry { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .92rem; }
 .rpg-event-label { color: var(--rpg-dim); }
 .timer-countdown-text { font-family: var(--rpg-font-num); color: var(--el-2); }
