@@ -630,7 +630,8 @@ export default function WorldBoss() {
   // Eroi ATTIVI (la collection `characters` tiene anche chi ha lasciato la
   // campagna: quelli in hiddenPlayers non contano) e vivi → base del quorum
   // (12 attivi → scatta all'8°). Solo per il conteggio: le liste di gioco restano intere.
-  const activePlayers = useMemo(() => players.filter((p) => !isHiddenChar(p)), [players]);
+  // Escluso anche il PG di servizio del Master ("master"): non è un eroe.
+  const activePlayers = useMemo(() => players.filter((p) => !isHiddenChar(p) && !/^master$/i.test(String(p.name || "").trim())), [players]);
   const alivePlayerIds = useMemo(() => activePlayers.filter((p) => (p.stats?.hp ?? 0) > 0).map((p) => p.id), [activePlayers]);
   const actedAlive = useMemo(
     () => (turnState.actedPlayers || []).filter((id) => alivePlayerIds.includes(id)).length,
