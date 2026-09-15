@@ -14,6 +14,7 @@ import {
 } from "../../tcg/cards.js";
 import {
   deckCounts, maxAllowed, autoDeck, autoClassDeck, autoMixDeck, validateDeck,
+  MAX_DECKS,
 } from "../../tcg/collection.js";
 import {
   CLASSES, CLASS_LABEL, CLASS_ICON, classColors,
@@ -64,8 +65,14 @@ function matchRarity(card, rarFilter) {
   return card.rarity === rarFilter;
 }
 
-export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
+export default function DeckBuilder({ profile, onSaveSlot, onActivate, onRename, onDelete, onSetCover, onBack }) {
   const collection = useMemo(() => profile?.collection || {}, [profile]);
+  // Slot mazzi salvati (max MAX_DECKS): `decks` arriva dal profilo live,
+  // `slotIdx` è lo slot aperto nell'editor (può essere un nuovo slot non
+  // ancora salvato = decks.length). `activeIdx` è quello che si gioca.
+  const decks = useMemo(() => profile?.decks || [], [profile]);
+  const activeIdx = profile?.deckIdx ?? 0;
+  const [slotIdx, setSlotIdx] = useState(activeIdx);
   // foils[id] = how many foil copies the player owns of that card. The
   // total in `collection` includes the foils — owning 4 copies with 1
   // foil shows up as collection[id]=4 + foils[id]=1.
@@ -76,12 +83,60 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const [cover, setCoverLocal] = useState(profile?.cover || (myColors[0] || "nature"));
   const pickCover = (c) => { setCoverLocal(c); onSetCover && onSetCover(c); };
   const initial =
-    profile?.deck && validateDeck(profile.deck, collection).ok
+    decks[activeIdx]?.cards
+      ? decks[activeIdx].cards.slice()
+      : profile?.deck && validateDeck(profile.deck, collection).ok
       ? profile.deck.slice()
       : (klass ? buildClassDeck(myColors, klass) : autoDeck(collection, null));
 
   const [deck, setDeck] = useState(initial);
   const [msg, setMsg] = useState("");
+
+  // Modifiche non salvate rispetto allo slot aperto.
+  const dirty = useMemo(() => {
+    const saved = decks[slotIdx]?.cards || [];
+    return saved.length !== deck.length || saved.some((id, i) => id !== deck[i]);
+  }, [deck, decks, slotIdx]);
+  const isNewSlot = slotIdx >= decks.length;
+
+  const openSlot = (i) => {
+    if (i === slotIdx) return;
+    if (dirty && !window.confirm("Hai modifiche non salvate in questo mazzo. Cambiare slot e perderle?")) return;
+    setMsg("");
+    setSlotIdx(i);
+    setDeck((decks[i]?.cards || []).slice());
+  };
+  const newSlot = () => {
+    if (decks.length >= MAX_DECKS) { setMsg(`⚠️ Puoi salvare al massimo ${MAX_DECKS} mazzi: elimina uno slot per farne uno nuovo.`); return; }
+    if (dirty && !window.confirm("Hai modifiche non salvate in questo mazzo. Aprire uno slot nuovo e perderle?")) return;
+    setMsg("");
+    setSlotIdx(decks.length);
+    setDeck([]);
+  };
+  const renameSlot = async () => {
+    if (isNewSlot) { setMsg("Salva prima il mazzo, poi potrai rinominarlo."); return; }
+    const name = window.prompt("Nome del mazzo:", decks[slotIdx]?.name || "");
+    if (name == null) return;
+    const res = await onRename?.(slotIdx, name);
+    setMsg(res?.ok ? "✏️ Mazzo rinominato." : "⚠️ Rinomina fallita.");
+  };
+  const activateSlot = async () => {
+    if (isNewSlot) { setMsg("Salva prima il mazzo, poi potrai usarlo in partita."); return; }
+    const res = await onActivate?.(slotIdx);
+    setMsg(res?.ok ? `⭐ "${decks[slotIdx]?.name}" è il mazzo che giocherai.` : "⚠️ Operazione fallita.");
+  };
+  const deleteSlot = async () => {
+    if (isNewSlot) { setSlotIdx(activeIdx); setDeck((decks[activeIdx]?.cards || []).slice()); setMsg(""); return; }
+    if (decks.length <= 1) { setMsg("⚠️ Serve almeno un mazzo per giocare."); return; }
+    if (!window.confirm(`Eliminare il mazzo "${decks[slotIdx]?.name}"? Le carte restano nella collezione.`)) return;
+    const res = await onDelete?.(slotIdx);
+    if (res?.ok) {
+      const next = Math.min(res.idx ?? 0, Math.max(0, decks.length - 2));
+      setSlotIdx(next);
+      setDeck((decks.filter((_, i) => i !== slotIdx)[next]?.cards || []).slice());
+      setMsg("🗑 Mazzo eliminato.");
+    } else setMsg("⚠️ " + (res?.errors?.[0] || "Eliminazione fallita."));
+  };
   // ONE class selector — empty Set means "all classes". It drives BOTH
   // the grid filter and the auto-build: 0 selected = random, 1 = single
   // class deck, 2+ = mix. No more split between filter and mix state.
@@ -241,8 +296,10 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const clearDeck = () => { setMsg(""); setDeck([]); };
 
   const save = async () => {
-    const res = await onSave(deck);
-    if (res?.ok) setMsg("✅ Mazzo salvato.");
+    // Un nuovo slot diventa subito il mazzo attivo se è il primo che salvi;
+    // altrimenti resta un mazzo "in panchina" finché non premi "Usa in partita".
+    const res = await onSaveSlot(slotIdx, deck, { activate: decks.length === 0 });
+    if (res?.ok) setMsg(`✅ Mazzo salvato nello slot ${slotIdx + 1}${slotIdx === activeIdx || decks.length === 0 ? " (è quello che giochi)" : ""}.`);
     else setMsg("⚠️ " + (res?.errors?.[0] || "Mazzo non valido."));
   };
 
@@ -303,12 +360,40 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
           <span className="tcg-deck__lands">· {landTotal} terre</span>
         </h1>
         <button className="tcg-btn tcg-btn--primary" onClick={save}>
-          💾 Salva
+          💾 Salva{dirty ? " *" : ""}
         </button>
       </div>
 
       {/* ── unified toolbar: classes drive BOTH filter AND auto-build ── */}
       <div className="tcg-deck__bar">
+        {/* ── Slot mazzi salvati (max 5): ⭐ = quello che giochi ── */}
+        <div className="tcg-deck__bar-row tcg-deck__bar-row--slots">
+          <span className="tcg-deck__barlbl">Mazzi salvati {decks.length}/{MAX_DECKS}</span>
+          {decks.map((d, i) => (
+            <button
+              key={i}
+              className={`tcg-chipbtn tcg-chipbtn--slot ${i === slotIdx ? "is-on" : ""} ${i === activeIdx ? "is-active" : ""}`}
+              onClick={() => openSlot(i)}
+              title={`${d.name} · ${d.cards.length} carte${i === activeIdx ? " · mazzo in uso" : ""}`}
+            >
+              {i === activeIdx ? "⭐ " : ""}{d.name}
+              <small>{d.cards.length}</small>
+            </button>
+          ))}
+          {isNewSlot && (
+            <button className="tcg-chipbtn tcg-chipbtn--slot is-on" title="Nuovo mazzo, non ancora salvato">
+              ✚ Nuovo<small>{deck.length}</small>
+            </button>
+          )}
+          {!isNewSlot && decks.length < MAX_DECKS && (
+            <button className="tcg-chipbtn" onClick={newSlot} title="Crea un nuovo mazzo in uno slot libero">✚ Nuovo</button>
+          )}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <button className="tcg-chipbtn tcg-chipbtn--accent" onClick={activateSlot} disabled={isNewSlot || slotIdx === activeIdx}
+            title="Rendi questo il mazzo con cui giochi (IA, online, torneo)">⭐ Usa in partita</button>
+          <button className="tcg-chipbtn" onClick={renameSlot} disabled={isNewSlot} title="Rinomina lo slot">✏️ Rinomina</button>
+          <button className="tcg-chipbtn tcg-chipbtn--danger" onClick={deleteSlot} disabled={!isNewSlot && decks.length <= 1} title="Elimina lo slot">🗑 Elimina</button>
+        </div>
         <div className="tcg-deck__bar-row">
           <span className="tcg-deck__barlbl">
             Classi{klass ? ` · la tua: ${CLASS_ICON[klass]} ${CLASS_LABEL[klass]}` : ""}

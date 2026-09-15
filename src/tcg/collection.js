@@ -83,6 +83,24 @@ const classPacks = CLASSES.map((k) => {
 
 export const PACKS = [...classPacks];
 
+/* ---- mazzi salvati ---- */
+export const MAX_DECKS = 5;
+const deckName = (i) => `Mazzo ${i + 1}`;
+function normalizeDecks(d) {
+  if (Array.isArray(d.tcgDecks)) {
+    return d.tcgDecks
+      .filter((x) => x && Array.isArray(x.cards))
+      .slice(0, MAX_DECKS)
+      .map((x, i) => ({ name: String(x.name || deckName(i)).slice(0, 24), cards: x.cards.slice() }));
+  }
+  if (Array.isArray(d.tcgDeck) && d.tcgDeck.length) return [{ name: deckName(0), cards: d.tcgDeck.slice() }];
+  return [];
+}
+const clampIdx = (v, n) => {
+  const i = Number.isInteger(v) ? v : 0;
+  return n === 0 ? 0 : Math.max(0, Math.min(n - 1, i));
+};
+
 /* ---- normalisation ---- */
 export function profileFromDoc(data) {
   const d = data || {};
@@ -102,6 +120,11 @@ export function profileFromDoc(data) {
     foils:
       d.tcgFoil && typeof d.tcgFoil === "object" ? { ...d.tcgFoil } : {},
     deck: Array.isArray(d.tcgDeck) ? d.tcgDeck.slice() : null,
+    // Mazzi salvati (max MAX_DECKS). `tcgDeck` resta il mazzo ATTIVO (quello
+    // che si gioca), copia dello slot `deckIdx`: così lobby/torneo/IA non
+    // cambiano. Profili vecchi senza `tcgDecks` → slot 1 = il mazzo attuale.
+    decks: normalizeDecks(d),
+    deckIdx: clampIdx(d.tcgDeckIdx, normalizeDecks(d).length),
     starterClaimed: !!d.tcgStarterClaimed,
     starterElement: legacyEl,                       // legacy, kept for old UI
     starterClass: klass,                             // new — class identity
@@ -735,6 +758,65 @@ export async function saveDeck(uid, deck, collection) {
   if (!v.ok) return { ok: false, reason: "invalid", errors: v.errors };
   await patch(uid, { tcgDeck: deck });
   return { ok: true };
+}
+
+/* ── SLOT MAZZI (max 5) ──────────────────────────────────────
+   Ogni scrittura rilegge il doc (così due tab non si pestano i piedi),
+   aggiorna `tcgDecks`, e tiene `tcgDeck` allineato allo slot attivo. */
+async function readDecks(uid) {
+  const snap = await getDoc(doc(db, "characters", uid));
+  const d = snap.exists() ? snap.data() : {};
+  const decks = normalizeDecks(d);
+  return { decks, idx: clampIdx(d.tcgDeckIdx, decks.length) };
+}
+async function writeDecks(uid, decks, idx) {
+  const i = clampIdx(idx, decks.length);
+  const fields = { tcgDecks: decks, tcgDeckIdx: i };
+  if (decks[i]) fields.tcgDeck = decks[i].cards;
+  await patch(uid, fields);
+  return { ok: true, idx: i };
+}
+
+/* Salva `deck` nello slot `idx` (nuovo slot se idx === decks.length e c'è posto).
+   `activate` = rendilo anche il mazzo che si gioca. */
+export async function saveDeckSlot(uid, idx, deck, collection, { name, activate = false } = {}) {
+  if (!uid) return { ok: false, reason: "auth" };
+  const v = validateDeck(deck, collection);
+  if (!v.ok) return { ok: false, reason: "invalid", errors: v.errors };
+  const { decks, idx: cur } = await readDecks(uid);
+  if (idx > decks.length || idx < 0) return { ok: false, reason: "slot" };
+  if (idx === decks.length && decks.length >= MAX_DECKS) return { ok: false, reason: "full", errors: [`Puoi salvare al massimo ${MAX_DECKS} mazzi.`] };
+  const next = decks.slice();
+  next[idx] = { name: String(name || next[idx]?.name || deckName(idx)).slice(0, 24), cards: deck.slice() };
+  return writeDecks(uid, next, activate ? idx : cur);
+}
+
+/* Rendi attivo lo slot (tcgDeck = sue carte). */
+export async function setActiveDeck(uid, idx) {
+  if (!uid) return { ok: false, reason: "auth" };
+  const { decks } = await readDecks(uid);
+  if (!decks[idx]) return { ok: false, reason: "slot" };
+  return writeDecks(uid, decks, idx);
+}
+
+export async function renameDeckSlot(uid, idx, name) {
+  if (!uid) return { ok: false, reason: "auth" };
+  const { decks, idx: cur } = await readDecks(uid);
+  if (!decks[idx]) return { ok: false, reason: "slot" };
+  const next = decks.slice();
+  next[idx] = { ...next[idx], name: String(name || deckName(idx)).trim().slice(0, 24) || deckName(idx) };
+  return writeDecks(uid, next, cur);
+}
+
+/* Elimina lo slot; l'ultimo mazzo non si può eliminare (serve per giocare). */
+export async function deleteDeckSlot(uid, idx) {
+  if (!uid) return { ok: false, reason: "auth" };
+  const { decks, idx: cur } = await readDecks(uid);
+  if (!decks[idx]) return { ok: false, reason: "slot" };
+  if (decks.length <= 1) return { ok: false, reason: "last", errors: ["Serve almeno un mazzo per giocare."] };
+  const next = decks.filter((_, i) => i !== idx);
+  const nextIdx = cur === idx ? 0 : cur > idx ? cur - 1 : cur;
+  return writeDecks(uid, next, nextIdx);
 }
 
 export async function awardCoins(uid, amount) {

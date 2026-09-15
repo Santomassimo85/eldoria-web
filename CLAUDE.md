@@ -12,6 +12,9 @@
 - Push: UN client (`src/push/pushClient.js`): web/PWA = FCM + service worker + VAPID; app = plugin `@capacitor/push-notifications`. Token in `characters/{uid}.fcmTokens` (stesso array), `sendPush` in functions manda `notification`+`android`+`webpush`; il SW template salta i messaggi con `notification` (niente doppioni). Interruttore per dispositivo in `/notifications` (`PushToggle.jsx`, localStorage `ch_push_pref`); `NotificationOptIn.jsx` rinnova il token al login, gestisce tasto Indietro Android e tocco sulla notifica (`ch-push-open`). index.html NON deve più disregistrare `firebase-messaging-sw.js`.
 - NON toccare: iPhone/PC restano sito/PWA. Niente Google sign-in in WebView (il login è email/password, ok).
 
+## TCG: 5 MAZZI SALVATI (2026-09-15)
+- `characters/{uid}.tcgDecks = [{name, cards}]` (max `MAX_DECKS` = 5) + `tcgDeckIdx` (attivo). `tcgDeck` resta SEMPRE la copia del mazzo attivo (lobby/torneo/IA leggono `playableDeck(profile)` come prima). Profili vecchi: slot 1 = `tcgDeck` (virtuale finché non si salva). API in `src/tcg/collection.js`: `saveDeckSlot/setActiveDeck/renameDeckSlot/deleteDeckSlot` (rileggono il doc, scrivono decks+idx+tcgDeck). UI: riga "Mazzi salvati" in `DeckBuilder.jsx` (⭐ = attivo, Nuovo/Usa in partita/Rinomina/Elimina, ultimo slot non eliminabile). Il Manuale (`Manual.jsx`) ha la sezione "Perk delle Vie & kit delle Multiclassi" generata da `CLASS_PROGRESSION`/`MULTICLASS_PROGRESSION` (non duplicare i testi a mano) e spiega i 5 slot.
+
 ## FEATURE ATTIVA: Generatore Sessioni DM (2026-07-03)
 - Piano completo + stato: `docs/generate-session/PLAN.md` e `docs/generate-session/progress.md`.
 - Strumento privato (solo master + co-master) per generare/archiviare le prep-sessioni dei party AMEA/LEAF/ENOX con Claude Opus 4.8.

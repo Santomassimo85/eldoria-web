@@ -18,7 +18,8 @@ import {
   leaveMatch,
 } from "../tcg/net.js";
 import {
-  watchProfile, grantStarter, needsStarter, openPack, saveDeck,
+  watchProfile, grantStarter, needsStarter, openPack,
+  saveDeckSlot, setActiveDeck, renameDeckSlot, deleteDeckSlot,
   awardCoins, playableDeck, resetAllTcg, setCover, TCG_COINS,
 } from "../tcg/collection.js";
 import { primeSfx } from "../utils/tcgSfx.js";
@@ -539,9 +540,12 @@ export default function Tcg() {
         <DeckBuilder
           profile={profile}
           onBack={goMenu}
-          onSave={(deck) =>
-            saveDeck(currentUser.uid, deck, profile?.collection || {})
+          onSaveSlot={(idx, deck, opts) =>
+            saveDeckSlot(currentUser.uid, idx, deck, profile?.collection || {}, opts)
           }
+          onActivate={(idx) => setActiveDeck(currentUser.uid, idx)}
+          onRename={(idx, name) => renameDeckSlot(currentUser.uid, idx, name)}
+          onDelete={(idx) => deleteDeckSlot(currentUser.uid, idx)}
           onSetCover={(cover) => setCover(currentUser.uid, cover)}
         />
       )}

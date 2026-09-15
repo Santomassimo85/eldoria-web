@@ -4279,3 +4279,28 @@ body.tcg-infight .online-popup {
   }
   .tcg-tourn__live-row-id { min-width: 0; }
 }
+
+/* ── Mazzo: slot dei mazzi salvati (max 5) ── */
+.tcg-deck__bar-row--slots { padding-bottom: 8px; border-bottom: 1px dashed rgba(216,177,90,.18); }
+.tcg-chipbtn--slot small {
+  display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 8px;
+  font-size: 10px; line-height: 15px; background: rgba(0,0,0,.35); color: inherit; opacity: .85;
+}
+.tcg-chipbtn--slot.is-active:not(.is-on) { border-color: var(--gold); box-shadow: 0 0 8px -2px var(--gold); }
+
+/* ── Manuale: perk delle vie, livello per livello ── */
+.tcg-doc__perks { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin: 10px 0 4px; }
+.tcg-doc__perk {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.18));
+  border-top: 2px solid var(--pip, var(--gold));
+}
+.tcg-doc__perk-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.tcg-doc__perk-head b { font-size: 14px; color: var(--pip, #fff); }
+.tcg-doc__perk-head small { opacity: .7; font-size: 11px; }
+.tcg-doc__perk ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.tcg-doc__perk li { display: grid; grid-template-columns: 34px 1fr; gap: 6px; font-size: 12.5px; line-height: 1.35; }
+.tcg-doc__perk li .lv { font-weight: 700; color: var(--gold); font-size: 11px; padding-top: 1px; }
+.tcg-doc__perk li.is-ult .lv { color: #ff7ad4; }
+.tcg-doc__perk li.is-ult { border-top: 1px dashed rgba(255,122,212,.3); padding-top: 5px; }
+.tcg-doc__perk li b { color: #fff; }

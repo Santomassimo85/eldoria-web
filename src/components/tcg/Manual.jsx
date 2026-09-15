@@ -15,7 +15,45 @@ import {
   CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE,
   MULTICLASSES, MULTICLASS_DEF,
   LEVEL_THRESHOLDS,
+  CLASS_PROGRESSION, MULTICLASS_PROGRESSION,
+  CLASS_CASTER_TIER, MULTICLASS_CASTER_TIER,
 } from "../../tcg/classes.js";
+import { MAX_DECKS } from "../../tcg/collection.js";
+
+const TIER_LABEL = {
+  full:    "caster pieno · 3 slot S1 · −1 mana generico sugli spell",
+  semi:    "semi-caster · 3 slot S1",
+  martial: "marziale · 2 slot S1",
+};
+
+/* Scheda di una via (o di una multiclasse): i perk lv2→4 e l'ultimate lv5. */
+function PerkCard({ icon, name, sub, pip, tier, rows }) {
+  return (
+    <div className="tcg-doc__perk" style={{ "--pip": pip }}>
+      <div className="tcg-doc__perk-head">
+        <span>{icon}</span>
+        <b>{name}</b>
+        {sub && <small>{sub}</small>}
+        {tier && <small>· {TIER_LABEL[tier] || tier}</small>}
+      </div>
+      <ol>
+        {[2, 3, 4, 5].map((lvl) => {
+          const r = rows?.[lvl];
+          if (!r) return null;
+          const isUlt = lvl === 5;
+          return (
+            <li key={lvl} className={isUlt ? "is-ult" : ""}>
+              <span className="lv">{isUlt ? "ULT" : `Lv ${lvl}`}</span>
+              <span>
+                {r.icon} <b>{r.name}</b> — {r.description.replace(/^ULTIMATE — /, "")}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
 /* Coloured section wrapper — accent drives the title bar + border. */
 function Section({ icon, title, accent, children }) {
@@ -317,6 +355,65 @@ export default function Manual({ onBack }) {
           </Note>
         </Section>
 
+        {/* ─── 5b. Perk delle vie e kit delle multiclassi ─── */}
+        <Section icon="🧬" title="Perk delle Vie &amp; kit delle Multiclassi" accent={ACCENT.klass}>
+          <p>
+            Ogni <Tag tone="purple">Via</Tag> è un percorso di 4 ricompense:
+            un <b>perk</b> ai livelli <b>2, 3 e 4</b> (bonus permanenti per il
+            resto della partita, <b>cumulativi</b>) e l'<Tag tone="pink">Ultimate</Tag>{" "}
+            al livello <b>5</b>. I perk si applicano da soli appena sali di
+            livello: li vedi elencati nel <b>pannello classe</b> durante il
+            duello. Accanto a ogni via trovi il suo <b>tipo di caster</b>, che
+            fissa quanti spell slot S1 puoi accumulare (e lo sconto del Mago).
+          </p>
+          <Note tone="info">
+            <b>Scegli la via in base al mazzo:</b> un mazzo pieno di creature
+            rende di più con perk che le potenziano (Campione, Circolo della
+            Terra…); un mazzo di magie con quelli che danno slot, pescate e
+            danno extra (Invocazione, Assassino…).
+          </Note>
+
+          {CLASSES.map((k) => (
+            <React.Fragment key={k}>
+              <h3>{CLASS_ICON[k]} {CLASS_LABEL[k]} <small style={{ opacity: .7, fontWeight: 400 }}>· {TIER_LABEL[CLASS_CASTER_TIER[k]]}</small></h3>
+              <div className="tcg-doc__perks">
+                {Object.entries(CLASS_VIE[k]).map(([vk, v]) => (
+                  <PerkCard
+                    key={vk}
+                    icon={ELEMENT_ICON[v.element]}
+                    name={v.label}
+                    sub={`${v.dnd} · ${ELEMENT_LABEL[v.element]}`}
+                    pip={ELEMENT_PIP[v.element]}
+                    rows={CLASS_PROGRESSION[k]?.[vk]}
+                  />
+                ))}
+              </div>
+            </React.Fragment>
+          ))}
+
+          <h3>Kit delle multiclassi</h3>
+          <p style={{ opacity: .8, fontSize: 13, marginTop: -4 }}>
+            Con una multiclasse <b>non si sceglie la via</b>: hai un kit tutto
+            suo (perk lv2–4 + ultimate dedicata) e un tipo di caster fisso.
+          </p>
+          <div className="tcg-doc__perks">
+            {MULTICLASSES.map((k) => {
+              const m = MULTICLASS_DEF[k];
+              return (
+                <PerkCard
+                  key={k}
+                  icon={m.icon}
+                  name={m.label}
+                  sub={`${m.parts.map((p) => CLASS_LABEL[p]).join(" + ")} · ${m.elements.map((el) => ELEMENT_ICON[el]).join(" ")}`}
+                  pip="#ff7ad4"
+                  tier={MULTICLASS_CASTER_TIER[k]}
+                  rows={MULTICLASS_PROGRESSION[k]}
+                />
+              );
+            })}
+          </div>
+        </Section>
+
         {/* ─── 6. Mana e Terre ─── */}
         <Section icon="💎" title="Mana &amp; Terre" accent={ACCENT.mana}>
           <p>
@@ -529,6 +626,16 @@ export default function Manual({ onBack }) {
             mazzo. La <b>Collezione</b> mostra tutte le carte esistenti
             raggruppate per elemento, con il conteggio per rarità e quante ne
             possiedi.
+          </p>
+          <h3>🗂️ Fino a {MAX_DECKS} mazzi salvati</h3>
+          <p>
+            Puoi tenere <Tag tone="gold">{MAX_DECKS} mazzi</Tag> pronti negli
+            slot in cima al costruttore: uno per classe, uno per il torneo, uno
+            sperimentale… Apri uno slot, modifica, <b>💾 Salva</b>. Il mazzo
+            con la <b>⭐</b> è quello che giochi (IA, online e torneo): per
+            cambiarlo apri un altro slot e premi <b>⭐ Usa in partita</b>. Puoi
+            rinominare ed eliminare gli slot; le carte restano sempre nella
+            collezione, e le stesse copie possono stare in più mazzi.
           </p>
         </Section>
 
