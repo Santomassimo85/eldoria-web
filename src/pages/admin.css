@@ -5042,7 +5042,15 @@
 .adm .wbs-slots { display: flex; gap: 14px; justify-content: center; padding: 4px 0 10px; flex-wrap: wrap; }
 .adm .wbs-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .adm .wbs-slot-label { font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; color: var(--osso-2); }
-.adm .wbs-sprite { image-rendering: pixelated; mix-blend-mode: multiply; max-height: 90px; }
+/* niente mix-blend-mode: su fondo scuro "multiply" rendeva gli sprite neri (residuo Pergamena).
+   PNG trasparenti su una pedana a scacchi chiara, così i colori si leggono come nel World Boss. */
+.adm .wbs-sprite {
+  image-rendering: pixelated; max-height: 90px; padding: 4px; border-radius: 3px;
+  background:
+    repeating-conic-gradient(rgba(var(--osso-rgb), .16) 0 25%, rgba(var(--osso-rgb), .06) 0 50%) 0 0 / 12px 12px,
+    var(--roccia-3);
+  border: 1px solid rgba(var(--osso-rgb), .14);
+}
 .adm .wbs-sprite--mini { max-height: 70px; }
 .adm .wbs-sprite-ph { font-size: 1.8rem; opacity: .25; height: 90px; display: flex; align-items: center; }
 .adm .wbs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
