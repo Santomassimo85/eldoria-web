@@ -5,19 +5,19 @@
   "description": "L'archivio ufficiale della campagna Crit Happens, ambientata nel mondo di Exanthia.",
   "icons": [
     {
-      "src": "/logo192.png?v=2",
+      "src": "/logo192.png?v=3",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/logo192.png?v=2",
+      "src": "/logo512-maskable.png?v=3",
       "type": "image/png",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/logo512.png?v=2",
+      "src": "/logo512.png?v=3",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
