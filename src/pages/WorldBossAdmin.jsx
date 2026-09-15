@@ -19,7 +19,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
-import { DMG_TYPE_OPTIONS } from "./tactics/battleModel";
+import { DMG_TYPE_OPTIONS } from "./worldBossSpells";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 

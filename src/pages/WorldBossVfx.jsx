@@ -1,5 +1,5 @@
 // Effetti a schermo del World Boss: PIXEL ART in CSS (gli stessi "scoppi" chunky
-// stile Octopath nati per la versione isometrica in tactics/IsoBoard), montati in
+// stile Octopath nati per la vecchia versione isometrica, ormai cancellata), montati in
 // un portal sopra la scena testo+sprite. Ogni attacco porta con sé forma + elemento:
 //   effect        "slash" | "arrow" | "bolt" | "aoe" | "heal" | "buff" | "shield" | "debuff" | "hit"
 //   effectEl      fire | frost | lightning | poison | darkness | radiant | arcane | physical

@@ -8,6 +8,20 @@
 // ── Elemento ────────────────────────────────────────────────────────────────
 export const ELEMENTS = ["fire", "frost", "lightning", "poison", "darkness", "radiant", "arcane", "physical"];
 
+// Tipi di danno scelti nell'editor boss/minion (DM Admin → World Boss). Il `value`
+// finisce in `dmgType` sull'azione e vince sul riconoscimento automatico; "" = auto.
+export const DMG_TYPE_OPTIONS = [
+  { value: "",          label: "Auto (dal nome)" },
+  { value: "fuoco",     label: "🔥 Fuoco" },
+  { value: "ghiaccio",  label: "❄ Ghiaccio" },
+  { value: "fulmine",   label: "⚡ Fulmine" },
+  { value: "veleno",    label: "☠ Veleno" },
+  { value: "oscurità",  label: "🌑 Oscurità" },
+  { value: "sacro",     label: "✨ Sacro" },
+  { value: "fisico",    label: "⚔ Fisico" },
+  { value: "arcano",    label: "🔮 Arcano" },
+];
+
 // Tipo di danno scelto nell'editor → elemento (valori italiani E chiavi inglesi legacy).
 const DMGTYPE_ELEMENT = {
   fuoco: "fire", ghiaccio: "frost", fulmine: "lightning", veleno: "poison",
