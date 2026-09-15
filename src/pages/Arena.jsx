@@ -24,7 +24,7 @@ import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi c
 import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
-// Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
+// Pixel in CSS (classi .avfx qui sotto, niente file esterni). Nessuna modifica ai
 // 30+ handler d'attacco: deduciamo l'effetto dal `pub`/`att` e il bersaglio da
 // defId (attacchi → nemico) o attId (cure/buff → sé stesso).
 const ARENA_OFFENSIVE_FX = new Set(["slash", "ranged", "fire", "frost", "lightning", "poison"]);
