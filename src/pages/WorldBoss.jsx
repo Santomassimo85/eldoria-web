@@ -28,6 +28,7 @@ import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, damageFormulaFor, SAVE_LABEL_IT } from "./worldBossSpells";
+import { isHiddenChar } from "../data/hiddenPlayers";
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
 // `kind` forza la forma (heal/buff/shield/debuff); altrimenti la decide l'azione.
@@ -626,8 +627,11 @@ export default function WorldBoss() {
     try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
   };
 
-  // Eroi vivi (quelli che possono ancora agire) e quorum del turno corrente.
-  const alivePlayerIds = useMemo(() => players.filter((p) => (p.stats?.hp ?? 0) > 0).map((p) => p.id), [players]);
+  // Eroi ATTIVI (la collection `characters` tiene anche chi ha lasciato la
+  // campagna: quelli in hiddenPlayers non contano) e vivi → base del quorum
+  // (12 attivi → scatta all'8°). Solo per il conteggio: le liste di gioco restano intere.
+  const activePlayers = useMemo(() => players.filter((p) => !isHiddenChar(p)), [players]);
+  const alivePlayerIds = useMemo(() => activePlayers.filter((p) => (p.stats?.hp ?? 0) > 0).map((p) => p.id), [activePlayers]);
   const actedAlive = useMemo(
     () => (turnState.actedPlayers || []).filter((id) => alivePlayerIds.includes(id)).length,
     [turnState.actedPlayers, alivePlayerIds],
@@ -1646,8 +1650,8 @@ export default function WorldBoss() {
 
                 {/* ── Turno ── */}
                 <div className="rpg-section-label rpg-section-label--turn">
-                  Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}
-                  <small className="rpg-quorum-note"> · quorum {quorumNeeded} su {alivePlayerIds.length} vivi → chiusura in 10 min{quorumReached ? " (raggiunto)" : ""}</small>
+                  Turno · Azioni {actedAlive}/{alivePlayerIds.length}
+                  <small className="rpg-quorum-note"> · quorum {quorumNeeded} su {alivePlayerIds.length} attivi vivi ({activePlayers.length} attivi su {players.length} iscritti) → chiusura in 10 min{quorumReached ? " (raggiunto)" : ""}</small>
                 </div>
                 <div className="rpg-btn-row">
                   <button className="rpg-btn rpg-btn--hero" onClick={() => handleManualTurnChange("players")}>⚔ Eroi</button>
