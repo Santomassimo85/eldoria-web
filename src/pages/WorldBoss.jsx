@@ -31,6 +31,21 @@ import { pickEffectForAction, areaSpellFor, damageFormulaFor, SAVE_LABEL_IT } fr
 import { isHiddenChar } from "../data/hiddenPlayers";
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
+// Etichetta di un'azione di boss/minion nel pannello Master: icona, tipo e se
+// richiede un bersaglio (attacco singolo / svantaggio) — le AREE colpiscono tutti,
+// cura/+CA/vantaggio agiscono sul nemico stesso.
+function masterActionMeta(a) {
+  const t = a.type || "attack";
+  if (t === "heal") return { kind: "self", ico: "💚", tag: `si cura ${parseInt(a.diceNum) || 1}${a.diceType || "d6"}${parseInt(a.bonus) ? "+" + parseInt(a.bonus) : ""}` };
+  if (t === "buff_ca") return { kind: "self", ico: "🛡", tag: `+${parseInt(a.acBonus) || 0} CA a sé` };
+  if (t === "buff_adv") return { kind: "self", ico: "⬆", tag: "vantaggio a sé" };
+  if (t === "debuff_dis") return { kind: "debuff", ico: "🌑", tag: "svantaggio ai bersagli", needs: true };
+  const aoe = areaSpellFor(a);
+  const dmg = a.damage || `${parseInt(a.diceNum) || 1}${a.diceType || "d6"}`;
+  if (aoe) return { kind: "aoe", ico: "🌀", tag: `AREA · ${dmg} · TS ${SAVE_LABEL_IT[aoe.save] || aoe.save}` };
+  return { kind: "atk", ico: "⚔", tag: `${dmg}${parseInt(a.bonus) ? ` · +${parseInt(a.bonus)} al tiro` : ""}`, needs: true };
+}
+
 // `kind` forza la forma (heal/buff/shield/debuff); altrimenti la decide l'azione.
 const fxFields = (action, targets, { kind = null, from = null, miss = [], kill = [] } = {}) => {
   const fx = pickEffectForAction(action, kind);
@@ -166,7 +181,14 @@ export default function WorldBoss() {
   const [partyZoneHeight, setPartyZoneHeight] = useState(0);
   const partyZoneRef = useRef(null);
   const [mobileTab, setMobileTab] = useState("status");
-  const [playersOpen, setPlayersOpen] = useState(true);
+  // Pannello Master (2026-09-15): attacco in 3 passi + eroi espandibili
+  const [attackerId, setAttackerId] = useState(null);      // chi attacca (boss o minion)
+  const [targetMode, setTargetMode] = useState("all");     // "all" = tutti gli eroi vivi · "pick" = scelti
+  const [spawnOpen, setSpawnOpen] = useState(false);       // riga "Evoca minion" aperta
+  const [heroOpenId, setHeroOpenId] = useState(null);      // eroe con i comandi cura/ferite aperti
+  const [heroAmount, setHeroAmount] = useState("5");       // quantità "a piacere"
+  const [heroShield, setHeroShield] = useState("5");       // HP di scudo da dare
+  const [showInactive, setShowInactive] = useState(false); // mostra anche chi ha lasciato la campagna
   const [playerActionMode, setPlayerActionMode] = useState("saves");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
@@ -226,7 +248,18 @@ export default function WorldBoss() {
     [livingEnemies, targetId],
   );
   const enemyRef = (e) => doc(db, e.kind === "minion" ? "world_boss_minions" : "bosses", e.id);
-  const enemyOf = (id) => enemies.find((e) => e.id === id) || null;
+  // Attaccante scelto dal Master: quello toccato se è vivo, altrimenti il primo vivo.
+  const attacker = useMemo(
+    () => livingEnemies.find((e) => e.id === attackerId) || livingEnemies[0] || null,
+    [livingEnemies, attackerId],
+  );
+  const attackerActions = useMemo(() => {
+    if (!attacker) return [];
+    const list = Array.isArray(attacker.actions) && attacker.actions.length > 0
+      ? attacker.actions
+      : [attacker.action1, attacker.action2, attacker.action3, attacker.action4, attacker.action5];
+    return list.filter((a) => a && a.name);
+  }, [attacker]);
 
   // Live clock — ticks every second so the boss deadline (expiryDate) countdown
   // and isTimeExpired recompute even with no Firestore change on the page.
@@ -515,11 +548,6 @@ export default function WorldBoss() {
     });
   };
 
-  const toggleSelectAll = () => {
-    if (selectedTargets.length === players.length) setSelectedTargets([]);
-    else setSelectedTargets(players.map((p) => p.id));
-  };
-
   const healAllPlayers = async () => {
     const confirmHeal = window.confirm("DM, vuoi curare TUTTI i player al massimo della vita?");
     if (!confirmHeal) return;
@@ -633,6 +661,15 @@ export default function WorldBoss() {
   // Escluso anche il PG di servizio del Master ("master"): non è un eroe.
   const activePlayers = useMemo(() => players.filter((p) => !isHiddenChar(p) && !/^master$/i.test(String(p.name || "").trim())), [players]);
   const alivePlayerIds = useMemo(() => activePlayers.filter((p) => (p.stats?.hp ?? 0) > 0).map((p) => p.id), [activePlayers]);
+  // Pannello Master: eroi vivi attaccabili, bersagli effettivi del passo 2, liste della sezione Eroi.
+  const aliveHeroes = useMemo(() => activePlayers.filter((p) => (p.stats?.hp ?? 0) > 0), [activePlayers]);
+  const selectedAliveIds = useMemo(() => selectedTargets.filter((id) => aliveHeroes.some((p) => p.id === id)), [selectedTargets, aliveHeroes]);
+  const masterTargetIds = targetMode === "all" ? aliveHeroes.map((p) => p.id) : selectedAliveIds;
+  const masterTargetNames = targetMode === "all" && aliveHeroes.length > 3
+    ? `tutti i ${aliveHeroes.length} eroi in piedi`
+    : aliveHeroes.filter((p) => masterTargetIds.includes(p.id)).map((p) => (p.name || "?").split(" ")[0]).join(", ");
+  const inactiveHeroes = useMemo(() => players.filter((p) => !activePlayers.includes(p)), [players, activePlayers]);
+  const shownHeroes = showInactive ? players : activePlayers;
   const actedAlive = useMemo(
     () => (turnState.actedPlayers || []).filter((id) => alivePlayerIds.includes(id)).length,
     [turnState.actedPlayers, alivePlayerIds],
@@ -984,7 +1021,9 @@ export default function WorldBoss() {
   };
 
   // Attacco/abilità di un NEMICO (boss o minion evocato): stessa logica, cambia il doc.
-  const handleBossRoll = async (bossOrMinion, action) => {
+  // `targetIdsArg` = bersagli scelti nel pannello Master (passo 2); senza, i selezionati.
+  const handleBossRoll = async (bossOrMinion, action, targetIdsArg) => {
+    const targets = Array.isArray(targetIdsArg) ? targetIdsArg : selectedTargets;
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
     const boss = bossOrMinion.kind ? bossOrMinion : { ...bossOrMinion, kind: "boss", vfxKey: "boss" };
     if ((boss.hp ?? 0) <= 0) return alert(`${boss.name} è a terra: non può agire.`);
@@ -1038,21 +1077,21 @@ export default function WorldBoss() {
 
     // ── DEBUFF disadvantage: selected players' next roll has disadvantage ──
     if (actionType === "debuff_dis") {
-      if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
+      if (targets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
       const batch = writeBatch(db);
-      selectedTargets.forEach((uid) => {
+      targets.forEach((uid) => {
         batch.update(doc(db, "characters", uid), { nextTurnCondition: "disadvantage" });
       });
       await batch.commit();
       const names = players
-        .filter((p) => selectedTargets.includes(p.id))
+        .filter((p) => targets.includes(p.id))
         .map((p) => (p.name || "").split(" ")[0])
         .join(", ");
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Debuff Boss",
         actionName: action.name,
         description: `${who} colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
-        ...fxFields(action, selectedTargets.map((uid) => `player-${uid}`), { kind: "debuff", from: boss.vfxKey }),
+        ...fxFields(action, targets.map((uid) => `player-${uid}`), { kind: "debuff", from: boss.vfxKey }),
         timestamp: serverTimestamp(),
       });
       setSelectedTargets([]);
@@ -1065,7 +1104,7 @@ export default function WorldBoss() {
     const bossAoe = areaSpellFor(action);
     if (bossAoe) {
       const alive = players.filter((p) => (p.stats?.hp ?? 0) > 0);
-      const pool = selectedTargets.length ? alive.filter((p) => selectedTargets.includes(p.id)) : alive;
+      const pool = targets.length ? alive.filter((p) => targets.includes(p.id)) : alive;
       if (!pool.length) return alert("Nessun eroe in piedi da colpire.");
       const dc = parseInt(boss.spellDC) || 13;
       const formula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
@@ -1101,7 +1140,7 @@ export default function WorldBoss() {
     }
 
     // ── ATTACK (default) ──
-    if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
+    if (targets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
     // Consume any debuff condition (e.g. svantaggio applied by a player spell)
     const condition = boss.nextTurnCondition;
     let d20, rollLabel;
@@ -1121,7 +1160,7 @@ export default function WorldBoss() {
     const damageFormula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
     const damageDealt = rollDice(damageFormula);
     const results = [];
-    for (const targetId of selectedTargets) {
+    for (const targetId of targets) {
       const p = players.find((player) => player.id === targetId);
       if (!p) continue;
       const baseCA = p.stats?.ac || 10;
@@ -1161,14 +1200,18 @@ export default function WorldBoss() {
     setSelectedTargets([]);
   };
 
-  const damagePlayerManual = async (playerId, amount) => {
-    await updateDoc(doc(db, "characters", playerId), { "stats.hp": increment(amount) });
+  // Cura/ferita manuale di un eroe: mai sotto 0 né sopra i PF massimi.
+  const adjustHeroHp = async (p, delta) => {
+    const hp = p.stats?.hp ?? 0;
+    const maxHp = p.stats?.maxHp ?? Math.max(1, hp);
+    const newHp = Math.max(0, Math.min(maxHp, hp + delta));
+    if (newHp === hp) return;
+    await updateDoc(doc(db, "characters", p.id), { "stats.hp": newHp });
   };
-
-  const healBossManual = async (amount) => {
-    const boss = activeBosses[0];
-    if (!boss) return;
-    await updateDoc(doc(db, "bosses", boss.id), { hp: Math.min(boss.maxHp, boss.hp + amount) });
+  // Cura manuale di boss o minion (l'attaccante scelto nel pannello).
+  const healEnemyManual = async (e, amount) => {
+    if (!e) return;
+    await updateDoc(enemyRef(e), { hp: Math.min(e.maxHp ?? e.hp ?? 0, (e.hp || 0) + amount) });
   };
 
   const shieldBossManual = async () => {
@@ -1205,9 +1248,6 @@ export default function WorldBoss() {
       console.error("Errore evocazione minion:", e);
       alert("Evocazione fallita: " + (e.message || e));
     }
-  };
-  const healMinionManual = async (m, amount) => {
-    await updateDoc(doc(db, "world_boss_minions", m.id), { hp: Math.min(m.maxHp ?? m.hp, (m.hp || 0) + amount) });
   };
   const shieldMinionManual = async (m) => {
     const val = prompt(`Quanti HP di scudo vuoi dare a ${m.name}?`);
@@ -1649,144 +1689,193 @@ export default function WorldBoss() {
               <div className="rpg-master-panel">
                 <div className="rpg-panel-title">♛ Master</div>
 
-                {/* ── Turno ── */}
-                <div className="rpg-section-label rpg-section-label--turn">
-                  Turno · Azioni {actedAlive}/{alivePlayerIds.length}
-                  <small className="rpg-quorum-note"> · quorum {quorumNeeded} su {alivePlayerIds.length} attivi vivi ({activePlayers.length} attivi su {players.length} iscritti) → chiusura in 10 min{quorumReached ? " (raggiunto)" : ""}</small>
-                </div>
-                <div className="rpg-btn-row">
-                  <button className="rpg-btn rpg-btn--hero" onClick={() => handleManualTurnChange("players")}>⚔ Eroi</button>
-                  <button className="rpg-btn rpg-btn--boss" onClick={() => handleManualTurnChange("boss")}>🔥 Boss</button>
-                </div>
-
-                {/* ── Minion: evoca dalla Caserma, poi ogni servo ha i suoi attacchi ── */}
-                <div className="rpg-section-label rpg-section-label--minion">
-                  <span>🪓 Minion in campo <span className="rpg-section-count">({minionInstances.length})</span></span>
-                  {minionInstances.length > 0 && (
-                    <span className="rpg-section-tools">
-                      <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={clearMinions}>🗑 Tutti</button>
+                {/* ── Turno: stato + due leve ── */}
+                <div className="rpg-turn-bar">
+                  <div className="rpg-turn-info">
+                    <strong>{!fightStarted ? "⏳ Battaglia non iniziata" : turnState.phase === "boss" ? "🔥 Turno del Boss" : "⚔ Turno degli Eroi"}</strong>
+                    <span title={`Quorum ${quorumNeeded} su ${alivePlayerIds.length} attivi vivi (${activePlayers.length} attivi su ${players.length} iscritti): al raggiungimento il turno si chiude in 10 min`}>
+                      {actedAlive}/{alivePlayerIds.length} hanno agito · quorum {quorumNeeded}{quorumReached ? " ✓ (chiusura in 10 min)" : ""}
                     </span>
+                  </div>
+                  <div className="rpg-btn-row rpg-turn-btns">
+                    <button className={`rpg-btn rpg-btn--hero${fightStarted && turnState.phase === "players" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("players")}>⚔ Passa agli Eroi</button>
+                    <button className={`rpg-btn rpg-btn--boss${fightStarted && turnState.phase === "boss" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("boss")}>🔥 Passa al Boss</button>
+                  </div>
+                </div>
+
+                {/* ── ATTACCO in 3 passi: chi attacca → contro chi → con cosa ── */}
+                <section className="rpg-flow rpg-flow--who">
+                  <header className="rpg-flow-head">
+                    <span className="rpg-flow-num">1</span>
+                    <span className="rpg-flow-title">Chi attacca</span>
+                    <button className={`rpg-sm-btn${spawnOpen ? " active" : ""}`} onClick={() => setSpawnOpen((o) => !o)}>➕ Evoca minion</button>
+                  </header>
+                  {spawnOpen && (
+                    <div className="rpg-flow-spawn">
+                      <div className="rpg-minion-spawn">
+                        <select className="rpg-select" value={spawnDefId} onChange={(e) => setSpawnDefId(e.target.value)} disabled={!minionDefs.length}>
+                          {minionDefs.length === 0
+                            ? <option value="">Nessuna sagoma in Caserma</option>
+                            : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.isActive ? "⚡ " : ""}{d.name} · {d.hp} HP · CA {d.ac}</option>)}
+                        </select>
+                        <button className="rpg-btn rpg-btn--hero rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>Evoca</button>
+                      </div>
+                      <p className="rpg-hint">
+                        {minionDefs.length === 0
+                          ? "Nessuna sagoma: creala nella Caserma (DM Admin → World Boss Fight), poi torna qui."
+                          : "Il servo compare in scena accanto al boss e qui sotto come attaccante. Puoi evocarne più copie."}
+                        {minionInstances.length > 0 && <> <button className="rpg-link-btn" onClick={clearMinions}>Congeda tutti i minion ({minionInstances.length})</button></>}
+                      </p>
+                    </div>
                   )}
-                </div>
-                <div className="rpg-minion-spawn">
-                  <select className="rpg-select" value={spawnDefId} onChange={(e) => setSpawnDefId(e.target.value)} disabled={!minionDefs.length}>
-                    {minionDefs.length === 0
-                      ? <option value="">Nessuna sagoma in Caserma</option>
-                      : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.isActive ? "⚡ " : ""}{d.name} · {d.hp} HP · CA {d.ac}</option>)}
-                  </select>
-                  <button className="rpg-btn rpg-btn--hero rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>➕ Evoca</button>
-                </div>
-                <p className="rpg-hint">
-                  {minionDefs.length === 0
-                    ? "Nessuna sagoma: creala nella Caserma (DM Admin → World Boss Fight), poi torna qui."
-                    : "Scegli una sagoma e premi Evoca: il servo compare in scena accanto al boss, con i suoi attacchi qui sotto. Puoi evocarne più copie."}
-                </p>
-                {minionInstances.map((m) => {
-                  const dead = (m.hp ?? 0) <= 0;
-                  const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
-                  const hpCls = pct < 25 ? "crit" : pct < 50 ? "low" : "";
-                  const acts = Array.isArray(m.actions) ? m.actions.filter((a) => a && a.name) : [];
-                  return (
-                    <div key={m.id} className={`rpg-master-row rpg-master-row--minion ${dead ? "dead" : ""}`}>
-                      <div className="rpg-master-row-head rpg-master-row-head--static">
-                        <span className="rpg-master-row-name">
-                          {dead ? "☠" : "🪓"} {m.name}
-                          <span className="rpg-attack-counter" title="Classe Armatura">CA {m.ac}</span>
-                          {m.nextTurnCondition === "disadvantage" && <span className="rpg-dead-mark" title={m.debuffSource || "Svantaggio"}>🌑</span>}
-                          {m.nextTurnCondition === "advantage" && <span className="rpg-check-mark" title="Vantaggio">⬆</span>}
-                        </span>
-                        <span className={`rpg-master-row-hp ${hpCls}`}>
-                          {m.hp}/{m.maxHp}{(m.shield ?? 0) > 0 ? ` 🛡${m.shield}` : ""}
-                        </span>
-                        <div className="rpg-bar-track rpg-bar-track--sm">
-                          <div className={`rpg-bar-hp ${hpCls}`} style={{ width: `${pct}%` }} />
-                          {(m.shield ?? 0) > 0 && (
-                            <div className="rpg-bar-shield" style={{ width: `${Math.min(100, (m.shield / Math.max(1, m.maxHp ?? 1)) * 100)}%` }} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="rpg-master-row-btns">
-                        {acts.map((a, i) => (
-                          <button key={i} className="rpg-sm-btn rpg-sm-btn--atk" disabled={dead} onClick={() => handleBossRoll(enemyOf(m.id) || { ...m, kind: "minion", vfxKey: `minion-${m.id}` }, a)}>
-                            ⚔ {a.name}
-                          </button>
-                        ))}
-                        {acts.length === 0 && <span className="rpg-hint">nessun attacco salvato</span>}
-                        <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healMinionManual(m, 5)}>+5</button>
-                        <button className="rpg-sm-btn" onClick={() => shieldMinionManual(m)}>🛡</button>
-                        <button className="rpg-sm-btn rpg-sm-btn--danger" title="Congeda" onClick={() => removeMinion(m)}>✕</button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* ── Boss ── */}
-                {boss && (
-                  <>
-                    <div className="rpg-section-label rpg-section-label--boss">Boss</div>
-                    {(Array.isArray(boss.actions) && boss.actions.length > 0
-                      ? boss.actions
-                      : [boss.action1, boss.action2, boss.action3, boss.action4, boss.action5]
-                    )
-                      .filter((a) => a && a.name)
-                      .map((action, idx) => (
+                  <div className="rpg-attacker-strip">
+                    {enemies.map((e) => {
+                      const dead = (e.hp ?? 0) <= 0;
+                      const pct = Math.max(0, Math.min(100, ((e.hp ?? 0) / Math.max(1, e.maxHp ?? 1)) * 100));
+                      const on = attacker?.id === e.id;
+                      return (
                         <button
-                          key={idx}
-                          className="rpg-btn rpg-btn--atk"
-                          onClick={() => handleBossRoll(boss, action)}
+                          key={e.id}
+                          className={`rpg-attacker-chip${on ? " on" : ""}${dead ? " dead" : ""}${e.kind === "boss" ? " is-boss" : ""}`}
+                          disabled={dead}
+                          onClick={() => setAttackerId(e.id)}
+                          title={dead ? `${e.name} è a terra` : `Attacca con ${e.name}`}
                         >
-                          {action.name}
+                          <span className="rpg-attacker-chip-ico">{dead ? "☠" : e.kind === "boss" ? "👑" : "🪓"}</span>
+                          <span className="rpg-attacker-chip-name">{e.name}</span>
+                          <span className="rpg-attacker-chip-hp"><i style={{ width: `${pct}%` }} /></span>
+                          <span className="rpg-attacker-chip-val">{e.hp}/{e.maxHp ?? "?"}</span>
                         </button>
-                      ))}
-                    <div className="rpg-btn-row">
-                      <button className="rpg-sm-btn" onClick={() => healBossManual(5)}>+5 HP</button>
-                      <button className="rpg-sm-btn" onClick={() => healBossManual(10)}>+10 HP</button>
-                      <button className="rpg-sm-btn" onClick={shieldBossManual}>🛡 Scudo</button>
+                      );
+                    })}
+                    {enemies.length === 0 && <span className="rpg-hint">Nessun boss attivo.</span>}
+                  </div>
+                  {attacker && (
+                    <div className="rpg-attacker-care">
+                      <span className="rpg-attacker-care-txt">
+                        {attacker.kind === "boss" ? "👑" : "🪓"} <b>{attacker.name}</b> · {attacker.hp}/{attacker.maxHp ?? "?"} HP · CA {attacker.ac ?? "?"}
+                        {(attacker.shield ?? 0) > 0 ? ` · 🛡 ${attacker.shield}` : ""}
+                        {attacker.nextTurnCondition === "advantage" ? " · ⬆ vantaggio" : attacker.nextTurnCondition === "disadvantage" ? " · 🌑 svantaggio" : ""}
+                      </span>
+                      <span className="rpg-attacker-care-btns">
+                        <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healEnemyManual(attacker, 5)}>+5</button>
+                        <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healEnemyManual(attacker, 10)}>+10</button>
+                        <button className="rpg-sm-btn" onClick={() => attacker.kind === "minion" ? shieldMinionManual(attacker) : shieldBossManual()}>🛡 Scudo</button>
+                        {attacker.kind === "minion" && <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => removeMinion(attacker)}>✕ Congeda</button>}
+                      </span>
                     </div>
-                  </>
-                )}
+                  )}
+                </section>
 
-
-                {/* ── Giocatori (unificato: target + HP + controlli) ── */}
-                <div className="rpg-section-label rpg-section-label--toggle rpg-section-label--players" onClick={() => setPlayersOpen(o => !o)}>
-                  <span>{playersOpen ? "▼" : "▶"} Giocatori <span className="rpg-section-count">({players.length})</span></span>
-                  <span className="rpg-section-tools" onClick={(e) => e.stopPropagation()}>
-                    <button className="rpg-sm-btn" onClick={toggleSelectAll}>
-                      {selectedTargets.length === players.length ? "⊘ Desel." : "⊕ Tutti"}
+                <section className="rpg-flow rpg-flow--target">
+                  <header className="rpg-flow-head">
+                    <span className="rpg-flow-num">2</span>
+                    <span className="rpg-flow-title">Contro chi</span>
+                  </header>
+                  <div className="rpg-seg">
+                    <button className={`rpg-seg-btn${targetMode === "all" ? " on" : ""}`} onClick={() => setTargetMode("all")}>
+                      Tutti gli eroi vivi <b>{aliveHeroes.length}</b>
                     </button>
-                    <button className="rpg-sm-btn" onClick={healAllPlayers}>💖 Full</button>
+                    <button className={`rpg-seg-btn${targetMode === "pick" ? " on" : ""}`} onClick={() => setTargetMode("pick")}>
+                      Scelgo io <b>{selectedAliveIds.length}</b>
+                    </button>
+                  </div>
+                  {targetMode === "pick" && (
+                    <div className="rpg-hero-chips">
+                      {aliveHeroes.map((p) => {
+                        const on = selectedTargets.includes(p.id);
+                        const hp = p.stats?.hp ?? 0, maxHp = p.stats?.maxHp ?? 1;
+                        const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+                        return (
+                          <button key={p.id} className={`rpg-hero-chip${on ? " on" : ""}`} onClick={() => toggleTarget(p.id)} title={`CA ${(p.stats?.ac || 10) + (p.selfAcBonus || 0)}`}>
+                            <span className="rpg-hero-chip-check" aria-hidden="true">{on ? "✓" : ""}</span>
+                            <span className="rpg-hero-chip-name">{(p.name || "?").split(" ")[0]}</span>
+                            <span className="rpg-hero-chip-hp"><i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
+                            <span className="rpg-hero-chip-val">{hp}/{maxHp}</span>
+                          </button>
+                        );
+                      })}
+                      {aliveHeroes.length === 0 && <span className="rpg-hint">Nessun eroe in piedi.</span>}
+                      {aliveHeroes.length > 1 && (
+                        <button className="rpg-link-btn" onClick={() => setSelectedTargets(selectedAliveIds.length === aliveHeroes.length ? [] : aliveHeroes.map((p) => p.id))}>
+                          {selectedAliveIds.length === aliveHeroes.length ? "Deseleziona tutti" : "Seleziona tutti"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <p className={`rpg-flow-summary${masterTargetIds.length === 0 ? " is-empty" : ""}`}>
+                    {masterTargetIds.length === 0
+                      ? (targetMode === "pick" ? "Nessun bersaglio scelto: tocca gli eroi qui sopra." : "Nessun eroe in piedi.")
+                      : `→ ${masterTargetNames}`}
+                  </p>
+                </section>
+
+                <section className="rpg-flow rpg-flow--what">
+                  <header className="rpg-flow-head">
+                    <span className="rpg-flow-num">3</span>
+                    <span className="rpg-flow-title">Con cosa</span>
+                    {attacker && <span className="rpg-flow-sub">di {attacker.name}</span>}
+                  </header>
+                  {attacker ? (
+                    <div className="rpg-act-list">
+                      {attackerActions.map((a, i) => {
+                        const meta = masterActionMeta(a);
+                        const blocked = meta.needs && masterTargetIds.length === 0;
+                        return (
+                          <button
+                            key={i}
+                            className={`rpg-act-btn rpg-act-btn--${meta.kind}`}
+                            disabled={blocked || isFightOver}
+                            onClick={() => handleBossRoll(attacker, a, masterTargetIds)}
+                            title={blocked ? "Scegli prima un bersaglio (passo 2)" : undefined}
+                          >
+                            <span className="rpg-act-btn-ico">{meta.ico}</span>
+                            <span className="rpg-act-btn-name">{a.name}</span>
+                            <span className="rpg-act-btn-tag">{meta.tag}</span>
+                          </button>
+                        );
+                      })}
+                      {attackerActions.length === 0 && <p className="rpg-hint">{attacker.name} non ha attacchi salvati (DM Admin → World Boss).</p>}
+                    </div>
+                  ) : (
+                    <p className="rpg-hint">Scegli prima chi attacca (passo 1).</p>
+                  )}
+                  {isFightOver && <p className="rpg-hint">La battaglia è terminata: nessun attacco possibile.</p>}
+                </section>
+
+                {/* ── EROI: cura & ferite (tocca un eroe per aprire i comandi) ── */}
+                <div className="rpg-section-label rpg-section-label--players">
+                  <span>Eroi · cura &amp; ferite <span className="rpg-section-count">({shownHeroes.length})</span></span>
+                  <span className="rpg-section-tools">
+                    <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={healAllPlayers}>💖 Tutti al massimo</button>
                   </span>
                 </div>
-                {playersOpen && (
-                <div className="rpg-player-adj-list">
-                  {players.map((p) => {
+                <p className="rpg-hint">Tocca un eroe: si aprono i comandi per curarlo (poco, tanto o del tutto), ferirlo, dargli scudo o vantaggio.</p>
+                <div className="rpg-hero-list">
+                  {shownHeroes.map((p) => {
                     const hp     = p.stats?.hp ?? 0;
                     const maxHp  = p.stats?.maxHp ?? 1;
-                    const pct    = Math.max(0, (hp / maxHp) * 100);
+                    const pct    = Math.max(0, Math.min(100, (hp / maxHp) * 100));
                     const hpCls  = pct < 25 ? "crit" : pct < 50 ? "low" : "";
                     const acted  = turnState.actedPlayers?.includes(p.id);
-                    const isTgt  = selectedTargets.includes(p.id);
                     const isDead = hp <= 0;
+                    const open   = heroOpenId === p.id;
+                    const amount = Math.max(1, parseInt(heroAmount) || 1);
+                    const shieldAmt = Math.max(1, parseInt(heroShield) || 1);
                     return (
-                      <div key={p.id} className={`rpg-master-row ${acted ? "acted" : ""} ${isTgt ? "targeted" : ""} ${isDead ? "dead" : ""}`}>
-                        <button className="rpg-master-row-head" onClick={() => toggleTarget(p.id)} title="Seleziona come bersaglio">
-                          <span className="rpg-master-row-name">
-                            {isTgt && <span className="rpg-target-mark">◀</span>}
+                      <div key={p.id} className={`rpg-hero-row${acted ? " acted" : ""}${isDead ? " dead" : ""}${open ? " open" : ""}${isHiddenChar(p) ? " inactive" : ""}`}>
+                        <button className="rpg-hero-row-head" onClick={() => setHeroOpenId(open ? null : p.id)} aria-expanded={open}>
+                          <span className="rpg-hero-row-name">
                             {(p.name || "?").split(" ")[0]}
-                            <span className="rpg-attack-counter" title="Attacchi a questo boss">
-                              ⚔ {turnState.attackCounts?.[activeBosses[0]?.id]?.[p.id] ?? 0}
-                            </span>
-                            {acted && <span className="rpg-check-mark">✓</span>}
-                            {isDead && <span className="rpg-dead-mark">💀</span>}
+                            {acted && <span className="rpg-check-mark" title="Ha già agito">✓</span>}
+                            {isDead && <span className="rpg-dead-mark" title="A terra">💀</span>}
+                            {(p.stats?.shield ?? 0) > 0 && <span className="rpg-ca-badge">🛡 {p.stats.shield}</span>}
+                            {(p.selfAcBonus ?? 0) > 0 && <span className="rpg-ca-badge" title={p.selfAcSource || "Buff CA attivo"}>+{p.selfAcBonus} CA</span>}
+                            {p.nextTurnCondition === "advantage" && <span className="rpg-ca-badge" title="Vantaggio al prossimo tiro">⬆</span>}
+                            {p.nextTurnCondition === "disadvantage" && <span className="rpg-ca-badge rpg-ca-badge--dis" title="Svantaggio al prossimo tiro">⬇</span>}
                           </span>
-                          <span className={`rpg-master-row-hp ${hpCls}`}>
-                            {hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}
-                            {(p.selfAcBonus ?? 0) > 0 && (
-                              <span className="rpg-ca-badge" title={p.selfAcSource || "Buff CA attivo"}>
-                                🛡 +{p.selfAcBonus} CA
-                              </span>
-                            )}
-                          </span>
+                          <span className={`rpg-hero-row-hp ${hpCls}`}>{hp}/{maxHp}</span>
+                          <span className="rpg-hero-row-chev" aria-hidden="true">{open ? "▴" : "▾"}</span>
                           <div className="rpg-bar-track rpg-bar-track--sm">
                             <div className={`rpg-bar-hp ${hpCls}`} style={{ width: `${pct}%` }} />
                             {(p.stats?.shield ?? 0) > 0 && (
@@ -1794,36 +1883,64 @@ export default function WorldBoss() {
                             )}
                           </div>
                         </button>
-                        <div className="rpg-master-row-btns">
-                          <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 1)}>+1</button>
-                          <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 3)}>+3</button>
-                          <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => damagePlayerManual(p.id, -1)}>−1</button>
-                          <button className="rpg-sm-btn" onClick={() => { const val = prompt("HP Scudo?"); if (val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) }); }}>🛡</button>
-                          {(p.stats?.shield ?? 0) > 0 && (
-                            <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>✕</button>
-                          )}
-                          {(p.selfAcBonus ?? 0) > 0 && (
-                            <button className="rpg-sm-btn rpg-sm-btn--danger"
-                                    title={`Rimuovi buff "${p.selfAcSource || "?"}"`}
-                                    onClick={() => updateDoc(doc(db, "characters", p.id), { selfAcBonus: 0, selfAcSource: null, selfAcAppliedAt: null })}>
-                              ✕CA
-                            </button>
-                          )}
-                          <button
-                            className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
-                            onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
-                            title="Vantaggio prossimo tiro"
-                          >⬆</button>
-                          <button
-                            className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
-                            onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
-                            title="Svantaggio prossimo tiro"
-                          >⬇</button>
-                        </div>
+                        {open && (
+                          <div className="rpg-hero-edit">
+                            <div className="rpg-hero-edit-row">
+                              <span className="rpg-hero-edit-lbl rpg-hero-edit-lbl--dmg">🩸 Ferisci</span>
+                              {[1, 3, 5, 10].map((n) => (
+                                <button key={n} className="rpg-sm-btn rpg-sm-btn--danger" disabled={hp <= 0} onClick={() => adjustHeroHp(p, -n)}>−{n}</button>
+                              ))}
+                              <button className="rpg-sm-btn rpg-sm-btn--danger rpg-sm-btn--wide" disabled={hp <= 0} onClick={() => adjustHeroHp(p, -maxHp)}>A terra</button>
+                            </div>
+                            <div className="rpg-hero-edit-row">
+                              <span className="rpg-hero-edit-lbl rpg-hero-edit-lbl--heal">💚 Cura</span>
+                              {[1, 3, 5, 10].map((n) => (
+                                <button key={n} className="rpg-sm-btn rpg-sm-btn--heal" disabled={hp >= maxHp} onClick={() => adjustHeroHp(p, n)}>+{n}</button>
+                              ))}
+                              <button className="rpg-sm-btn rpg-sm-btn--heal rpg-sm-btn--wide" disabled={hp >= maxHp} onClick={() => adjustHeroHp(p, maxHp)}>Del tutto</button>
+                            </div>
+                            <div className="rpg-hero-edit-row rpg-hero-edit-row--custom">
+                              <span className="rpg-hero-edit-lbl">🔢 A piacere</span>
+                              <input className="rpg-num" type="number" min="1" inputMode="numeric" value={heroAmount} onChange={(e) => setHeroAmount(e.target.value)} aria-label="Quantità" />
+                              <button className="rpg-sm-btn rpg-sm-btn--danger" disabled={hp <= 0} onClick={() => adjustHeroHp(p, -amount)}>Ferisci −{amount}</button>
+                              <button className="rpg-sm-btn rpg-sm-btn--heal" disabled={hp >= maxHp} onClick={() => adjustHeroHp(p, amount)}>Cura +{amount}</button>
+                            </div>
+                            <div className="rpg-hero-edit-row rpg-hero-edit-row--custom">
+                              <span className="rpg-hero-edit-lbl">🛡 Scudo</span>
+                              <input className="rpg-num" type="number" min="1" inputMode="numeric" value={heroShield} onChange={(e) => setHeroShield(e.target.value)} aria-label="HP di scudo" />
+                              <button className="rpg-sm-btn" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(shieldAmt) })}>+{shieldAmt} scudo</button>
+                              {(p.stats?.shield ?? 0) > 0 && (
+                                <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>Azzera scudo</button>
+                              )}
+                              {(p.selfAcBonus ?? 0) > 0 && (
+                                <button className="rpg-sm-btn rpg-sm-btn--danger"
+                                        title={`Rimuovi buff "${p.selfAcSource || "?"}"`}
+                                        onClick={() => updateDoc(doc(db, "characters", p.id), { selfAcBonus: 0, selfAcSource: null, selfAcAppliedAt: null })}>
+                                  ✕ buff CA
+                                </button>
+                              )}
+                            </div>
+                            <div className="rpg-hero-edit-row">
+                              <span className="rpg-hero-edit-lbl">🎲 Prossimo tiro</span>
+                              <button
+                                className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
+                                onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
+                              >⬆ Vantaggio</button>
+                              <button
+                                className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
+                                onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
+                              >⬇ Svantaggio</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
+                {inactiveHeroes.length > 0 && (
+                  <button className="rpg-link-btn" onClick={() => setShowInactive((v) => !v)}>
+                    {showInactive ? "Nascondi" : "Mostra anche"} i {inactiveHeroes.length} iscritti che hanno lasciato la campagna
+                  </button>
                 )}
 
                 {/* ── Log ── */}

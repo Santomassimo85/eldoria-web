@@ -606,31 +606,131 @@
 .rpg-target-chip-hp { grid-area: hp; display: block; height: 4px; background: var(--ossidiana); border-radius: 2px; overflow: hidden; }
 .rpg-target-chip-hp i { display: block; height: 100%; background: var(--rpg-sangue); }
 
-/* Righe del Master (giocatori + minion) */
-.rpg-player-adj-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 6px; }
-.rpg-master-row {
-  display: flex; flex-wrap: wrap; gap: 3px 6px; padding: 6px 8px;
-  background: var(--rpg-panel2);
-  border: 1px solid var(--rpg-border); border-left: 5px solid var(--rpg-faint); border-radius: var(--rpg-r);
-  transition: background .15s, border-color .15s;
+/* ══════════════════════════════════════════════════════════
+   PANNELLO MASTER (2026-09-15) — attacco in 3 passi + eroi
+   1 · Chi attacca (chip boss/minion)  2 · Contro chi (tutti | scelti)
+   3 · Con cosa (azioni dell'attaccante). Sotto: Eroi, riga compatta
+   che si apre al tocco con Ferisci / Cura / A piacere / Scudo / Tiro.
+   ══════════════════════════════════════════════════════════ */
+/* Turno */
+.rpg-turn-bar { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--rpg-panel2); border: 1px solid var(--rpg-border); border-left: 3px solid var(--oro); border-radius: var(--rpg-r); }
+.rpg-turn-info { display: flex; flex-direction: column; gap: 1px; }
+.rpg-turn-info strong { font-family: var(--rpg-font-sc); font-size: 1rem; letter-spacing: .06em; color: var(--osso); font-weight: 400; }
+.rpg-turn-info span { font-family: var(--rpg-font-num); font-size: .7rem; letter-spacing: .04em; color: var(--rpg-dim); }
+.rpg-turn-btns .rpg-btn { padding: 8px 6px; font-size: .72rem; opacity: .75; }
+.rpg-turn-btns .rpg-btn.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--ossidiana), 0 0 0 3px var(--oro); }
+
+/* Passo */
+.rpg-flow { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: var(--rpg-panel2); border: 1px solid var(--rpg-border); border-radius: var(--rpg-r); border-left: 3px solid var(--sangue); }
+.rpg-flow--target { border-left-color: var(--el); }
+.rpg-flow--what   { border-left-color: var(--oro); }
+.rpg-flow-head { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.rpg-flow-num { flex-shrink: 0; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; font-family: var(--rpg-font-num); font-size: .72rem; color: var(--ossidiana); background: var(--osso); }
+.rpg-flow--who .rpg-flow-num { background: #ff8a7e; }
+.rpg-flow--target .rpg-flow-num { background: var(--el-2); }
+.rpg-flow--what .rpg-flow-num { background: var(--oro); }
+.rpg-flow-title { flex: 1; font-family: var(--rpg-font-sc); font-size: 1rem; letter-spacing: .08em; color: var(--osso); }
+.rpg-flow-sub { font-family: var(--rpg-font-vt); font-style: italic; font-size: .88rem; color: var(--rpg-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+.rpg-flow-spawn { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: var(--ossidiana); border: 1px dashed var(--rpg-border); border-radius: var(--rpg-r); }
+.rpg-flow-summary { margin: 0; font-family: var(--rpg-font-vt); font-size: .92rem; color: var(--el-soft); }
+.rpg-flow-summary.is-empty { color: #ffb4a0; font-style: italic; }
+.rpg-link-btn { padding: 2px 0; font-family: var(--rpg-font-sc); font-size: .84rem; letter-spacing: .04em; color: var(--el-2); background: none; border: none; text-decoration: underline; text-underline-offset: 3px; }
+.rpg-link-btn:hover { color: var(--el-soft); }
+
+/* Passo 1 · chip degli attaccanti (scorrono in orizzontale sul telefono) */
+.rpg-attacker-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+.rpg-attacker-chip {
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "ico name val" "ico hp hp"; column-gap: 8px; row-gap: 4px; align-items: center;
+  flex: 1 1 150px; min-width: 0; padding: 7px 10px; text-align: left;
+  color: var(--rpg-body); background: var(--ossidiana);
+  border: 1px solid var(--rpg-border); border-top: 3px solid transparent; border-radius: var(--rpg-r);
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.rpg-master-row:hover { background: var(--rpg-panel3); }
-.rpg-master-row.targeted { border-left-color: var(--sangue); background: rgba(var(--sangue-rgb), .12); }
-.rpg-master-row.acted    { border-left-color: var(--rpg-green); }
-.rpg-master-row.dead     { border-left-color: var(--rpg-faint); opacity: .6; }
-.rpg-master-row--minion  { border-left-color: #d9463b; }
-.rpg-master-row--minion.dead { opacity: .55; }
-.rpg-master-row-head {
-  flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name hp" "bar bar"; gap: 3px 8px;
-  padding: 0; background: none; border: none; color: inherit; text-align: left; cursor: pointer; font: inherit;
+.rpg-attacker-chip:hover:not(:disabled) { color: var(--osso); border-color: rgba(var(--sangue-rgb), .6); }
+.rpg-attacker-chip.on { color: var(--osso); background: var(--rpg-panel3); border-top-color: #ff8a7e; box-shadow: 0 0 22px -8px var(--sangue); }
+.rpg-attacker-chip.dead { text-decoration: line-through; }
+.rpg-attacker-chip-ico { grid-area: ico; font-size: 1.25rem; }
+.rpg-attacker-chip-name { grid-area: name; font-family: var(--rpg-font-sc); font-size: .95rem; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpg-attacker-chip-val { grid-area: val; font-family: var(--rpg-font-num); font-size: .68rem; color: var(--rpg-dim); }
+.rpg-attacker-chip-hp { grid-area: hp; display: block; height: 4px; background: var(--rpg-panel); border-radius: 2px; overflow: hidden; }
+.rpg-attacker-chip-hp i { display: block; height: 100%; background: var(--rpg-sangue); }
+.rpg-attacker-care { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding-top: 6px; border-top: 1px dashed var(--rpg-border); }
+.rpg-attacker-care-txt { font-size: .88rem; color: var(--rpg-dim); }
+.rpg-attacker-care-txt b { color: var(--osso); font-weight: 400; font-family: var(--rpg-font-sc); }
+.rpg-attacker-care-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Passo 2 · Tutti | Scelgo io + chip degli eroi */
+.rpg-seg { display: flex; gap: 3px; padding: 3px; background: var(--ossidiana); border: 1px solid var(--rpg-border); border-radius: var(--rpg-r); }
+.rpg-seg-btn { flex: 1; padding: 8px 6px; font-family: var(--rpg-font-sc); font-size: .9rem; letter-spacing: .04em; color: var(--rpg-dim); background: transparent; border: none; border-radius: var(--rpg-r); }
+.rpg-seg-btn b { display: inline-block; min-width: 20px; margin-left: 4px; padding: 0 5px; border-radius: 10px; font-family: var(--rpg-font-num); font-size: .66rem; font-weight: 400; color: var(--osso); background: var(--rpg-panel3); }
+.rpg-seg-btn.on { color: var(--osso); background: var(--rpg-panel3); box-shadow: inset 0 2px 0 var(--el); }
+.rpg-seg-btn.on b { background: var(--el-deep); color: var(--el-soft); }
+.rpg-hero-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.rpg-hero-chip {
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "chk name val" "chk hp hp"; column-gap: 7px; row-gap: 3px; align-items: center;
+  flex: 1 1 128px; min-width: 0; padding: 5px 8px; text-align: left;
+  color: var(--rpg-body); background: var(--ossidiana);
+  border: 1px solid var(--rpg-border); border-radius: var(--rpg-r);
+  transition: border-color .15s, background .15s;
 }
-.rpg-master-row-head--static { cursor: default; }
-.rpg-master-row-name { grid-area: name; display: flex; align-items: center; gap: 6px; font-family: var(--rpg-font-sc); font-size: 1rem; letter-spacing: .03em; color: var(--osso); min-width: 0; }
-.rpg-master-row-hp { grid-area: hp; font-family: var(--rpg-font-num); font-size: .78rem; color: var(--rpg-green); white-space: nowrap; }
-.rpg-master-row-hp.low  { color: var(--oro); }
-.rpg-master-row-hp.crit { color: var(--rpg-red); }
-.rpg-master-row-head .rpg-bar-track { grid-area: bar; height: 7px; }
-.rpg-master-row-btns { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 3px; padding-top: 4px; border-top: 1px dashed var(--rpg-border); align-items: center; }
+.rpg-hero-chip:hover { color: var(--osso); border-color: rgba(var(--el-rgb), .5); }
+.rpg-hero-chip.on { color: var(--osso); background: var(--el-deep); border-color: var(--el); }
+.rpg-hero-chip-check { grid-area: chk; width: 16px; height: 16px; display: grid; place-items: center; border: 1px solid var(--rpg-faint); border-radius: 3px; font-size: .7rem; color: var(--el-soft); }
+.rpg-hero-chip.on .rpg-hero-chip-check { background: var(--el); color: var(--ossidiana); border-color: var(--el); }
+.rpg-hero-chip-name { grid-area: name; font-family: var(--rpg-font-sc); font-size: .9rem; letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpg-hero-chip-val { grid-area: val; font-family: var(--rpg-font-num); font-size: .62rem; color: var(--rpg-dim); }
+.rpg-hero-chip-hp { grid-area: hp; display: block; height: 3px; background: var(--rpg-panel); border-radius: 2px; overflow: hidden; }
+.rpg-hero-chip-hp i { display: block; height: 100%; background: var(--rpg-green); }
+.rpg-hero-chip-hp i.low { background: var(--oro); }
+.rpg-hero-chip-hp i.crit { background: var(--rpg-red); }
+.rpg-hero-chips .rpg-link-btn { flex: 1 1 100%; text-align: left; }
+
+/* Passo 3 · azioni dell'attaccante */
+.rpg-act-list { display: flex; flex-direction: column; gap: 4px; }
+.rpg-act-btn {
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ico name" "ico tag"; column-gap: 10px; row-gap: 1px; align-items: center;
+  width: 100%; padding: 8px 10px; text-align: left;
+  color: var(--osso); background: var(--rpg-panel3);
+  border: 1px solid var(--rpg-border); border-left: 3px solid var(--sangue); border-radius: var(--rpg-r);
+  transition: transform .1s, box-shadow .15s, border-color .15s;
+}
+.rpg-act-btn:hover:not(:disabled) { border-color: rgba(var(--el-rgb), .7); transform: translateY(-1px); box-shadow: 0 8px 20px -12px var(--el); }
+.rpg-act-btn--aoe { border-left-color: var(--el); }
+.rpg-act-btn--self { border-left-color: var(--rpg-green); }
+.rpg-act-btn--debuff { border-left-color: #8b6bd6; }
+.rpg-act-btn-ico { grid-area: ico; font-size: 1.2rem; }
+.rpg-act-btn-name { grid-area: name; font-family: var(--rpg-font-vt); font-size: 1rem; }
+.rpg-act-btn-tag { grid-area: tag; font-family: var(--rpg-font-num); font-size: .62rem; letter-spacing: .06em; color: var(--rpg-dim); }
+.rpg-act-btn--aoe .rpg-act-btn-tag { color: var(--el-2); }
+
+/* Eroi · cura & ferite */
+.rpg-hero-list { display: flex; flex-direction: column; gap: 4px; }
+.rpg-hero-row { background: var(--rpg-panel2); border: 1px solid var(--rpg-border); border-left: 4px solid var(--rpg-faint); border-radius: var(--rpg-r); transition: border-color .15s, background .15s; }
+.rpg-hero-row.acted { border-left-color: var(--rpg-green); }
+.rpg-hero-row.dead  { border-left-color: var(--rpg-red); }
+.rpg-hero-row.dead .rpg-hero-row-name { color: var(--rpg-dim); }
+.rpg-hero-row.inactive { opacity: .6; }
+.rpg-hero-row.open { background: var(--rpg-panel3); border-color: rgba(var(--el-rgb), .45); }
+.rpg-hero-row-head {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name hp chev" "bar bar chev"; gap: 3px 8px; align-items: center;
+  padding: 7px 10px; background: none; border: none; color: inherit; text-align: left; font: inherit; cursor: pointer;
+}
+.rpg-hero-row-name { grid-area: name; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-family: var(--rpg-font-sc); font-size: 1rem; letter-spacing: .03em; color: var(--osso); min-width: 0; }
+.rpg-hero-row-hp { grid-area: hp; font-family: var(--rpg-font-num); font-size: .78rem; color: var(--rpg-green); white-space: nowrap; }
+.rpg-hero-row-hp.low  { color: var(--oro); }
+.rpg-hero-row-hp.crit { color: var(--rpg-red); }
+.rpg-hero-row-chev { grid-area: chev; color: var(--rpg-faint); font-size: .9rem; }
+.rpg-hero-row-head .rpg-bar-track { grid-area: bar; height: 6px; }
+.rpg-hero-edit { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; border-top: 1px dashed var(--rpg-border); }
+.rpg-hero-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.rpg-hero-edit-lbl { flex: 0 0 96px; font-family: var(--rpg-font-sc); font-size: .84rem; letter-spacing: .04em; color: var(--rpg-dim); }
+.rpg-hero-edit-lbl--dmg  { color: #ff8a7e; }
+.rpg-hero-edit-lbl--heal { color: var(--rpg-green); }
+.rpg-hero-edit-row .rpg-sm-btn { min-width: 40px; padding: 6px 8px; font-size: .74rem; }
+.rpg-sm-btn--wide { flex: 1 1 auto; }
+.rpg-num { width: 58px; padding: 5px 6px; font-family: var(--rpg-font-num); font-size: .8rem; color: var(--osso); background: var(--ossidiana); border: 1px solid var(--rpg-border); border-radius: var(--rpg-r); }
+.rpg-ca-badge--dis { color: #ffb4a0; background: rgba(var(--sangue-rgb), .18); border-color: rgba(var(--sangue-rgb), .5); }
+
 .rpg-target-mark { color: var(--rpg-red); }
 .rpg-check-mark { color: var(--rpg-green); font-size: .9rem; }
 .rpg-dead-mark { font-size: .9rem; }
@@ -776,7 +876,6 @@
    ════════════════════════════════════════════ */
 @media (max-width: 700px) {
   .rpg-status-panel { flex-direction: column; }
-  .rpg-player-adj-list { grid-template-columns: 1fr; }
 }
 @media (max-width: 639px) {
   .rpg-action-banner { padding: 8px 12px; }
@@ -801,4 +900,13 @@
   .rpg-dice-row { grid-template-columns: repeat(5, 1fr); gap: 4px; }
   .rpg-die-btn { padding: 8px 2px; font-size: .74rem; }
   .rpg-target-chip { flex-basis: 100%; }
+  /* Pannello Master sul telefono: attaccanti in una fila scorrevole, etichette sopra i tasti */
+  .rpg-attacker-strip { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -10px; padding: 0 10px; scroll-snap-type: x proximity; }
+  .rpg-attacker-strip::-webkit-scrollbar { display: none; }
+  .rpg-attacker-chip { flex: 0 0 min(62vw, 190px); scroll-snap-align: start; }
+  .rpg-hero-chip { flex-basis: calc(50% - 3px); }
+  .rpg-hero-edit-lbl { flex-basis: 100%; }
+  .rpg-hero-edit-row .rpg-sm-btn { flex: 1 1 auto; padding: 8px 6px; }
+  .rpg-hero-edit-row--custom .rpg-num { width: 64px; flex: 0 0 auto; }
+  .rpg-turn-btns .rpg-btn { font-size: .66rem; letter-spacing: .06em; }
 }
