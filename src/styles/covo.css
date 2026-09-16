@@ -476,9 +476,7 @@ body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-
 .d6 .faccia,
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before {
   content: ""; display: block; width: 34px; height: 34px; border-radius: 6px; position: static; inset: auto; transform: none; opacity: 1;
-  background:
-    radial-gradient(circle at 50% 50%, var(--pip, var(--ossidiana)) 3.2px, transparent 3.8px),
-    linear-gradient(160deg, #f0e8d8, #c9bfa8);
+  background: var(--facce, var(--f1)), linear-gradient(160deg, #f0e8d8, #c9bfa8);
   box-shadow: 0 4px 0 #6b6152, 0 8px 12px -6px #000, inset 0 1px 0 #fff;
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background .3s;
 }
@@ -491,17 +489,41 @@ body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx
 .d6[aria-selected="true"] .faccia,
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active)::before {
   transform: translateY(-8px) rotate(6deg);
-  background:
-    radial-gradient(circle at 26% 26%, var(--el-deep) 3px, transparent 3.6px),
-    radial-gradient(circle at 74% 74%, var(--el-deep) 3px, transparent 3.6px),
-    radial-gradient(circle at 50% 50%, var(--el-deep) 3px, transparent 3.6px),
-    linear-gradient(160deg, #f0e8d8, #c9bfa8);
   box-shadow: 0 12px 0 #6b6152, 0 18px 20px -8px #000, 0 0 30px -6px var(--el), inset 0 1px 0 #fff;
 }
+/* Le sei facce: pip = radial-gradient col colore --pip (ossidiana; el-deep se scelto).
+   Ogni tab pesca la sua faccia da un ordine mescolato (5·2·6·3·1·4, poi 4·1·3·6·2·5)
+   così una fila di dadi non è mai "tutti 1". Le facce vivono sul tab (che ha
+   --pip) e il ::before le eredita già risolte. */
+.d6,
+body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) {
+  --pip: var(--ossidiana); --pr: 3px; --pe: 3.6px;
+  --f1: radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe));
+  --f2: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
+  --f3: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
+  --f4: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 26% 74%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
+  --f5: var(--f4), radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe));
+  --f6: var(--f4), radial-gradient(circle at 26% 50%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 50%, var(--pip) var(--pr), transparent var(--pe));
+}
+.d6:nth-child(12n+1),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+1)  { --facce: var(--f5); }
+.d6:nth-child(12n+2),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+2)  { --facce: var(--f2); }
+.d6:nth-child(12n+3),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+3)  { --facce: var(--f6); }
+.d6:nth-child(12n+4),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+4)  { --facce: var(--f3); }
+.d6:nth-child(12n+5),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+5)  { --facce: var(--f1); }
+.d6:nth-child(12n+6),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+6)  { --facce: var(--f4); }
+.d6:nth-child(12n+7),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+7)  { --facce: var(--f4); }
+.d6:nth-child(12n+8),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+8)  { --facce: var(--f1); }
+.d6:nth-child(12n+9),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+9)  { --facce: var(--f3); }
+.d6:nth-child(12n+10), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+10) { --facce: var(--f6); }
+.d6:nth-child(12n+11), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+11) { --facce: var(--f2); }
+.d6:nth-child(12n+12), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+12) { --facce: var(--f5); }
+.d6[aria-selected="true"],
+body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active) { --pip: var(--el-deep); }
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on)::after { display: none; }
 body:not(.theme-dark) .nx-pillole { justify-content: center; }
 @media (max-width: 520px) {
   .d6 .faccia, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before { width: 26px; height: 26px; border-radius: 5px; }
+  .d6, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) { --pr: 2.3px; --pe: 2.8px; }
   body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .cine-chips, .diario-tabs, .cr-tier-tabs, [role="tablist"]) { gap: 6px 10px; }
   body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) { font-size: .7rem !important; }
 }
