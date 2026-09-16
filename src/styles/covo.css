@@ -460,71 +460,67 @@ body:not(.theme-dark) .cine-search-icon { color: var(--el-2); }
 body:not(.theme-dark) .cine-result-count { color: var(--el-2); font-family: var(--font-sc); }
 
 /* ══════════════════════════════════════════════════════════════════
-   8) TAB = DADI A SEI FACCE — il dado si alza quando è scelto
+   8) TAB = RUNE INCISE — tessere di pietra con un glifo Elder Futhark
+   (font Noto Sans Runic da index.html). Ogni tab pesca la sua runa dalla
+   posizione (12 glifi a rotazione); la tessera scelta si alza e la runa
+   si accende col colore del respiro (--el).
    ══════════════════════════════════════════════════════════════════ */
 body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .cine-chips, .cine-filters, .diario-tabs, .cr-tier-tabs, [role="tablist"]) {
   display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 14px; padding: 6px 0 12px;
   background: transparent; border: 0; border-bottom: 1px solid var(--roccia-3); border-radius: 0; box-shadow: none; margin-bottom: 14px;
 }
-.d6,
+.runa,
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) {
+  --runa: "ᚠ";
   appearance: none; border: 0 !important; background: transparent !important; cursor: pointer; flex: 0 0 auto;
   display: inline-flex; flex-direction: column; align-items: center; gap: 7px; padding: 0 2px !important; margin: 0;
   color: var(--osso-2) !important; font: 500 .8rem var(--font-sc) !important; letter-spacing: .1em; text-transform: none; text-decoration: none;
   border-radius: 0 !important; box-shadow: none !important; transform: none !important; transition: color .2s;
 }
-.d6 .faccia,
+.runa:nth-child(12n+1), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+1) { --runa: "ᚠ"; }
+.runa:nth-child(12n+2), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+2) { --runa: "ᚱ"; }
+.runa:nth-child(12n+3), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+3) { --runa: "ᛏ"; }
+.runa:nth-child(12n+4), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+4) { --runa: "ᚨ"; }
+.runa:nth-child(12n+5), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+5) { --runa: "ᛉ"; }
+.runa:nth-child(12n+6), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+6) { --runa: "ᚲ"; }
+.runa:nth-child(12n+7), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+7) { --runa: "ᛗ"; }
+.runa:nth-child(12n+8), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+8) { --runa: "ᚦ"; }
+.runa:nth-child(12n+9), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+9) { --runa: "ᛒ"; }
+.runa:nth-child(12n+10), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+10) { --runa: "ᛖ"; }
+.runa:nth-child(12n+11), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+11) { --runa: "ᚹ"; }
+.runa:nth-child(12n+12), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+12) { --runa: "ᛟ"; }
+.runa .tessera,
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before {
-  content: ""; display: block; width: 34px; height: 34px; border-radius: 6px; position: static; inset: auto; transform: none; opacity: 1;
-  background: var(--facce, var(--f1)), linear-gradient(160deg, #f0e8d8, #c9bfa8);
-  box-shadow: 0 4px 0 #6b6152, 0 8px 12px -6px #000, inset 0 1px 0 #fff;
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background .3s;
+  content: var(--runa); display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 3px; position: static; inset: auto; transform: none; opacity: 1;
+  font: 400 21px/1 "Noto Sans Runic", "Segoe UI Historic", "Segoe UI Symbol", serif; letter-spacing: 0;
+  color: var(--osso-2);
+  text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.6);
+  background: linear-gradient(160deg, var(--roccia-3), var(--roccia));
+  border: 1px solid var(--roccia-4);
+  box-shadow: 0 3px 0 rgba(0,0,0,.45), 0 8px 12px -6px #000, inset 0 1px 0 rgba(255,255,255,.07);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, color .3s, border-color .3s, text-shadow .3s;
 }
-.d6:hover .faccia, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover::before { transform: translateY(-3px) rotate(-6deg); }
+.runa:hover .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover::before { transform: translateY(-3px); color: var(--osso); border-color: var(--roccia-4); }
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover { color: var(--osso) !important; }
-.d6[aria-selected="true"],
+.runa[aria-selected="true"],
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active) {
   color: var(--el-2) !important; background: transparent !important; box-shadow: none !important; padding: 0 2px !important; font: 700 .8rem var(--font-sc) !important;
 }
-.d6[aria-selected="true"] .faccia,
+.runa[aria-selected="true"] .tessera,
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active)::before {
-  transform: translateY(-8px) rotate(6deg);
-  box-shadow: 0 12px 0 #6b6152, 0 18px 20px -8px #000, 0 0 30px -6px var(--el), inset 0 1px 0 #fff;
+  transform: translateY(-6px);
+  color: var(--el-deep);
+  text-shadow: 0 0 6px var(--el), 0 0 14px rgba(var(--el-rgb),.7);
+  border-color: var(--el);
+  background: linear-gradient(160deg, var(--roccia-4), var(--roccia-2));
+  box-shadow: 0 9px 0 rgba(0,0,0,.45), 0 16px 20px -8px #000, 0 0 28px -6px var(--el), inset 0 1px 0 rgba(var(--el-rgb),.35);
 }
-/* Le sei facce: pip = radial-gradient col colore --pip (ossidiana; el-deep se scelto).
-   Ogni tab pesca la sua faccia da un ordine mescolato (5·2·6·3·1·4, poi 4·1·3·6·2·5)
-   così una fila di dadi non è mai "tutti 1". Le facce vivono sul tab (che ha
-   --pip) e il ::before le eredita già risolte. */
-.d6,
-body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) {
-  --pip: var(--ossidiana); --pr: 3px; --pe: 3.6px;
-  --f1: radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe));
-  --f2: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
-  --f3: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
-  --f4: radial-gradient(circle at 26% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 26%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 26% 74%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 74%, var(--pip) var(--pr), transparent var(--pe));
-  --f5: var(--f4), radial-gradient(circle at 50% 50%, var(--pip) var(--pr), transparent var(--pe));
-  --f6: var(--f4), radial-gradient(circle at 26% 50%, var(--pip) var(--pr), transparent var(--pe)), radial-gradient(circle at 74% 50%, var(--pip) var(--pr), transparent var(--pe));
-}
-.d6:nth-child(12n+1),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+1)  { --facce: var(--f5); }
-.d6:nth-child(12n+2),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+2)  { --facce: var(--f2); }
-.d6:nth-child(12n+3),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+3)  { --facce: var(--f6); }
-.d6:nth-child(12n+4),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+4)  { --facce: var(--f3); }
-.d6:nth-child(12n+5),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+5)  { --facce: var(--f1); }
-.d6:nth-child(12n+6),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+6)  { --facce: var(--f4); }
-.d6:nth-child(12n+7),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+7)  { --facce: var(--f4); }
-.d6:nth-child(12n+8),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+8)  { --facce: var(--f1); }
-.d6:nth-child(12n+9),  body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+9)  { --facce: var(--f3); }
-.d6:nth-child(12n+10), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+10) { --facce: var(--f6); }
-.d6:nth-child(12n+11), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+11) { --facce: var(--f2); }
-.d6:nth-child(12n+12), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+12) { --facce: var(--f5); }
-.d6[aria-selected="true"],
-body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active) { --pip: var(--el-deep); }
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on)::after { display: none; }
 body:not(.theme-dark) .nx-pillole { justify-content: center; }
 @media (max-width: 520px) {
-  .d6 .faccia, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before { width: 26px; height: 26px; border-radius: 5px; }
-  .d6, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) { --pr: 2.3px; --pe: 2.8px; }
-  body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .cine-chips, .diario-tabs, .cr-tier-tabs, [role="tablist"]) { gap: 6px 10px; }
+  .runa .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before { width: 26px; height: 26px; font-size: 16px; }
+  body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .cine-chips, .cine-filters, .diario-tabs, .cr-tier-tabs, [role="tablist"]) { gap: 6px 10px; }
   body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) { font-size: .7rem !important; }
 }
 
