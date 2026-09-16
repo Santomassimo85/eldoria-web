@@ -473,53 +473,48 @@ body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .ci
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) {
   --runa: "ᚠ";
   appearance: none; border: 0 !important; background: transparent !important; cursor: pointer; flex: 0 0 auto;
-  display: inline-flex; flex-direction: column; align-items: center; gap: 7px; padding: 0 2px !important; margin: 0;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 2px !important; margin: 0;
   color: var(--osso-2) !important; font: 500 .8rem var(--font-sc) !important; letter-spacing: .1em; text-transform: none; text-decoration: none;
   border-radius: 0 !important; box-shadow: none !important; transform: none !important; transition: color .2s;
 }
-.runa:nth-child(12n+1), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+1) { --runa: "ᚠ"; }
-.runa:nth-child(12n+2), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+2) { --runa: "ᚱ"; }
-.runa:nth-child(12n+3), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+3) { --runa: "ᛏ"; }
-.runa:nth-child(12n+4), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+4) { --runa: "ᚨ"; }
-.runa:nth-child(12n+5), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+5) { --runa: "ᛉ"; }
-.runa:nth-child(12n+6), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+6) { --runa: "ᚲ"; }
-.runa:nth-child(12n+7), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+7) { --runa: "ᛗ"; }
-.runa:nth-child(12n+8), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+8) { --runa: "ᚦ"; }
-.runa:nth-child(12n+9), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+9) { --runa: "ᛒ"; }
-.runa:nth-child(12n+10), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+10) { --runa: "ᛖ"; }
-.runa:nth-child(12n+11), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+11) { --runa: "ᚹ"; }
-.runa:nth-child(12n+12), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+12) { --runa: "ᛟ"; }
+.runa:nth-child(12n+1), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+1) { --runa: "ᚠ"; --rc: #f59e0b; }
+.runa:nth-child(12n+2), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+2) { --runa: "ᚱ"; --rc: #60a5fa; }
+.runa:nth-child(12n+3), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+3) { --runa: "ᛏ"; --rc: #a78bfa; }
+.runa:nth-child(12n+4), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+4) { --runa: "ᚨ"; --rc: #4ade80; }
+.runa:nth-child(12n+5), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+5) { --runa: "ᛉ"; --rc: #f87171; }
+.runa:nth-child(12n+6), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+6) { --runa: "ᚲ"; --rc: #fbbf24; }
+.runa:nth-child(12n+7), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+7) { --runa: "ᛗ"; --rc: #22d3ee; }
+.runa:nth-child(12n+8), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+8) { --runa: "ᚦ"; --rc: #c084fc; }
+.runa:nth-child(12n+9), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+9) { --runa: "ᛒ"; --rc: #fb923c; }
+.runa:nth-child(12n+10), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+10) { --runa: "ᛖ"; --rc: #34d399; }
+.runa:nth-child(12n+11), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+11) { --runa: "ᚹ"; --rc: #e879f9; }
+.runa:nth-child(12n+12), body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):nth-child(12n+12) { --runa: "ᛟ"; --rc: #facc15; }
 .runa .tessera,
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before {
-  content: var(--runa); display: flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: 3px; position: static; inset: auto; transform: none; opacity: 1;
-  font: 400 21px/1 "Noto Sans Runic", "Segoe UI Historic", "Segoe UI Symbol", serif; letter-spacing: 0;
-  color: var(--osso-2);
-  text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.6);
-  background: linear-gradient(160deg, var(--roccia-3), var(--roccia));
-  border: 1px solid var(--roccia-4);
-  box-shadow: 0 3px 0 rgba(0,0,0,.45), 0 8px 12px -6px #000, inset 0 1px 0 rgba(255,255,255,.07);
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, color .3s, border-color .3s, text-shadow .3s;
+  content: var(--runa); display: flex; align-items: flex-end; justify-content: center;
+  width: auto; min-width: 30px; height: 30px; border-radius: 0; position: static; inset: auto; transform: none; opacity: 1;
+  font: 400 27px/1 "Noto Sans Runic", "Segoe UI Historic", "Segoe UI Symbol", serif; letter-spacing: 0;
+  color: var(--rc, var(--oro));
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rc, var(--oro)) 45%, transparent), 0 2px 2px rgba(0,0,0,.7);
+  background: none; border: 0; box-shadow: none;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), text-shadow .3s, filter .3s;
 }
-.runa:hover .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover::before { transform: translateY(-3px); color: var(--osso); border-color: var(--roccia-4); }
+.runa:hover .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover::before { transform: translateY(-3px); filter: brightness(1.2); }
 body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]):hover { color: var(--osso) !important; }
 .runa[aria-selected="true"],
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active) {
-  color: var(--el-2) !important; background: transparent !important; box-shadow: none !important; padding: 0 2px !important; font: 700 .8rem var(--font-sc) !important;
+  color: var(--osso) !important; background: transparent !important; box-shadow: none !important; padding: 0 2px !important; font: 700 .8rem var(--font-sc) !important;
 }
 .runa[aria-selected="true"] .tessera,
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on, .nx-pillola.on, .nx-pillola.active, .cine-chip.active, .diario-tab.active, .diario-tab.on, .cr-tier-tab.active, .cr-tier-tab.on, [role="tab"][aria-selected="true"], [role="tab"].active)::before {
-  transform: translateY(-6px);
-  color: var(--el-deep);
-  text-shadow: 0 0 6px var(--el), 0 0 14px rgba(var(--el-rgb),.7);
-  border-color: var(--el);
-  background: linear-gradient(160deg, var(--roccia-4), var(--roccia-2));
-  box-shadow: 0 9px 0 rgba(0,0,0,.45), 0 16px 20px -8px #000, 0 0 28px -6px var(--el), inset 0 1px 0 rgba(var(--el-rgb),.35);
+  transform: translateY(-4px) scale(1.25);
+  filter: brightness(1.25);
+  text-shadow: 0 0 6px var(--rc, var(--oro)), 0 0 18px var(--rc, var(--oro)), 0 0 34px color-mix(in srgb, var(--rc, var(--oro)) 60%, transparent), 0 2px 2px rgba(0,0,0,.7);
 }
 body:not(.theme-dark) :is(.dmt-tab.on, .mkadm-tab.is-active, .geoadm-tab.on)::after { display: none; }
 body:not(.theme-dark) .nx-pillole { justify-content: center; }
 @media (max-width: 520px) {
-  .runa .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before { width: 26px; height: 26px; font-size: 16px; }
+  .runa .tessera, body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"])::before { min-width: 24px; height: 24px; font-size: 21px; }
   body:not(.theme-dark) :is(.dmt-tabs, .mkadm-tabs, .geoadm-tabs, .nx-pillole, .cine-chips, .cine-filters, .diario-tabs, .cr-tier-tabs, [role="tablist"]) { gap: 6px 10px; }
   body:not(.theme-dark) :is(.dmt-tab, .mkadm-tab, .geoadm-tab, .nx-pillola, .cine-chip, .diario-tab, .cr-tier-tab, [role="tab"]) { font-size: .7rem !important; }
 }

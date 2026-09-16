@@ -111,7 +111,7 @@ export default function NPC() {
               className={`nx-pillola${activeCity === c ? " on" : ""}`}
               onClick={() => setActiveCity(activeCity === c ? null : c)}
             >
-              <span aria-hidden="true">{c === "Erranti" ? "✸" : "⌖"}</span> {c}
+              {c}
               <small className="npc-pillola-n">{grouped[c].length}</small>
             </button>
           ))}
