@@ -5169,9 +5169,9 @@
 .fdy-chip.is-on { background: var(--oro); border-color: var(--oro); color: var(--ossidiana); }
 .fdy-chip-n {
   font-size: .72rem; font-weight: 800; padding: 1px 7px; border-radius: 999px;
-  background: rgba(0,0,0,.08); color: inherit;
+  background: rgba(var(--ossidiana-rgb),.5); color: inherit;
 }
-.fdy-chip.is-on .fdy-chip-n { background: rgba(255,255,255,.25); }
+.fdy-chip.is-on .fdy-chip-n { background: rgba(255,255,255,.28); }
 .fdy-filter-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .fdy-select {
   flex: 1 1 auto; min-width: 200px; padding: 9px 12px; border-radius: 3px;
@@ -5199,8 +5199,9 @@
 .fdy-cont-head {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 16px;
-  background: linear-gradient(100deg, var(--cont, var(--el-deep)), color-mix(in srgb, var(--cont, var(--el-deep)) 72%, var(--osso)));
-  color: var(--ossidiana);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--cont, var(--el-deep)) 42%, var(--roccia)), color-mix(in srgb, var(--cont, var(--el-deep)) 18%, var(--roccia-2)));
+  border-bottom: 1px solid color-mix(in srgb, var(--cont, var(--el-deep)) 55%, transparent);
+  color: var(--osso);
 }
 .fdy-cont-icon { font-size: 1.15rem; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
 .fdy-cont-name {
@@ -5209,7 +5210,7 @@
 }
 .fdy-cont-count {
   margin-left: auto; font-size: 0.73rem; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
-  color: var(--osso); background: rgba(255, 255, 255, 0.22); border: 1px solid rgba(255, 255, 255, 0.35);
+  color: var(--osso); background: rgba(var(--ossidiana-rgb), .45); border: 1px solid color-mix(in srgb, var(--cont, var(--el-deep)) 50%, transparent);
   padding: 3px 11px; border-radius: 999px;
 }
 
@@ -5291,7 +5292,7 @@
   padding: 12px 14px 13px;
   border-radius: 3px;
   border: 1.5px solid color-mix(in srgb, var(--oro) 26%, rgba(var(--el-rgb),.35));
-  background: linear-gradient(180deg, rgba(255,253,247,0.97), rgba(250,242,222,0.97));
+  background: linear-gradient(180deg, rgba(var(--roccia-rgb),.97), rgba(var(--ossidiana-rgb),.97));
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 16px 34px -22px rgba(0,0,0, .6);
