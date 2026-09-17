@@ -46,6 +46,10 @@ export function getDiceSkin() {
    roll never blocks logic — it just degrades to no animation).
 ────────────────────────────────────────────────────────────────*/
 let trigger = null;
+// Promessa del tiro ancora a schermo: se un nuovo tiro lo sostituisce prima della
+// rivelazione (IA e umano quasi in contemporanea), va risolta subito, altrimenti chi
+// la aspettava (es. il turno dell'IA) resterebbe appeso per sempre.
+let pendingResolve = null;
 
 export function showD20Roll(value, opts = {}) {
   if (!trigger) return Promise.resolve();
@@ -59,13 +63,16 @@ export default function DiceRollHost() {
   useEffect(() => {
     trigger = (value, opts) =>
       new Promise((resolve) => {
+        if (pendingResolve) { const prev = pendingResolve; pendingResolve = null; prev(); }
+        const done = () => { if (pendingResolve === done) pendingResolve = null; resolve(); };
+        pendingResolve = done;
         setRoll({
           id: Math.random().toString(36).slice(2),
           value,
           label: opts.label || "",
           // La skin si legge al momento del tiro: rispecchia sempre la scelta corrente.
           skin: VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
-          resolve,
+          resolve: done,
         });
       });
     return () => { trigger = null; };

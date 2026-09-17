@@ -7,10 +7,25 @@
 //
 // Motore volutamente SEMPLICE (l'utente accetta un bot "casuale"): niente DoT,
 // buff di classe, elementali o sottoclassi — solo colpo base plausibile ed equo.
-// Le Sfide Libere contro l'IA (kind "fun") restano pilotate dal client e vengono
-// ignorate qui.
+// Le Sfide Libere contro l'IA (kind "fun") sono pilotate dal client dello sfidante
+// (guardiano in Arena.jsx, reattivo in 1-3 s). Qui fanno solo da RETE DI SICUREZZA:
+// se il turno (o l'iniziativa) dell'IA resta fermo da almeno FUN_IDLE_MS — browser
+// chiuso, telefono in tasca — il bot agisce lato server con questo motore semplice.
+// Non dipendono dalla fase del torneo né dalla pausa del Master.
 
 const ARENA_TURN_DURATION = 60 * 60 * 1000; // 1h (allineato al client)
+const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000; // 10 min (allineato al client)
+const FUN_IDLE_MS = 90 * 1000;
+// Da quanto è fermo il turno: turnExpiry è "inizio turno + durata", quindi
+// inizio = turnExpiry − durata (per l'iniziativa vale createdAt se c'è).
+function idleMs(m, now) {
+  if (m.status === "initiative") {
+    const t0 = m.createdAt ? Date.parse(m.createdAt) : (m.turnExpiry ? Date.parse(m.turnExpiry) - ARENA_INITIATIVE_DURATION : NaN);
+    return Number.isFinite(t0) ? now - t0 : 0;
+  }
+  const t0 = m.turnExpiry ? Date.parse(m.turnExpiry) - ARENA_TURN_DURATION : NaN;
+  return Number.isFinite(t0) ? now - t0 : 0;
+}
 const AI_BOT_PREFIX = "AI_BOT_";
 
 function rollDice(formula) {
@@ -61,8 +76,9 @@ async function runArenaBotTurns(admin) {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
     const data = snap.data();
-    if (data.phase !== "combat") return;      // solo a torneo in corso
-    if (data.timerPaused) return;             // arena in pausa dal Master: fermi
+    const now = Date.now();
+    // Bot di riserva del torneo: solo a torneo in corso e non in pausa.
+    const tournamentBotsOn = data.phase === "combat" && !data.timerPaused;
 
     const matches = Array.isArray(data.matches) ? data.matches : [];
     const snaps = data.characterSnapshots || {};
@@ -70,8 +86,14 @@ async function runArenaBotTurns(admin) {
 
     const newMatches = matches.map((m) => {
       if (!m || m.ai !== true || !m.aiId) return m;
-      if (m.kind === "fun") return m;                                   // sfide libere: client-side
       if (m.status !== "initiative" && m.status !== "active") return m; // niente da fare
+      if (m.kind === "fun") {
+        // Sfida all'IA: interviene solo se il client dello sfidante non ha agito da FUN_IDLE_MS.
+        if (idleMs(m, now) < FUN_IDLE_MS) return m;
+      } else if (!tournamentBotsOn) {
+        return m;
+      }
+      const autoTag = m.kind === "fun" ? " (automatico)" : "";
 
       const aiId = m.aiId;
       const players = Array.isArray(m.players) ? m.players.map((p) => ({ ...p })) : [];
@@ -85,7 +107,7 @@ async function runArenaBotTurns(admin) {
         const dex = (aiSnap.stats && aiSnap.stats.dex) || 0;
         aiP.init = 1 + Math.floor(Math.random() * 20) + dex;
         changed = true;
-        const logs = [...(m.logs || []), `🎲 ${aiSnap.name} tira iniziativa: ${aiP.init}`];
+        const logs = [...(m.logs || []), `🎲 ${aiSnap.name} tira iniziativa${autoTag}: ${aiP.init}`];
         const allRolled = players.every((p) => (p.init || 0) > 0);
         if (!allRolled) return { ...m, players, logs };
         const sorted = [...players].sort((a, b) => (b.init || 0) - (a.init || 0));
@@ -140,7 +162,7 @@ async function runArenaBotTurns(admin) {
       const targetAc = (targetSnap.stats && targetSnap.stats.ac) || 12;
 
       if (off.length === 0) {
-        logs.push(`⏭ ${aiSnap.name} non ha azioni offensive e passa il turno.`);
+        logs.push(`⏭ ${aiSnap.name} non ha azioni offensive e passa il turno${autoTag}.`);
       } else {
         const nAtt = attacksPerTurn(cls);
         for (let i = 0; i < nAtt; i++) {
@@ -156,9 +178,9 @@ async function runArenaBotTurns(admin) {
             const barb = cls.includes("barbar") ? 2 : 0;
             const dmg = Math.max(1, (rollDice(chosen.damage) + statMod + barb) * critMult);
             target.hp = Math.max(0, (target.hp || 0) - dmg);
-            logs.push(`💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${isCrit ? " ★CRITICO★" : ""} — ${dmg} danni (${target.hp} HP)`);
+            logs.push(`💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${isCrit ? " ★CRITICO★" : ""}${autoTag} — ${dmg} danni (${target.hp} HP)`);
           } else {
-            logs.push(`🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name} (${hitTotal} vs CA ${targetAc})`);
+            logs.push(`🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name}${autoTag} (${hitTotal} vs CA ${targetAc})`);
           }
         }
         aiP.aiAttacksMade = (aiP.aiAttacksMade || 0) + nAtt;

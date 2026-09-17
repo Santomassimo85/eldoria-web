@@ -6259,74 +6259,82 @@ export default function Arena() {
     await commitArenaMatches(updatedMatches);
   };
 
-  // Watcher: schedules AI moves with a small dramatic delay. Only the match's
-  // aiOwnerId runs this so two open browsers non-double-act.
-  // NB: solo le Sfide Libere contro l'IA (kind "fun") sono pilotate dal client.
-  // I PG-bot di RISERVA del torneo (kind group/final) sono guidati lato server
-  // dalla Cloud Function `arenaBotTurns`, così vanno avanti anche senza pagine aperte.
+  // ── Guardiano dell'IA (Sfide Libere vs IA) — gira SOLO sul client di aiOwnerId ──
+  // Robusto per costruzione:
+  //  (1) un BATTITO ogni 1,5 s (più un risveglio a ogni snapshot) rilegge lo stato
+  //      più recente da arenaMetaRef e programma iniziativa/azione se mancano;
+  //  (2) i timer già programmati NON vengono cancellati dagli aggiornamenti di
+  //      arena_meta (prima ogni snapshot — anche di altri match, scommesse, presenze —
+  //      azzerava i timer lasciando acceso il segnalino "in corso": IA ferma finché
+  //      non cambiava qualcosa, e all'iniziativa non cambiava mai nulla);
+  //  (3) un'azione appesa oltre 25 s libera da sola il segnalino; gli errori sono
+  //      catturati e il battito successivo riprova;
+  //  (4) dopo un'azione il segnalino resta acceso 400 ms in più, così lo snapshot
+  //      Firestore arriva prima del prossimo battito (niente doppia azione).
+  // I PG-bot di RISERVA del torneo (kind group/final) sono guidati lato server dalla
+  // Cloud Function `arenaBotTurns`, che dal 2026-09-17 fa anche da rete di sicurezza
+  // per le Sfide all'IA quando questo browser è chiuso (idle ≥ 90 s).
+  const aiTickRef = useRef(null);
   useEffect(() => {
-    if (!arenaMeta?.matches || !currentUser) return;
-    const myAiMatches = arenaMeta.matches.filter(m =>
-      m.ai === true &&
-      m.kind === "fun" &&
-      m.aiOwnerId === currentUser.uid &&
-      (m.status === "initiative" || m.status === "active")
-    );
-    if (myAiMatches.length === 0) return;
-    const timers = [];
-    for (const m of myAiMatches) {
-      const aiId = m.aiId;
-      const aiPlayer = m.players?.find(p => p.id === aiId);
-      if (!aiPlayer) continue;
-      // Initiative: roll once for the AI when needed.
-      if (m.status === "initiative" && aiPlayer.init === 0) {
-        const key = `${m.matchId}:init`;
-        if (aiInFlightRef.current[key]) continue;
-        aiInFlightRef.current[key] = true;
-        const t = setTimeout(() => {
-          aiRollInitiative(m.matchId).finally(() => {
-            delete aiInFlightRef.current[key];
-          });
-        }, 900 + Math.random() * 700);
-        timers.push(t);
-        continue;
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+    const inflight = aiInFlightRef.current; // key → { t: timer | null, at: ms }
+    const STUCK_MS = 25000;
+    const tick = () => {
+      const meta = arenaMetaRef.current;
+      if (!meta?.matches) return;
+      const now = Date.now();
+      for (const [k, v] of Object.entries(inflight)) {
+        if (now - v.at > STUCK_MS) { if (v.t) clearTimeout(v.t); delete inflight[k]; }
       }
-      // Active turn: AI takes its decision (heal / buff / attack / surge).
-      // The useEffect re-fires after each Firestore write, so multi-action
-      // turns chain naturally — each tick handles ONE action and either
-      // stays (multiActionsUsed bumps) or passes the turn to the human.
-      if (m.status === "active" && m.turn === aiId && aiPlayer.hp > 0) {
-        const human = m.players.find(p => p.id !== aiId);
-        const token = m.turnExpiry || "";
-        // Questo tick risolve solo uno status in sospeso (veleno / sanguinamento
-        // / controllo / save) PRIMA di poter agire? In tal caso dev'essere rapido
-        // e automatico: il delay scenico va riservato al vero attacco. Altrimenti
-        // un'IA con più status accumulava 1400-2500ms PER status (anche 6-8s).
-        const resolvingStatus =
-          !!aiPlayer.pendingControlSave ||
-          !!aiPlayer.pendingSaveDot ||
-          (aiPlayer.poisonDoT && (aiPlayer.poisonResolvedTurnToken || "") !== token) ||
-          (aiPlayer.bleedDoT  && (aiPlayer.bleedResolvedTurnToken  || "") !== token) ||
-          ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave);
-        const key = `${m.matchId}:turn:${token}:${aiPlayer.hp}:${aiPlayer.multiActionsUsed ?? 0}:${aiPlayer.bonusActionUsed ? 1 : 0}:${human?.hp ?? "0"}:${resolvingStatus ? "s" : "a"}`;
-        if (aiInFlightRef.current[key]) continue;
-        aiInFlightRef.current[key] = true;
-        const delay = resolvingStatus
-          ? 280 + Math.random() * 220     // status tick: snappy & automatico
-          : (aiPlayer.multiActionsUsed ?? 0) === 0
-            ? 1400 + Math.random() * 1100 // first real action: dramatic delay
-            : 700  + Math.random() * 500; // subsequent attacks (rogue/monk/surge): snappier
-        const t = setTimeout(() => {
-          aiTakeAction(m.matchId).finally(() => {
-            delete aiInFlightRef.current[key];
-          });
+      for (const m of meta.matches) {
+        if (m?.ai !== true || m.kind !== "fun" || m.aiOwnerId !== uid) continue;
+        if (m.status !== "initiative" && m.status !== "active") continue;
+        const aiId = m.aiId;
+        const aiPlayer = m.players?.find(p => p.id === aiId);
+        if (!aiPlayer) continue;
+        let key = null, run = null, delay = 0;
+        if (m.status === "initiative" && !(aiPlayer.init > 0)) {
+          key = `${m.matchId}:init`;
+          run = () => aiRollInitiative(m.matchId);
+          delay = 700 + Math.random() * 600;
+        } else if (m.status === "active" && m.turn === aiId && aiPlayer.hp > 0) {
+          // Status in sospeso (veleno / sanguinamento / controllo / TS) → tick rapido;
+          // il ritardo scenico è riservato alla vera azione.
+          const token = m.turnExpiry || "";
+          const resolvingStatus =
+            !!aiPlayer.pendingControlSave ||
+            !!aiPlayer.pendingSaveDot ||
+            (aiPlayer.poisonDoT && (aiPlayer.poisonResolvedTurnToken || "") !== token) ||
+            (aiPlayer.bleedDoT  && (aiPlayer.bleedResolvedTurnToken  || "") !== token) ||
+            ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave);
+          key = `${m.matchId}:turn`;
+          run = () => aiTakeAction(m.matchId);
+          delay = resolvingStatus
+            ? 250 + Math.random() * 200
+            : (aiPlayer.multiActionsUsed ?? 0) === 0
+              ? 1200 + Math.random() * 900   // prima azione: pausa scenica
+              : 600 + Math.random() * 400;   // azioni successive (ladro/monaco/scatto): più svelte
+        }
+        if (!key || inflight[key]) continue;
+        const entry = { t: null, at: now };
+        inflight[key] = entry;
+        entry.t = setTimeout(async () => {
+          entry.t = null;
+          try { await run(); }
+          catch (e) { console.warn("IA Arena, azione fallita (riprovo al prossimo battito):", e); }
+          finally { setTimeout(() => { if (inflight[key] === entry) delete inflight[key]; }, 400); }
         }, delay);
-        timers.push(t);
       }
-    }
-    return () => { timers.forEach(t => clearTimeout(t)); };
+    };
+    aiTickRef.current = tick;
+    tick();
+    const iv = setInterval(tick, 1500);
+    return () => { clearInterval(iv); aiTickRef.current = null; }; // i timer in corso restano: rileggono lo stato da arenaMetaRef
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arenaMeta, currentUser]);
+  }, [currentUser]);
+  // Risveglio immediato a ogni snapshot (il battito resta la rete di sicurezza).
+  useEffect(() => { aiTickRef.current?.(); }, [arenaMeta]);
 
   // Helper: il match è bloccato dal pulsante Pausa? Le sfide libere (kind="fun") restano libere.
   const isMatchPausedForAction = (matchId) => {
