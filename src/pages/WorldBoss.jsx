@@ -27,7 +27,7 @@ import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";
-import { pickEffectForAction, areaSpellFor, damageFormulaFor, SAVE_LABEL_IT } from "./worldBossSpells";
+import { pickEffectForAction, areaSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
@@ -202,6 +202,7 @@ export default function WorldBoss() {
   // Spell target picker — opened when player casts a heal/buff spell that needs target selection.
   // Shape: { action, intent: "heal" | "buff", selected: string[] }
   const [spellPicker, setSpellPicker] = useState(null);
+  const [weaponPicker, setWeaponPicker] = useState(null); // {skill, weapons}: arma su cui applicare un'abilità "su arma"
 
   // ── MINION ──
   // `minionDefs`      = sagome salvate nella Caserma (collection `minions`, solo attive)
@@ -649,6 +650,95 @@ export default function WorldBoss() {
     } catch { return 0; }
   };
 
+  // ── ABILITÀ dei PG nel World Boss ─────────────────────────────────────────
+  // Uso limitato (riposo/usi nella descrizione) = UNA volta per battaglia, segnato su
+  // characters/{uid}.wbSkillUses[bossId][slug]; cambia boss → si azzera da solo.
+  const skillSlug = (name) => String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "x";
+  const currentBossId = activeBosses[0]?.id || null;
+  const skillUses = (currentBossId && charData?.wbSkillUses?.[currentBossId]) || {};
+  const isSkillUsed = (action, skill) => !!(skill?.limited && skillUses[skillSlug(action?.name)]);
+  const markSkillUsed = async (action, skill) => {
+    if (!skill?.limited || !currentBossId || !myUid) return;
+    try {
+      await updateDoc(doc(db, "characters", myUid), { [`wbSkillUses.${currentBossId}.${skillSlug(action.name)}`]: increment(1) });
+    } catch (e) { console.warn("Uso abilità non segnato:", e); }
+  };
+  // Formula di un'abilità pronta al tiro: @mod = mod. di magia del PG, "livello × N" = numero fisso.
+  const resolveSkillFormula = (skill) => {
+    if (skill?.perLevel) return String(Math.max(1, parseInt(charData?.level) || 1) * skill.perLevel);
+    return String(skill?.formula || "1d6").replace(/@mod/g, getSpellMod(charData)).replace(/\s+/g, "");
+  };
+  // Tira "NdM+K" (più termini) → { total, detail: "2d8[3+7]+2" }.
+  const rollDetail = (formula) => {
+    const parts = String(formula).replace(/\s+/g, "").split("+").filter(Boolean);
+    let total = 0; const bits = [];
+    for (const part of parts) {
+      if (/^\d*d\d+$/.test(part)) {
+        const [n, sides] = part.split("d").map((x) => parseInt(x) || 1);
+        const rolls = [];
+        for (let i = 0; i < n; i++) rolls.push(Math.floor(Math.random() * sides) + 1);
+        total += rolls.reduce((a, b) => a + b, 0); bits.push(`${part}[${rolls.join("+")}]`);
+      } else { const k = parseInt(part) || 0; total += k; if (k) bits.push(String(k)); }
+    }
+    return { total, detail: bits.join("+") };
+  };
+  const myWeapons = useMemo(() => (charData?.actions || []).filter((a) => /armi|arma|weapon/i.test(a.category || "")), [charData]);
+
+  // Cura da ABILITÀ (Lay on Hands, Second Wind, Turn the Tide): uno o più alleati, cap al massimo.
+  const castSkillHeal = async (action, skill, targetIds) => {
+    if (isUserLocked || !targetIds?.length) return;
+    const formula = resolveSkillFormula(skill);
+    const { total, detail } = rollDetail(formula);
+    const rows = [];
+    try {
+      const batch = writeBatch(db);
+      for (const id of targetIds) {
+        const t = players.find((p) => p.id === id);
+        if (!t) continue;
+        const cur = t.stats?.hp ?? 0;
+        const max = t.stats?.maxHp ?? cur + total;
+        const nh = Math.min(max, cur + total);
+        batch.update(doc(db, "characters", id), { "stats.hp": nh });
+        rows.push(`${(t.name || "alleato").split(" ")[0]} +${nh - cur} (${cur}→${nh})`);
+      }
+      await batch.commit();
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (Cura)`,
+        damageRoll: `💚 ${rows.join(" · ")}`,
+        description: `Tiro cura: ${detail || formula} = ${total}`,
+        uid: currentUser.uid, category: action.category || "Abilità",
+        timestamp: serverTimestamp(),
+        effect: "heal", effectEl: "radiant", effectTargets: targetIds.map((id) => `player-${id}`),
+      });
+      await markSkillUsed(action, skill);
+      await endMyTurn();
+    } catch (err) { console.error("Errore cura (abilità):", err); }
+  };
+
+  // PF temporanei da ABILITÀ (Form of Dread, Wild Shape) → scudo del PG (non si sommano: resta il maggiore).
+  const castSkillShield = async (action, skill) => {
+    if (isUserLocked) return;
+    const formula = resolveSkillFormula(skill);
+    const { total, detail } = rollDetail(formula);
+    const cur = charData?.stats?.shield ?? 0;
+    const next = Math.max(cur, total);
+    try {
+      await updateDoc(doc(db, "characters", myUid), { "stats.shield": next });
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (PF temporanei)`,
+        damageRoll: `🛡 Scudo ${detail || formula} = ${total}${next === cur && cur > 0 ? ` (resta lo scudo attuale ${cur})` : ` → scudo ${next}`}`,
+        description: action.description ? String(action.description).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160) : "",
+        uid: currentUser.uid, category: action.category || "Abilità",
+        timestamp: serverTimestamp(),
+        effect: "shield", effectEl: elementFor(action), effectTargets: [`player-${myUid}`],
+      });
+      await markSkillUsed(action, skill);
+      await endMyTurn();
+    } catch (err) { console.error("Errore scudo (abilità):", err); }
+  };
+
   const endMyTurn = async () => {
     if (turnState.actedPlayers.includes(currentUser.uid)) return;
     await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(currentUser.uid) });
@@ -742,9 +832,9 @@ export default function WorldBoss() {
   // Persists for the rest of the battle (cleared automatically when the boss is
   // defeated / battle ends, or manually by re-casting / master). Replaces any
   // previous self-buff so stacking is intentional.
-  const castSelfBuff = async (action) => {
+  const castSelfBuff = async (action, bonusOverride = null) => {
     if (isUserLocked) return;
-    const acBonus = selfBuffAcBonus(action);
+    const acBonus = bonusOverride || selfBuffAcBonus(action);
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), {
         selfAcBonus: acBonus,
@@ -821,14 +911,18 @@ export default function WorldBoss() {
   // ── MAGIA AD AREA (giocatore): un solo tiro di danno, OGNI nemico vivo tira il
   // suo TS contro la CD del PG (8 + competenza + mod magia). TS superato = metà
   // danni (o nessuno, se la magia lo dice); fallito = danno pieno. Scudo prima degli HP.
-  const castAreaSpell = async (action, aoe) => {
-    if (isUserLocked || !livingEnemies.length) return;
+  // `enemiesArg` = bersagli espliciti (abilità a TS su UN nemico: Wrath of the Storm…); `skill` =
+  // abilità del PG (formula propria, CD sulla caratteristica indicata, uso limitato da segnare).
+  const castAreaSpell = async (action, aoe, enemiesArg = null, skill = null) => {
+    const targets = enemiesArg?.length ? enemiesArg : livingEnemies;
+    if (isUserLocked || !targets.length) return;
     const spellMod = getSpellMod(charData);
-    const dc = 8 + getProfBonus(charData) + spellMod;
-    const formula = damageFormulaFor(action, "1d6").replace(/@mod/g, spellMod);
+    const dcMod = aoe.dcAbility ? statMod(charData, aoe.dcAbility) : spellMod;
+    const dc = 8 + getProfBonus(charData) + dcMod;
+    const formula = skill ? resolveSkillFormula(skill) : damageFormulaFor(action, "1d6").replace(/@mod/g, spellMod);
     const total = rollDice(formula);
     const results = [];
-    for (const enemy of livingEnemies) {
+    for (const enemy of targets) {
       const roll = rollD20();
       const mod = enemySaveMod(enemy, aoe.save);
       const saved = roll + mod >= dc;
@@ -851,13 +945,13 @@ export default function WorldBoss() {
       const dmgLine = results.map((r) => `${r.enemy.name} −${r.dmg}${r.saved ? (aoe.half ? " (metà)" : " (evitato)") : ""}${r.shieldHit ? " 🛡️" : ""}${r.killed ? " ☠" : ""}`).join(", ");
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
-        actionName: `${action.name} (AREA) → ${results.length === 1 ? results[0].enemy.name : `${results.length} nemici`}`,
+        actionName: `${action.name}${enemiesArg?.length ? "" : " (AREA)"} → ${results.length === 1 ? results[0].enemy.name : `${results.length} nemici`}`,
         hitRoll: `🎲 CD ${dc} · TS ${saveLbl} — ${tsLine}`,
         damageRoll: `💥 ${formula} = ${total} · ${dmgLine}`,
         uid: currentUser.uid, category: action.category,
         timestamp: serverTimestamp(),
         ...fxFields(action, results.map((r) => r.enemy.vfxKey), {
-          kind: "aoe", from: `player-${myUid}`,
+          kind: enemiesArg?.length === 1 ? "bolt" : "aoe", from: `player-${myUid}`,
           miss: results.filter((r) => r.dmg === 0).map((r) => r.enemy.vfxKey),
           kill: results.filter((r) => r.killed).map((r) => r.enemy.vfxKey),
         }),
@@ -867,18 +961,60 @@ export default function WorldBoss() {
           [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
         });
       }
+      await markSkillUsed(action, skill);
       await endMyTurn();
     } catch (err) {
       console.error("Errore magia ad area:", err);
     }
   };
 
-  const handleActionRoll = async (action) => {
+  // `opts.rider` = abilità che aggiunge dadi al colpo d'arma (Divine Smite…): `action` è l'ARMA.
+  const handleActionRoll = async (action, opts = {}) => {
     const boss = currentTarget; // il nemico scelto (boss o minion)
     if (!boss || isUserLocked) return;
+    const rider = opts.rider || null;
+    const riderSkill = rider ? skillKindFor(rider) : null;
+
+    // ── ABILITÀ del PG (categoria "Abilità"): smite/colpi psionici sull'arma, cure, scudi,
+    // +CA, attacchi a TS o ad area. Le passive non arrivano qui (filtrate in groupedActions).
+    const skill = !rider && isSkillCategory(action.category) ? skillKindFor(action) : null;
+    if (skill) {
+      if (isSkillUsed(action, skill)) { window.alert(`"${action.name}" è già stata usata in questa battaglia.`); return; }
+      if (skill.kind === "rider") {
+        if (!myWeapons.length) { window.alert(`Per usare "${action.name}" serve un'arma nella scheda.`); return; }
+        if (myWeapons.length === 1) { await handleActionRoll(myWeapons[0], { rider: action }); return; }
+        setWeaponPicker({ skill: action, weapons: myWeapons });
+        return;
+      }
+      if (skill.kind === "heal") {
+        if (skill.target === "self") { await castSkillHeal(action, skill, [myUid]); return; }
+        if (skill.target === "allies") {
+          // "ogni creatura a tua scelta…" (Turn the Tide) → tutti gli alleati vivi e feriti
+          const hurt = players.filter((p) => (p.stats?.hp ?? 0) > 0 && (p.stats?.hp ?? 0) < (p.stats?.maxHp ?? Infinity));
+          if (!hurt.length) { window.alert("Nessun alleato ferito da curare."); return; }
+          await castSkillHeal(action, skill, hurt.map((p) => p.id));
+          return;
+        }
+        setSpellPicker({ action, intent: "heal", selected: [], skill });
+        return;
+      }
+      if (skill.kind === "shield") { await castSkillShield(action, skill); return; }
+      if (skill.kind === "ac") {
+        const bonus = skill.acProf ? getProfBonus(charData) : (skill.acBonus || selfBuffAcBonus(action));
+        if (!window.confirm(`Usare "${action.name}"? +${bonus} CA per tutta la battaglia.`)) return;
+        await castSelfBuff(action, bonus);
+        return;
+      }
+      if (skill.kind === "area") { await castAreaSpell(action, skill.area, null, skill); return; }
+      if (skill.kind === "save") {
+        await castAreaSpell(action, { save: skill.save, half: skill.half, dcAbility: skill.dcAbility }, [boss], skill);
+        return;
+      }
+      // kind "attack" (Ram / colpo senza armi) → tiro per colpire qui sotto
+    }
 
     // Route spells by intent (self_buff/heal/buff/debuff). Weapons always fall through to attack.
-    const intent = detectSpellIntent(action);
+    const intent = skill ? "attack" : detectSpellIntent(action);
     if (intent === "self_buff") {
       const bonus = selfBuffAcBonus(action);
       const cur = charData?.selfAcBonus || 0;
@@ -914,7 +1050,7 @@ export default function WorldBoss() {
       return;
     }
 
-    const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
+    const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto" || skill?.kind === "attack";
     const condition = charData.nextTurnCondition;
     let d20, rollLabel;
     if (condition === "advantage" || condition === "disadvantage") {
@@ -945,14 +1081,21 @@ export default function WorldBoss() {
         bonusLabel = `magia(+${spellMod}) + comp(+${profBonus}) = +${spellAtk}`;
       }
     }
+    if (skill) {
+      // Abilità d'attacco senza bonus salvato: il migliore fra mischia (FOR/DES + comp) e magia.
+      const meleeAtk = Math.max(statMod(charData, "str"), statMod(charData, "dex")) + getProfBonus(charData);
+      const best = Math.max(parsedBonus, meleeAtk, getSpellAttackBonus(charData));
+      if (best > parsedBonus) { bonusToHit = best; bonusLabel = `bonus(+${best})`; }
+    }
     const hitTotal = d20 + bonusToHit;
     const isCritical = d20 === 20;
     let actionData = {
       type: "action", senderName: charData?.name || "Eroe",
-      actionName: action.name + (isCritical ? " (CRITICO!)" : "") + (isAttack ? ` → ${boss.name}` : ""),
+      actionName: (rider ? `${action.name} + ${rider.name}` : action.name) + (isCritical ? " (CRITICO!)" : "") + (isAttack ? ` → ${boss.name}` : ""),
       timestamp: serverTimestamp(), uid: currentUser.uid, category: action.category,
       hitRoll: `🎲 ${rollLabel} + ${bonusLabel} = ${hitTotal} `,
     };
+    const fxAction = rider ? { ...action, dmgType: elementFor(rider) } : action;
     if (isAttack) {
       if (isCritical || hitTotal >= (boss.ac || 10)) {
         let formulaRaw = action.damage && action.damage !== "0" ? action.damage : "1d6";
@@ -968,10 +1111,17 @@ export default function WorldBoss() {
         let rolls = [];
         for (let i = 0; i < num; i++) { const r = Math.floor(Math.random() * sides) + 1; dieRollTotal += r; rolls.push(r); }
         let totalDamage = dieRollTotal + staticBonus;
+        // Abilità "su arma" (Divine Smite, Psionic Strike, Planar Warrior…): dadi extra sul colpo, raddoppiati dal critico.
+        let riderNote = "";
+        if (rider && riderSkill) {
+          const r = rollDetail(resolveSkillFormula(riderSkill));
+          totalDamage += r.total;
+          riderNote = ` + ${rider.name} ${r.detail}=${r.total}`;
+        }
         if (isCritical) totalDamage *= 2;
         let dieDetail = `Dado ${diePart}[${rolls.join("+")}]`;
-        let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}`;
-        if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}) x2`;
+        let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}${riderNote}`;
+        if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}${riderNote}) x2`;
         if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
           const sneakDice = (charData?.level ?? 1) >= 3 ? 2 : 1;
           const sneakRolls = [];
@@ -997,11 +1147,14 @@ export default function WorldBoss() {
         actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
         if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
-        Object.assign(actionData, fxFields(action, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }));
+        Object.assign(actionData, fxFields(fxAction, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }));
+        // uso limitato speso solo a colpo andato a segno (lo smite si decide dopo il colpo)
+        await markSkillUsed(rider, riderSkill);
+        await markSkillUsed(action, skill);
       } else {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
         // il colpo parte lo stesso, ma sul bersaglio compare "mancato" invece dello scoppio
-        Object.assign(actionData, fxFields(action, [boss.vfxKey], { from: `player-${myUid}`, miss: [boss.vfxKey] }));
+        Object.assign(actionData, fxFields(fxAction, [boss.vfxKey], { from: `player-${myUid}`, miss: [boss.vfxKey] }));
       }
       await addDoc(collection(db, "world_boss_chat"), actionData);
       if (activeBosses[0]?.id) {
@@ -1319,10 +1472,24 @@ export default function WorldBoss() {
 
   const groupedActions = useMemo(() => {
     if (!charData?.actions) return {};
+    const seenSkills = new Map(); // nome → indice nella categoria (la sync duplica alcune voci)
     return charData.actions.reduce((acc, action) => {
       const cat = action.category || "Altro";
-      // Esclude la categoria "Abilità / Skill" dal pannello azioni del WorldBoss.
-      if (/abilit|skill/i.test(cat)) return acc;
+      // Categoria "Abilità": entrano SOLO quelle usabili (danno / cura / scudo / +CA) riconosciute
+      // da skillKindFor; le passive restano fuori. Doppioni: una voce sola, tenendo quella con i dadi.
+      if (isSkillCategory(cat)) {
+        if (!skillKindFor(action)) return acc;
+        if (!acc[cat]) acc[cat] = [];
+        const key = String(action.name || "").trim().toLowerCase();
+        if (seenSkills.has(key)) {
+          const i = seenSkills.get(key);
+          if (!/\d+d\d+/.test(String(acc[cat][i].damage || "")) && /\d+d\d+/.test(String(action.damage || ""))) acc[cat][i] = action;
+          return acc;
+        }
+        seenSkills.set(key, acc[cat].length);
+        acc[cat].push(action);
+        return acc;
+      }
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(action);
       return acc;
@@ -2044,14 +2211,25 @@ export default function WorldBoss() {
                         </button>
                         {openSections[cat] && (
                           <div className="rpg-acc-content">
-                            {groupedActions[cat].map((action, idx) => (
-                              <button key={idx} className="rpg-action-btn" onClick={() => handleActionRoll(action)} disabled={isUserLocked}
-                                title={areaSpellFor(action) ? "Magia ad area: colpisce tutti i nemici in campo" : undefined}>
-                                <span className="rpg-action-name">{action.name}</span>
-                                {areaSpellFor(action) && <span className="rpg-action-aoe">area</span>}
-                                {action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
-                              </button>
-                            ))}
+                            {groupedActions[cat].map((action, idx) => {
+                              const skill = isSkillCategory(cat) ? skillKindFor(action) : null;
+                              const used = skill ? isSkillUsed(action, skill) : false;
+                              const isArea = skill ? skill.kind === "area" : !!areaSpellFor(action);
+                              const title = used ? "Già usata in questa battaglia (una volta per battaglia)"
+                                : skill ? `${skillTagFor(skill)}${skill.limited ? " · una volta per battaglia" : ""}`
+                                : isArea ? "Magia ad area: colpisce tutti i nemici in campo" : undefined;
+                              const skillDice = skill && !used ? (skill.perLevel ? `${skill.perLevel}×liv` : String(skill.formula || "").replace(/@mod/g, "mod")) : "";
+                              return (
+                                <button key={idx} className={`rpg-action-btn${used ? " is-used" : ""}`} onClick={() => handleActionRoll(action)} disabled={isUserLocked || used} title={title}>
+                                  <span className="rpg-action-name">{action.name}</span>
+                                  {used ? <span className="rpg-action-aoe rpg-action-used">usata</span>
+                                    : skill ? <span className={`rpg-action-aoe rpg-action-skill rpg-action-skill--${skill.kind}`}>{skillTagFor(skill)}</span>
+                                    : isArea ? <span className="rpg-action-aoe">area</span> : null}
+                                  {skillDice && <span className="rpg-action-bonus">{skillDice}</span>}
+                                  {!skill && action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -2060,6 +2238,36 @@ export default function WorldBoss() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ARMA per l'abilità "su arma" (Divine Smite, Psionic Strike…) ───── */}
+      {weaponPicker && (
+        <div className="rpg-spell-picker-backdrop" onClick={() => setWeaponPicker(null)}>
+          <div className="rpg-spell-picker" onClick={(e) => e.stopPropagation()}>
+            <div className="rpg-spell-picker-head">
+              <div>
+                <div className="rpg-spell-picker-icon">⚔</div>
+                <h3>Con quale arma?</h3>
+                <p className="rpg-spell-picker-spell">{weaponPicker.skill.name} → {currentTarget?.name || "bersaglio"}</p>
+                <p className="rpg-spell-picker-desc">I dadi dell'abilità si aggiungono al colpo se l'arma va a segno.</p>
+              </div>
+              <button className="rpg-spell-picker-close" onClick={() => setWeaponPicker(null)} aria-label="Chiudi">✕</button>
+            </div>
+            <div className="rpg-spell-picker-list">
+              {weaponPicker.weapons.map((w, i) => (
+                <button key={i} className="rpg-spell-picker-row"
+                  onClick={async () => { const sk = weaponPicker.skill; setWeaponPicker(null); await handleActionRoll(w, { rider: sk }); }}>
+                  <span className="rpg-spell-picker-mark">⚔</span>
+                  <span className="rpg-spell-picker-name">{w.name}</span>
+                  <span className="rpg-spell-picker-hp">{w.damage && w.damage !== "0" ? w.damage : "1d6"}{parseInt(w.bonus) ? ` · +${parseInt(w.bonus)}` : ""}</span>
+                </button>
+              ))}
+            </div>
+            <div className="rpg-spell-picker-foot">
+              <button className="rpg-spell-picker-cancel" onClick={() => setWeaponPicker(null)}>Annulla</button>
+            </div>
           </div>
         </div>
       )}
@@ -2090,7 +2298,9 @@ export default function WorldBoss() {
         };
         const confirm = async () => {
           if (selected.length === 0) return;
-          if (isHeal) {
+          if (isHeal && spellPicker.skill) {
+            await castSkillHeal(action, spellPicker.skill, [selected[0]]);
+          } else if (isHeal) {
             await castHealOnTarget(action, selected[0]);
           } else {
             await castBuffOnTargets(action, selected);

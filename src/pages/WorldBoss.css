@@ -800,6 +800,13 @@
   color: var(--oro); border: 1px solid rgba(var(--oro-rgb, 201, 162, 74), .55); border-radius: var(--rpg-r);
   padding: 0 5px; margin-right: 6px; flex-shrink: 0; line-height: 1.35;
 }
+/* abilità di classe usabili (Divine Smite, Lay on Hands…): etichetta per tipo; "usata" = spesa in questa battaglia */
+.rpg-action-skill { color: var(--el-2); border-color: rgba(var(--el-rgb), .55); }
+.rpg-action-skill--heal, .rpg-action-skill--shield { color: var(--rpg-green); border-color: rgba(95, 191, 122, .5); }
+.rpg-action-skill--ac { color: var(--el-soft); }
+.rpg-action-used { color: var(--rpg-dim); border-color: var(--rpg-border); border-style: dashed; }
+.rpg-action-btn.is-used { color: var(--rpg-dim); border-style: dashed; }
+.rpg-action-btn.is-used .rpg-action-name { text-decoration: line-through; }
 
 /* ════════════════════════════════════════════
    SPELL TARGET PICKER — modale del covo
