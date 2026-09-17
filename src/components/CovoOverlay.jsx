@@ -75,7 +75,10 @@ export default function CovoOverlay() {
     };
     let rgb = elRgb();
     const soffio = () => document.documentElement.dataset.soffio || "fuoco";
-    const cristalli = () => soffio() === "gelo" || soffio() === "bianco"; // schegge che scendono, non braci
+    const cristalli = () => soffio() === "gelo" || soffio() === "bianco"; // schegge che scendono, non braci (la SCIA)
+    // Ogni respiro ha la sua particella: braci (Fuoco), schegge di ghiaccio (Gelo),
+    // neve (Bianco), rune fluttuanti (Arcano), spore (Veleno).
+    const stile = () => ({ fuoco: "braci", gelo: "cristalli", bianco: "neve", arcano: "rune", veleno: "spore" })[soffio()] || "braci";
     const coloriPelle = () => {
       const cs = getComputedStyle(document.body);
       const t = (k, d) => (cs.getPropertyValue(k).trim() || d);
@@ -111,8 +114,15 @@ export default function CovoOverlay() {
       dipingiPelle();
     };
     const nasce = () => {
-      const fuoco = !cristalli();
-      return { x: Math.random() * W, y: fuoco ? H + 10 : -10, vx: (Math.random() - .5) * .35, vy: fuoco ? -(.4 + Math.random() * .9) : (.25 + Math.random() * .6), r: fuoco ? 1 + Math.random() * 2.2 : 1.2 + Math.random() * 2.6, vita: 1, rot: Math.random() * Math.PI, spin: (Math.random() - .5) * .03 };
+      const st = stile();
+      const base = { x: Math.random() * W, vita: 1, rot: Math.random() * Math.PI, spin: (Math.random() - .5) * .03, st, seme: Math.random() * Math.PI * 2 };
+      switch (st) {
+        case "cristalli": return { ...base, y: -10, vx: (Math.random() - .5) * .35, vy: .25 + Math.random() * .6, r: 1.2 + Math.random() * 2.6 };
+        case "neve":      return { ...base, y: -10, vx: (Math.random() - .5) * .3, vy: .3 + Math.random() * .5, r: 1.4 + Math.random() * 2.4 };
+        case "rune":      return { ...base, y: H * (.15 + Math.random() * .85), vx: (Math.random() - .5) * .2, vy: -(.12 + Math.random() * .25), r: 2 + Math.random() * 2.4, spin: (Math.random() - .5) * .012, vita: 1 };
+        case "spore":     return { ...base, y: H + 10, vx: (Math.random() - .5) * .5, vy: -(.18 + Math.random() * .4), r: 1.8 + Math.random() * 3.2 };
+        default:          return { ...base, y: H + 10, vx: (Math.random() - .5) * .35, vy: -(.4 + Math.random() * .9), r: 1 + Math.random() * 2.2 };
+      }
     };
     const frame = () => {
       if (!running) return;
@@ -161,20 +171,41 @@ export default function CovoOverlay() {
       if (!reduced) {
         const max = W < 600 ? 40 : 90;
         if (particelle.length < max && Math.random() < .5) particelle.push(nasce());
-        const gelo = cristalli();
         for (let i = particelle.length - 1; i >= 0; i--) {
           const p = particelle[i];
-          p.x += p.vx + Math.sin(fase * 3 + p.y * .01) * .25; p.y += p.vy; p.vita -= .0035; p.rot += p.spin;
+          const st = p.st || "braci";
+          const ondeggio = st === "spore" ? .6 : st === "neve" ? .45 : .25;
+          p.x += p.vx + Math.sin(fase * 3 + p.y * .01 + (p.seme || 0)) * ondeggio; p.y += p.vy; p.vita -= st === "rune" ? .0022 : .0035; p.rot += p.spin;
           if (p.vita <= 0 || p.y < -20 || p.y > H + 20) { particelle.splice(i, 1); continue; }
           sc.globalAlpha = Math.min(1, p.vita * 1.4);
-          if (!gelo) {
-            sc.fillStyle = `rgba(${R},${G},${B},1)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 8;
-            sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI * 2); sc.fill();
-          } else {
+          if (st === "cristalli") {
+            // scheggia di ghiaccio: asterisco a sei raggi
             sc.strokeStyle = `rgba(${R},${G},${B},.9)`; sc.lineWidth = 1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 6;
             sc.save(); sc.translate(p.x, p.y); sc.rotate(p.rot);
             for (let k = 0; k < 3; k++) { sc.beginPath(); sc.moveTo(-p.r * 2, 0); sc.lineTo(p.r * 2, 0); sc.stroke(); sc.rotate(Math.PI / 3); }
             sc.restore();
+          } else if (st === "neve") {
+            // fiocco: disco soffice bianco-azzurro con cuore chiaro
+            const g = sc.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 1.6);
+            g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(.5, `rgba(${R},${G},${B},.35)`); g.addColorStop(1, "rgba(255,255,255,0)");
+            sc.fillStyle = g; sc.beginPath(); sc.arc(p.x, p.y, p.r * 1.6, 0, Math.PI * 2); sc.fill();
+          } else if (st === "rune") {
+            // runa fluttuante: rombo che pulsa, con un punto d'ambra al centro
+            const pulsa = .55 + .45 * Math.sin(fase * 4 + (p.seme || 0));
+            sc.strokeStyle = `rgba(${R},${G},${B},${(.5 + .5 * pulsa).toFixed(2)})`; sc.lineWidth = 1.1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 6 + 8 * pulsa;
+            sc.save(); sc.translate(p.x, p.y); sc.rotate(p.rot);
+            sc.beginPath(); sc.moveTo(0, -p.r * 1.5); sc.lineTo(p.r, 0); sc.lineTo(0, p.r * 1.5); sc.lineTo(-p.r, 0); sc.closePath(); sc.stroke();
+            sc.fillStyle = `rgba(255,236,190,${(.35 + .45 * pulsa).toFixed(2)})`; sc.beginPath(); sc.arc(0, 0, Math.max(.8, p.r * .3), 0, Math.PI * 2); sc.fill();
+            sc.restore();
+          } else if (st === "spore") {
+            // spora: bolla velenosa con riflesso, sale ondeggiando
+            sc.strokeStyle = `rgba(${R},${G},${B},.75)`; sc.lineWidth = 1; sc.fillStyle = `rgba(${R},${G},${B},.14)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 5;
+            sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI * 2); sc.fill(); sc.stroke();
+            sc.fillStyle = "rgba(255,255,255,.55)"; sc.beginPath(); sc.arc(p.x - p.r * .35, p.y - p.r * .35, Math.max(.6, p.r * .22), 0, Math.PI * 2); sc.fill();
+          } else {
+            // brace
+            sc.fillStyle = `rgba(${R},${G},${B},1)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 8;
+            sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI * 2); sc.fill();
           }
           sc.shadowBlur = 0; sc.globalAlpha = 1;
         }
