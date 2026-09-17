@@ -63,6 +63,44 @@ body.covo-arena .arena-page :is(.nx-titolo, .arena-hero-title) :is(em, span, i) 
   text-shadow: 0 0 30px rgba(var(--el-rgb), .55);
 }
 
+/* ── SUPERFICI ANCORA "PERGAMENA" (ArenaHero.css) → roccia del Covo (2026-09-17) ──
+   Il vecchio strato chiaro dell'Arena lasciava fondi osso al 55–95% sotto testo
+   chiaro: gruppi azione del combat (Trucchetti / Livello N), griglia oggetti
+   dell'equipaggio, selettore bersaglio, modali generiche, colonne del tabellone,
+   sfidanti delle scommesse. Qui prendono la roccia scura; la struttura non cambia. */
+body.covo-arena .arena-page .action-groups > * {
+  background: rgba(var(--roccia-2-rgb), .78) !important;
+  border-color: rgba(var(--el-rgb), .22) !important;
+  box-shadow: inset 0 1px 0 rgba(var(--osso-rgb), .05);
+}
+body.covo-arena .arena-page .action-groups > *:hover {
+  background: rgba(var(--roccia-3-rgb), .9) !important;
+  border-color: rgba(var(--el-rgb), .45) !important;
+}
+body.covo-arena .arena-combat-dialog .action-group-label { color: var(--osso-2) !important; }
+body.covo-arena .arena-page .item-grid > * {
+  background: rgba(var(--roccia-2-rgb), .85) !important;
+  color: var(--osso) !important;
+  border-color: rgba(var(--el-rgb), .22) !important;
+}
+body.covo-arena .arena-page .target-picker {
+  background: linear-gradient(135deg, rgba(var(--roccia-3-rgb), .95), rgba(var(--roccia-2-rgb), .9)) !important;
+  border-color: rgba(var(--sangue-rgb), .45) !important;
+  color: var(--osso) !important;
+}
+body.covo-arena .arena-modal-dialog:not(.tb-modal) {
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia)) !important;
+  color: var(--osso) !important;
+  border: 1px solid rgba(var(--el-rgb), .3) !important;
+  border-top: 3px solid var(--el) !important;
+}
+body.covo-arena .arena-modal-body .bracket-round-col,
+body.covo-arena .arena-page .bet-tournament-fighter {
+  background: linear-gradient(135deg, rgba(var(--roccia-3-rgb), .95), rgba(var(--roccia-2-rgb), .88)) !important;
+  color: var(--osso) !important;
+  border-color: rgba(var(--el-rgb), .25) !important;
+}
+
 /* ── scrollbar e selezione ── */
 body.covo-arena ::selection { background: rgba(var(--el-rgb), .55); color: var(--ossidiana); }
 
