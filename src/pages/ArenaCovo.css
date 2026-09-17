@@ -101,6 +101,79 @@ body.covo-arena .arena-page .bet-tournament-fighter {
   border-color: rgba(var(--el-rgb), .25) !important;
 }
 
+/* ── PALETTE "TCG SKIN" DELL'ARENA → SCURA (2026-09-17) ──────────────────────
+   Arena.css/ArenaHero.css definiscono su .arena-page le variabili della vecchia
+   pelle chiara (--card = osso al 95%, --cream, --paper, --amber-soft, --ink scuro,
+   --muted scuro) usate da una ventina di superfici (scommesse, tabellone,
+   statistiche classi, banner, input del Master, barre Forma Selvatica, TS…):
+   con la roccia del Covo restavano BIANCHE. Qui le variabili diventano scure e
+   le superfici con colori fissi vengono ricoperte una per una. Solo pelle. */
+body.covo-arena .arena-page,
+body.covo-arena .arena-page.arena-page,
+body.covo-arena .arena-modal-dialog,
+body.covo-arena .arena-drawer-dialog {
+  --card: var(--roccia-2) !important;
+  --cream: rgba(var(--el-rgb), .14) !important;
+  --paper: transparent !important;
+  --amber-soft: rgba(var(--el-rgb), .16) !important;
+  --ink: var(--osso) !important;
+  --muted: var(--osso-2) !important;
+  --green: #5fbf7a !important;
+  --orange: var(--el-2) !important;
+}
+/* pannelli, banner, card con fondi chiari fissi → roccia */
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(
+  .match-pause-banner, .master-title-editor, .match-header, .lay-of-hands-picker,
+  .bet-match-card, .bet-closed-notice, .bet-placed, .bet-panel, .betting-section, .betting-panel,
+  .class-stats-section, .class-stats-row, .class-stats-list,
+  .bracket-final-wrap, .bracket-rounds-empty, .bracket-standings, .my-arena-banner, .matches-container,
+  .arena-phase-banner, .arena-quick-nav, .match-card, .turn-tracker, .coin-edit-row,
+  .save-block, .save-block.dex, .save-block.con, .save-block.str,
+  .wild-shape-bar, .wild-shape-active-bar, .fun-challenge-row--live,
+  .loadout-panel--reloadout, .loadout-panel--reloadout .loadout-char-preview--top, .loadout-panel--reloadout .loadout-tab.done
+),
+body.covo-arena .arena-modal-body :is(.bracket-final-wrap, .bracket-rounds-empty, .bracket-standings, .bet-match-card, .class-stats-section, .class-stats-row, .class-stats-list),
+body.covo-arena .arena-drawer-dialog {
+  background: linear-gradient(180deg, rgba(var(--roccia-3-rgb), .92), rgba(var(--roccia-2-rgb), .9)) !important;
+  color: var(--osso) !important;
+  border-color: rgba(var(--el-rgb), .28) !important;
+}
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.bracket-final-wrap::before, .bracket-final-wrap::after) { background: var(--roccia-3) !important; }
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.class-stats-bar-track, .bracket-avatar, .bracket-avatar-placeholder) {
+  background: rgba(var(--ossidiana-rgb), .7) !important;
+}
+/* accenti dei TS e delle barre: la tinta resta, ma come velo sul fondo scuro */
+body.covo-arena .arena-page .save-block.dex { border-left: 4px solid #5fbf7a !important; }
+body.covo-arena .arena-page .save-block.con { border-left: 4px solid var(--sangue) !important; }
+body.covo-arena .arena-page .save-block.str { border-left: 4px solid var(--el) !important; }
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.wild-shape-bar, .wild-shape-active-bar) { border-left: 4px solid #5fbf7a !important; }
+body.covo-arena .arena-page .bet-placed { border-left: 4px solid #5fbf7a !important; }
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.match-pause-banner, .bet-closed-notice) { border-left: 4px solid var(--sangue) !important; }
+/* testo dentro quelle superfici: inchiostro chiaro (i colori fissi scuri della pelle vecchia sparirebbero sul fondo) */
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(
+  .match-pause-banner, .master-title-editor, .bet-match-card, .bet-closed-notice, .bet-placed, .bet-panel, .betting-section, .betting-panel,
+  .class-stats-section, .class-stats-row, .class-stats-list, .bracket-standings, .my-arena-banner, .arena-phase-banner,
+  .match-card, .turn-tracker, .coin-edit-row, .save-block, .wild-shape-bar, .wild-shape-active-bar, .loadout-panel--reloadout
+) :is(p, span, div, label, li, td, th, small, strong, em, h3, h4):not([class*="badge"]):not([class*="tag"]):not([class*="pill"]) {
+  color: var(--osso-body);
+}
+body.covo-arena .arena-drawer-dialog :is(p, span, div, label, li, small, strong, h3, h4):not([class*="badge"]):not([class*="tag"]) { color: var(--osso-body); }
+/* input e select del Master (premi, titoli, monete) */
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.prize-textarea, .title-select, .title-filter-input, .coin-edit-input, input[type="text"], input[type="number"], textarea, select) {
+  background: rgba(var(--ossidiana-rgb), .65) !important;
+  color: var(--osso) !important;
+  border: 1px solid var(--roccia-4) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .45) !important;
+}
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.title-select:hover, .title-filter-input:focus, .prize-textarea:focus, .coin-edit-input:focus) { border-color: var(--el) !important; }
+/* bottoni bianchi della pelle vecchia */
+body.covo-arena :is(.arena-page, .arena-modal-dialog, .arena-drawer-dialog) :is(.btn-wild-form, .btn-force-winner) {
+  background: rgba(var(--roccia-3-rgb), .95) !important; color: var(--osso) !important; border-color: rgba(var(--el-rgb), .35) !important;
+}
+body.covo-arena .arena-page .btn-force-winner:hover { background: rgba(var(--el-rgb), .22) !important; }
+body.covo-arena .arena-page .btn-confirm-equip:disabled { background: var(--roccia-3) !important; color: var(--osso-3) !important; }
+body.covo-arena .arena-page .btn-action.weapon.unequipped { background: rgba(var(--osso-rgb), .05) !important; color: var(--osso-2) !important; }
+
 /* ── scrollbar e selezione ── */
 body.covo-arena ::selection { background: rgba(var(--el-rgb), .55); color: var(--ossidiana); }
 
