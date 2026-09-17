@@ -858,6 +858,26 @@ html[data-soffio="bianco"] {
   --nx-hair:rgba(28,23,18,.12); --nx-hair-hi:inset 0 1px 0 rgba(255,255,255,.8);
   --shadow-1:0 2px 10px rgba(60,45,20,.15); --shadow-2:0 20px 40px -24px rgba(60,45,20,.45); --shadow-3:0 28px 70px -24px rgba(60,45,20,.5);
 }
+/* PAGINE DI GIOCO (Arena, Bottega Arena, World Boss, TCG, Pet = body.theme-dark): restano
+   SCURE anche col Bianco. Il loro CSS legge i token del Covo (--roccia*, --osso*, --rpg-*…),
+   che il Bianco ribalta: senza questo blocco il combat e la creazione del PG diventavano
+   chiari con scritte chiare. Il canvas delle squame legge i token dal body, quindi si
+   riscurisce anche lui. Respiro riportato al Fuoco (default). */
+html[data-soffio="bianco"] body.theme-dark {
+  color-scheme: dark;
+  --ossidiana:#0b0a0d; --ossidiana-2:#0f0e12; --roccia:#17151b; --roccia-2:#221f27; --roccia-3:#2e2a35; --roccia-4:#3a3542;
+  --ossidiana-rgb:11,10,13; --roccia-rgb:23,21,27; --roccia-2-rgb:34,31,39; --roccia-3-rgb:46,42,53;
+  --osso:#ece5d6; --osso-body:#d6cdbb; --osso-2:#b9af9d; --osso-3:#7d7566; --osso-rgb:236,229,214;
+  --oro:#e8c56a; --oro-soft:#f5e3a8; --oro-rgb:232,197,106;
+  --sangue:#b3261e; --sangue-rgb:179,38,30;
+  --el:#ff7a1a; --el-2:#ffb347; --el-soft:#ffd9a8; --el-deep:#8a2f04; --el-rgb:255,122,26;
+  --iride:radial-gradient(circle at 50% 50%, #ffe8a3 0 6%, #ff9a2e 22%, #c2410c 48%, #4a1206 70%, #1a0602 100%);
+  --pelle-0:#0b0a0d; --pelle-1:#1e1b23; --pelle-2:#121016; --pip:#0b0a0d;
+  --nx-hair:rgba(var(--osso-rgb),.12); --nx-hair-hi:inset 0 1px 0 rgba(255,255,255,.05);
+  --shadow-1:0 2px 10px rgba(0,0,0,.6); --shadow-2:0 20px 40px -24px #000; --shadow-3:0 28px 70px -24px #000;
+}
+html[data-soffio="bianco"] body.theme-dark.covo-admin { --el:#b06cff; --el-2:#d4b3ff; --el-soft:#efe3ff; --el-deep:#3b1466; --el-rgb:176,108,255; }
+html[data-soffio="bianco"] body.theme-dark .respiro { background: rgba(var(--roccia-2-rgb),.9); border-color: var(--roccia-4); }
 /* nel Bianco: ombre e veli più lievi, bordi visibili, testo forzato chiaro → inchiostro */
 html[data-soffio="bianco"] body:not(.theme-dark) :is(.nx-pannello, .cine-card, .ch-card, .admin-card, .deity-card, .blocco, [class*="-hero-plate"]) {
   border-color: #cfc5b0; box-shadow: 0 14px 30px -22px rgba(60,45,20,.5), inset 0 1px 0 #fff;
