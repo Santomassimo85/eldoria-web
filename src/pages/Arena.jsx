@@ -10,6 +10,7 @@ import { useAuth } from "../AuthContext";
 import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
+import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import { currentWeekKey } from "../data/arenaWeek";
@@ -24,85 +25,78 @@ import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi c
 import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
-// Pixel in CSS (classi .avfx qui sotto, niente file esterni). Nessuna modifica ai
-// 30+ handler d'attacco: deduciamo l'effetto dal `pub`/`att` e il bersaglio da
-// defId (attacchi → nemico) o attId (cure/buff → sé stesso).
-const ARENA_OFFENSIVE_FX = new Set(["slash", "ranged", "fire", "frost", "lightning", "poison"]);
+// Disegna VfxLayer (WorldBossVfx.jsx/.css, gli stessi pixel del World Boss). Nessuna
+// modifica ai 30+ handler d'attacco: deduciamo forma/elemento/esito dal `pub`/`att` e il
+// bersaglio da defId (attacchi → nemico) o attId (cure/buff → sé stesso); il proiettile
+// parte dall'avatar di chi attacca (`arena-fx:<matchId>:<uid>` su .cv-avatar-wrap).
+// ── EFFETTI A SCHERMO (gli stessi PIXEL del World Boss: WorldBossVfx) ────────
+// Dal testo di una riga di log ricavo forma + elemento + esito nel formato che
+// legge VfxLayer: effect (slash · arrow · bolt · aoe · heal · buff · shield · debuff),
+// effectEl (fire · frost · lightning · poison · darkness · radiant · arcane · physical),
+// miss (sbuffo "mancato" al posto dello scoppio). Solo testo: la logica di
+// combattimento non cambia. Ordine: esito → cure/scudi/buff/debuff → elemento → forma.
+const ARENA_FX_OFFENSIVE = new Set(["slash", "arrow", "bolt", "aoe", "debuff"]);
+const AOE_SPELL_RE = /(palla di fuoco|onda tonante|onda di tuono|frantumare|mani brucianti|cono di freddo|\bfulmine\b|tempesta|deflagraz|esplosion|\bbomba\b|soffio|nube|sfera infuocata|raggio di luna|pioggia|turbine)/;
+const RANGED_RE = /(\barco\b|frecc|balestra|pistol|fucile|moschetto|fionda|giavellotto|da lancio|dardo\b(?! incantato| di fuoco)|\btiro\b|picchiata|raffica)/;
+function arenaFxElement(text) {
+  if (/(sacr|divin|smite|punizion|radios|raggio guida|fiamma sacra|\bluce\b)/.test(text)) return "radiant";
+  if (/(fuoco|fiamm|brucia|rovente|incendi|\bbomba\b|infernal|deflagraz|arden|igne)/.test(text)) return "fire";
+  if (/(\bgelo\b|freddo|ghiacc|congel|frost|gelid|brina)/.test(text)) return "frost";
+  if (/(fulmin|scossa|tuono|tonante|schianto|elettr|folgor|tempesta|saetta)/.test(text)) return "lightning";
+  if (/(veleno|tossic|velenos|acid|nube|infestazion|triboli|sanguinam|ragn)/.test(text)) return "poison";
+  if (/(necro|tenebr|oscur|\bombra\b|vampir|hadar|sussurr|gelido tocco|tocco gelido|maledi)/.test(text)) return "darkness";
+  return null;
+}
 function classifyArenaVfx(entry) {
   if (!entry || typeof entry !== "object") return null;
   const text = (entry.pub || entry.att || "").toLowerCase();
   if (!text) return null;
-  // Cure / recuperi di PF
-  if (/(cura|guari|canalizza il ki|secondo respiro|lay of hands|ristora|recupera \d+ hp|tocco vampirico|drena)/.test(text)) return "heal";
-  // Elementi
-  if (/(fuoco|fiamm|brucia|rovente|incendio|bomba|infernale|deflagrazione)/.test(text)) return "fire";
-  if (/(gelo|freddo|ghiacc|congel|frost|gelidito|coltello di ghiaccio|cono di freddo)/.test(text)) return "frost";
-  if (/(fulmine|scossa|tuono|tonante|schianto|elettr|smite|folgor)/.test(text)) return "lightning";
-  if (/(veleno|tossic|velenoso|triboli|ragnatela|sanguinament|acid|nube|infestazione|braccia di hadar)/.test(text)) return "poison";
-  // Incantesimo a danno marcato con ✨ ma privo di elemento esplicito → bolt arcano
-  // (evita che "colpisce con <spell>" venga scambiato per un attacco con arma = sangue)
-  if (/✨/.test(text)) return "magic";
-  // A distanza
-  if (/(arco|freccia|dardo|balestra|pistola|fucile|rifle|morso|picchiata|soffio|raffica)/.test(text)) return "ranged";
-  // Attacco in mischia generico
-  if (/(colpisce|colpisci|attacc|fendente|turbine|carica|furtivo|colpo|mischia|lama|taglia)/.test(text)) return "slash";
-  // Incantesimi / buff generici
-  if (/(lancia|invoca|scudo|aiuto|concentr|marchio|furia|ispirazione|magic|incantesimo|raggio|dardo incantato)/.test(text)) return "magic";
+  // Righe di servizio: iniziativa, apertura sfida, movimento, vincitore.
+  if (/(tira iniziativa|tirate iniziativa|ha aperto una sfida|in attesa di|accetta la sfida|chiude la distanza|arretra|vincitore|abbandona|inizia il|turno passa|salta il turno)/.test(text)) return null;
+  const miss = /(\bmanca\b|\bmanchi\b|\bmancato\b|nessun danno|schiva|evita il colpo|fallisce il colpo|non colpisce|resiste e non subisce)/.test(text) && !/dimezzat/.test(text);
+  // Cure e recuperi
+  if (/(\bcura\b|si cura|guari|canalizza il ki|secondo respiro|lay of hands|imposizione|ristora|recupera \d+ hp|tocco vampirico|drena|pozione di cura|rigenera)/.test(text)) return { kind: "heal", el: "radiant", miss: false };
+  // Scudi, protezioni, PF temporanei
+  if (/(scudo della fede|scudo magico|armatura magica|protezione|pelle di pietra|barriera|campo protettivo|difesa|si protegge|pf temporanei|assorbe|golem|forgia)/.test(text) && !/manca|manchi/.test(text)) return { kind: "shield", el: "arcane", miss: false };
+  // Debuff e controllo sull'avversario
+  if (/(svantaggio|paraliz|stordi|acciec|accec|spavent|ragnatela|\bsonno\b|ammalia|charm|controll|maledi|indeboli|rallent|intrappol|disarm|riscaldare arma|incandescen|trattien|blocca|corona della pazzia|confus)/.test(text)) return { kind: "debuff", el: arenaFxElement(text) || "darkness", miss };
+  // Buff su di sé o su un alleato (non "attacco furtivo", che è un colpo)
+  if (/(\baiuto\b|ispirazione|\bfuria\b|marchio|vantaggio|benedizion|eroismo|scatto d'azione|azione extra|velocit|invisib|furtività|concentraz|si prepara|attiva|patto|fonte di magia|recupero arcano)/.test(text) && !/attacco furtivo|colpisce|colpisci/.test(text)) return { kind: "buff", el: arenaFxElement(text) || "radiant", miss: false };
+  // Da qui in giù: danno. Elemento dal testo, forma dal tipo di attacco.
+  const el = arenaFxElement(text);
+  if (/smite|punizione/.test(text)) return { kind: "slash", el: "radiant", miss };
+  // Colpi d'arma "con la freccia" del log delle abilità (Attacco Furtivo, Triboli…): non sono magie.
+  if (/(attacco furtivo|furtivo|triboli|turbine di lame|colpo stordente|deathblow|colpo mortale|\bcarica\b)/.test(text)) return { kind: "slash", el: el || "physical", miss };
+  const isSpell = /✨|→ [^:]+:|incantesimo|\bts\b|tiro salvezza|lancia (?:un |una |l')?(?:incantesimo|magia)/.test(text);
+  if (AOE_SPELL_RE.test(text)) return { kind: "aoe", el: el || (isSpell ? "arcane" : "fire"), miss };
+  if (isSpell) return { kind: "bolt", el: el || "arcane", miss };
+  if (/☠|veleno|pozione/.test(text)) return { kind: "bolt", el: el || "poison", miss };
+  if (RANGED_RE.test(text)) return { kind: "arrow", el: el || "physical", miss };
+  if (/(colpisce|colpisci|attacc|fendente|carica|furtivo|colpo|mischia|lama|taglia|morso|artigli|pugno|calcio|danni)/.test(text)) return { kind: "slash", el: el || "physical", miss };
+  if (el) return { kind: "bolt", el, miss };
   return null;
+}
+// Codici legacy di `lastFx` (heal · slash · ranged · fire · frost · lightning · poison · magic)
+// oppure già {kind, el} → formato VfxLayer.
+function normalizeArenaFx(effect) {
+  if (!effect) return null;
+  if (typeof effect === "object") return { kind: effect.kind || "bolt", el: effect.el || "arcane", miss: !!effect.miss };
+  const legacy = {
+    heal: ["heal", "radiant"], slash: ["slash", "physical"], ranged: ["arrow", "physical"],
+    fire: ["bolt", "fire"], frost: ["bolt", "frost"], lightning: ["bolt", "lightning"], poison: ["bolt", "poison"],
+    magic: ["bolt", "arcane"], shield: ["shield", "arcane"], buff: ["buff", "radiant"], debuff: ["debuff", "darkness"],
+  };
+  const [kind, el] = legacy[effect] || ["bolt", "arcane"];
+  return { kind, el, miss: false };
 }
 // Aggancia un effetto VFX al match tramite un campo PARALLELO `lastFx` (NON tocca
 // i log né la logica di combattimento). Serve per pet/demoni/costrutti/cure, che
 // usano log-stringa privi del riferimento al bersaglio. Il driver legge lastFx.
-function withArenaFx(matches, matchId, effect, targetId) {
+// `effect` = codice legacy ("slash", "fire"…) o {kind, el, miss}; `fromId` = chi agisce.
+function withArenaFx(matches, matchId, effect, targetId, fromId = null) {
   if (!targetId || !effect) return matches;
-  const fx = { id: `${effect}:${targetId}:${Date.now()}`, effect, targetId };
+  const fx = { id: `${typeof effect === "string" ? effect : effect.kind}:${targetId}:${Date.now()}`, effect, targetId, ...(fromId ? { fromId } : {}) };
   return matches.map(m => (m.matchId === matchId ? { ...m, lastFx: fx } : m));
-}
-
-// Effetti pixel in stile World Boss isometrico (CSS, semplici e pixelati):
-// armi (mischia + distanza) → schizzo di sangue rosso (tutte uguali);
-// incantesimi → "bolt" colorato per elemento (stile colpo arcano);
-// cure → pixel verdi che salgono.
-function arenaFxKind(effect) {
-  if (effect === "heal") return { kind: "heal" };
-  if (effect === "slash" || effect === "ranged") return { kind: "blood" };
-  return { kind: "bolt", el: effect === "magic" ? "arcane" : effect };
-}
-const ARENA_VFX_MS = 1050;
-function ArenaVfxLayer({ messages }) {
-  const seenRef = useRef(new Set());
-  const [active, setActive] = useState([]);
-  useEffect(() => {
-    if (!messages?.length) return;
-    for (const msg of messages) {
-      if (!msg?.id || seenRef.current.has(msg.id)) continue;
-      seenRef.current.add(msg.id);
-      for (const t of (msg.effectTargets || [])) {
-        const node = document.querySelector(`[data-vfx-target="${t}"]`);
-        if (!node) continue;
-        const rect = node.getBoundingClientRect();
-        if (!rect.width || !rect.height) continue;
-        const id = `${msg.id}-${t}`;
-        const fx = arenaFxKind(msg.effect);
-        setActive(prev => [...prev, { id, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, ...fx }]);
-        setTimeout(() => setActive(prev => prev.filter(a => a.id !== id)), ARENA_VFX_MS);
-      }
-    }
-  }, [messages]);
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    active.map(({ id, x, y, kind, el }) => {
-      const n = kind === "blood" ? 9 : kind === "heal" ? 9 : 7;
-      return (
-        <div key={id} className={`avfx avfx-${kind}${el ? ` el-${el}` : ""}`}
-          style={{ position: "fixed", left: x, top: y, pointerEvents: "none", zIndex: 9999 }}>
-          {(kind === "bolt" || kind === "heal") && <span className="avfx-core" />}
-          {Array.from({ length: n }, (_, i) => <i key={i} />)}
-        </div>
-      );
-    }),
-    document.body
-  );
 }
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
@@ -3280,28 +3274,49 @@ export default function Arena() {
     for (const m of mine) {
       const logs = m.logs || [];
       const baselined = vfxBaselineRef.current.has(m.matchId);
+      const key = (id) => `arena-fx:${m.matchId}:${id}`;
+      const lastObjLog = [...logs].reverse().find(l => l && typeof l === "object" && l.ts);
       for (const entry of logs) {
         if (!entry || typeof entry !== "object" || !entry.ts) continue;
-        const effect = classifyArenaVfx(entry);
-        if (!effect) continue;
+        const fx = classifyArenaVfx(entry);
+        if (!fx) continue;
         const id = `${m.matchId}:${entry.ts}`;
         if (vfxSeenRef.current.has(id)) continue;
         vfxSeenRef.current.add(id);
         if (!baselined) continue; // cronologia pre-apertura: marca come vista ma non animare
-        const offensive = ARENA_OFFENSIVE_FX.has(effect);
+        const offensive = ARENA_FX_OFFENSIVE.has(fx.kind);
         let targetId = entry.defId;
         if (!targetId) targetId = offensive ? m.players.find(p => p.id !== entry.attId)?.id : entry.attId;
         if (!targetId) continue;
-        fresh.push({ id, effect, effectTargets: [`arena-fx:${m.matchId}:${targetId}`] });
+        // Caduto: ultimo colpo della riga più recente e bersaglio a 0 PF → schizzo finale.
+        const tgt = m.players.find(p => p.id === targetId);
+        const killed = offensive && !fx.miss && entry === lastObjLog && !!tgt && (tgt.hp ?? 1) <= 0;
+        fresh.push({
+          id, effect: fx.kind, effectEl: fx.el,
+          effectTargets: [key(targetId)],
+          ...(offensive && entry.attId ? { effectFrom: key(entry.attId) } : {}),
+          ...(fx.miss ? { effectMissTargets: [key(targetId)] } : {}),
+          ...(killed ? { effectKill: [key(targetId)] } : {}),
+        });
       }
-      // Effetti dal campo parallelo lastFx (pet/demoni/costrutti/cure)
+      // Effetti dal campo parallelo lastFx (pet/demoni/costrutti/cure/IA)
       const lf = m.lastFx;
       if (lf && lf.id) {
         const lfId = `lf:${m.matchId}:${lf.id}`;
         if (!vfxSeenRef.current.has(lfId)) {
           vfxSeenRef.current.add(lfId);
-          if (baselined && lf.targetId) {
-            fresh.push({ id: lfId, effect: lf.effect, effectTargets: [`arena-fx:${m.matchId}:${lf.targetId}`] });
+          const fx = normalizeArenaFx(lf.effect);
+          if (baselined && lf.targetId && fx) {
+            const offensive = ARENA_FX_OFFENSIVE.has(fx.kind);
+            const tgt = m.players.find(p => p.id === lf.targetId);
+            const killed = offensive && !fx.miss && !!tgt && (tgt.hp ?? 1) <= 0 && m.status === "finished";
+            fresh.push({
+              id: lfId, effect: fx.kind, effectEl: fx.el,
+              effectTargets: [key(lf.targetId)],
+              ...(offensive && lf.fromId ? { effectFrom: key(lf.fromId) } : {}),
+              ...(fx.miss ? { effectMissTargets: [key(lf.targetId)] } : {}),
+              ...(killed ? { effectKill: [key(lf.targetId)] } : {}),
+            });
           }
         }
       }
@@ -5934,7 +5949,7 @@ export default function Arena() {
         }
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: aiSpellFx
-            ? withArenaFx(updatedMatches, matchId, aiSpellFx.effect, aiSpellFx.targetId)
+            ? withArenaFx(updatedMatches, matchId, aiSpellFx.effect, aiSpellFx.targetId, aiId)
             : updatedMatches,
         });
         return; // spell consumed the action; watcher re-fires if multi-action
@@ -9527,7 +9542,7 @@ export default function Arena() {
     <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}${arenaView === "join" ? " arena-page--lizza" : arenaView === "master" ? " arena-page--lanista" : ""}`}>
 
       {/* ── VFX pixelati (stile World Boss isometrico): overlay sopra le card ── */}
-      <ArenaVfxLayer messages={vfxMessages} />
+      <VfxLayer messages={vfxMessages} />
 
       {/* ── Floating Fight Button — sempre visibile durante un match attivo.
             Più epico quando è il tuo turno (pulsa rosso). ── */}
