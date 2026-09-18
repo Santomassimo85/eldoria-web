@@ -12,6 +12,8 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { isHiddenName, isHiddenChar } from "../data/hiddenPlayers";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png";
+/* numeri in lettere per la tagline del varco (1–20). */
+const NUM_IT = ["Zero", "Una", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci", "Undici", "Dodici", "Tredici", "Quattordici", "Quindici", "Sedici", "Diciassette", "Diciotto", "Diciannove", "Venti"];
 
 /* ── Party data — kept in one structure so we can render statistics ── */
 const PARTIES = [
@@ -54,6 +56,7 @@ const PARTIES = [
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",              class: "Warlock", image: "/assets/player/alaric.png" },
       { name: "Lael",                   race: "Alto Elfo",             class: "Mago",     image: "/assets/player/lael.jpg" },
+      { name: "Palar",                  race: "Dragonide (Ametista)",  class: "Paladino", image: "/assets/player/palar.webp" },
       { name: "Kael & Mora",                 race: "Hexblood",                class: "??", image: "/assets/player/.png" }, 
     ],
   },
@@ -91,12 +94,17 @@ const HERO_BIOS = {
   "Temistocle Sottocolle": "",
   "Alaric Voltasorte": "",
   "Lael": "",
+  "Palar": "",
   // Compagnia di Leaf
   "Soran": "",
   "Zethir": "",
   "Aksel": "",
   "Dago": "",
 };
+
+/* Compagnie con almeno un eroe ATTIVO: quelle svuotate (es. Lac) spariscono
+   dal registro senza cancellare i dati — basta riattivare un membro. */
+const ACTIVE_PARTIES = PARTIES.filter((p) => p.members.some((m) => !m.hidden && !isHiddenName(m.name)));
 
 /* normalizza un nome per il confronto (minuscolo, apostrofi, spazi). */
 const normName = (s) =>
@@ -308,19 +316,19 @@ export default function Party() {
   }, [chars]);
 
   const allMembers = useMemo(
-    () => PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden && !isHiddenName(m.name)).map((m) => ({ ...m, party: p.id }))),
+    () => ACTIVE_PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden && !isHiddenName(m.name)).map((m) => ({ ...m, party: p.id }))),
     []
   );
 
   const stats = useMemo(() => ({
-    parties: PARTIES.length,
+    parties: ACTIVE_PARTIES.length,
     heroes:  allMembers.length,
     races:   new Set(allMembers.map((m) => m.race)).size,
     classes: new Set(allMembers.map((m) => m.class)).size,
   }), [allMembers]);
 
   const visibleParties = useMemo(
-    () => activeParty === "all" ? PARTIES : PARTIES.filter((p) => p.id === activeParty),
+    () => activeParty === "all" ? ACTIVE_PARTIES : ACTIVE_PARTIES.filter((p) => p.id === activeParty),
     [activeParty]
   );
 
@@ -342,7 +350,7 @@ export default function Party() {
         eyebrow="Registro Araldico"
         title={<>Le Compagnie<br />di Exanthia</>}
         seal={`${stats.heroes} eroi attivi · ${stats.parties} compagnie`}
-        tagline="Quattro compagnie. Sedici anime. Una sola leggenda che si scrive, notte dopo notte, sulle pietre di Exanthia."
+        tagline={`${NUM_IT[stats.parties] || stats.parties} compagnie. ${NUM_IT[stats.heroes] || stats.heroes} anime. Una sola leggenda che si scrive, notte dopo notte, sulle pietre di Exanthia.`}
         actions={<a href="#party-index" className="gl-cta">✦ Sfoglia il registro</a>}
       />
 
@@ -362,7 +370,7 @@ export default function Party() {
           >
             ✦ Tutte
           </button>
-          {PARTIES.map((p) => (
+          {ACTIVE_PARTIES.map((p) => (
             <button
               key={p.id}
               type="button"

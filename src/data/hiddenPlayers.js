@@ -5,6 +5,9 @@
 // Restano intatti su Firestore: per farne riapparire uno, basta rimuovere
 // il suo UID (e/o il nome) da queste liste. Nessun dato viene perso.
 //
+// ROSTER ATTIVO (2026-09-18): master, Makenna (ripperti96), Lael, Temistocle,
+// Palar, Soran, Dago, Zethir, Garroth, Tanagar, Caius. Tutti gli altri qui sotto.
+//
 // NB: le pagine di gioco (TCG / Arena / World Boss) NON applicano questo
 // filtro per scelta progettuale (non vanno toccate).
 // ─────────────────────────────────────────────────────────────────────────
@@ -22,12 +25,18 @@ export const HIDDEN_PLAYER_UIDS = new Set([
   "BEctG30gGONN67AkcBV6JhAqF3y1", // Tinkle Muschioverde
   "DUlfCGLTo8PjGD0M9EB3yaIrecC3", // Vyger
   "ZETcx5SwVtdd4yjwikuv75MrAL23", // account vuoto (nessun PG creato)
+  // ── disattivati il 2026-09-18 (riattivabili togliendoli da qui) ──
+  "U8TMpwWpu3evPScvr9vln6rBBZn2", // Aksel
+  "NheEQoC51YcRH9tv1JdMsoBq9rx2", // Alaric Voltasorte
+  "kKhyyCsP1QhMCrsZuwVtUMsfibp1", // Horn
 ]);
 
 // Primo nome (minuscolo) — per le viste hardcoded basate sul nome (es. Party).
 export const HIDDEN_PLAYER_NAMES = new Set([
   "dante", "daga", "ismael", "taaras", "roynot",
   "cornelius", "goran", "timoty", "tinkle", "vyger", "horn",
+  // disattivati il 2026-09-18
+  "aksel", "alaric", "thoki", "cleofe", "kael",
 ]);
 
 export function isHiddenUid(uid) {
