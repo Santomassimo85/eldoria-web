@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { forgetPushToken } from './push/pushClient';
 
 // Struttura del contesto per il valore iniziale e per evitare errori di tipizzazione
 const initialContextValue = {
@@ -28,7 +29,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Funzione per il logout
-  const logout = () => {
+  const logout = async () => {
+    // Via il token push di questo dispositivo dal personaggio che esce: altrimenti
+    // continuerebbe a ricevere le sue notifiche (torneo, turni…) anche dopo.
+    try { await forgetPushToken(auth.currentUser?.uid); } catch { /* ignore */ }
     return signOut(auth);
   };
 

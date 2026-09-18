@@ -122,6 +122,20 @@ export function damageFormulaFor(action, fallback = "1d6") {
   return fallback;
 }
 
+// ── Magie che colpiscono SEMPRE (niente tiro per colpire) ───────────────────
+// Dardo Incantato / Magic Missile: 3 dardi da 1d4+1 danni da forza ciascuno,
+// tutti a segno. Ritorna {darts, formula} oppure null per le altre azioni.
+const AUTO_HIT = [
+  [/magic missile|dardo incantato|dardi incantati/, { darts: 3, fallback: "1d4+1" }],
+];
+export function autoHitSpellFor(action) {
+  const name = plain(action?.name);
+  const hit = AUTO_HIT.find(([re]) => re.test(name));
+  if (!hit) return null;
+  const { darts, fallback } = hit[1];
+  return { darts, formula: damageFormulaFor(action, fallback).replace(/s+/g, "") };
+}
+
 // ── Magie ad AREA ───────────────────────────────────────────────────────────
 // Ritorna {save, half, shape, label} se l'azione colpisce TUTTI i nemici, null se è a
 // bersaglio singolo. Regole: campi dell'editor (aoeShape ≠ single) → nome nella

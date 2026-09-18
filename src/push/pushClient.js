@@ -9,7 +9,7 @@
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { getToken, deleteToken, onMessage } from "firebase/messaging";
-import { doc, updateDoc, arrayUnion, arrayRemove, setDoc } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, getMessagingIfSupported, VAPID_KEY } from "../firebase";
 
 const LS_PREF = "ch_push_pref";    // "on" | "off" | "" (mai scelto)
@@ -35,6 +35,13 @@ async function saveToken(uid, token) {
     await setDoc(ref, { fcmTokens: [token] }, { merge: true });   // doc mancante
   }
   ls.set(LS_TOKEN, token);
+  // Il token identifica QUESTO dispositivo: se un altro personaggio lo aveva ancora
+  // (login con un altro account sullo stesso telefono/PC), glielo togliamo, altrimenti
+  // qui arriverebbero anche le sue notifiche (turni del torneo, match…).
+  try {
+    const others = await getDocs(query(collection(db, "characters"), where("fcmTokens", "array-contains", token)));
+    await Promise.all(others.docs.filter((d) => d.id !== uid).map((d) => updateDoc(d.ref, { fcmTokens: arrayRemove(token) }).catch(() => {})));
+  } catch { /* regole o rete: pazienza, ci riprova al prossimo avvio */ }
 }
 async function forgetToken(uid) {
   const token = ls.get(LS_TOKEN);
@@ -144,6 +151,14 @@ export async function disablePush(uid) {
     try { await PushNotifications.unregister(); } catch { /* ignore */ }
   }
   return { ok: true };
+}
+
+// Al logout: il dispositivo smette di ricevere le notifiche dell'account che lascia
+// (la preferenza on/off resta; al prossimo login `resumePush` registra il nuovo utente).
+export async function forgetPushToken(uid) {
+  const token = ls.get(LS_TOKEN);
+  if (!token || !uid) return;
+  try { await updateDoc(doc(db, "characters", uid), { fcmTokens: arrayRemove(token) }); } catch { /* ignore */ }
 }
 
 // All'avvio: se l'utente ha scelto "on", rinnova il token in silenzio (ruotano).

@@ -27,7 +27,7 @@ import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";
-import { pickEffectForAction, areaSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
+import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
@@ -968,6 +968,47 @@ export default function WorldBoss() {
     }
   };
 
+  // Magia che colpisce SEMPRE (Dardo Incantato): niente d20, ogni dardo tira il suo
+  // danno e tutti vanno a segno sul bersaglio scelto.
+  const castAutoHitSpell = async (action, auto) => {
+    const boss = currentTarget;
+    if (!boss || isUserLocked) return;
+    const formula = auto.formula.replace(/@mod/g, getSpellMod(charData));
+    const darts = [];
+    let totalDamage = 0;
+    for (let i = 0; i < auto.darts; i++) { const r = rollDetail(formula); darts.push(r); totalDamage += r.total; }
+    const currentShield = boss.shield || 0;
+    const currentHp = boss.hp || 0;
+    let rem = totalDamage, newShield = currentShield, newHp = currentHp;
+    if (currentShield > 0) {
+      if (currentShield >= rem) { newShield -= rem; rem = 0; }
+      else { rem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - rem); }
+    } else { newHp = Math.max(0, currentHp - rem); }
+    try {
+      await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
+      let damageRoll = `🎯 ${auto.darts} dardi: ${darts.map((d) => `${d.detail}=${d.total}`).join(" · ")} = 💥 ${totalDamage} DANNI!`;
+      if (newShield < currentShield) damageRoll += " 🛡️ Scudo colpito!";
+      if (newHp <= 0) damageRoll += ` ☠ ${boss.name} cade!`;
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} → ${boss.name}`,
+        hitRoll: `✨ Colpisce sempre: ${auto.darts} dardi da ${formula}, nessun tiro per colpire`,
+        damageRoll,
+        uid: currentUser.uid, category: action.category,
+        timestamp: serverTimestamp(),
+        ...fxFields(action, [boss.vfxKey], { kind: "bolt", from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }),
+      });
+      if (activeBosses[0]?.id) {
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
+        });
+      }
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore magia a colpo sicuro:", err);
+    }
+  };
+
   // `opts.rider` = abilità che aggiunge dadi al colpo d'arma (Divine Smite…): `action` è l'ARMA.
   const handleActionRoll = async (action, opts = {}) => {
     const boss = currentTarget; // il nemico scelto (boss o minion)
@@ -1012,6 +1053,10 @@ export default function WorldBoss() {
       }
       // kind "attack" (Ram / colpo senza armi) → tiro per colpire qui sotto
     }
+
+    // Dardo Incantato: 3 dardi, tutti a segno, niente d20.
+    const autoHit = skill ? null : autoHitSpellFor(action);
+    if (autoHit) { await castAutoHitSpell(action, autoHit); return; }
 
     // Route spells by intent (self_buff/heal/buff/debuff). Weapons always fall through to attack.
     const intent = skill ? "attack" : detectSpellIntent(action);
