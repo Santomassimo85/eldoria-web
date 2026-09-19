@@ -121,7 +121,9 @@
 }
 
 /* ── tabelle: trasparenti, filetti viola, intestazioni ciano ── */
-.cr-page .cr-ingredients-table { padding: 6px 0 0; overflow-x: auto; }
+/* il Covo mette overflow:hidden su ogni .nx-pannello: qui il pannello deve poter scorrere in orizzontale
+   (selettore più forte di body:not(.theme-dark) :is(.nx-pannello, …)) */
+.cr-page .nx-pannello.cr-ingredients-table { padding: 6px 0 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
 .cr-page .cr-ing-head, .cr-page .cr-ing-row {
   display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px;
   padding: 10px 16px; border-bottom: 1px solid rgba(var(--el-rgb), .22);
@@ -130,7 +132,13 @@
 .cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); font-weight: 700; }
 .cr-page .cr-ing-row:last-child { border-bottom: none; }
 .cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: var(--osso); }
-@media (max-width: 640px) { .cr-page .cr-ing-head, .cr-page .cr-ing-row { min-width: 560px; } }
+/* telefono: niente scorrimento laterale, ogni riga diventa una scheda con le tre pregiature etichettate */
+@media (max-width: 640px) {
+  .cr-page .cr-ing-head { display: none; }
+  .cr-page .cr-ing-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 14px; }
+  .cr-page .cr-ing-prof { margin-bottom: 2px; }
+  .cr-page .cr-ing-cell::before { content: attr(data-label) " · "; font-family: "Cinzel", Georgia, serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: var(--el-2); }
+}
 
 /* ── sentiero del maestro ── */
 .cr-page .cr-sentiero-step { display: flex; gap: 14px; align-items: flex-start; }

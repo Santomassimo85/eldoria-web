@@ -273,9 +273,9 @@ export default function Crafting() {
               {ESEMPI_INGREDIENTI.map(row => (
                 <div key={row.professione} className="cr-ing-row">
                   <div className="cr-ing-prof">{row.professione}</div>
-                  <div>{row.raro}</div>
-                  <div>{row.magico}</div>
-                  <div>{row.perfetto}</div>
+                  <div className="cr-ing-cell" data-label="Raro">{row.raro}</div>
+                  <div className="cr-ing-cell" data-label="Magico">{row.magico}</div>
+                  <div className="cr-ing-cell" data-label="Perfetto">{row.perfetto}</div>
                 </div>
               ))}
             </div>
