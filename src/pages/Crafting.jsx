@@ -230,7 +230,7 @@ export default function Crafting() {
                 <span className="cr-passo-ic" aria-hidden="true">🧰</span>
                 <span className="nx-nome">Strumenti della professione</span>
                 <b className="cr-time-fx">−{fmtMinutes(TOOLS_MINUTES)}</b>
-                <span className="nx-nota">Con gli strumenti hai anche il bonus di competenza; senza, tempo pieno e svantaggio.</span>
+                <span className="nx-nota">Con gli strumenti hai anche il bonus di competenza; senza, tempo pieno e svantaggio. Si sbloccano solo se sono sulla tua scheda Foundry (sincronizzata) o comprati al Mercato.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🧪</span>
@@ -259,7 +259,7 @@ export default function Crafting() {
             </div>
 
             <h3 className="cr-subtitle">I 10 componenti</h3>
-            <p className="nx-nota cr-section-sub">Oggetti da trovare in sessione: accorciano il lavoro e danno +1d{COMPONENT_ROLL_DIE} al tiro ciascuno; quattro lasciano anche un effetto sull'oggetto, che decide il DM. Il Master li assegna dal suo pannello nell'Officina.</p>
+            <p className="nx-nota cr-section-sub">Oggetti da trovare in sessione: accorciano il lavoro e danno +1d{COMPONENT_ROLL_DIE} al tiro ciascuno; quattro lasciano anche un effetto sull'oggetto, che decide il DM. Si usano solo se risultano tuoi: nell'inventario su Foundry con questo nome (poi sincronizza), assegnati dal Master nell'Officina o comprati al Mercato.</p>
             <div className="cr-comp-grid">
               {COMPONENTS.map(c => (
                 <div key={c.key} className="nx-pannello cr-comp-card">

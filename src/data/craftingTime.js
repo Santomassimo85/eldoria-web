@@ -29,16 +29,16 @@ export const MAX_COMPONENTS = 3;
 // scritta nella descrizione dell'oggetto e nella coda del Master.
 export const COMPONENT_ROLL_DIE = 3;
 export const COMPONENTS = [
-  { key: "quercia",   icon: "🪵", name: "Legno di Quercia Antica",     minutes: 30, desc: "Un ceppo stagionato cent'anni: non si spacca e prende forma senza sforzo." },
-  { key: "ferro",     icon: "⛏", name: "Minerale di Ferro Puro",      minutes: 30, desc: "Ferro senza scorie, dalle vene profonde di Helmvil: fonde in metà del tempo." },
-  { key: "seta",      icon: "🧵", name: "Filo di Seta di Ragno",       minutes: 30, desc: "Un gomitolo lucido e tenace: si cuce, si lega e si intreccia quasi da solo.", effect: { dm: "bonus al movimento", label: "Bonus al movimento (a scelta del DM)" } },
-  { key: "lunaria",   icon: "🌿", name: "Erba Lunaria",                minutes: 30, desc: "Raccolta con la luna piena, già essiccata: pronta da pestare o infondere.", effect: { dm: "potenziamento notturno", label: "Potenziamento notturno (a scelta del DM)" } },
-  { key: "carbone",   icon: "🔥", name: "Carbone Runico",              minutes: 45, desc: "Brucia più caldo e più a lungo: la fucina o il fornello arrivano subito a temperatura." },
-  { key: "sorgente",  icon: "💧", name: "Acqua di Sorgente Benedetta", minutes: 30, desc: "Limpida e senza impurità: distillati, tinture e impasti non vanno filtrati." },
-  { key: "osso",      icon: "🦴", name: "Osso di Bestia Antica",       minutes: 45, desc: "Duro come pietra ma facile da incidere: ottimo per manici, intarsi e amuleti.", effect: { dm: "bonus di attacco", label: "Bonus di attacco (a scelta del DM)" } },
-  { key: "sale",      icon: "🧂", name: "Sale delle Profondità",       minutes: 30, desc: "Cristalli grigi delle miniere: conservano, fissano i colori e stabilizzano le miscele." },
-  { key: "cera",      icon: "🕯", name: "Cera d'Api Titanica",         minutes: 45, desc: "Un panetto che non si scioglie al sole: per stampi, sigilli, lucidature e candele." },
-  { key: "cristallo", icon: "💎", name: "Scheggia di Cristallo Grezzo", minutes: 60, desc: "Vibra piano se la si accosta a qualcosa d'incantato: accorda i materiali fra loro.", effect: { price: 500, label: "+500 mo al valore dell'oggetto" } },
+  { key: "quercia",   icon: "🪵", name: "Legno di Quercia Antica",     minutes: 30, aliases: ["quercia antica", "ancient oak"], desc: "Un ceppo stagionato cent'anni: non si spacca e prende forma senza sforzo." },
+  { key: "ferro",     icon: "⛏", name: "Minerale di Ferro Puro",      minutes: 30, aliases: ["ferro puro", "minerale di ferro", "pure iron"], desc: "Ferro senza scorie, dalle vene profonde di Helmvil: fonde in metà del tempo." },
+  { key: "seta",      icon: "🧵", name: "Filo di Seta di Ragno",       minutes: 30, aliases: ["seta di ragno", "spider silk"], desc: "Un gomitolo lucido e tenace: si cuce, si lega e si intreccia quasi da solo.", effect: { dm: "bonus al movimento", label: "Bonus al movimento (a scelta del DM)" } },
+  { key: "lunaria",   icon: "🌿", name: "Erba Lunaria",                minutes: 30, aliases: ["lunaria", "moonwort"], desc: "Raccolta con la luna piena, già essiccata: pronta da pestare o infondere.", effect: { dm: "potenziamento notturno", label: "Potenziamento notturno (a scelta del DM)" } },
+  { key: "carbone",   icon: "🔥", name: "Carbone Runico",              minutes: 45, aliases: ["carbone runico", "runic coal", "rune coal"], desc: "Brucia più caldo e più a lungo: la fucina o il fornello arrivano subito a temperatura." },
+  { key: "sorgente",  icon: "💧", name: "Acqua di Sorgente Benedetta", minutes: 30, aliases: ["sorgente benedetta", "blessed spring"], desc: "Limpida e senza impurità: distillati, tinture e impasti non vanno filtrati." },
+  { key: "osso",      icon: "🦴", name: "Osso di Bestia Antica",       minutes: 45, aliases: ["osso di bestia", "ancient beast bone", "beast bone"], desc: "Duro come pietra ma facile da incidere: ottimo per manici, intarsi e amuleti.", effect: { dm: "bonus di attacco", label: "Bonus di attacco (a scelta del DM)" } },
+  { key: "sale",      icon: "🧂", name: "Sale delle Profondità",       minutes: 30, aliases: ["sale delle profondità", "deep salt"], desc: "Cristalli grigi delle miniere: conservano, fissano i colori e stabilizzano le miscele." },
+  { key: "cera",      icon: "🕯", name: "Cera d'Api Titanica",         minutes: 45, aliases: ["cera titanica", "titan beeswax", "titanic beeswax"], desc: "Un panetto che non si scioglie al sole: per stampi, sigilli, lucidature e candele." },
+  { key: "cristallo", icon: "💎", name: "Scheggia di Cristallo Grezzo", minutes: 60, aliases: ["cristallo grezzo", "raw crystal", "rough crystal"], desc: "Vibra piano se la si accosta a qualcosa d'incantato: accorda i materiali fra loro.", effect: { price: 500, label: "+500 mo al valore dell'oggetto" } },
 ];
 // Etichetta breve dell'effetto extra di un componente ("" se non ne ha).
 export const componentEffectLabel = (c) => c?.effect?.label || "";

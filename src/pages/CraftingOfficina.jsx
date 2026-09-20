@@ -23,6 +23,7 @@ import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, helpByKey, paceByKey } from "../data/craftingTime";
+import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import "./CraftingOfficina.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -75,7 +76,6 @@ function whenLabel(ms, now) {
   const wd = new Intl.DateTimeFormat("it-IT", { timeZone: ROME, weekday: "short", day: "numeric" }).format(d);
   return `${wd} · ${hm}`;
 }
-const stockOf = (crafting, key) => Number(crafting?.components?.[key]) || 0;
 
 export default function CraftingOfficina() {
   const { currentUser } = useAuth();
@@ -119,6 +119,10 @@ export default function CraftingOfficina() {
   const crafting = charData?.crafting || {};
   const prof = PROFESSIONI.find((p) => p.key === crafting.profession) || null;
   const hasProf = !!prof;
+  // Strumenti e componenti si usano solo se risultano posseduti (scheda Foundry, scorta del Master, Mercato).
+  const ownCtx = { charData, marketItems, isMaster };
+  const toolsEv = prof ? toolsEvidence(prof, ownCtx) : { ok: false, label: "", hint: "" };
+  const toolsOn = tools && toolsEv.ok;
 
   // Giorno e settimana si contano con l'ora del SERVER, non del telefono
   // (spostare l'orologio avanti non regala prove né accorcia i lavori).
@@ -150,20 +154,20 @@ export default function CraftingOfficina() {
   // Componenti selezionati che non si possiedono più (es. il Master li ha tolti): via.
   useEffect(() => {
     if (isMaster) return;
-    setComps((cur) => cur.filter((k) => stockOf(crafting, k) > 0));
-  }, [crafting.components, isMaster]); // eslint-disable-line react-hooks/exhaustive-deps
+    setComps((cur) => cur.filter((k) => componentEvidence(componentByKey(k), { charData, marketItems, isMaster }).qty > 0));
+  }, [charData, marketItems, isMaster]);
 
   // Bonus al tiro e tempo del lavoro.
   const abil = prof ? abilityModFor(charData, prof) : 0;
-  const toolB = tools ? profBonus(charData) : 0;
+  const toolB = toolsOn ? profBonus(charData) : 0;
   const gradeB = prog.bonus;
   const helpOpt = helpByKey(help), paceOpt = paceByKey(pace), qualOpt = qualityByKey(quality);
   const extra = helpOpt.roll + paceOpt.roll;
-  const advSum = qualOpt.adv + (tools ? 0 : -1);
+  const advSum = qualOpt.adv + (toolsOn ? 0 : -1);
   const advMode = advSum > 0 ? "adv" : advSum < 0 ? "dis" : "";
   const bonus = abil + toolB + gradeB + extra;
   const targetCost = PREGIATURA_COSTS.find((c) => c.tier === target);
-  const work = useMemo(() => craftMinutes({ tier: target, tools, components: comps, help, pace, ritmoBottega: prog.level.lv >= 6 }), [target, tools, comps, help, pace, prog.level.lv]);
+  const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, help, pace, ritmoBottega: prog.level.lv >= 6 }), [target, toolsOn, comps, help, pace, prog.level.lv]);
 
   const activeEntry = revealed ? pendingEntry : null;
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
@@ -250,6 +254,7 @@ export default function CraftingOfficina() {
         quality: qualOpt.key, help: helpOpt.key, pace: paceOpt.key, components: work.components,
         xp: failed ? 0 : xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, critRoll, skipped: failed, // fallito = chiuso subito, non blocca il banco
+        componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
       };
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
       await runTransaction(db, async (tx) => {
@@ -271,11 +276,15 @@ export default function CraftingOfficina() {
           "crafting.xp": (Number(cur.xp) || 0) + entry.xp,
           "crafting.log": [entry, ...prevLog].slice(0, 40),
         };
-        // I componenti si consumano: uno per tipo, solo se davvero in scorta.
+        // I componenti: dalla scorta del Master si consumano (uno per tipo); altrimenti
+        // devono risultare sulla scheda Foundry o comprati al Mercato (il Master li toglie lui).
         for (const k of entry.components) {
+          const c = componentByKey(k);
           const n = Number(cur.components?.[k]) || 0;
-          if (n <= 0 && !isMaster) throw new Error(`${componentByKey(k)?.name || k}: non ne hai più.`);
-          patch[`crafting.components.${k}`] = Math.max(0, n - 1);
+          if (n > 0) { patch[`crafting.components.${k}`] = n - 1; entry.componentProof[k] = `scorta del Master (consumato 1 di ${n})`; continue; }
+          const ev = componentEvidence(c, ownCtx);
+          if (!ev.ok && !isMaster) throw new Error(`${c?.name || k}: non risulta tra le tue cose.`);
+          entry.componentProof[k] = ev.ok && ev.label ? `${ev.label} · da togliere dalla scheda` : "Master";
         }
         tx.update(ref, patch);
       });
@@ -329,6 +338,8 @@ export default function CraftingOfficina() {
           minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
           components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
           componentBonus: entry.bonusParts?.comps || 0,
+          componentProofs: (entry.components || []).map((k) => `${componentByKey(k)?.name || k}: ${entry.componentProof?.[k] || "—"}`),
+          toolsProof: entry.toolsProof || "",
           componentEffects: (entry.components || []).map((k) => componentByKey(k)).filter((c) => c?.effect).map((c) => `${c.name}: ${c.effect.label}`),
         },
         createdAt: serverTimestamp(), createdBy: currentUser.email,
@@ -353,7 +364,7 @@ export default function CraftingOfficina() {
   }
 
   const workPct = pendingEntry ? Math.max(0, Math.min(100, Math.round(((nowMs - (pendingEntry.at || 0)) / Math.max(1, readyAt - (pendingEntry.at || 0))) * 100))) : 0;
-  const ownedComps = COMPONENTS.map((c) => ({ ...c, n: isMaster ? Infinity : stockOf(crafting, c.key) }));
+  const ownedComps = COMPONENTS.map((c) => { const ev = componentEvidence(c, ownCtx); return { ...c, n: ev.qty, ev }; });
   const anyComp = ownedComps.some((c) => c.n > 0);
 
   return (
@@ -445,12 +456,22 @@ export default function CraftingOfficina() {
           <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> Prepara il banco <small>ogni voce accorcia il lavoro o cambia il tiro</small></h3>
           <div className="off-bench">
             {/* strumenti */}
-            <button type="button" className={`off-tile off-tile-btn${tools ? " on" : " is-bad"}`} onClick={() => setTools(!tools)} aria-pressed={tools}>
-              <span className="off-tile-h">🧰 Strumenti</span>
-              <b className="off-tile-v">{tools ? "Ho gli strumenti" : "Senza strumenti"}</b>
-              <span className="off-tile-fx">{tools ? <><em>−{fmtMinutes(TOOLS_MINUTES)}</em> · {sign(profBonus(charData))} competenza</> : <><em>tempo pieno</em> · svantaggio</>}</span>
-              <span className="off-tile-tap">{tools ? "tocca se non li hai con te" : "tocca se li hai"}</span>
-            </button>
+            {toolsEv.ok ? (
+              <button type="button" className={`off-tile off-tile-btn${toolsOn ? " on" : " is-bad"}`} onClick={() => setTools(!tools)} aria-pressed={toolsOn}>
+                <span className="off-tile-h">🧰 Strumenti</span>
+                <b className="off-tile-v">{toolsOn ? "Ho gli strumenti" : "Senza strumenti"}</b>
+                <span className="off-tile-fx">{toolsOn ? <><em>−{fmtMinutes(TOOLS_MINUTES)}</em> · {sign(profBonus(charData))} competenza</> : <><em>tempo pieno</em> · svantaggio</>}</span>
+                <span className="off-tile-proof">✓ {toolsEv.label}</span>
+                <span className="off-tile-tap">{toolsOn ? "tocca se non li hai con te" : "tocca se li hai"}</span>
+              </button>
+            ) : (
+              <div className="off-tile off-tile-btn is-bad is-locked" aria-disabled="true">
+                <span className="off-tile-h">🧰 Strumenti <small>🔒</small></span>
+                <b className="off-tile-v">Senza strumenti</b>
+                <span className="off-tile-fx"><em>tempo pieno</em> · svantaggio</span>
+                <span className="off-tile-empty">Non risultano <strong>{toolsEv.hint}</strong> sulla tua scheda. Mettili nell'inventario su Foundry e sincronizza (o compra al Mercato): si sbloccano da soli.</span>
+              </div>
+            )}
 
             {/* componenti */}
             <div className="off-tile">
@@ -461,7 +482,7 @@ export default function CraftingOfficina() {
                     const on = comps.includes(c.key);
                     const full = !on && comps.length >= MAX_COMPONENTS;
                     return (
-                      <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={c.desc}>
+                      <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={`${c.desc} · ${c.ev.label}`}>
                         <span className="off-comp-ic" aria-hidden="true">{c.icon}</span>
                         <span className="off-comp-name">{c.name}{c.effect ? <i className="off-comp-eff"> · {componentEffectLabel(c)}</i> : null}</span>
                         <span className="off-comp-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
@@ -470,7 +491,7 @@ export default function CraftingOfficina() {
                   })}
                 </div>
               ) : (
-                <p className="off-tile-empty">Non hai componenti. Il Master te li fa <strong>trovare in sessione</strong> e li segna qui: ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
+                <p className="off-tile-empty">Nessun componente risulta tuo. Li trovi <strong>in sessione</strong>: il Master te li assegna qui o li mette nell'inventario su Foundry (poi sincronizza); ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
               )}
               {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</em> al tiro (si tira all'avvio) · si consumano</span>}
             </div>
@@ -654,14 +675,14 @@ export default function CraftingOfficina() {
       {/* ── LA TUA SCORTA DI COMPONENTI ── */}
       {prof && (
         <details className="nx-pannello off-box off-stock-box">
-          <summary>🧪 I tuoi componenti <small>({ownedComps.filter((c) => Number.isFinite(c.n) && c.n > 0).reduce((a, c) => a + c.n, 0)} pezzi · li trovi in sessione, il Master li segna qui)</small></summary>
+          <summary>🧪 I tuoi componenti <small>({ownedComps.filter((c) => Number.isFinite(c.n) && c.n > 0).reduce((a, c) => a + c.n, 0)} pezzi · dalla scheda Foundry, dal Master o dal Mercato)</small></summary>
           <ul className="off-stock-list">
-            {COMPONENTS.map((c) => {
-              const n = stockOf(crafting, c.key);
+            {ownedComps.map((c) => {
+              const n = Number.isFinite(c.n) ? c.n : 0;
               return (
                 <li key={c.key} className={n > 0 ? "on" : ""}>
                   <span className="off-stock-ic" aria-hidden="true">{c.icon}</span>
-                  <span className="off-stock-main"><b>{c.name} <i>×{n}</i></b><small>{c.desc}{c.effect ? ` — ${componentEffectLabel(c)}.` : ""}</small></span>
+                  <span className="off-stock-main"><b>{c.name} <i>×{n}</i></b><small>{c.desc}{c.effect ? ` — ${componentEffectLabel(c)}.` : ""}{n > 0 && c.ev.label ? <><br />✓ {c.ev.label}</> : null}</small></span>
                   <span className="off-stock-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}</span>
                 </li>
               );

@@ -215,6 +215,19 @@ const actionsFirestore = actionItems.map(item => {
   };
 });
 
+// --- INVENTARIO (per l'Officina del crafting: strumenti e componenti posseduti) ---
+const inventoryFirestore = actor.items
+  .filter(i => ["tool", "consumable", "loot", "equipment", "container", "backpack", "weapon"].includes(i.type))
+  .map(i => ({
+    mapValue: {
+      fields: {
+        name:     { stringValue: i.name },
+        type:     { stringValue: i.type },
+        quantity: { integerValue: String(i.system?.quantity ?? 1) }
+      }
+    }
+  }));
+
 // --- DOCUMENTO FIRESTORE ---
 const firestoreDoc = {
   fields: {
@@ -223,12 +236,13 @@ const firestoreDoc = {
     class:   { stringValue: charClass },
     image:   { stringValue: image },
     stats:   { mapValue: { fields: statsFields } },
-    actions: { arrayValue: { values: actionsFirestore } }
+    actions: { arrayValue: { values: actionsFirestore } },
+    inventory: { arrayValue: { values: inventoryFirestore } }
   }
 };
 
 // --- UPDATE MASK (platinum e rattoPoints non elencati → non vengono toccati) ---
-const maskFields  = ["name", "level", "class", "image", "stats", "actions"];
+const maskFields  = ["name", "level", "class", "image", "stats", "actions", "inventory"];
 const maskParams  = maskFields
   .map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`)
   .join("&");
