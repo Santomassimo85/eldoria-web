@@ -549,7 +549,7 @@ export default function CraftingOfficina() {
               <div className="off-formula">
                 <span className="off-die">d20</span>
                 <span className="off-piece"><b>{sign(abil)}</b><small>{prof.caratteristica}</small></span>
-                <span className={`off-piece${tools ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
+                <span className={`off-piece${toolsOn ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
                 <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
                 {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>aiuto/ritmo</small></span>}
                 {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
