@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   HERO_QUOTE,
   PREGIATURE,
@@ -11,6 +11,7 @@ import {
   ESEMPI_GIOCO,
 } from "../data/crafting";
 import GlacierHero from "../components/glacier/GlacierHero";
+import CraftingOfficina from "./CraftingOfficina";
 import "./Crafting.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -57,6 +58,7 @@ const LIBERO_STEPS = [
 
 // ── Sommario del manuale (ancore invariate) ─────────────────────────────────
 const SOMMARIO = [
+  { href: "#cr-officina",   num: "⚒",   t: "L'Officina" },
   { href: "#cr-pregiature", num: "I",   t: "Le Cinque Pregiature" },
   { href: "#cr-tiro",       num: "II",  t: "Il Tiro di Pregiatura" },
   { href: "#cr-libero",     num: "★",   t: "Crafting Libero" },
@@ -66,10 +68,24 @@ const SOMMARIO = [
   { href: "#cr-esempi",     num: "VI",  t: "Esempi di Gioco" },
 ];
 
+// Apre la piega del manuale a cui punta un link (#cr-…) prima che il browser scorra.
+function openFold(href) {
+  const el = document.querySelector(href);
+  if (el && el.tagName === "DETAILS") el.open = true;
+}
+
 export default function Crafting() {
   useParallaxScroll();
   const [filter, setFilter] = useState("all");
   const [openProf, setOpenProf] = useState(null);
+
+  // Arrivo con un'ancora (es. dall'Almanacco): apro la piega giusta.
+  useEffect(() => {
+    if (window.location.hash && window.location.hash !== "#cr-index") {
+      openFold(window.location.hash);
+      setTimeout(() => document.querySelector(window.location.hash)?.scrollIntoView({ block: "start" }), 80);
+    }
+  }, []);
 
   const visibleProfessioni = useMemo(
     () => filter === "all"
@@ -87,15 +103,15 @@ export default function Crafting() {
         image={HERO_IMAGE}
         eyebrow="Manuale dell'Artigiano"
         title={<>Crafting<br />di Exanthia</>}
-        seal="⚒ Sistema 5e · 10 professioni · 5 pregiature"
+        seal="⚒ Officina aperta · 1 prova al giorno · 3 a settimana"
         tagline={HERO_QUOTE}
-        actions={<a href="#cr-index" className="gl-cta" aria-label="Scorri al sommario">✦ Sfoglia il sommario</a>}
+        actions={<><a href="#cr-officina" className="gl-cta" aria-label="Vai all'Officina">⚒ Crea un oggetto</a><a href="#cr-index" className="gl-cta gl-cta--ghost" aria-label="Scorri al sommario">✦ Il manuale</a></>}
       />
 
       {/* ── SOMMARIO a pillole (satelliti del manuale) ── */}
       <nav id="cr-index" className="nx-pillole cr-sommario" aria-label="Sommario del manuale">
         {SOMMARIO.map(s => (
-          <a key={s.href} href={s.href} className="nx-pillola">
+          <a key={s.href} href={s.href} className="nx-pillola" onClick={() => openFold(s.href)}>
             <span className="cr-pill-num" aria-hidden="true">{s.num}</span>{s.t}
           </a>
         ))}
@@ -108,21 +124,32 @@ export default function Crafting() {
           <h2 className="nx-titolo cr-rubrica-titolo">Sommario</h2>
           <div className="cr-rubrica-lista">
             {SOMMARIO.map(s => (
-              <a key={s.href} href={s.href} className="nx-pillola cr-rubrica-voce">
+              <a key={s.href} href={s.href} className="nx-pillola cr-rubrica-voce" onClick={() => openFold(s.href)}>
                 <span className="cr-pill-num" aria-hidden="true">{s.num}</span>{s.t}
               </a>
             ))}
           </div>
-          <p className="nx-nota">Un tiro solo: d20 + caratteristica + strumenti. Il totale decide la qualità.</p>
+          <p className="nx-nota">Un tiro solo: d20 + caratteristica + strumenti. Il totale decide la qualità. I capitoli si aprono al tocco.</p>
         </aside>
 
         {/* ── FLUSSO dei capitoli ── */}
         <div className="cr-flusso">
 
+          {/* ── ⚒ L'OFFICINA — il crafting giocabile (fuori e dentro la sessione) ── */}
+          <section id="cr-officina" className="cr-section cr-officina-sec" data-chapter="⚒">
+            <div className="gl-sezlabel">L'Officina · crea i tuoi oggetti</div>
+            <p className="nx-nota cr-section-sub">
+              Tira qui come al tavolo: un d20 per la pregiatura, un d12 sulla tabella della tua professione.
+              L'oggetto arriva al Master già compilato per Foundry e finisce nel tuo inventario.
+              Una prova al giorno, tre a settimana: si azzerano la domenica alle 22.
+            </p>
+            <CraftingOfficina />
+          </section>
+
           {/* ── RECAP LAMPO — il crafting in 3 mosse ── */}
-          <section className="cr-section cr-recap-sec">
+          <details id="cr-recap" className="cr-section cr-fold cr-recap-sec">
+            <summary className="gl-sezlabel">⚡ In due parole · il crafting in 3 mosse</summary>
             <div className="nx-pannello cr-recap">
-              <span className="nx-pillola on cr-recap-badge">⚡ In due parole</span>
               <p className="nx-prosa cr-recap-lead">
                 Creare un oggetto è <strong>un tiro solo</strong>: scegli cosa fare, tiri <strong>1d20</strong> e
                 sommi i tuoi bonus. Più alto è il totale, più l'oggetto è pregiato — da <strong>Scarso</strong> a
@@ -138,11 +165,11 @@ export default function Crafting() {
                 ))}
               </ol>
             </div>
-          </section>
+          </details>
 
           {/* ── I · PREGIATURE ───────────────────────────── */}
-          <section id="cr-pregiature" className="cr-section" data-chapter="I">
-            <div className="gl-sezlabel">Capitolo I · Le Cinque Pregiature</div>
+          <details id="cr-pregiature" className="cr-section cr-fold" data-chapter="I">
+            <summary className="gl-sezlabel">Capitolo I · Le Cinque Pregiature</summary>
             <p className="nx-nota cr-section-sub">Ogni oggetto creato ottiene una qualità basata sul tiro di Pregiatura.</p>
             <div className="nx-griglia cr-pregiature-row">
               {PREGIATURE.map(p => (
@@ -154,11 +181,11 @@ export default function Crafting() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
           {/* ── II · TIRO ────────────────────────────────── */}
-          <section id="cr-tiro" className="cr-section" data-chapter="II">
-            <div className="gl-sezlabel">Capitolo II · Il Tiro di Pregiatura</div>
+          <details id="cr-tiro" className="cr-section cr-fold" data-chapter="II">
+            <summary className="gl-sezlabel">Capitolo II · Il Tiro di Pregiatura</summary>
             <p className="nx-nota cr-section-sub">Un unico tiro decide la qualità di ciò che crei. Ecco chi lo fa e perché.</p>
 
             <div className="nx-griglia cr-whoroll">
@@ -208,11 +235,11 @@ export default function Crafting() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
           {/* ── ★ · CRAFTING LIBERO ── */}
-          <section id="cr-libero" className="cr-section">
-            <div className="gl-sezlabel">★ · Crafting Libero</div>
+          <details id="cr-libero" className="cr-section cr-fold">
+            <summary className="gl-sezlabel">★ · Crafting Libero</summary>
             <div className="nx-pannello cr-libero">
               <span className="nx-pillola on cr-libero-badge">✨ Regola d'oro</span>
               <h2 className="nx-titolo cr-libero-title">Vuoi creare qualcosa che non è in tabella?</h2>
@@ -242,11 +269,11 @@ export default function Crafting() {
                 decidono i dadi, non l'elenco.
               </p>
             </div>
-          </section>
+          </details>
 
           {/* ── III · MATERIALI, TEMPO, COSTI ───────────── */}
-          <section id="cr-materiali" className="cr-section" data-chapter="III">
-            <div className="gl-sezlabel">Capitolo III · Materiali, Tempo, Costi</div>
+          <details id="cr-materiali" className="cr-section cr-fold" data-chapter="III">
+            <summary className="gl-sezlabel">Capitolo III · Materiali, Tempo, Costi</summary>
             <p className="nx-nota cr-section-sub">La pregiatura mirata determina costo e tempo. Tirare al di sotto significa ottenere comunque un oggetto inferiore.</p>
             <div className="cr-cost-table">
               {PREGIATURA_COSTS.map(c => {
@@ -279,11 +306,11 @@ export default function Crafting() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
           {/* ── IV · SENTIERO DEL MAESTRO ───────────────── */}
-          <section id="cr-sentiero" className="cr-section" data-chapter="IV">
-            <div className="gl-sezlabel">Capitolo IV · Il Sentiero del Maestro</div>
+          <details id="cr-sentiero" className="cr-section cr-fold" data-chapter="IV">
+            <summary className="gl-sezlabel">Capitolo IV · Il Sentiero del Maestro</summary>
             <p className="nx-nota cr-section-sub">
               L'artigiano cresce creando opere notevoli, non semplicemente accumulando esperienza.
               Ogni oggetto Raro o superiore è un punto sulla scheda.
@@ -314,11 +341,11 @@ export default function Crafting() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
           {/* ── V · PROFESSIONI ─────────────────────────── */}
-          <section id="cr-professioni" className="cr-section" data-chapter="V">
-            <div className="gl-sezlabel">Capitolo V · Le 10 Professioni</div>
+          <details id="cr-professioni" className="cr-section cr-fold" data-chapter="V">
+            <summary className="gl-sezlabel">Capitolo V · Le 10 Professioni</summary>
             <p className="nx-nota cr-section-sub">
               Dieci vie verso la maestria. Una sola scegli alla creazione del personaggio.
             </p>
@@ -346,11 +373,11 @@ export default function Crafting() {
                 />
               ))}
             </div>
-          </section>
+          </details>
 
           {/* ── VI · ESEMPI DI GIOCO ───────────────────── */}
-          <section id="cr-esempi" className="cr-section" data-chapter="VI">
-            <div className="gl-sezlabel">Capitolo VI · Esempi di Gioco</div>
+          <details id="cr-esempi" className="cr-section cr-fold" data-chapter="VI">
+            <summary className="gl-sezlabel">Capitolo VI · Esempi di Gioco</summary>
             <p className="nx-nota cr-section-sub">Tre scene dal tavolo per chiarire come tutto si combina.</p>
             <div className="nx-griglia nx-griglia--larga cr-examples">
               {ESEMPI_GIOCO.map((e, i) => (
@@ -367,7 +394,7 @@ export default function Crafting() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
 
           <footer className="cr-footer">
             <em>Buon crafting, artigiani di Exanthia.</em>

@@ -135,7 +135,15 @@ service cloud.firestore {
     // (solo API key) e lo marca importato / lo elimina, come fa il sync attore.
     match /foundry_inbox/{docId} {
       allow read: if true;            // la macro Foundry legge la coda
-      allow create: if isMaster();    // solo il Master, dal sito
+      // Il Master dal form; i giocatori SOLO dall'Officina del Crafting (origin
+      // "crafting"), e solo verso il PROPRIO inventario.
+      allow create: if isMaster() || (
+        isLoggedIn() &&
+        request.resource.data.origin == "crafting" &&
+        request.resource.data.crafterUid == request.auth.uid &&
+        request.resource.data.target == "player" &&
+        request.resource.data.targetUid == request.auth.uid
+      );
       allow update, delete: if true;  // la macro marca "imported"/elimina (non autenticata)
     }
 

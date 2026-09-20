@@ -11,6 +11,7 @@
 //   sventure…) è visibile SOLO al Master (DM screen), con tasto per tirare.
 
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { MESI_EXANTHIA, GIORNI_SETTIMANA, SOTTOTITOLO_TESTATA } from "../data/exanthiaCalendar";
 import GlacierHero from "../components/glacier/GlacierHero";
 import { useAuth } from "../AuthContext";
@@ -310,6 +311,7 @@ export default function Almanacco() {
         <a href="#alm-mesi" className="nx-pillola">🌙 I Mesi</a>
         <a href="#alm-viaggio" className="nx-pillola">🜂 Le Vie del Mondo</a>
         <a href="#alm-classi" className="nx-pillola">🧭 Le Classi</a>
+        <a href="#alm-crafting" className="nx-pillola">⚒ Crafting</a>
         {isMaster && <a href="#alm-tavola" className="nx-pillola">🎯 La Tavola</a>}
       </nav>
 
@@ -573,6 +575,35 @@ export default function Almanacco() {
             <li>Il Master tira 1d100 + esito sulla Tavola del Destino</li>
             <li>Si gioca la scena, poi si arriva</li>
           </ol>
+        </div>
+      </section>
+
+      {/* ════════ SEZIONE 3 — IL CRAFTING IN BREVE (la pagina vera è /crafting) ════════ */}
+      <section id="alm-crafting" className="alm-section" aria-label="Il Crafting in breve">
+        <div className="gl-sezlabel">Sezione III · L'Arte dell'Artigiano</div>
+        <header className="nx-testata alm-testata">
+          <h2 className="nx-titolo">⚒ Il Crafting in breve</h2>
+          <p className="nx-sotto alm-lead">
+            Chi ha una <strong>professione</strong> può creare oggetti anche fuori dalla sessione,
+            dall'<strong>Officina</strong>: <strong>un tiro solo</strong> decide la qualità, e ciò che esce
+            arriva sul tuo inventario di Foundry.
+          </p>
+        </header>
+        <div className="nx-pannello alm-block alm-quick alm-craft">
+          <ol className="alm-quick-steps">
+            <li>Scegli la <strong>professione</strong> (una sola: Fabbro, Alchimista, Sarto…) e a quale <strong>pregiatura</strong> punti: i materiali si pagano in gioco</li>
+            <li>Tiri <strong>1d20 + caratteristica + strumenti</strong> (+ il tuo grado): 1–5 Scarso · 6–10 Comune · 11–15 Raro · 16–20 Magico · 21+ Perfetto</li>
+            <li>Tiri <strong>1d12</strong> sulla tabella della tua professione: quello è l'oggetto, con i dati da manuale</li>
+            <li>Lo mandi al Master, che lo importa su Foundry nel tuo inventario; ogni prova dà <strong>esperienza</strong> alla professione</li>
+          </ol>
+          <p className="alm-callout alm-callout--ok alm-craft-limiti">
+            <strong>⏳ Limiti:</strong> una prova al giorno, tre a settimana. Il conto si azzera <strong>ogni domenica alle 22:00</strong>.
+            In sessione si può creare lo stesso, dalla stessa pagina.
+          </p>
+          <div className="alm-craft-cta">
+            <Link to="/crafting" className="cta">⚒ Apri l'Officina</Link>
+            <Link to="/crafting#cr-index" className="nx-pillola">📖 Il manuale completo</Link>
+          </div>
         </div>
       </section>
     </section>

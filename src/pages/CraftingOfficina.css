@@ -1,0 +1,151 @@
+/* ── L'Officina (crafting giocabile) — token del Covo ─────────────────────── */
+.cr-page .off { display: flex; flex-direction: column; gap: 12px; margin: 0 0 8px; }
+.cr-page .off-box { padding: 14px 16px; }
+.cr-page .off-box > summary { cursor: pointer; font-family: "Cinzel", Georgia, serif; font-size: .8rem; letter-spacing: .06em; color: var(--osso); list-style: none; }
+.cr-page .off-box > summary::-webkit-details-marker { display: none; }
+.cr-page .off-box > summary::before { content: "▸ "; color: var(--el-2); }
+.cr-page details.off-box[open] > summary::before { content: "▾ "; }
+.cr-page .off-box > summary small { font-family: "Alegreya", Georgia, serif; font-size: .8rem; letter-spacing: 0; text-transform: none; color: var(--osso-2); }
+
+/* testata */
+.cr-page .off-head { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.cr-page .off-head-main { min-width: 0; }
+.cr-page .off-lead { margin: 8px 0 0; font-size: .95rem; }
+.cr-page .off-prof { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.cr-page .off-prof-ic { font-size: 1.9rem; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c, var(--el)) 70%, transparent)); }
+.cr-page .off-prof-name { color: var(--osso); }
+.cr-page .off-xp { margin-top: 8px; height: 6px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .6); border: 1px solid var(--roccia-3); overflow: hidden; }
+.cr-page .off-xp > span { display: block; height: 100%; background: linear-gradient(90deg, var(--el), var(--el-2)); box-shadow: 0 0 10px rgba(var(--el-rgb), .6); transition: width .6s ease; }
+.cr-page .off-usi { display: flex; gap: 8px; align-items: stretch; }
+.cr-page .off-uso { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 62px; padding: 6px 8px; border-radius: 3px; background: rgba(var(--el-rgb), .1); border: 1px solid rgba(var(--el-rgb), .35); }
+.cr-page .off-uso b { font-family: "Cinzel", Georgia, serif; font-size: 1.3rem; color: var(--el-2); line-height: 1; }
+.cr-page .off-uso b span { font-size: .8rem; color: var(--osso-2); }
+.cr-page .off-uso small, .cr-page .off-reset small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-uso.is-off { opacity: .55; border-style: dashed; }
+.cr-page .off-uso.is-off b { color: var(--osso-2); }
+.cr-page .off-reset { display: flex; flex-direction: column; justify-content: center; padding: 6px 10px; font-family: "Alegreya", Georgia, serif; font-size: .78rem; line-height: 1.3; color: var(--osso-body); border-left: 1px solid var(--roccia-3); max-width: 130px; }
+
+/* scelta professione */
+.cr-page .off-profs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.cr-page .off-prof-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; text-align: left; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-left: 3px solid var(--c, var(--el)); color: var(--osso); cursor: pointer; transition: border-color .2s, transform .2s; }
+.cr-page .off-prof-btn:hover { transform: translateY(-2px); border-color: var(--c, var(--el)); }
+.cr-page .off-prof-btn.on { background: color-mix(in srgb, var(--c, var(--el)) 22%, rgba(var(--ossidiana-rgb), .4)); border-color: var(--c, var(--el)); box-shadow: 0 0 18px -6px var(--c, var(--el)); }
+.cr-page .off-prof-btn-ic { font-size: 1.4rem; }
+.cr-page .off-prof-btn-name { font-family: "Cinzel", Georgia, serif; font-size: .8rem; }
+.cr-page .off-prof-btn-stat { font-family: "Alegreya", Georgia, serif; font-size: .78rem; color: var(--osso-2); }
+.cr-page .off-pick { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+/* la prova */
+.cr-page .off-h { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .06em; color: var(--osso); }
+.cr-page .off-h + .off-h, .cr-page .off-mods + .off-h, .cr-page .off-cost + .off-h, .cr-page .off-peek + .off-h { margin-top: 18px; }
+.cr-page .off-tiers { display: flex; flex-wrap: wrap; gap: 8px; }
+.cr-page .off-tier { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-bottom: 3px solid var(--q, var(--el)); color: var(--osso); font-family: "Cinzel", Georgia, serif; font-size: .78rem; cursor: pointer; transition: transform .2s, border-color .2s; }
+.cr-page .off-tier small { font-family: "Alegreya", Georgia, serif; color: var(--osso-2); }
+.cr-page .off-tier em { font-style: normal; font-size: .62rem; color: var(--oro); }
+.cr-page .off-tier:hover:not(:disabled) { transform: translateY(-2px); }
+.cr-page .off-tier.on { background: color-mix(in srgb, var(--q, var(--el)) 25%, rgba(var(--ossidiana-rgb), .4)); border-color: var(--q, var(--el)); box-shadow: 0 0 18px -6px var(--q, var(--el)); }
+.cr-page .off-tier:disabled { opacity: .5; cursor: not-allowed; }
+.cr-page .off-cost, .cr-page .off-peek { margin: 10px 0 0; font-size: .86rem; }
+.cr-page .off-peek em { color: var(--el-soft); font-style: normal; }
+.cr-page .off-formula { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.cr-page .off-die { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 3px; background: linear-gradient(135deg, var(--el-2), var(--el)); color: var(--ossidiana); font-family: "Cinzel", Georgia, serif; font-weight: 800; font-size: .9rem; }
+.cr-page .off-piece { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 4px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); color: var(--osso); }
+.cr-page .off-piece b { font-family: "Cinzel", Georgia, serif; font-size: 1rem; color: var(--el-2); }
+.cr-page .off-piece small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso-2); white-space: nowrap; }
+.cr-page .off-toggle { cursor: pointer; border-style: dashed; }
+.cr-page .off-toggle.on { border-style: solid; border-color: rgba(var(--el-rgb), .6); }
+.cr-page .off-toggle:not(.on) b { color: var(--osso-2); }
+.cr-page .off-eq { display: inline-flex; align-items: center; padding: 4px 10px; font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: var(--osso); }
+.cr-page .off-eq em { font-style: normal; color: var(--oro); }
+.cr-page .off-mods { margin-top: 10px; }
+.cr-page .off-mods > summary { cursor: pointer; font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: var(--osso-body); }
+.cr-page .off-mods > summary small { color: var(--osso-2); }
+.cr-page .off-mods-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cr-page .off-mod { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); color: var(--osso-body); font-family: "Alegreya", Georgia, serif; font-size: .8rem; cursor: pointer; }
+.cr-page .off-mod b { color: #4ade80; }
+.cr-page .off-mod.is-bad b { color: var(--oro); }
+.cr-page .off-mod.on { border-color: rgba(var(--el-rgb), .7); background: rgba(var(--el-rgb), .14); color: var(--osso); }
+.cr-page .off-go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.cr-page .off-cta { padding: 10px 18px; }
+.cr-page .off-why { font-size: .84rem; }
+.cr-page .off-ghost { padding: 8px 12px; border-radius: 3px; background: transparent; border: 1px solid var(--roccia-3); color: var(--osso-body); font-family: "Alegreya", Georgia, serif; font-size: .84rem; cursor: pointer; }
+.cr-page .off-ghost:hover:not(:disabled) { border-color: var(--el); color: var(--osso); }
+.cr-page .off-ghost:disabled { opacity: .5; cursor: not-allowed; }
+
+/* esito */
+.cr-page .off-esito { border-left: 3px solid var(--q, var(--el)); }
+.cr-page .off-esito-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.cr-page .off-esito-roll { font-family: "Alegreya", Georgia, serif; font-size: .86rem; color: var(--osso-body); }
+.cr-page .off-esito-roll b { font-family: "Cinzel", Georgia, serif; color: var(--el-2); }
+.cr-page .off-esito-name { margin: 10px 0 4px; font-size: 1.5rem; color: var(--osso); }
+.cr-page .off-esito-desc { margin: 0 0 12px; }
+.cr-page .off-field { margin-top: 12px; }
+.cr-page .off-label { display: block; margin-bottom: 6px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--el-2); }
+.cr-page .off-label small { text-transform: none; letter-spacing: 0; color: var(--osso-2); }
+.cr-page .off-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-page .off-choices .nx-pillola { cursor: pointer; }
+.cr-page .off-own { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-family: "Alegreya", Georgia, serif; font-size: .86rem; line-height: 1.5; color: var(--osso-body); cursor: pointer; }
+.cr-page .off-own input { margin-top: 4px; }
+.cr-page .off-input { width: 100%; padding: 8px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .55); border: 1px solid var(--roccia-3); color: var(--osso); font-family: "Alegreya", Georgia, serif; font-size: .9rem; }
+.cr-page .off-input:focus { outline: none; border-color: var(--el); }
+.cr-page .off-form { margin-top: 14px; padding: 10px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .35); border: 1px dashed rgba(var(--el-rgb), .4); }
+.cr-page .off-form-grid { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-family: "Alegreya", Georgia, serif; font-size: .86rem; }
+.cr-page .off-form-grid dt { font-family: "Alegreya SC", "Alegreya", serif; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso-2); align-self: baseline; }
+.cr-page .off-form-grid dd { margin: 0; color: var(--osso); }
+.cr-page .off-form-desc { white-space: pre-line; color: var(--osso-body) !important; font-size: .8rem; }
+
+/* potenziatori: verificati / bloccati */
+.cr-page .off-enh em { font-style: normal; margin-left: 2px; }
+.cr-page .off-enh.is-ok em { color: #4ade80; }
+.cr-page .off-enh.is-no { opacity: .5; cursor: not-allowed; }
+.cr-page .off-enh.is-no em { color: var(--osso-2); }
+.cr-page .off-proof { display: block; margin-top: 4px; color: #4ade80; font-size: .82rem; }
+.cr-page .off-enh-help { margin: 8px 0 0; font-size: .82rem; }
+.cr-page .off-confirm { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 3px; border: 1px solid rgba(var(--oro-rgb), .5); background: rgba(var(--oro-rgb), .08); }
+.cr-page .off-confirm .off-go { margin-top: 2px; }
+.cr-page .off-master-enh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.cr-page .off-master-enh > small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-stock { display: inline-flex; align-items: center; gap: 2px; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .35); }
+.cr-page .off-stock.on { border-color: rgba(var(--el-rgb), .6); }
+.cr-page .off-stock b { min-width: 34px; text-align: center; font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: var(--osso); }
+.cr-page .off-stock button { width: 22px; height: 22px; border: 0; background: transparent; color: var(--el-2); font-size: .9rem; cursor: pointer; }
+.cr-page .off-stock button:disabled { opacity: .35; cursor: not-allowed; }
+
+/* messaggi */
+.cr-page .off-msg { padding: 10px 12px; border-radius: 3px; background: rgba(var(--el-rgb), .1); border: 1px solid rgba(var(--el-rgb), .4); font-family: "Alegreya", Georgia, serif; font-size: .9rem; color: var(--osso); }
+.cr-page .off-msg.is-err { border-color: rgba(var(--sangue-rgb, 160, 40, 40), .6); background: rgba(var(--sangue-rgb, 160, 40, 40), .12); }
+
+/* registro + livelli + master */
+.cr-page .off-log-list, .cr-page .off-levels, .cr-page .off-master-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cr-page .off-log-list li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .35); border: 1px solid var(--roccia-3); border-left: 3px solid var(--q, var(--el)); color: var(--osso); }
+.cr-page .off-log-main { display: flex; flex-direction: column; min-width: 0; }
+.cr-page .off-log-main b { font-family: "Alegreya", Georgia, serif; font-size: .9rem; }
+.cr-page .off-log-main small { font-family: "Alegreya", Georgia, serif; font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-log-st { font-family: "Alegreya SC", "Alegreya", serif; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--oro); }
+.cr-page .off-log-st.ok { color: #4ade80; }
+.cr-page .off-log-st.no { color: var(--osso-2); }
+.cr-page .off-levels li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 10px; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .3); color: var(--osso); }
+.cr-page .off-levels li.is-cur { border-color: var(--el); box-shadow: 0 0 16px -6px var(--el); }
+.cr-page .off-levels li.is-done { opacity: .7; }
+.cr-page .off-level-main { display: flex; flex-direction: column; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-level-main b { font-size: .86rem; }
+.cr-page .off-level-main small { font-size: .8rem; color: var(--osso-body); line-height: 1.45; }
+.cr-page .off-master-list li { padding: 8px 10px; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .3); color: var(--osso); }
+.cr-page .off-master-row { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 6px 10px; align-items: center; font-family: "Alegreya", Georgia, serif; font-size: .88rem; }
+.cr-page .off-master-row small { grid-column: 1 / -1; color: var(--osso-2); font-size: .78rem; }
+.cr-page .off-master-row .off-input { width: auto; padding: 4px 8px; font-size: .84rem; }
+.cr-page .off-master-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cr-page .off-master-acts .off-ghost { padding: 4px 8px; font-size: .78rem; }
+.cr-page .off-master .nx-nota { margin-top: 10px; }
+.cr-page .off-master .nx-nota a { color: var(--el-soft); }
+
+@media (max-width: 640px) {
+  .cr-page .off-head { grid-template-columns: 1fr; }
+  .cr-page .off-usi { justify-content: space-between; }
+  .cr-page .off-reset { max-width: none; flex: 1; }
+  .cr-page .off-profs { grid-template-columns: 1fr 1fr; }
+  .cr-page .off-form-grid { grid-template-columns: 1fr; gap: 2px; }
+  .cr-page .off-form-grid dd { margin-bottom: 6px; }
+  .cr-page .off-log-list li { grid-template-columns: 26px 1fr; }
+  .cr-page .off-log-st { grid-column: 2; justify-self: start; }
+}

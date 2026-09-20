@@ -167,6 +167,12 @@
 .alm-page .alm-quick-steps li::before { content: counter(passi); position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .72rem; color: var(--ossidiana); background: linear-gradient(135deg, var(--el-2), var(--el)); }
 .alm-page .alm-quick { border-color: rgba(var(--el-rgb), .45); }
 
+/* crafting in breve */
+.alm-page .alm-craft .alm-quick-steps strong { color: var(--osso); }
+.alm-page .alm-craft-limiti { margin-top: 12px; }
+.alm-page .alm-craft-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.alm-page .alm-craft-cta .cta { text-decoration: none; }
+
 /* scala dello sfinimento */
 .alm-page .alm-sfin { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .alm-page .alm-sfin-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 3px; background: linear-gradient(90deg, var(--roccia-2), var(--roccia)); border: 1px solid rgba(var(--el-rgb), .22); border-left: 3px solid var(--sf, var(--el)); font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: var(--osso-body); transition: transform .2s ease; }

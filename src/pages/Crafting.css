@@ -28,6 +28,19 @@
 .cr-page .cr-flusso { min-width: 0; }
 .cr-page .cr-section { scroll-margin-top: calc(var(--navbar-h, 66px) + 16px); margin-bottom: 30px; }
 .cr-page .cr-section .gl-sezlabel { margin-top: 0; }
+
+/* ── manuale a pieghe: ogni capitolo si apre/chiude, l'Officina resta sempre aperta ── */
+.cr-page .cr-officina-sec { margin-bottom: 26px; padding: 14px 14px 6px; border: 1px solid rgba(var(--el-rgb), .45); border-top: 3px solid var(--el); background: rgba(var(--ossidiana-rgb), .35); box-shadow: 0 0 40px -18px rgba(var(--el-rgb), .8); }
+.cr-page .cr-officina-sec .gl-sezlabel { font-size: 1.05rem; }
+.cr-page .cr-fold { margin-bottom: 10px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .25); }
+.cr-page .cr-fold > summary { position: relative; padding: 12px 40px 12px 14px; cursor: pointer; list-style: none; user-select: none; }
+.cr-page .cr-fold > summary::-webkit-details-marker { display: none; }
+.cr-page .cr-fold > summary::before { content: "+"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: var(--ossidiana); background: linear-gradient(135deg, var(--el-2), var(--el)); }
+.cr-page .cr-fold[open] > summary::before { content: "−"; }
+.cr-page .cr-fold[open] > summary { border-bottom: 1px solid var(--roccia-3); margin-bottom: 14px; }
+.cr-page .cr-fold > *:not(summary) { margin-left: 14px; margin-right: 14px; }
+.cr-page .cr-fold > *:last-child { margin-bottom: 14px; }
+.cr-page .cr-fold > summary:hover { color: var(--el-soft); }
 .cr-page .cr-section-sub { margin: -4px 0 14px; max-width: 70ch; }
 .cr-page .cr-subtitle {
   margin: 22px 0 10px;

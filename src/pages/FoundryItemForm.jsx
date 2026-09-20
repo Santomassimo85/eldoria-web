@@ -11,6 +11,8 @@ import {
   resolveFoundryType, resolveFoundryRarity, foundryReadiness,
 } from "../utils/foundryMap";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { ENHANCERS } from "../data/craftingFoundry";
+import { PROFESSIONI } from "../data/crafting";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -484,10 +486,14 @@ export default function FoundryItemForm() {
                 {p.name}
                 <span className="npcgen-chip dmt-pill">{(FOUNDRY_TYPES.find(x => x.v === p.foundryType) || {}).label || p.foundryType}</span>
                 <span className="npcgen-chip dmt-pill">{p.status === "imported" ? "✅ importato" : "⏳ in attesa"}</span>
+                {p.origin === "crafting" && <span className="npcgen-chip dmt-pill fdy-craft" title="Creato dal giocatore nell'Officina del Crafting">⚒ Officina{p.crafterName ? ` · ${p.crafterName}` : ""}</span>}
               </div>
               <div className="d">
                 {p.target === "player" ? `→ ${p.targetName || "giocatore"}` : "→ mondo"}
                 {p.damageFormula ? ` · ${p.damageFormula} ${p.damageType}` : ""}
+                {p.origin === "crafting" && p.craft && (
+                  <span className="fdy-craft-note"> · {PROFESSIONI.find(x => x.key === p.craft.profession)?.name || p.craft.profession} · pregiatura {p.craft.tier} (mirata {p.craft.targetTier}) · d20 {p.craft.d20} → {p.craft.total} · d12 {p.craft.d12}{p.craft.cost ? ` · materiali ${p.craft.cost}` : ""}{p.craft.enhancer ? ` · potenziatore ${ENHANCERS.find(e => e.key === p.craft.enhancer)?.name || p.craft.enhancer}${p.craft.enhancerProof ? ` (${p.craft.enhancerProof})` : p.craft.enhancerOwned ? " (dichiarato, non verificato)" : ""}` : ""}{p.craft.mods?.length ? ` · condizioni: ${p.craft.mods.join(", ")}` : ""}{p.craft.note ? ` · nota: "${p.craft.note}"` : ""}</span>
+                )}
                 <button className="npcgen-btn npcgen-btn--ghost" style={{ marginLeft: 10, padding: "2px 10px", fontSize: 12 }} onClick={() => removePending(p.id)}>Elimina</button>
               </div>
             </div>

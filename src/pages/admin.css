@@ -5136,6 +5136,8 @@
 .fdy-filters .npcgen-input:disabled { opacity: .5; cursor: not-allowed; }
 .fdy-sold  { background: rgba(52, 211, 153, .14) !important; border-color: rgba(52, 211, 153, .45) !important; color: #4ade80 !important; }
 .fdy-avail { background: var(--roccia-3) !important; border-color: var(--roccia-4) !important; color: var(--osso-2) !important; }
+.fdy-craft { background: rgba(var(--el-rgb), .14) !important; border-color: rgba(var(--el-rgb), .5) !important; color: var(--el-soft) !important; }
+.fdy-craft-note { display: block; margin-top: 4px; font-size: .76rem; line-height: 1.45; color: var(--osso-2); }
 .fdy-import-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
 .fdy-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 3px;
