@@ -111,7 +111,7 @@ export default function Notifications() {
                       className="gl-cta notification-card-cta"
                       onClick={(e) => openLink(e, n)}
                     >
-                      {n.link === "/tarocchi" ? "Apri l'Oracolo" : "Vai alla pagina"}&nbsp;→
+                      {"Vai alla pagina"}&nbsp;→
                     </button>
                   )}
                   <button
