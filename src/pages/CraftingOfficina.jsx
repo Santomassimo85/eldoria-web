@@ -91,7 +91,6 @@ export default function CraftingOfficina() {
   const [marketItems, setMarketItems] = useState([]);
   // Il banco di lavoro.
   const [target, setTarget] = useState("comune");
-  const [tools, setTools] = useState(true);
   const [comps, setComps] = useState([]);
   const [help, setHelp] = useState("");
   const [pace, setPace] = useState("normale");
@@ -122,7 +121,7 @@ export default function CraftingOfficina() {
   // Strumenti e componenti si usano solo se risultano posseduti (scheda Foundry, scorta del Master, Mercato).
   const ownCtx = { charData, marketItems, isMaster };
   const toolsEv = prof ? toolsEvidence(prof, ownCtx) : { ok: false, label: "", hint: "" };
-  const toolsOn = tools && toolsEv.ok;
+  const toolsOn = toolsEv.ok; // automatico: nessun tocco, conta solo la scheda
 
   // Giorno e settimana si contano con l'ora del SERVER, non del telefono
   // (spostare l'orologio avanti non regala prove né accorcia i lavori).
@@ -457,19 +456,18 @@ export default function CraftingOfficina() {
           <div className="off-bench">
             {/* strumenti */}
             {toolsEv.ok ? (
-              <button type="button" className={`off-tile off-tile-btn${toolsOn ? " on" : " is-bad"}`} onClick={() => setTools(!tools)} aria-pressed={toolsOn}>
-                <span className="off-tile-h">🧰 Strumenti</span>
-                <b className="off-tile-v">{toolsOn ? "Ho gli strumenti" : "Senza strumenti"}</b>
-                <span className="off-tile-fx">{toolsOn ? <><em>−{fmtMinutes(TOOLS_MINUTES)}</em> · {sign(profBonus(charData))} competenza</> : <><em>tempo pieno</em> · svantaggio</>}</span>
+              <div className="off-tile off-tile-btn on is-auto">
+                <span className="off-tile-h">🧰 Strumenti <small>✓ automatico</small></span>
+                <b className="off-tile-v">Hai gli strumenti</b>
+                <span className="off-tile-fx"><em>−{fmtMinutes(TOOLS_MINUTES)}</em> · {sign(profBonus(charData))} competenza</span>
                 <span className="off-tile-proof">✓ {toolsEv.label}</span>
-                <span className="off-tile-tap">{toolsOn ? "tocca se non li hai con te" : "tocca se li hai"}</span>
-              </button>
+              </div>
             ) : (
               <div className="off-tile off-tile-btn is-bad is-locked" aria-disabled="true">
-                <span className="off-tile-h">🧰 Strumenti <small>🔒</small></span>
+                <span className="off-tile-h">🧰 Strumenti <small>✗ non li possiedi</small></span>
                 <b className="off-tile-v">Senza strumenti</b>
                 <span className="off-tile-fx"><em>tempo pieno</em> · svantaggio</span>
-                <span className="off-tile-empty">Non risultano <strong>{toolsEv.hint}</strong> sulla tua scheda. Mettili nell'inventario su Foundry e sincronizza (o compra al Mercato): si sbloccano da soli.</span>
+                <span className="off-tile-empty">Non risultano <strong>{toolsEv.hint}</strong> sulla tua scheda. Il controllo è automatico: mettili nell'inventario su Foundry e sincronizza (o comprali al Mercato) e la voce si accende da sola.</span>
               </div>
             )}
 

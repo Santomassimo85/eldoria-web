@@ -283,4 +283,6 @@
 
 /* strumenti/componenti: prova di possesso */
 .cr-page .off-tile-proof { font-family: "Alegreya", Georgia, serif; font-size: .76rem; color: #4ade80; }
-.cr-page .off-tile-btn.is-locked { cursor: not-allowed; opacity: .85; }
+.cr-page .off-tile-btn.is-locked { cursor: default; opacity: .85; }
+.cr-page .off-tile-btn.is-auto { cursor: default; }
+.cr-page .off-tile-btn.is-auto:hover, .cr-page .off-tile-btn.is-locked:hover { border-color: var(--roccia-3); }
