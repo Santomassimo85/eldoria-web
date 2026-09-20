@@ -425,7 +425,7 @@ export default function CraftingOfficina() {
               );
             })}
           </div>
-          {targetCost && <p className="nx-nota off-cost"><strong>Materiali:</strong> {targetCost.costo}, si pagano in gioco. Un tiro basso dà un oggetto inferiore; uno alto non supera la pregiatura mirata.</p>}
+          {targetCost && <p className="nx-nota off-cost"><strong>Materiali:</strong> {targetCost.costo} (prezzo fisso, si pagano in gioco). Un tiro basso dà un oggetto inferiore; uno alto non supera la pregiatura mirata.</p>}
           {prog.level.lv >= 4 && (
             <p className="nx-nota off-peek">👁 Occhio esperto · con 1: <em>{prof.creazioni[target][0][0]}</em> · con 12: <em>{prof.creazioni[target][11][0]}</em></p>
           )}

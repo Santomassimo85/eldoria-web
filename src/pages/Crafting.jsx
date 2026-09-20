@@ -143,9 +143,9 @@ export default function Crafting() {
           {/* ── 2 · LE PREGIATURE ── */}
           <details id="cr-pregiature" className="cr-section cr-fold" data-chapter="2">
             <summary className="gl-sezlabel">2 · Le Pregiature</summary>
-            <p className="nx-nota cr-section-sub">Il totale del d20 dice quanto è pregiato ciò che esce. Non si supera mai la pregiatura a cui hai puntato: un tiro alto la conferma, uno basso dà un oggetto inferiore.</p>
+            <p className="nx-nota cr-section-sub">Il totale del d20 dice quanto è pregiato ciò che esce. Non si supera mai la pregiatura a cui hai puntato: un tiro alto la conferma, uno basso dà un oggetto inferiore. I materiali hanno un prezzo fisso, si pagano in gioco prima di iniziare.</p>
             <div className="cr-tier-table">
-              <div className="cr-tier-head"><span>Pregiatura</span><span>Tiro</span><span>Tempo</span><span>PE</span><span>Materiali (in gioco)</span></div>
+              <div className="cr-tier-head"><span>Pregiatura</span><span>Tiro</span><span>Tempo</span><span>PE</span><span>Costo materiali</span></div>
               {PREGIATURE.map(p => {
                 const c = PREGIATURA_COSTS.find(x => x.tier === p.key) || {};
                 return (

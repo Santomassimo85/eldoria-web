@@ -8,8 +8,8 @@
 // si vede solo la barra del tempo. I limiti (1 al giorno, 3 a settimana)
 // restano quelli di craftingWeek.js e si consumano all'inizio del lavoro.
 
-// Base in minuti per pregiatura mirata (Scarso non si può mirare).
-export const CRAFT_BASE_MINUTES = { comune: 300, raro: 480, magico: 720, perfetto: 1440 };
+// Base in minuti per pregiatura mirata (Scarso non si può mirare): 5 h · 8 h · 5 giorni · 7 giorni.
+export const CRAFT_BASE_MINUTES = { comune: 300, raro: 480, magico: 5 * 1440, perfetto: 7 * 1440 };
 
 // Strumenti della professione: −2 ore. Senza strumenti si tira con svantaggio.
 export const TOOLS_MINUTES = 120;

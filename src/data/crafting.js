@@ -60,11 +60,12 @@ export const BONUS_LIVELLO_PG = [
 ];
 
 export const PREGIATURA_COSTS = [
-  { tier: "scarso",   costo: "10–25 mo",        tempo: "—",     note: "Non si può puntare a Scarso: è ciò che esce quando il tiro va male (1–5)." },
-  { tier: "comune",   costo: "25–100 mo",       tempo: "5 ore",  note: "Materiali base, si trovano in qualunque città." },
-  { tier: "raro",     costo: "100–500 mo",      tempo: "8 ore",  note: "Serve almeno un materiale particolare (erba rara, metallo nobile…)." },
-  { tier: "magico",   costo: "500–2.500 mo",    tempo: "12 ore", note: "Ingredienti specifici, spesso da quest; fucina o laboratorio adeguati." },
-  { tier: "perfetto", costo: "2.500–10.000 mo", tempo: "24 ore", note: "Materiali leggendari unici. Solo dal grado Maestro in su." },
+  // Prezzi FISSI dei materiali (si pagano in gioco) e tempo base di lavoro (craftingTime.js).
+  { tier: "scarso",   mo: 0,     costo: "—",         tempo: "—",        note: "Non si può puntare a Scarso: è ciò che esce quando il tiro va male (1–5)." },
+  { tier: "comune",   mo: 50,    costo: "50 mo",     tempo: "5 ore",    note: "Materiali base, si trovano in qualunque città." },
+  { tier: "raro",     mo: 500,   costo: "500 mo",    tempo: "8 ore",    note: "Serve almeno un materiale particolare (erba rara, metallo nobile…)." },
+  { tier: "magico",   mo: 3000,  costo: "3.000 mo",  tempo: "5 giorni", note: "Ingredienti specifici, spesso da quest; fucina o laboratorio adeguati." },
+  { tier: "perfetto", mo: 10000, costo: "10.000 mo", tempo: "7 giorni", note: "Materiali leggendari unici. Solo dal grado Maestro in su." },
 ];
 
 export const VANTAGGIO_SVANTAGGIO = [

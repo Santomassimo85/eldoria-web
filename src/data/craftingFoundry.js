@@ -8,13 +8,14 @@
 import { PREGIATURE } from "./crafting";
 import { craftTimeLabel } from "./craftingTime";
 
-// Rarità dnd5e e prezzo indicativo (mo) per pregiatura.
+// Rarità dnd5e e valore (mo) dell'oggetto su Foundry per pregiatura: sopra il
+// costo fisso dei materiali del manuale (50 · 500 · 3.000 · 10.000 mo).
 export const TIER_TO_FOUNDRY = {
-  scarso:   { rarity: "common",    price: 15 },
-  comune:   { rarity: "common",    price: 50 },
-  raro:     { rarity: "uncommon",  price: 250 },
-  magico:   { rarity: "rare",      price: 1200 },
-  perfetto: { rarity: "legendary", price: 5000 },
+  scarso:   { rarity: "common",    price: 20 },
+  comune:   { rarity: "common",    price: 75 },
+  raro:     { rarity: "uncommon",  price: 750 },
+  magico:   { rarity: "rare",      price: 4500 },
+  perfetto: { rarity: "legendary", price: 15000 },
 };
 
 // Tipo dnd5e "di casa" per ogni professione (quando il nome non dice altro).
