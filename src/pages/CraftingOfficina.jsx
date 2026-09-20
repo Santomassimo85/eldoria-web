@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { addDoc, collection, deleteField, doc, getDocs, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
@@ -800,7 +800,7 @@ function MasterPanel() {
         })}
       </ul>
       <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Rarità Foundry per pregiatura: {TIER_ORDER.map((t) => `${tierMeta(t).label} → ${RARITY_LABEL[TIER_TO_FOUNDRY[t].rarity]}`).join(", ")}.</p>
-      <CraftLedger chars={chars} />
+      <CraftLedger chars={chars} reload={load} patchChar={(uid, fn) => setChars((cs) => cs.map((c) => (c.uid === uid ? { ...c, crafting: fn(c.crafting || {}) } : c)))} />
     </details>
   );
 }
@@ -810,8 +810,43 @@ const dayLabel = (key) => key ? new Intl.DateTimeFormat("it-IT", { timeZone: "UT
 const timeLabel = (ms) => new Intl.DateTimeFormat("it-IT", { timeZone: ROME, hour: "2-digit", minute: "2-digit" }).format(new Date(ms || 0));
 const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
 
-function CraftLedger({ chars }) {
+function CraftLedger({ chars, reload, patchChar }) {
   const [openUid, setOpenUid] = useState("");
+  const [confirmId, setConfirmId] = useState(""); // voce in attesa di conferma di cancellazione
+  const [busyId, setBusyId] = useState("");
+
+  // Cancella una prova (del Master o di un giocatore) annullandola del tutto:
+  // via dal registro, uso del giorno/settimana restituito, PE tolti, banco
+  // liberato e, se era già in coda per Foundry, anche la coda ripulita.
+  async function deleteEntry(uid, e) {
+    setBusyId(e.id);
+    let newLog = null;
+    try {
+      const ref = doc(db, "characters", uid);
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+        const prevLog = Array.isArray(cur.log) ? cur.log : [];
+        const log = prevLog.filter((x) => x.id !== e.id);
+        newLog = log;
+        const patch = {
+          "crafting.log": log,
+          "crafting.totalCount": Math.max(0, Math.max(Number(cur.totalCount) || 0, prevLog.length) - 1),
+          "crafting.xp": Math.max(0, (Number(cur.xp) || 0) - (Number(e.xp) || 0)),
+        };
+        if (cur.weekKey && cur.weekKey === e.weekKey) patch["crafting.weekCount"] = Math.max(0, (Number(cur.weekCount) || 0) - 1);
+        if (cur.lastDayKey && cur.lastDayKey === e.dayKey && !log.some((x) => x.dayKey === e.dayKey)) patch["crafting.lastDayKey"] = "";
+        if (!e.inboxId && !e.skipped) patch["crafting.busyUntil"] = deleteField();
+        tx.update(ref, patch);
+      });
+      if (e.inboxId) await deleteDoc(doc(db, "foundry_inbox", e.inboxId)).catch(() => {});
+      setConfirmId("");
+      // Aggiorno subito la tabella (la rilettura da Firestore può arrivare dopo), poi ricarico.
+      if (newLog) patchChar(uid, (cr) => ({ ...cr, log: newLog, totalCount: Math.max(0, Math.max(Number(cr.totalCount) || 0, newLog.length + 1) - 1), xp: Math.max(0, (Number(cr.xp) || 0) - (Number(e.xp) || 0)) }));
+      await reload();
+    } catch (err) { alert("Errore: " + (err.message || err)); }
+    finally { setBusyId(""); }
+  }
   const nowMs = Date.now();
   const dayKey = craftDayKey(), weekKey = craftWeekKey();
   const rows = chars.map((c) => {
@@ -863,7 +898,7 @@ function CraftLedger({ chars }) {
       )}
       {open && (
         <div className="off-ledger-detail">
-          <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate in coda</span>
+          <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate in coda <small>· ✕ elimina una prova e la annulla del tutto</small></span>
           {weeks.map((w) => (
             <div key={w.key} className="off-ledger-week">
               <div className="off-ledger-wk"><b>Settimana da domenica {dayLabel(w.key)}</b>{w.key === weekKey && <em>in corso</em>}<small>{w.days.reduce((a, d) => a + d.items.length, 0)} prove</small></div>
@@ -876,6 +911,15 @@ function CraftLedger({ chars }) {
                         <span className="off-ledger-t">{timeLabel(e.at)}</span>
                         <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && e.targetTier !== e.tier ? ` (mirava ${tierMeta(e.targetTier).label})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
                         <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
+                        {confirmId === e.id ? (
+                          <span className="off-ledger-del is-confirm">
+                            <small>Annullo la prova: via dal registro, uso restituito, −{e.xp || 0} PE{e.inboxId ? ", tolta dalla coda" : ""}.</small>
+                            <button type="button" className="off-ghost is-danger" disabled={busyId === e.id} onClick={() => deleteEntry(open.uid, e)}>{busyId === e.id ? "…" : "Sì, elimina"}</button>
+                            <button type="button" className="off-ghost" disabled={busyId === e.id} onClick={() => setConfirmId("")}>No</button>
+                          </span>
+                        ) : (
+                          <button type="button" className="off-ledger-del" title="Elimina questa prova" aria-label="Elimina questa prova" onClick={() => setConfirmId(e.id)}>✕</button>
+                        )}
                       </li>
                     ))}
                   </ul>
