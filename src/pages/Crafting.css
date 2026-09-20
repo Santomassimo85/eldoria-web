@@ -48,13 +48,62 @@
   color: var(--el-soft);
 }
 
-/* ── recap "in due parole" ── */
-.cr-page .cr-recap-badge { margin-bottom: 12px; }
-.cr-page .cr-recap-lead { margin: 0 0 14px; }
-.cr-page .cr-recap-lead strong, .cr-page .nx-prosa strong { color: var(--el-2); }
-.cr-page .cr-recap-steps { list-style: none; padding: 0; margin: 0; counter-reset: passo; }
+/* ── passi + limiti ("Come funziona") ── */
 .cr-page .cr-passo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 12px; }
 .cr-page .cr-passo-ic { font-size: 1.6rem; filter: drop-shadow(0 0 12px rgba(var(--el-rgb), .7)); }
+.cr-page .cr-steps { list-style: none; padding: 0; margin: 0 0 12px; }
+.cr-page .cr-step { position: relative; padding-top: 20px; }
+.cr-page .cr-step-n { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); }
+.cr-page .cr-limiti { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.cr-page .cr-limite { flex: 1 1 140px; display: flex; flex-direction: column; align-items: center; padding: 8px 10px; border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .4); background: rgba(var(--el-rgb), .08); font-family: "Alegreya SC", "Alegreya", serif; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); text-align: center; }
+.cr-page .cr-limite b { font-family: "Cinzel", Georgia, serif; font-size: 1.1rem; letter-spacing: 0; color: var(--el-2); }
+.cr-page .cr-come-nota { margin-top: 12px; }
+.cr-page .nx-prosa strong, .cr-page .cr-section-sub strong { color: var(--el-2); }
+
+/* ── tabella delle pregiature: tiro · tempo · PE · materiali ── */
+.cr-page .cr-tier-table { display: flex; flex-direction: column; gap: 8px; }
+.cr-page .cr-tier-head, .cr-page .cr-tier-row { display: grid; grid-template-columns: 1.5fr .7fr .8fr .5fr 1.6fr; gap: 10px 14px; align-items: center; }
+.cr-page .cr-tier-head { padding: 0 16px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); }
+.cr-page .cr-tier-row { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); padding: 10px 16px; border-left: 4px solid var(--qs); }
+.cr-page .cr-tier-name { display: flex; flex-direction: column; font-family: "Cinzel", Georgia, serif; font-size: .86rem; color: var(--qs); }
+.cr-page .cr-tier-name small { font-family: "Alegreya", Georgia, serif; font-size: .76rem; color: var(--osso-2); line-height: 1.35; }
+.cr-page .cr-tier-cell { font-family: "Alegreya", Georgia, serif; font-size: .9rem; color: var(--osso); }
+.cr-page .cr-tier-cost { display: flex; flex-direction: column; }
+.cr-page .cr-tier-cost small { font-size: .74rem; color: var(--osso-2); line-height: 1.35; }
+@media (max-width: 700px) {
+  .cr-page .cr-tier-head { display: none; }
+  .cr-page .cr-tier-row { grid-template-columns: 1fr 1fr 1fr; gap: 6px 10px; }
+  .cr-page .cr-tier-name, .cr-page .cr-tier-cost { grid-column: 1 / -1; }
+  .cr-page .cr-tier-cell::before { content: attr(data-label) " · "; font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--el-2); }
+}
+
+/* ── formula: voci ── */
+.cr-page .cr-formula-list { margin: 10px auto 0; max-width: 70ch; padding-left: 18px; text-align: left; font-family: "Alegreya", Georgia, serif; font-size: .9rem; line-height: 1.55; color: var(--osso-body); }
+.cr-page .cr-formula-list strong { color: var(--el-2); }
+
+/* ── tempo di lavoro ── */
+.cr-page .cr-time-base { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.cr-page .cr-time-chip { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 3px; border: 1px solid color-mix(in srgb, var(--qs) 55%, transparent); border-bottom: 3px solid var(--qs); background: rgba(var(--ossidiana-rgb), .35); font-family: "Cinzel", Georgia, serif; font-size: .78rem; color: var(--osso); }
+.cr-page .cr-time-chip b { color: var(--qs); }
+.cr-page .cr-time-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 14px 12px; }
+.cr-page .cr-time-fx { font-family: "Cinzel", Georgia, serif; font-size: .95rem; color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, .5); }
+.cr-page .cr-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.cr-page .cr-comp-card { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
+.cr-page .cr-comp-ic { font-size: 1.4rem; filter: drop-shadow(0 0 8px rgba(var(--el-rgb), .6)); }
+.cr-page .cr-comp-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cr-page .cr-comp-name { font-size: .86rem; }
+.cr-page .cr-comp-name b { margin-left: 4px; font-family: "Cinzel", Georgia, serif; font-size: .7rem; color: #4ade80; }
+
+/* ── livelli e gradi ── */
+.cr-page .cr-gradi { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0 0 12px; }
+.cr-page .cr-grado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; padding: 12px 8px; }
+.cr-page .cr-grado-ic { font-size: 1.4rem; }
+.cr-page .cr-grado-b { font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: var(--oro); }
+.cr-page .cr-levels { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cr-page .cr-level { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .3); }
+.cr-page .cr-level-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .cr-level-head { font-size: .86rem; color: var(--osso); }
+.cr-page .cr-level-head b { color: var(--el-2); }
 
 /* ── pregiature: colore della qualità schiarito ── */
 .cr-page .cr-preg-card { --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff); border-color: color-mix(in srgb, var(--qs) 45%, transparent); }
@@ -118,50 +167,6 @@
   background: linear-gradient(135deg, var(--el-2), var(--el)); box-shadow: 0 0 14px -2px rgba(var(--el-rgb), .7);
 }
 
-/* ── costi: righe-pannello con filo della qualità ── */
-.cr-page .cr-cost-table { display: flex; flex-direction: column; gap: 10px; }
-.cr-page .cr-cost-row {
-  --qs: color-mix(in srgb, var(--q, var(--el)) 45%, #fff);
-  display: grid; grid-template-columns: 150px 1fr 1fr 2fr; gap: 10px 16px; align-items: center;
-  padding: 12px 16px; border-left: 4px solid var(--qs);
-}
-.cr-page .cr-cost-tier { color: var(--qs); }
-.cr-page .cr-cost-cell { font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: var(--osso); }
-.cr-page .cr-cost-label { display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); }
-@media (max-width: 700px) {
-  .cr-page .cr-cost-row { grid-template-columns: 1fr 1fr; }
-  .cr-page .cr-cost-tier, .cr-page .cr-cost-note { grid-column: 1 / -1; }
-}
-
-/* ── tabelle: trasparenti, filetti viola, intestazioni ciano ── */
-/* il Covo mette overflow:hidden su ogni .nx-pannello: qui il pannello deve poter scorrere in orizzontale
-   (selettore più forte di body:not(.theme-dark) :is(.nx-pannello, …)) */
-.cr-page .nx-pannello.cr-ingredients-table { padding: 6px 0 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
-.cr-page .cr-ing-head, .cr-page .cr-ing-row {
-  display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px;
-  padding: 10px 16px; border-bottom: 1px solid rgba(var(--el-rgb), .22);
-  font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: var(--osso-body);
-}
-.cr-page .cr-ing-head { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--el-2); font-weight: 700; }
-.cr-page .cr-ing-row:last-child { border-bottom: none; }
-.cr-page .cr-ing-prof { font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: .82rem; color: var(--osso); }
-/* telefono: niente scorrimento laterale, ogni riga diventa una scheda con le tre pregiature etichettate */
-@media (max-width: 640px) {
-  .cr-page .cr-ing-head { display: none; }
-  .cr-page .cr-ing-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 14px; }
-  .cr-page .cr-ing-prof { margin-bottom: 2px; }
-  .cr-page .cr-ing-cell::before { content: attr(data-label) " · "; font-family: "Cinzel", Georgia, serif; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: var(--el-2); }
-}
-
-/* ── sentiero del maestro ── */
-.cr-page .cr-sentiero-step { display: flex; gap: 14px; align-items: flex-start; }
-.cr-page .cr-sentiero-num { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.cr-page .cr-sentiero-icon { font-size: 1.3rem; }
-.cr-page .cr-sentiero-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.cr-page .cr-sentiero-body strong, .cr-page .cr-example-row strong { color: var(--el-soft); }
-.cr-page .cr-lv-card { text-align: center; }
-.cr-page .cr-lv-badge { margin-bottom: 8px; }
-
 /* ── professioni ── */
 .cr-page .cr-filter-row { justify-content: flex-start; margin: 4px 0 16px; }
 .cr-page .cr-prof-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -200,13 +205,5 @@
 }
 .cr-page .cr-d12-num { background: var(--qs); box-shadow: none; }
 .cr-page .cr-d12-name { font-size: .86rem; }
-
-/* ── esempi di gioco ── */
-.cr-page .cr-example { display: flex; flex-direction: column; gap: 6px; }
-.cr-page .cr-example-title { padding-right: 70px; }
-.cr-page .cr-example-tiro { font-family: "Alegreya", Georgia, serif; font-size: .86rem; color: var(--osso); margin-top: 4px; }
-.cr-page .cr-example-tiro strong { color: var(--el-2); }
-.cr-page .cr-example-result { font-family: "Cinzel", Georgia, serif; font-size: .82rem; letter-spacing: .05em; color: var(--oro); text-shadow: 0 0 10px rgba(var(--oro-rgb), .5); }
-.cr-page .cr-example-esito { margin-top: 6px; text-align: left; }
 
 .cr-page .cr-footer { text-align: center; margin: 30px 0 10px; font-family: "Alegreya", Georgia, serif; color: var(--osso-2); }

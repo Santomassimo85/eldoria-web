@@ -60,21 +60,20 @@ export const BONUS_LIVELLO_PG = [
 ];
 
 export const PREGIATURA_COSTS = [
-  { tier: "scarso",   costo: "10–25 mo",       tempo: "1 ora",            note: "Tira con CD 5. Non si può puntare a Scarso volutamente — è il risultato di un fallimento." },
-  { tier: "comune",   costo: "25–100 mo",      tempo: "4 ore (½ giornata)", note: "Materiali base reperibili in qualunque città." },
-  { tier: "raro",     costo: "100–500 mo",     tempo: "1–3 giorni",       note: "Richiede almeno un materiale particolare (erba rara, metallo nobile, ecc.)." },
-  { tier: "magico",   costo: "500–2.500 mo",   tempo: "1 settimana",      note: "Richiede ingredienti specifici, spesso da quest. Spesso serve fucina/laboratorio adeguati." },
-  { tier: "perfetto", costo: "2.500–10.000 mo", tempo: "2–4 settimane",   note: "Richiede materiali leggendari unici. Solo personaggi con bonus di Maestro possono raggiungere 21+." },
+  { tier: "scarso",   costo: "10–25 mo",        tempo: "—",     note: "Non si può puntare a Scarso: è ciò che esce quando il tiro va male (1–5)." },
+  { tier: "comune",   costo: "25–100 mo",       tempo: "5 ore",  note: "Materiali base, si trovano in qualunque città." },
+  { tier: "raro",     costo: "100–500 mo",      tempo: "8 ore",  note: "Serve almeno un materiale particolare (erba rara, metallo nobile…)." },
+  { tier: "magico",   costo: "500–2.500 mo",    tempo: "12 ore", note: "Ingredienti specifici, spesso da quest; fucina o laboratorio adeguati." },
+  { tier: "perfetto", costo: "2.500–10.000 mo", tempo: "24 ore", note: "Materiali leggendari unici. Solo dal grado Maestro in su." },
 ];
 
 export const VANTAGGIO_SVANTAGGIO = [
-  { condizione: "Materiali di qualità superiore (mithril, gemme rare)",  effetto: "Vantaggio",     positive: true  },
-  { condizione: "Tempo doppio dedicato alla creazione",                  effetto: "+2 al tiro",    positive: true  },
-  { condizione: "Aiuto di un altro artigiano competente",                effetto: "+1 al tiro",    positive: true  },
-  { condizione: "Materiali scarsi o di fortuna",                          effetto: "Svantaggio",    positive: false },
-  { condizione: "Tempo dimezzato (creazione frettolosa)",                effetto: "−2 al tiro",    positive: false },
-  { condizione: "Senza strumenti adeguati",                              effetto: "Svantaggio",    positive: false },
-  { condizione: "Crafting di una professione non principale",            effetto: "Svantaggio + max Comune", positive: false },
+  { condizione: "Materiali di qualità superiore (mithril, gemme rare)", effetto: "Vantaggio",  positive: true  },
+  { condizione: "Lavori con calma (tempo doppio)",                      effetto: "+2 al tiro", positive: true  },
+  { condizione: "Aiuto di un artigiano o di un mastro competente",     effetto: "+1 al tiro", positive: true  },
+  { condizione: "Materiali scarsi o di fortuna",                        effetto: "Svantaggio", positive: false },
+  { condizione: "Lavori di fretta (metà tempo)",                        effetto: "−2 al tiro", positive: false },
+  { condizione: "Senza gli strumenti della professione",               effetto: "Svantaggio", positive: false },
 ];
 
 export const ESEMPI_INGREDIENTI = [

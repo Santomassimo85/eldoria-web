@@ -14,10 +14,10 @@ export const XP_PER_TIER = { scarso: 5, comune: 10, raro: 25, magico: 60, perfet
 export const XP_LEVELS = [
   { lv: 1,  xp: 0,    grado: 1, sblocca: "Conosci la tua arte: tiri normalmente." },
   { lv: 2,  xp: 40,   grado: 1, sblocca: "Mano ferma: gli oggetti Comuni che crei hanno una piccola rifinitura estetica (nota nella descrizione)." },
-  { lv: 3,  xp: 100,  grado: 2, sblocca: "Discepolo: +1 a tutti i tiri di Pregiatura. Identifichi gli oggetti Rari della tua professione." },
+  { lv: 3,  xp: 100,  grado: 2, sblocca: "Discepolo: +1 a tutti i tiri di Pregiatura. Riconosci a vista gli oggetti Rari della tua professione." },
   { lv: 4,  xp: 180,  grado: 2, sblocca: "Occhio esperto: vedi in anticipo quale voce della tabella d12 esce con un 1 e con un 12 (anteprima nell'Officina)." },
   { lv: 5,  xp: 300,  grado: 3, sblocca: "Artigiano: gli oggetti Scarsi contano come Comuni (niente malus). 1 volta per riposo lungo raddoppi la competenza." },
-  { lv: 6,  xp: 450,  grado: 3, sblocca: "Ritmo di bottega: il tempo di creazione dichiarato al Master è ridotto di un quarto." },
+  { lv: 6,  xp: 450,  grado: 3, sblocca: "Ritmo di bottega: ogni lavoro nell'Officina dura un quarto in meno." },
   { lv: 7,  xp: 700,  grado: 4, sblocca: "Maestro: +2 ai tiri di Pregiatura e puoi puntare al Perfetto (21+). Firma del Maestro 1 volta per riposo lungo." },
   { lv: 8,  xp: 1000, grado: 4, sblocca: "Materiali docili: i materiali di qualità superiore ti danno Vantaggio anche se non sono quelli 'ideali'." },
   { lv: 9,  xp: 1500, grado: 5, sblocca: "Leggenda: +3 ai tiri, nessun limite massimo. Opera Definitiva una volta per campagna." },

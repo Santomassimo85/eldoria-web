@@ -6,6 +6,7 @@
 // proprietà… così l'oggetto creato dal giocatore arriva su Foundry "da manuale".
 
 import { PREGIATURE } from "./crafting";
+import { craftTimeLabel } from "./craftingTime";
 
 // Rarità dnd5e e prezzo indicativo (mo) per pregiatura.
 export const TIER_TO_FOUNDRY = {
@@ -155,7 +156,7 @@ export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = f
 }
 
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
-export function craftedItemToFoundryPayload({ profession, tier, name, desc, choice, enhancer, crafter, roll, note }) {
+export function craftedItemToFoundryPayload({ profession, tier, name, desc, choice, enhancer, crafter, roll, note, work }) {
   const finalName = (choice || itemChoices(name)[0] || name).trim();
   const cls = classifyCraftedItem(profession.key, finalName, desc);
   const t = TIER_TO_FOUNDRY[tier] || TIER_TO_FOUNDRY.comune;
@@ -185,6 +186,7 @@ export function craftedItemToFoundryPayload({ profession, tier, name, desc, choi
   descParts.push(
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
     `Pregiatura ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}, d12 = ${roll.d12}.` +
+    (work ? ` Tempo di lavoro: ${craftTimeLabel(work)}.` : "") +
     (note ? ` Nota: ${note}` : "")
   );
 
