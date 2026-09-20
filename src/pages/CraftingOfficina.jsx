@@ -16,6 +16,7 @@ import { showD20Roll } from "../components/DiceRoll";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI } from "../data/crafting";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftResetLabel } from "../data/craftingWeek";
+import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
 import "./CraftingOfficina.css";
@@ -82,6 +83,7 @@ export default function CraftingOfficina() {
   const [choice, setChoice] = useState("");
   const [enhKey, setEnhKey] = useState("");
   const [note, setNote] = useState("");
+  const [clockOffset, setClockOffset] = useState(0); // server − dispositivo (ms)
 
   useEffect(() => {
     if (!uid) return;
@@ -97,8 +99,18 @@ export default function CraftingOfficina() {
 
   const crafting = charData?.crafting || {};
   const prof = PROFESSIONI.find((p) => p.key === crafting.profession) || null;
+  const hasProf = !!prof;
+
+  // Giorno e settimana si contano con l'ora del SERVER, non del telefono
+  // (spostare l'orologio avanti non regala prove). Sonda una volta per chi ha
+  // una professione; il tiro la rifà da capo dentro la transazione.
+  useEffect(() => {
+    if (!uid || !hasProf) return;
+    serverClockOffset().then(setClockOffset).catch(() => {});
+  }, [uid, hasProf]);
+  const now = new Date(Date.now() + clockOffset);
   const prog = useMemo(() => progression(crafting.xp || 0), [crafting.xp]);
-  const allowBase = useMemo(() => craftAllowance(crafting), [crafting.weekKey, crafting.weekCount, crafting.lastDayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allowBase = useMemo(() => craftAllowance(crafting, now), [crafting.weekKey, crafting.weekCount, crafting.lastDayKey, clockOffset]); // eslint-disable-line react-hooks/exhaustive-deps
   // Il Master non ha limiti: crea quante volte vuole (i contatori restano solo informativi).
   const allow = isMaster ? { ...allowBase, can: true, reason: "", unlimited: true } : allowBase;
   const log = Array.isArray(crafting.log) ? crafting.log : [];
@@ -165,6 +177,9 @@ export default function CraftingOfficina() {
     if (!allow.can) { setMsg(allow.reason); return; }
     setBusy(true); setMsg("");
     try {
+      // Ora vera dal server: è lei a decidere il giorno e la settimana della prova.
+      const srvNow = await serverNow();
+      setClockOffset(srvNow.getTime() - Date.now());
       const a = rnd(20), b = rnd(20);
       const d20 = advMode === "adv" ? Math.max(a, b) : advMode === "dis" ? Math.min(a, b) : a;
       const total = d20 + bonus;
@@ -177,7 +192,7 @@ export default function CraftingOfficina() {
       const [name, desc] = prof.creazioni[tier][d12 - 1];
       const nat20 = d20 === 20;
       const entry = {
-        id: `${Date.now()}-${d20}${d12}`, at: Date.now(), dayKey: allow.dayKey, weekKey: allow.weekKey,
+        id: `${srvNow.getTime()}-${d20}${d12}`, at: srvNow.getTime(), dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra }, total, d12, name, desc,
         xp: xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
@@ -187,13 +202,15 @@ export default function CraftingOfficina() {
         const ref = doc(db, "characters", uid);
         const snap = await tx.get(ref);
         const cur = snap.exists() ? (snap.data().crafting || {}) : {};
-        const al = craftAllowance(cur);
+        const al = craftAllowance(cur, srvNow);
         if (!isMaster && !al.can) throw new Error(al.reason);
+        entry.dayKey = al.dayKey; entry.weekKey = al.weekKey;
         const prevLog = Array.isArray(cur.log) ? cur.log : [];
         tx.update(ref, {
           "crafting.weekKey": al.weekKey,
           "crafting.weekCount": al.weekCount + 1,
           "crafting.lastDayKey": al.dayKey,
+          "crafting.lastAt": serverTimestamp(),
           "crafting.xp": (Number(cur.xp) || 0) + entry.xp,
           "crafting.log": [entry, ...prevLog].slice(0, 40),
         });
@@ -279,7 +296,7 @@ export default function CraftingOfficina() {
           <div className="off-usi" aria-label="Prove disponibili">
             <div className={`off-uso${allow.usedToday ? " is-off" : ""}`}><b>{allow.usedToday ? "0" : "1"}</b><small>oggi</small></div>
             <div className={`off-uso${allow.weekLeft === 0 ? " is-off" : ""}`}><b>{allow.weekLeft}<span>/{CRAFT_MAX_PER_WEEK}</span></b><small>settimana</small></div>
-            <div className="off-reset"><small>si azzera</small>{craftResetLabel()}</div>
+            <div className="off-reset"><small>si azzera</small>{craftResetLabel(now)}</div>
           </div>
         )}
       </div>
