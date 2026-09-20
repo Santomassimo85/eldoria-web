@@ -18,7 +18,7 @@ import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI } from "../data/crafting";
-import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftResetLabel } from "../data/craftingWeek";
+import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
@@ -258,6 +258,7 @@ export default function CraftingOfficina() {
           "crafting.weekCount": al.weekCount + 1,
           "crafting.lastDayKey": al.dayKey,
           "crafting.lastAt": serverTimestamp(),
+          "crafting.totalCount": (Number(cur.totalCount) || 0) + 1, // contatore a vita: il registro tiene solo le ultime 40 voci
           "crafting.busyUntil": entry.readyAt,
           "crafting.xp": (Number(cur.xp) || 0) + entry.xp,
           "crafting.log": [entry, ...prevLog].slice(0, 40),
@@ -783,6 +784,91 @@ function MasterPanel() {
         })}
       </ul>
       <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Rarità Foundry per pregiatura: {TIER_ORDER.map((t) => `${tierMeta(t).label} → ${RARITY_LABEL[TIER_TO_FOUNDRY[t].rarity]}`).join(", ")}.</p>
+      <CraftLedger chars={chars} />
     </details>
+  );
+}
+
+// ── Registro dei craft del tavolo: quanti (totale · oggi · settimana) e cosa, per ogni PG ──
+const dayLabel = (key) => key ? new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${key}T12:00:00Z`)) : "—";
+const timeLabel = (ms) => new Intl.DateTimeFormat("it-IT", { timeZone: ROME, hour: "2-digit", minute: "2-digit" }).format(new Date(ms || 0));
+const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
+
+function CraftLedger({ chars }) {
+  const [openUid, setOpenUid] = useState("");
+  const nowMs = Date.now();
+  const dayKey = craftDayKey(), weekKey = craftWeekKey();
+  const rows = chars.map((c) => {
+    const cr = c.crafting || {};
+    const log = Array.isArray(cr.log) ? cr.log : [];
+    return {
+      uid: c.uid, name: c.name, prof: PROFESSIONI.find((p) => p.key === cr.profession) || null, log,
+      total: Math.max(Number(cr.totalCount) || 0, log.length),
+      today: log.filter((e) => e.dayKey === dayKey).length,
+      week: log.filter((e) => e.weekKey === weekKey).length,
+      sent: log.filter((e) => e.inboxId).length,
+      last: log[0] || null,
+    };
+  }).filter((r) => r.prof || r.total > 0).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
+  const open = rows.find((r) => r.uid === openUid) || null;
+  // Settimana → giorno → voci (le più recenti in cima).
+  const weeks = open ? [...open.log].sort((a, b) => (b.at || 0) - (a.at || 0)).reduce((acc, e) => {
+    const wk = e.weekKey || "?", dk = e.dayKey || "?";
+    let w = acc.find((x) => x.key === wk); if (!w) { w = { key: wk, days: [] }; acc.push(w); }
+    let d = w.days.find((x) => x.key === dk); if (!d) { d = { key: dk, items: [] }; w.days.push(d); }
+    d.items.push(e); return acc;
+  }, []) : [];
+
+  return (
+    <div className="off-ledger">
+      <div className="off-ledger-head">
+        <span className="off-label">📊 Registro dei craft <small>(totale a vita · oggi · questa settimana; il dettaglio tiene le ultime 40 prove di ogni PG)</small></span>
+        <div className="off-ledger-sum">
+          <span><b>{sum("total")}</b><small>totale</small></span>
+          <span><b>{sum("today")}</b><small>oggi</small></span>
+          <span><b>{sum("week")}</b><small>settimana</small></span>
+          <span><b>{sum("sent")}</b><small>in coda</small></span>
+        </div>
+      </div>
+      {rows.length === 0 ? <p className="nx-nota">Nessuna prova ancora.</p> : (
+        <div className="off-ledger-table">
+          <div className="off-ledger-row is-head"><span>Personaggio</span><span>Totale</span><span>Oggi</span><span>Sett.</span><span>Ultima prova</span></div>
+          {rows.map((r) => (
+            <button key={r.uid} type="button" className={`off-ledger-row${openUid === r.uid ? " on" : ""}`} onClick={() => setOpenUid(openUid === r.uid ? "" : r.uid)} aria-expanded={openUid === r.uid}>
+              <span className="off-ledger-name"><b>{r.name}</b><small>{r.prof ? `${r.prof.icon} ${r.prof.name}` : "—"}</small></span>
+              <span className="off-ledger-n"><b>{r.total}</b></span>
+              <span className={`off-ledger-n${r.today ? " is-on" : ""}`}>{r.today}<i>/{CRAFT_MAX_PER_DAY}</i></span>
+              <span className={`off-ledger-n${r.week ? " is-on" : ""}`}>{r.week}<i>/{CRAFT_MAX_PER_WEEK}</i></span>
+              <span className="off-ledger-last">{r.last ? <>{tierMeta(r.last.tier).icon} {r.last.choice || r.last.name}<small>{dayLabel(r.last.dayKey)} · {entryStatus(r.last, nowMs)}</small></> : <small>—</small>}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div className="off-ledger-detail">
+          <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate in coda</span>
+          {weeks.map((w) => (
+            <div key={w.key} className="off-ledger-week">
+              <div className="off-ledger-wk"><b>Settimana da domenica {dayLabel(w.key)}</b>{w.key === weekKey && <em>in corso</em>}<small>{w.days.reduce((a, d) => a + d.items.length, 0)} prove</small></div>
+              {w.days.map((d) => (
+                <div key={d.key} className="off-ledger-day">
+                  <div className="off-ledger-dk">{dayLabel(d.key)}{d.key === dayKey && <em>oggi</em>}<small>{d.items.length}</small></div>
+                  <ul>
+                    {d.items.map((e) => (
+                      <li key={e.id} style={{ "--q": tierMeta(e.tier).color }}>
+                        <span className="off-ledger-t">{timeLabel(e.at)}</span>
+                        <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && e.targetTier !== e.tier ? ` (mirava ${tierMeta(e.targetTier).label})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
+                        <span className={`off-log-st${e.inboxId ? " ok" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

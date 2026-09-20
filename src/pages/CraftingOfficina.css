@@ -226,3 +226,43 @@
   .cr-page .off-work-times { font-size: .82rem; }
   .cr-page .off-cta { width: 100%; }
 }
+
+/* ── registro dei craft (Master): quanti e cosa, per PG ── */
+.cr-page .off-ledger { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--roccia-3); }
+.cr-page .off-ledger-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.cr-page .off-ledger-head .off-label { margin: 0; max-width: 60ch; }
+.cr-page .off-ledger-sum { display: flex; gap: 6px; }
+.cr-page .off-ledger-sum span { display: flex; flex-direction: column; align-items: center; min-width: 56px; padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .35); background: rgba(var(--el-rgb), .08); }
+.cr-page .off-ledger-sum b { font-family: "Cinzel", Georgia, serif; font-size: 1.05rem; color: var(--el-2); line-height: 1.1; }
+.cr-page .off-ledger-sum small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-ledger-table { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.cr-page .off-ledger-row { display: grid; grid-template-columns: 1.4fr .6fr .6fr .6fr 1.6fr; gap: 8px; align-items: center; width: 100%; padding: 6px 10px; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .35); color: var(--osso); text-align: left; font-family: "Alegreya", Georgia, serif; font-size: .86rem; cursor: pointer; }
+.cr-page .off-ledger-row.is-head { cursor: default; border: 0; background: transparent; padding: 0 10px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--el-2); }
+.cr-page .off-ledger-row.on { border-color: var(--el); box-shadow: 0 0 14px -6px var(--el); }
+.cr-page .off-ledger-row:hover:not(.is-head) { border-color: rgba(var(--el-rgb), .6); }
+.cr-page .off-ledger-name, .cr-page .off-ledger-last { display: flex; flex-direction: column; min-width: 0; }
+.cr-page .off-ledger-name small, .cr-page .off-ledger-last small { font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-ledger-n { font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: var(--osso-2); }
+.cr-page .off-ledger-n b { color: var(--el-2); font-size: 1rem; }
+.cr-page .off-ledger-n.is-on { color: var(--osso); }
+.cr-page .off-ledger-n i { font-style: normal; font-size: .7rem; color: var(--osso-2); }
+.cr-page .off-ledger-detail { margin-top: 10px; padding: 10px 12px; border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .4); background: rgba(var(--ossidiana-rgb), .3); }
+.cr-page .off-ledger-week { margin-top: 10px; }
+.cr-page .off-ledger-wk { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--roccia-3); font-family: "Cinzel", Georgia, serif; font-size: .78rem; color: var(--osso); }
+.cr-page .off-ledger-wk em, .cr-page .off-ledger-dk em { font-style: normal; padding: 1px 6px; border-radius: 3px; background: rgba(var(--el-rgb), .18); color: var(--el-2); font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; }
+.cr-page .off-ledger-wk small, .cr-page .off-ledger-dk small { font-family: "Alegreya", Georgia, serif; color: var(--osso-2); }
+.cr-page .off-ledger-day { margin: 8px 0 0 8px; }
+.cr-page .off-ledger-dk { display: flex; align-items: baseline; gap: 8px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso-body); }
+.cr-page .off-ledger-day ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cr-page .off-ledger-day li { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 3px; border: 1px solid var(--roccia-3); border-left: 3px solid var(--q, var(--el)); background: rgba(var(--ossidiana-rgb), .35); }
+.cr-page .off-ledger-t { font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-ledger-item { display: flex; flex-direction: column; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-ledger-item b { font-size: .86rem; color: var(--osso); }
+.cr-page .off-ledger-item small { font-size: .74rem; color: var(--osso-2); line-height: 1.4; }
+@media (max-width: 640px) {
+  .cr-page .off-ledger-row { grid-template-columns: 1.4fr .5fr .5fr .5fr; }
+  .cr-page .off-ledger-row.is-head span:last-child, .cr-page .off-ledger-row .off-ledger-last { grid-column: 1 / -1; }
+  .cr-page .off-ledger-row.is-head span:last-child { display: none; }
+  .cr-page .off-ledger-day li { grid-template-columns: 44px 1fr; }
+  .cr-page .off-ledger-day li .off-log-st { grid-column: 2; }
+}
