@@ -71,9 +71,10 @@ export const PREGIATURA_COSTS = [
 export const VANTAGGIO_SVANTAGGIO = [
   { condizione: "Materiali di qualità superiore (mithril, gemme rare)", effetto: "Vantaggio",  positive: true  },
   { condizione: "Lavori con calma (tempo doppio)",                      effetto: "+2 al tiro", positive: true  },
-  { condizione: "Aiuto di un artigiano o di un mastro competente",     effetto: "+1 al tiro", positive: true  },
+  { condizione: "Aiuto di un artigiano (−5% tempo) o di un mastro (−10%)", effetto: "+1 al tiro", positive: true  },
+  { condizione: "Componenti trovati in sessione (fino a 3)",           effetto: "+1d3 al tiro ciascuno", positive: true  },
   { condizione: "Materiali scarsi o di fortuna",                        effetto: "Svantaggio", positive: false },
-  { condizione: "Lavori di fretta (metà tempo)",                        effetto: "−2 al tiro", positive: false },
+  { condizione: "Lavori di fretta (metà tempo, 5% di fallimento critico)", effetto: "−3 al tiro", positive: false },
   { condizione: "Senza gli strumenti della professione",               effetto: "Svantaggio", positive: false },
 ];
 

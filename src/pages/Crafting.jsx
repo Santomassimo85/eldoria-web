@@ -9,7 +9,7 @@ import {
 } from "../data/crafting";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER } from "../data/craftingProgress";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK } from "../data/craftingWeek";
-import { COMPONENTS, CRAFT_BASE_MINUTES, CRAFT_MIN_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, fmtMinutes } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, CRAFT_MIN_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, craftMinutes, fmtMinutes } from "../data/craftingTime";
 import GlacierHero from "../components/glacier/GlacierHero";
 import CraftingOfficina from "./CraftingOfficina";
 import "./Crafting.css";
@@ -182,7 +182,8 @@ export default function Crafting() {
                 <li><strong>Caratteristica</strong>: quella della professione (Fabbro = Forza, Alchimista = Intelligenza…; le professioni magiche usano la migliore fra Int, Sag e Car).</li>
                 <li><strong>Strumenti</strong>: il bonus di competenza, solo se hai con te gli strumenti della professione. Senza, tiri con svantaggio.</li>
                 <li><strong>Grado</strong>: Discepolo +1 · Artigiano +1 · Maestro +2 · Leggenda +3 (vedi Livelli e gradi).</li>
-                <li><strong>Condizioni</strong>: aiuto, materiali e ritmo scelti sul banco, qui sotto. L'Officina le scrive nella coda del Master.</li>
+                <li><strong>Condizioni</strong>: aiuto (+1), componenti (+1d{COMPONENT_ROLL_DIE} ciascuno), materiali e ritmo scelti sul banco. L'Officina le scrive nella coda del Master.</li>
+                <li><strong>Di fretta</strong>: metà tempo ma −3 al tiro e 5% di fallimento critico: la prova è consumata, i materiali sono persi e non esce nulla.</li>
               </ul>
             </div>
 
@@ -234,14 +235,14 @@ export default function Crafting() {
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🧪</span>
                 <span className="nx-nome">Componenti trovati in sessione</span>
-                <b className="cr-time-fx">−30 / −45 / −60 min</b>
-                <span className="nx-nota">Fino a {MAX_COMPONENTS} per lavoro, si consumano. Il Master te li segna nell'Officina. La lista è qui sotto.</span>
+                <b className="cr-time-fx">−30 / −45 / −60 min · +1–{COMPONENT_ROLL_DIE} al tiro</b>
+                <span className="nx-nota">Fino a {MAX_COMPONENTS} per lavoro, si consumano; ognuno dà anche +1d{COMPONENT_ROLL_DIE} al tiro. Alcuni lasciano un effetto sull'oggetto. La lista è qui sotto.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🤝</span>
                 <span className="nx-nome">Un aiutante al banco</span>
-                <b className="cr-time-fx">{HELP_OPTIONS.filter(h => h.key).map(h => `−${fmtMinutes(h.minutes)}`).join(" / ")}</b>
-                <span className="nx-nota">{HELP_OPTIONS.filter(h => h.key).map(h => `${h.label}: −${fmtMinutes(h.minutes)}`).join(" · ")}. In più +1 al tiro. Da concordare col Master.</span>
+                <b className="cr-time-fx">{HELP_OPTIONS.filter(h => h.key).map(h => `−${h.pct}%`).join(" / ")}</b>
+                <span className="nx-nota">{HELP_OPTIONS.filter(h => h.key).map(h => `${h.label}: −${h.pct}% del tempo`).join(" · ")}. In più +1 al tiro. Da concordare col Master.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">⏳</span>
@@ -258,21 +259,21 @@ export default function Crafting() {
             </div>
 
             <h3 className="cr-subtitle">I 10 componenti</h3>
-            <p className="nx-nota cr-section-sub">Oggetti da trovare in sessione: non cambiano ciò che crei, fanno solo risparmiare tempo. Il Master li assegna dal suo pannello nell'Officina.</p>
+            <p className="nx-nota cr-section-sub">Oggetti da trovare in sessione: accorciano il lavoro e danno +1d{COMPONENT_ROLL_DIE} al tiro ciascuno; quattro lasciano anche un effetto sull'oggetto, che decide il DM. Il Master li assegna dal suo pannello nell'Officina.</p>
             <div className="cr-comp-grid">
               {COMPONENTS.map(c => (
                 <div key={c.key} className="nx-pannello cr-comp-card">
                   <span className="cr-comp-ic" aria-hidden="true">{c.icon}</span>
                   <span className="cr-comp-body">
-                    <span className="nx-nome cr-comp-name">{c.name} <b>−{c.minutes} min</b></span>
-                    <span className="nx-nota">{c.desc}</span>
+                    <span className="nx-nome cr-comp-name">{c.name} <b>−{c.minutes} min · +1d{COMPONENT_ROLL_DIE}</b></span>
+                    <span className="nx-nota">{c.desc}{c.effect ? <> <strong>{componentEffectLabel(c)}.</strong></> : null}</span>
                   </span>
                 </div>
               ))}
             </div>
             <p className="nx-nota cr-section-sub cr-come-nota">
-              Esempio: Comune parte da {fmtMinutes(CRAFT_BASE_MINUTES.comune)}; con gli strumenti {fmtMinutes(CRAFT_BASE_MINUTES.comune - TOOLS_MINUTES)}; con un Carbone Runico e un mastro
-              competente {fmtMinutes(CRAFT_BASE_MINUTES.comune - TOOLS_MINUTES - 45 - 60)}; di fretta {fmtMinutes(Math.max(CRAFT_MIN_MINUTES, (CRAFT_BASE_MINUTES.comune - TOOLS_MINUTES - 45 - 60) / 2))} ma con −2 al tiro.
+              Esempio: Comune parte da {fmtMinutes(CRAFT_BASE_MINUTES.comune)}; con gli strumenti {fmtMinutes(craftMinutes({ tier: "comune" }).minutes)}; con un Carbone Runico e un mastro
+              competente {fmtMinutes(craftMinutes({ tier: "comune", components: ["carbone"], help: "mastro" }).minutes)}; di fretta {fmtMinutes(craftMinutes({ tier: "comune", components: ["carbone"], help: "mastro", pace: "fretta" }).minutes)}, ma con −3 al tiro e il rischio del fallimento critico.
             </p>
           </details>
 

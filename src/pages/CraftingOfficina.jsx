@@ -22,7 +22,7 @@ import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, cra
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
-import { COMPONENTS, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, helpByKey, paceByKey } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, helpByKey, paceByKey } from "../data/craftingTime";
 import "./CraftingOfficina.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -173,7 +173,7 @@ export default function CraftingOfficina() {
     const enh = ENHANCERS.find((x) => x.key === enhKey) || null;
     return craftedItemToFoundryPayload({
       profession: activeProf, tier: activeEntry.tier, name: activeEntry.name, desc: activeEntry.desc,
-      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null,
+      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [],
       crafter: { uid, name: charData?.name || "", gradeName: prog.grado.name },
       roll: { d20: activeEntry.d20, bonus: activeEntry.bonus, total: activeEntry.total, d12: activeEntry.d12 },
     });
@@ -225,23 +225,31 @@ export default function CraftingOfficina() {
       setClockOffset(srvNow.getTime() - Date.now());
       const a = rnd(20), b = rnd(20);
       const d20 = advMode === "adv" ? Math.max(a, b) : advMode === "dis" ? Math.min(a, b) : a;
-      const total = d20 + bonus;
+      // Ogni componente dà +1d3 al tiro (tirato adesso, resta nel registro).
+      const compRolls = work.components.map((k) => ({ key: k, roll: rnd(COMPONENT_ROLL_DIE) }));
+      const compBonus = compRolls.reduce((s, c) => s + c.roll, 0);
+      const rollBonus = bonus + compBonus;
+      const total = d20 + rollBonus;
+      // Di fretta: 5% di fallimento critico, i materiali vanno perduti e non esce nulla.
+      const critRoll = paceOpt.critFail ? rnd(100) : 0;
+      const failed = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
       let tier = tierByTotal(total);
       // Non si supera la pregiatura mirata (i materiali sono quelli); Perfetto solo dal Maestro.
       if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(target)) tier = target;
       if (tier === "perfetto" && !prog.canPerfetto) tier = "magico";
       if (tier === "scarso" && prog.scarsoAsComune) tier = "comune";
       const d12 = rnd(12);
-      const [name, desc] = prof.creazioni[tier][d12 - 1];
+      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${targetCostFor(target)}) sono andati perduti e non è uscito nulla.`] : prof.creazioni[tier][d12 - 1];
       const nat20 = d20 === 20;
       const startMs = srvNow.getTime();
       const entry = {
-        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: startMs + work.minutes * 60000, minutes: work.minutes, work,
+        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: failed ? startMs : startMs + work.minutes * 60000, minutes: failed ? 0 : work.minutes, work,
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
-        bonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra }, total, d12, name, desc,
+        bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         quality: qualOpt.key, help: helpOpt.key, pace: paceOpt.key, components: work.components,
-        xp: xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
+        xp: failed ? 0 : xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
+        failed, critRoll, skipped: failed, // fallito = chiuso subito, non blocca il banco
       };
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
       await runTransaction(db, async (tx) => {
@@ -274,7 +282,9 @@ export default function CraftingOfficina() {
       await showD20Roll(d20, { label: `Pregiatura · ${prof.name}` });
       setComps([]); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
       const tm = tierMeta(tier);
-      setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(bonus)} = ${total} → ${tm.label}. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
+      const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
+      if (failed) setMsg(`Errore: 💥 Fallimento critico (${critRoll}/100 sotto il ${paceOpt.critFail}%): la fretta ha rovinato il lavoro. I materiali (${targetCostFor(target)}) sono perduti, non hai creato nulla e la prova è consumata.`);
+      else setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
   }
@@ -304,7 +314,7 @@ export default function CraftingOfficina() {
       const payload = craftedItemToFoundryPayload({
         profession: p, tier: entry.tier, name: entry.name, desc: entry.desc,
         choice: itemChoices(entry.name).length > 1 ? choice : "",
-        enhancer: enh, note: note.trim(), work: entry.work || null,
+        enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [],
         crafter: { uid, name: charData?.name || currentUser.email, gradeName: prog.grado.name },
         roll: { d20: entry.d20, bonus: entry.bonus, total: entry.total, d12: entry.d12 },
       });
@@ -318,6 +328,8 @@ export default function CraftingOfficina() {
           cost: targetCostFor(entry.targetTier), mods: conds,
           minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
           components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
+          componentBonus: entry.bonusParts?.comps || 0,
+          componentEffects: (entry.components || []).map((k) => componentByKey(k)).filter((c) => c?.effect).map((c) => `${c.name}: ${c.effect.label}`),
         },
         createdAt: serverTimestamp(), createdBy: currentUser.email,
       });
@@ -451,16 +463,16 @@ export default function CraftingOfficina() {
                     return (
                       <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={c.desc}>
                         <span className="off-comp-ic" aria-hidden="true">{c.icon}</span>
-                        <span className="off-comp-name">{c.name}</span>
-                        <span className="off-comp-fx">−{c.minutes} min{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
+                        <span className="off-comp-name">{c.name}{c.effect ? <i className="off-comp-eff"> · {componentEffectLabel(c)}</i> : null}</span>
+                        <span className="off-comp-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <p className="off-tile-empty">Non hai componenti. Il Master te li fa <strong>trovare in sessione</strong> e li segna qui: ognuno accorcia il lavoro di 30–60 min.</p>
+                <p className="off-tile-empty">Non hai componenti. Il Master te li fa <strong>trovare in sessione</strong> e li segna qui: ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
               )}
-              {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · si consumano all'avvio</span>}
+              {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</em> al tiro (si tira all'avvio) · si consumano</span>}
             </div>
 
             {/* aiuto */}
@@ -473,7 +485,7 @@ export default function CraftingOfficina() {
                   </button>
                 ))}
               </div>
-              <span className="off-tile-fx">{helpOpt.minutes ? <><em>−{fmtMinutes(helpOpt.minutes)}</em> · +{helpOpt.roll} al tiro · da concordare col Master</> : "nessun bonus"}</span>
+              <span className="off-tile-fx">{helpOpt.pct ? <><em>−{helpOpt.pct}% del tempo</em> · +{helpOpt.roll} al tiro · da concordare col Master</> : "nessun bonus"}</span>
             </div>
 
             {/* materiali */}
@@ -499,7 +511,7 @@ export default function CraftingOfficina() {
                   </button>
                 ))}
               </div>
-              <span className="off-tile-fx">{paceOpt.mult === 1 ? "tempo pieno, tiro normale" : <><em>×{paceOpt.mult === 0.5 ? "½" : paceOpt.mult} tempo</em> · {sign(paceOpt.roll)} al tiro</>}</span>
+              <span className="off-tile-fx">{paceOpt.mult === 1 ? "tempo pieno, tiro normale" : <><em>×{paceOpt.mult === 0.5 ? "½" : paceOpt.mult} tempo</em> · {sign(paceOpt.roll)} al tiro{paceOpt.critFail ? <> · <em>{paceOpt.critFail}% fallimento critico</em>: perdi i materiali e non crei nulla</> : null}</>}</span>
             </div>
           </div>
 
@@ -521,7 +533,8 @@ export default function CraftingOfficina() {
                 <span className={`off-piece${tools ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
                 <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
                 {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>aiuto/ritmo</small></span>}
-                <span className="off-eq">= d20 {sign(bonus)}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
+                {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
+                <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
               </div>
             </div>
           </div>
@@ -569,6 +582,9 @@ export default function CraftingOfficina() {
           </div>
           <h3 className="nx-titolo off-esito-name">{previewName}</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
+          {(activeEntry.compRolls || []).length > 0 && (
+            <p className="nx-nota off-esito-comps">🧪 Componenti: {activeEntry.compRolls.map((r) => { const c = componentByKey(r.key); return c ? `${c.icon} ${c.name} +${r.roll}${c.effect ? ` (${componentEffectLabel(c)})` : ""}` : r.key; }).join(" · ")}</p>
+          )}
 
           {itemChoices(activeEntry.name).length > 1 && (
             <div className="off-field">
@@ -645,8 +661,8 @@ export default function CraftingOfficina() {
               return (
                 <li key={c.key} className={n > 0 ? "on" : ""}>
                   <span className="off-stock-ic" aria-hidden="true">{c.icon}</span>
-                  <span className="off-stock-main"><b>{c.name} <i>×{n}</i></b><small>{c.desc}</small></span>
-                  <span className="off-stock-fx">−{c.minutes} min</span>
+                  <span className="off-stock-main"><b>{c.name} <i>×{n}</i></b><small>{c.desc}{c.effect ? ` — ${componentEffectLabel(c)}.` : ""}</small></span>
+                  <span className="off-stock-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}</span>
                 </li>
               );
             })}
@@ -666,7 +682,7 @@ export default function CraftingOfficina() {
                 <li key={e.id} style={{ "--q": tm.color }}>
                   <span className="off-log-ic" aria-hidden="true">{tm.icon}</span>
                   <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}</small></span>
-                  <span className={`off-log-st${e.inboxId ? " ok" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
+                  <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
                 </li>
               );
             })}
@@ -792,7 +808,7 @@ function MasterPanel() {
 // ── Registro dei craft del tavolo: quanti (totale · oggi · settimana) e cosa, per ogni PG ──
 const dayLabel = (key) => key ? new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${key}T12:00:00Z`)) : "—";
 const timeLabel = (ms) => new Intl.DateTimeFormat("it-IT", { timeZone: ROME, hour: "2-digit", minute: "2-digit" }).format(new Date(ms || 0));
-const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
+const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
 
 function CraftLedger({ chars }) {
   const [openUid, setOpenUid] = useState("");
@@ -859,7 +875,7 @@ function CraftLedger({ chars }) {
                       <li key={e.id} style={{ "--q": tierMeta(e.tier).color }}>
                         <span className="off-ledger-t">{timeLabel(e.at)}</span>
                         <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && e.targetTier !== e.tier ? ` (mirava ${tierMeta(e.targetTier).label})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
-                        <span className={`off-log-st${e.inboxId ? " ok" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
+                        <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
                       </li>
                     ))}
                   </ul>

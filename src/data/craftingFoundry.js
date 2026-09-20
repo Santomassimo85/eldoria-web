@@ -6,7 +6,7 @@
 // proprietà… così l'oggetto creato dal giocatore arriva su Foundry "da manuale".
 
 import { PREGIATURE } from "./crafting";
-import { craftTimeLabel } from "./craftingTime";
+import { componentByKey, craftTimeLabel } from "./craftingTime";
 
 // Rarità dnd5e e valore (mo) dell'oggetto su Foundry per pregiatura: sopra il
 // costo fisso dei materiali del manuale (50 · 500 · 3.000 · 10.000 mo).
@@ -157,7 +157,7 @@ export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = f
 }
 
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
-export function craftedItemToFoundryPayload({ profession, tier, name, desc, choice, enhancer, crafter, roll, note, work }) {
+export function craftedItemToFoundryPayload({ profession, tier, name, desc, choice, enhancer, crafter, roll, note, work, components = [] }) {
   const finalName = (choice || itemChoices(name)[0] || name).trim();
   const cls = classifyCraftedItem(profession.key, finalName, desc);
   const t = TIER_TO_FOUNDRY[tier] || TIER_TO_FOUNDRY.comune;
@@ -184,6 +184,15 @@ export function craftedItemToFoundryPayload({ profession, tier, name, desc, choi
     descParts.push(`Potenziato con ${enhancer.name} (${enhancer.desc})`);
   }
 
+  // Componenti con effetto sull'oggetto: monete in più o nota "a scelta del DM".
+  let price = t.price;
+  for (const k of components) {
+    const c = componentByKey(k);
+    if (!c?.effect) continue;
+    if (c.effect.price) price += c.effect.price;
+    if (c.effect.dm) descParts.push(`${c.icon} ${c.name}: ${c.effect.label}.`);
+  }
+
   descParts.push(
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
     `Pregiatura ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}, d12 = ${roll.d12}.` +
@@ -197,7 +206,7 @@ export function craftedItemToFoundryPayload({ profession, tier, name, desc, choi
     rarity,
     description: descParts.filter(Boolean).join("\n"),
     img: "",
-    price: t.price,
+    price,
     weight: Number(cls.weight) || 0,
     quantity: 1,
     target: "player",

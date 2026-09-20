@@ -592,7 +592,7 @@ export default function Almanacco() {
         <div className="nx-pannello alm-block alm-quick alm-craft">
           <ol className="alm-quick-steps">
             <li>Scegli la <strong>professione</strong> (una sola: Fabbro, Alchimista, Sarto…) e a quale <strong>pregiatura</strong> punti: i materiali hanno un prezzo fisso (Comune 50 mo, Raro 500, Magico 3.000, Perfetto 10.000) e si pagano in gioco</li>
-            <li>Prepari il <strong>banco</strong>: strumenti, componenti trovati in sessione, un aiutante, il ritmo. Ogni voce accorcia il <strong>tempo di lavoro</strong> (Comune 5 ore di base, 3 con gli strumenti; Raro 8 ore, Magico 5 giorni, Perfetto 7 giorni) o cambia il tiro</li>
+            <li>Prepari il <strong>banco</strong>: strumenti, componenti trovati in sessione, un aiutante (−5% o −10% del tempo), il ritmo. Ogni componente dà anche +1d3 al tiro; alcuni lasciano un effetto sull'oggetto. Ogni voce accorcia il <strong>tempo di lavoro</strong> (Comune 5 ore di base, 3 con gli strumenti; Raro 8 ore, Magico 5 giorni, Perfetto 7 giorni) o cambia il tiro</li>
             <li>Tiri <strong>1d20 + caratteristica + strumenti</strong> (+ il tuo grado): 1–5 Scarso · 6–10 Comune · 11–15 Raro · 16–20 Magico · 21+ Perfetto; il d12 sceglie l'oggetto</li>
             <li>Il lavoro dura il tempo fissato, in <strong>tempo reale</strong> (si vede solo la barra); finito, ritiri l'oggetto e lo mandi al Master, che lo importa su Foundry. Ogni prova dà <strong>esperienza</strong> alla professione</li>
           </ol>

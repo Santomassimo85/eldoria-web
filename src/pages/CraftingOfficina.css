@@ -266,3 +266,8 @@
   .cr-page .off-ledger-day li { grid-template-columns: 44px 1fr; }
   .cr-page .off-ledger-day li .off-log-st { grid-column: 2; }
 }
+
+/* componenti: effetto extra · fallimento critico */
+.cr-page .off-comp-eff { font-style: normal; font-size: .72rem; color: var(--oro); }
+.cr-page .off-esito-comps { margin: -4px 0 12px; font-size: .84rem; }
+.cr-page .off-log-st.bad { color: #f87171; }
