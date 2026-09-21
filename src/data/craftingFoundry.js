@@ -5,17 +5,18 @@
 // prezzo, peso, danno/attacco per le armi (valori SRD), CA per le armature,
 // proprietà… così l'oggetto creato dal giocatore arriva su Foundry "da manuale".
 
-import { PREGIATURE } from "./crafting";
+import { PREGIATURE, normTier } from "./crafting";
 import { componentByKey, craftTimeLabel } from "./craftingTime";
 
 // Rarità dnd5e e valore (mo) dell'oggetto su Foundry per pregiatura: sopra il
 // costo fisso dei materiali del manuale (50 · 500 · 3.000 · 10.000 mo).
 export const TIER_TO_FOUNDRY = {
-  scarso:   { rarity: "common",    price: 20 },
-  comune:   { rarity: "common",    price: 75 },
-  raro:     { rarity: "uncommon",  price: 750 },
-  magico:   { rarity: "rare",      price: 4500 },
-  perfetto: { rarity: "legendary", price: 15000 },
+  scarso:    { rarity: "common",    price: 20 },
+  common:    { rarity: "common",    price: 75 },
+  uncommon:  { rarity: "uncommon",  price: 750 },
+  rare:      { rarity: "rare",      price: 4500 },
+  veryRare:  { rarity: "veryRare",  price: 15000 },
+  legendary: { rarity: "legendary", price: 40000 },
 };
 
 // Tipo dnd5e "di casa" per ogni professione (quando il nome non dice altro).
@@ -33,7 +34,7 @@ const WEAPONS = [
   [["spada lunga", "lama", "spada del", "spada di", "spada"], "1d8", "slashing", "1d10", ["ver"], 3, "mwak"],
   [["stocco"],                        "1d8",  "piercing",    "",     ["fin"],               2,  "mwak"],
   [["pugnale", "daga"],               "1d4",  "piercing",    "",     ["fin", "lgt", "thr"], 1,  "mwak"],
-  [["martello da guerra", "martello del", "martello dell"], "1d8", "bludgeoning", "1d10", ["ver"], 2, "mwak"],
+  [["martello da guerra", "martello del", "martello dell", "martello dei"], "1d8", "bludgeoning", "1d10", ["ver"], 2, "mwak"],
   [["martello"],                      "1d4",  "bludgeoning", "",     ["lgt", "thr"],        2,  "mwak"],
   [["maglio"],                        "2d6",  "bludgeoning", "",     ["hvy", "two"],        10, "mwak"],
   [["mazza"],                         "1d6",  "bludgeoning", "",     [],                    4,  "mwak"],
@@ -50,7 +51,7 @@ const WEAPONS = [
   [["balestra pesante"],              "1d10", "piercing",    "",     ["amm", "hvy", "two"], 18, "rwak"],
   [["balestra a mano"],               "1d6",  "piercing",    "",     ["amm", "lgt"],        3,  "rwak"],
   [["balestra"],                      "1d8",  "piercing",    "",     ["amm", "two"],        5,  "rwak"],
-  [["arco lungo", "arco imperiale"],  "1d8",  "piercing",    "",     ["amm", "hvy", "two"], 2,  "rwak"],
+  [["arco lungo", "arco imperiale", "arco della"],  "1d8",  "piercing",    "",     ["amm", "hvy", "two"], 2,  "rwak"],
   [["arco corto", "arco"],            "1d6",  "piercing",    "",     ["amm", "two"],        2,  "rwak"],
   [["bastone", "staffa"],             "1d6",  "bludgeoning", "1d8",  ["ver"],               4,  "mwak"],
 ];
@@ -68,11 +69,13 @@ const ARMORS = [
 ];
 
 // Oggetti da indossare senza CA (vesti, mantelli, anelli…): equipment "trinket".
-const WEARABLE = ["veste", "abito", "mantello", "stivali", "guanti", "cintura", "cappello", "cappuccio", "sciarpa", "tunica", "calze", "elmo", "diadema", "anello", "collana", "bracciale", "orecchin", "pendente", "spilla", "cammeo", "talismano", "monile", "gemma", "amuleto", "velo", "ferri da cavallo", "ferro dell"];
+const WEARABLE = ["veste", "abito", "mantello", "stivali", "guanti", "guanto", "cintura", "cappello", "cappuccio", "sciarpa", "tunica", "calze", "elmo", "diadema", "corona", "anello", "collana", "braccial", "orecchin", "pendente", "spilla", "cammeo", "talismano", "monile", "gemma", "amuleto", "velo", "ferri da cavallo", "ferro dell", "zaino", "borsa"];
 // Consumabili (pozioni, cibo, pergamene, munizioni…).
-const CONSUMABLE = ["pozione", "elisir", "veleno", "siero", "acido", "antidoto", "sale", "inalante", "solvente", "profumo", "polvere", "boccetta", "bomba", "fuoco dell", "lacrime", "inchiostro", "mutazione", "unguento", "essenza", "esca", "rimedio", "attrattivo", "pomata", "tisana", "erbe", "erba", "tabacco", "filtro", "polline", "foglia", "bouquet", "cibo", "bevanda", "birra", "pasto", "liquore", "pane", "stufato", "dolce", "tè", "vino", "spezia", "razione", "piatto", "filetto", "banchetto", "scroll", "pergamena", "proiettil", "oggetto monouso", "bacchetta", "sfera di luce", "runa", "glifo", "sigillo"];
+const CONSUMABLE = ["pozione", "elisir", "veleno", "siero", "acido", "antidoto", "sale", "inalante", "solvente", "profumo", "polvere", "boccetta", "bomba", "fuoco dell", "lacrime", "inchiostro", "mutazione", "unguento", "essenza", "esca", "rimedio", "attrattivo", "pomata", "tisana", "erbe", "erba", "tabacco", "filtro", "polline", "foglia", "bouquet", "cibo", "bevanda", "birra", "pasto", "liquore", "pane", "stufato", "dolce", "tè", "vino", "spezia", "razion", "piatto", "filetto", "banchetto", "torta", "idromele", "zuppa", "ambrosia", "distillato", "antitossina", "belladonna", "semi", "radice", "ghirlanda", "frecce", "dardi", "quadrell", "acido", "scroll", "pergamena", "proiettil", "oggetto monouso", "bacchetta", "sfera di luce", "runa", "glifo", "sigillo"];
 // Strumenti (grimaldelli, utensili…).
-const TOOLS = ["grimaldell", "utensile", "piede di porco", "strumento", "set di", "bussola", "cannocchiale", "lente", "orologio", "sveglia", "calcolatrice", "penne", "lira", "arpa", "pipa"];
+const TOOLS = ["grimaldell", "utensile", "piede di porco", "strumento", "set di", "bussola", "cannocchiale", "lente", "orologio", "sveglia", "calcolatrice", "penne", "strumenti", "lira", "arpa", "pipa", "liuto", "mandolino", "rampino"];
+// Libri, mappe, sigilli…: tesoro/varie anche per le professioni "da consumabile".
+const LOOT = ["tomo", "grimorio", "libro", "diario", "mappa", "sigillo", "lettera", "bandiera", "stendardo", "codice", "cifrario", "genealogia", "carta", "atlante", "scrigno", "trono", "statua", "carro", "porta", "automa", "golem", "costrutto", "servo", "macchina", "occhio del cielo", "cuore di fuoco"];
 
 const lc = (s) => String(s || "").toLowerCase();
 // La chiave deve iniziare a inizio parola ("lancia" non deve combaciare con "bilanciato").
@@ -105,6 +108,7 @@ export function classifyCraftedItem(profKey, name, desc = "") {
     return { foundryType: "equipment", armorType, armorValue: ac, weight };
   }
   if (has(n, TOOLS)) return { foundryType: "tool", weight: 1 };
+  if (has(n, LOOT)) return { foundryType: "loot", weight: 1 };
   if (has(n, CONSUMABLE)) return { foundryType: "consumable", weight: 0.5 };
   if (has(n, WEARABLE)) return { foundryType: "equipment", armorType: "", armorValue: 0, weight: 1 };
   return { foundryType: PROF_DEFAULT_TYPE[profKey] || "loot", weight: 1 };
@@ -157,12 +161,13 @@ export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = f
 }
 
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
-export function craftedItemToFoundryPayload({ profession, tier, name, desc, choice, enhancer, crafter, roll, note, work, components = [] }) {
+export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [] }) {
+  const tier = normTier(rawTier);
   const finalName = (choice || itemChoices(name)[0] || name).trim();
   const cls = classifyCraftedItem(profession.key, finalName, desc);
-  const t = TIER_TO_FOUNDRY[tier] || TIER_TO_FOUNDRY.comune;
+  const t = TIER_TO_FOUNDRY[tier] || TIER_TO_FOUNDRY.common;
   const tierMeta = PREGIATURE.find((p) => p.key === tier);
-  const magic = tier === "raro" || tier === "magico" || tier === "perfetto";
+  const magic = ["uncommon", "rare", "veryRare", "legendary"].includes(tier);
   const plus = plusBonus(finalName, desc);
 
   let rarity = t.rarity;
@@ -195,7 +200,7 @@ export function craftedItemToFoundryPayload({ profession, tier, name, desc, choi
 
   descParts.push(
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
-    `Pregiatura ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}, d12 = ${roll.d12}.` +
+    `Rarità ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}${roll.d12 ? `, d12 = ${roll.d12}` : ", oggetto scelto dal catalogo"}.` +
     (work ? ` Tempo di lavoro: ${craftTimeLabel(work)}.` : "") +
     (note ? ` Nota: ${note}` : "")
   );

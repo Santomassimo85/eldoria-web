@@ -281,6 +281,58 @@
 .cr-page .off-ledger-del .off-ghost { padding: 3px 8px; font-size: .76rem; }
 .cr-page .off-ghost.is-danger { border-color: #f87171; color: #f87171; }
 
+/* ── 2 · l'oggetto: catalogo dei 6 (rarità a scelta) o d12 (Molto raro / Leggendario) ── */
+.cr-page .off-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.cr-page .off-item { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; padding: 10px 12px; text-align: left; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-left: 3px solid color-mix(in srgb, var(--q, var(--el)) 55%, transparent); color: var(--osso); cursor: pointer; transition: border-color .2s, transform .2s, background .2s; }
+.cr-page .off-item:hover { transform: translateY(-2px); border-color: var(--q, var(--el)); }
+.cr-page .off-item.on { background: color-mix(in srgb, var(--q, var(--el)) 22%, rgba(var(--ossidiana-rgb), .4)); border-color: var(--q, var(--el)); box-shadow: 0 0 18px -6px var(--q, var(--el)); }
+.cr-page .off-item-ic { font-size: 1.35rem; line-height: 1.2; }
+.cr-page .off-item-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-item-main b { font-family: "Cinzel", Georgia, serif; font-size: .8rem; color: var(--osso); }
+.cr-page .off-item-main small { font-size: .78rem; line-height: 1.4; color: var(--osso-body); }
+.cr-page .off-item-main em { margin-top: 4px; font-style: normal; font-size: .74rem; color: var(--oro); }
+.cr-page .off-random { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px dashed color-mix(in srgb, var(--q, var(--el)) 70%, transparent); color: var(--osso); }
+.cr-page .off-random-die { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 3px; background: linear-gradient(135deg, var(--q, var(--el)), color-mix(in srgb, var(--q, var(--el)) 55%, #000)); color: #fff; font-family: "Cinzel", Georgia, serif; font-weight: 800; font-size: .95rem; box-shadow: 0 0 16px -4px var(--q, var(--el)); }
+.cr-page .off-random-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-random-main b { font-family: "Cinzel", Georgia, serif; font-size: .8rem; }
+.cr-page .off-random-main small { font-size: .8rem; color: var(--osso-body); line-height: 1.4; }
+.cr-page .off-random-main small a { color: var(--el-soft); }
+.cr-page .off-random-main em { font-style: normal; font-size: .8rem; color: var(--el-soft); }
+.cr-page .off-items + .off-h, .cr-page .off-random + .off-h { margin-top: 18px; }
+@media (max-width: 640px) { .cr-page .off-items { grid-template-columns: 1fr; } }
+
+/* ── il tavolo del Master (in tempo reale) ── */
+.cr-page .off-board { border-top: 2px solid var(--el); }
+.cr-page .off-board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.cr-page .off-board-head .off-ghost { margin-left: auto; padding: 5px 10px; font-size: .78rem; }
+.cr-page .off-board-head .off-ghost.on { border-color: var(--el); color: var(--el-2); }
+.cr-page .off-board-sum { display: flex; gap: 6px; }
+.cr-page .off-board-sum span { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 3px 8px; border-radius: 3px; border: 1px solid rgba(var(--el-rgb), .35); background: rgba(var(--el-rgb), .08); }
+.cr-page .off-board-sum b { font-family: "Cinzel", Georgia, serif; font-size: 1.05rem; color: var(--el-2); line-height: 1.1; }
+.cr-page .off-board-sum small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .56rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-board-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cr-page .off-board-list li { display: grid; grid-template-columns: minmax(150px, .8fr) 2fr; gap: 8px 14px; align-items: center; padding: 8px 12px; border-radius: 3px; border: 1px solid var(--roccia-3); border-left: 3px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .35); color: var(--osso); }
+.cr-page .off-board-list li.is-working { border-left-color: var(--q, var(--el)); }
+.cr-page .off-board-list li.is-ready { border-left-color: #4ade80; box-shadow: 0 0 20px -12px #4ade80; }
+.cr-page .off-board-who { display: flex; flex-direction: column; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-board-who b { font-size: .95rem; }
+.cr-page .off-board-who small { font-size: .74rem; color: var(--osso-2); line-height: 1.35; }
+.cr-page .off-board-job { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cr-page .off-board-job-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-board-job-top b { font-size: .92rem; color: var(--osso); }
+.cr-page .off-board-job-top small { flex-basis: 100%; font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-bar.off-bar--mini { height: 8px; margin: 0; }
+.cr-page .off-bar.off-bar--mini > span { background: linear-gradient(90deg, var(--q, var(--el)), color-mix(in srgb, var(--q, var(--el)) 60%, #fff)); box-shadow: 0 0 10px color-mix(in srgb, var(--q, var(--el)) 60%, transparent); animation: none; }
+.cr-page li.is-ready .off-bar.off-bar--mini > span { background: linear-gradient(90deg, #2f9e5f, #4ade80); }
+.cr-page .off-board-job-time { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-family: "Alegreya", Georgia, serif; font-size: .78rem; color: var(--osso-body); }
+.cr-page .off-board-job-time .off-ghost { padding: 2px 8px; font-size: .74rem; }
+.cr-page .off-board-idle { display: flex; flex-direction: column; gap: 2px; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-board-idle small { font-size: .76rem; color: var(--osso-2); }
+@media (max-width: 640px) {
+  .cr-page .off-board-list li { grid-template-columns: 1fr; }
+  .cr-page .off-board-head .off-ghost { margin-left: 0; }
+}
+
 /* strumenti/componenti: prova di possesso */
 .cr-page .off-tile-proof { font-family: "Alegreya", Georgia, serif; font-size: .76rem; color: #4ade80; }
 .cr-page .off-tile-btn.is-locked { cursor: default; opacity: .85; }

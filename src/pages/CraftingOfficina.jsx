@@ -1,8 +1,12 @@
 // ── L'Officina: il crafting giocabile dall'app ───────────────────────────────
-// I giocatori scelgono la professione, puntano a una pregiatura, preparano il
-// banco (strumenti, componenti trovati in sessione, aiuto, materiali, ritmo) e
-// tirano il d20 (+ modificatore, + competenza strumenti, + grado, + condizioni)
-// e il d12 sulla tabella del manuale. Il tiro AVVIA un lavoro con un tempo
+// I giocatori scelgono la professione, puntano a una RARITÀ (Comune · Non
+// comune · Raro: scelgono anche QUALE oggetto fra i 6 del catalogo della
+// professione; Molto raro · Leggendario: l'oggetto lo decide il d12), preparano
+// il banco (strumenti, componenti trovati in sessione, aiuto, materiali, ritmo)
+// e tirano il d20 (+ modificatore, + competenza strumenti, + grado, + condizioni).
+// Un tiro sotto la rarità mirata dà lo stesso oggetto della rarità inferiore
+// (sotto 6 uno Scarso a caso). Il Master vede il tavolo in tempo reale
+// (MasterBoard): chi sta forgiando cosa, a che punto è, cosa ha finito. Il tiro AVVIA un lavoro con un tempo
 // fisso in tempo reale (craftingTime.js): finché non scade si vede solo la
 // barra; poi l'oggetto si "ritira" e va nella coda "Crea Oggetto → Foundry"
 // del Master (collection `foundry_inbox`, target = inventario del giocatore).
@@ -17,7 +21,7 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { isHiddenChar } from "../data/hiddenPlayers";
-import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI } from "../data/crafting";
+import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, tierByKey, tierByTotal, tierMinGrade } from "../data/crafting";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
@@ -28,7 +32,6 @@ import "./CraftingOfficina.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
-const TIER_ORDER = ["scarso", "comune", "raro", "magico", "perfetto"];
 
 // Qualità dei materiali (dal manuale): vantaggio o svantaggio al tiro.
 const QUALITY_OPTIONS = [
@@ -60,10 +63,9 @@ function abilityModFor(charData, prof) {
   if (prof.carShort === "MAG") return Math.max(statMod(charData, "int"), statMod(charData, "wis"), statMod(charData, "cha"));
   return statMod(charData, STAT_KEY[prof.carShort] || "int");
 }
-const tierByTotal = (t) => (t <= 5 ? "scarso" : t <= 10 ? "comune" : t <= 15 ? "raro" : t <= 20 ? "magico" : "perfetto");
 const sign = (n) => (n >= 0 ? `+${n}` : `${n}`);
 const rnd = (n) => 1 + Math.floor(Math.random() * n);
-const tierMeta = (k) => PREGIATURE.find((p) => p.key === k) || PREGIATURE[1];
+const tierMeta = tierByKey; // accetta anche le chiavi vecchie (comune/raro/magico/perfetto)
 const FT_LABEL = { weapon: "Arma", equipment: "Armatura / Equipaggiamento", consumable: "Consumabile", loot: "Tesoro / Varie", tool: "Strumento" };
 const RARITY_LABEL = { common: "Comune", uncommon: "Non comune", rare: "Raro", veryRare: "Molto raro", legendary: "Leggendario", artifact: "Artefatto" };
 const ROME = "Europe/Rome";
@@ -90,7 +92,8 @@ export default function CraftingOfficina() {
   const [confirmProf, setConfirmProf] = useState(false);
   const [marketItems, setMarketItems] = useState([]);
   // Il banco di lavoro.
-  const [target, setTarget] = useState("comune");
+  const [target, setTarget] = useState("common");
+  const [pickIdx, setPickIdx] = useState(-1); // linea del catalogo scelta (solo rarità "pick")
   const [comps, setComps] = useState([]);
   const [help, setHelp] = useState("");
   const [pace, setPace] = useState("normale");
@@ -108,6 +111,16 @@ export default function CraftingOfficina() {
     const unsub = onSnapshot(doc(db, "characters", uid), (snap) => setCharData(snap.exists() ? snap.data() : {}));
     return () => unsub();
   }, [uid]);
+
+  // Il Master vede TUTTI gli artigiani del tavolo in tempo reale (tavolo + pannello).
+  const [tableChars, setTableChars] = useState([]);
+  useEffect(() => {
+    if (!uid || !isMaster) return;
+    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
+      setTableChars(snap.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((c) => c.name && !isHiddenChar(c)).sort((a, b) => a.name.localeCompare(b.name)));
+    }, () => {});
+    return () => unsub();
+  }, [uid, isMaster]);
 
   // Acquisti al Mercato Nero: servono come prova di possesso dei potenziatori.
   useEffect(() => {
@@ -166,6 +179,10 @@ export default function CraftingOfficina() {
   const advMode = advSum > 0 ? "adv" : advSum < 0 ? "dis" : "";
   const bonus = abil + toolB + gradeB + extra;
   const targetCost = PREGIATURA_COSTS.find((c) => c.tier === target);
+  const targetMeta = tierMeta(target);
+  const catalogo = prof?.catalogo || [];
+  const pickLine = targetMeta.pick && pickIdx >= 0 ? catalogo[pickIdx] || null : null;
+  const needsPick = targetMeta.pick && !pickLine; // rarità a scelta: serve l'oggetto
   const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, help, pace, ritmoBottega: prog.level.lv >= 6 }), [target, toolsOn, comps, help, pace, prog.level.lv]);
 
   const activeEntry = revealed ? pendingEntry : null;
@@ -237,12 +254,14 @@ export default function CraftingOfficina() {
       const critRoll = paceOpt.critFail ? rnd(100) : 0;
       const failed = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
       let tier = tierByTotal(total);
-      // Non si supera la pregiatura mirata (i materiali sono quelli); Perfetto solo dal Maestro.
+      // Non si supera la rarità mirata (i materiali sono quelli); Molto raro/Leggendario solo dal grado giusto.
       if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(target)) tier = target;
-      if (tier === "perfetto" && !prog.canPerfetto) tier = "magico";
-      if (tier === "scarso" && prog.scarsoAsComune) tier = "comune";
-      const d12 = rnd(12);
-      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${targetCostFor(target)}) sono andati perduti e non è uscito nulla.`] : prof.creazioni[tier][d12 - 1];
+      while (tierMinGrade(tier) > prog.level.grado) tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
+      if (tier === "scarso" && prog.scarsoAsComune) tier = "common";
+      // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
+      const picked = pickLine && tierMeta(tier).pick ? pickLine[tier] : null;
+      const d12 = picked ? 0 : rnd(12);
+      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${targetCostFor(target)}) sono andati perduti e non è uscito nulla.`] : picked || prof.creazioni[tier][d12 - 1];
       const nat20 = d20 === 20;
       const startMs = srvNow.getTime();
       const entry = {
@@ -250,6 +269,7 @@ export default function CraftingOfficina() {
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
+        pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
         quality: qualOpt.key, help: helpOpt.key, pace: paceOpt.key, components: work.components,
         xp: failed ? 0 : xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, critRoll, skipped: failed, // fallito = chiuso subito, non blocca il banco
@@ -288,7 +308,7 @@ export default function CraftingOfficina() {
         tx.update(ref, patch);
       });
       await showD20Roll(d20, { label: `Pregiatura · ${prof.name}` });
-      setComps([]); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
+      setComps([]); setPickIdx(-1); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
       if (failed) setMsg(`Errore: 💥 Fallimento critico (${critRoll}/100 sotto il ${paceOpt.critFail}%): la fretta ha rovinato il lavoro. I materiali (${targetCostFor(target)}) sono perduti, non hai creato nulla e la prova è consumata.`);
@@ -401,6 +421,9 @@ export default function CraftingOfficina() {
         )}
       </div>
 
+      {/* ── TAVOLO DEL MASTER: chi sta forgiando cosa, in tempo reale ── */}
+      {isMaster && <MasterBoard chars={tableChars} nowMs={nowMs} />}
+
       {/* ── SCELTA PROFESSIONE ── */}
       {!prof && (
         <div className="nx-pannello off-box">
@@ -435,24 +458,47 @@ export default function CraftingOfficina() {
       {/* ── IL BANCO: si prepara il lavoro (se non ce n'è uno in corso) ── */}
       {prof && !pendingEntry && (
         <div className="nx-pannello off-box off-prova">
-          <h3 className="off-h"><span className="orb" aria-hidden="true">1</span> A cosa punti <small>il tempo di lavoro parte da qui</small></h3>
+          <h3 className="off-h"><span className="orb" aria-hidden="true">1</span> La rarità <small>decide materiali e tempo di lavoro</small></h3>
           <div className="off-tiers">
             {PREGIATURE.filter((p) => p.key !== "scarso").map((p) => {
-              const locked = p.key === "perfetto" && !prog.canPerfetto;
+              const locked = tierMinGrade(p.key) > prog.level.grado;
+              const gradeName = p.key === "legendary" ? "Leggenda" : "Maestro";
               return (
-                <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => setTarget(p.key)} title={locked ? "Solo dal grado Maestro" : p.desc}>
+                <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => { setTarget(p.key); setPickIdx(-1); }} title={locked ? `Solo dal grado ${gradeName}` : p.desc}>
                   <span className="off-tier-top"><span aria-hidden="true">{p.icon}</span> {p.label} <small>{p.range}</small></span>
-                  <span className="off-tier-time">{locked ? "🔒 Maestro" : `⏱ ${fmtMinutes(CRAFT_BASE_MINUTES[p.key])}`}</span>
+                  <span className="off-tier-time">{locked ? `🔒 ${gradeName}` : `⏱ ${fmtMinutes(CRAFT_BASE_MINUTES[p.key])} · ${PREGIATURA_COSTS.find((c) => c.tier === p.key)?.costo}`}</span>
                 </button>
               );
             })}
           </div>
-          {targetCost && <p className="nx-nota off-cost"><strong>Materiali:</strong> {targetCost.costo} (prezzo fisso, si pagano in gioco). Un tiro basso dà un oggetto inferiore; uno alto non supera la pregiatura mirata.</p>}
-          {prog.level.lv >= 4 && (
-            <p className="nx-nota off-peek">👁 Occhio esperto · con 1: <em>{prof.creazioni[target][0][0]}</em> · con 12: <em>{prof.creazioni[target][11][0]}</em></p>
+          {targetCost && <p className="nx-nota off-cost"><strong>Materiali:</strong> {targetCost.costo}, si pagano in gioco. {targetMeta.pick ? "Se il tiro non conferma la rarità esce lo stesso oggetto della rarità sotto; sotto 6 uno Scarso a caso." : "L'oggetto lo decide il d12 alla fine; con un tiro basso esce un oggetto a caso della rarità uscita."}</p>}
+
+          <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> {targetMeta.pick ? "L'oggetto" : "L'oggetto lo decide il dado"} <small>{targetMeta.pick ? `uno dei ${catalogo.length} del ${prof.name}` : `tabella ${targetMeta.label} del manuale, d12`}</small></h3>
+          {targetMeta.pick ? (
+            <div className="off-items">
+              {catalogo.map((line, i) => {
+                const [nm, ds] = line[target] || ["—", ""];
+                const below = target !== "common" ? line[TIER_ORDER[TIER_ORDER.indexOf(target) - 1]]?.[0] : "";
+                return (
+                  <button key={line.key} type="button" className={`off-item${pickIdx === i ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(i)}>
+                    <span className="off-item-ic" aria-hidden="true">{line.icon}</span>
+                    <span className="off-item-main"><b>{nm}</b><small>{ds}</small>{pickIdx === i && below && <em>con un tiro basso: {below}</em>}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="off-random" style={{ "--q": targetMeta.color }}>
+              <span className="off-random-die" aria-hidden="true">d12</span>
+              <span className="off-random-main">
+                <b>{targetMeta.icon} {targetMeta.label}: {prof.creazioni[target]?.length || 12} possibili creazioni</b>
+                <small>Escono a caso alla fine del lavoro. Le vedi tutte nel <Link to="/crafting#cr-professioni">manuale</Link>, alla scheda del {prof.name}.</small>
+                {prog.level.lv >= 4 && prof.creazioni[target]?.length === 12 && <em>👁 Occhio esperto · con 1: {prof.creazioni[target][0][0]} · con 12: {prof.creazioni[target][11][0]}</em>}
+              </span>
+            </div>
           )}
 
-          <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> Prepara il banco <small>ogni voce accorcia il lavoro o cambia il tiro</small></h3>
+          <h3 className="off-h"><span className="orb" aria-hidden="true">3</span> Prepara il banco <small>ogni voce accorcia il lavoro o cambia il tiro</small></h3>
           <div className="off-bench">
             {/* strumenti */}
             {toolsEv.ok ? (
@@ -559,10 +605,11 @@ export default function CraftingOfficina() {
           </div>
 
           <div className="off-go">
-            <button type="button" className="cta off-cta" disabled={busy || !allow.can} onClick={roll}>
-              {busy ? "…" : allow.can ? `🎲 Tira e inizia il lavoro · ${fmtMinutes(work.minutes)}` : "Prova non disponibile"}
+            <button type="button" className="cta off-cta" disabled={busy || !allow.can || needsPick} onClick={roll}>
+              {busy ? "…" : !allow.can ? "Prova non disponibile" : needsPick ? "Scegli prima l'oggetto" : `🎲 Tira e inizia il lavoro · ${fmtMinutes(work.minutes)}`}
             </button>
             {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
+            {allow.can && pickLine && <span className="nx-nota off-why">{targetMeta.icon} {pickLine[target][0]}</span>}
           </div>
         </div>
       )}
@@ -572,7 +619,7 @@ export default function CraftingOfficina() {
         <div className={`nx-pannello off-box off-work${ready ? " is-ready" : ""}`} style={{ "--q": tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
           <div className="off-work-head">
             <span className="nx-tag">{ready ? "✓ Lavoro finito" : "⚒ Sul banco"}</span>
-            <span className="off-work-roll">d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}</span>
+            <span className="off-work-roll">{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}</span>
           </div>
           <div className="off-bar" role="progressbar" aria-valuenow={workPct} aria-valuemin="0" aria-valuemax="100">
             <span style={{ width: `${workPct}%` }} />
@@ -597,7 +644,7 @@ export default function CraftingOfficina() {
         <div className="nx-pannello off-box off-esito" style={{ "--q": tierMeta(activeEntry.tier).color }}>
           <div className="off-esito-head">
             <span className="nx-tag">{tierMeta(activeEntry.tier).icon} {tierMeta(activeEntry.tier).label}</span>
-            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null} {sign(activeEntry.bonus)} = <b>{activeEntry.total}</b> · d12 <b>{activeEntry.d12}</b> · +{activeEntry.xp} PE{activeEntry.minutes ? <> · ⏱ {fmtMinutes(activeEntry.minutes)}</> : null}</div>
+            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null} {sign(activeEntry.bonus)} = <b>{activeEntry.total}</b>{activeEntry.d12 ? <> · d12 <b>{activeEntry.d12}</b></> : null} · +{activeEntry.xp} PE{activeEntry.minutes ? <> · ⏱ {fmtMinutes(activeEntry.minutes)}</> : null}</div>
           </div>
           <h3 className="nx-titolo off-esito-name">{previewName}</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
@@ -700,7 +747,7 @@ export default function CraftingOfficina() {
               return (
                 <li key={e.id} style={{ "--q": tm.color }}>
                   <span className="off-log-ic" aria-hidden="true">{tm.icon}</span>
-                  <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}</small></span>
+                  <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}</small></span>
                   <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
                 </li>
               );
@@ -711,7 +758,7 @@ export default function CraftingOfficina() {
 
       {/* ── SCALA DELL'ESPERIENZA ── */}
       <details className="nx-pannello off-box off-xp-table">
-        <summary>📈 Esperienza delle professioni <small>(PE per pregiatura: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${XP_PER_TIER[t]}`).join(" · ")}; 20 naturale = doppi)</small></summary>
+        <summary>📈 Esperienza delle professioni <small>(PE per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${XP_PER_TIER[t]}`).join(" · ")}; 20 naturale = doppi)</small></summary>
         <ol className="off-levels">
           {XP_LEVELS.map((l) => (
             <li key={l.lv} className={prof && prog.level.lv === l.lv ? "is-cur" : prof && prog.level.lv > l.lv ? "is-done" : ""}>
@@ -722,7 +769,7 @@ export default function CraftingOfficina() {
         </ol>
       </details>
 
-      {isMaster && <MasterPanel />}
+      {isMaster && <MasterPanel chars={tableChars} />}
     </div>
   );
 }
@@ -732,18 +779,96 @@ function targetCostFor(tier) {
   return c ? c.costo : "";
 }
 
-// ── Pannello del Master: professioni, PE, usi, scorte e lavori di tutti gli eroi attivi ──
-function MasterPanel() {
-  const [chars, setChars] = useState([]);
+// ── Il tavolo del Master: per ogni artigiano, cosa sta forgiando e a che punto è ──
+function MasterBoard({ chars, nowMs }) {
+  const [onlyActive, setOnlyActive] = useState(false);
   const [busy, setBusy] = useState("");
-  const load = () => getDocs(collection(db, "characters")).then((snap) => {
-    setChars(snap.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((c) => c.name && !isHiddenChar(c)).sort((a, b) => a.name.localeCompare(b.name)));
-  }).catch(() => {});
-  useEffect(() => { load(); }, []);
+  const now = new Date(nowMs);
+  const rows = chars.map((c) => {
+    const cr = c.crafting || {};
+    const log = Array.isArray(cr.log) ? cr.log : [];
+    const prof = PROFESSIONI.find((p) => p.key === cr.profession) || null;
+    const bench = log.find((e) => !e.inboxId && !e.skipped) || null;
+    const readyAt = bench ? Number(bench.readyAt) || Number(bench.at) || 0 : 0;
+    const startAt = bench ? Number(bench.at) || 0 : 0;
+    const working = !!bench && readyAt > nowMs;
+    const pct = bench ? Math.max(0, Math.min(100, Math.round(((nowMs - startAt) / Math.max(1, readyAt - startAt)) * 100))) : 0;
+    const al = craftAllowance(cr, now);
+    const last = log.find((e) => e !== bench) || null;
+    return { c, cr, prof, bench, working, ready: !!bench && !working, pct, readyAt, al, last, total: Math.max(Number(cr.totalCount) || 0, log.length) };
+  }).filter((r) => r.prof || r.total > 0);
+  const shown = onlyActive ? rows.filter((r) => r.bench) : rows;
+  const nWorking = rows.filter((r) => r.working).length, nReady = rows.filter((r) => r.ready).length;
+
+  async function finishNow(r) {
+    setBusy(r.c.uid);
+    try {
+      const srv = await serverNow().catch(() => new Date());
+      const log = (r.cr.log || []).map((e) => (e.id === r.bench.id ? { ...e, readyAt: srv.getTime() - 1000, finishedByMaster: true } : e));
+      await updateDoc(doc(db, "characters", r.c.uid), { "crafting.log": log, "crafting.busyUntil": deleteField() });
+    } catch (e) { alert("Errore: " + (e.message || e)); }
+    finally { setBusy(""); }
+  }
+
+  return (
+    <div className="nx-pannello off-box off-board">
+      <div className="off-board-head">
+        <span className="nx-tag">🎯 Il tavolo · in tempo reale</span>
+        <div className="off-board-sum">
+          <span><b>{nWorking}</b><small>al lavoro</small></span>
+          <span><b>{nReady}</b><small>da ritirare</small></span>
+          <span><b>{rows.filter((r) => r.al.usedToday).length}</b><small>oggi</small></span>
+        </div>
+        <button type="button" className={`off-ghost${onlyActive ? " on" : ""}`} onClick={() => setOnlyActive((v) => !v)}>{onlyActive ? "Tutti gli artigiani" : "Solo chi sta lavorando"}</button>
+      </div>
+      {shown.length === 0 ? <p className="nx-nota">{onlyActive ? "Nessuno ha un lavoro sul banco adesso." : "Nessun artigiano ancora: le professioni si scelgono qui sotto."}</p> : (
+        <ul className="off-board-list">
+          {shown.map((r) => {
+            const b = r.bench;
+            const tm = b ? tierMeta(b.targetTier || b.tier) : null;
+            return (
+              <li key={r.c.uid} className={r.working ? "is-working" : r.ready ? "is-ready" : ""} style={tm ? { "--q": tm.color } : undefined}>
+                <div className="off-board-who">
+                  <b>{r.c.name}</b>
+                  <small>{r.prof ? `${r.prof.icon} ${r.prof.name}` : "senza professione"} · {r.total} creazioni · oggi {r.al.usedToday ? "1" : "0"}/{CRAFT_MAX_PER_DAY} · sett. {r.al.weekCount}/{CRAFT_MAX_PER_WEEK}</small>
+                </div>
+                {b ? (
+                  <div className="off-board-job">
+                    <div className="off-board-job-top">
+                      <span className={`off-log-st${r.ready ? " ok" : ""}`}>{r.working ? "⚒ sta forgiando" : "✓ finito, da ritirare"}</span>
+                      <b>{tm.icon} {b.pickName || b.name}</b>
+                      <small>punta a {tm.label}{b.pickName ? "" : " (d12 a fine lavoro)"} · esce {tierMeta(b.tier).label}{b.pickName && b.name !== b.pickName ? `: ${b.name}` : ""} · d20 {b.d20}{sign(b.bonus)}={b.total}</small>
+                    </div>
+                    <div className="off-bar off-bar--mini" role="progressbar" aria-valuenow={r.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${r.pct}%` }} /></div>
+                    <div className="off-board-job-time">
+                      <span>{r.pct}% · iniziato {whenLabel(b.at, now)}</span>
+                      <span>{r.working ? `pronto tra ${fmtCountdown(r.readyAt - nowMs)} (${whenLabel(r.readyAt, now)})` : `pronto ${whenLabel(r.readyAt, now)}`}</span>
+                      {r.working && <button type="button" className="off-ghost" disabled={busy === r.c.uid} onClick={() => finishNow(r)}>⏩ Termina ora</button>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="off-board-idle">
+                    <span className="off-log-st no">banco libero</span>
+                    {r.last ? <small>ultima: {tierMeta(r.last.tier).icon} {r.last.choice || r.last.name} · {new Date(r.last.at).toLocaleDateString("it-IT")} · {entryStatus(r.last, nowMs)}</small> : <small>nessuna creazione ancora</small>}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── Pannello del Master: professioni, PE, usi, scorte e lavori di tutti gli eroi attivi ──
+function MasterPanel({ chars }) {
+  const [busy, setBusy] = useState("");
+  const load = async () => {}; // i personaggi arrivano già in tempo reale (onSnapshot)
 
   async function act(uid, patch) {
     setBusy(uid);
-    try { await updateDoc(doc(db, "characters", uid), patch); await load(); }
+    try { await updateDoc(doc(db, "characters", uid), patch); }
     catch (e) { alert("Errore: " + (e.message || e)); }
     finally { setBusy(""); }
   }
@@ -756,8 +881,8 @@ function MasterPanel() {
   }
 
   return (
-    <details className="nx-pannello off-box off-master" onToggle={(e) => { if (e.currentTarget.open) load(); }}>
-      <summary>🎯 Master · artigiani del tavolo <small>({chars.length})</small></summary>
+    <details className="nx-pannello off-box off-master">
+      <summary>🎯 Master · professioni, PE, scorte <small>({chars.length} eroi)</small></summary>
       <ul className="off-master-list">
         {chars.map((c) => {
           const cr = c.crafting || {};
@@ -818,8 +943,8 @@ function MasterPanel() {
           );
         })}
       </ul>
-      <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Rarità Foundry per pregiatura: {TIER_ORDER.map((t) => `${tierMeta(t).label} → ${RARITY_LABEL[TIER_TO_FOUNDRY[t].rarity]}`).join(", ")}.</p>
-      <CraftLedger chars={chars} reload={load} patchChar={(uid, fn) => setChars((cs) => cs.map((c) => (c.uid === uid ? { ...c, crafting: fn(c.crafting || {}) } : c)))} />
+      <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
+      <CraftLedger chars={chars} reload={load} patchChar={() => {}} />
     </details>
   );
 }
@@ -928,7 +1053,7 @@ function CraftLedger({ chars, reload, patchChar }) {
                     {d.items.map((e) => (
                       <li key={e.id} style={{ "--q": tierMeta(e.tier).color }}>
                         <span className="off-ledger-t">{timeLabel(e.at)}</span>
-                        <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && e.targetTier !== e.tier ? ` (mirava ${tierMeta(e.targetTier).label})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total} · d12 {e.d12} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
+                        <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && normTier(e.targetTier) !== normTier(e.tier) ? ` (mirava ${tierMeta(e.targetTier).label}${e.pickName ? `: ${e.pickName}` : ""})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
                         <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
                         {confirmId === e.id ? (
                           <span className="off-ledger-del is-confirm">

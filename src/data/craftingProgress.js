@@ -5,22 +5,22 @@
 // (Apprendista → Discepolo → Artigiano → Maestro → Leggenda), che è quello che
 // dà i bonus al tiro descritti nel manuale.
 
-import { SENTIERO_MAESTRO } from "./crafting";
+import { SENTIERO_MAESTRO, normTier } from "./crafting";
 
 // PE per pregiatura ottenuta (un 20 naturale raddoppia).
-export const XP_PER_TIER = { scarso: 5, comune: 10, raro: 25, magico: 60, perfetto: 150 };
+export const XP_PER_TIER = { scarso: 5, common: 10, uncommon: 25, rare: 60, veryRare: 150, legendary: 300 };
 
 // Scala dei livelli: PE totali necessari per raggiungere ogni livello.
 export const XP_LEVELS = [
   { lv: 1,  xp: 0,    grado: 1, sblocca: "Conosci la tua arte: tiri normalmente." },
   { lv: 2,  xp: 40,   grado: 1, sblocca: "Mano ferma: gli oggetti Comuni che crei hanno una piccola rifinitura estetica (nota nella descrizione)." },
-  { lv: 3,  xp: 100,  grado: 2, sblocca: "Discepolo: +1 a tutti i tiri di Pregiatura. Riconosci a vista gli oggetti Rari della tua professione." },
-  { lv: 4,  xp: 180,  grado: 2, sblocca: "Occhio esperto: vedi in anticipo quale voce della tabella d12 esce con un 1 e con un 12 (anteprima nell'Officina)." },
+  { lv: 3,  xp: 100,  grado: 2, sblocca: "Discepolo: +1 a tutti i tiri. Riconosci a vista gli oggetti Non comuni della tua professione." },
+  { lv: 4,  xp: 180,  grado: 2, sblocca: "Occhio esperto: per le rarità a caso (Molto raro, Leggendario) vedi in anticipo cosa esce con un 1 e con un 12 sul d12." },
   { lv: 5,  xp: 300,  grado: 3, sblocca: "Artigiano: gli oggetti Scarsi contano come Comuni (niente malus). 1 volta per riposo lungo raddoppi la competenza." },
   { lv: 6,  xp: 450,  grado: 3, sblocca: "Ritmo di bottega: ogni lavoro nell'Officina dura un quarto in meno." },
-  { lv: 7,  xp: 700,  grado: 4, sblocca: "Maestro: +2 ai tiri di Pregiatura e puoi puntare al Perfetto (21+). Firma del Maestro 1 volta per riposo lungo." },
+  { lv: 7,  xp: 700,  grado: 4, sblocca: "Maestro: +2 ai tiri e puoi puntare al Molto raro (21+). Firma del Maestro 1 volta per riposo lungo." },
   { lv: 8,  xp: 1000, grado: 4, sblocca: "Materiali docili: i materiali di qualità superiore ti danno Vantaggio anche se non sono quelli 'ideali'." },
-  { lv: 9,  xp: 1500, grado: 5, sblocca: "Leggenda: +3 ai tiri, nessun limite massimo. Opera Definitiva una volta per campagna." },
+  { lv: 9,  xp: 1500, grado: 5, sblocca: "Leggenda: +3 ai tiri e puoi puntare al Leggendario (26+). Opera Definitiva una volta per campagna." },
   { lv: 10, xp: 2200, grado: 5, sblocca: "Nome nel regno: le tue creazioni portano la tua firma e valgono il doppio al Mercato Nero." },
 ];
 
@@ -52,7 +52,8 @@ export function progression(xp = 0) {
     xp: Number(xp) || 0,
     level, next, grado,
     bonus: GRADE_BONUS[level.grado] || 0,
-    canPerfetto: level.grado >= 4,          // solo dal Maestro in su
+    canVeryRare: level.grado >= 4,          // Molto raro solo dal Maestro in su
+    canLegendary: level.grado >= 5,         // Leggendario solo dalla Leggenda
     scarsoAsComune: level.grado >= 3,       // Artigiano: Salvataggio
     pct: next ? Math.max(0, Math.min(100, Math.round((into / span) * 100))) : 100,
   };
@@ -60,6 +61,6 @@ export function progression(xp = 0) {
 
 // PE guadagnati da una prova.
 export function xpForCraft(tier, nat20 = false) {
-  const base = XP_PER_TIER[tier] || 0;
+  const base = XP_PER_TIER[normTier(tier)] || 0;
   return nat20 ? base * 2 : base;
 }

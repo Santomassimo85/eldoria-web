@@ -8,8 +8,10 @@
 // si vede solo la barra del tempo. I limiti (1 al giorno, 3 a settimana)
 // restano quelli di craftingWeek.js e si consumano all'inizio del lavoro.
 
-// Base in minuti per pregiatura mirata (Scarso non si può mirare): 5 h · 8 h · 5 giorni · 7 giorni.
-export const CRAFT_BASE_MINUTES = { comune: 300, raro: 480, magico: 5 * 1440, perfetto: 7 * 1440 };
+// Base in minuti per rarità mirata (Scarso non si può mirare): 5 h · 8 h · 5 giorni · 7 giorni · 14 giorni.
+import { normTier } from "./crafting";
+
+export const CRAFT_BASE_MINUTES = { common: 300, uncommon: 480, rare: 5 * 1440, veryRare: 7 * 1440, legendary: 14 * 1440 };
 
 // Strumenti della professione: −2 ore. Senza strumenti si tira con svantaggio.
 export const TOOLS_MINUTES = 120;
@@ -85,8 +87,8 @@ export function fmtCountdown(ms) {
 
 // Calcolo del tempo: base della pregiatura, poi gli sconti, poi il ritmo.
 // Ritorna minuti totali e le voci (per mostrarle una per una nell'Officina).
-export function craftMinutes({ tier = "comune", tools = true, components = [], help = "", pace = "normale", ritmoBottega = false } = {}) {
-  const base = CRAFT_BASE_MINUTES[tier] || CRAFT_BASE_MINUTES.comune;
+export function craftMinutes({ tier = "common", tools = true, components = [], help = "", pace = "normale", ritmoBottega = false } = {}) {
+  const base = CRAFT_BASE_MINUTES[normTier(tier)] || CRAFT_BASE_MINUTES.common;
   const parts = [{ key: "base", label: "Base", min: base }];
   let min = base;
   if (tools) { min -= TOOLS_MINUTES; parts.push({ key: "tools", label: "Strumenti", min: -TOOLS_MINUTES }); }

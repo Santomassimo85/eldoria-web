@@ -578,7 +578,7 @@ export default function Almanacco() {
         </div>
       </section>
 
-      {/* ════════ SEZIONE 3 — IL CRAFTING IN BREVE (la pagina vera è /crafting) ════════ */}
+      {/* ════════ SEZIONE 3 — IL CRAFTING IN BREVE (si crea in /officina, il manuale è /crafting) ════════ */}
       <section id="alm-crafting" className="alm-section" aria-label="Il Crafting in breve">
         <div className="gl-sezlabel">Sezione III · L'Arte dell'Artigiano</div>
         <header className="nx-testata alm-testata">
@@ -591,9 +591,10 @@ export default function Almanacco() {
         </header>
         <div className="nx-pannello alm-block alm-quick alm-craft">
           <ol className="alm-quick-steps">
-            <li>Scegli la <strong>professione</strong> (una sola: Fabbro, Alchimista, Sarto…) e a quale <strong>pregiatura</strong> punti: i materiali hanno un prezzo fisso (Comune 50 mo, Raro 500, Magico 3.000, Perfetto 10.000) e si pagano in gioco</li>
-            <li>Prepari il <strong>banco</strong>: strumenti e componenti (solo se risultano sulla tua scheda Foundry, assegnati dal Master o comprati al Mercato), un aiutante (−5% o −10% del tempo), il ritmo. Ogni componente dà anche +1d3 al tiro; alcuni lasciano un effetto sull'oggetto. Ogni voce accorcia il <strong>tempo di lavoro</strong> (Comune 5 ore di base, 3 con gli strumenti; Raro 8 ore, Magico 5 giorni, Perfetto 7 giorni) o cambia il tiro</li>
-            <li>Tiri <strong>1d20 + caratteristica + strumenti</strong> (+ il tuo grado): 1–5 Scarso · 6–10 Comune · 11–15 Raro · 16–20 Magico · 21+ Perfetto; il d12 sceglie l'oggetto</li>
+            <li>Scegli la <strong>professione</strong> (una sola: Fabbro, Alchimista, Sarto…) e la <strong>rarità</strong> a cui punti: i materiali hanno un prezzo fisso (Comune 50 mo, Non comune 500, Raro 3.000, Molto raro 10.000, Leggendario 25.000) e si pagano in gioco</li>
+            <li>Per Comune, Non comune e Raro <strong>scegli tu l'oggetto</strong> fra i 6 della tua professione (ognuno esiste nelle tre rarità); Molto raro e Leggendario escono a caso col d12</li>
+            <li>Prepari il <strong>banco</strong>: strumenti e componenti (solo se risultano sulla tua scheda Foundry, assegnati dal Master o comprati al Mercato), un aiutante, il ritmo. Ogni voce accorcia il <strong>tempo di lavoro</strong> (Comune 5 ore, Non comune 8 ore, Raro 5 giorni, Molto raro 7, Leggendario 14) o cambia il tiro</li>
+            <li>Tiri <strong>1d20 + caratteristica + strumenti</strong> (+ il tuo grado): 1–5 Scarso · 6–10 Comune · 11–15 Non comune · 16–20 Raro · 21–25 Molto raro · 26+ Leggendario, mai sopra la rarità scelta; un tiro basso dà lo stesso oggetto della rarità sotto</li>
             <li>Il lavoro dura il tempo fissato, in <strong>tempo reale</strong> (si vede solo la barra); finito, ritiri l'oggetto e lo mandi al Master, che lo importa su Foundry. Ogni prova dà <strong>esperienza</strong> alla professione</li>
           </ol>
           <p className="alm-callout alm-callout--ok alm-craft-limiti">
@@ -601,8 +602,8 @@ export default function Almanacco() {
             In sessione si può creare lo stesso, dalla stessa pagina.
           </p>
           <div className="alm-craft-cta">
-            <Link to="/crafting" className="cta">⚒ Apri l'Officina</Link>
-            <Link to="/crafting#cr-index" className="nx-pillola">📖 Il manuale completo</Link>
+            <Link to="/officina" className="cta">⚒ Apri l'Officina</Link>
+            <Link to="/crafting" className="nx-pillola">📖 Il manuale completo</Link>
           </div>
         </div>
       </section>

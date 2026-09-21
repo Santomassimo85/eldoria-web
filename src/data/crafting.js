@@ -2,21 +2,41 @@
    CRAFTING DI ELDORIA — full manual data
    Sistema di artigianato per D&D 5e · Edizione del Maestro
    ------------------------------------------------------------
-   Each profession holds 60 d12 entries (12 per pregiatura tier).
+   Each profession holds 72 d12 entries (12 per rarità: scarso · common ·
+   uncommon · rare · veryRare · legendary — le ultime 12 vengono da
+   craftingCatalogo.js, come il CATALOGO dei 6 oggetti a scelta).
    Items are stored as [name, description] tuples. Index 0 = d12=1.
    ============================================================ */
+
+import { CATALOGO, LEGGENDARI } from "./craftingCatalogo";
 
 export const HERO_QUOTE =
   "In Exanthia, la magia non si trova solo negli incantesimi. Si forgia col martello, " +
   "si distilla in alambicco, si tesse al telaio, si cuoce nei forni e si incide nelle rune.";
 
+// ── Le RARITÀ (2026-09-21): le stesse di D&D, più "Scarso" che è solo un esito
+// (non si può puntare). Chiavi nuove in inglese = quelle di Foundry; le prove
+// registrate prima (chiavi comune/raro/magico/perfetto) si leggono con normTier().
+// `pick`: il giocatore SCEGLIE l'oggetto fra i 6 del catalogo della professione;
+// altrimenti l'oggetto esce a caso col d12 sulla tabella della rarità.
 export const PREGIATURE = [
-  { key: "scarso",   label: "Scarso",   range: "1–5",   color: "#5a5a5a", bg: "#e6e6e0", icon: "🪨", desc: "L'oggetto funziona, ma ha un difetto evidente o un malus." },
-  { key: "comune",   label: "Comune",   range: "6–10",  color: "#8a7a4a", bg: "#f4ebd2", icon: "⚙",  desc: "Oggetto base ben fatto, di qualità standard." },
-  { key: "raro",     label: "Raro",     range: "11–15", color: "#2e7aa8", bg: "#dce8f0", icon: "✦",  desc: "Oggetto magico minore, con un piccolo bonus persistente." },
-  { key: "magico",   label: "Magico",   range: "16–20", color: "#7d2929", bg: "#f1d8d8", icon: "🌟", desc: "Oggetto magico potente, con un effetto significativo." },
-  { key: "perfetto", label: "Perfetto", range: "21+",   color: "#b08820", bg: "#f6ecc0", icon: "👑", desc: "Oggetto straordinario, leggendario, unico." },
+  { key: "scarso",    label: "Scarso",      range: "1–5",   color: "#5a5a5a", bg: "#e6e6e0", icon: "🪨", pick: false, desc: "Il lavoro è riuscito male: l'oggetto funziona ma ha un difetto o un malus." },
+  { key: "common",    label: "Comune",      range: "6–10",  color: "#8a7a4a", bg: "#f4ebd2", icon: "⚙",  pick: true,  desc: "Oggetto standard ben fatto, come nel manuale di D&D." },
+  { key: "uncommon",  label: "Non comune",  range: "11–15", color: "#2e7aa8", bg: "#dce8f0", icon: "✦",  pick: true,  desc: "Oggetto magico minore: un +1 o un piccolo effetto sempre attivo." },
+  { key: "rare",      label: "Raro",        range: "16–20", color: "#7d2929", bg: "#f1d8d8", icon: "🌟", pick: true,  desc: "Oggetto magico potente: un +2 o un effetto importante." },
+  { key: "veryRare",  label: "Molto raro",  range: "21–25", color: "#b08820", bg: "#f6ecc0", icon: "👑", pick: false, desc: "Oggetto straordinario, deciso dal d12. Solo dal grado Maestro." },
+  { key: "legendary", label: "Leggendario", range: "26+",   color: "#c2410c", bg: "#fde7d3", icon: "🔥", pick: false, desc: "Oggetto unico, deciso dal d12. Solo dal grado Leggenda." },
 ];
+
+// Chiavi delle rarità usate fino al 2026-09-20 → chiavi nuove.
+export const LEGACY_TIER = { comune: "common", raro: "uncommon", magico: "rare", perfetto: "veryRare" };
+export const normTier = (k) => LEGACY_TIER[k] || k || "common";
+export const TIER_ORDER = PREGIATURE.map((p) => p.key);
+export const tierByKey = (k) => PREGIATURE.find((p) => p.key === normTier(k)) || PREGIATURE[1];
+// Rarità a cui si può puntare in base al grado del Sentiero (Maestro = 4, Leggenda = 5).
+export const tierMinGrade = (k) => (k === "legendary" ? 5 : k === "veryRare" ? 4 : 1);
+// Totale del d20 → rarità: 1–5 · 6–10 · 11–15 · 16–20 · 21–25 · 26+.
+export const tierByTotal = (t) => (t <= 5 ? "scarso" : t <= 10 ? "common" : t <= 15 ? "uncommon" : t <= 20 ? "rare" : t <= 25 ? "veryRare" : "legendary");
 
 export const SENTIERO_MAESTRO = [
   {
@@ -40,13 +60,13 @@ export const SENTIERO_MAESTRO = [
   {
     grado: 4, name: "Maestro", icon: "🏆",
     soglia: "20 oggetti Rari+ (di cui almeno 5 Magici)",
-    bonus: "+2 a tutti i tiri di Pregiatura. Puoi tirare per oggetti Perfetti (21+).",
+    bonus: "+2 a tutti i tiri. Puoi puntare al Molto raro (21+).",
     capacita: "Firma del Maestro: 1 volta per Riposo Lungo, dichiara un oggetto come tuo capolavoro: tira con vantaggio e somma il tuo livello al tiro.",
   },
   {
     grado: 5, name: "Leggenda", icon: "👑",
     soglia: "5 oggetti Perfetti + 1 quest leggendaria",
-    bonus: "+3 totale ai tiri di Pregiatura. Nessun limite massimo al tiro.",
+    bonus: "+3 a tutti i tiri. Puoi puntare al Leggendario (26+).",
     capacita: "Opera Definitiva: una volta per campagna, crei un artefatto unico con effetti definiti col DM. La tua firma diventa famosa nel regno.",
   },
 ];
@@ -61,11 +81,12 @@ export const BONUS_LIVELLO_PG = [
 
 export const PREGIATURA_COSTS = [
   // Prezzi FISSI dei materiali (si pagano in gioco) e tempo base di lavoro (craftingTime.js).
-  { tier: "scarso",   mo: 0,     costo: "—",         tempo: "—",        note: "Non si può puntare a Scarso: è ciò che esce quando il tiro va male (1–5)." },
-  { tier: "comune",   mo: 50,    costo: "50 mo",     tempo: "5 ore",    note: "Materiali base, si trovano in qualunque città." },
-  { tier: "raro",     mo: 500,   costo: "500 mo",    tempo: "8 ore",    note: "Serve almeno un materiale particolare (erba rara, metallo nobile…)." },
-  { tier: "magico",   mo: 3000,  costo: "3.000 mo",  tempo: "5 giorni", note: "Ingredienti specifici, spesso da quest; fucina o laboratorio adeguati." },
-  { tier: "perfetto", mo: 10000, costo: "10.000 mo", tempo: "7 giorni", note: "Materiali leggendari unici. Solo dal grado Maestro in su." },
+  { tier: "scarso",    mo: 0,     costo: "—",         tempo: "—",         note: "Non si può puntare a Scarso: è ciò che esce quando il tiro va male (1–5)." },
+  { tier: "common",    mo: 50,    costo: "50 mo",     tempo: "5 ore",     note: "Materiali base, si trovano in qualunque città." },
+  { tier: "uncommon",  mo: 500,   costo: "500 mo",    tempo: "8 ore",     note: "Serve almeno un materiale particolare (erba rara, metallo nobile…)." },
+  { tier: "rare",      mo: 3000,  costo: "3.000 mo",  tempo: "5 giorni",  note: "Ingredienti specifici, spesso da quest; fucina o laboratorio adeguati." },
+  { tier: "veryRare",  mo: 10000, costo: "10.000 mo", tempo: "7 giorni",  note: "Materiali leggendari unici. Solo dal grado Maestro in su." },
+  { tier: "legendary", mo: 25000, costo: "25.000 mo", tempo: "14 giorni", note: "Un cuore di Arcanite o un dono degli dèi. Solo dal grado Leggenda." },
 ];
 
 export const VANTAGGIO_SVANTAGGIO = [
@@ -121,7 +142,7 @@ export const PROFESSIONI = [
         T("Scudo Pesante", "+1 CA ma –1,5m alla velocità."),
         T("Punta di Lancia Cattiva", "I critici contano come colpi normali."),
       ],
-      comune: [
+      common: [
         T("Spada Lunga", "Standard."),
         T("Pugnale, Martello da Guerra o Lancia", "Standard."),
         T("Corazza di Piastre o Cotta di Maglia", "Standard."),
@@ -135,7 +156,7 @@ export const PROFESSIONI = [
         T("Alabarda o Picca", "Standard."),
         T("Ferri da Cavallo Rinforzati", "Vantaggio a non scivolare."),
       ],
-      raro: [
+      uncommon: [
         T("Martello del Riciclo", "Dopo un colpo a segno, recupera 1d4 metallo grezzo."),
         T("Spada Lunga Runica", "+2 ai danni contro un tipo di creatura specifico (es. Demoni)."),
         T("Scudo Rinforzato", "+1 CA extra contro attacchi in mischia."),
@@ -149,7 +170,7 @@ export const PROFESSIONI = [
         T("Scudo da Torre Pieghevole", "Copertura ¾ come azione bonus, una volta a riposo breve."),
         T("Spuntoni da Combattimento", "+1d4 danni quando vieni afferrato."),
       ],
-      magico: [
+      rare: [
         T("Scudo Riflettente", "+1 CA extra contro attacchi a distanza; rinvia frecce su 18+."),
         T("Martello del Tuono Minore", "1/giorno lancia Onda d'Urto (CD 13)."),
         T("Lama d'Arcanite Semplice", "+1d4 danni; attacco stordente CD 13 (1/breve riposo)."),
@@ -163,7 +184,7 @@ export const PROFESSIONI = [
         T("Balestra di Ripetizione", "Ricarica come azione bonus invece che azione."),
         T("Stivali Ferrati Magnetici", "Non scivoli, non vieni atterrato; aderisci al metallo."),
       ],
-      perfetto: [
+      veryRare: [
         T("Lama d'Arcanite Superiore", "+1d6 danni da Forza; attacco stordente CD 15 (1/giorno gratuito)."),
         T("Pietra Runica del Potere", "Da incastonare; aumenta la Forza di +2 (max 22)."),
         T("Armatura del Serafino Caduto", "1/giorno resistenza al danno Necrotico per 1 minuto."),
@@ -207,7 +228,7 @@ export const PROFESSIONI = [
         T("Solvente Acido", "Intacca anche il contenitore se non usato in fretta."),
         T("Profumo Repellente", "Svantaggio Carisma per 1 ora."),
       ],
-      comune: [
+      common: [
         T("Pozione di Guarigione", "2d4+2 HP."),
         T("Pozione di Guarigione Maggiore", "4d4+4 HP."),
         T("Pozione di Resistenza", "Acido, Freddo, Fuoco, Fulmine o Veleno (standard)."),
@@ -221,7 +242,7 @@ export const PROFESSIONI = [
         T("Profumo Profondo", "+1 Carisma (Persuasione) per 1 ora."),
         T("Lacrime di Cipolla Distillate", "1 azione → tutti entro 1,5m TS Cost CD 11 o lacrime per 1 turno."),
       ],
-      raro: [
+      uncommon: [
         T("Pozione di Respirare Sott'acqua", "Effetto standard (1 ora)."),
         T("Pozione dell'Emissario", "Vantaggio ai tiri Carisma per 1 ora."),
         T("Pozione di Guarigione Superiore", "Cura 8d4+8 HP."),
@@ -235,7 +256,7 @@ export const PROFESSIONI = [
         T("Bomba Fumogena Densa", "Oscura un'area di 6m di lato per 5 round."),
         T("Inalante della Memoria", "Vantaggio a un singolo tiro Intelligenza nei prossimi 10 minuti."),
       ],
-      magico: [
+      rare: [
         T("Elisir della Forma Gassosa", "Ti trasformi in nebbia per 1 ora."),
         T("Veleno del Silenzio dell'Inferno", "Creatura fallisce TS Cost CD 13 → no incantesimi per 1 minuto."),
         T("Elisir della Metamorfosi Incompleta", "Ti trasformi in creatura GS 1 o meno per 1 ora."),
@@ -249,7 +270,7 @@ export const PROFESSIONI = [
         T("Elisir della Pelle di Pietra", "Resistenza ai danni perforanti, contundenti, taglienti non magici per 1 ora."),
         T("Bomba Alchemica del Caos", "Esplode in 6m, 4d6 danni di tipo casuale (1d6: 1 acido, 2 freddo, 3 fuoco, 4 fulmine, 5 veleno, 6 forza)."),
       ],
-      perfetto: [
+      veryRare: [
         T("Elisir del Serafino", "Guarigione completa e rimuove tutte le malattie/condizioni."),
         T("Elisir dei Gemelli Cosmici", "+1d6 ai danni Radiosi/Necrotici per 1d4 round."),
         T("Elisir del Muto Perfetto", "Rendi un bersaglio muto permanentemente (rimovibile solo con Ristorare Superiore)."),
@@ -293,7 +314,7 @@ export const PROFESSIONI = [
         T("Bottiglia di Legno", "Trapela in 1d4 ore."),
         T("Talismano di Legno Marcio", "Si decompone in 1 settimana."),
       ],
-      comune: [
+      common: [
         T("Bacchetta o Staffa", "Focus arcano standard."),
         T("Scudo di Legno", "Standard."),
         T("Letto, Tavolo o Sedia", "Standard."),
@@ -307,7 +328,7 @@ export const PROFESSIONI = [
         T("Pipa o Strumento Musicale Semplice", "Flauto, scacciapensieri."),
         T("Cassettiera con Doppio Fondo", "CD Inv. 14 per trovare."),
       ],
-      raro: [
+      uncommon: [
         T("Staffa del Vento Sottile", "1/giorno, lancia Raffica di Vento."),
         T("Arco Corto Runico", "+2 ai danni contro creature specifiche (es. Bestie)."),
         T("Arco Lungo Rinforzato", "+1 CA extra mentre lo si impugna."),
@@ -321,7 +342,7 @@ export const PROFESSIONI = [
         T("Lira del Bardo", "+1 alle prove di Performance; conserva l'ultimo brano suonato."),
         T("Diorama Animato", "Piccola scena meccanica che si muove (perfetto per messaggi nascosti o intrattenimento)."),
       ],
-      magico: [
+      rare: [
         T("Bacchetta delle Palle di Fuoco Minore", "Lancia Palla di Fuoco 3 volte al giorno (CD 13)."),
         T("Arco Lungo del Vento", "+1 ai tiri per colpire, gittata raddoppiata."),
         T("Arco Lungo +1", "+1 ai tiri per colpire e ai danni."),
@@ -335,7 +356,7 @@ export const PROFESSIONI = [
         T("Arpa dei Sogni", "Chi l'ascolta TS Sag CD 14 o si addormenta per 10 minuti."),
         T("Trono del Comando", "Seduto su di esso, +1 al CD dei TS dei tuoi incantesimi."),
       ],
-      perfetto: [
+      veryRare: [
         T("Bacchetta del Ratto", "Vantaggio ai tiri di Furtività per 1 ora; 3/giorno lancia Forma Etereo Minore."),
         T("Staffa del Serafino", "Lancia incantesimi di cura e luce potente 3 volte al giorno (incl. Cura Ferite Massa)."),
         T("Balestra Pesante in Arcanite", "Danni 1d12+1, ignora resistenza ai danni non magici."),
@@ -379,7 +400,7 @@ export const PROFESSIONI = [
         T("Tunica della Sfortuna", "Svantaggio al primo tiro di ogni combattimento."),
         T("Calze Bucate", "CD Cost 10 ogni 8 ore di marcia o vesciche → metà velocità."),
       ],
-      comune: [
+      common: [
         T("Armatura di Cuoio", "Standard."),
         T("Veste Arcana", "Focus arcano standard."),
         T("Abito Nobile", "Standard."),
@@ -393,7 +414,7 @@ export const PROFESSIONI = [
         T("Calze di Lana", "Raddoppia la durata dei viaggi senza fatica."),
         T("Borsa Tasche Interne", "3 oggetti piccoli nascosti, CD 14 trovarli."),
       ],
-      raro: [
+      uncommon: [
         T("Armatura di Cuoio del Ragno", "Vantaggio a Furtività e a prove di Arrampicarsi."),
         T("Veste Arcana Rinforzata", "+1 ai TS contro incantesimi."),
         T("Abito Nobile Impreziosito", "+1 alle prove di Persuasione e Inganno."),
@@ -407,7 +428,7 @@ export const PROFESSIONI = [
         T("Calze del Marciatore", "Raddoppia la velocità di viaggio fuori combattimento."),
         T("Tunica del Mercante", "+1 alle prove di Persuasione per affari."),
       ],
-      magico: [
+      rare: [
         T("Veste dell'Ombra Magica", "Vantaggio Furtività, +1 CA."),
         T("Veste dell'Arcanista", "+1 CA, lancia Scudo 1/giorno."),
         T("Abito dell'Influenza", "+1 CA, lancia Charme su Persone 3 volte al giorno (CD 13)."),
@@ -421,7 +442,7 @@ export const PROFESSIONI = [
         T("Sciarpa del Volo Lieve", "Riduce le cadute a 1m/round; +6m al salto."),
         T("Tunica del Mago da Battaglia", "+1 CA, +1 al CD degli incantesimi quando indossata."),
       ],
-      perfetto: [
+      veryRare: [
         T("Armatura di Cuoio del Ragno Superiore", "Come Raro, ma dà anche resistenza ai danni veleno."),
         T("Veste dei Gemelli Cosmici", "Resistenza danni Radioso o Necrotico (scegli a Riposo Lungo)."),
         T("Abito del Serafino", "Vantaggio alle prove di Diplomazia, 1/giorno lancia Luce Diurna."),
@@ -465,7 +486,7 @@ export const PROFESSIONI = [
         T("Polline Starnutante", "Chi lo annusa starnutisce per 1d4 round (svantaggio a Furtività)."),
         T("Foglia Maledetta", "Il portatore subisce sfortuna a un tiro al giorno (DM sceglie)."),
       ],
-      comune: [
+      common: [
         T("Unguento Curativo", "Standard (2d4+2 HP)."),
         T("Essenza Profumata", "Standard."),
         T("Esca Standard", "Per animali."),
@@ -479,7 +500,7 @@ export const PROFESSIONI = [
         T("Filtro del Sonno Lieve", "CD Cost 11 o sonno per 1 ora."),
         T("Polline Energizzante", "Rimuove 1 livello di Affaticamento, 1/giorno."),
       ],
-      raro: [
+      uncommon: [
         T("Unguento di Rigenerazione Rapida", "Cura 4d4+4 HP."),
         T("Essenza della Calma", "Rimuove condizione Spaventato, vantaggio TS contro paura per 1 ora."),
         T("Esca Demoniaca", "Attira demoni GS 2 o meno."),
@@ -493,7 +514,7 @@ export const PROFESSIONI = [
         T("Polline del Risveglio", "Sveglia istantaneamente tutti gli alleati entro 6m."),
         T("Foglia della Speranza", "Mangiala come reazione → +1 ai TS contro morte."),
       ],
-      magico: [
+      rare: [
         T("Unguento della Guarigione Profonda", "Cura 8d4+8 HP."),
         T("Essenza dell'Ispirazione", "Ottieni un dado Ispirazione Bardica (d6) da usare in 1 ora."),
         T("Esca Demoniaca Maggiore", "Attira demoni GS 5 o meno."),
@@ -507,7 +528,7 @@ export const PROFESSIONI = [
         T("Polline della Pioggia", "1/giorno, lancia Sferza il Cielo (variante locale)."),
         T("Bouquet della Fortuna", "1/giorno, ritira un d20 di un alleato entro 9m."),
       ],
-      perfetto: [
+      veryRare: [
         T("Unguento del Serafino", "Guarigione completa, rimuove tutte le condizioni."),
         T("Essenza dei Cosmici", "Resistenza danni Radioso o Necrotico per 8 ore (scegli)."),
         T("Esca Demoniaca Superiore", "Attira demoni GS 10 o meno (raggio 10 km)."),
@@ -551,7 +572,7 @@ export const PROFESSIONI = [
         T("Dolce Allergenico", "CD Cost 10 o orticaria (svantaggio Des) per 1 ora."),
         T("Tè Sbagliato", "Insonnia per 24 ore (svantaggio a un riposo)."),
       ],
-      comune: [
+      common: [
         T("Cibo Ispiratore", "+1 ai tiri d'attacco per 1 ora."),
         T("Bevanda Mistica", "+1 ai TS per 1 ora."),
         T("Cibo Curativo", "Recupera 1d4 HP extra a Riposo Breve."),
@@ -565,7 +586,7 @@ export const PROFESSIONI = [
         T("Stufato del Cacciatore", "+1 alle prove di Sopravvivenza per 8 ore."),
         T("Dolce della Festa", "Chi lo mangia ottiene 5 PF temporanei."),
       ],
-      raro: [
+      uncommon: [
         T("Piatto del Guerriero", "Dà 1d6+4 HP temporanei."),
         T("Birra di Ghiaccio", "Resistenza ai danni freddo per 1 ora."),
         T("Tè della Memoria", "Vantaggio su un tiro di Intelligenza in 1 ora."),
@@ -579,7 +600,7 @@ export const PROFESSIONI = [
         T("Pane del Pellegrino", "Non hai bisogno di cibo né acqua per 24 ore."),
         T("Vino del Bardo", "+1d4 a una prova di Performance o Persuasione (1/giorno)."),
       ],
-      magico: [
+      rare: [
         T("Piatto del Guerriero Maggiore", "Dà 2d6+8 HP temporanei."),
         T("Birra del Fuoco", "Resistenza ai danni fuoco per 1 ora."),
         T("Elisir della Conoscenza", "+1 ai TS Intelligenza e prove Conoscenza per 1 ora."),
@@ -593,7 +614,7 @@ export const PROFESSIONI = [
         T("Stufato del Combattente", "+1 attacchi/TS per 8 ore + 10 PF temporanei."),
         T("Dolce dell'Innamorato", "Chi lo condivide ottiene Vantaggio a Persuasione per 24 ore con l'altro condivisore."),
       ],
-      perfetto: [
+      veryRare: [
         T("Piatto del Serafino", "Dà 4d6+16 HP temporanei, Vantaggio ai tiri d'attacco per 8 ore."),
         T("Bevanda dei Gemelli Cosmici", "Resistenza danni Radioso o Necrotico per 8 ore (scegli)."),
         T("Tè del Serafino", "Aumenta l'Intelligenza di +2 (max 22) per 8 ore."),
@@ -637,7 +658,7 @@ export const PROFESSIONI = [
         T("Carillon Stonato", "Chi lo ascolta è infastidito (svantaggio Carisma con lui per 10 minuti)."),
         T("Trappola a Filo Visibile", "CD 8 per individuarla."),
       ],
-      comune: [
+      common: [
         T("Mini Golem o Costrutto", "Esegue piccoli ordini."),
         T("Bussola", "Standard."),
         T("Strumento di Precisione", "Standard."),
@@ -651,7 +672,7 @@ export const PROFESSIONI = [
         T("Sveglia Meccanica", "Suona a un orario prestabilito."),
         T("Set di Strumenti Modulare", "Vantaggio a una prova di Strumenti di Artigianato a scelta."),
       ],
-      raro: [
+      uncommon: [
         T("Golem Custode in Miniatura", "Costrutto GS 1/4 che protegge il creatore."),
         T("Bussola che Indica il Pericolo", "Vibra quando creature ostili GS 1+ sono entro 15m."),
         T("Meccanismo a Orologeria Unico", "Giocattolo o dispositivo utile per distrarre."),
@@ -665,7 +686,7 @@ export const PROFESSIONI = [
         T("Servo Meccanico", "Piccolo costrutto che porta oggetti, monta tende, ecc. (no combattimento)."),
         T("Calcolatrice Runica", "Vantaggio a tutte le prove di Intelligenza (Indagare/Investigazione) matematiche."),
       ],
-      magico: [
+      rare: [
         T("Golem Sentinella Minore", "Costrutto GS 1/2 che pattuglia un'area."),
         T("Bussola dell'Esploratore", "Indica anche direzione di trappole e passaggi segreti vicini (9m)."),
         T("Serratura Arcanica", "Serratura quasi impossibile da scassinare (CD 25)."),
@@ -679,7 +700,7 @@ export const PROFESSIONI = [
         T("Marchio Tracciante", "Attaccato a una creatura, sai sempre la sua posizione entro 1 km per 24 ore."),
         T("Cuore Meccanico", "1/giorno, sostituisci un TS contro morte con un successo automatico."),
       ],
-      perfetto: [
+      veryRare: [
         T("Golem d'Arcanite", "Costrutto GS 5 potente sigillato in Arcanite (alleato permanente)."),
         T("Bussola del Serafino", "Indica la direzione del luogo sacro/magico più potente in un raggio di 100 km."),
         T("Meccanismo di Trappola Complesso", "Trappola meccanica letale (CD 18; 8d10 danni; multi-trigger)."),
@@ -723,7 +744,7 @@ export const PROFESSIONI = [
         T("Codice Cifrato Decifrabile", "CD 8 per decifrarlo."),
         T("Lettera di Presentazione Goffa", "Svantaggio al primo incontro con destinatario."),
       ],
-      comune: [
+      common: [
         T("Mappa Standard di una Regione", "Vantaggio per orientarsi in essa."),
         T("Sigillo / Stemma Nobile Falso", "CD 14 per individuarlo."),
         T("Documento Nobile Falso", "CD 14 per individuarlo."),
@@ -737,7 +758,7 @@ export const PROFESSIONI = [
         T("Codice Cifrato Standard", "CD 14 per decifrarlo senza la chiave."),
         T("Diario di Viaggio Dettagliato", "Vantaggio Storia o Sopravvivenza in luoghi descritti."),
       ],
-      raro: [
+      uncommon: [
         T("Mappa del Tesoro Irrintracciabile", "Rivela la posizione di un tesoro nascosto; immune ad Individuazione."),
         T("Sigillo del Nobile Rinforzato", "+1 alle prove di Persuasione e Inganno contro nobili."),
         T("Documento dell'Autorità", "1/giorno, vantaggio a Persuasione/Inganno con autorità."),
@@ -751,7 +772,7 @@ export const PROFESSIONI = [
         T("Codice Cifrato Avanzato", "CD 18 per decifrarlo; solo il portatore della chiave lo legge."),
         T("Mappa del Mercante", "Conosci i prezzi giusti di tutte le città mappate (vantaggio Persuasione affari)."),
       ],
-      magico: [
+      rare: [
         T("Mappa del Tesoro Maggiore", "Rivela posizione di tesoro più potente e dettagli (livello, guardiani)."),
         T("Sigillo dell'Influenza", "+1 CA mentre lo si indossa, lancia Charme su Persone 1/giorno."),
         T("Carta delle Previsioni", "1/giorno, Vantaggio su prove di Intelligenza e Conoscenza."),
@@ -765,7 +786,7 @@ export const PROFESSIONI = [
         T("Pergamena Storica", "Lancia Comunione con i Morti 1/settimana attraverso un'immagine genealogica."),
         T("Mappa Vivente", "Aggiorna automaticamente i confini politici, le strade aperte, i pericoli noti."),
       ],
-      perfetto: [
+      veryRare: [
         T("Mappa del Serafino", "Rivela la posizione dei luoghi sacri più potenti del continente."),
         T("Sigillo dei Gemelli Cosmici", "Resistenza danni Radioso o Necrotico (scegli a Riposo Lungo)."),
         T("Documento dei Cosmici", "Aumenta l'Intelligenza di +2 (max 22) per 8 ore al giorno."),
@@ -809,7 +830,7 @@ export const PROFESSIONI = [
         T("Spilla Spezzata", "Non tiene chiuso il mantello (controllo Des 12 ogni evento)."),
         T("Cammeo Sgraziato", "Nessun beneficio sociale; può anche offendere."),
       ],
-      comune: [
+      common: [
         T("Gemma Incastonata", "Oggetto di valore: ~50 mo."),
         T("Monile Arcano", "Focus arcano per chi sa usarlo."),
         T("Talismano Protettivo", "+1 morale al portatore."),
@@ -823,7 +844,7 @@ export const PROFESSIONI = [
         T("Spilla Riccamente Lavorata", "Vantaggio a Persuasione in occasioni formali."),
         T("Cammeo Personale", "Ritratto in miniatura di una persona cara."),
       ],
-      raro: [
+      uncommon: [
         T("Anello di Respirazione (Sott'acqua)", "Effetto standard (illimitato)."),
         T("Collana del Controincantesimo Raro", "Lancia Controincantesimo 1/giorno (CD 13)."),
         T("Talismano del Serafino", "1/giorno, lancia l'incantesimo Aiuto."),
@@ -837,7 +858,7 @@ export const PROFESSIONI = [
         T("Anello dell'Alfabeto", "Capisci ogni linguaggio scritto comune (1 ora/giorno)."),
         T("Cammeo della Memoria", "1/giorno, ricorda perfettamente un'ora di vita passata."),
       ],
-      magico: [
+      rare: [
         T("Anello d'Invisibilità Minore", "Diventa invisibile per 1 round (1/giorno)."),
         T("Collana dell'Ispirazione", "Ottieni un dado Ispirazione Bardica (d6) da usare in 1 ora."),
         T("Talismano dei Gemelli Cosmici Minore", "Resistenza danni Radioso o Necrotico per 1 ora."),
@@ -851,7 +872,7 @@ export const PROFESSIONI = [
         T("Collana dell'Adattamento", "Non hai bisogno di respirare, immune a pressione e gas (10 ore/giorno)."),
         T("Anello del Salto", "Raddoppia la distanza di salto; +5 alle prove di Atletica per saltare."),
       ],
-      perfetto: [
+      veryRare: [
         T("Anello dei Gemelli Cosmici", "Resistenza danni Radioso o Necrotico (illimitato, scegli a Riposo Lungo)."),
         T("Collana dei Gemelli Cosmici", "Aumenta l'Intelligenza di +2 (max 22) per 8 ore."),
         T("Talismano dei Gemelli Cosmici Superiore", "Resistenza danni Radioso o Necrotico per 8 ore."),
@@ -895,7 +916,7 @@ export const PROFESSIONI = [
         T("Glifo Cancellato", "Si attiva ma con CD ridotta di 2."),
         T("Polvere Magica Volatile", "Dispersa al primo vento."),
       ],
-      comune: [
+      common: [
         T("Scroll Incantesimo", "Livello 1."),
         T("Oggetto Monouso", "Livello 1."),
         T("Runa di Protezione", "Livello 1."),
@@ -909,7 +930,7 @@ export const PROFESSIONI = [
         T("Polvere Brillante", "Rivela invisibili in 3m, 1 round."),
         T("Sigillo Arcano Tracciante", "Sai sempre dov'è il sigillo, raggio 1 km, 24 ore."),
       ],
-      raro: [
+      uncommon: [
         T("Scroll Incantesimo Raro", "Lancia un incantesimo di livello 2."),
         T("Oggetto Monouso Raro", "Lancia un incantesimo di livello 2."),
         T("Runa di Protezione contro i Demoni", "Lancia Protezione dal Bene e dal Male (livello 1)."),
@@ -923,7 +944,7 @@ export const PROFESSIONI = [
         T("Polvere dell'Oscurità", "Spegne luci magiche fino a livello 3 entro 6m."),
         T("Sigillo del Custode", "Lancia Allarme in modo permanente in una stanza."),
       ],
-      magico: [
+      rare: [
         T("Scroll Incantesimo Magico", "Lancia un incantesimo di livello 3."),
         T("Oggetto Monouso Magico", "Lancia un incantesimo di livello 3."),
         T("Sfera di Luce a Tempo", "Lancia Luce Diurna a orario prestabilito."),
@@ -937,7 +958,7 @@ export const PROFESSIONI = [
         T("Polvere del Velo", "Rende un oggetto invisibile per 1 ora."),
         T("Sigillo del Confino", "Intrappola una creatura GS 5 o meno (TS CD 15) per 24 ore."),
       ],
-      perfetto: [
+      veryRare: [
         T("Scroll Incantesimo Perfetto Superiore", "Lancia un incantesimo di livello 4."),
         T("Oggetto Monouso Superiore", "Lancia un incantesimo di livello 4."),
         T("Runa di Protezione del Serafino", "Lancia l'incantesimo Barriera Lama."),
@@ -958,6 +979,13 @@ export const PROFESSIONI = [
 /* ============================================================
    PLAY EXAMPLES — three vignettes from the manual appendix
    ============================================================ */
+
+// Catalogo dei 6 oggetti a scelta (Comune → Non comune → Raro, stessa "linea")
+// e tabella d12 dei Leggendari: vivono in craftingCatalogo.js.
+for (const p of PROFESSIONI) {
+  p.catalogo = CATALOGO[p.key] || [];
+  p.creazioni.legendary = LEGGENDARI[p.key] || [];
+}
 
 export const ESEMPI_GIOCO = [
   {

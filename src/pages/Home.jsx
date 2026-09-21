@@ -15,7 +15,7 @@ const PORTALI = [
   { to: "/arena",     nome: "Arena",    nota: "il Colosseo Astrale",     img: "/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" },
   { to: "/party",     nome: "Eroi",     nota: "quattro compagnie",       img: "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" },
   { to: "/riassunti", nome: "Memorie",  nota: "le cronache dei party",   img: "/assets/PhotoStory/GruppoLAC/horn_spider.jpg" },
-  { to: "/crafting",  nome: "Officina", nota: "forgia i tuoi oggetti",   img: "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png" },
+  { to: "/officina",  nome: "Officina", nota: "forgia i tuoi oggetti",   img: "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png" },
   { to: "/Geo",       nome: "Atlante",  nota: "i continenti di Exanthia", img: "/assets/PhotoStory/GruppoMEAA/drago_fiume.png" },
 ];
 

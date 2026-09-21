@@ -1,17 +1,19 @@
+// ── /crafting: il MANUALE del crafting (corto). Si crea in /officina (Gilda). ──
+// I numeri vengono dalle costanti (crafting.js, craftingTime.js, craftingProgress.js,
+// craftingWeek.js): non scriverli a mano.
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   HERO_QUOTE,
   PREGIATURE,
   SENTIERO_MAESTRO,
   PREGIATURA_COSTS,
-  VANTAGGIO_SVANTAGGIO,
   PROFESSIONI,
 } from "../data/crafting";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER } from "../data/craftingProgress";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK } from "../data/craftingWeek";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, CRAFT_MIN_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, craftMinutes, fmtMinutes } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, fmtMinutes } from "../data/craftingTime";
 import GlacierHero from "../components/glacier/GlacierHero";
-import CraftingOfficina from "./CraftingOfficina";
 import "./Crafting.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -20,20 +22,21 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png";
 
 const CARATTERISTICHE = ["all", "FOR", "DES", "INT", "SAG", "MAG"];
 const CARATTERISTICA_LABEL = { all: "Tutte", FOR: "Forza", DES: "Destrezza", INT: "Intelligenza", SAG: "Saggezza", MAG: "Magica" };
+const PICK_TIERS = PREGIATURE.filter((p) => p.pick);
+const RANDOM_TIERS = PREGIATURE.filter((p) => !p.pick && p.key !== "scarso");
 
 // ── Come funziona: quattro mosse, in ordine ─────────────────────────────────
 const PASSI = [
-  { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa puoi creare." },
-  { ic: "🎯", k: "Punta a una pregiatura", t: "Comune, Raro, Magico o Perfetto. Fissa il tempo di lavoro e i materiali da pagare in gioco." },
-  { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, un aiutante, i materiali e il ritmo: ognuno accorcia il lavoro o cambia il tiro." },
-  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la qualità (mai sopra la mirata), d12 l'oggetto. Poi parte il tempo: finito, ritiri l'oggetto e va su Foundry." },
+  { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa sai fare." },
+  { ic: "🎯", k: "Scegli rarità e oggetto", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu uno dei 6 oggetti della tua professione. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: l'oggetto lo decide il d12.` },
+  { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, un aiutante, i materiali e il ritmo: accorciano il lavoro o cambiano il tiro." },
+  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta). Poi parte il tempo di lavoro: finito, ritiri l'oggetto e va su Foundry." },
 ];
 
 // ── Sommario ────────────────────────────────────────────────────────────────
 const SOMMARIO = [
-  { href: "#cr-officina",    num: "⚒", t: "L'Officina" },
   { href: "#cr-come",        num: "1", t: "Come funziona" },
-  { href: "#cr-pregiature",  num: "2", t: "Le Pregiature" },
+  { href: "#cr-rarita",      num: "2", t: "Le rarità" },
   { href: "#cr-tiro",        num: "3", t: "Il tiro" },
   { href: "#cr-tempo",       num: "4", t: "Il tempo di lavoro" },
   { href: "#cr-sentiero",    num: "5", t: "Livelli e gradi" },
@@ -52,7 +55,7 @@ export default function Crafting() {
   const [filter, setFilter] = useState("all");
   const [openProf, setOpenProf] = useState(null);
 
-  // Arrivo con un'ancora (es. dall'Almanacco): apro la piega giusta.
+  // Arrivo con un'ancora (es. dall'Officina): apro la piega giusta.
   useEffect(() => {
     if (window.location.hash && window.location.hash !== "#cr-index") {
       openFold(window.location.hash);
@@ -69,13 +72,13 @@ export default function Crafting() {
     <section className="cine-page cr-page" style={{ "--cine-accent": "var(--el)", "--cine-accent-2": "var(--el-soft)" }}>
       <GlacierHero
         id="cr-top"
-        ariaLabel="Crafting di Exanthia"
+        ariaLabel="Manuale del Crafting di Exanthia"
         image={HERO_IMAGE}
         eyebrow="Manuale dell'Artigiano"
         title={<>Crafting<br />di Exanthia</>}
-        seal={`⚒ Officina aperta · ${CRAFT_MAX_PER_DAY} prova al giorno · ${CRAFT_MAX_PER_WEEK} a settimana`}
+        seal={`📖 Le regole · si crea nell'Officina della Gilda`}
         tagline={HERO_QUOTE}
-        actions={<><a href="#cr-officina" className="gl-cta" aria-label="Vai all'Officina">⚒ Crea un oggetto</a><a href="#cr-index" className="gl-cta gl-cta--ghost" aria-label="Scorri al manuale">✦ Il manuale</a></>}
+        actions={<><Link to="/officina" className="gl-cta" aria-label="Vai all'Officina">⚒ Vai all'Officina</Link><a href="#cr-index" className="gl-cta gl-cta--ghost" aria-label="Scorri al manuale">✦ Leggi le regole</a></>}
       />
 
       {/* ── SOMMARIO a pillole ── */}
@@ -85,12 +88,13 @@ export default function Crafting() {
             <span className="cr-pill-num" aria-hidden="true">{s.num}</span>{s.t}
           </a>
         ))}
+        <Link to="/officina" className="nx-pillola on"><span className="cr-pill-num" aria-hidden="true">⚒</span>L'Officina</Link>
       </nav>
 
       <div className="nx-due cr-corpo">
         {/* ── RUBRICA fissa ── */}
         <aside className="nx-pannello nx-pannello--sticky cr-rubrica" aria-label="Indice del manuale">
-          <span className="nx-kicker">Tomo dell'Artigiano</span>
+          <span className="nx-kicker">Manuale dell'Artigiano</span>
           <h2 className="nx-titolo cr-rubrica-titolo">Sommario</h2>
           <div className="cr-rubrica-lista">
             {SOMMARIO.map(s => (
@@ -98,22 +102,13 @@ export default function Crafting() {
                 <span className="cr-pill-num" aria-hidden="true">{s.num}</span>{s.t}
               </a>
             ))}
+            <Link to="/officina" className="nx-pillola on cr-rubrica-voce"><span className="cr-pill-num" aria-hidden="true">⚒</span>Vai all'Officina</Link>
           </div>
-          <p className="nx-nota">Un tiro, un tempo di lavoro, un oggetto. Il resto sono dettagli: i capitoli si aprono al tocco.</p>
+          <p className="nx-nota">Un tiro, un tempo di lavoro, un oggetto. Qui le regole; si crea nell'Officina della Gilda.</p>
         </aside>
 
         {/* ── FLUSSO dei capitoli ── */}
         <div className="cr-flusso">
-
-          {/* ── ⚒ L'OFFICINA ── */}
-          <section id="cr-officina" className="cr-section cr-officina-sec" data-chapter="⚒">
-            <div className="gl-sezlabel">L'Officina · crea i tuoi oggetti</div>
-            <p className="nx-nota cr-section-sub">
-              Scegli a cosa punti, prepara il banco, tira. Il lavoro dura un tempo fisso, poi ritiri l'oggetto
-              e il Master lo importa nel tuo inventario su Foundry. {CRAFT_MAX_PER_DAY} prova al giorno, {CRAFT_MAX_PER_WEEK} a settimana (si azzerano la domenica alle 22).
-            </p>
-            <CraftingOfficina />
-          </section>
 
           {/* ── 1 · COME FUNZIONA (aperto) ── */}
           <details id="cr-come" className="cr-section cr-fold" data-chapter="1" open>
@@ -135,31 +130,34 @@ export default function Crafting() {
               <span className="cr-limite"><b>1</b> lavoro alla volta sul banco</span>
             </div>
             <p className="nx-nota cr-section-sub cr-come-nota">
-              Chi tira è il giocatore con la professione. In sessione o fuori, sempre dalla stessa pagina: l'uso si consuma al tiro,
-              quindi ricaricare o rifare il login non lo restituisce. Il tempo va con l'ora del server, non con quella del telefono.
+              Si crea dall'<Link to="/officina">Officina</Link>, in sessione o fuori. L'uso si consuma al tiro e il tempo va con l'ora del server.
             </p>
           </details>
 
-          {/* ── 2 · LE PREGIATURE ── */}
-          <details id="cr-pregiature" className="cr-section cr-fold" data-chapter="2">
-            <summary className="gl-sezlabel">2 · Le Pregiature</summary>
-            <p className="nx-nota cr-section-sub">Il totale del d20 dice quanto è pregiato ciò che esce. Non si supera mai la pregiatura a cui hai puntato: un tiro alto la conferma, uno basso dà un oggetto inferiore. I materiali hanno un prezzo fisso, si pagano in gioco prima di iniziare.</p>
+          {/* ── 2 · LE RARITÀ ── */}
+          <details id="cr-rarita" className="cr-section cr-fold" data-chapter="2">
+            <summary className="gl-sezlabel">2 · Le rarità</summary>
+            <p className="nx-nota cr-section-sub">
+              Sono quelle di D&D. Scegli a quale punti: i materiali hanno un prezzo fisso e si pagano in gioco. Il totale del d20 dice cosa esce, <strong>mai sopra la rarità scelta</strong>.
+              Per {PICK_TIERS.map((p) => p.label).join(", ")} scegli tu l'oggetto fra i 6 della professione: con un tiro più basso esce <strong>lo stesso oggetto della rarità sotto</strong> (sotto 6 uno Scarso a caso).
+              {" "}{RANDOM_TIERS.map((p) => p.label).join(" e ")} escono a caso col d12.
+            </p>
             <div className="cr-tier-table">
-              <div className="cr-tier-head"><span>Pregiatura</span><span>Tiro</span><span>Tempo</span><span>PE</span><span>Costo materiali</span></div>
+              <div className="cr-tier-head"><span>Rarità</span><span>Tiro</span><span>Oggetto</span><span>Tempo</span><span>Materiali · PE</span></div>
               {PREGIATURE.map(p => {
                 const c = PREGIATURA_COSTS.find(x => x.tier === p.key) || {};
                 return (
                   <div key={p.key} className="nx-pannello cr-tier-row" style={{ "--q": p.color }}>
                     <span className="cr-tier-name"><i aria-hidden="true">{p.icon}</i> {p.label}<small>{p.desc}</small></span>
                     <span className="cr-tier-cell" data-label="Tiro">{p.range}</span>
+                    <span className="cr-tier-cell" data-label="Oggetto">{p.key === "scarso" ? "d12 (solo esito)" : p.pick ? "lo scegli tu" : "d12"}</span>
                     <span className="cr-tier-cell" data-label="Tempo">{CRAFT_BASE_MINUTES[p.key] ? fmtMinutes(CRAFT_BASE_MINUTES[p.key]) : "—"}</span>
-                    <span className="cr-tier-cell" data-label="PE">+{XP_PER_TIER[p.key]}</span>
-                    <span className="cr-tier-cell cr-tier-cost" data-label="Materiali">{c.costo}<small>{c.note}</small></span>
+                    <span className="cr-tier-cell cr-tier-cost" data-label="Materiali · PE">{c.costo} · +{XP_PER_TIER[p.key]} PE<small>{c.note}</small></span>
                   </div>
                 );
               })}
             </div>
-            <p className="nx-nota cr-section-sub cr-come-nota">Perfetto si può puntare solo dal grado <strong>Maestro</strong> (livello 7). Dal grado <strong>Artigiano</strong> (livello 5) gli Scarsi contano come Comuni. Un 20 naturale raddoppia i PE.</p>
+            <p className="nx-nota cr-section-sub cr-come-nota">Molto raro solo dal grado <strong>Maestro</strong>, Leggendario solo da <strong>Leggenda</strong>. Dal grado Artigiano gli Scarsi contano come Comuni. Un 20 naturale raddoppia i PE.</p>
           </details>
 
           {/* ── 3 · IL TIRO ── */}
@@ -179,15 +177,12 @@ export default function Crafting() {
                 <span className="cr-formula-piece">Condizioni</span>
               </div>
               <ul className="cr-formula-list">
-                <li><strong>Caratteristica</strong>: quella della professione (Fabbro = Forza, Alchimista = Intelligenza…; le professioni magiche usano la migliore fra Int, Sag e Car).</li>
-                <li><strong>Strumenti</strong>: il bonus di competenza, solo se hai con te gli strumenti della professione. Senza, tiri con svantaggio.</li>
-                <li><strong>Grado</strong>: Discepolo +1 · Artigiano +1 · Maestro +2 · Leggenda +3 (vedi Livelli e gradi).</li>
-                <li><strong>Condizioni</strong>: aiuto (+1), componenti (+1d{COMPONENT_ROLL_DIE} ciascuno), materiali e ritmo scelti sul banco. L'Officina le scrive nella coda del Master.</li>
-                <li><strong>Di fretta</strong>: metà tempo ma −3 al tiro e 5% di fallimento critico: la prova è consumata, i materiali sono persi e non esce nulla.</li>
+                <li><strong>Caratteristica</strong>: quella della professione (le professioni magiche usano la migliore fra Int, Sag e Car).</li>
+                <li><strong>Strumenti</strong>: il bonus di competenza, solo se gli strumenti della professione risultano sulla tua scheda. Senza, svantaggio.</li>
+                <li><strong>Grado</strong>: {SENTIERO_MAESTRO.filter((g) => GRADE_BONUS[g.grado]).map((g) => `${g.name} +${GRADE_BONUS[g.grado]}`).join(" · ")}.</li>
+                <li><strong>Condizioni</strong>: materiali superiori = vantaggio, di fortuna = svantaggio · con calma +{PACE_OPTIONS[0].roll} · di fretta {PACE_OPTIONS[2].roll} e {PACE_OPTIONS[2].critFail}% di fallimento critico (materiali persi) · aiutante +{HELP_OPTIONS[1].roll} · ogni componente +1d{COMPONENT_ROLL_DIE}.</li>
               </ul>
             </div>
-
-            <h3 className="cr-subtitle">Caratteristica per professione</h3>
             <div className="nx-pillole cr-prof-chips">
               {PROFESSIONI.map(p => (
                 <span key={p.key} className="nx-pillola cr-prof-chip" style={{ "--c": p.carColor }}>
@@ -197,56 +192,41 @@ export default function Crafting() {
                 </span>
               ))}
             </div>
-
-            <h3 className="cr-subtitle">Condizioni: vantaggio e svantaggio</h3>
-            <div className="nx-griglia nx-griglia--larga cr-modifiers-grid">
-              {VANTAGGIO_SVANTAGGIO.map((m, i) => (
-                <div key={i} className={`nx-pannello cr-modifier ${m.positive ? "cr-modifier--good" : "cr-modifier--bad"}`}>
-                  <span className="cr-modifier-sign" aria-hidden="true">{m.positive ? "▲" : "▼"}</span>
-                  <span className="nx-nome cr-modifier-cond">{m.condizione}</span>
-                  <span className="nx-nota cr-modifier-eff">{m.effetto}</span>
-                </div>
-              ))}
-            </div>
           </details>
 
           {/* ── 4 · IL TEMPO DI LAVORO ── */}
           <details id="cr-tempo" className="cr-section cr-fold" data-chapter="4">
             <summary className="gl-sezlabel">4 · Il tempo di lavoro</summary>
             <p className="nx-nota cr-section-sub">
-              Ogni lavoro ha un tempo <strong>fisso, in tempo reale</strong>, che vedi prima di tirare: il risultato del dado non lo cambia.
-              Parte dalla pregiatura a cui punti e si accorcia con quello che porti al banco. Finché non è passato, l'oggetto resta
-              sul banco e vedi solo la barra; poi lo ritiri. Minimo {fmtMinutes(CRAFT_MIN_MINUTES)}.
+              Ogni lavoro ha un tempo <strong>fisso, in tempo reale</strong>, che vedi prima di tirare: il dado non lo cambia. Finché non è passato vedi solo la barra; poi ritiri l'oggetto.
             </p>
             <div className="cr-time-base">
               {PREGIATURE.filter(p => CRAFT_BASE_MINUTES[p.key]).map(p => (
                 <span key={p.key} className="cr-time-chip" style={{ "--q": p.color }}><i aria-hidden="true">{p.icon}</i> {p.label} <b>{fmtMinutes(CRAFT_BASE_MINUTES[p.key])}</b></span>
               ))}
             </div>
-
-            <h3 className="cr-subtitle">Cosa accorcia il lavoro</h3>
             <div className="nx-griglia cr-time-grid">
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🧰</span>
-                <span className="nx-nome">Strumenti della professione</span>
+                <span className="nx-nome">Strumenti</span>
                 <b className="cr-time-fx">−{fmtMinutes(TOOLS_MINUTES)}</b>
-                <span className="nx-nota">Con gli strumenti hai anche il bonus di competenza; senza, tempo pieno e svantaggio. Si sbloccano solo se sono sulla tua scheda Foundry (sincronizzata) o comprati al Mercato.</span>
+                <span className="nx-nota">Si accendono da soli se risultano sulla scheda Foundry (sincronizzata) o comprati al Mercato.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🧪</span>
-                <span className="nx-nome">Componenti trovati in sessione</span>
-                <b className="cr-time-fx">−30 / −45 / −60 min · +1–{COMPONENT_ROLL_DIE} al tiro</b>
-                <span className="nx-nota">Fino a {MAX_COMPONENTS} per lavoro, si consumano; ognuno dà anche +1d{COMPONENT_ROLL_DIE} al tiro. Alcuni lasciano un effetto sull'oggetto. La lista è qui sotto.</span>
+                <span className="nx-nome">Componenti (max {MAX_COMPONENTS})</span>
+                <b className="cr-time-fx">−30 / −45 / −60 min</b>
+                <span className="nx-nota">Si trovano in sessione e si consumano. Ognuno dà anche +1d{COMPONENT_ROLL_DIE} al tiro; alcuni lasciano un effetto sull'oggetto.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🤝</span>
-                <span className="nx-nome">Un aiutante al banco</span>
+                <span className="nx-nome">Aiutante</span>
                 <b className="cr-time-fx">{HELP_OPTIONS.filter(h => h.key).map(h => `−${h.pct}%`).join(" / ")}</b>
-                <span className="nx-nota">{HELP_OPTIONS.filter(h => h.key).map(h => `${h.label}: −${h.pct}% del tempo`).join(" · ")}. In più +1 al tiro. Da concordare col Master.</span>
+                <span className="nx-nota">{HELP_OPTIONS.filter(h => h.key).map(h => h.label.toLowerCase()).join(" o ")}, da concordare col Master. +1 al tiro.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">⏳</span>
-                <span className="nx-nome">Il ritmo</span>
+                <span className="nx-nome">Ritmo</span>
                 <b className="cr-time-fx">×2 · ×1 · ×½</b>
                 <span className="nx-nota">{PACE_OPTIONS.map(p => `${p.label}: ${p.desc.toLowerCase()}`).join(" · ")}</span>
               </div>
@@ -254,36 +234,31 @@ export default function Crafting() {
                 <span className="cr-passo-ic" aria-hidden="true">📈</span>
                 <span className="nx-nome">Ritmo di bottega</span>
                 <b className="cr-time-fx">−¼</b>
-                <span className="nx-nota">Dal livello 6 di professione ogni lavoro dura un quarto in meno, sempre.</span>
+                <span className="nx-nota">Dal livello 6 di professione, sempre.</span>
               </div>
             </div>
-
-            <h3 className="cr-subtitle">I 10 componenti</h3>
-            <p className="nx-nota cr-section-sub">Oggetti da trovare in sessione: accorciano il lavoro e danno +1d{COMPONENT_ROLL_DIE} al tiro ciascuno; quattro lasciano anche un effetto sull'oggetto, che decide il DM. Si usano solo se risultano tuoi: nell'inventario su Foundry con questo nome (poi sincronizza), assegnati dal Master nell'Officina o comprati al Mercato.</p>
-            <div className="cr-comp-grid">
-              {COMPONENTS.map(c => (
-                <div key={c.key} className="nx-pannello cr-comp-card">
-                  <span className="cr-comp-ic" aria-hidden="true">{c.icon}</span>
-                  <span className="cr-comp-body">
-                    <span className="nx-nome cr-comp-name">{c.name} <b>−{c.minutes} min · +1d{COMPONENT_ROLL_DIE}</b></span>
-                    <span className="nx-nota">{c.desc}{c.effect ? <> <strong>{componentEffectLabel(c)}.</strong></> : null}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="nx-nota cr-section-sub cr-come-nota">
-              Esempio: Comune parte da {fmtMinutes(CRAFT_BASE_MINUTES.comune)}; con gli strumenti {fmtMinutes(craftMinutes({ tier: "comune" }).minutes)}; con un Carbone Runico e un mastro
-              competente {fmtMinutes(craftMinutes({ tier: "comune", components: ["carbone"], help: "mastro" }).minutes)}; di fretta {fmtMinutes(craftMinutes({ tier: "comune", components: ["carbone"], help: "mastro", pace: "fretta" }).minutes)}, ma con −3 al tiro e il rischio del fallimento critico.
-            </p>
+            <details className="cr-subfold">
+              <summary className="cr-subtitle">I {COMPONENTS.length} componenti</summary>
+              <div className="cr-comp-grid">
+                {COMPONENTS.map(c => (
+                  <div key={c.key} className="nx-pannello cr-comp-card">
+                    <span className="cr-comp-ic" aria-hidden="true">{c.icon}</span>
+                    <span className="cr-comp-body">
+                      <span className="nx-nome cr-comp-name">{c.name} <b>−{c.minutes} min</b></span>
+                      <span className="nx-nota">{c.desc}{c.effect ? <> <strong>{componentEffectLabel(c)}.</strong></> : null}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
           </details>
 
           {/* ── 5 · LIVELLI E GRADI ── */}
           <details id="cr-sentiero" className="cr-section cr-fold" data-chapter="5">
             <summary className="gl-sezlabel">5 · Livelli e gradi</summary>
             <p className="nx-nota cr-section-sub">
-              Ogni lavoro dà punti esperienza (PE) alla professione, in base alla pregiatura ottenuta:
-              {" "}{PREGIATURE.map(p => `${p.label} ${XP_PER_TIER[p.key]}`).join(" · ")}. Con un 20 naturale raddoppiano.
-              I PE fanno salire di livello; ogni due livelli si sale di grado, e il grado dà il bonus al tiro.
+              Ogni lavoro dà PE alla professione ({PREGIATURE.map(p => `${p.label} ${XP_PER_TIER[p.key]}`).join(" · ")}; 20 naturale = doppi).
+              Ogni due livelli si sale di grado, e il grado dà il bonus al tiro.
             </p>
             <div className="cr-gradi">
               {SENTIERO_MAESTRO.map(g => (
@@ -315,8 +290,7 @@ export default function Crafting() {
           <details id="cr-professioni" className="cr-section cr-fold" data-chapter="6">
             <summary className="gl-sezlabel">6 · Le 10 Professioni</summary>
             <p className="nx-nota cr-section-sub">
-              Una sola per personaggio. Ogni scheda ha il bonus iniziale (livello 1 del PG), il potenziamento (livello 5),
-              le specializzazioni (livello 10, una a scelta) e la tabella d12 di ogni pregiatura: è da lì che esce l'oggetto.
+              Una sola per personaggio. Ogni scheda ha il <strong>catalogo</strong> dei 6 oggetti a scelta (nelle tre rarità) e le tabelle d12 di ciò che esce a caso.
             </p>
             <div className="nx-pillole cr-filter-row">
               {CARATTERISTICHE.map(k => (
@@ -337,11 +311,10 @@ export default function Crafting() {
             <summary className="gl-sezlabel">★ · Crafting libero</summary>
             <div className="nx-pannello cr-libero">
               <span className="nx-pillola on cr-libero-badge">✨ Regola d'oro</span>
-              <h2 className="nx-titolo cr-libero-title">Vuoi qualcosa che non è in tabella?</h2>
+              <h2 className="nx-titolo cr-libero-title">Vuoi qualcosa che non è in catalogo?</h2>
               <p className="nx-prosa cr-libero-lead">
-                Le tabelle sono esempi. Inventare un oggetto nuovo, riparare o migliorare la tua roba, fare qualsiasi cosa sensata
-                per la tua arte: <strong>si può</strong>. Lo dici al Master, lui fissa pregiatura, materiali e tempo, e tiri come sempre.
-                La qualità la decidono i dadi, non l'elenco.
+                Inventare un oggetto nuovo, riparare o migliorare la tua roba, fare qualsiasi cosa sensata per la tua arte: <strong>si può</strong>.
+                Lo dici al Master, lui fissa rarità, materiali e tempo, e tiri come sempre.
               </p>
             </div>
           </details>
@@ -356,10 +329,10 @@ export default function Crafting() {
 }
 
 /* ============================================================
-   ProfessionCard — pannello espandibile con le tabelle d12
+   ProfessionCard — scheda + catalogo dei 6 + tabelle d12
    ============================================================ */
 function ProfessionCard({ prof, isOpen, onToggle }) {
-  const [tier, setTier] = useState("comune");
+  const [tier, setTier] = useState("veryRare");
   const items = prof.creazioni[tier] || [];
   const tierMeta = PREGIATURE.find(p => p.key === tier);
 
@@ -397,9 +370,26 @@ function ProfessionCard({ prof, isOpen, onToggle }) {
             </div>
           </div>
 
-          <h4 className="cr-subtitle cr-creazioni-title">🎲 Tabella d12 — Creazioni del {prof.name}</h4>
+          {/* catalogo: 6 linee × 3 rarità */}
+          <h4 className="cr-subtitle cr-creazioni-title">⚒ Catalogo — i 6 oggetti a scelta</h4>
+          <div className="cr-cat">
+            <div className="cr-cat-head"><span /> {PICK_TIERS.map(t => <span key={t.key} style={{ "--q": t.color }}>{t.icon} {t.label}</span>)}</div>
+            {(prof.catalogo || []).map(line => (
+              <div key={line.key} className="cr-cat-row">
+                <span className="cr-cat-ic" aria-hidden="true">{line.icon}</span>
+                {PICK_TIERS.map(t => {
+                  const [nm, ds] = line[t.key] || ["—", ""];
+                  return <span key={t.key} className="cr-cat-cell" style={{ "--q": t.color }} data-label={t.label}><b>{nm}</b><small>{ds}</small></span>;
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* tabelle d12 */}
+          <h4 className="cr-subtitle cr-creazioni-title">🎲 Tabelle d12 — ciò che esce a caso</h4>
+          <p className="nx-nota cr-section-sub">Molto raro e Leggendario escono sempre da qui; le altre tabelle valgono per gli Scarsi e per chi punta in alto e tira basso.</p>
           <div className="nx-pillole cr-tier-tabs">
-            {PREGIATURE.map(p => (
+            {[...RANDOM_TIERS, ...PREGIATURE.filter(p => p.key === "scarso" || p.pick)].map(p => (
               <button key={p.key} type="button" className={`nx-pillola cr-tier-tab ${tier === p.key ? "on" : ""}`} onClick={() => setTier(p.key)} style={{ "--q": p.color }}>
                 {p.icon} {p.label}
                 <span className="cr-tier-range">{p.range}</span>

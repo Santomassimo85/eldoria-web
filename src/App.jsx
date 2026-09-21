@@ -60,6 +60,7 @@ import Concilio from "./pages/Concilio";
 import Tcg from "./pages/Tcg";
 import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
+import Officina from "./pages/Officina";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
@@ -310,6 +311,7 @@ const NESSO_GROUPS = {
     { to: "/npc", label: "NPC" },
   ]},
   gilda: { rune: "ᚷ", label: "Gilda", links: [
+    { to: "/officina", label: "Officina" },
     { to: "/mercato", label: "Mercato Nero" },
     { to: "/bacheca", label: "Bacheca" },
     { to: "/cinema", label: "Cinema" },
@@ -326,7 +328,7 @@ const NESSO_GROUP_OF = (p) =>
   : ["/world-map", "/Geo"].includes(p) ? "mondo"
   : ["/scriba", "/riassunti", "/diario", "/almanacco", "/crafting", "/ratti-lore", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
   : ["/party", "/scheda-pg", "/my-pg", "/npc"].some((x) => p.startsWith(x)) ? "eroi"
-  : ["/mercato", "/bacheca", "/cinema", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
+  : ["/officina", "/mercato", "/bacheca", "/cinema", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
   : ["/arena", "/arena-bottega", "/world-boss", "/tcg"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
@@ -746,6 +748,7 @@ export default function App() {
           </NavDropdown>
 
           <NavDropdown label={<><span className="nav-rune" data-g="gilda" aria-hidden="true">ᚷ</span> Gilda</>} closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
+            <NavLink to="/officina">⚒ Officina</NavLink>
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
@@ -803,6 +806,7 @@ export default function App() {
           {/* <Route path="/pet-arena" element={<PetArena />} /> */}
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
+          <Route path="/officina" element={<Officina />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/feedback" element={<Feedback />} />
