@@ -56,7 +56,8 @@ const PARTIES = [
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",              class: "Warlock", image: "/assets/player/alaric.png" },
       { name: "Lael",                   race: "Alto Elfo",             class: "Mago",     image: "/assets/player/lael.jpg" },
-      { name: "Palar",                  race: "Dragonide (Ametista)",  class: "Paladino", image: "/assets/player/palar.webp" },
+      // non ancora sbloccato: niente ritratto (placeholder) e scheda chiusa
+      { name: "Palar",                  race: "Dragonide (Ametista)",  class: "Paladino", image: null, locked: true },
       { name: "Kael & Mora",                 race: "Hexblood",                class: "??", image: "/assets/player/.png" }, 
     ],
   },
@@ -127,28 +128,37 @@ function membersFor(party, query) {
       .filter(Boolean).join(" ").toLowerCase().includes(q));
 }
 
-/* ── Eroe = pannello del Nesso con anello-ritratto (tap → scheda) ── */
+/* ── Eroe = pannello del Nesso con anello-ritratto (tap → scheda).
+   `hero.locked` = personaggio non ancora sbloccato: nessun ritratto
+   (placeholder dell'anello) e scheda non apribile. ── */
 function RosterEntry({ hero, tag, onOpen }) {
+  const locked = !!hero.locked;
   return (
     <button
       type="button"
-      className="nx-pannello nx-pannello--tap eroe-card"
+      className={`nx-pannello eroe-card ${locked ? "eroe-card--locked" : "nx-pannello--tap"}`}
       style={{ "--cls": classColor(hero.class) }}
-      onClick={onOpen}
+      onClick={locked ? undefined : onOpen}
+      aria-disabled={locked || undefined}
+      title={locked ? "Personaggio non ancora sbloccato" : undefined}
     >
-      <span className="nx-tag">{tag}</span>
+      <span className="nx-tag">{locked ? "🔒" : tag}</span>
       <span className="nx-anello">
-        <img
-          src={hero.image}
-          alt={hero.name}
-          loading="lazy"
-          onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
-        />
+        {locked ? (
+          <span className="nx-anello-ph" aria-hidden="true">?</span>
+        ) : (
+          <img
+            src={hero.image}
+            alt={hero.name}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
+          />
+        )}
       </span>
       <span className="nx-nome">{hero.name}</span>
       <span className="nx-meta">{hero.race}</span>
       <span className="eroe-classe">{hero.class}</span>
-      <span className="eroe-cue" aria-hidden="true">Scheda ›</span>
+      <span className="eroe-cue" aria-hidden="true">{locked ? "Non sbloccato" : "Scheda ›"}</span>
     </button>
   );
 }
@@ -251,7 +261,7 @@ function HouseSection({ party, query, charByName, focusHero, onFocusConsumed }) 
   // Apertura automatica della scheda quando si arriva da un link (?hero=…)
   useEffect(() => {
     if (!focusHero) return;
-    const idx = visibleMembers.findIndex((m) => firstTok(m.name) === firstTok(focusHero));
+    const idx = visibleMembers.findIndex((m) => !m.locked && firstTok(m.name) === firstTok(focusHero));
     if (idx >= 0) {
       setOpenIdx(idx);
       onFocusConsumed?.();

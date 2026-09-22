@@ -5,7 +5,14 @@
 // il banco (strumenti, componenti trovati in sessione, aiuto, materiali, ritmo)
 // e tirano il d20 (+ modificatore, + competenza strumenti, + grado, + condizioni).
 // Un tiro sotto la rarità mirata dà lo stesso oggetto della rarità inferiore
-// (sotto 6 uno Scarso a caso). Il Master vede il tavolo in tempo reale
+// (sotto 6 uno Scarso a caso).
+// IL TIRO È SEGRETO (2026-09-22): il dado si ferma su una runa e finché il
+// pezzo è sul banco il giocatore non vede né d20 né rarità — li legge solo il
+// Master. Un 1 NATURALE non brucia più il lavoro: l'oggetto esce Scarso e
+// MALEDETTO (craftingCurse.js, maledizione scritta da Gemini su misura), e la
+// maledizione resta roba da Master: nel registro, nel tavolo e nella coda di
+// Foundry, mai nella descrizione dell'oggetto né in nessuna schermata del
+// giocatore. Il Master vede il tavolo in tempo reale
 // (MasterBoard): chi sta forgiando cosa, a che punto è, cosa ha finito. Il tiro AVVIA un lavoro con un tempo
 // fisso in tempo reale (craftingTime.js): finché non scade si vede solo la
 // barra; poi l'oggetto si "ritira" e va nella coda "Crea Oggetto → Foundry"
@@ -25,9 +32,11 @@ import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, postaz
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
-import { ENHANCERS, TIER_TO_FOUNDRY, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
+import { ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
+import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
+import { affordFromSnapshot, availableGp, canAfford, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
 import "./CraftingOfficina.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -38,8 +47,9 @@ const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
 const LEGACY_QUALITY = { sup: "di qualità superiore", fortuna: "di fortuna" };
 // Costo dei materiali della rarità, in monete.
 const tierMo = (tier) => PREGIATURA_COSTS.find((c) => c.tier === normTier(tier))?.mo || 0;
-// Un 1 naturale (o il fallimento della fretta) rovina il lavoro: il banco resta
-// occupato due minuti con la barra rossa, poi si scopre il disastro.
+// Il fallimento critico della FRETTA (5%) rovina il lavoro: il banco resta
+// occupato due minuti con la barra rossa, poi si scopre il disastro. L'1
+// naturale non passa più di qui: l'oggetto esce, Scarso e maledetto.
 const FAIL_MINUTES = 2;
 // 20 naturale: metà dei materiali basta, quindi si paga la metà.
 const NAT20_COST_MULT = 0.5;
@@ -203,6 +213,10 @@ export default function CraftingOfficina() {
   const costMo = investCostMo(baseMo, investOpt);
   const xpBase = XP_PER_TIER[target] || 0;
   const xpGain = xpWithInvestment(xpBase, investOpt);
+  // La borsa: i materiali si pagano PRIMA di tirare, quindi l'oro sulla scheda
+  // (meno quello già speso al banco e non ancora scalato su Foundry) deve
+  // bastare. Chi non ha la scheda sincronizzata passa lo stesso, con avviso.
+  const purse = useMemo(() => canAfford(charData, costMo, { isMaster }), [charData, costMo, isMaster]);
   // ── Le FASCE del d20: cosa esce, quanto dura e quanti PE dà, per ogni totale.
   // Stessa logica del tiro (mai sopra la mirata, Scarso = Comune dal grado
   // Artigiano), messa in tabella così si vede prima di tirare.
@@ -231,6 +245,10 @@ export default function CraftingOfficina() {
     return rows;
   }, [target, pickLine, work, investOpt, prog.scarsoAsComune]);
   const timeRange = outcomeTimeRange(work.minutes);
+  // La riga dell'1 naturale nella tabella "Cosa può uscire": sempre Scarso,
+  // con il tempo della caduta più lunga e i PE più bassi.
+  const nat1Minutes = applyOutcomeTime(work, { dist: TIER_ORDER.indexOf(target) }).minutes;
+  const nat1Xp = xpWithInvestment(XP_PER_TIER.scarso || 0, investOpt);
 
   const activeEntry = revealed ? pendingEntry : null;
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
@@ -289,6 +307,8 @@ export default function CraftingOfficina() {
   async function roll() {
     if (!prof || busy) return;
     if (!allow.can) { setMsg(allow.reason); return; }
+    // Niente lavoro a credito: i materiali si pagano prima di accendere la forgia.
+    if (!purse.ok) { setMsg(`💰 Non hai abbastanza oro: servono ${fmtMo(purse.cost)} di materiali e in borsa ne hai ${fmtMo(purse.have)}${purse.pending ? ` (${fmtMo(purse.pending)} già spesi al banco)` : ""}. Ti mancano ${fmtMo(purse.missing)}.`); return; }
     setBusy(true); setMsg("");
     try {
       // Ora vera dal server: decide giorno, settimana e la fine del lavoro.
@@ -301,24 +321,44 @@ export default function CraftingOfficina() {
       const compBonus = compRolls.reduce((s, c) => s + c.roll, 0);
       const rollBonus = bonus + compBonus;
       const total = d20 + rollBonus;
-      // Disastro: 1 naturale sul d20, oppure il fallimento critico della fretta (5%).
-      // In entrambi i casi materiali e monete sono persi e non esce nulla.
+      // Disastro vero = SOLO il fallimento critico della fretta (5%): materiali
+      // e monete persi, niente oggetto.
+      // L'1 NATURALE invece non brucia più il lavoro (2026-09-22): l'oggetto
+      // esce comunque, ma sempre alla rarità più bassa (Scarso, anche per chi
+      // di solito la salverebbe col grado Artigiano) e con una MALEDIZIONE che
+      // vede solo il Master. Il giocatore vede solo un pezzo venuto male.
       const fumble = d20 === 1;
       const critRoll = paceOpt.critFail ? rnd(100) : 0;
       const paceFail = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
-      const failed = fumble || paceFail;
+      const failed = paceFail;
       let tier = tierByTotal(total);
-      // Non si supera la rarità mirata (i materiali sono quelli); Molto raro/Leggendario solo dal grado giusto.
-      if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(target)) tier = target;
-      while (tierMinGrade(tier) > prog.level.grado) tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
-      if (tier === "scarso" && prog.scarsoAsComune) tier = "common";
+      if (fumble) tier = "scarso";
+      else {
+        // Non si supera la rarità mirata (i materiali sono quelli); Molto raro/Leggendario solo dal grado giusto.
+        if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(target)) tier = target;
+        while (tierMinGrade(tier) > prog.level.grado) tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
+        if (tier === "scarso" && prog.scarsoAsComune) tier = "common";
+      }
       // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
       const picked = pickLine && tierMeta(tier).pick ? pickLine[tier] : null;
       const d12 = picked ? 0 : rnd(12);
-      const failDesc = fumble
-        ? `Un 1 naturale: il pezzo ti si è rovinato fra le mani. I materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`
-        : `La fretta ha rovinato tutto: i materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`;
+      const failDesc = `La fretta ha rovinato tutto: i materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`;
       const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
+      // La maledizione dell'1 naturale: su misura per l'oggetto e per l'impegno
+      // messo nel lavoro. La inventa Gemini; se non risponde c'è la tabella
+      // locale, così il tiro non resta mai appeso alla rete.
+      let curse = null;
+      if (fumble && !failed) {
+        const cls = classifyCraftedItem(prof.key, name, desc);
+        curse = await generateCurse({
+          oggetto: name, descrizione: desc, tipo: cls.foundryType,
+          professione: prof.name, artigiano: charData?.name || "",
+          rarita: tierMeta(tier).label, rarritaMirata: targetMeta.label,
+          gravita: curseGravita({ targetTier: target, invest: investOpt.key, components: work.components, pace: paceOpt.key }),
+          investimento: investOpt.label, ritmo: paceOpt.label,
+          componenti: work.components.map((k) => componentByKey(k)?.name || k),
+        });
+      }
       const failMs = FAIL_MINUTES * 60000;
       const nat20 = d20 === 20;
       // 20 naturale: tanta bravura che i materiali bastano per metà della spesa.
@@ -334,20 +374,27 @@ export default function CraftingOfficina() {
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
-        invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
+        // Con l'1 naturale i materiali di pregio vanno sprecati: niente ✦.
+        invest: investOpt.key, upgraded: !failed && !fumble && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
         goldInboxId: "", goldDone: false,
         dist, outcome: failed ? "" : outWork.outcome,
-        xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), nat20, inboxId: "", enhancer: "", choice: "", note: "",
+        xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), xpPaid: false, nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, fumble, critRoll, skipped: false, // anche il disastro sta sul banco: due minuti di barra rossa
+        cursed: !!curse, curse, // SOLO PER IL MASTER: il giocatore non deve vederla mai
         componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
       };
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
       await runTransaction(db, async (tx) => {
         const ref = doc(db, "characters", uid);
         const snap = await tx.get(ref);
-        const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+        const data = snap.exists() ? snap.data() : {};
+        const cur = data.crafting || {};
         const al = craftAllowance(cur, srvNow);
         if (!isMaster && !al.can) throw new Error(al.reason);
+        // L'oro si ricontrolla sullo snapshot fresco: due schede aperte in
+        // parallelo non possono spendere due volte le stesse monete.
+        const pay = affordFromSnapshot(data, costMo);
+        if (!isMaster && !pay.ok) throw new Error(`💰 Non hai abbastanza oro: servono ${fmtMo(costMo)} di materiali e in borsa ne hai ${fmtMo(pay.have)}. Ti mancano ${fmtMo(pay.missing)}.`);
         const prevLog = Array.isArray(cur.log) ? cur.log : [];
         if (prevLog.some((e) => !e.inboxId && !e.skipped)) throw new Error("Hai già un lavoro sul banco: finiscilo o scartalo prima.");
         entry.dayKey = al.dayKey; entry.weekKey = al.weekKey;
@@ -358,8 +405,15 @@ export default function CraftingOfficina() {
           "crafting.lastAt": serverTimestamp(),
           "crafting.totalCount": (Number(cur.totalCount) || 0) + 1, // contatore a vita: il registro tiene solo le ultime 40 voci
           "crafting.busyUntil": entry.readyAt,
-          "crafting.xp": (Number(cur.xp) || 0) + entry.xp,
+          // I PE NON si accreditano qui: la barra che salta di 5 o di 60 direbbe
+          // al giocatore com'è andato il tiro prima del tempo. Si pagano al
+          // ritiro (claim), con `xpPaid` a fare da segno (2026-09-22).
           "crafting.log": [entry, ...prevLog].slice(0, 40),
+          // Le monete escono ADESSO dalla borsa: `goldPending` è la spesa
+          // dell'Officina non ancora scalata sull'attore di Foundry, e
+          // `availableGp` la toglie dall'oro della scheda. Il Master la chiude
+          // quando la manda alla macro (o la segna "già pagata").
+          "crafting.goldPending": Math.max(0, (Number(cur.goldPending) || 0) + (Number(entry.costMo) || 0)),
         };
         // I componenti: dalla scorta del Master si consumano (uno per tipo); altrimenti
         // devono risultare sulla scheda Foundry o comprati al Mercato (il Master li toglie lui).
@@ -373,18 +427,23 @@ export default function CraftingOfficina() {
         }
         tx.update(ref, patch);
       });
-      await showD20Roll(d20, { label: `Pregiatura · ${prof.name}` });
+      // Il dado rotola davanti a tutti, ma il numero lo vede solo il Master:
+      // per i giocatori si ferma su una runa (2026-09-22).
+      await showD20Roll(d20, { label: `Pregiatura · ${prof.name}`, hidden: !isMaster });
       setComps([]); setPickIdx(-1); setInvest(""); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
-      if (failed) setMsg(`💥 ${fumble ? "1 naturale" : `Fallimento critico della fretta (${critRoll}/100 sotto il ${paceOpt.critFail}%)`}: il lavoro sta andando a rotoli. Fra ${FAIL_MINUTES} minuti vedrai i danni.`);
+      if (failed) setMsg(`💥 Fallimento critico della fretta (${critRoll}/100 sotto il ${paceOpt.critFail}%): il lavoro sta andando a rotoli. Fra ${FAIL_MINUTES} minuti vedrai i danni.`);
+      // Al giocatore non si dice NIENTE dell'esito finché non ritira l'oggetto.
+      else if (!isMaster) setMsg(`🔨 Il lavoro è partito e il banco è occupato. Il tiro lo ha visto solo il Master: cos'è uscito lo scopri quando ritiri l'oggetto, ${whenLabel(entry.readyAt, srvNow)}.`);
       else {
         const o = outcomeTimeBy(outWork.outcome);
         const timeTxt = outWork.minutes === work.minutes
           ? `Il lavoro dura ${fmtMinutes(outWork.minutes)}`
           : `${o.label}: il lavoro passa da ${fmtMinutes(work.minutes)} a ${fmtMinutes(outWork.minutes)}`;
         const costTxt = nat20 ? `Paghi solo ${fmtMo(paidMo)} invece di ${fmtMo(costMo)}: col 20 naturale ti è bastata metà dei materiali` : `Paghi ${fmtMo(paidMo)} di materiali`;
-        setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. ${costTxt}. ${timeTxt}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, PE raddoppiati!)" : ""}.`);
+        const curseTxt = curse ? ` ☠ 1 NATURALE: l'oggetto esce Scarso e MALEDETTO — "${curse.nome}": ${curse.meccanica}` : "";
+        setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. ${costTxt}. ${timeTxt}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, PE raddoppiati!)" : ""}.${curseTxt}`);
       }
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
@@ -398,6 +457,20 @@ export default function CraftingOfficina() {
       const srvNow = await serverNow();
       setClockOffset(srvNow.getTime() - Date.now());
       if (srvNow.getTime() < readyAt) { setMsg(`Non è ancora pronto: mancano ${fmtCountdown(readyAt - srvNow.getTime())}.`); return; }
+      // I PE della prova si accreditano ADESSO, aprendo l'oggetto: al tiro
+      // resterebbero in vista e tradirebbero la rarità uscita.
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "characters", uid);
+        const snap = await tx.get(ref);
+        const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+        const prevLog = Array.isArray(cur.log) ? cur.log : [];
+        const e = prevLog.find((x) => x.id === pendingEntry.id);
+        if (!e || e.xpPaid !== false) return; // già pagati, o prova di prima del 2026-09-22
+        tx.update(ref, {
+          "crafting.log": prevLog.map((x) => (x.id === e.id ? { ...x, xpPaid: true } : x)),
+          "crafting.xp": (Number(cur.xp) || 0) + (Number(e.xp) || 0),
+        });
+      });
       setRevealedId(pendingEntry.id); setChoice(itemChoices(pendingEntry.name)[0]); setEnhKey(""); setNote("");
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
@@ -438,6 +511,10 @@ export default function CraftingOfficina() {
           componentProofs: (entry.components || []).map((k) => `${componentByKey(k)?.name || k}: ${entry.componentProof?.[k] || "—"}`),
           toolsProof: entry.toolsProof || "",
           componentEffects: (entry.components || []).map((k) => componentByKey(k)).filter((c) => c?.effect).map((c) => `${c.name}: ${c.effect.label}`),
+          // ☠ Maledizione dell'1 naturale: va nella coda del Master, MAI nella
+          // descrizione che finisce su Foundry (la leggerebbe il giocatore).
+          cursed: !!entry.cursed,
+          curse: entry.cursed && entry.curse ? entry.curse : null,
         },
         createdAt: serverTimestamp(), createdBy: currentUser.email,
       });
@@ -468,22 +545,31 @@ export default function CraftingOfficina() {
   // ── Le pieghe (2026-09-22): una schermata per volta, così il tiro è sempre
   // a portata di pollice e non si scorre mezza pagina per vedere le creazioni.
   // Niente icone: a queste pieghe covo.css mette la sua runa (tab = dadi runici).
-  const TABS = [
+  // Il MASTER non forgia: la sua Officina e' solo governo del tavolo e letture
+  // (2026-09-22 sera). Niente banco, niente registro personale, niente scorta:
+  // quelle pieghe sono del giocatore. Per provare il flusso da giocatore resta
+  // `?vista=player` in DEV, che spegne `isMaster` e rimette tutto.
+  const TABS = isMaster ? [
+    { key: "master", label: "Il tavolo", n: tableChars.filter((c) => (c.crafting?.log || []).some((e) => !e.inboxId && !e.skipped)).length },
+    { key: "statistiche", label: "Statistiche" },
+    { key: "progressi", label: "Progressi" },
+  ] : [
     { key: "banco", label: prof ? "Il banco" : "La professione" },
     { key: "creazioni", label: "Creazioni", n: log.length },
     { key: "componenti", label: "Componenti", n: compCount },
     { key: "progressi", label: "Progressi" },
-    ...(isMaster ? [{ key: "master", label: "Master", n: tableChars.filter((c) => (c.crafting?.log || []).some((e) => !e.inboxId && !e.skipped)).length }] : []),
   ];
-  const curTab = TABS.some((t) => t.key === tab) ? tab : "banco";
+  const curTab = TABS.some((t) => t.key === tab) ? tab : TABS[0].key;
 
   return (
     <div className="off" id="off-banco">
       {/* ── TESTATA: professione, grado, usi ── */}
-      <div className="nx-pannello off-box off-head">
+      <div className={`nx-pannello off-box off-head${isMaster ? " off-head--master" : ""}`}>
         <div className="off-head-main">
-          <span className="nx-tag">⚒ Officina</span>
-          {prof ? (
+          <span className="nx-tag">{isMaster ? "🎯 Officina · il tavolo" : "⚒ Officina"}</span>
+          {isMaster ? (
+            <p className="nx-prosa off-lead">Da qui <strong>governi</strong> l'Officina: chi sta forgiando adesso, il registro di tutte le prove, le scorte, le spese da scalare su Foundry e le statistiche del tavolo. <strong>Il banco è dei giocatori</strong>: tu non tiri e non paghi materiali.</p>
+          ) : prof ? (
             <>
               <div className="off-prof" style={{ "--c": prof.carColor }}>
                 <span className="off-prof-ic" aria-hidden="true">{prof.icon}</span>
@@ -499,7 +585,13 @@ export default function CraftingOfficina() {
             <p className="nx-prosa off-lead">Scegli la tua <strong>professione</strong>: <strong>una sola per personaggio</strong>, e non si cambia più (solo il Master può farlo). Da qui potrai creare oggetti anche fuori dalla sessione.</p>
           )}
         </div>
-        {allow.unlimited ? (
+        {isMaster ? (
+          <div className="off-usi" aria-label="Limiti dei giocatori">
+            <div className="off-uso"><b>{CRAFT_MAX_PER_DAY}</b><small>al giorno</small></div>
+            <div className="off-uso"><b>{CRAFT_MAX_PER_WEEK}</b><small>a settimana</small></div>
+            <div className="off-reset"><small>si azzera</small>{craftResetLabel(now)}</div>
+          </div>
+        ) : allow.unlimited ? (
           <div className="off-usi" aria-label="Prove disponibili">
             <div className="off-uso"><b>∞</b><small>Master</small></div>
             <div className="off-reset"><small>senza limiti</small>i giocatori hanno {CRAFT_MAX_PER_DAY} prova al giorno, {CRAFT_MAX_PER_WEEK} a settimana</div>
@@ -514,7 +606,7 @@ export default function CraftingOfficina() {
       </div>
 
       {/* ── Il lavoro sul banco si vede da ogni piega ── */}
-      {prof && pendingEntry && !revealed && (
+      {!isMaster && prof && pendingEntry && !revealed && (
         <button type="button" className={`off-live${pendingEntry.failed ? " is-fail" : ready ? " is-ready" : ""}`} onClick={() => setTab("banco")} style={{ "--q": pendingEntry.failed ? "#b91c1c" : tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
           <span className="off-live-ic" aria-hidden="true">{pendingEntry.failed ? "💥" : ready ? "✨" : "🔨"}</span>
           <span className="off-live-main">
@@ -633,11 +725,14 @@ export default function CraftingOfficina() {
                     </div>
                   );
                 })}
-                <div className="off-band is-fail" style={{ "--q": "#b91c1c" }}>
+                {/* L'1 naturale non brucia più il lavoro: l'oggetto esce, ma è
+                    il peggio del banco — e si porta dietro qualcosa che solo il
+                    Master conosce (2026-09-22). */}
+                <div className="off-band is-fail" style={{ "--q": "#6b21a8" }}>
                   <span className="off-band-r">1 nat.</span>
-                  <span className="off-band-t">💥 Disastro</span>
-                  <span className="off-band-n">niente: materiali e monete perduti</span>
-                  <span className="off-band-x">⏱ {FAIL_MINUTES} min · +0 PE</span>
+                  <span className="off-band-t">🪨 Scarso</span>
+                  <span className="off-band-n">esce il peggio del banco, e il pezzo si porta dietro qualcosa: lo sa solo il Master</span>
+                  <span className="off-band-x">⏱ {fmtMinutes(nat1Minutes)} · +{nat1Xp} PE</span>
                 </div>
               </div>
               <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60%, PE doppi e <strong>materiali a metà prezzo</strong>, perché te ne è bastata la metà.</p>
@@ -734,14 +829,22 @@ export default function CraftingOfficina() {
                     <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
                   </div>
                   <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(Math.round(costMo * NAT20_COST_MULT))}</i></span>
+                  {/* La borsa: le monete escono dalla scheda appena parte il lavoro. */}
+                  <span className={`off-sum-borsa${purse.ok ? "" : " is-short"}`}>
+                    {purse.master ? <>👑 Master: crei senza pagare.</>
+                      : purse.unknown ? <>💰 Oro non ancora sincronizzato da Foundry: la spesa non si può controllare. Fai una sincronizzazione della scheda.</>
+                      : purse.ok ? <>💰 In borsa <b>{fmtMo(purse.have)}</b> → dopo il lavoro te ne restano <b>{fmtMo(purse.have - purse.cost)}</b>{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco e non ancora scalati su Foundry)</i> : null}</>
+                      : <>💰 In borsa <b>{fmtMo(purse.have)}</b>: ti mancano <b>{fmtMo(purse.missing)}</b> per i materiali{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco)</i> : null}</>}
+                  </span>
                 </div>
               </div>
 
               <div className="off-go off-go--bar">
-                <button type="button" className="cta off-cta" disabled={busy || !allow.can || needsPick} onClick={roll}>
-                  {busy ? "…" : !allow.can ? "Prova non disponibile" : needsPick ? "Scegli prima l'oggetto" : `🎲 Tira e inizia · ${fmtMinutes(work.minutes)}`}
+                <button type="button" className="cta off-cta" disabled={busy || !allow.can || needsPick || !purse.ok} onClick={roll}>
+                  {busy ? "…" : !allow.can ? "Prova non disponibile" : !purse.ok ? `💰 Ti mancano ${fmtMo(purse.missing)}` : needsPick ? "Scegli prima l'oggetto" : `🎲 Tira e inizia · ${fmtMinutes(work.minutes)}`}
                 </button>
                 {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
+                {allow.can && !purse.ok && <span className="nx-nota off-why is-short">I materiali si pagano prima di iniziare: servono {fmtMo(purse.cost)} e in borsa hai {fmtMo(purse.have)}. Vendi qualcosa, fatti pagare una taglia, o punta a una rarità più bassa.</span>}
                 {allow.can && pickLine && <span className="nx-nota off-why">{targetMeta.icon} {pickLine[target][0]} · {fmtMo(costMo)}</span>}
               </div>
             </div>
@@ -754,9 +857,13 @@ export default function CraftingOfficina() {
         <div className={`nx-pannello off-box off-work${pendingEntry.failed ? " is-fail" : ready ? " is-ready" : ""}`} style={{ "--q": pendingEntry.failed ? "#b91c1c" : tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
           <div className="off-work-head">
             <span className="nx-tag">{pendingEntry.failed ? (ready ? "💥 Disastro" : "💥 Sta andando a rotoli") : ready ? "✓ Lavoro finito" : "⚒ Sul banco"}</span>
+            {/* Il tiro è roba da Master: finché il pezzo è sul banco il giocatore
+                non vede né il d20 né la rarità uscita (2026-09-22). */}
             <span className="off-work-roll">{pendingEntry.failed
-              ? <>d20 <b>{pendingEntry.d20}</b>{pendingEntry.fumble ? <> · <b>1 naturale</b></> : <> · fretta</>} → <b>fallimento critico</b></>
-              : <>{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}</>}</span>
+              ? <>d20 <b>{pendingEntry.d20}</b> · fretta → <b>fallimento critico</b></>
+              : isMaster
+                ? <>{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}{pendingEntry.cursed ? <> · <b className="off-cursed-tag">☠ maledetto</b></> : null}</>
+                : <>{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}🎲 <b>tiro segreto</b> <small>(lo sa solo il Master)</small></>}</span>
           </div>
           <div className="off-bar" role="progressbar" aria-valuenow={workPct} aria-valuemin="0" aria-valuemax="100">
             <span style={{ width: `${workPct}%` }} />
@@ -771,7 +878,9 @@ export default function CraftingOfficina() {
             {pendingEntry.failed
               ? (ready ? "Il lavoro è andato perduto: guarda cos'è rimasto." : <>Il pezzo si sta rovinando sul banco: fra <strong>{fmtCountdown(readyAt - nowMs)}</strong> vedrai i danni.</>)
               : ready ? "L'oggetto è finito: ritiralo per vedere cos'è uscito e mandarlo al Master."
-              : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>{pendingEntry.plannedMinutes && pendingEntry.plannedMinutes !== pendingEntry.minutes ? <> invece dei {fmtMinutes(pendingEntry.plannedMinutes)} preparati, perché {outcomeTimeBy(pendingEntry.outcome).label.toLowerCase()}</> : null}: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.</>}
+              /* Il confronto "tanto invece dei tot preparati, perché…" direbbe al
+                 giocatore com'è andato il tiro: lo legge solo il Master. */
+              : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>{isMaster && pendingEntry.plannedMinutes && pendingEntry.plannedMinutes !== pendingEntry.minutes ? <> invece dei {fmtMinutes(pendingEntry.plannedMinutes)} preparati, perché {outcomeTimeBy(pendingEntry.outcome).label.toLowerCase()}</> : null}: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.{isMaster ? null : <> Com'è venuto lo scopri al ritiro.</>}</>}
           </p>
           <div className="off-go">
             <button type="button" className="cta off-cta" disabled={busy || !ready} onClick={claim}>{busy ? "…" : pendingEntry.failed ? (ready ? "💥 Guarda i danni" : `⏳ Ancora ${fmtCountdown(readyAt - nowMs)}`) : ready ? "📦 Ritira l'oggetto" : `⏳ Pronto tra ${fmtCountdown(readyAt - nowMs)}`}</button>
@@ -784,12 +893,12 @@ export default function CraftingOfficina() {
         <div className="nx-pannello off-box off-esito off-fail" style={{ "--q": "#b91c1c" }}>
           <div className="off-esito-head">
             <span className="nx-tag">💥 Fallimento critico</span>
-            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null}{activeEntry.fumble ? <> · <b>1 naturale</b></> : <> · fretta ({activeEntry.critRoll}/100)</>} · +0 PE</div>
+            <div className="off-esito-roll">{isMaster ? <>d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null}{activeEntry.fumble ? <> · <b>1 naturale</b></> : <> · fretta ({activeEntry.critRoll}/100)</>} · </> : null}+0 PE</div>
           </div>
           <h3 className="nx-titolo off-esito-name">Hai perso tutto</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
           <ul className="off-fail-list">
-            <li>💰 <b>{fmtMo(activeEntry.costMo || 0)}</b> di materiali: <strong>persi</strong>. Il Master li scala dal tuo oro con la macro di Foundry.</li>
+            <li>💰 <b>{fmtMo(activeEntry.costMo || 0)}</b> di materiali: <strong>persi</strong>. Sono già usciti dalla tua borsa; il Master li scala anche sulla scheda di Foundry.</li>
             {(activeEntry.components || []).length > 0 && <li>🧪 Componenti usati: <strong>consumati</strong> ({(activeEntry.components || []).map((k) => componentByKey(k)?.name || k).join(", ")}).</li>}
             <li>📦 Oggetto creato: <strong>nessuno</strong>, non c'è niente da mandare al Master.</li>
             <li>📈 Esperienza: <strong>0 PE</strong>, e la prova di oggi è consumata.</li>
@@ -812,12 +921,15 @@ export default function CraftingOfficina() {
           <p className="nx-nota off-esito-cost">
             💰 Materiali: <b>{fmtMo(activeEntry.costMo || 0)}</b>
             {activeEntry.halfCost ? <> invece di {fmtMo(activeEntry.listCostMo || 0)} — <strong>20 naturale</strong>, te n'è bastata metà.</> : "."}
-            {" "}{activeEntry.goldInboxId ? "Spesa già mandata al Master per Foundry." : "Il Master la scala dal tuo oro con la macro di Foundry."}
+            {" "}{activeEntry.goldInboxId ? "Spesa già mandata al Master per Foundry." : "Già uscita dalla tua borsa; il Master la scala anche su Foundry."}
           </p>
           {activeEntry.upgraded && <p className="nx-nota off-esito-up">✦ <strong>Fattura superiore</strong>: hai speso il {investmentByKey(activeEntry.invest).costPct}% in più di materiali ({fmtMo(activeEntry.costMo || 0)}) e l'oggetto esce potenziato.</p>}
           {(activeEntry.compRolls || []).length > 0 && (
             <p className="nx-nota off-esito-comps">🧪 Componenti: {activeEntry.compRolls.map((r) => { const c = componentByKey(r.key); return c ? `${c.icon} ${c.name} +${r.roll}${c.effect ? ` (${componentEffectLabel(c)})` : ""}` : r.key; }).join(" · ")}</p>
           )}
+          {/* ☠ La maledizione dell'1 naturale: la legge SOLO il Master. Il
+              giocatore ritira un oggetto venuto male e basta. */}
+          {isMaster && activeEntry.cursed && activeEntry.curse && <CurseCard curse={activeEntry.curse} />}
 
           {itemChoices(activeEntry.name).length > 1 && (
             <div className="off-field">
@@ -895,10 +1007,13 @@ export default function CraftingOfficina() {
               {log.map((e) => {
                 const tm = tierMeta(e.tier);
                 const onBench = !e.inboxId && !e.skipped;
+                // Finché il pezzo è sul banco il tiro non si vede: niente d20,
+                // niente rarità, niente PE che facciano indovinare l'esito.
+                const segreto = !isMaster && onBench && (Number(e.readyAt) || 0) > nowMs;
                 return (
-                  <li key={e.id} style={{ "--q": tm.color }}>
-                    <span className="off-log-ic" aria-hidden="true">{tm.icon}</span>
-                    <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}{e.upgraded ? " ✦" : ""}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.costMo ? ` · ${fmtMo(e.costMo)}` : ""}</small></span>
+                  <li key={e.id} style={{ "--q": segreto ? "#6b6252" : tm.color }}>
+                    <span className="off-log-ic" aria-hidden="true">{segreto ? "🔨" : tm.icon}</span>
+                    <span className="off-log-main"><b>{segreto ? "Sul banco…" : (e.choice || e.name)}{e.upgraded && !segreto ? " ✦" : ""}</b><small>{new Date(e.at).toLocaleDateString("it-IT")}{segreto ? " · 🎲 tiro segreto" : <> · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE</>}{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.costMo ? ` · ${fmtMo(e.costMo)}` : ""}</small></span>
                     <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
                   </li>
                 );
@@ -947,6 +1062,31 @@ export default function CraftingOfficina() {
         <MasterBoard chars={tableChars} nowMs={nowMs} />
         <MasterPanel chars={tableChars} />
       </>)}
+
+      {/* ══ PIEGA: LE STATISTICHE (solo Master) ══ */}
+      {curTab === "statistiche" && isMaster && <CraftStats chars={tableChars} />}
+    </div>
+  );
+}
+
+// ── ☠ La maledizione dell'1 naturale (SOLO MASTER) ──────────────────────────
+// Si mostra nell'esito, nel tavolo e nel registro: il giocatore non la vede in
+// nessuna di queste schermate perché il componente si monta solo se isMaster.
+function CurseCard({ curse, compact = false }) {
+  if (!curse?.nome) return null;
+  const g = gravitaByKey(curse.gravita);
+  if (compact) return <span className="off-curse-chip" title={`${curse.meccanica}${curse.rivelazione ? ` · ${curse.rivelazione}` : ""}`}>☠ {curse.nome} <small>{curse.meccanica}</small></span>;
+  return (
+    <div className="off-curse">
+      <span className="off-curse-head">☠ Maledetto <small>solo tu lo vedi · gravità {g.icon} {g.label}{curse.fonte === "tabella" ? " · dalla tabella (Gemini non ha risposto)" : ""}</small></span>
+      <b className="off-curse-name">{curse.nome}</b>
+      {curse.effetto && <p className="nx-prosa off-curse-desc">{curse.effetto}</p>}
+      <dl className="off-curse-grid">
+        <dt>Meccanica</dt><dd>{curse.meccanica}</dd>
+        {curse.rivelazione && <><dt>Se ne accorge</dt><dd>{curse.rivelazione}</dd></>}
+        {curse.rimozione && <><dt>Si spezza</dt><dd>{curse.rimozione}</dd></>}
+      </dl>
+      <p className="nx-nota off-curse-note">Il giocatore ritira un oggetto Scarso e non sa altro: l&apos;effetto lo applichi tu al tavolo, quando ti pare.</p>
     </div>
   );
 }
@@ -1008,10 +1148,12 @@ function MasterBoard({ chars, nowMs }) {
                   <div className="off-board-job">
                     <div className="off-board-job-top">
                       <span className={`off-log-st${b.failed ? " bad" : r.ready ? " ok" : ""}`}>{b.failed ? (r.working ? "💥 sta rovinando tutto" : "💥 disastro, da chiudere") : r.working ? "⚒ sta forgiando" : "✓ finito, da ritirare"}</span>
-                      <b>{b.failed ? "💥 Fallimento critico" : `${tm.icon} ${b.pickName || b.name}`}</b>
+                      <b>{b.failed ? "💥 Fallimento critico" : `${tm.icon} ${b.pickName || b.name}`}{b.cursed ? " ☠" : ""}</b>
                       <small>{b.failed
                         ? `${b.fumble ? "1 naturale" : "fretta"} puntando a ${tm.label} · ${fmtMo(b.costMo || 0)} di materiali persi`
-                        : `punta a ${tm.label}${b.pickName ? "" : " (d12 a fine lavoro)"} · esce ${tierMeta(b.tier).label}${b.pickName && b.name !== b.pickName ? `: ${b.name}` : ""} · d20 ${b.d20}${sign(b.bonus)}=${b.total}`}</small>
+                        : `punta a ${tm.label}${b.pickName ? "" : " (d12 a fine lavoro)"} · esce ${tierMeta(b.tier).label}${b.pickName && b.name !== b.pickName ? `: ${b.name}` : ""} · d20 ${b.d20}${sign(b.bonus)}=${b.total}${b.cursed ? " · 1 NATURALE" : ""}`}</small>
+                      {/* ☠ Solo qui: il giocatore sta guardando la sua barra e non sa niente. */}
+                      {b.cursed && b.curse && <CurseCard curse={b.curse} compact />}
                     </div>
                     <div className="off-bar off-bar--mini" role="progressbar" aria-valuenow={r.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${r.pct}%` }} /></div>
                     <div className="off-board-job-time">
@@ -1193,8 +1335,18 @@ function CraftSpese({ chars }) {
       origin: "crafting", crafterUid: c.uid, crafterName: c.name || "", craftEntryId: e.id,
       createdAt: serverTimestamp(),
     });
-    await updateDoc(doc(db, "characters", c.uid), {
-      "crafting.log": (c.crafting.log || []).map((x) => (x.id === e.id ? { ...x, goldInboxId: ref.id } : x)),
+    // Transazione: il registro si rilegge fresco (con "Manda tutte" due spese
+    // dello stesso PG si sovrascriverebbero) e l'oro esce da `goldPending` una
+    // volta sola: da qui in poi a scalarlo è la macro di Foundry.
+    await runTransaction(db, async (tx) => {
+      const cref = doc(db, "characters", c.uid);
+      const snap = await tx.get(cref);
+      const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+      const log = Array.isArray(cur.log) ? cur.log : [];
+      tx.update(cref, {
+        "crafting.goldPending": pendingAfterClose(cur, e.id),
+        "crafting.log": log.map((x) => (x.id === e.id ? { ...x, goldInboxId: ref.id } : x)),
+      });
     });
   }
 
@@ -1205,8 +1357,17 @@ function CraftSpese({ chars }) {
     finally { setBusy(""); }
   }
 
-  const markPaid = ({ c, e }) => updateDoc(doc(db, "characters", c.uid), {
-    "crafting.log": (c.crafting.log || []).map((x) => (x.id === e.id ? { ...x, goldDone: true } : x)),
+  // "Già pagata": l'oro l'ha scalato il Master a mano, quindi esce dalla borsa
+  // del sito e la prova non compare più tra le spese aperte.
+  const markPaid = ({ c, e }) => runTransaction(db, async (tx) => {
+    const cref = doc(db, "characters", c.uid);
+    const snap = await tx.get(cref);
+    const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+    const log = Array.isArray(cur.log) ? cur.log : [];
+    tx.update(cref, {
+      "crafting.goldPending": pendingAfterClose(cur, e.id),
+      "crafting.log": log.map((x) => (x.id === e.id ? { ...x, goldDone: true } : x)),
+    });
   });
 
   return (
@@ -1224,7 +1385,12 @@ function CraftSpese({ chars }) {
         <ul className="off-spese-list">
           {rows.map(({ c, e }) => (
             <li key={`${c.uid}-${e.id}`} className={e.failed ? "is-fail" : ""}>
-              <span className="off-spese-who"><b>{c.name}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · {e.failed ? "💥 prova fallita" : `${tierMeta(e.tier).icon} ${e.choice || e.name}`}{e.halfCost ? " · 20 naturale, metà spesa" : ""}</small></span>
+              <span className="off-spese-who"><b>{c.name}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · {e.failed ? "💥 prova fallita" : `${tierMeta(e.tier).icon} ${e.choice || e.name}`}{e.cursed ? " ☠ maledetto" : ""}{e.halfCost ? " · 20 naturale, metà spesa" : ""}</small>
+                {/* La borsa com'è ADESSO: oro della scheda Foundry, meno quello
+                    già speso al banco e non ancora scalato dalla macro. */}
+                <small className="off-spese-borsa">{hasPurse(c)
+                  ? <>👛 sulla scheda {fmtMo(sheetGp(c))} · disponibili {fmtMo(availableGp(c))}{goldPending(c.crafting) ? ` (${fmtMo(goldPending(c.crafting))} in sospeso)` : ""}</>
+                  : <>👛 oro non ancora sincronizzato da Foundry</>}</small></span>
               <span className="off-spese-mo">{fmtMo(e.costMo)}{e.halfCost ? <i> invece di {fmtMo(e.listCostMo || 0)}</i> : null}</span>
               <span className="off-spese-acts">
                 <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act(e.id, async () => { await sendOne({ c, e }); setMsg(`✓ ${fmtMo(e.costMo)} di ${c.name} in coda: lancia la macro su Foundry.`); })}>{busy === e.id ? "…" : "📤 Manda a Foundry"}</button>
@@ -1240,9 +1406,171 @@ function CraftSpese({ chars }) {
   );
 }
 
+// ── STATISTICHE DEL TAVOLO (2026-09-22) ─────────────────────────────────────
+// La vista del Master: i numeri grossi in cima, poi quattro grafici a barre.
+// Tutti a UNA serie: l'identità sta nell'etichetta (nome + icona), mai nel
+// colore, così restano leggibili anche in bianco e nero e per chi i colori non
+// li distingue. Ogni barra porta il suo numero scritto: il grafico è il colpo
+// d'occhio, la riga è già la tabella.
+// I grafici leggono il REGISTRO (ultime 40 prove per PG); i totali a vita
+// vengono da `crafting.totalCount`, che non si svuota mai.
+const WEEKS_SHOWN = 8;
+const weekLabel = (key) => {
+  const d = new Date(`${key}T12:00:00Z`);
+  return Number.isNaN(d.getTime()) ? key : new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", day: "numeric", month: "short" }).format(d);
+};
+
+// Barre orizzontali: etichetta · barra · valore. rows = [{key,label,icon,v,sub,title}]
+function StatBars({ rows, empty, suffix = "" }) {
+  if (!rows.length) return <p className="nx-nota">{empty}</p>;
+  const max = Math.max(1, ...rows.map((r) => r.v));
+  return (
+    <ul className="off-stat-bars">
+      {rows.map((r) => (
+        <li key={r.key} title={r.title || `${r.label}: ${r.v}${suffix}`}>
+          <span className="off-stat-lbl">{r.icon ? <i aria-hidden="true">{r.icon}</i> : null}{r.label}</span>
+          <span className="off-stat-track"><i style={{ width: `${(r.v / max) * 100}%` }} /></span>
+          <b className="off-stat-v">{r.v}{suffix}{r.sub ? <small>{r.sub}</small> : null}</b>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Colonne: una per settimana, il valore scritto sopra (sono pochi e piccoli).
+function StatCols({ rows, empty }) {
+  if (!rows.length) return <p className="nx-nota">{empty}</p>;
+  const max = Math.max(1, ...rows.map((r) => r.v));
+  return (
+    <ol className="off-stat-cols">
+      {rows.map((r) => (
+        <li key={r.key} title={r.title}>
+          {/* il numero sta SOPRA la sua colonna: se galleggia in cima al
+              riquadro, con valori bassi non si capisce piu' a cosa si riferisce */}
+          <span className="off-stat-col"><i style={{ height: `${r.v ? Math.max(3, (r.v / max) * 100) : 0}%` }}><b>{r.v}</b></i></span>
+          <small>{r.label}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function CraftStats({ chars }) {
+  const s = useMemo(() => {
+    const entries = [];
+    for (const c of chars) for (const e of (Array.isArray(c.crafting?.log) ? c.crafting.log : [])) entries.push({ e, c });
+    const done = entries.filter(({ e }) => !e.failed);
+    const artigiani = chars.filter((c) => c.crafting?.profession);
+    const num = (v) => Number(v) || 0;
+
+    // Prove per professione, con quanti artigiani la esercitano.
+    const profRows = PROFESSIONI.map((p) => {
+      const prove = entries.filter(({ e }) => e.profession === p.key).length;
+      const quanti = artigiani.filter((c) => c.crafting.profession === p.key).length;
+      return {
+        key: p.key, label: p.name, icon: p.icon, v: prove,
+        sub: quanti ? `${quanti} ${quanti === 1 ? "artigiano" : "artigiani"}` : "nessun artigiano",
+        title: `${p.name}: ${prove} prove · ${quanti} ${quanti === 1 ? "artigiano" : "artigiani"}`,
+      };
+    }).filter((r) => r.v > 0 || !r.sub.startsWith("nessun"))
+      .sort((a, b) => b.v - a.v || a.label.localeCompare(b.label));
+
+    // Rarità davvero uscite (i disastri della fretta non producono oggetti).
+    const tierRows = TIER_ORDER.map((t) => {
+      const m = tierMeta(t);
+      const v = done.filter(({ e }) => normTier(e.tier) === t).length;
+      const pct = done.length ? Math.round((v / done.length) * 100) : 0;
+      return { key: t, label: m.label, icon: m.icon, v, sub: v ? `${pct}%` : "", title: `${m.label}: ${v} oggetti su ${done.length} (${pct}%)` };
+    });
+
+    // Utilizzi nel tempo: prove per settimana, le ultime WEEKS_SHOWN.
+    const perWeek = new Map();
+    for (const { e } of entries) if (e.weekKey) perWeek.set(e.weekKey, (perWeek.get(e.weekKey) || 0) + 1);
+    const weekRows = [...perWeek.keys()].sort().slice(-WEEKS_SHOWN).map((k) => ({
+      key: k, label: weekLabel(k), v: perWeek.get(k), title: `Settimana del ${weekLabel(k)}: ${perWeek.get(k)} prove`,
+    }));
+
+    // Chi lavora di più, con la sua arte accanto.
+    const whoRows = chars.map((c) => {
+      const lg = Array.isArray(c.crafting?.log) ? c.crafting.log : [];
+      const p = PROFESSIONI.find((x) => x.key === c.crafting?.profession);
+      return {
+        key: c.uid, label: c.name || "—", icon: p?.icon || "·", v: lg.length,
+        sub: p ? p.name : "senza professione",
+        title: `${c.name}: ${lg.length} prove nel registro${p ? ` · ${p.name}` : ""}`,
+      };
+    }).filter((r) => r.v > 0).sort((a, b) => b.v - a.v).slice(0, 12);
+
+    return {
+      entries, done, artigiani, profRows, tierRows, weekRows, whoRows,
+      eroi: chars.length,
+      vita: chars.reduce((a, c) => a + Math.max(num(c.crafting?.totalCount), (c.crafting?.log || []).length), 0),
+      spesa: entries.reduce((a, { e }) => a + num(e.costMo), 0),
+      sospeso: chars.reduce((a, c) => a + num(c.crafting?.goldPending), 0),
+      inCoda: entries.filter(({ e }) => e.inboxId).length,
+      falliti: entries.filter(({ e }) => e.failed).length,
+      maledetti: entries.filter(({ e }) => e.cursed).length,
+      ore: Math.round(entries.reduce((a, { e }) => a + num(e.minutes), 0) / 60),
+      pe: chars.reduce((a, c) => a + num(c.crafting?.xp), 0),
+    };
+  }, [chars]);
+
+  const pctFail = s.entries.length ? Math.round((s.falliti / s.entries.length) * 100) : 0;
+
+  return (
+    <div className="nx-pannello off-box off-stats">
+      <span className="off-label">📊 Statistiche del tavolo <small>(grafici sulle {s.entries.length} prove nel registro · i totali a vita dai contatori)</small></span>
+
+      {/* I numeri che il Master guarda per primi. */}
+      <div className="off-stat-tiles">
+        <div className="off-stat-tile"><b>{s.vita}</b><small>prove a vita</small></div>
+        <div className="off-stat-tile"><b>{s.artigiani.length}<span>/{s.eroi}</span></b><small>artigiani</small></div>
+        <div className="off-stat-tile"><b>{s.done.length}</b><small>oggetti riusciti</small></div>
+        <div className="off-stat-tile"><b>{s.inCoda}</b><small>mandati su Foundry</small></div>
+        <div className="off-stat-tile"><b>{fmtMo(s.spesa)}</b><small>materiali pagati</small></div>
+        <div className={`off-stat-tile${s.sospeso ? " is-warn" : ""}`}><b>{fmtMo(s.sospeso)}</b><small>da scalare su Foundry</small></div>
+        <div className={`off-stat-tile${s.falliti ? " is-bad" : ""}`}><b>{s.falliti}<span> · {pctFail}%</span></b><small>disastri della fretta</small></div>
+        <div className={`off-stat-tile${s.maledetti ? " is-curse" : ""}`}><b>{s.maledetti}</b><small>maledetti (solo tu)</small></div>
+        <div className="off-stat-tile"><b>{s.ore}<span> h</span></b><small>ore al banco</small></div>
+        <div className="off-stat-tile"><b>{s.pe}</b><small>PE in circolo</small></div>
+      </div>
+
+      <div className="off-stat-grid">
+        <section className="off-stat-card">
+          <h4>Prove per professione</h4>
+          <p className="nx-nota">Quanto si lavora in ogni arte, e quanti la esercitano.</p>
+          <StatBars rows={s.profRows} empty="Nessuna professione ancora scelta al tavolo." />
+        </section>
+
+        <section className="off-stat-card">
+          <h4>Rarità uscite</h4>
+          <p className="nx-nota">Sui {s.done.length} oggetti riusciti: i disastri della fretta non producono nulla e restano fuori dal conto.</p>
+          <StatBars rows={s.tierRows} empty="Ancora nessun oggetto riuscito." />
+        </section>
+
+        <section className="off-stat-card">
+          <h4>Utilizzi per settimana</h4>
+          <p className="nx-nota">Le ultime {WEEKS_SHOWN} settimane con almeno una prova (la settimana parte la domenica alle 22:00).</p>
+          <StatCols rows={s.weekRows} empty="Nessuna prova nel registro." />
+        </section>
+
+        <section className="off-stat-card">
+          <h4>Chi lavora di più</h4>
+          <p className="nx-nota">Prove nel registro, per artigiano.</p>
+          <StatBars rows={s.whoRows} empty="Nessuno ha ancora messo mano al banco." />
+        </section>
+      </div>
+    </div>
+  );
+}
+
 // ── Registro dei craft del tavolo: quanti (totale · oggi · settimana) e cosa, per ogni PG ──
 const dayLabel = (key) => key ? new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${key}T12:00:00Z`)) : "—";
 const timeLabel = (ms) => new Intl.DateTimeFormat("it-IT", { timeZone: ROME, hour: "2-digit", minute: "2-digit" }).format(new Date(ms || 0));
+// PE davvero accreditati da una prova: chi non ha ancora ritirato l'oggetto non
+// li ha presi (`xpPaid: false`). Le prove di prima del 2026-09-22 non hanno il
+// campo e valgono come già pagate.
+const xpOf = (e) => (e?.xpPaid === false ? 0 : Number(e?.xp) || 0);
 const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
 
 function CraftLedger({ chars, reload, patchChar }) {
@@ -1267,7 +1595,12 @@ function CraftLedger({ chars, reload, patchChar }) {
         const patch = {
           "crafting.log": log,
           "crafting.totalCount": Math.max(0, Math.max(Number(cur.totalCount) || 0, prevLog.length) - 1),
-          "crafting.xp": Math.max(0, (Number(cur.xp) || 0) - (Number(e.xp) || 0)),
+          // I PE si tolgono solo se erano stati accreditati: una prova mai
+          // ritirata non li ha mai presi (`xpPaid: false`).
+          "crafting.xp": Math.max(0, (Number(cur.xp) || 0) - xpOf(e)),
+          // La prova non esiste più: se la sua spesa era ancora aperta, l'oro
+          // torna in borsa (se era già andata a Foundry la macro l'ha scalata).
+          "crafting.goldPending": pendingAfterClose(cur, e.id),
         };
         if (cur.weekKey && cur.weekKey === e.weekKey) patch["crafting.weekCount"] = Math.max(0, (Number(cur.weekCount) || 0) - 1);
         if (cur.lastDayKey && cur.lastDayKey === e.dayKey && !log.some((x) => x.dayKey === e.dayKey)) patch["crafting.lastDayKey"] = "";
@@ -1278,7 +1611,7 @@ function CraftLedger({ chars, reload, patchChar }) {
       if (e.goldInboxId) await deleteDoc(doc(db, "foundry_inbox", e.goldInboxId)).catch(() => {}); // via anche la spesa in coda
       setConfirmId("");
       // Aggiorno subito la tabella (la rilettura da Firestore può arrivare dopo), poi ricarico.
-      if (newLog) patchChar(uid, (cr) => ({ ...cr, log: newLog, totalCount: Math.max(0, Math.max(Number(cr.totalCount) || 0, newLog.length + 1) - 1), xp: Math.max(0, (Number(cr.xp) || 0) - (Number(e.xp) || 0)) }));
+      if (newLog) patchChar(uid, (cr) => ({ ...cr, log: newLog, totalCount: Math.max(0, Math.max(Number(cr.totalCount) || 0, newLog.length + 1) - 1), xp: Math.max(0, (Number(cr.xp) || 0) - xpOf(e)) }));
       await reload();
     } catch (err) { alert("Errore: " + (err.message || err)); }
     finally { setBusyId(""); }
@@ -1345,7 +1678,7 @@ function CraftLedger({ chars, reload, patchChar }) {
                     {d.items.map((e) => (
                       <li key={e.id} style={{ "--q": tierMeta(e.tier).color }}>
                         <span className="off-ledger-t">{timeLabel(e.at)}</span>
-                        <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}</b><small>{tierMeta(e.tier).label}{e.targetTier && normTier(e.targetTier) !== normTier(e.tier) ? ` (mirava ${tierMeta(e.targetTier).label}${e.pickName ? `: ${e.pickName}` : ""})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small></span>
+                        <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}{e.cursed ? " ☠" : ""}</b><small>{tierMeta(e.tier).label}{e.targetTier && normTier(e.targetTier) !== normTier(e.tier) ? ` (mirava ${tierMeta(e.targetTier).label}${e.pickName ? `: ${e.pickName}` : ""})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small>{e.cursed && e.curse && <CurseCard curse={e.curse} compact />}</span>
                         <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
                         {confirmId === e.id ? (
                           <span className="off-ledger-del is-confirm">

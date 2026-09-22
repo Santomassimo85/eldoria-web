@@ -31,7 +31,7 @@ const PASSI = [
   { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa sai fare." },
   { ic: "🎯", k: "Scegli rarità e oggetto", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu uno dei 6 oggetti della tua professione. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: l'oggetto lo decide il d12.` },
   { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, quanto spendi nei materiali e il ritmo: accorciano il lavoro, alzano il tiro o migliorano l'oggetto." },
-  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta); un 1 naturale rovina tutto. Poi parte il tempo di lavoro: finito, ritiri l'oggetto e va su Foundry." },
+  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta); un 1 naturale butta tutto allo Scarso. Il tiro lo vede solo il Master: tu scopri cos'è uscito quando ritiri l'oggetto, finito il tempo di lavoro." },
 ];
 
 // ── Sommario ────────────────────────────────────────────────────────────────
@@ -179,6 +179,8 @@ export default function Crafting() {
           {/* ── 3 · IL TIRO ── */}
           <details id="cr-tiro" className="cr-section cr-fold" data-chapter="3">
             <summary className="gl-sezlabel">3 · Il tiro</summary>
+            {/* Tiro segreto (2026-09-22): il numero lo vede solo il Master. */}
+            <p className="nx-nota cr-section-sub">🎲 <strong>Il tiro è segreto.</strong> Il dado rotola, ma il numero lo legge solo il Master: mentre il pezzo è sul banco non sai come sia andata. Lo scopri quando lo ritiri e te lo ritrovi in mano.</p>
             <div className="nx-pannello cr-formula-box">
               <span className="nx-kicker">Formula</span>
               <div className="cr-formula">
@@ -193,7 +195,8 @@ export default function Crafting() {
                 <span className="cr-formula-piece">Condizioni</span>
               </div>
               <p className="nx-nota cr-nat20">🌟 <strong>20 naturale = capolavoro.</strong> Il lavoro riesce al primo colpo: dura il <strong>60%</strong> del tempo, i PE sono <strong>doppi</strong> e i materiali costano <strong>metà</strong>, perché con quella bravura te ne è bastata la metà.</p>
-              <p className="nx-nota cr-fumble">💥 <strong>1 naturale = fallimento critico.</strong> Non conta nessun bonus: il pezzo si rovina sul banco, dopo <strong>2 minuti</strong> scopri il disastro, i materiali e le monete spese sono persi, non esce nulla e prendi 0 PE. La prova del giorno è comunque consumata.</p>
+              <p className="nx-nota cr-fumble">💀 <strong>1 naturale = il peggio del banco.</strong> Non conta nessun bonus: qualunque cosa tu stessi puntando esce <strong>Scarso</strong>, il lavoro dura quanto la caduta più lunga, i materiali li paghi pieni e i PE sono quelli minimi. E un pezzo nato storto <strong>si porta dietro qualcosa</strong>: cosa, lo sa solo il Master — tu te ne accorgerai usandolo.</p>
+              <p className="nx-nota cr-fumble">🏃 <strong>Fallimento critico della fretta.</strong> Lavorare di fretta ha il <strong>5%</strong> di mandare tutto a rotoli: il pezzo si rovina sul banco, dopo <strong>2 minuti</strong> scopri il disastro, materiali e monete sono persi, non esce nulla e prendi 0 PE. La prova del giorno è comunque consumata.</p>
               <ul className="cr-formula-list">
                 <li><strong>Caratteristica</strong>: quella della professione (le professioni magiche usano la migliore fra Int, Sag e Car).</li>
                 <li><strong>Strumenti</strong>: il bonus di competenza, solo se gli strumenti della professione risultano sulla tua scheda. Senza, svantaggio.</li>
@@ -231,7 +234,8 @@ export default function Crafting() {
                   <i aria-hidden="true">{o.mult < 1 ? "⚡" : o.mult > 1 ? "🔁" : "⚒"}</i> {o.label} <b>×{String(o.mult).replace(".", ",")}</b>
                 </span>
               ))}
-              <span className="cr-time-chip" style={{ "--q": "#b91c1c" }}><i aria-hidden="true">💥</i> 1 naturale <b>2 min</b></span>
+              <span className="cr-time-chip" style={{ "--q": "#6b21a8" }}><i aria-hidden="true">💀</i> 1 naturale <b>×1,5</b></span>
+              <span className="cr-time-chip" style={{ "--q": "#b91c1c" }}><i aria-hidden="true">💥</i> disastro della fretta <b>2 min</b></span>
             </div>
             <p className="nx-nota cr-section-sub">
               Nell'Officina la tabella <strong>"Cosa può uscire"</strong> ti mostra, prima di tirare, ogni fascia del d20 con l'oggetto che ne esce, il tempo di quella fascia e i PE.

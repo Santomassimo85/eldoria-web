@@ -17,9 +17,13 @@
 // USO: lanciala come GM quando vuoi importare gli oggetti in coda.
 // (Funziona identica su Foundry online: la macro gira nel tuo browser.)
 //
-// NOTA: gli oggetti "player" vengono messi nell'attore che ha il flag
-//   world.firebaseUID uguale all'UID scelto sul sito — lo stesso flag
-//   che imposti per la macro di sincronizzazione.
+// NOTA: gli oggetti "player" (e le spese in monete) vanno nell'attore che ha
+//   il flag `world.firebaseUID` uguale all'UID del personaggio sul sito.
+//   Se esce "non e' collegato a nessun attore", quel flag manca: lancia una
+//   volta la macro "Collega attori al sito" (src/foundry-macro-link-actors.txt),
+//   che lo scrive su tutti gli attori abbinandoli per nome, e poi rilancia
+//   questa. Finche' il flag manca la coda NON viene svuotata: non si perde
+//   niente, si riprova e basta.
 // ================================================================
 
 // --- CONFIGURAZIONE FIREBASE (uguale all'altra macro) ---
@@ -145,7 +149,7 @@ function buildItemData(d) {
         const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
         if (!actor) {
           console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per la spesa di ${d.amount} mo. Salto.`);
-          ui.notifications.warn(`Spesa di ${d.amount} mo: nessun attore collegato a ${d.targetName || d.targetUid}.`);
+          ui.notifications.warn(`Spesa di ${d.amount} mo: ${d.targetName || d.targetUid} non e' collegato a nessun attore. Lancia la macro "Collega attori al sito".`);
           skipped++;
           continue; // lascia in coda per riprovare
         }
@@ -175,7 +179,7 @@ function buildItemData(d) {
         const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
         if (!actor) {
           console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per "${d.name}". Salto.`);
-          ui.notifications.warn(`"${d.name}": nessun attore collegato a ${d.targetName || d.targetUid}.`);
+          ui.notifications.warn(`"${d.name}": ${d.targetName || d.targetUid} non e' collegato a nessun attore. Lancia la macro "Collega attori al sito".`);
           skipped++;
           continue; // lascia in coda per riprovare
         }

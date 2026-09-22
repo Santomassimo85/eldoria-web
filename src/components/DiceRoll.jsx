@@ -70,6 +70,9 @@ export default function DiceRollHost() {
           id: Math.random().toString(36).slice(2),
           value,
           label: opts.label || "",
+          // Tiro SEGRETO (Officina): il dado rotola e si ferma, ma sulla faccia
+          // resta una runa. Il numero lo conosce solo il Master.
+          hidden: !!opts.hidden,
           // La skin si legge al momento del tiro: rispecchia sempre la scelta corrente.
           skin: VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
           resolve: done,
@@ -98,12 +101,14 @@ export default function DiceRollHost() {
 
   if (!roll) return null;
 
-  const isCrit = roll.value === 20;
-  const isFumble = roll.value === 1;
+  // Col tiro segreto niente numero e niente CRITICO/FALLIMENTO: il dado non
+  // deve tradire l'esito nemmeno col colore.
+  const isCrit = !roll.hidden && roll.value === 20;
+  const isFumble = !roll.hidden && roll.value === 1;
   const variant = isCrit ? "crit" : isFumble ? "fumble" : "normal";
 
   return createPortal(
-    <div className={`dice-overlay ${variant} skin-${roll.skin}`} key={roll.id} aria-hidden="true">
+    <div className={`dice-overlay ${variant} skin-${roll.skin}${roll.hidden ? " hidden-roll" : ""}`} key={roll.id} aria-hidden="true">
       <div
         className="dice-d20"
         style={{
@@ -114,13 +119,14 @@ export default function DiceRollHost() {
         }}
       >
         <div className="dice-d20-face">
-          <span className="dice-d20-num">{roll.value}</span>
+          <span className="dice-d20-num">{roll.hidden ? "?" : roll.value}</span>
         </div>
         <div className="dice-d20-glow" />
       </div>
       {roll.label && <div className="dice-label">{roll.label}</div>}
       {isCrit  && <div className="dice-tag crit">CRITICO!</div>}
       {isFumble && <div className="dice-tag fumble">FALLIMENTO</div>}
+      {roll.hidden && <div className="dice-tag segreto">TIRO SEGRETO</div>}
     </div>,
     document.body
   );

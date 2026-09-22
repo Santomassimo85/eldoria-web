@@ -700,6 +700,12 @@ const { getScribaRecipients } = require("./scriba/recipients");
 const SCRIBA_MASTERS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const SCRIBA_INTERVAL_DAYS = 10; // cadenza
 const SCRIBA_REVIEW_HOURS = 24;  // finestra di revisione prima dell'auto-invio (A1)
+// Quanto può restare in attesa una bozza prima di essere scartata da sola.
+// Serve perché la guardia di scribaTick non aveva scadenza: una bozza mai
+// approvata bloccava LO SCRIBA per sempre (successo davvero, dal 19 agosto al
+// 22 settembre 2026: 34 giorni di silenzio, N. 7 fermo in casella). Si può
+// cambiare da Firestore con `settings/scriba.draftMaxDays`.
+const SCRIBA_DRAFT_MAX_DAYS = 3;
 
 function buildGmailTransporter() {
   const gmailEmail = gmailEmailParam.value();
@@ -1124,12 +1130,37 @@ exports.scribaTick = onSchedule(
     const nowMs = Date.now();
 
     // C'è già una bozza che aspetta l'approvazione del direttore? Non generarne
-    // un'altra: aspetta che approvi (o annulli dal pannello).
+    // un'altra: aspetta che approvi (o annulli dal pannello). MA se la bozza è
+    // lì da troppo tempo il direttore se n'è dimenticato: si scarta da sola e
+    // il ciclo riparte, altrimenti la gazzetta resta muta per sempre.
     const pending = await dbAdmin.collection("newsletters")
-      .where("status", "in", ["draft", "approved"]).limit(1).get();
+      .where("status", "in", ["draft", "approved"]).get();
     if (!pending.empty) {
-      console.log("[scriba] bozza già in attesa di approvazione del direttore.");
-      return;
+      const maxDays = Number(cfg.draftMaxDays) > 0 ? Number(cfg.draftMaxDays) : SCRIBA_DRAFT_MAX_DAYS;
+      const maxMs = maxDays * 24 * 60 * 60 * 1000;
+      // Una bozza senza `createdAt` (scrittura appena partita) conta come fresca:
+      // meglio un giro d'attesa in più che cestinare un numero appena scritto.
+      const stale = pending.docs.filter((doc) => {
+        const c = doc.get("createdAt");
+        const ms = c && c.toMillis ? c.toMillis() : 0;
+        return ms > 0 && (nowMs - ms) > maxMs;
+      });
+      if (stale.length < pending.size) {
+        console.log("[scriba] bozza già in attesa di approvazione del direttore.");
+        return;
+      }
+      for (const doc of stale) {
+        const giorni = Math.floor((nowMs - doc.get("createdAt").toMillis()) / 86400000);
+        await doc.ref.update({
+          status: "cancelled",
+          cancelledAt: FieldValue.serverTimestamp(),
+          cancelledReason: `scaduta: ${giorni} giorni senza approvazione (limite ${maxDays})`,
+        });
+        console.log(`[scriba] bozza N. ${doc.get("number")} scartata dopo ${giorni} giorni senza approvazione.`);
+        logAgent("scriba", "action",
+          `Bozza del N. ${doc.get("number")} scartata da sola: ferma da ${giorni} giorni senza approvazione. Ne scrivo una nuova.`,
+          { editionId: doc.id, giorni, maxDays });
+      }
     }
 
     // È passato l'intervallo dall'ultimo invio?

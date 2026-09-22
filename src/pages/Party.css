@@ -133,3 +133,31 @@
 .eroe-modale .nx-modale-img { border-color: color-mix(in srgb, var(--cls, var(--el)) 55%, transparent); }
 .eroe-modale .nx-kicker { color: var(--cls, var(--el-2)); text-shadow: 0 0 14px color-mix(in srgb, var(--cls, var(--el-2)) 70%, transparent); }
 .eroe-modale .eroe-livello { background: var(--cls, var(--el-2)); color: var(--ossidiana); box-shadow: 0 0 22px -4px var(--cls, var(--el-2)); }
+
+/* ── eroe NON SBLOCCATO: anello col placeholder, niente scheda ──────
+   la card resta nel registro ma è spenta: bordo tratteggiato, colori
+   desaturati e nessun sollevamento al passaggio del mouse. */
+.party-page .eroe-card--locked {
+  cursor: default;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--osso-2) 35%, transparent);
+  opacity: .72;
+  filter: grayscale(.55);
+}
+.party-page .eroe-card--locked:hover { transform: none; box-shadow: none; }
+.party-page .eroe-card--locked .nx-anello::before {
+  background: conic-gradient(var(--roccia-3), var(--roccia-2), var(--roccia-3));
+  animation: none;
+  box-shadow: none;
+}
+.party-page .eroe-card--locked .nx-anello-ph {
+  font-size: 2.2rem; color: var(--osso-2); background: var(--roccia-2);
+  border-color: var(--roccia-3);
+}
+.party-page .eroe-card--locked .nx-tag { color: var(--osso-2); }
+.party-page .eroe-card--locked .nx-nome { text-shadow: none; color: var(--osso-2); }
+.party-page .eroe-card--locked .eroe-cue { color: var(--osso-2); opacity: .9; }
+.party-page .eroe-card--locked:hover .eroe-cue { transform: none; }
+@media (max-width: 480px) {
+  .party-page .eroe-card--locked .nx-anello-ph { font-size: 1.7rem; }
+}

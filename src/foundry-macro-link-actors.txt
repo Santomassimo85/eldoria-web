@@ -1,0 +1,134 @@
+// ================================================================
+// MACRO FOUNDRY: Collega attori al sito  (Exanthia Web)
+// ================================================================
+// Si lancia UNA VOLTA (e poi solo quando entra un PG nuovo).
+//
+// A COSA SERVE
+// Le altre due macro ("Crea Oggetti dal sito → Foundry" e la spesa dei
+// materiali dell'Officina) devono sapere QUALE attore di Foundry è il
+// personaggio di un dato giocatore del sito. Lo capiscono da un'etichetta
+// invisibile attaccata all'attore: il flag `world.firebaseUID`.
+// Se il flag non c'è, quelle macro dicono "nessun attore collegato a …"
+// e lasciano tutto in coda senza toccare niente: è la rete di sicurezza,
+// non un guasto.
+//
+// COSA FA QUESTA MACRO
+// Scarica l'elenco dei personaggi dal sito (collection `characters`),
+// lo confronta con gli attori di Foundry per NOME e, quando l'abbinamento
+// è sicuro (un solo attore per un solo personaggio), scrive il flag.
+// Non tocca nient'altro dell'attore. Rilanciarla non fa danni.
+// Alla fine stampa un riepilogo: collegati, già a posto, ambigui, non trovati.
+//
+// USO: lanciala come GM. Poi rilancia la macro degli oggetti.
+// ================================================================
+
+// --- CONFIGURAZIONE FIREBASE (uguale alle altre macro) ---
+const FIREBASE_CONFIG = {
+  projectId: "TUO_PROJECT_ID",
+  apiKey:    "TUA_API_KEY"
+};
+
+// Se un abbinamento automatico sbaglia o manca, mettilo qui a mano:
+//   "Nome dell'attore in Foundry": "UID del sito"
+// (l'UID lo leggi nel riepilogo di questa macro o in Firebase > Authentication)
+const FORZA = {
+  // "Palar": "abc123…",
+};
+
+const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+
+// Normalizza un nome per il confronto: minuscolo, apostrofi uniformati,
+// spazi compattati, accenti via. "Temistocle Sottocolle" e "temistocle" si
+// incontrano sul PRIMO NOME, che è il pezzo che non cambia mai.
+const norm = (s) => String(s ?? "")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/[´`''ʼ]/g, "'").replace(/\s+/g, " ").trim();
+const firstTok = (s) => norm(s).split(/[\s'"\-]+/)[0];
+
+(async () => {
+  ui.notifications.info("Collegamento attori ↔ sito in corso…");
+
+  // 1) i personaggi del sito
+  let personaggi = [];
+  try {
+    const res = await fetch(`${BASE}/characters?key=${FIREBASE_CONFIG.apiKey}&pageSize=300`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || "risposta Firestore con errore");
+    personaggi = (data.documents || []).map((doc) => ({
+      uid: doc.name.split("/").pop(),
+      name: doc.fields?.name?.stringValue || "",
+    })).filter((c) => c.name);
+  } catch (e) {
+    ui.notifications.error("Errore nel leggere i personaggi dal sito. Controlla projectId e apiKey.");
+    console.error("[Collega]", e);
+    return;
+  }
+
+  if (!personaggi.length) {
+    ui.notifications.warn("Il sito non ha restituito nessun personaggio.");
+    return;
+  }
+
+  // 2) gli attori giocanti di Foundry
+  const attori = game.actors.contents.filter((a) => a.type === "character");
+
+  const fatti = [], gia = [], ambigui = [], senza = [], forzati = [];
+
+  for (const attore of attori) {
+    // 2a) forzatura a mano: ha sempre ragione
+    if (FORZA[attore.name]) {
+      await attore.setFlag("world", "firebaseUID", FORZA[attore.name]);
+      forzati.push({ attore: attore.name, uid: FORZA[attore.name] });
+      continue;
+    }
+
+    // 2b) già collegato a un personaggio che esiste ancora: non si tocca
+    const flag = attore.getFlag("world", "firebaseUID");
+    if (flag) {
+      const c = personaggi.find((p) => p.uid === flag);
+      gia.push({ attore: attore.name, uid: flag, sito: c ? c.name : "⚠ UID non più sul sito" });
+      continue;
+    }
+
+    // 2c) abbinamento per nome: prima il nome intero, poi il primo nome
+    let match = personaggi.filter((p) => norm(p.name) === norm(attore.name));
+    if (!match.length) match = personaggi.filter((p) => firstTok(p.name) === firstTok(attore.name));
+
+    if (match.length === 1) {
+      await attore.setFlag("world", "firebaseUID", match[0].uid);
+      fatti.push({ attore: attore.name, sito: match[0].name, uid: match[0].uid });
+    } else if (match.length > 1) {
+      ambigui.push({ attore: attore.name, candidati: match.map((m) => `${m.name} (${m.uid})`).join(" · ") });
+    } else {
+      senza.push({ attore: attore.name });
+    }
+  }
+
+  // 3) personaggi del sito rimasti senza attore (il caso opposto)
+  const usati = new Set(attori.map((a) => a.getFlag("world", "firebaseUID")).filter(Boolean));
+  const orfani = personaggi.filter((p) => !usati.has(p.uid));
+
+  // 4) riepilogo: in console la tabella, in chat il sunto per il GM
+  console.log("%c[Collega] Collegati adesso", "font-weight:bold");    console.table(fatti);
+  console.log("%c[Collega] Già collegati", "font-weight:bold");        console.table(gia);
+  if (forzati.length) { console.log("%c[Collega] Forzati a mano", "font-weight:bold"); console.table(forzati); }
+  if (ambigui.length) { console.log("%c[Collega] AMBIGUI (decidi tu)", "font-weight:bold;color:#b45309"); console.table(ambigui); }
+  if (senza.length)   { console.log("%c[Collega] Attori senza personaggio sul sito", "font-weight:bold;color:#b45309"); console.table(senza); }
+  if (orfani.length)  { console.log("%c[Collega] Personaggi del sito senza attore — copia questi UID nel blocco FORZA", "font-weight:bold;color:#b45309"); console.table(orfani); }
+
+  const riga = (t, arr) => arr.length ? `<li>${t}: <strong>${arr.length}</strong></li>` : "";
+  await ChatMessage.create({
+    speaker: { alias: "Exanthia" },
+    content: `<p><strong>Collegamento attori ↔ sito</strong></p><ul>`
+      + riga("collegati adesso", fatti)
+      + riga("già collegati", gia)
+      + riga("forzati a mano", forzati)
+      + riga("⚠ ambigui", ambigui)
+      + riga("⚠ attori senza personaggio sul sito", senza)
+      + riga("⚠ personaggi del sito senza attore", orfani)
+      + `</ul><p style="font-size:.9em;opacity:.8">Il dettaglio è nella console (F12). Quello che resta scoperto si sistema nel blocco <code>FORZA</code> in cima alla macro.</p>`,
+    whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
+  });
+
+  ui.notifications.info(`✅ ${fatti.length + forzati.length} attori collegati, ${gia.length} già a posto${ambigui.length + senza.length + orfani.length ? `, ${ambigui.length + senza.length + orfani.length} da guardare (console)` : ""}.`);
+})();

@@ -177,6 +177,20 @@
   border: 1.5px solid #2a0606;
 }
 
+/* Tiro SEGRETO (Officina): il dado si ferma su una runa, il numero lo sa solo
+   il Master. Grigio-fumo, senza il segnale oro/rosso del critico. */
+.dice-tag.segreto {
+  background: linear-gradient(135deg, #3a3730, #1b1a17);
+  color: #d9d2c2;
+  border: 1.5px solid #6b6252;
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+}
+.dice-overlay.hidden-roll .dice-d20-num {
+  opacity: 0.55;
+  filter: blur(0.4px);
+}
+
 @keyframes dice-tag-in {
   to   { opacity: 1; transform: scale(1); }
 }

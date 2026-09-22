@@ -500,3 +500,167 @@
   .cr-page .off-spese-list li { grid-template-columns: 1fr auto; }
   .cr-page .off-spese-acts { grid-column: 1 / -1; }
 }
+
+/* ═══ ☠ Maledizione dell'1 naturale — SOLO MASTER (2026-09-22) ════════════
+   Il giocatore non vede mai questi blocchi: il componente CurseCard si monta
+   soltanto dentro `isMaster`. Viola ammuffito, distinto dal rosso del disastro
+   della fretta, così a colpo d'occhio si capisce che l'oggetto è uscito ma
+   porta qualcosa dentro. */
+.cr-page .off-curse { margin: 12px 0; padding: 12px 14px; border-radius: 3px; background: rgba(76, 29, 94, .22); border: 1px solid rgba(168, 85, 247, .38); border-left: 3px solid #a855f7; color: var(--osso); }
+.cr-page .off-curse-head { display: block; font-family: "Alegreya SC", "Alegreya", serif; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: #d8b4fe; }
+.cr-page .off-curse-head small { margin-left: 8px; letter-spacing: .06em; text-transform: none; color: var(--osso-2); }
+.cr-page .off-curse-name { display: block; margin: 4px 0 2px; font-family: "Grenze Gotisch", "Cinzel", serif; font-size: 1.25rem; color: #e9d5ff; }
+.cr-page .off-curse-desc { margin: 4px 0 8px; font-size: .88rem; font-style: italic; color: var(--osso-2); }
+.cr-page .off-curse-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: .84rem; }
+.cr-page .off-curse-grid dt { font-family: "Alegreya SC", "Alegreya", serif; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: #c084fc; padding-top: 2px; }
+.cr-page .off-curse-grid dd { margin: 0; color: var(--osso); }
+.cr-page .off-curse-note { margin: 8px 0 0; font-size: .76rem; }
+/* Versione stretta per il tavolo e il registro del Master. */
+.cr-page .off-curse-chip { display: block; margin-top: 4px; padding: 3px 8px; border-radius: 3px; background: rgba(76, 29, 94, .3); border: 1px solid rgba(168, 85, 247, .45); font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: #e9d5ff; }
+.cr-page .off-curse-chip small { display: block; font-family: "Alegreya", Georgia, serif; font-size: .72rem; color: var(--osso-2); }
+.cr-page .off-cursed-tag { color: #d8b4fe; }
+@media (max-width: 560px) {
+  .cr-page .off-curse-grid { grid-template-columns: 1fr; gap: 1px 0; }
+  .cr-page .off-curse-grid dd { margin-bottom: 6px; }
+}
+
+/* ── LA BORSA (2026-09-22) ───────────────────────────────────────────────────
+   I materiali si pagano prima di tirare: qui si legge quanto oro resta e,
+   quando non basta, la riga diventa rossa e la CTA si spegne. */
+.cr-page .off-sum-borsa {
+  display: block; margin-top: 6px;
+  font-family: "Alegreya", Georgia, serif; font-size: .82rem; line-height: 1.45;
+  color: var(--osso-body);
+}
+.cr-page .off-sum-borsa b { color: var(--oro); }
+.cr-page .off-sum-borsa i { font-style: normal; color: var(--osso-2); }
+.cr-page .off-sum-borsa.is-short { color: #fca5a5; }
+.cr-page .off-sum-borsa.is-short b { color: #f87171; }
+.cr-page .off-why.is-short { color: #fca5a5; }
+/* Nel pannello Master: la borsa del PG sotto il nome, nelle spese aperte. */
+.cr-page .off-spese-borsa { color: var(--oro) !important; opacity: .85; }
+
+/* ── STATISTICHE DEL TAVOLO (2026-09-22) ─────────────────────────────────────
+   Grafici a UNA serie: la barra è il colpo d'occhio, il numero scritto accanto
+   è il dato. Un solo colore (l'accento del respiro) perché l'identità la porta
+   l'etichetta: così i grafici reggono anche in bianco e nero. Griglia e binari
+   restano recessivi, il dato è l'unica cosa accesa. */
+.cr-page .off-stats { display: flex; flex-direction: column; gap: 14px; }
+
+/* I numeri grossi in cima. */
+.cr-page .off-stat-tiles {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px;
+}
+.cr-page .off-stat-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 10px 8px; border-radius: 3px;
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
+  border: 1px solid rgba(var(--el-rgb), .22);
+  text-align: center;
+}
+.cr-page .off-stat-tile b {
+  font-family: "Cinzel", Georgia, serif; font-size: 1.32rem; line-height: 1.1;
+  color: var(--osso); font-variant-numeric: tabular-nums;
+}
+.cr-page .off-stat-tile b span { font-size: .82rem; color: var(--osso-2); }
+.cr-page .off-stat-tile small {
+  font-family: "Alegreya SC", "Alegreya", serif; font-size: .62rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--osso-2); line-height: 1.25;
+}
+.cr-page .off-stat-tile.is-warn { border-color: rgba(176, 136, 32, .55); }
+.cr-page .off-stat-tile.is-warn b { color: var(--oro); }
+.cr-page .off-stat-tile.is-bad { border-color: rgba(185, 28, 28, .55); }
+.cr-page .off-stat-tile.is-bad b { color: #fca5a5; }
+.cr-page .off-stat-tile.is-curse { border-color: rgba(168, 85, 247, .45); }
+.cr-page .off-stat-tile.is-curse b { color: #d8b4fe; }
+
+/* Le quattro schede coi grafici. */
+.cr-page .off-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cr-page .off-stat-card {
+  padding: 12px; border-radius: 3px;
+  background: rgba(var(--ossidiana-rgb), .35); border: 1px solid var(--roccia-3);
+}
+.cr-page .off-stat-card h4 {
+  margin: 0 0 2px; font-family: "Grenze Gotisch", "Cinzel", Georgia, serif;
+  font-size: 1.05rem; font-weight: 400; letter-spacing: .02em; color: var(--osso);
+}
+.cr-page .off-stat-card .nx-nota { margin: 0 0 10px; font-size: .76rem; }
+
+/* Barre orizzontali: etichetta · binario · valore. */
+.cr-page .off-stat-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.cr-page .off-stat-bars li {
+  /* colonne in frazioni, non a contenuto: ogni <li> e' una griglia a se',
+     e solo cosi' le barre partono tutte dalla stessa riga verticale */
+  display: grid; grid-template-columns: minmax(80px, .78fr) minmax(0, 2.5fr) auto;
+  gap: 10px; align-items: center; padding: 3px 0;
+}
+.cr-page .off-stat-lbl {
+  display: flex; align-items: baseline; gap: 5px; min-width: 0;
+  font-family: "Alegreya", Georgia, serif; font-size: .82rem; color: var(--osso-body);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cr-page .off-stat-lbl i { font-style: normal; flex: 0 0 auto; }
+.cr-page .off-stat-track {
+  position: relative; height: 10px; border-radius: 3px;
+  background: rgba(var(--ossidiana-rgb), .55); border: 1px solid var(--roccia-3);
+  overflow: hidden;
+}
+.cr-page .off-stat-track i {
+  display: block; height: 100%; min-width: 0; border-radius: 0 3px 3px 0;
+  background: linear-gradient(90deg, var(--el), var(--el-2));
+  box-shadow: 0 0 10px -3px rgba(var(--el-rgb), .8);
+}
+.cr-page .off-stat-v {
+  display: flex; align-items: baseline; gap: 6px; justify-self: end;
+  font-family: "Cinzel", Georgia, serif; font-size: .92rem; color: var(--osso);
+  font-variant-numeric: tabular-nums;
+}
+.cr-page .off-stat-v small {
+  font-family: "Alegreya", Georgia, serif; font-size: .7rem; color: var(--osso-2);
+  white-space: nowrap;
+}
+
+/* Colonne: una per settimana, valore sopra ed etichetta sotto. */
+.cr-page .off-stat-cols {
+  list-style: none; margin: 18px 0 0; padding: 0;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px;
+  align-items: end;
+}
+.cr-page .off-stat-cols li { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+/* Niente riquadro attorno alla colonna: basta la linea di base, recessiva.
+   Un binario pieno pesa quanto il dato e stacca il numero dalla sua barra. */
+.cr-page .off-stat-col {
+  display: flex; align-items: flex-end; justify-content: center;
+  width: 100%; height: 96px; border-bottom: 1px solid var(--roccia-3);
+}
+.cr-page .off-stat-col i {
+  /* colonne sottili: il dato non ha bisogno di pesare per farsi leggere */
+  position: relative; display: block; width: 100%; max-width: 44px; border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--el-2), var(--el));
+  box-shadow: 0 0 10px -3px rgba(var(--el-rgb), .8);
+}
+.cr-page .off-stat-col b {
+  position: absolute; bottom: 100%; left: 0; right: 0; margin-bottom: 3px;
+  text-align: center; font-family: "Cinzel", Georgia, serif; font-size: .82rem;
+  color: var(--osso); font-variant-numeric: tabular-nums;
+}
+.cr-page .off-stat-cols small {
+  font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--osso-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+
+/* Testata dell'Officina vista dal Master: niente professione, solo il ruolo. */
+.cr-page .off-head--master .off-lead { margin: 4px 0 0; }
+
+@media (max-width: 900px) {
+  .cr-page .off-stat-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cr-page .off-stat-tiles { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+  .cr-page .off-stat-tile b { font-size: 1.1rem; }
+  .cr-page .off-stat-bars li { grid-template-columns: minmax(70px, 1fr) minmax(0, 1.4fr) auto; gap: 7px; }
+  .cr-page .off-stat-lbl { font-size: .76rem; }
+  .cr-page .off-stat-v small { display: none; }
+  .cr-page .off-stat-col { height: 72px; }
+}
