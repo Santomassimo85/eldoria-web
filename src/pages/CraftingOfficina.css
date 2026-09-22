@@ -338,3 +338,93 @@
 .cr-page .off-tile-btn.is-locked { cursor: default; opacity: .85; }
 .cr-page .off-tile-btn.is-auto { cursor: default; }
 .cr-page .off-tile-btn.is-auto:hover, .cr-page .off-tile-btn.is-locked:hover { border-color: var(--roccia-3); }
+
+/* ═══ Pieghe dell'Officina (2026-09-22) ═══════════════════════════════════
+   Una schermata per volta: testata → barra del lavoro → pieghe → pannello.
+   Prima erano 7 pannelli impilati e per arrivare al tiro si scorreva mezza
+   pagina. Il banco sta su due colonne: a sinistra COSA si fa, a destra COME. */
+.cr-page .off-tabs { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+/* Ripiego: dove covo.css NON veste le pieghe (pagine theme-dark) restano dei bottoni. */
+.cr-page .off-tab { flex: 0 0 auto; padding: 8px 14px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .55); border: 1px solid var(--roccia-3); color: var(--osso-body); font-family: "Cinzel", Georgia, serif; font-size: .78rem; letter-spacing: .04em; cursor: pointer; }
+.cr-page .off-tab.on { color: var(--osso); background: rgba(var(--el-rgb), .14); border-color: rgba(var(--el-rgb), .55); }
+
+/* barra "lavoro in corso": si vede da ogni piega, ci riporta al banco */
+.cr-page .off-live { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .55); border: 1px solid var(--roccia-3); border-left: 3px solid var(--q, var(--el)); color: var(--osso); text-align: left; cursor: pointer; }
+.cr-page .off-live:hover { border-color: var(--el); border-left-color: var(--q, var(--el)); }
+.cr-page .off-live.is-ready { border-left-color: #4ade80; background: rgba(74, 222, 128, .08); }
+.cr-page .off-live-ic { font-size: 1.2rem; }
+.cr-page .off-live-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cr-page .off-live-main b { font-family: "Alegreya", Georgia, serif; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-page .off-live-bar { display: block; height: 5px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .8); border: 1px solid var(--roccia-3); overflow: hidden; }
+.cr-page .off-live-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--q, var(--el)), color-mix(in srgb, var(--q, var(--el)) 55%, #fff)); }
+.cr-page .off-live.is-ready .off-live-bar > i { background: linear-gradient(90deg, #2f9e5f, #4ade80); }
+.cr-page .off-live-t { font-family: "Cinzel", Georgia, serif; font-size: .85rem; color: var(--el-2); white-space: nowrap; }
+.cr-page .off-live.is-ready .off-live-t { color: #4ade80; }
+
+/* il banco su due colonne */
+.cr-page .off-bank { display: grid; grid-template-columns: 1.05fr .95fr; gap: 18px; align-items: start; }
+.cr-page .off-bank-col { min-width: 0; }
+.cr-page .off-bank-side { position: sticky; top: calc(var(--navbar-h, 66px) + 10px); }
+.cr-page .off-bank .off-h:first-child { margin-top: 0; }
+.cr-page .off-bank .off-bench { grid-template-columns: 1fr; gap: 8px; }
+.cr-page .off-bank .off-sum { grid-template-columns: 1fr; gap: 8px; }
+.cr-page .off-bank .off-items { grid-template-columns: 1fr; }
+
+/* strumenti: una riga, non più una piastrella cliccabile */
+.cr-page .off-tools { display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-left: 3px solid var(--roccia-4); font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-tools b { font-size: .9rem; color: var(--osso); }
+.cr-page .off-tools span { font-size: .8rem; line-height: 1.45; color: var(--osso-body); }
+.cr-page .off-tools strong { color: var(--el-2); }
+.cr-page .off-tools em { font-style: normal; font-weight: 700; color: var(--oro); }
+.cr-page .off-tools.is-ok { border-left-color: #4ade80; }
+.cr-page .off-tools.is-bad { border-left-color: var(--oro); border-style: dashed; }
+
+/* segmenti in colonna (l'investimento porta anche il prezzo) */
+.cr-page .off-seg--col { flex-direction: column; }
+.cr-page .off-seg--col .off-seg-btn { justify-content: flex-start; width: 100%; }
+.cr-page .off-seg-n { margin-left: auto; font-style: normal; font-family: "Cinzel", Georgia, serif; font-size: .72rem; color: var(--el-2); }
+.cr-page .off-seg-btn.on .off-seg-n { color: var(--osso); }
+.cr-page .off-sum-cost { font-family: "Alegreya", Georgia, serif; font-size: .82rem; line-height: 1.45; color: var(--osso-body); }
+.cr-page .off-sum-cost b { color: var(--oro); }
+.cr-page .off-sum-cost i { font-style: normal; color: var(--osso-2); }
+
+/* CTA del banco: sul telefono resta appiccicata in fondo */
+.cr-page .off-go--bar { position: sticky; bottom: 0; z-index: 2; margin-top: 12px; padding: 10px 0 2px; background: linear-gradient(180deg, rgba(var(--ossidiana-rgb), 0), rgba(var(--ossidiana-rgb), .92) 35%); }
+.cr-page .off-go--bar .off-cta { flex: 1 1 auto; }
+
+/* messaggi: si chiudono */
+.cr-page .off-msg { display: flex; align-items: flex-start; gap: 10px; }
+.cr-page .off-msg > span { flex: 1 1 auto; }
+.cr-page .off-msg-x { flex: 0 0 auto; background: none; border: none; color: var(--osso-2); font-size: .9rem; cursor: pointer; line-height: 1; padding: 2px 4px; }
+.cr-page .off-msg-x:hover { color: var(--osso); }
+
+/* postazione in gioco + fattura superiore */
+.cr-page .off-postazione { margin: 8px 0 0; font-size: .84rem; line-height: 1.5; }
+.cr-page .off-postazione strong { color: var(--el-2); }
+.cr-page .off-postazione--intro { margin: 0 0 14px; padding: 10px 12px; border-radius: 3px; background: rgba(var(--el-rgb), .08); border: 1px solid rgba(var(--el-rgb), .3); font-size: .88rem; }
+.cr-page .off-esito-up { margin: 6px 0 0; color: var(--oro); }
+.cr-page .off-esito-up strong { color: var(--oro); }
+.cr-page details.off-form > summary { cursor: pointer; list-style: none; }
+.cr-page details.off-form > summary::-webkit-details-marker { display: none; }
+.cr-page details.off-form > summary::before { content: "▸ "; }
+.cr-page details.off-form[open] > summary::before { content: "▾ "; }
+
+/* avviso "scegli una professione" nel pannello del Master */
+.cr-page .off-master-nudge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; padding: 8px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .45); border: 1px solid var(--roccia-3); font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: var(--osso-body); }
+.cr-page .off-master-nudge b { color: var(--el-2); }
+.cr-page .off-master-nudge > span { flex: 1 1 260px; min-width: 0; }
+.cr-page .off-master-nudge em { flex-basis: 100%; font-style: normal; color: #4ade80; }
+.cr-page .off-master-nudge em.is-err { color: #f87171; }
+
+@media (max-width: 1000px) {
+  .cr-page .off-bank { grid-template-columns: 1fr; gap: 6px; }
+  .cr-page .off-bank-side { position: static; }
+}
+@media (max-width: 1300px) {
+  /* sotto c'è la barra di navigazione: la CTA si ferma sopra di lei */
+  .cr-page .off-go--bar { bottom: calc(var(--bottomnav-h, 60px) + var(--safe-b, 0px) + 4px); }
+}
+@media (max-width: 640px) {
+  .cr-page .off-go--bar { padding-bottom: 6px; }
+  .cr-page .off-live-t { font-size: .78rem; }
+}

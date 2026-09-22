@@ -9,10 +9,11 @@ import {
   SENTIERO_MAESTRO,
   PREGIATURA_COSTS,
   PROFESSIONI,
+  POSTAZIONI,
 } from "../data/crafting";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER } from "../data/craftingProgress";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK } from "../data/craftingWeek";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, fmtMinutes } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, fmtMinutes } from "../data/craftingTime";
 import GlacierHero from "../components/glacier/GlacierHero";
 import "./Crafting.css";
 import "../styles/cinematic.css";
@@ -29,7 +30,7 @@ const RANDOM_TIERS = PREGIATURE.filter((p) => !p.pick && p.key !== "scarso");
 const PASSI = [
   { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa sai fare." },
   { ic: "🎯", k: "Scegli rarità e oggetto", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu uno dei 6 oggetti della tua professione. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: l'oggetto lo decide il d12.` },
-  { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, un aiutante, i materiali e il ritmo: accorciano il lavoro o cambiano il tiro." },
+  { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, quanto spendi nei materiali e il ritmo: accorciano il lavoro, alzano il tiro o migliorano l'oggetto." },
   { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta). Poi parte il tempo di lavoro: finito, ritiri l'oggetto e va su Foundry." },
 ];
 
@@ -132,6 +133,9 @@ export default function Crafting() {
             <p className="nx-nota cr-section-sub cr-come-nota">
               Si crea dall'<Link to="/officina">Officina</Link>, in sessione o fuori. L'uso si consuma al tiro e il tempo va con l'ora del server.
             </p>
+            <p className="nx-nota cr-section-sub cr-come-nota">
+              🏠 <strong>Al tavolo le regole sono le stesse</strong>, ma serve la <strong>postazione</strong> della tua arte: una fucina, un alambicco, un telaio, un banco da orafo. Si trovano nel mondo — città, avamposti, botteghe amiche, qualche rovina — e il Master ti dice quando ne hai una a portata. Dall'app, invece, lavori sempre.
+            </p>
           </details>
 
           {/* ── 2 · LE RARITÀ ── */}
@@ -157,6 +161,18 @@ export default function Crafting() {
                 );
               })}
             </div>
+            <h4 className="cr-subtitle">💰 Spendere di più nei materiali</h4>
+            <p className="nx-nota cr-section-sub">Prima di tirare decidi quanto investi sopra il costo della rarità. Non cambia il tempo di lavoro: cambia il tiro, l'oggetto e i PE.</p>
+            <div className="nx-griglia cr-time-grid">
+              {INVESTMENTS.map(iv => (
+                <div key={iv.key || "base"} className="nx-pannello cr-time-card">
+                  <span className="cr-passo-ic" aria-hidden="true">{iv.icon}</span>
+                  <span className="nx-nome">{iv.label}</span>
+                  <b className="cr-time-fx">{iv.costPct ? `+${iv.costPct}% di spesa` : "costo pieno"}</b>
+                  <span className="nx-nota">{iv.desc}</span>
+                </div>
+              ))}
+            </div>
             <p className="nx-nota cr-section-sub cr-come-nota">Molto raro solo dal grado <strong>Maestro</strong>, Leggendario solo da <strong>Leggenda</strong>. Dal grado Artigiano gli Scarsi contano come Comuni. Un 20 naturale raddoppia i PE.</p>
           </details>
 
@@ -180,7 +196,7 @@ export default function Crafting() {
                 <li><strong>Caratteristica</strong>: quella della professione (le professioni magiche usano la migliore fra Int, Sag e Car).</li>
                 <li><strong>Strumenti</strong>: il bonus di competenza, solo se gli strumenti della professione risultano sulla tua scheda. Senza, svantaggio.</li>
                 <li><strong>Grado</strong>: {SENTIERO_MAESTRO.filter((g) => GRADE_BONUS[g.grado]).map((g) => `${g.name} +${GRADE_BONUS[g.grado]}`).join(" · ")}.</li>
-                <li><strong>Condizioni</strong>: materiali superiori = vantaggio, di fortuna = svantaggio · con calma +{PACE_OPTIONS[0].roll} · di fretta {PACE_OPTIONS[2].roll} e {PACE_OPTIONS[2].critFail}% di fallimento critico (materiali persi) · aiutante +{HELP_OPTIONS[1].roll} · ogni componente +1d{COMPONENT_ROLL_DIE}.</li>
+                <li><strong>Condizioni</strong>: materiali scelti (+{INVESTMENTS[1].costPct}% di spesa) +{INVESTMENTS[1].roll} · con calma +{PACE_OPTIONS[0].roll} · di fretta {PACE_OPTIONS[2].roll} e {PACE_OPTIONS[2].critFail}% di fallimento critico (materiali persi) · ogni componente +1d{COMPONENT_ROLL_DIE}.</li>
               </ul>
             </div>
             <div className="nx-pillole cr-prof-chips">
@@ -217,12 +233,6 @@ export default function Crafting() {
                 <span className="nx-nome">Componenti (max {MAX_COMPONENTS})</span>
                 <b className="cr-time-fx">−30 / −45 / −60 min</b>
                 <span className="nx-nota">Si trovano in sessione e si consumano. Ognuno dà anche +1d{COMPONENT_ROLL_DIE} al tiro; alcuni lasciano un effetto sull'oggetto.</span>
-              </div>
-              <div className="nx-pannello cr-time-card">
-                <span className="cr-passo-ic" aria-hidden="true">🤝</span>
-                <span className="nx-nome">Aiutante</span>
-                <b className="cr-time-fx">{HELP_OPTIONS.filter(h => h.key).map(h => `−${h.pct}%`).join(" / ")}</b>
-                <span className="nx-nota">{HELP_OPTIONS.filter(h => h.key).map(h => h.label.toLowerCase()).join(" o ")}, da concordare col Master. +1 al tiro.</span>
               </div>
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">⏳</span>
@@ -358,6 +368,7 @@ function ProfessionCard({ prof, isOpen, onToggle }) {
           <div className="nx-meta-box cr-scheda">
             <span className="nx-kicker">Scheda della professione</span>
             <p><strong>Caratteristica:</strong> {prof.caratteristica}</p>
+            <p><strong>Postazione in gioco:</strong> {POSTAZIONI[prof.key] || "la postazione della tua arte"}</p>
             <p><strong>Bonus iniziale (Lv.1):</strong> {prof.bonusIniziale}</p>
             <p><strong>Potenziamento (Lv.5):</strong> {prof.potenziamento}</p>
             <div className="cr-scheda-spec">

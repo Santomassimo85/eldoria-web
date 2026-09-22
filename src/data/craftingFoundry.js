@@ -161,7 +161,7 @@ export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = f
 }
 
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
-export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [] }) {
+export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [], upgraded = false }) {
   const tier = normTier(rawTier);
   const finalName = (choice || itemChoices(name)[0] || name).trim();
   const cls = classifyCraftedItem(profession.key, finalName, desc);
@@ -176,6 +176,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
   let attackBonus = cls.foundryType === "weapon" ? plus : 0;
   let armorValue = cls.foundryType === "equipment" ? (cls.armorValue || 0) + (cls.armorType ? plus : 0) : 0;
   let damage2Formula = "", damage2Type = "";
+  let damageBonus = 0;
   const descParts = [desc || ""];
 
   if (enhancer && enhancer.applies.includes(cls.foundryType)) {
@@ -191,6 +192,24 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
 
   // Componenti con effetto sull'oggetto: monete in più o nota "a scelta del DM".
   let price = t.price;
+
+  // Materiali di pregio (+50% di spesa): l'oggetto esce MIGLIORATO.
+  // Armi: +1 al colpire e ai danni, conta come magica. Armature/scudi: +1 alla CA.
+  // Tutto il resto: nota per il DM (effetto di un grado più forte). Vale +50% anche sul prezzo.
+  if (upgraded) {
+    if (cls.foundryType === "weapon") {
+      attackBonus += 1;
+      if (cls.damageFormula) damageBonus += 1;
+      if (!properties.includes("mgc")) properties.push("mgc");
+      descParts.push("✦ Fattura superiore (materiali di pregio): +1 ai tiri per colpire e ai danni; l'arma conta come magica.");
+    } else if (cls.foundryType === "equipment" && cls.armorType) {
+      armorValue += 1;
+      descParts.push("✦ Fattura superiore (materiali di pregio): +1 alla Classe Armatura.");
+    } else {
+      descParts.push("✦ Fattura superiore (materiali di pregio): l'effetto dell'oggetto è di un grado più forte — +1d4 all'effetto, durata doppia o bonus equivalente a scelta del DM.");
+    }
+    price = Math.round(price * 1.5);
+  }
   for (const k of components) {
     const c = componentByKey(k);
     if (!c?.effect) continue;
@@ -218,7 +237,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     targetUid: crafter.uid,
     targetName: crafter.name,
     actionType: cls.foundryType === "weapon" ? (cls.actionType || "mwak") : "",
-    damageFormula: cls.damageFormula || "",
+    damageFormula: cls.damageFormula ? (damageBonus ? `${cls.damageFormula} + ${damageBonus}` : cls.damageFormula) : "",
     damageType: cls.damageType || "slashing",
     damage2Formula,
     damage2Type,

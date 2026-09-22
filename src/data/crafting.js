@@ -90,14 +90,30 @@ export const PREGIATURA_COSTS = [
 ];
 
 export const VANTAGGIO_SVANTAGGIO = [
-  { condizione: "Materiali di qualità superiore (mithril, gemme rare)", effetto: "Vantaggio",  positive: true  },
-  { condizione: "Lavori con calma (tempo doppio)",                      effetto: "+2 al tiro", positive: true  },
-  { condizione: "Aiuto di un artigiano (−5% tempo) o di un mastro (−10%)", effetto: "+1 al tiro", positive: true  },
-  { condizione: "Componenti trovati in sessione (fino a 3)",           effetto: "+1d3 al tiro ciascuno", positive: true  },
-  { condizione: "Materiali scarsi o di fortuna",                        effetto: "Svantaggio", positive: false },
+  { condizione: "Materiali scelti (+20% di spesa)",                     effetto: "+2 al tiro",  positive: true  },
+  { condizione: "Lavori con calma (tempo doppio)",                      effetto: "+2 al tiro",  positive: true  },
+  { condizione: "Componenti trovati in sessione (fino a 3)",            effetto: "+1d3 al tiro ciascuno", positive: true },
   { condizione: "Lavori di fretta (metà tempo, 5% di fallimento critico)", effetto: "−3 al tiro", positive: false },
-  { condizione: "Senza gli strumenti della professione",               effetto: "Svantaggio", positive: false },
+  { condizione: "Senza gli strumenti della professione",                effetto: "Svantaggio",  positive: false },
 ];
+
+// ── LA POSTAZIONE (2026-09-22) ──────────────────────────────────────────────
+// Fuori dalla sessione si crea dall'Officina. AL TAVOLO le regole sono le
+// stesse, ma serve la postazione dell'arte: si trovano nel mondo (città,
+// avamposti, rovine) e il Master dice quando ne hai una a portata di mano.
+export const POSTAZIONI = {
+  fabbro:       "una fucina con incudine e mantice",
+  alchimista:   "un laboratorio con alambicco e storte",
+  intagliatore: "un banco da intaglio con morsa e sgorbie",
+  sarto:        "un telaio e un tavolo da taglio",
+  erborista:    "un essiccatoio con mortaio e pestello",
+  cuoco:        "una cucina attrezzata con forno e focolare",
+  ingegnere:    "un'officina meccanica con tornio e morsa",
+  cartografo:   "un tavolo da disegno con riga, compasso e luce buona",
+  gioielliere:  "un banco da orafo con crogiolo e bulini",
+  incantatore:  "uno scriptorium con cerchio di rune",
+};
+export const postazioneFor = (key) => POSTAZIONI[key] || "la postazione della tua arte";
 
 export const ESEMPI_INGREDIENTI = [
   { professione: "Fabbro",      raro: "Lingotto di acciaio nobile + carbone runico",      magico: "Lingotto di mithril + cristallo elementale",      perfetto: "Lingotto di Arcanite + cuore di drago" },

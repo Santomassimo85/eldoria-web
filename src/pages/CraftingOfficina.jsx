@@ -21,25 +21,23 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { isHiddenChar } from "../data/hiddenPlayers";
-import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, tierByKey, tierByTotal, tierMinGrade } from "../data/crafting";
+import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, postazioneFor, tierByKey, tierByTotal, tierMinGrade } from "../data/crafting";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, HELP_OPTIONS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, helpByKey, paceByKey } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import "./CraftingOfficina.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
 
-// Qualità dei materiali (dal manuale): vantaggio o svantaggio al tiro.
-const QUALITY_OPTIONS = [
-  { key: "",        icon: "📦", label: "Normali",              adv: 0,  desc: "I materiali di base della pregiatura, pagati in gioco." },
-  { key: "sup",     icon: "💎", label: "Di qualità superiore", adv: 1,  desc: "Mithril, gemme rare…: vantaggio al tiro." },
-  { key: "fortuna", icon: "🪨", label: "Di fortuna",           adv: -1, desc: "Quel che c'era: svantaggio al tiro." },
-];
-const qualityByKey = (k) => QUALITY_OPTIONS.find((q) => q.key === (k || "")) || QUALITY_OPTIONS[0];
+// Qualità dei materiali e aiuto al banco: scelte DISMESSE il 2026-09-22 (al loro
+// posto c'è l'investimento). Le etichette restano solo per rileggere le prove vecchie.
+const LEGACY_QUALITY = { sup: "di qualità superiore", fortuna: "di fortuna" };
+// Costo dei materiali della rarità, in monete.
+const tierMo = (tier) => PREGIATURA_COSTS.find((c) => c.tier === normTier(tier))?.mo || 0;
 
 // Caratteristiche del PG in formato Foundry ({score, mod, save}) o vecchio (numero).
 function statMod(charData, key) {
@@ -95,9 +93,9 @@ export default function CraftingOfficina() {
   const [target, setTarget] = useState("common");
   const [pickIdx, setPickIdx] = useState(-1); // linea del catalogo scelta (solo rarità "pick")
   const [comps, setComps] = useState([]);
-  const [help, setHelp] = useState("");
   const [pace, setPace] = useState("normale");
-  const [quality, setQuality] = useState("");
+  const [invest, setInvest] = useState(""); // quanto spendo sopra il costo dei materiali
+  const [tab, setTab] = useState("banco");  // piega aperta (niente più muro di pannelli)
   // L'esito.
   const [revealedId, setRevealedId] = useState(""); // lavoro finito e "ritirato" in questa visita
   const [choice, setChoice] = useState("");
@@ -111,6 +109,17 @@ export default function CraftingOfficina() {
     const unsub = onSnapshot(doc(db, "characters", uid), (snap) => setCharData(snap.exists() ? snap.data() : {}));
     return () => unsub();
   }, [uid]);
+
+  // I tastini dell'intestazione della pagina (/officina) aprono la piega giusta e ci portano sopra.
+  useEffect(() => {
+    const go = (e) => {
+      const k = e?.detail || "banco";
+      setTab(k);
+      requestAnimationFrame(() => document.getElementById("off-banco")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+    window.addEventListener("officina:tab", go);
+    return () => window.removeEventListener("officina:tab", go);
+  }, []);
 
   // Il Master vede TUTTI gli artigiani del tavolo in tempo reale (tavolo + pannello).
   const [tableChars, setTableChars] = useState([]);
@@ -173,9 +182,9 @@ export default function CraftingOfficina() {
   const abil = prof ? abilityModFor(charData, prof) : 0;
   const toolB = toolsOn ? profBonus(charData) : 0;
   const gradeB = prog.bonus;
-  const helpOpt = helpByKey(help), paceOpt = paceByKey(pace), qualOpt = qualityByKey(quality);
-  const extra = helpOpt.roll + paceOpt.roll;
-  const advSum = qualOpt.adv + (toolsOn ? 0 : -1);
+  const paceOpt = paceByKey(pace), investOpt = investmentByKey(invest);
+  const extra = paceOpt.roll + investOpt.roll;
+  const advSum = toolsOn ? 0 : -1;
   const advMode = advSum > 0 ? "adv" : advSum < 0 ? "dis" : "";
   const bonus = abil + toolB + gradeB + extra;
   const targetCost = PREGIATURA_COSTS.find((c) => c.tier === target);
@@ -183,7 +192,12 @@ export default function CraftingOfficina() {
   const catalogo = prof?.catalogo || [];
   const pickLine = targetMeta.pick && pickIdx >= 0 ? catalogo[pickIdx] || null : null;
   const needsPick = targetMeta.pick && !pickLine; // rarità a scelta: serve l'oggetto
-  const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, help, pace, ritmoBottega: prog.level.lv >= 6 }), [target, toolsOn, comps, help, pace, prog.level.lv]);
+  const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, pace, ritmoBottega: prog.level.lv >= 6 }), [target, toolsOn, comps, pace, prog.level.lv]);
+  // Costo dei materiali con l'investimento scelto e PE attesi se il tiro conferma la rarità.
+  const baseMo = tierMo(target);
+  const costMo = investCostMo(baseMo, investOpt);
+  const xpBase = XP_PER_TIER[target] || 0;
+  const xpGain = xpWithInvestment(xpBase, investOpt);
 
   const activeEntry = revealed ? pendingEntry : null;
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
@@ -193,7 +207,7 @@ export default function CraftingOfficina() {
     const enh = ENHANCERS.find((x) => x.key === enhKey) || null;
     return craftedItemToFoundryPayload({
       profession: activeProf, tier: activeEntry.tier, name: activeEntry.name, desc: activeEntry.desc,
-      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [],
+      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [], upgraded: !!activeEntry.upgraded,
       crafter: { uid, name: charData?.name || "", gradeName: prog.grado.name },
       roll: { d20: activeEntry.d20, bonus: activeEntry.bonus, total: activeEntry.total, d12: activeEntry.d12 },
     });
@@ -261,7 +275,7 @@ export default function CraftingOfficina() {
       // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
       const picked = pickLine && tierMeta(tier).pick ? pickLine[tier] : null;
       const d12 = picked ? 0 : rnd(12);
-      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${targetCostFor(target)}) sono andati perduti e non è uscito nulla.`] : picked || prof.creazioni[tier][d12 - 1];
+      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${fmtMo(costMo)}) sono andati perduti e non è uscito nulla.`] : picked || prof.creazioni[tier][d12 - 1];
       const nat20 = d20 === 20;
       const startMs = srvNow.getTime();
       const entry = {
@@ -270,8 +284,8 @@ export default function CraftingOfficina() {
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
-        quality: qualOpt.key, help: helpOpt.key, pace: paceOpt.key, components: work.components,
-        xp: failed ? 0 : xpForCraft(tier, nat20), nat20, inboxId: "", enhancer: "", choice: "", note: "",
+        invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo, pace: paceOpt.key, components: work.components,
+        xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, critRoll, skipped: failed, // fallito = chiuso subito, non blocca il banco
         componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
       };
@@ -308,11 +322,11 @@ export default function CraftingOfficina() {
         tx.update(ref, patch);
       });
       await showD20Roll(d20, { label: `Pregiatura · ${prof.name}` });
-      setComps([]); setPickIdx(-1); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
+      setComps([]); setPickIdx(-1); setInvest(""); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
-      if (failed) setMsg(`Errore: 💥 Fallimento critico (${critRoll}/100 sotto il ${paceOpt.critFail}%): la fretta ha rovinato il lavoro. I materiali (${targetCostFor(target)}) sono perduti, non hai creato nulla e la prova è consumata.`);
-      else setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
+      if (failed) setMsg(`Errore: 💥 Fallimento critico (${critRoll}/100 sotto il ${paceOpt.critFail}%): la fretta ha rovinato il lavoro. I materiali (${fmtMo(costMo)}) sono perduti, non hai creato nulla e la prova è consumata.`);
+      else setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. Paghi ${fmtMo(costMo)} di materiali. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
   }
@@ -342,18 +356,23 @@ export default function CraftingOfficina() {
       const payload = craftedItemToFoundryPayload({
         profession: p, tier: entry.tier, name: entry.name, desc: entry.desc,
         choice: itemChoices(entry.name).length > 1 ? choice : "",
-        enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [],
+        enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [], upgraded: !!entry.upgraded,
         crafter: { uid, name: charData?.name || currentUser.email, gradeName: prog.grado.name },
         roll: { d20: entry.d20, bonus: entry.bonus, total: entry.total, d12: entry.d12 },
       });
-      const conds = [qualityByKey(entry.quality).key ? `materiali ${qualityByKey(entry.quality).label.toLowerCase()}` : "", entry.work && !entry.work.tools ? "senza strumenti" : ""].filter(Boolean);
+      const inv = investmentByKey(entry.invest);
+      const conds = [
+        inv.key ? `${inv.label.toLowerCase()} (+${inv.costPct}% di spesa)` : "",
+        entry.quality ? `materiali ${LEGACY_QUALITY[entry.quality] || entry.quality}` : "", // prove di prima del 2026-09-22
+        entry.work && !entry.work.tools ? "senza strumenti" : "",
+      ].filter(Boolean);
       const ref = await addDoc(collection(db, "foundry_inbox"), {
         status: "pending", ...payload,
         origin: "crafting", crafterUid: uid, crafterName: charData?.name || "",
         craft: {
           profession: p.key, tier: entry.tier, targetTier: entry.targetTier, d20: entry.d20, total: entry.total, d12: entry.d12,
           enhancer: enh?.key || "", enhancerSource: ev?.source || "", enhancerProof: ev?.label || "", note: note.trim(),
-          cost: targetCostFor(entry.targetTier), mods: conds,
+          cost: fmtMo(entry.costMo || tierMo(entry.targetTier)), investment: inv.key, investmentPct: inv.costPct, upgraded: !!entry.upgraded, mods: conds,
           minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
           components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
           componentBonus: entry.bonusParts?.comps || 0,
@@ -385,9 +404,22 @@ export default function CraftingOfficina() {
   const workPct = pendingEntry ? Math.max(0, Math.min(100, Math.round(((nowMs - (pendingEntry.at || 0)) / Math.max(1, readyAt - (pendingEntry.at || 0))) * 100))) : 0;
   const ownedComps = COMPONENTS.map((c) => { const ev = componentEvidence(c, ownCtx); return { ...c, n: ev.qty, ev }; });
   const anyComp = ownedComps.some((c) => c.n > 0);
+  const compCount = ownedComps.reduce((a, c) => a + (Number.isFinite(c.n) ? c.n : 0), 0);
+
+  // ── Le pieghe (2026-09-22): una schermata per volta, così il tiro è sempre
+  // a portata di pollice e non si scorre mezza pagina per vedere le creazioni.
+  // Niente icone: a queste pieghe covo.css mette la sua runa (tab = dadi runici).
+  const TABS = [
+    { key: "banco", label: prof ? "Il banco" : "La professione" },
+    { key: "creazioni", label: "Creazioni", n: log.length },
+    { key: "componenti", label: "Componenti", n: compCount },
+    { key: "progressi", label: "Progressi" },
+    ...(isMaster ? [{ key: "master", label: "Master", n: tableChars.filter((c) => (c.crafting?.log || []).some((e) => !e.inboxId && !e.skipped)).length }] : []),
+  ];
+  const curTab = TABS.some((t) => t.key === tab) ? tab : "banco";
 
   return (
-    <div className="off">
+    <div className="off" id="off-banco">
       {/* ── TESTATA: professione, grado, usi ── */}
       <div className="nx-pannello off-box off-head">
         <div className="off-head-main">
@@ -402,6 +434,7 @@ export default function CraftingOfficina() {
                 </div>
               </div>
               <div className="off-xp" role="progressbar" aria-valuenow={prog.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${prog.pct}%` }} /></div>
+              <p className="nx-nota off-postazione">🏠 Al tavolo ti serve <strong>{postazioneFor(prof.key)}</strong>; da qui nell'app puoi lavorare ovunque.</p>
             </>
           ) : (
             <p className="nx-prosa off-lead">Scegli la tua <strong>professione</strong>: <strong>una sola per personaggio</strong>, e non si cambia più (solo il Master può farlo). Da qui potrai creare oggetti anche fuori dalla sessione.</p>
@@ -421,12 +454,39 @@ export default function CraftingOfficina() {
         )}
       </div>
 
-      {/* ── TAVOLO DEL MASTER: chi sta forgiando cosa, in tempo reale ── */}
-      {isMaster && <MasterBoard chars={tableChars} nowMs={nowMs} />}
+      {/* ── Il lavoro sul banco si vede da ogni piega ── */}
+      {prof && pendingEntry && !revealed && (
+        <button type="button" className={`off-live${ready ? " is-ready" : ""}`} onClick={() => setTab("banco")} style={{ "--q": tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
+          <span className="off-live-ic" aria-hidden="true">{ready ? "✨" : "🔨"}</span>
+          <span className="off-live-main">
+            <b>{ready ? "Il lavoro è finito: ritira l'oggetto" : `Sul banco · ${pendingEntry.pickName || "oggetto a sorpresa"}`}</b>
+            <span className="off-live-bar"><i style={{ width: `${workPct}%` }} /></span>
+          </span>
+          <span className="off-live-t">{ready ? "pronto" : fmtCountdown(readyAt - nowMs)}</span>
+        </button>
+      )}
+
+      {/* ── LE PIEGHE ── */}
+      {/* <div>, non <nav>: shell.css veste ogni <nav> da drawer e lo manderebbe fuori schermo */}
+      <div className="off-tabs" role="tablist" aria-label="Sezioni dell'Officina">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" role="tab" aria-selected={curTab === t.key} className={`off-tab${curTab === t.key ? " on" : ""}`} onClick={() => setTab(t.key)}>
+            {t.label}{t.n ? ` · ${t.n}` : ""}
+          </button>
+        ))}
+      </div>
+
+      {msg && <div className={`off-msg${msg.startsWith("Errore") ? " is-err" : ""}`}><span>{msg}</span><button type="button" className="off-msg-x" onClick={() => setMsg("")} aria-label="Chiudi">✕</button></div>}
+
+      {/* ══ PIEGA: IL BANCO ══ */}
+      {curTab === "banco" && (<>
 
       {/* ── SCELTA PROFESSIONE ── */}
       {!prof && (
         <div className="nx-pannello off-box">
+          <p className="nx-nota off-postazione off-postazione--intro">
+            🏠 <strong>In sessione funziona uguale</strong>: stesso tiro, stesse rarità, stessi tempi. Al tavolo però ti serve la <strong>postazione</strong> della tua arte (fucina, alambicco, telaio…): si trovano nel mondo, nelle città, negli avamposti e in qualche rovina, e il Master ti dice quando ne hai una a portata. Da qui nell'app puoi lavorare sempre.
+          </p>
           <div className="off-profs">
             {PROFESSIONI.map((p) => (
               <button key={p.key} type="button" className={`off-prof-btn${pickProf === p.key ? " on" : ""}`} style={{ "--c": p.carColor }} onClick={() => { setPickProf(p.key); setConfirmProf(false); }}>
@@ -439,6 +499,7 @@ export default function CraftingOfficina() {
           {pickProf && (
             <div className="off-pick">
               <p className="nx-nota"><strong>{PROFESSIONI.find((p) => p.key === pickProf)?.caratteristica}</strong> · {PROFESSIONI.find((p) => p.key === pickProf)?.bonusIniziale}</p>
+              <p className="nx-nota off-postazione">🏠 Postazione in gioco: <strong>{postazioneFor(pickProf)}</strong>.</p>
               {!confirmProf ? (
                 <button type="button" className="cta off-cta" disabled={busy} onClick={() => setConfirmProf(true)}>Divento {PROFESSIONI.find((p) => p.key === pickProf)?.name}</button>
               ) : (
@@ -458,158 +519,150 @@ export default function CraftingOfficina() {
       {/* ── IL BANCO: si prepara il lavoro (se non ce n'è uno in corso) ── */}
       {prof && !pendingEntry && (
         <div className="nx-pannello off-box off-prova">
-          <h3 className="off-h"><span className="orb" aria-hidden="true">1</span> La rarità <small>decide materiali e tempo di lavoro</small></h3>
-          <div className="off-tiers">
-            {PREGIATURE.filter((p) => p.key !== "scarso").map((p) => {
-              const locked = tierMinGrade(p.key) > prog.level.grado;
-              const gradeName = p.key === "legendary" ? "Leggenda" : "Maestro";
-              return (
-                <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => { setTarget(p.key); setPickIdx(-1); }} title={locked ? `Solo dal grado ${gradeName}` : p.desc}>
-                  <span className="off-tier-top"><span aria-hidden="true">{p.icon}</span> {p.label} <small>{p.range}</small></span>
-                  <span className="off-tier-time">{locked ? `🔒 ${gradeName}` : `⏱ ${fmtMinutes(CRAFT_BASE_MINUTES[p.key])} · ${PREGIATURA_COSTS.find((c) => c.tier === p.key)?.costo}`}</span>
-                </button>
-              );
-            })}
-          </div>
-          {targetCost && <p className="nx-nota off-cost"><strong>Materiali:</strong> {targetCost.costo}, si pagano in gioco. {targetMeta.pick ? "Se il tiro non conferma la rarità esce lo stesso oggetto della rarità sotto; sotto 6 uno Scarso a caso." : "L'oggetto lo decide il d12 alla fine; con un tiro basso esce un oggetto a caso della rarità uscita."}</p>}
-
-          <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> {targetMeta.pick ? "L'oggetto" : "L'oggetto lo decide il dado"} <small>{targetMeta.pick ? `uno dei ${catalogo.length} del ${prof.name}` : `tabella ${targetMeta.label} del manuale, d12`}</small></h3>
-          {targetMeta.pick ? (
-            <div className="off-items">
-              {catalogo.map((line, i) => {
-                const [nm, ds] = line[target] || ["—", ""];
-                const below = target !== "common" ? line[TIER_ORDER[TIER_ORDER.indexOf(target) - 1]]?.[0] : "";
-                return (
-                  <button key={line.key} type="button" className={`off-item${pickIdx === i ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(i)}>
-                    <span className="off-item-ic" aria-hidden="true">{line.icon}</span>
-                    <span className="off-item-main"><b>{nm}</b><small>{ds}</small>{pickIdx === i && below && <em>con un tiro basso: {below}</em>}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="off-random" style={{ "--q": targetMeta.color }}>
-              <span className="off-random-die" aria-hidden="true">d12</span>
-              <span className="off-random-main">
-                <b>{targetMeta.icon} {targetMeta.label}: {prof.creazioni[target]?.length || 12} possibili creazioni</b>
-                <small>Escono a caso alla fine del lavoro. Le vedi tutte nel <Link to="/crafting#cr-professioni">manuale</Link>, alla scheda del {prof.name}.</small>
-                {prog.level.lv >= 4 && prof.creazioni[target]?.length === 12 && <em>👁 Occhio esperto · con 1: {prof.creazioni[target][0][0]} · con 12: {prof.creazioni[target][11][0]}</em>}
-              </span>
-            </div>
-          )}
-
-          <h3 className="off-h"><span className="orb" aria-hidden="true">3</span> Prepara il banco <small>ogni voce accorcia il lavoro o cambia il tiro</small></h3>
-          <div className="off-bench">
-            {/* strumenti */}
-            {toolsEv.ok ? (
-              <div className="off-tile off-tile-btn on is-auto">
-                <span className="off-tile-h">🧰 Strumenti <small>✓ automatico</small></span>
-                <b className="off-tile-v">Hai gli strumenti</b>
-                <span className="off-tile-fx"><em>−{fmtMinutes(TOOLS_MINUTES)}</em> · {sign(profBonus(charData))} competenza</span>
-                <span className="off-tile-proof">✓ {toolsEv.label}</span>
+          <div className="off-bank">
+            <div className="off-bank-col">
+              <h3 className="off-h"><span className="orb" aria-hidden="true">1</span> La rarità <small>materiali e tempo</small></h3>
+              <div className="off-tiers">
+                {PREGIATURE.filter((p) => p.key !== "scarso").map((p) => {
+                  const locked = tierMinGrade(p.key) > prog.level.grado;
+                  const gradeName = p.key === "legendary" ? "Leggenda" : "Maestro";
+                  return (
+                    <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => { setTarget(p.key); setPickIdx(-1); }} title={locked ? `Solo dal grado ${gradeName}` : p.desc}>
+                      <span className="off-tier-top"><span aria-hidden="true">{p.icon}</span> {p.label} <small>{p.range}</small></span>
+                      <span className="off-tier-time">{locked ? `🔒 ${gradeName}` : `⏱ ${fmtMinutes(CRAFT_BASE_MINUTES[p.key])} · ${fmtMo(tierMo(p.key))}`}</span>
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
-              <div className="off-tile off-tile-btn is-bad is-locked" aria-disabled="true">
-                <span className="off-tile-h">🧰 Strumenti <small>✗ non li possiedi</small></span>
-                <b className="off-tile-v">Senza strumenti</b>
-                <span className="off-tile-fx"><em>tempo pieno</em> · svantaggio</span>
-                <span className="off-tile-empty">Non risultano <strong>{toolsEv.hint}</strong> sulla tua scheda. Il controllo è automatico: mettili nell'inventario su Foundry e sincronizza (o comprali al Mercato) e la voce si accende da sola.</span>
-              </div>
-            )}
+              {targetCost && <p className="nx-nota off-cost">{targetMeta.pick ? "Se il tiro non conferma la rarità esce lo stesso oggetto della rarità sotto; sotto 6 uno Scarso a caso." : "L'oggetto lo decide il d12 alla fine; con un tiro basso esce un oggetto a caso della rarità uscita."}</p>}
 
-            {/* componenti */}
-            <div className="off-tile">
-              <span className="off-tile-h">🧪 Componenti <small>{comps.length}/{MAX_COMPONENTS}</small></span>
-              {anyComp ? (
-                <div className="off-comps">
-                  {ownedComps.filter((c) => c.n > 0).map((c) => {
-                    const on = comps.includes(c.key);
-                    const full = !on && comps.length >= MAX_COMPONENTS;
+              <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> {targetMeta.pick ? "L'oggetto" : "L'oggetto lo decide il dado"} <small>{targetMeta.pick ? `uno dei ${catalogo.length} del ${prof.name}` : `tabella ${targetMeta.label}, d12`}</small></h3>
+              {targetMeta.pick ? (
+                <div className="off-items">
+                  {catalogo.map((line, i) => {
+                    const [nm, ds] = line[target] || ["—", ""];
+                    const below = target !== "common" ? line[TIER_ORDER[TIER_ORDER.indexOf(target) - 1]]?.[0] : "";
                     return (
-                      <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={`${c.desc} · ${c.ev.label}`}>
-                        <span className="off-comp-ic" aria-hidden="true">{c.icon}</span>
-                        <span className="off-comp-name">{c.name}{c.effect ? <i className="off-comp-eff"> · {componentEffectLabel(c)}</i> : null}</span>
-                        <span className="off-comp-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
+                      <button key={line.key} type="button" className={`off-item${pickIdx === i ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(i)}>
+                        <span className="off-item-ic" aria-hidden="true">{line.icon}</span>
+                        <span className="off-item-main"><b>{nm}</b><small>{ds}</small>{pickIdx === i && below && <em>con un tiro basso: {below}</em>}</span>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <p className="off-tile-empty">Nessun componente risulta tuo. Li trovi <strong>in sessione</strong>: il Master te li assegna qui o li mette nell'inventario su Foundry (poi sincronizza); ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
+                <div className="off-random" style={{ "--q": targetMeta.color }}>
+                  <span className="off-random-die" aria-hidden="true">d12</span>
+                  <span className="off-random-main">
+                    <b>{targetMeta.icon} {targetMeta.label}: {prof.creazioni[target]?.length || 12} possibili creazioni</b>
+                    <small>Escono a caso alla fine del lavoro. Le vedi tutte nel <Link to="/crafting#cr-professioni">manuale</Link>, alla scheda del {prof.name}.</small>
+                    {prog.level.lv >= 4 && prof.creazioni[target]?.length === 12 && <em>👁 Occhio esperto · con 1: {prof.creazioni[target][0][0]} · con 12: {prof.creazioni[target][11][0]}</em>}
+                  </span>
+                </div>
               )}
-              {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</em> al tiro (si tira all'avvio) · si consumano</span>}
             </div>
 
-            {/* aiuto */}
-            <div className="off-tile">
-              <span className="off-tile-h">🤝 Aiuto</span>
-              <div className="off-seg" role="radiogroup" aria-label="Aiuto al banco">
-                {HELP_OPTIONS.map((h) => (
-                  <button key={h.key || "solo"} type="button" role="radio" aria-checked={help === h.key} className={`off-seg-btn${help === h.key ? " on" : ""}`} onClick={() => setHelp(h.key)} title={h.desc}>
-                    <span aria-hidden="true">{h.icon}</span> {h.label}
-                  </button>
-                ))}
+            <div className="off-bank-col off-bank-side">
+              <h3 className="off-h"><span className="orb" aria-hidden="true">3</span> Il banco <small>tiro, tempo e spesa</small></h3>
+
+              {/* strumenti: nessun tocco, conta solo la scheda */}
+              {toolsEv.ok ? (
+                <div className="off-tools is-ok">
+                  <b>🧰 Hai gli strumenti</b>
+                  <span>−{fmtMinutes(TOOLS_MINUTES)} · {sign(profBonus(charData))} competenza · ✓ {toolsEv.label}</span>
+                </div>
+              ) : (
+                <div className="off-tools is-bad">
+                  <b>🧰 Senza strumenti</b>
+                  <span>tempo pieno e <em>svantaggio</em>. Non risultano <strong>{toolsEv.hint}</strong> sulla scheda: mettili nell'inventario su Foundry e sincronizza, oppure comprali al Mercato.</span>
+                </div>
+              )}
+
+              <div className="off-bench">
+                {/* componenti */}
+                <div className="off-tile">
+                  <span className="off-tile-h">🧪 Componenti <small>{comps.length}/{MAX_COMPONENTS}</small></span>
+                  {anyComp ? (
+                    <div className="off-comps">
+                      {ownedComps.filter((c) => c.n > 0).map((c) => {
+                        const on = comps.includes(c.key);
+                        const full = !on && comps.length >= MAX_COMPONENTS;
+                        return (
+                          <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={`${c.desc} · ${c.ev.label}`}>
+                            <span className="off-comp-ic" aria-hidden="true">{c.icon}</span>
+                            <span className="off-comp-name">{c.name}{c.effect ? <i className="off-comp-eff"> · {componentEffectLabel(c)}</i> : null}</span>
+                            <span className="off-comp-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="off-tile-empty">Nessun componente risulta tuo: li trovi <strong>in sessione</strong>. Ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
+                  )}
+                  {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</em> al tiro · si consumano</span>}
+                </div>
+
+                {/* investimento nei materiali */}
+                <div className="off-tile">
+                  <span className="off-tile-h">💰 Quanto spendi <small>base {fmtMo(baseMo)}</small></span>
+                  <div className="off-seg off-seg--col" role="radiogroup" aria-label="Investimento nei materiali">
+                    {INVESTMENTS.map((iv) => (
+                      <button key={iv.key || "base"} type="button" role="radio" aria-checked={invest === iv.key} className={`off-seg-btn${invest === iv.key ? " on" : ""}`} onClick={() => setInvest(iv.key)} title={iv.desc}>
+                        <span aria-hidden="true">{iv.icon}</span> {iv.label}
+                        <i className="off-seg-n">{iv.costPct ? `${fmtMo(investCostMo(baseMo, iv))} · +${iv.costPct}%` : fmtMo(baseMo)}</i>
+                      </button>
+                    ))}
+                  </div>
+                  <span className="off-tile-fx">{investOpt.roll ? <><em>+{investOpt.roll} al tiro</em> · </> : null}{investOpt.upgrade ? <><em>oggetto migliorato</em> (+1 al colpire e ai danni, o +1 alla CA, o effetto più forte) · </> : null}{investOpt.xpPct ? <><em>+{investOpt.xpPct}% PE</em></> : "nessun extra: paghi solo i materiali"}</span>
+                </div>
+
+                {/* ritmo */}
+                <div className="off-tile">
+                  <span className="off-tile-h">⏳ Ritmo</span>
+                  <div className="off-seg" role="radiogroup" aria-label="Ritmo del lavoro">
+                    {PACE_OPTIONS.map((p) => (
+                      <button key={p.key} type="button" role="radio" aria-checked={pace === p.key} className={`off-seg-btn${pace === p.key ? " on" : ""}${p.roll < 0 ? " is-bad" : ""}`} onClick={() => setPace(p.key)} title={p.desc}>
+                        <span aria-hidden="true">{p.icon}</span> {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="off-tile-fx">{paceOpt.mult === 1 ? "tempo pieno, tiro normale" : <><em>×{paceOpt.mult === 0.5 ? "½" : paceOpt.mult} tempo</em> · {sign(paceOpt.roll)} al tiro{paceOpt.critFail ? <> · <em>{paceOpt.critFail}% fallimento critico</em>: perdi i materiali</> : null}</>}</span>
+                </div>
               </div>
-              <span className="off-tile-fx">{helpOpt.pct ? <><em>−{helpOpt.pct}% del tempo</em> · +{helpOpt.roll} al tiro · da concordare col Master</> : "nessun bonus"}</span>
-            </div>
 
-            {/* materiali */}
-            <div className="off-tile">
-              <span className="off-tile-h">💎 Materiali</span>
-              <div className="off-seg" role="radiogroup" aria-label="Qualità dei materiali">
-                {QUALITY_OPTIONS.map((q) => (
-                  <button key={q.key || "norm"} type="button" role="radio" aria-checked={quality === q.key} className={`off-seg-btn${quality === q.key ? " on" : ""}${q.adv < 0 ? " is-bad" : ""}`} onClick={() => setQuality(q.key)} title={q.desc}>
-                    <span aria-hidden="true">{q.icon}</span> {q.label}
-                  </button>
-                ))}
+              {/* riepilogo: tempo + tiro + spesa */}
+              <div className="off-sum">
+                <div className="off-sum-time">
+                  <span className="off-sum-k">Tempo di lavoro</span>
+                  <b>⏱ {fmtMinutes(work.minutes)}</b>
+                  <span className="off-sum-parts">
+                    {work.parts.map((p) => <span key={p.key} className={`off-part${p.min < 0 ? " is-less" : p.key !== "base" && p.min > 0 ? " is-more" : ""}`}>{p.label} {p.key === "base" ? fmtMinutes(p.min) : `${p.min < 0 ? "−" : "+"}${fmtMinutes(Math.abs(p.min))}`}</span>)}
+                  </span>
+                  <small>pronto {whenLabel(nowMs + work.minutes * 60000, now)} se inizi adesso · il tiro non lo cambia</small>
+                </div>
+                <div className="off-sum-roll">
+                  <span className="off-sum-k">Il tuo tiro</span>
+                  <div className="off-formula">
+                    <span className="off-die">d20</span>
+                    <span className="off-piece"><b>{sign(abil)}</b><small>{prof.caratteristica}</small></span>
+                    <span className={`off-piece${toolsOn ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
+                    <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
+                    {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>spesa/ritmo</small></span>}
+                    {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
+                    <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
+                  </div>
+                  <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null}, da pagare in gioco · <b>+{xpGain} PE</b> se esce {targetMeta.label}</span>
+                </div>
               </div>
-              <span className="off-tile-fx">{qualOpt.adv > 0 ? <><em>vantaggio</em> al tiro · da concordare col Master</> : qualOpt.adv < 0 ? <><em>svantaggio</em> al tiro</> : "tiro normale"}</span>
-            </div>
 
-            {/* ritmo */}
-            <div className="off-tile">
-              <span className="off-tile-h">⏳ Ritmo</span>
-              <div className="off-seg" role="radiogroup" aria-label="Ritmo del lavoro">
-                {PACE_OPTIONS.map((p) => (
-                  <button key={p.key} type="button" role="radio" aria-checked={pace === p.key} className={`off-seg-btn${pace === p.key ? " on" : ""}${p.roll < 0 ? " is-bad" : ""}`} onClick={() => setPace(p.key)} title={p.desc}>
-                    <span aria-hidden="true">{p.icon}</span> {p.label}
-                  </button>
-                ))}
-              </div>
-              <span className="off-tile-fx">{paceOpt.mult === 1 ? "tempo pieno, tiro normale" : <><em>×{paceOpt.mult === 0.5 ? "½" : paceOpt.mult} tempo</em> · {sign(paceOpt.roll)} al tiro{paceOpt.critFail ? <> · <em>{paceOpt.critFail}% fallimento critico</em>: perdi i materiali e non crei nulla</> : null}</>}</span>
-            </div>
-          </div>
-
-          {/* riepilogo: tempo + formula + via */}
-          <div className="off-sum">
-            <div className="off-sum-time">
-              <span className="off-sum-k">Tempo di lavoro</span>
-              <b>⏱ {fmtMinutes(work.minutes)}</b>
-              <span className="off-sum-parts">
-                {work.parts.map((p) => <span key={p.key} className={`off-part${p.min < 0 ? " is-less" : p.key !== "base" && p.min > 0 ? " is-more" : ""}`}>{p.label} {p.key === "base" ? fmtMinutes(p.min) : `${p.min < 0 ? "−" : "+"}${fmtMinutes(Math.abs(p.min))}`}</span>)}
-              </span>
-              <small>pronto {whenLabel(nowMs + work.minutes * 60000, now)} se inizi adesso · il tiro non lo cambia</small>
-            </div>
-            <div className="off-sum-roll">
-              <span className="off-sum-k">Il tuo tiro</span>
-              <div className="off-formula">
-                <span className="off-die">d20</span>
-                <span className="off-piece"><b>{sign(abil)}</b><small>{prof.caratteristica}</small></span>
-                <span className={`off-piece${toolsOn ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
-                <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
-                {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>aiuto/ritmo</small></span>}
-                {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
-                <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
+              <div className="off-go off-go--bar">
+                <button type="button" className="cta off-cta" disabled={busy || !allow.can || needsPick} onClick={roll}>
+                  {busy ? "…" : !allow.can ? "Prova non disponibile" : needsPick ? "Scegli prima l'oggetto" : `🎲 Tira e inizia · ${fmtMinutes(work.minutes)}`}
+                </button>
+                {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
+                {allow.can && pickLine && <span className="nx-nota off-why">{targetMeta.icon} {pickLine[target][0]} · {fmtMo(costMo)}</span>}
               </div>
             </div>
-          </div>
-
-          <div className="off-go">
-            <button type="button" className="cta off-cta" disabled={busy || !allow.can || needsPick} onClick={roll}>
-              {busy ? "…" : !allow.can ? "Prova non disponibile" : needsPick ? "Scegli prima l'oggetto" : `🎲 Tira e inizia il lavoro · ${fmtMinutes(work.minutes)}`}
-            </button>
-            {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
-            {allow.can && pickLine && <span className="nx-nota off-why">{targetMeta.icon} {pickLine[target][0]}</span>}
           </div>
         </div>
       )}
@@ -643,11 +696,12 @@ export default function CraftingOfficina() {
       {prof && activeEntry && preview && (
         <div className="nx-pannello off-box off-esito" style={{ "--q": tierMeta(activeEntry.tier).color }}>
           <div className="off-esito-head">
-            <span className="nx-tag">{tierMeta(activeEntry.tier).icon} {tierMeta(activeEntry.tier).label}</span>
+            <span className="nx-tag">{tierMeta(activeEntry.tier).icon} {tierMeta(activeEntry.tier).label}{activeEntry.upgraded ? " · ✦ superiore" : ""}</span>
             <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null} {sign(activeEntry.bonus)} = <b>{activeEntry.total}</b>{activeEntry.d12 ? <> · d12 <b>{activeEntry.d12}</b></> : null} · +{activeEntry.xp} PE{activeEntry.minutes ? <> · ⏱ {fmtMinutes(activeEntry.minutes)}</> : null}</div>
           </div>
           <h3 className="nx-titolo off-esito-name">{previewName}</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
+          {activeEntry.upgraded && <p className="nx-nota off-esito-up">✦ <strong>Fattura superiore</strong>: hai speso il {investmentByKey(activeEntry.invest).costPct}% in più di materiali ({fmtMo(activeEntry.costMo || 0)}) e l'oggetto esce potenziato.</p>}
           {(activeEntry.compRolls || []).length > 0 && (
             <p className="nx-nota off-esito-comps">🧪 Componenti: {activeEntry.compRolls.map((r) => { const c = componentByKey(r.key); return c ? `${c.icon} ${c.name} +${r.roll}${c.effect ? ` (${componentEffectLabel(c)})` : ""}` : r.key; }).join(" · ")}</p>
           )}
@@ -686,8 +740,8 @@ export default function CraftingOfficina() {
           </div>
 
           {/* Anteprima del form "Crea Oggetto → Foundry" */}
-          <div className="off-form">
-            <span className="off-label">Scheda per Foundry <small>(come nel form del Master)</small></span>
+          <details className="off-form">
+            <summary className="off-label">Scheda per Foundry <small>(come nel form del Master)</small></summary>
             <dl className="off-form-grid">
               <dt>Nome</dt><dd>{preview.name}</dd>
               <dt>Tipo</dt><dd>{FT_LABEL[preview.foundryType] || preview.foundryType}</dd>
@@ -706,21 +760,43 @@ export default function CraftingOfficina() {
               <dt>Destinazione</dt><dd>Inventario di {preview.targetName || "te"}</dd>
               <dt>Descrizione</dt><dd className="off-form-desc">{preview.description}</dd>
             </dl>
-          </div>
+          </details>
 
-          <div className="off-go">
+          <div className="off-go off-go--bar">
             <button type="button" className="cta off-cta" disabled={busy} onClick={() => sendToFoundry(activeEntry)}>{busy ? "Invio…" : "📦 Manda al Master per Foundry"}</button>
             <button type="button" className="off-ghost" disabled={busy} onClick={() => skipEntry(activeEntry)}>Non inviare</button>
           </div>
         </div>
       )}
 
-      {msg && <div className={`off-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</div>}
+      </>)}
 
-      {/* ── LA TUA SCORTA DI COMPONENTI ── */}
-      {prof && (
-        <details className="nx-pannello off-box off-stock-box">
-          <summary>🧪 I tuoi componenti <small>({ownedComps.filter((c) => Number.isFinite(c.n) && c.n > 0).reduce((a, c) => a + c.n, 0)} pezzi · dalla scheda Foundry, dal Master o dal Mercato)</small></summary>
+      {/* ══ PIEGA: LE CREAZIONI ══ */}
+      {curTab === "creazioni" && (
+        <div className="nx-pannello off-box off-log">
+          <span className="off-label">📜 Le tue creazioni <small>({log.length} nel registro{crafting.totalCount > log.length ? ` · ${crafting.totalCount} a vita` : ""})</small></span>
+          {log.length === 0 ? <p className="nx-nota">Ancora nessuna prova: prepara il banco e tira.</p> : (
+            <ul className="off-log-list">
+              {log.map((e) => {
+                const tm = tierMeta(e.tier);
+                const onBench = !e.inboxId && !e.skipped;
+                return (
+                  <li key={e.id} style={{ "--q": tm.color }}>
+                    <span className="off-log-ic" aria-hidden="true">{tm.icon}</span>
+                    <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}{e.upgraded ? " ✦" : ""}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.costMo ? ` · ${fmtMo(e.costMo)}` : ""}</small></span>
+                    <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* ══ PIEGA: I COMPONENTI ══ */}
+      {curTab === "componenti" && (
+        <div className="nx-pannello off-box off-stock-box">
+          <span className="off-label">🧪 I tuoi componenti <small>({compCount} pezzi · dalla scheda Foundry, dal Master o dal Mercato)</small></span>
           <ul className="off-stock-list">
             {ownedComps.map((c) => {
               const n = Number.isFinite(c.n) ? c.n : 0;
@@ -733,50 +809,31 @@ export default function CraftingOfficina() {
               );
             })}
           </ul>
-        </details>
+        </div>
       )}
 
-      {/* ── REGISTRO ── */}
-      {prof && log.length > 0 && (
-        <details className="nx-pannello off-box off-log">
-          <summary>📜 Le tue creazioni <small>({log.length})</small></summary>
-          <ul className="off-log-list">
-            {log.map((e) => {
-              const tm = tierMeta(e.tier);
-              const onBench = !e.inboxId && !e.skipped;
-              return (
-                <li key={e.id} style={{ "--q": tm.color }}>
-                  <span className="off-log-ic" aria-hidden="true">{tm.icon}</span>
-                  <span className="off-log-main"><b>{onBench && (Number(e.readyAt) || 0) > nowMs ? "Sul banco…" : (e.choice || e.name)}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}</small></span>
-                  <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </details>
+      {/* ══ PIEGA: I PROGRESSI ══ */}
+      {curTab === "progressi" && (
+        <div className="nx-pannello off-box off-xp-table">
+          <span className="off-label">📈 Esperienza delle professioni <small>(PE per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${XP_PER_TIER[t]}`).join(" · ")}; 20 naturale = doppi; +5% o +10% se spendi di più nei materiali)</small></span>
+          <ol className="off-levels">
+            {XP_LEVELS.map((l) => (
+              <li key={l.lv} className={prof && prog.level.lv === l.lv ? "is-cur" : prof && prog.level.lv > l.lv ? "is-done" : ""}>
+                <span className="orb" aria-hidden="true">{l.lv}</span>
+                <span className="off-level-main"><b>{l.xp} PE · grado {l.grado} {GRADE_BONUS[l.grado] ? `(${sign(GRADE_BONUS[l.grado])} al tiro)` : ""}</b><small>{l.sblocca}</small></span>
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
 
-      {/* ── SCALA DELL'ESPERIENZA ── */}
-      <details className="nx-pannello off-box off-xp-table">
-        <summary>📈 Esperienza delle professioni <small>(PE per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${XP_PER_TIER[t]}`).join(" · ")}; 20 naturale = doppi)</small></summary>
-        <ol className="off-levels">
-          {XP_LEVELS.map((l) => (
-            <li key={l.lv} className={prof && prog.level.lv === l.lv ? "is-cur" : prof && prog.level.lv > l.lv ? "is-done" : ""}>
-              <span className="orb" aria-hidden="true">{l.lv}</span>
-              <span className="off-level-main"><b>{l.xp} PE · grado {l.grado} {GRADE_BONUS[l.grado] ? `(${sign(GRADE_BONUS[l.grado])} al tiro)` : ""}</b><small>{l.sblocca}</small></span>
-            </li>
-          ))}
-        </ol>
-      </details>
-
-      {isMaster && <MasterPanel chars={tableChars} />}
+      {/* ══ PIEGA: IL MASTER ══ */}
+      {curTab === "master" && isMaster && (<>
+        <MasterBoard chars={tableChars} nowMs={nowMs} />
+        <MasterPanel chars={tableChars} />
+      </>)}
     </div>
   );
-}
-
-function targetCostFor(tier) {
-  const c = PREGIATURA_COSTS.find((x) => x.tier === tier);
-  return c ? c.costo : "";
 }
 
 // ── Il tavolo del Master: per ogni artigiano, cosa sta forgiando e a che punto è ──
@@ -864,7 +921,31 @@ function MasterBoard({ chars, nowMs }) {
 // ── Pannello del Master: professioni, PE, usi, scorte e lavori di tutti gli eroi attivi ──
 function MasterPanel({ chars }) {
   const [busy, setBusy] = useState("");
+  const [nudge, setNudge] = useState(""); // esito dell'avviso "scegli una professione"
   const load = async () => {}; // i personaggi arrivano già in tempo reale (onSnapshot)
+
+  // Eroi che non hanno ancora scelto la professione: si può avvisarli in un tocco.
+  const senza = chars.filter((c) => !c.crafting?.profession);
+
+  // Un doc in `notifications` per ciascuno: la campanella dell'app e, via
+  // `pushOnNotification` (functions), anche la notifica push sul telefono.
+  async function nudgeSenzaProfessione() {
+    if (!senza.length) return;
+    if (!window.confirm(`Mandare l'avviso dell'Officina a ${senza.length} eroi senza professione?
+
+${senza.map((c) => c.name).join(", ")}`)) return;
+    setBusy("nudge"); setNudge("");
+    try {
+      await Promise.all(senza.map((c) => addDoc(collection(db, "notifications"), {
+        userId: c.uid,
+        title: "⚒ L'Officina ti aspetta",
+        message: "Non hai ancora scelto una professione da artigiano. Vai in Gilda → L'Officina, scegli la tua arte e comincia a creare oggetti: 1 prova al giorno, 3 a settimana. In sessione funziona uguale, ma lì ti serve la postazione giusta.",
+        read: false, timestamp: serverTimestamp(),
+      })));
+      setNudge(`✓ Avviso mandato a ${senza.length} eroi.`);
+    } catch (e) { setNudge("Errore: " + (e.message || e)); }
+    finally { setBusy(""); }
+  }
 
   async function act(uid, patch) {
     setBusy(uid);
@@ -882,7 +963,16 @@ function MasterPanel({ chars }) {
 
   return (
     <details className="nx-pannello off-box off-master">
-      <summary>🎯 Master · professioni, PE, scorte <small>({chars.length} eroi)</small></summary>
+      <summary>🎯 Master · professioni, PE, scorte <small>({chars.length} eroi · {senza.length} senza professione)</small></summary>
+      <div className="off-master-nudge">
+        <span>
+          <b>{senza.length}</b> {senza.length === 1 ? "eroe non ha" : "eroi non hanno"} ancora una professione{senza.length ? `: ${senza.map((c) => c.name).join(", ")}` : "."}
+        </span>
+        <button type="button" className="off-ghost" disabled={busy === "nudge" || !senza.length} onClick={nudgeSenzaProfessione}>
+          {busy === "nudge" ? "Invio…" : `🔔 Avvisali (${senza.length})`}
+        </button>
+        {nudge && <em className={nudge.startsWith("Errore") ? "is-err" : ""}>{nudge}</em>}
+      </div>
       <ul className="off-master-list">
         {chars.map((c) => {
           const cr = c.crafting || {};
