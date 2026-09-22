@@ -17,7 +17,8 @@
    SYNC SCHEDA -> FIRESTORE  (versione DM)
    - La usa il MASTER: seleziona il token, sceglie il giocatore da una tendina.
    - Legge la scheda COMPLETA: statistiche, caratteristiche (punteggio+mod+TS),
-     oro, slot incantesimo (inclusi i Pact Slot), abilita/skill,
+     oro (TASCHE + BORSE: i contenitori dnd5e hanno una loro currency),
+     slot incantesimo (inclusi i Pact Slot), abilita/skill,
      azioni (armi/incantesimi/feature) e inventario/contenitori.
    ========================================================================= */
 
@@ -267,12 +268,45 @@ if (!actor) {
       slots.push(fsMap({ label: fsStr(`Patto (liv. ${sp.pact.level ?? "?"})`), value: fsInt(sp.pact.value ?? 0), max: fsInt(sp.pact.max ?? 0) }));
     }
 
-    /* ORO / MONETE */
-    const cur = A.currency || {};
-    const currency = fsMap({
-      pp: fsInt(cur.pp ?? 0), gp: fsInt(cur.gp ?? 0), ep: fsInt(cur.ep ?? 0),
-      sp: fsInt(cur.sp ?? 0), cp: fsInt(cur.cp ?? 0)
-    });
+    /* ORO / MONETE: TASCHE + BORSE (2026-09-22)
+       In dnd5e i contenitori (zaini, borse, sacchetti) hanno una LORO
+       `system.currency`: quelle monete non stanno in `actor.system.currency`.
+       Il sito deve vedere il TOTALE, altrimenti un PG che tiene l'oro nello
+       zaino risulta al verde e l'Officina non lo fa lavorare.
+       Si manda il totale in `currency` (quello che il sito legge gia'), piu'
+       la ripartizione: `currencyPurse` = addosso, `currencyBags` = per borsa. */
+    const COINS = ["pp", "gp", "ep", "sp", "cp"];
+    const coinsOf = (o) => {
+      if (!o || typeof o !== "object") return null;
+      const out = {};
+      let trovate = false;
+      for (const k of COINS) {
+        if (o[k] !== undefined && o[k] !== null) trovate = true;
+        out[k] = Math.trunc(Number(o[k]) || 0);
+      }
+      return trovate ? out : null;
+    };
+    const fsCoins = (c) => fsMap({ pp: fsInt(c.pp), gp: fsInt(c.gp), ep: fsInt(c.ep), sp: fsInt(c.sp), cp: fsInt(c.cp) });
+
+    const tasche = coinsOf(A.currency) || { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 };
+    const borse = actor.items
+      .filter((i) => i.type === "container" || i.type === "backpack")
+      .map((i) => ({ name: i.name, coins: coinsOf(i.system?.currency) }))
+      .filter((b) => b.coins && COINS.some((k) => b.coins[k] > 0));
+
+    const totale = {};
+    for (const k of COINS) totale[k] = tasche[k] + borse.reduce((a, b) => a + b.coins[k], 0);
+
+    const currency = fsCoins(totale);
+    const currencyPurse = fsCoins(tasche);
+    const currencyBags = fsArr(borse.map((b) => fsMap({
+      name: fsStr(b.name),
+      pp: fsInt(b.coins.pp), gp: fsInt(b.coins.gp), ep: fsInt(b.coins.ep),
+      sp: fsInt(b.coins.sp), cp: fsInt(b.coins.cp),
+    })));
+    if (borse.length) {
+      console.log(`[Sync] Monete nelle borse di ${actor.name}:`, borse.map((b) => `${b.name} ${b.coins.gp} mo`).join(" · "));
+    }
 
     /* STATISTICHE PRINCIPALI (+ caratteristiche annidate) */
     const at = A.attributes || {};
@@ -299,7 +333,9 @@ if (!actor) {
       image:      fsStr(actor.img),
       level:      fsInt(A.details?.level ?? 1),
       stats:      stats,
-      currency:   currency,
+      currency:   currency,        // totale: tasche + borse
+      currencyPurse: currencyPurse, // solo quello addosso
+      currencyBags:  currencyBags,  // una voce per borsa che contiene monete
       spellSlots: fsArr(slots),
       skills:     fsArr(skills),
       actions:    fsArr(actions),
@@ -307,7 +343,8 @@ if (!actor) {
     }};
 
     const mask = ["name", "class", "subclass", "race", "background", "image", "level",
-                  "stats", "currency", "spellSlots", "skills", "actions", "inventory"]
+                  "stats", "currency", "currencyPurse", "currencyBags",
+                  "spellSlots", "skills", "actions", "inventory"]
                  .map(f => `updateMask.fieldPaths=${f}`).join("&");
 
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/characters/${firebaseUID}?key=${FIREBASE_CONFIG.apiKey}&${mask}`;
@@ -319,7 +356,10 @@ if (!actor) {
         body: JSON.stringify(firestoreData)
       });
       if (res.ok) {
-        ui.notifications.info(`✅ Sincronizzato: ${actor.name} → ${targetName}`);
+        const oroTxt = borse.length
+          ? ` · ${totale.gp} mo (${tasche.gp} addosso, ${totale.gp - tasche.gp} in ${borse.length} ${borse.length === 1 ? "borsa" : "borse"})`
+          : ` · ${totale.gp} mo`;
+        ui.notifications.info(`✅ Sincronizzato: ${actor.name} → ${targetName}${oroTxt}`);
       } else {
         const err = await res.json();
         console.error("Firestore Error:", err);

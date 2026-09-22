@@ -13,6 +13,9 @@
 // sono i materiali del crafting, mandati dal Master dalla sezione
 // "Spese dei materiali" nell'Officina. La macro scala le monete d'oro
 // dell'attore, scrive un messaggio in chat e cancella la voce dalla coda.
+// Guarda anche DENTRO LE BORSE: in dnd5e i contenitori hanno una loro
+// `system.currency`, e senza frugarci un PG che tiene l'oro nello zaino
+// risultava a zero. Si paga prima con le tasche, poi con le borse.
 //
 // USO: lanciala come GM quando vuoi importare gli oggetti in coda.
 // (Funziona identica su Foundry online: la macro gira nel tuo browser.)
@@ -31,6 +34,11 @@ const FIREBASE_CONFIG = {
   projectId: "TUO_PROJECT_ID",
   apiKey:    "TUA_API_KEY"
 };
+
+// Da dove si attinge per primo quando si paga: true = prima le tasche del PG
+// e poi le borse, false = prima le borse. (Le monete IN PIU' vanno sempre
+// addosso al PG, mai dentro una borsa.)
+const PRIMA_LE_TASCHE = true;
 
 const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
 
@@ -154,19 +162,59 @@ function buildItemData(d) {
           continue; // lascia in coda per riprovare
         }
         const amount = Math.max(0, Number(d.amount) || 0);
-        const cur = Number(foundry.utils.getProperty(actor, "system.currency.gp")) || 0;
         const add = d.op === "add";
-        const next = add ? cur + amount : Math.max(0, cur - amount);
-        const mancano = !add && amount > cur ? amount - cur : 0;
-        await actor.update({ "system.currency.gp": next });
+
+        // ── Le CASSE da cui prendere: le tasche del PG e poi ogni borsa.
+        // In dnd5e i contenitori (zaini, borse, sacchetti) hanno una loro
+        // `system.currency`: senza guardarci dentro un PG con l'oro nello
+        // zaino risultava al verde e la spesa finiva clampata a 0.
+        const borse = actor.items.filter((i) =>
+          (i.type === "container" || i.type === "backpack") &&
+          foundry.utils.getProperty(i, "system.currency"));
+        const casse = [
+          { nome: "tasche", leggi: () => Number(foundry.utils.getProperty(actor, "system.currency.gp")) || 0,
+            scrivi: (v) => actor.update({ "system.currency.gp": v }) },
+          ...borse.map((b) => ({ nome: b.name,
+            leggi: () => Number(foundry.utils.getProperty(b, "system.currency.gp")) || 0,
+            scrivi: (v) => b.update({ "system.currency.gp": v }) })),
+        ];
+        // L'ordine: si paga con quel che si ha addosso, poi si frugano le
+        // borse. Metti PRIMA_LE_TASCHE a false per invertirlo.
+        if (!PRIMA_LE_TASCHE) casse.reverse();
+
+        const prima = casse.reduce((a, c) => a + c.leggi(), 0);
+        const mosse = [];
+        let resto = amount;
+
+        if (add) {
+          // Le monete in piu' vanno sempre addosso al PG, non in una borsa.
+          const t = casse.find((c) => c.nome === "tasche") || casse[0];
+          await t.scrivi(t.leggi() + amount);
+          mosse.push(`${t.nome} +${amount}`);
+          resto = 0;
+        } else {
+          for (const c of casse) {
+            if (resto <= 0) break;
+            const ha = c.leggi();
+            if (ha <= 0) continue;
+            const preso = Math.min(ha, resto);
+            await c.scrivi(ha - preso);
+            resto -= preso;
+            mosse.push(`${c.nome} −${preso}`);
+          }
+        }
+
+        const dopo = casse.reduce((a, c) => a + c.leggi(), 0);
+        const mancano = resto; // > 0 solo se non bastavano nemmeno le borse
         await ChatMessage.create({
           speaker: { alias: "Officina" },
-          content: `<p><strong>${actor.name}</strong>: ${add ? "+" : "−"}${amount} mo (${cur} → ${next}).</p>`
+          content: `<p><strong>${actor.name}</strong>: ${add ? "+" : "−"}${amount} mo (${prima} → ${dopo}).</p>`
+            + (mosse.length > 1 ? `<p style="font-size:.9em;opacity:.8">Presi da: ${mosse.join(", ")}.</p>` : "")
             + `<p style="font-size:.9em;opacity:.8">${d.reason || ""}</p>`
-            + (mancano ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${mancano} mo, l'oro è stato messo a 0.</p>` : ""),
+            + (mancano ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${mancano} mo, tasche e borse sono a 0.</p>` : ""),
           whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
         });
-        console.log(`[Import] ${add ? "+" : "−"}${amount} mo → ${actor.name} (${cur} → ${next})`);
+        console.log(`[Import] ${add ? "+" : "−"}${amount} mo → ${actor.name} (${prima} → ${dopo})`, mosse);
         await fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
         gold++;
         continue;
