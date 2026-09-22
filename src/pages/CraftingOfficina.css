@@ -428,3 +428,24 @@
   .cr-page .off-go--bar { padding-bottom: 6px; }
   .cr-page .off-live-t { font-size: .78rem; }
 }
+
+/* ═══ Fallimento critico (2026-09-22) ═════════════════════════════════════
+   1 naturale (o la sfortuna della fretta): il banco resta occupato due minuti
+   con la barra ROSSA che pulsa, poi si scopre che materiali e monete sono persi. */
+.cr-page .off-work.is-fail { border-left-color: #b91c1c; box-shadow: 0 0 30px -12px #ef4444; }
+.cr-page .off-work.is-fail .nx-tag { color: #fca5a5; border-color: rgba(239, 68, 68, .6); background: rgba(185, 28, 28, .18); }
+.cr-page .off-work.is-fail .off-bar { border-color: rgba(239, 68, 68, .5); }
+.cr-page .off-work.is-fail .off-bar > span { background: linear-gradient(90deg, #7f1d1d, #ef4444); box-shadow: 0 0 16px rgba(239, 68, 68, .75); animation: off-fail-pulse 1.1s ease-in-out infinite; }
+.cr-page .off-work.is-fail .off-work-left, .cr-page .off-work.is-fail .off-work-roll b { color: #f87171; }
+@keyframes off-fail-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
+.cr-page .off-live.is-fail { border-left-color: #b91c1c; background: rgba(185, 28, 28, .1); }
+.cr-page .off-live.is-fail .off-live-bar > i { background: linear-gradient(90deg, #7f1d1d, #ef4444); animation: off-fail-pulse 1.1s ease-in-out infinite; }
+.cr-page .off-live.is-fail .off-live-t { color: #f87171; }
+.cr-page .off-board-list li.is-fail .off-bar--mini > span { background: linear-gradient(90deg, #7f1d1d, #ef4444); }
+
+.cr-page .off-esito.off-fail .nx-tag { color: #fca5a5; border-color: rgba(239, 68, 68, .6); background: rgba(185, 28, 28, .18); }
+.cr-page .off-esito.off-fail .off-esito-name { color: #f87171; }
+.cr-page .off-fail-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-family: "Alegreya", Georgia, serif; font-size: .9rem; color: var(--osso-body); }
+.cr-page .off-fail-list li { padding: 7px 10px; border-radius: 3px; background: rgba(185, 28, 28, .08); border: 1px solid rgba(239, 68, 68, .28); color: var(--osso); }
+.cr-page .off-fail-list b { color: var(--oro); }
+.cr-page .off-fail-list strong { color: #f87171; }

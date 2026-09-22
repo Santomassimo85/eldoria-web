@@ -38,6 +38,9 @@ const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
 const LEGACY_QUALITY = { sup: "di qualità superiore", fortuna: "di fortuna" };
 // Costo dei materiali della rarità, in monete.
 const tierMo = (tier) => PREGIATURA_COSTS.find((c) => c.tier === normTier(tier))?.mo || 0;
+// Un 1 naturale (o il fallimento della fretta) rovina il lavoro: il banco resta
+// occupato due minuti con la barra rossa, poi si scopre il disastro.
+const FAIL_MINUTES = 2;
 
 // Caratteristiche del PG in formato Foundry ({score, mod, save}) o vecchio (numero).
 function statMod(charData, key) {
@@ -203,7 +206,7 @@ export default function CraftingOfficina() {
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
   const previewName = activeEntry ? (itemChoices(activeEntry.name).length > 1 ? (choice || itemChoices(activeEntry.name)[0]) : activeEntry.name) : "";
   const preview = useMemo(() => {
-    if (!activeEntry || !activeProf) return null;
+    if (!activeEntry || !activeProf || activeEntry.failed) return null;
     const enh = ENHANCERS.find((x) => x.key === enhKey) || null;
     return craftedItemToFoundryPayload({
       profession: activeProf, tier: activeEntry.tier, name: activeEntry.name, desc: activeEntry.desc,
@@ -213,8 +216,12 @@ export default function CraftingOfficina() {
     });
   }, [activeEntry, activeProf, previewName, enhKey, note, charData?.name, prog.grado.name, uid]);
   const previewType = preview ? preview.foundryType : "";
+  // Si mostrano SOLO i potenziatori che il personaggio possiede davvero: gli altri
+  // sparivano dietro un lucchetto e rubavano spazio. Il Master li vede tutti
+  // (enhancerEvidence gli dà sempre ok).
   const enhancersFor = ENHANCERS.filter((e) => !previewType || e.applies.includes(previewType))
-    .map((e) => ({ ...e, ev: enhancerEvidence(e, { charData, marketItems, isMaster }) }));
+    .map((e) => ({ ...e, ev: enhancerEvidence(e, { charData, marketItems, isMaster }) }))
+    .filter((e) => e.ev.ok);
   const enhSel = enhancersFor.find((e) => e.key === enhKey) || null;
 
   if (!uid) {
@@ -264,9 +271,12 @@ export default function CraftingOfficina() {
       const compBonus = compRolls.reduce((s, c) => s + c.roll, 0);
       const rollBonus = bonus + compBonus;
       const total = d20 + rollBonus;
-      // Di fretta: 5% di fallimento critico, i materiali vanno perduti e non esce nulla.
+      // Disastro: 1 naturale sul d20, oppure il fallimento critico della fretta (5%).
+      // In entrambi i casi materiali e monete sono persi e non esce nulla.
+      const fumble = d20 === 1;
       const critRoll = paceOpt.critFail ? rnd(100) : 0;
-      const failed = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
+      const paceFail = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
+      const failed = fumble || paceFail;
       let tier = tierByTotal(total);
       // Non si supera la rarità mirata (i materiali sono quelli); Molto raro/Leggendario solo dal grado giusto.
       if (TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(target)) tier = target;
@@ -275,18 +285,22 @@ export default function CraftingOfficina() {
       // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
       const picked = pickLine && tierMeta(tier).pick ? pickLine[tier] : null;
       const d12 = picked ? 0 : rnd(12);
-      const [name, desc] = failed ? ["Fallimento critico", `La fretta ha rovinato tutto: i materiali (${fmtMo(costMo)}) sono andati perduti e non è uscito nulla.`] : picked || prof.creazioni[tier][d12 - 1];
+      const failDesc = fumble
+        ? `Un 1 naturale: il pezzo ti si è rovinato fra le mani. I materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`
+        : `La fretta ha rovinato tutto: i materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`;
+      const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
+      const failMs = FAIL_MINUTES * 60000;
       const nat20 = d20 === 20;
       const startMs = srvNow.getTime();
       const entry = {
-        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: failed ? startMs : startMs + work.minutes * 60000, minutes: failed ? 0 : work.minutes, work,
+        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: startMs + (failed ? failMs : work.minutes * 60000), minutes: failed ? FAIL_MINUTES : work.minutes, work,
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
         invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo, pace: paceOpt.key, components: work.components,
         xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), nat20, inboxId: "", enhancer: "", choice: "", note: "",
-        failed, critRoll, skipped: failed, // fallito = chiuso subito, non blocca il banco
+        failed, fumble, critRoll, skipped: false, // anche il disastro sta sul banco: due minuti di barra rossa
         componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
       };
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
@@ -325,7 +339,7 @@ export default function CraftingOfficina() {
       setComps([]); setPickIdx(-1); setInvest(""); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
-      if (failed) setMsg(`Errore: 💥 Fallimento critico (${critRoll}/100 sotto il ${paceOpt.critFail}%): la fretta ha rovinato il lavoro. I materiali (${fmtMo(costMo)}) sono perduti, non hai creato nulla e la prova è consumata.`);
+      if (failed) setMsg(`💥 ${fumble ? "1 naturale" : `Fallimento critico della fretta (${critRoll}/100 sotto il ${paceOpt.critFail}%)`}: il lavoro sta andando a rotoli. Fra ${FAIL_MINUTES} minuti vedrai i danni.`);
       else setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. Paghi ${fmtMo(costMo)} di materiali. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
@@ -456,10 +470,10 @@ export default function CraftingOfficina() {
 
       {/* ── Il lavoro sul banco si vede da ogni piega ── */}
       {prof && pendingEntry && !revealed && (
-        <button type="button" className={`off-live${ready ? " is-ready" : ""}`} onClick={() => setTab("banco")} style={{ "--q": tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
-          <span className="off-live-ic" aria-hidden="true">{ready ? "✨" : "🔨"}</span>
+        <button type="button" className={`off-live${pendingEntry.failed ? " is-fail" : ready ? " is-ready" : ""}`} onClick={() => setTab("banco")} style={{ "--q": pendingEntry.failed ? "#b91c1c" : tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
+          <span className="off-live-ic" aria-hidden="true">{pendingEntry.failed ? "💥" : ready ? "✨" : "🔨"}</span>
           <span className="off-live-main">
-            <b>{ready ? "Il lavoro è finito: ritira l'oggetto" : `Sul banco · ${pendingEntry.pickName || "oggetto a sorpresa"}`}</b>
+            <b>{pendingEntry.failed ? (ready ? "Fallimento critico: guarda i danni" : "Il lavoro sta andando a rotoli…") : ready ? "Il lavoro è finito: ritira l'oggetto" : `Sul banco · ${pendingEntry.pickName || "oggetto a sorpresa"}`}</b>
             <span className="off-live-bar"><i style={{ width: `${workPct}%` }} /></span>
           </span>
           <span className="off-live-t">{ready ? "pronto" : fmtCountdown(readyAt - nowMs)}</span>
@@ -476,7 +490,7 @@ export default function CraftingOfficina() {
         ))}
       </div>
 
-      {msg && <div className={`off-msg${msg.startsWith("Errore") ? " is-err" : ""}`}><span>{msg}</span><button type="button" className="off-msg-x" onClick={() => setMsg("")} aria-label="Chiudi">✕</button></div>}
+      {msg && <div className={`off-msg${msg.startsWith("Errore") || msg.startsWith("💥") ? " is-err" : ""}`}><span>{msg}</span><button type="button" className="off-msg-x" onClick={() => setMsg("")} aria-label="Chiudi">✕</button></div>}
 
       {/* ══ PIEGA: IL BANCO ══ */}
       {curTab === "banco" && (<>
@@ -669,14 +683,16 @@ export default function CraftingOfficina() {
 
       {/* ── SUL BANCO: il lavoro in corso, solo la barra ── */}
       {prof && pendingEntry && !revealed && (
-        <div className={`nx-pannello off-box off-work${ready ? " is-ready" : ""}`} style={{ "--q": tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
+        <div className={`nx-pannello off-box off-work${pendingEntry.failed ? " is-fail" : ready ? " is-ready" : ""}`} style={{ "--q": pendingEntry.failed ? "#b91c1c" : tierMeta(pendingEntry.targetTier || pendingEntry.tier).color }}>
           <div className="off-work-head">
-            <span className="nx-tag">{ready ? "✓ Lavoro finito" : "⚒ Sul banco"}</span>
-            <span className="off-work-roll">{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}</span>
+            <span className="nx-tag">{pendingEntry.failed ? (ready ? "💥 Disastro" : "💥 Sta andando a rotoli") : ready ? "✓ Lavoro finito" : "⚒ Sul banco"}</span>
+            <span className="off-work-roll">{pendingEntry.failed
+              ? <>d20 <b>{pendingEntry.d20}</b>{pendingEntry.fumble ? <> · <b>1 naturale</b></> : <> · fretta</>} → <b>fallimento critico</b></>
+              : <>{pendingEntry.pickName ? <>{tierMeta(pendingEntry.targetTier).icon} {pendingEntry.pickName} · </> : null}d20 <b>{pendingEntry.d20}</b> {sign(pendingEntry.bonus)} = <b>{pendingEntry.total}</b> → {tierMeta(pendingEntry.tier).icon} {tierMeta(pendingEntry.tier).label}</>}</span>
           </div>
           <div className="off-bar" role="progressbar" aria-valuenow={workPct} aria-valuemin="0" aria-valuemax="100">
             <span style={{ width: `${workPct}%` }} />
-            <i className="off-bar-anvil" style={{ left: `${workPct}%` }} aria-hidden="true">{ready ? "✨" : "🔨"}</i>
+            <i className="off-bar-anvil" style={{ left: `${workPct}%` }} aria-hidden="true">{pendingEntry.failed ? "💥" : ready ? "✨" : "🔨"}</i>
           </div>
           <div className="off-work-times">
             <span><small>Iniziato</small>{whenLabel(pendingEntry.at, now)}</span>
@@ -684,10 +700,34 @@ export default function CraftingOfficina() {
             <span><small>Pronto</small>{whenLabel(readyAt, now)}</span>
           </div>
           <p className="nx-nota off-work-note">
-            {ready ? "L'oggetto è finito: ritiralo per vedere cos'è uscito e mandarlo al Master." : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.</>}
+            {pendingEntry.failed
+              ? (ready ? "Il lavoro è andato perduto: guarda cos'è rimasto." : <>Il pezzo si sta rovinando sul banco: fra <strong>{fmtCountdown(readyAt - nowMs)}</strong> vedrai i danni.</>)
+              : ready ? "L'oggetto è finito: ritiralo per vedere cos'è uscito e mandarlo al Master."
+              : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.</>}
           </p>
           <div className="off-go">
-            <button type="button" className="cta off-cta" disabled={busy || !ready} onClick={claim}>{busy ? "…" : ready ? "📦 Ritira l'oggetto" : `⏳ Pronto tra ${fmtCountdown(readyAt - nowMs)}`}</button>
+            <button type="button" className="cta off-cta" disabled={busy || !ready} onClick={claim}>{busy ? "…" : pendingEntry.failed ? (ready ? "💥 Guarda i danni" : `⏳ Ancora ${fmtCountdown(readyAt - nowMs)}`) : ready ? "📦 Ritira l'oggetto" : `⏳ Pronto tra ${fmtCountdown(readyAt - nowMs)}`}</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DISASTRO: niente oggetto, materiali e monete perduti ── */}
+      {prof && activeEntry && activeEntry.failed && (
+        <div className="nx-pannello off-box off-esito off-fail" style={{ "--q": "#b91c1c" }}>
+          <div className="off-esito-head">
+            <span className="nx-tag">💥 Fallimento critico</span>
+            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null}{activeEntry.fumble ? <> · <b>1 naturale</b></> : <> · fretta ({activeEntry.critRoll}/100)</>} · +0 PE</div>
+          </div>
+          <h3 className="nx-titolo off-esito-name">Hai perso tutto</h3>
+          <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
+          <ul className="off-fail-list">
+            <li>💰 <b>{fmtMo(activeEntry.costMo || 0)}</b> di materiali: <strong>persi</strong>, toglili dal tuo oro in gioco.</li>
+            {(activeEntry.components || []).length > 0 && <li>🧪 Componenti usati: <strong>consumati</strong> ({(activeEntry.components || []).map((k) => componentByKey(k)?.name || k).join(", ")}).</li>}
+            <li>📦 Oggetto creato: <strong>nessuno</strong>, non c'è niente da mandare al Master.</li>
+            <li>📈 Esperienza: <strong>0 PE</strong>, e la prova di oggi è consumata.</li>
+          </ul>
+          <div className="off-go off-go--bar">
+            <button type="button" className="cta off-cta" disabled={busy} onClick={() => skipEntry(activeEntry)}>Libera il banco</button>
           </div>
         </div>
       )}
@@ -718,19 +758,21 @@ export default function CraftingOfficina() {
           )}
 
           <div className="off-field">
-            <span className="off-label">Potenziatore <small>(facoltativo · solo se lo possiedi davvero)</small></span>
-            <div className="off-choices">
+            <span className="off-label">Potenziatore <small>(facoltativo · qui ci sono solo i tuoi)</small></span>
+            {enhancersFor.length > 0 && <div className="off-choices">
               <button type="button" className={`nx-pillola${!enhKey ? " on" : ""}`} onClick={() => setEnhKey("")}>Nessuno</button>
               {enhancersFor.map((e) => (
-                <button key={e.key} type="button" className={`nx-pillola off-enh${enhKey === e.key ? " on" : ""}${e.ev.ok ? " is-ok" : " is-no"}`} disabled={!e.ev.ok} onClick={() => setEnhKey(e.key)} title={e.ev.ok ? `${e.desc} · ${e.ev.label}` : e.ev.label}>
-                  {e.icon} {e.name} <em>{e.ev.ok ? "✓" : "🔒"}</em>
+                <button key={e.key} type="button" className={`nx-pillola off-enh is-ok${enhKey === e.key ? " on" : ""}`} onClick={() => setEnhKey(e.key)} title={`${e.desc} · ${e.ev.label}`}>
+                  {e.icon} {e.name} <em>✓</em>
                 </button>
               ))}
-            </div>
+            </div>}
             {enhSel ? (
               <p className="off-own"><strong>{enhSel.icon} {enhSel.name}</strong> — {enhSel.desc} <span className="off-proof">✓ {enhSel.ev.label}{enhSel.ev.source === "scorta" ? " · se ne consuma 1" : ""}</span></p>
             ) : (
-              <p className="nx-nota off-enh-help">Si sblocca (✓) solo ciò che risulta tuo: assegnato dal Master, sulla scheda sincronizzata da Foundry o comprato al Mercato Nero. Il resto è 🔒.</p>
+              <p className="nx-nota off-enh-help">{enhancersFor.length
+                ? "Compaiono solo i potenziatori che risultano tuoi: assegnati dal Master, sulla scheda sincronizzata da Foundry o comprati al Mercato Nero."
+                : "Non possiedi potenziatori adatti a questo oggetto. Si trovano in gioco: te li assegna il Master, li porti sulla scheda Foundry o li compri al Mercato Nero."}</p>
             )}
           </div>
 
@@ -884,7 +926,7 @@ function MasterBoard({ chars, nowMs }) {
             const b = r.bench;
             const tm = b ? tierMeta(b.targetTier || b.tier) : null;
             return (
-              <li key={r.c.uid} className={r.working ? "is-working" : r.ready ? "is-ready" : ""} style={tm ? { "--q": tm.color } : undefined}>
+              <li key={r.c.uid} className={b?.failed ? "is-fail" : r.working ? "is-working" : r.ready ? "is-ready" : ""} style={{ "--q": b?.failed ? "#b91c1c" : tm ? tm.color : undefined }}>
                 <div className="off-board-who">
                   <b>{r.c.name}</b>
                   <small>{r.prof ? `${r.prof.icon} ${r.prof.name}` : "senza professione"} · {r.total} creazioni · oggi {r.al.usedToday ? "1" : "0"}/{CRAFT_MAX_PER_DAY} · sett. {r.al.weekCount}/{CRAFT_MAX_PER_WEEK}</small>
@@ -892,9 +934,11 @@ function MasterBoard({ chars, nowMs }) {
                 {b ? (
                   <div className="off-board-job">
                     <div className="off-board-job-top">
-                      <span className={`off-log-st${r.ready ? " ok" : ""}`}>{r.working ? "⚒ sta forgiando" : "✓ finito, da ritirare"}</span>
-                      <b>{tm.icon} {b.pickName || b.name}</b>
-                      <small>punta a {tm.label}{b.pickName ? "" : " (d12 a fine lavoro)"} · esce {tierMeta(b.tier).label}{b.pickName && b.name !== b.pickName ? `: ${b.name}` : ""} · d20 {b.d20}{sign(b.bonus)}={b.total}</small>
+                      <span className={`off-log-st${b.failed ? " bad" : r.ready ? " ok" : ""}`}>{b.failed ? (r.working ? "💥 sta rovinando tutto" : "💥 disastro, da chiudere") : r.working ? "⚒ sta forgiando" : "✓ finito, da ritirare"}</span>
+                      <b>{b.failed ? "💥 Fallimento critico" : `${tm.icon} ${b.pickName || b.name}`}</b>
+                      <small>{b.failed
+                        ? `${b.fumble ? "1 naturale" : "fretta"} puntando a ${tm.label} · ${fmtMo(b.costMo || 0)} di materiali persi`
+                        : `punta a ${tm.label}${b.pickName ? "" : " (d12 a fine lavoro)"} · esce ${tierMeta(b.tier).label}${b.pickName && b.name !== b.pickName ? `: ${b.name}` : ""} · d20 ${b.d20}${sign(b.bonus)}=${b.total}`}</small>
                     </div>
                     <div className="off-bar off-bar--mini" role="progressbar" aria-valuenow={r.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${r.pct}%` }} /></div>
                     <div className="off-board-job-time">

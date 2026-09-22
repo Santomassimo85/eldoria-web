@@ -230,3 +230,7 @@
 .cr-page .cr-subfold > summary::-webkit-details-marker { display: none; }
 .cr-page .cr-subfold > summary::before { content: "▸ "; color: var(--el-2); }
 .cr-page .cr-subfold[open] > summary::before { content: "▾ "; }
+
+/* 1 naturale = fallimento critico (2026-09-22) */
+.cr-page .cr-fumble { margin: 10px 0 0; padding: 8px 12px; border-radius: 3px; background: rgba(185, 28, 28, .1); border: 1px solid rgba(239, 68, 68, .3); font-size: .86rem; line-height: 1.5; }
+.cr-page .cr-fumble strong { color: #f87171; }

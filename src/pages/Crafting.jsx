@@ -31,7 +31,7 @@ const PASSI = [
   { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa sai fare." },
   { ic: "🎯", k: "Scegli rarità e oggetto", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu uno dei 6 oggetti della tua professione. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: l'oggetto lo decide il d12.` },
   { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, quanto spendi nei materiali e il ritmo: accorciano il lavoro, alzano il tiro o migliorano l'oggetto." },
-  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta). Poi parte il tempo di lavoro: finito, ritiri l'oggetto e va su Foundry." },
+  { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta); un 1 naturale rovina tutto. Poi parte il tempo di lavoro: finito, ritiri l'oggetto e va su Foundry." },
 ];
 
 // ── Sommario ────────────────────────────────────────────────────────────────
@@ -192,6 +192,7 @@ export default function Crafting() {
                 <span className="cr-plus">+</span>
                 <span className="cr-formula-piece">Condizioni</span>
               </div>
+              <p className="nx-nota cr-fumble">💥 <strong>1 naturale = fallimento critico.</strong> Non conta nessun bonus: il pezzo si rovina sul banco, dopo <strong>2 minuti</strong> scopri il disastro, i materiali e le monete spese sono persi, non esce nulla e prendi 0 PE. La prova del giorno è comunque consumata.</p>
               <ul className="cr-formula-list">
                 <li><strong>Caratteristica</strong>: quella della professione (le professioni magiche usano la migliore fra Int, Sag e Car).</li>
                 <li><strong>Strumenti</strong>: il bonus di competenza, solo se gli strumenti della professione risultano sulla tua scheda. Senza, svantaggio.</li>
