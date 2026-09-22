@@ -449,3 +449,27 @@
 .cr-page .off-fail-list li { padding: 7px 10px; border-radius: 3px; background: rgba(185, 28, 28, .08); border: 1px solid rgba(239, 68, 68, .28); color: var(--osso); }
 .cr-page .off-fail-list b { color: var(--oro); }
 .cr-page .off-fail-list strong { color: #f87171; }
+
+/* ═══ Le fasce del d20 (2026-09-22) ═══════════════════════════════════════
+   Cosa esce per ogni totale, con il tempo e i PE di quella fascia: il tiro
+   decide l'oggetto E la durata del lavoro, quindi si vede prima di tirare. */
+.cr-page .off-bands { display: flex; flex-direction: column; gap: 4px; }
+.cr-page .off-band { display: grid; grid-template-columns: 62px minmax(120px, auto) 1fr auto; align-items: baseline; gap: 4px 10px; padding: 7px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-left: 3px solid var(--q, var(--el)); font-family: "Alegreya", Georgia, serif; font-size: .84rem; color: var(--osso-body); }
+.cr-page .off-band.is-top { background: color-mix(in srgb, var(--q, var(--el)) 14%, rgba(var(--ossidiana-rgb), .4)); border-color: color-mix(in srgb, var(--q, var(--el)) 55%, transparent); border-left-color: var(--q, var(--el)); }
+.cr-page .off-band.is-fail { border-style: dashed; }
+.cr-page .off-band-r { font-family: "Cinzel", Georgia, serif; font-size: .82rem; color: var(--osso); white-space: nowrap; }
+.cr-page .off-band-t { font-family: "Alegreya SC", "Alegreya", serif; font-size: .74rem; letter-spacing: .06em; color: color-mix(in srgb, var(--q, var(--el)) 55%, #fff); white-space: nowrap; }
+.cr-page .off-band-t i { font-style: normal; font-family: "Alegreya", Georgia, serif; letter-spacing: 0; font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-band-n { color: var(--osso); min-width: 0; }
+.cr-page .off-band.is-top .off-band-n { font-weight: 700; }
+.cr-page .off-band-x { font-size: .78rem; color: var(--osso-2); white-space: nowrap; }
+.cr-page .off-bands-note { margin: 8px 0 0; font-size: .82rem; line-height: 1.5; }
+.cr-page .off-bands-note strong { color: var(--el-2); }
+.cr-page .off-sum-k i { font-style: normal; font-family: "Alegreya", Georgia, serif; font-size: .74rem; letter-spacing: 0; text-transform: none; color: var(--osso-2); }
+.cr-page .off-sum-range { font-family: "Alegreya", Georgia, serif; font-size: .8rem; line-height: 1.45; color: var(--osso-body); }
+.cr-page .off-sum-range b { color: var(--el-2); }
+@media (max-width: 640px) {
+  .cr-page .off-band { grid-template-columns: 58px 1fr; }
+  .cr-page .off-band-n { grid-column: 2; }
+  .cr-page .off-band-x { grid-column: 2; }
+}

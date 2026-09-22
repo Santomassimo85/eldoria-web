@@ -5,7 +5,8 @@
 // il Ritmo di bottega (livello 6)
 // e il ritmo scelto (con calma = doppio tempo e +2 al tiro, di fretta = metà
 // tempo e −3). Quanto si spende nei materiali (INVESTMENTS) cambia tiro, PE e
-// qualità dell'oggetto, ma NON il tempo. Finché il lavoro non è finito l'oggetto resta "sul banco":
+// qualità dell'oggetto, ma NON il tempo. L'ESITO del tiro invece sì:
+// centrare la rarità costa il tempo preparato, mancarla lo allunga (OUTCOME_TIME). Finché il lavoro non è finito l'oggetto resta "sul banco":
 // si vede solo la barra del tempo. I limiti (1 al giorno, 3 a settimana)
 // restano quelli di craftingWeek.js e si consumano all'inizio del lavoro.
 
@@ -68,6 +69,42 @@ export const xpWithInvestment = (xp, inv) => { const i = investmentByKey(inv?.ke
 // Etichette dell'AIUTO, dismesso il 2026-09-22: servono solo a rileggere le prove vecchie.
 const LEGACY_HELP = { artigiano: "un artigiano", mastro: "un mastro competente" };
 
+// ── Quanto pesa l'ESITO del tiro sul tempo (2026-09-22) ─────────────────────
+// Il tempo che si prepara al banco è quello di un lavoro CENTRATO. Se il d20
+// manca la rarità mirata bisogna rifare pezzi e il lavoro si allunga; con un 20
+// naturale riesce al primo colpo e si accorcia. `dist` = di quante rarità
+// l'esito è sceso sotto quella a cui si puntava.
+export const OUTCOME_TIME = [
+  { key: "crit",   label: "20 naturale",            mult: 0.6,  desc: "Riesce al primo colpo: poco più della metà del tempo." },
+  { key: "centro", label: "Rarità centrata",        mult: 1,    desc: "Il tempo preparato, tale e quale." },
+  { key: "sotto1", label: "Una rarità sotto",       mult: 1.25, desc: "Qualche pezzo da rifare: un quarto di tempo in più." },
+  { key: "sotto2", label: "Due rarità sotto o più", mult: 1.5,  desc: "Mezzo lavoro da rifare: metà tempo in più." },
+];
+export const outcomeTimeBy = (k) => OUTCOME_TIME.find((o) => o.key === k) || OUTCOME_TIME[1];
+// Quale riga vale per questo esito.
+export const outcomeTimeFor = ({ dist = 0, nat20 = false } = {}) =>
+  outcomeTimeBy(nat20 && dist <= 0 ? "crit" : dist <= 0 ? "centro" : dist === 1 ? "sotto1" : "sotto2");
+// Applica l'esito al lavoro preparato: torna un `work` nuovo, con la voce in più
+// fra le `parts` così il conto resta leggibile.
+export function applyOutcomeTime(work, { dist = 0, nat20 = false } = {}) {
+  const o = outcomeTimeFor({ dist, nat20 });
+  const planned = Math.max(CRAFT_MIN_MINUTES, Math.round(Number(work?.minutes) || 0));
+  const minutes = Math.max(CRAFT_MIN_MINUTES, Math.round(planned * o.mult));
+  const parts = [...(work?.parts || [])];
+  if (minutes !== planned) parts.push({ key: "outcome", label: `Esito: ${o.label}`, min: minutes - planned });
+  return { ...work, minutes, parts, plannedMinutes: planned, outcome: o.key, outcomeMult: o.mult };
+}
+// Il minimo e il massimo che il lavoro può durare, prima di tirare.
+export function outcomeTimeRange(minutes) {
+  const planned = Math.max(CRAFT_MIN_MINUTES, Math.round(Number(minutes) || 0));
+  const mults = OUTCOME_TIME.map((o) => o.mult);
+  return {
+    planned,
+    min: Math.max(CRAFT_MIN_MINUTES, Math.round(planned * Math.min(...mults))),
+    max: Math.max(CRAFT_MIN_MINUTES, Math.round(planned * Math.max(...mults))),
+  };
+}
+
 // ── Ritmo del lavoro ────────────────────────────────────────────────────────
 export const PACE_OPTIONS = [
   { key: "calma",   icon: "🐢", label: "Con calma", mult: 2,   roll: 2,  desc: "Il doppio del tempo, +2 al tiro." },
@@ -124,5 +161,6 @@ export function craftTimeLabel(work) {
   if (work.help) bits.push(LEGACY_HELP[work.help] || String(work.help)); // prove di prima del 2026-09-22
   if (work.ritmoBottega) bits.push("ritmo di bottega");
   const p = paceByKey(work.pace); if (p.mult !== 1) bits.push(p.label.toLowerCase());
+  if (work.outcome && work.outcome !== "centro") bits.push(outcomeTimeBy(work.outcome).label.toLowerCase());
   return `${fmtMinutes(work.minutes)}${bits.length ? ` (${bits.join(", ")})` : ""}`;
 }

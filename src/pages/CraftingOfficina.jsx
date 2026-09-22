@@ -26,7 +26,7 @@ import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, cra
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, paceByKey, xpWithInvestment } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import "./CraftingOfficina.css";
 
@@ -201,6 +201,34 @@ export default function CraftingOfficina() {
   const costMo = investCostMo(baseMo, investOpt);
   const xpBase = XP_PER_TIER[target] || 0;
   const xpGain = xpWithInvestment(xpBase, investOpt);
+  // ── Le FASCE del d20: cosa esce, quanto dura e quanti PE dà, per ogni totale.
+  // Stessa logica del tiro (mai sopra la mirata, Scarso = Comune dal grado
+  // Artigiano), messa in tabella così si vede prima di tirare.
+  const bands = useMemo(() => {
+    const idxT = TIER_ORDER.indexOf(target);
+    const rows = [];
+    for (let i = idxT; i >= 0; i--) {
+      const meta = tierMeta(TIER_ORDER[i]);
+      const low = String(meta.range).split(/[–-]/)[0];
+      const merged = TIER_ORDER[i] === "scarso" && prog.scarsoAsComune;
+      const tier = merged ? "common" : TIER_ORDER[i];
+      if (merged && rows.some((r) => r.tier === "common")) { rows[rows.length - 1].range = `${low}–${String(rows[rows.length - 1].range).split(/[–-]/).pop()}`; continue; }
+      const tm = tierMeta(tier);
+      const name = tm.pick
+        ? (pickLine ? pickLine[tier][0] : "— scegli l'oggetto qui sopra —")
+        : `un oggetto a caso della tabella ${tm.label} (d12)`;
+      const dist = Math.max(0, idxT - TIER_ORDER.indexOf(tier));
+      rows.push({
+        key: TIER_ORDER[i], tier, top: i === idxT, merged,
+        range: i === idxT ? `${low}+` : meta.range,
+        name, dist,
+        minutes: applyOutcomeTime(work, { dist }).minutes,
+        xp: xpWithInvestment(XP_PER_TIER[tier] || 0, investOpt),
+      });
+    }
+    return rows;
+  }, [target, pickLine, work, investOpt, prog.scarsoAsComune]);
+  const timeRange = outcomeTimeRange(work.minutes);
 
   const activeEntry = revealed ? pendingEntry : null;
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
@@ -291,14 +319,19 @@ export default function CraftingOfficina() {
       const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
       const failMs = FAIL_MINUTES * 60000;
       const nat20 = d20 === 20;
+      // L'esito pesa sul tempo: centrare la rarità costa il tempo preparato,
+      // mancarla lo allunga, un 20 naturale lo accorcia.
+      const dist = Math.max(0, TIER_ORDER.indexOf(target) - TIER_ORDER.indexOf(tier));
+      const outWork = failed ? work : applyOutcomeTime(work, { dist, nat20 });
       const startMs = srvNow.getTime();
       const entry = {
-        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: startMs + (failed ? failMs : work.minutes * 60000), minutes: failed ? FAIL_MINUTES : work.minutes, work,
+        id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: startMs + (failed ? failMs : outWork.minutes * 60000), minutes: failed ? FAIL_MINUTES : outWork.minutes, work: outWork, plannedMinutes: work.minutes,
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
         invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo, pace: paceOpt.key, components: work.components,
+        dist, outcome: failed ? "" : outWork.outcome,
         xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, fumble, critRoll, skipped: false, // anche il disastro sta sul banco: due minuti di barra rossa
         componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
@@ -340,7 +373,13 @@ export default function CraftingOfficina() {
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
       if (failed) setMsg(`💥 ${fumble ? "1 naturale" : `Fallimento critico della fretta (${critRoll}/100 sotto il ${paceOpt.critFail}%)`}: il lavoro sta andando a rotoli. Fra ${FAIL_MINUTES} minuti vedrai i danni.`);
-      else setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. Paghi ${fmtMo(costMo)} di materiali. Il lavoro dura ${fmtMinutes(work.minutes)}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
+      else {
+        const o = outcomeTimeBy(outWork.outcome);
+        const timeTxt = outWork.minutes === work.minutes
+          ? `Il lavoro dura ${fmtMinutes(outWork.minutes)}`
+          : `${o.label}: il lavoro passa da ${fmtMinutes(work.minutes)} a ${fmtMinutes(outWork.minutes)}`;
+        setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. Paghi ${fmtMo(costMo)} di materiali. ${timeTxt}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
+      }
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
   }
@@ -574,6 +613,28 @@ export default function CraftingOfficina() {
                   </span>
                 </div>
               )}
+
+              <h3 className="off-h"><span className="orb" aria-hidden="true">✦</span> Cosa può uscire <small>il tiro decide oggetto, tempo e PE</small></h3>
+              <div className="off-bands">
+                {bands.map((b) => {
+                  const tm = tierMeta(b.tier);
+                  return (
+                    <div key={b.key} className={`off-band${b.top ? " is-top" : ""}`} style={{ "--q": tm.color }}>
+                      <span className="off-band-r">{b.range}</span>
+                      <span className="off-band-t">{tm.icon} {tm.label}{b.merged ? <i> (lo Scarso ti conta come Comune)</i> : null}</span>
+                      <span className="off-band-n">{b.name}</span>
+                      <span className="off-band-x">⏱ {fmtMinutes(b.minutes)} · +{b.xp} PE</span>
+                    </div>
+                  );
+                })}
+                <div className="off-band is-fail" style={{ "--q": "#b91c1c" }}>
+                  <span className="off-band-r">1 nat.</span>
+                  <span className="off-band-t">💥 Disastro</span>
+                  <span className="off-band-n">niente: materiali e monete perduti</span>
+                  <span className="off-band-x">⏱ {FAIL_MINUTES} min · +0 PE</span>
+                </div>
+              </div>
+              <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60% e PE doppi.</p>
             </div>
 
             <div className="off-bank-col off-bank-side">
@@ -647,12 +708,13 @@ export default function CraftingOfficina() {
               {/* riepilogo: tempo + tiro + spesa */}
               <div className="off-sum">
                 <div className="off-sum-time">
-                  <span className="off-sum-k">Tempo di lavoro</span>
+                  <span className="off-sum-k">Tempo di lavoro <i>se centri la rarità</i></span>
                   <b>⏱ {fmtMinutes(work.minutes)}</b>
+                  <span className="off-sum-range">col tiro può andare da <b>{fmtMinutes(timeRange.min)}</b> (20 naturale) a <b>{fmtMinutes(timeRange.max)}</b> (due rarità sotto)</span>
                   <span className="off-sum-parts">
                     {work.parts.map((p) => <span key={p.key} className={`off-part${p.min < 0 ? " is-less" : p.key !== "base" && p.min > 0 ? " is-more" : ""}`}>{p.label} {p.key === "base" ? fmtMinutes(p.min) : `${p.min < 0 ? "−" : "+"}${fmtMinutes(Math.abs(p.min))}`}</span>)}
                   </span>
-                  <small>pronto {whenLabel(nowMs + work.minutes * 60000, now)} se inizi adesso · il tiro non lo cambia</small>
+                  <small>pronto {whenLabel(nowMs + work.minutes * 60000, now)} se inizi adesso e centri la rarità</small>
                 </div>
                 <div className="off-sum-roll">
                   <span className="off-sum-k">Il tuo tiro</span>
@@ -703,7 +765,7 @@ export default function CraftingOfficina() {
             {pendingEntry.failed
               ? (ready ? "Il lavoro è andato perduto: guarda cos'è rimasto." : <>Il pezzo si sta rovinando sul banco: fra <strong>{fmtCountdown(readyAt - nowMs)}</strong> vedrai i danni.</>)
               : ready ? "L'oggetto è finito: ritiralo per vedere cos'è uscito e mandarlo al Master."
-              : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.</>}
+              : <>Il lavoro dura <strong>{pendingEntry.work ? craftTimeLabel(pendingEntry.work) : fmtMinutes(pendingEntry.minutes || 0)}</strong>{pendingEntry.plannedMinutes && pendingEntry.plannedMinutes !== pendingEntry.minutes ? <> invece dei {fmtMinutes(pendingEntry.plannedMinutes)} preparati, perché {outcomeTimeBy(pendingEntry.outcome).label.toLowerCase()}</> : null}: finché non è finito l'oggetto resta sul banco. Puoi chiudere la pagina e tornare.</>}
           </p>
           <div className="off-go">
             <button type="button" className="cta off-cta" disabled={busy || !ready} onClick={claim}>{busy ? "…" : pendingEntry.failed ? (ready ? "💥 Guarda i danni" : `⏳ Ancora ${fmtCountdown(readyAt - nowMs)}`) : ready ? "📦 Ritira l'oggetto" : `⏳ Pronto tra ${fmtCountdown(readyAt - nowMs)}`}</button>
@@ -737,7 +799,7 @@ export default function CraftingOfficina() {
         <div className="nx-pannello off-box off-esito" style={{ "--q": tierMeta(activeEntry.tier).color }}>
           <div className="off-esito-head">
             <span className="nx-tag">{tierMeta(activeEntry.tier).icon} {tierMeta(activeEntry.tier).label}{activeEntry.upgraded ? " · ✦ superiore" : ""}</span>
-            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null} {sign(activeEntry.bonus)} = <b>{activeEntry.total}</b>{activeEntry.d12 ? <> · d12 <b>{activeEntry.d12}</b></> : null} · +{activeEntry.xp} PE{activeEntry.minutes ? <> · ⏱ {fmtMinutes(activeEntry.minutes)}</> : null}</div>
+            <div className="off-esito-roll">d20 <b>{activeEntry.d20}</b>{activeEntry.adv ? <small> ({activeEntry.adv === "adv" ? "vant." : "svant."} {activeEntry.d20b})</small> : null} {sign(activeEntry.bonus)} = <b>{activeEntry.total}</b>{activeEntry.d12 ? <> · d12 <b>{activeEntry.d12}</b></> : null} · +{activeEntry.xp} PE{activeEntry.minutes ? <> · ⏱ {fmtMinutes(activeEntry.minutes)}{activeEntry.plannedMinutes && activeEntry.plannedMinutes !== activeEntry.minutes ? <small> (previsti {fmtMinutes(activeEntry.plannedMinutes)} · {outcomeTimeBy(activeEntry.outcome).label.toLowerCase()})</small> : null}</> : null}</div>
           </div>
           <h3 className="nx-titolo off-esito-name">{previewName}</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>

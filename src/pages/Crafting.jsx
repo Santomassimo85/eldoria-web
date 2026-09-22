@@ -13,7 +13,7 @@ import {
 } from "../data/crafting";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER } from "../data/craftingProgress";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK } from "../data/craftingWeek";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, fmtMinutes } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, OUTCOME_TIME, PACE_OPTIONS, TOOLS_MINUTES, componentEffectLabel, fmtMinutes } from "../data/craftingTime";
 import GlacierHero from "../components/glacier/GlacierHero";
 import "./Crafting.css";
 import "../styles/cinematic.css";
@@ -215,13 +215,27 @@ export default function Crafting() {
           <details id="cr-tempo" className="cr-section cr-fold" data-chapter="4">
             <summary className="gl-sezlabel">4 · Il tempo di lavoro</summary>
             <p className="nx-nota cr-section-sub">
-              Ogni lavoro ha un tempo <strong>fisso, in tempo reale</strong>, che vedi prima di tirare: il dado non lo cambia. Finché non è passato vedi solo la barra; poi ritiri l'oggetto.
+              Ogni lavoro ha un tempo <strong>in tempo reale</strong>. Al banco prepari il tempo di un lavoro <strong>centrato</strong>: quello è il numero che vedi prima di tirare. Poi è l'<strong>esito del dado</strong> a dire quanto dura davvero. Finché non è passato vedi solo la barra; poi ritiri l'oggetto.
             </p>
+            <h4 className="cr-subtitle">Il tempo base della rarità</h4>
             <div className="cr-time-base">
               {PREGIATURE.filter(p => CRAFT_BASE_MINUTES[p.key]).map(p => (
                 <span key={p.key} className="cr-time-chip" style={{ "--q": p.color }}><i aria-hidden="true">{p.icon}</i> {p.label} <b>{fmtMinutes(CRAFT_BASE_MINUTES[p.key])}</b></span>
               ))}
             </div>
+            <h4 className="cr-subtitle">Quanto lo sposta l'esito del tiro</h4>
+            <div className="cr-time-base">
+              {OUTCOME_TIME.map(o => (
+                <span key={o.key} className="cr-time-chip" style={{ "--q": o.mult < 1 ? "#4ade80" : o.mult > 1.3 ? "#f87171" : o.mult > 1 ? "#fbbf24" : "#8a7a4a" }}>
+                  <i aria-hidden="true">{o.mult < 1 ? "⚡" : o.mult > 1 ? "🔁" : "⚒"}</i> {o.label} <b>×{String(o.mult).replace(".", ",")}</b>
+                </span>
+              ))}
+              <span className="cr-time-chip" style={{ "--q": "#b91c1c" }}><i aria-hidden="true">💥</i> 1 naturale <b>2 min</b></span>
+            </div>
+            <p className="nx-nota cr-section-sub">
+              Nell'Officina la tabella <strong>"Cosa può uscire"</strong> ti mostra, prima di tirare, ogni fascia del d20 con l'oggetto che ne esce, il tempo di quella fascia e i PE.
+            </p>
+            <h4 className="cr-subtitle">Quanto lo accorcia il banco</h4>
             <div className="nx-griglia cr-time-grid">
               <div className="nx-pannello cr-time-card">
                 <span className="cr-passo-ic" aria-hidden="true">🧰</span>
