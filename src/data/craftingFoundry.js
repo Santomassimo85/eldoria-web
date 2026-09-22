@@ -251,3 +251,31 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     saveDC: 0,
   };
 }
+
+// ── Spesa dei materiali → coda per Foundry (2026-09-22) ─────────────────────
+// Le monete dei materiali si pagano in gioco. Invece di ricordarselo a voce, la
+// prova può finire in `foundry_inbox` come documento `kind: "gold"`: la macro
+// "Crea Oggetti dal sito → Foundry" lo riconosce, toglie le monete dall'attore
+// col flag `world.firebaseUID` giusto e cancella il documento.
+// NB: i documenti degli OGGETTI non hanno `kind` (la macro li tratta come "item").
+export function craftGoldPayload({ crafter, amount, tierLabel, itemName, components = [], failed = false, nat20 = false, note = "" }) {
+  const what = failed ? "prova fallita" : itemName || tierLabel || "creazione";
+  const bits = [
+    `Officina · materiali per ${what}${tierLabel && !failed ? ` (${tierLabel})` : ""}`,
+    components.length ? `Componenti consumati: ${components.join(", ")}` : "",
+    nat20 ? "20 naturale: costo dimezzato, ha usato metà materiali" : "",
+    failed ? "Fallimento critico: materiali perduti, nessun oggetto" : "",
+    note,
+  ].filter(Boolean);
+  return {
+    kind: "gold",
+    op: "subtract",
+    currency: "gp",
+    amount: Math.max(0, Math.round(Number(amount) || 0)),
+    name: `−${Math.max(0, Math.round(Number(amount) || 0))} mo · ${what}`,
+    reason: bits.join(" · "),
+    target: "player",
+    targetUid: crafter.uid,
+    targetName: crafter.name || "",
+  };
+}

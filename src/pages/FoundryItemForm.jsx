@@ -484,12 +484,15 @@ export default function FoundryItemForm() {
             <div className="dmt-li" key={p.id}>
               <div className="n">
                 {p.name}
-                <span className="npcgen-chip dmt-pill">{(FOUNDRY_TYPES.find(x => x.v === p.foundryType) || {}).label || p.foundryType}</span>
+                {p.kind === "gold"
+                  ? <span className="npcgen-chip dmt-pill fdy-craft" title="Spesa dei materiali dell'Officina: la macro la scala dall'oro">💰 {p.op === "add" ? "monete in più" : "monete da scalare"}</span>
+                  : <span className="npcgen-chip dmt-pill">{(FOUNDRY_TYPES.find(x => x.v === p.foundryType) || {}).label || p.foundryType}</span>}
                 <span className="npcgen-chip dmt-pill">{p.status === "imported" ? "✅ importato" : "⏳ in attesa"}</span>
                 {p.origin === "crafting" && <span className="npcgen-chip dmt-pill fdy-craft" title="Creato dal giocatore nell'Officina del Crafting">⚒ Officina{p.crafterName ? ` · ${p.crafterName}` : ""}</span>}
               </div>
               <div className="d">
                 {p.target === "player" ? `→ ${p.targetName || "giocatore"}` : "→ mondo"}
+                {p.kind === "gold" ? ` · ${p.reason || ""}` : ""}
                 {p.damageFormula ? ` · ${p.damageFormula} ${p.damageType}` : ""}
                 {p.origin === "crafting" && p.craft && (
                   <span className="fdy-craft-note"> · {PROFESSIONI.find(x => x.key === p.craft.profession)?.name || p.craft.profession} · rarità {tierByKey(p.craft.tier).label} (mirava {tierByKey(p.craft.targetTier).label}) · d20 {p.craft.d20} → {p.craft.total}{p.craft.d12 ? ` · d12 ${p.craft.d12}` : " · oggetto scelto dal catalogo"}{p.craft.cost ? ` · materiali ${p.craft.cost}` : ""}{p.craft.work ? ` · ⏱ lavoro ${p.craft.work}` : ""}{p.craft.componentBonus ? ` · componenti +${p.craft.componentBonus} al tiro` : ""}{p.craft.componentProofs?.length ? ` · possesso: ${p.craft.componentProofs.join("; ")}` : ""}{p.craft.toolsProof ? ` · strumenti ${p.craft.toolsProof}` : ""}{p.craft.componentEffects?.length ? ` · ⚠ DA DECIDERE: ${p.craft.componentEffects.join("; ")}` : ""}{p.craft.enhancer ? ` · potenziatore ${ENHANCERS.find(e => e.key === p.craft.enhancer)?.name || p.craft.enhancer}${p.craft.enhancerProof ? ` (${p.craft.enhancerProof})` : p.craft.enhancerOwned ? " (dichiarato, non verificato)" : ""}` : ""}{p.craft.mods?.length ? ` · condizioni: ${p.craft.mods.join(", ")}` : ""}{p.craft.note ? ` · nota: "${p.craft.note}"` : ""}</span>

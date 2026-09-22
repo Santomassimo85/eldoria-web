@@ -25,7 +25,7 @@ import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, postaz
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
-import { ENHANCERS, TIER_TO_FOUNDRY, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
+import { ENHANCERS, TIER_TO_FOUNDRY, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import "./CraftingOfficina.css";
@@ -41,6 +41,8 @@ const tierMo = (tier) => PREGIATURA_COSTS.find((c) => c.tier === normTier(tier))
 // Un 1 naturale (o il fallimento della fretta) rovina il lavoro: il banco resta
 // occupato due minuti con la barra rossa, poi si scopre il disastro.
 const FAIL_MINUTES = 2;
+// 20 naturale: metà dei materiali basta, quindi si paga la metà.
+const NAT20_COST_MULT = 0.5;
 
 // Caratteristiche del PG in formato Foundry ({score, mod, save}) o vecchio (numero).
 function statMod(charData, key) {
@@ -319,6 +321,8 @@ export default function CraftingOfficina() {
       const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
       const failMs = FAIL_MINUTES * 60000;
       const nat20 = d20 === 20;
+      // 20 naturale: tanta bravura che i materiali bastano per metà della spesa.
+      const paidMo = nat20 && !failed ? Math.round(costMo * NAT20_COST_MULT) : costMo;
       // L'esito pesa sul tempo: centrare la rarità costa il tempo preparato,
       // mancarla lo allunga, un 20 naturale lo accorcia.
       const dist = Math.max(0, TIER_ORDER.indexOf(target) - TIER_ORDER.indexOf(tier));
@@ -330,7 +334,8 @@ export default function CraftingOfficina() {
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
-        invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo, pace: paceOpt.key, components: work.components,
+        invest: investOpt.key, upgraded: !failed && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
+        goldInboxId: "", goldDone: false,
         dist, outcome: failed ? "" : outWork.outcome,
         xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, fumble, critRoll, skipped: false, // anche il disastro sta sul banco: due minuti di barra rossa
@@ -378,7 +383,8 @@ export default function CraftingOfficina() {
         const timeTxt = outWork.minutes === work.minutes
           ? `Il lavoro dura ${fmtMinutes(outWork.minutes)}`
           : `${o.label}: il lavoro passa da ${fmtMinutes(work.minutes)} a ${fmtMinutes(outWork.minutes)}`;
-        setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. Paghi ${fmtMo(costMo)} di materiali. ${timeTxt}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, raddoppiati!)" : ""}.`);
+        const costTxt = nat20 ? `Paghi solo ${fmtMo(paidMo)} invece di ${fmtMo(costMo)}: col 20 naturale ti è bastata metà dei materiali` : `Paghi ${fmtMo(paidMo)} di materiali`;
+        setMsg(`${tm.icon} ${d20}${advMode ? ` (${advMode === "adv" ? "vantaggio" : "svantaggio"}: ${a}/${b})` : ""} ${sign(rollBonus)}${compTxt} = ${total} → ${tm.label}${investOpt.upgrade ? " (di fattura superiore)" : ""}. ${costTxt}. ${timeTxt}: l'oggetto si ritira ${whenLabel(entry.readyAt, srvNow)}. +${entry.xp} PE${nat20 ? " (20 naturale, PE raddoppiati!)" : ""}.`);
       }
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
@@ -634,7 +640,7 @@ export default function CraftingOfficina() {
                   <span className="off-band-x">⏱ {FAIL_MINUTES} min · +0 PE</span>
                 </div>
               </div>
-              <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60% e PE doppi.</p>
+              <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60%, PE doppi e <strong>materiali a metà prezzo</strong>, perché te ne è bastata la metà.</p>
             </div>
 
             <div className="off-bank-col off-bank-side">
@@ -727,7 +733,7 @@ export default function CraftingOfficina() {
                     {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
                     <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
                   </div>
-                  <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null}, da pagare in gioco · <b>+{xpGain} PE</b> se esce {targetMeta.label}</span>
+                  <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(Math.round(costMo * NAT20_COST_MULT))}</i></span>
                 </div>
               </div>
 
@@ -783,7 +789,7 @@ export default function CraftingOfficina() {
           <h3 className="nx-titolo off-esito-name">Hai perso tutto</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
           <ul className="off-fail-list">
-            <li>💰 <b>{fmtMo(activeEntry.costMo || 0)}</b> di materiali: <strong>persi</strong>, toglili dal tuo oro in gioco.</li>
+            <li>💰 <b>{fmtMo(activeEntry.costMo || 0)}</b> di materiali: <strong>persi</strong>. Il Master li scala dal tuo oro con la macro di Foundry.</li>
             {(activeEntry.components || []).length > 0 && <li>🧪 Componenti usati: <strong>consumati</strong> ({(activeEntry.components || []).map((k) => componentByKey(k)?.name || k).join(", ")}).</li>}
             <li>📦 Oggetto creato: <strong>nessuno</strong>, non c'è niente da mandare al Master.</li>
             <li>📈 Esperienza: <strong>0 PE</strong>, e la prova di oggi è consumata.</li>
@@ -803,6 +809,11 @@ export default function CraftingOfficina() {
           </div>
           <h3 className="nx-titolo off-esito-name">{previewName}</h3>
           <p className="nx-prosa off-esito-desc">{activeEntry.desc}</p>
+          <p className="nx-nota off-esito-cost">
+            💰 Materiali: <b>{fmtMo(activeEntry.costMo || 0)}</b>
+            {activeEntry.halfCost ? <> invece di {fmtMo(activeEntry.listCostMo || 0)} — <strong>20 naturale</strong>, te n'è bastata metà.</> : "."}
+            {" "}{activeEntry.goldInboxId ? "Spesa già mandata al Master per Foundry." : "Il Master la scala dal tuo oro con la macro di Foundry."}
+          </p>
           {activeEntry.upgraded && <p className="nx-nota off-esito-up">✦ <strong>Fattura superiore</strong>: hai speso il {investmentByKey(activeEntry.invest).costPct}% in più di materiali ({fmtMo(activeEntry.costMo || 0)}) e l'oggetto esce potenziato.</p>}
           {(activeEntry.compRolls || []).length > 0 && (
             <p className="nx-nota off-esito-comps">🧪 Componenti: {activeEntry.compRolls.map((r) => { const c = componentByKey(r.key); return c ? `${c.icon} ${c.name} +${r.roll}${c.effect ? ` (${componentEffectLabel(c)})` : ""}` : r.key; }).join(" · ")}</p>
@@ -1139,9 +1150,93 @@ ${senza.map((c) => c.name).join(", ")}`)) return;
           );
         })}
       </ul>
+      <CraftSpese chars={chars} />
       <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
       <CraftLedger chars={chars} reload={load} patchChar={() => {}} />
     </details>
+  );
+}
+
+// ── Le spese dei materiali: un tocco e finiscono nella coda di Foundry ───────
+// Le monete si pagano in gioco. Qui il Master vede ogni prova che ha ancora una
+// spesa aperta e con un bottone la manda in `foundry_inbox` come documento
+// `kind: "gold"`: la macro "Crea Oggetti dal sito → Foundry" toglie le monete
+// dall'attore e cancella il documento. "Già pagata" la chiude senza mandarla.
+function CraftSpese({ chars }) {
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const rows = [];
+  for (const c of chars) {
+    const log = Array.isArray(c.crafting?.log) ? c.crafting.log : [];
+    for (const e of log) {
+      if (!(Number(e.costMo) > 0) || e.goldInboxId || e.goldDone) continue;
+      rows.push({ c, e });
+    }
+  }
+  rows.sort((a, b) => (b.e.at || 0) - (a.e.at || 0));
+  const totale = rows.reduce((a, r) => a + (Number(r.e.costMo) || 0), 0);
+
+  // Scrive la voce nella coda e segna la prova come "mandata".
+  async function sendOne({ c, e }) {
+    const p = PROFESSIONI.find((x) => x.key === e.profession);
+    const ref = await addDoc(collection(db, "foundry_inbox"), {
+      status: "pending",
+      ...craftGoldPayload({
+        crafter: { uid: c.uid, name: c.name || "" },
+        amount: e.costMo,
+        tierLabel: tierMeta(e.tier).label,
+        itemName: e.failed ? "" : (e.choice || e.name),
+        components: (e.components || []).map((k) => componentByKey(k)?.name || k),
+        failed: !!e.failed, nat20: !!e.halfCost, note: p ? p.name : "",
+      }),
+      origin: "crafting", crafterUid: c.uid, crafterName: c.name || "", craftEntryId: e.id,
+      createdAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, "characters", c.uid), {
+      "crafting.log": (c.crafting.log || []).map((x) => (x.id === e.id ? { ...x, goldInboxId: ref.id } : x)),
+    });
+  }
+
+  async function act(key, fn) {
+    setBusy(key); setMsg("");
+    try { await fn(); }
+    catch (err) { setMsg("Errore: " + (err.message || err)); }
+    finally { setBusy(""); }
+  }
+
+  const markPaid = ({ c, e }) => updateDoc(doc(db, "characters", c.uid), {
+    "crafting.log": (c.crafting.log || []).map((x) => (x.id === e.id ? { ...x, goldDone: true } : x)),
+  });
+
+  return (
+    <div className="off-spese">
+      <div className="off-spese-head">
+        <span className="off-label">💰 Spese dei materiali <small>(da scalare dall'oro su Foundry)</small></span>
+        <div className="off-spese-sum"><span><b>{rows.length}</b><small>aperte</small></span><span><b>{fmtMo(totale)}</b><small>in totale</small></span></div>
+        {rows.length > 1 && (
+          <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act("all", async () => { for (const r of rows) await sendOne(r); setMsg(`✓ ${rows.length} spese mandate alla coda di Foundry.`); })}>
+            {busy === "all" ? "Invio…" : `📤 Manda tutte (${fmtMo(totale)})`}
+          </button>
+        )}
+      </div>
+      {rows.length === 0 ? <p className="nx-nota">Nessuna spesa aperta: tutte mandate a Foundry o segnate come pagate.</p> : (
+        <ul className="off-spese-list">
+          {rows.map(({ c, e }) => (
+            <li key={`${c.uid}-${e.id}`} className={e.failed ? "is-fail" : ""}>
+              <span className="off-spese-who"><b>{c.name}</b><small>{new Date(e.at).toLocaleDateString("it-IT")} · {e.failed ? "💥 prova fallita" : `${tierMeta(e.tier).icon} ${e.choice || e.name}`}{e.halfCost ? " · 20 naturale, metà spesa" : ""}</small></span>
+              <span className="off-spese-mo">{fmtMo(e.costMo)}{e.halfCost ? <i> invece di {fmtMo(e.listCostMo || 0)}</i> : null}</span>
+              <span className="off-spese-acts">
+                <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act(e.id, async () => { await sendOne({ c, e }); setMsg(`✓ ${fmtMo(e.costMo)} di ${c.name} in coda: lancia la macro su Foundry.`); })}>{busy === e.id ? "…" : "📤 Manda a Foundry"}</button>
+                <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act(`p${e.id}`, () => markPaid({ c, e }))}>{busy === `p${e.id}` ? "…" : "✓ Già pagata"}</button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {msg && <p className={`nx-nota off-spese-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</p>}
+      <p className="nx-nota">La macro <strong>Crea Oggetti dal sito → Foundry</strong> riconosce queste voci (<code>kind: "gold"</code>), toglie le monete all'attore col <code>firebaseUID</code> giusto e le cancella dalla coda.</p>
+    </div>
   );
 }
 
@@ -1180,6 +1275,7 @@ function CraftLedger({ chars, reload, patchChar }) {
         tx.update(ref, patch);
       });
       if (e.inboxId) await deleteDoc(doc(db, "foundry_inbox", e.inboxId)).catch(() => {});
+      if (e.goldInboxId) await deleteDoc(doc(db, "foundry_inbox", e.goldInboxId)).catch(() => {}); // via anche la spesa in coda
       setConfirmId("");
       // Aggiorno subito la tabella (la rilettura da Firestore può arrivare dopo), poi ricarico.
       if (newLog) patchChar(uid, (cr) => ({ ...cr, log: newLog, totalCount: Math.max(0, Math.max(Number(cr.totalCount) || 0, newLog.length + 1) - 1), xp: Math.max(0, (Number(cr.xp) || 0) - (Number(e.xp) || 0)) }));

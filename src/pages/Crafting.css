@@ -234,3 +234,5 @@
 /* 1 naturale = fallimento critico (2026-09-22) */
 .cr-page .cr-fumble { margin: 10px 0 0; padding: 8px 12px; border-radius: 3px; background: rgba(185, 28, 28, .1); border: 1px solid rgba(239, 68, 68, .3); font-size: .86rem; line-height: 1.5; }
 .cr-page .cr-fumble strong { color: #f87171; }
+.cr-page .cr-nat20 { margin: 10px 0 0; padding: 8px 12px; border-radius: 3px; background: rgba(74, 222, 128, .08); border: 1px solid rgba(74, 222, 128, .3); font-size: .86rem; line-height: 1.5; }
+.cr-page .cr-nat20 strong { color: #4ade80; }

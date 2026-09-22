@@ -8,6 +8,12 @@
 //   - target "player" → nell'inventario del personaggio (via firebaseUID)
 // Dopo aver creato un oggetto, lo RIMUOVE dalla coda.
 //
+// SPESE DELL'OFFICINA (2026-09-22): le voci con `kind: "gold"` non sono
+// oggetti ma MONETE da togliere (o aggiungere, con op "add") al personaggio:
+// sono i materiali del crafting, mandati dal Master dalla sezione
+// "Spese dei materiali" nell'Officina. La macro scala le monete d'oro
+// dell'attore, scrive un messaggio in chat e cancella la voce dalla coda.
+//
 // USO: lanciala come GM quando vuoi importare gli oggetti in coda.
 // (Funziona identica su Foundry online: la macro gira nel tuo browser.)
 //
@@ -131,9 +137,37 @@ function buildItemData(d) {
     return;
   }
 
-  let created = 0, skipped = 0;
+  let created = 0, skipped = 0, gold = 0;
   for (const d of pending) {
     try {
+      // ── SPESA DI MONETE (Officina): non è un oggetto ──
+      if (d.kind === "gold") {
+        const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
+        if (!actor) {
+          console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per la spesa di ${d.amount} mo. Salto.`);
+          ui.notifications.warn(`Spesa di ${d.amount} mo: nessun attore collegato a ${d.targetName || d.targetUid}.`);
+          skipped++;
+          continue; // lascia in coda per riprovare
+        }
+        const amount = Math.max(0, Number(d.amount) || 0);
+        const cur = Number(foundry.utils.getProperty(actor, "system.currency.gp")) || 0;
+        const add = d.op === "add";
+        const next = add ? cur + amount : Math.max(0, cur - amount);
+        const mancano = !add && amount > cur ? amount - cur : 0;
+        await actor.update({ "system.currency.gp": next });
+        await ChatMessage.create({
+          speaker: { alias: "Officina" },
+          content: `<p><strong>${actor.name}</strong>: ${add ? "+" : "−"}${amount} mo (${cur} → ${next}).</p>`
+            + `<p style="font-size:.9em;opacity:.8">${d.reason || ""}</p>`
+            + (mancano ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${mancano} mo, l'oro è stato messo a 0.</p>` : ""),
+          whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
+        });
+        console.log(`[Import] ${add ? "+" : "−"}${amount} mo → ${actor.name} (${cur} → ${next})`);
+        await fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
+        gold++;
+        continue;
+      }
+
       const itemData = buildItemData(d);
 
       if (d.target === "player") {
@@ -162,5 +196,5 @@ function buildItemData(d) {
     }
   }
 
-  ui.notifications.info(`✅ Creati ${created} oggetti${skipped ? `, ${skipped} saltati` : ""}.`);
+  ui.notifications.info(`✅ Creati ${created} oggetti${gold ? `, ${gold} spese scalate` : ""}${skipped ? `, ${skipped} saltati` : ""}.`);
 })();

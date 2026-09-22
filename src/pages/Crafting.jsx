@@ -162,7 +162,7 @@ export default function Crafting() {
               })}
             </div>
             <h4 className="cr-subtitle">💰 Spendere di più nei materiali</h4>
-            <p className="nx-nota cr-section-sub">Prima di tirare decidi quanto investi sopra il costo della rarità. Non cambia il tempo di lavoro: cambia il tiro, l'oggetto e i PE.</p>
+            <p className="nx-nota cr-section-sub">Prima di tirare decidi quanto investi sopra il costo della rarità. Non cambia il tempo di lavoro: cambia il tiro, l'oggetto e i PE. Con un <strong>20 naturale</strong> paghi comunque solo metà di quello che avevi messo in conto.</p>
             <div className="nx-griglia cr-time-grid">
               {INVESTMENTS.map(iv => (
                 <div key={iv.key || "base"} className="nx-pannello cr-time-card">
@@ -192,6 +192,7 @@ export default function Crafting() {
                 <span className="cr-plus">+</span>
                 <span className="cr-formula-piece">Condizioni</span>
               </div>
+              <p className="nx-nota cr-nat20">🌟 <strong>20 naturale = capolavoro.</strong> Il lavoro riesce al primo colpo: dura il <strong>60%</strong> del tempo, i PE sono <strong>doppi</strong> e i materiali costano <strong>metà</strong>, perché con quella bravura te ne è bastata la metà.</p>
               <p className="nx-nota cr-fumble">💥 <strong>1 naturale = fallimento critico.</strong> Non conta nessun bonus: il pezzo si rovina sul banco, dopo <strong>2 minuti</strong> scopri il disastro, i materiali e le monete spese sono persi, non esce nulla e prendi 0 PE. La prova del giorno è comunque consumata.</p>
               <ul className="cr-formula-list">
                 <li><strong>Caratteristica</strong>: quella della professione (le professioni magiche usano la migliore fra Int, Sag e Car).</li>

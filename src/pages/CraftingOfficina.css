@@ -473,3 +473,30 @@
   .cr-page .off-band-n { grid-column: 2; }
   .cr-page .off-band-x { grid-column: 2; }
 }
+
+/* ═══ Spese dei materiali → Foundry (2026-09-22) ══════════════════════════ */
+.cr-page .off-spese { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--roccia-3); }
+.cr-page .off-spese-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.cr-page .off-spese-head .off-label { margin: 0; flex: 1 1 220px; }
+.cr-page .off-spese-sum { display: flex; gap: 8px; }
+.cr-page .off-spese-sum span { display: flex; flex-direction: column; align-items: center; padding: 4px 10px; border-radius: 3px; background: rgba(var(--oro-rgb, 194, 160, 70), .1); border: 1px solid rgba(var(--oro-rgb, 194, 160, 70), .35); }
+.cr-page .off-spese-sum b { font-family: "Cinzel", Georgia, serif; font-size: .95rem; color: var(--oro); line-height: 1.1; }
+.cr-page .off-spese-sum small { font-family: "Alegreya SC", "Alegreya", serif; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-spese-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cr-page .off-spese-list li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px 12px; padding: 7px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .4); border: 1px solid var(--roccia-3); border-left: 3px solid var(--oro); }
+.cr-page .off-spese-list li.is-fail { border-left-color: #b91c1c; }
+.cr-page .off-spese-who { display: flex; flex-direction: column; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-spese-who b { font-size: .9rem; color: var(--osso); }
+.cr-page .off-spese-who small { font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-spese-mo { font-family: "Cinzel", Georgia, serif; font-size: .9rem; color: var(--oro); white-space: nowrap; }
+.cr-page .off-spese-mo i { font-style: normal; font-family: "Alegreya", Georgia, serif; font-size: .74rem; color: var(--osso-2); }
+.cr-page .off-spese-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-page .off-spese-msg { color: #4ade80; }
+.cr-page .off-spese-msg.is-err { color: #f87171; }
+.cr-page .off-esito-cost { margin: 6px 0 0; }
+.cr-page .off-esito-cost b { color: var(--oro); }
+.cr-page .off-esito-cost strong { color: var(--el-2); }
+@media (max-width: 640px) {
+  .cr-page .off-spese-list li { grid-template-columns: 1fr auto; }
+  .cr-page .off-spese-acts { grid-column: 1 / -1; }
+}
