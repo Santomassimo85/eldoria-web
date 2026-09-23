@@ -228,7 +228,7 @@
 }
 
 /* ── registro dei craft (Master): quanti e cosa, per PG ── */
-.cr-page .off-ledger { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--roccia-3); }
+.cr-page .off-ledger { margin-top: 0; }
 .cr-page .off-ledger-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .cr-page .off-ledger-head .off-label { margin: 0; max-width: 60ch; }
 .cr-page .off-ledger-sum { display: flex; gap: 6px; }
@@ -475,7 +475,7 @@
 }
 
 /* ═══ Spese dei materiali → Foundry (2026-09-22) ══════════════════════════ */
-.cr-page .off-spese { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--roccia-3); }
+.cr-page .off-spese { margin-top: 0; }
 .cr-page .off-spese-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .cr-page .off-spese-head .off-label { margin: 0; flex: 1 1 220px; }
 .cr-page .off-spese-sum { display: flex; gap: 8px; }
@@ -663,4 +663,167 @@
   .cr-page .off-stat-lbl { font-size: .76rem; }
   .cr-page .off-stat-v small { display: none; }
   .cr-page .off-stat-col { height: 72px; }
+}
+
+/* ═══ Il governo del Master (2026-09-23) ═══════════════════════════════════
+   Sette pieghe invece di un pannello unico chiuso: tavolo (con "da sistemare")
+   · artigiani per professione · scorte per oggetto · spese · registro. I nomi
+   delle scorte si leggono per intero; i bottoni reggono il pollice (≥ 36px). */
+/* la targhetta del pannello (covo.css la appende in alto a destra) qui fa da titolo:
+   nel flusso, così sul telefono non copre contatori e bottoni */
+.cr-page .off-board-head .nx-tag, .cr-page .off-sec-head .nx-tag, .cr-page .off-spese .nx-tag { position: static; }
+.cr-page .off-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+.cr-page .off-sec-head .nx-nota { margin: 0; flex: 1 1 280px; font-size: .88rem; }
+.cr-page .off-sec-head .nx-nota b { color: var(--el-2); }
+
+/* da sistemare */
+.cr-page .off-todo { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.cr-page .off-todo li { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .5); border: 1px solid var(--roccia-3); border-left: 3px solid var(--el); font-family: "Alegreya", Georgia, serif; font-size: .92rem; color: var(--osso-body); }
+.cr-page .off-todo li.is-gold { border-left-color: var(--oro); }
+.cr-page .off-todo li.is-curse { border-left-color: #a855f7; background: rgba(76, 29, 94, .2); }
+.cr-page .off-todo li.is-ok { border-left-color: #4ade80; }
+.cr-page .off-todo-ic { font-size: 1.2rem; }
+.cr-page .off-todo-t { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.cr-page .off-todo-t b { font-family: "Cinzel", Georgia, serif; font-size: 1.1rem; color: var(--osso); margin-right: 2px; }
+.cr-page .off-todo .off-ghost { flex: 0 0 auto; white-space: nowrap; }
+.cr-page p.off-todo--clear { display: block; margin: 0; padding: 10px 12px; border-radius: 3px; border: 1px solid rgba(74, 222, 128, .35); background: rgba(74, 222, 128, .06); color: var(--osso-body); font-family: "Alegreya", Georgia, serif; font-size: .9rem; }
+
+/* il tavolo: un filo più grande, si legge da lontano */
+.cr-page .off-board-who b { font-size: 1.02rem; }
+.cr-page .off-board-who small, .cr-page .off-board-job-top small, .cr-page .off-board-job-time { font-size: .82rem; }
+.cr-page .off-board-job-top b { font-size: .98rem; }
+.cr-page .off-board-job-time .off-ghost, .cr-page .off-board-head .off-ghost { min-height: 36px; padding: 6px 12px; font-size: .82rem; }
+.cr-page .off-board-sum span { min-width: 72px; padding: 6px 10px; }
+.cr-page .off-board-sum b { font-size: 1.3rem; }
+.cr-page .off-board-sum small { font-size: .62rem; }
+
+/* filtro per professione */
+.cr-page .off-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cr-page .off-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .5); border: 1px solid var(--roccia-3); border-bottom: 2px solid var(--c, var(--roccia-4)); color: var(--osso-body); font-family: "Alegreya", Georgia, serif; font-size: .88rem; cursor: pointer; }
+.cr-page .off-chip i { font-style: normal; font-family: "Cinzel", Georgia, serif; font-size: .74rem; padding: 1px 6px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .7); color: var(--el-2); }
+.cr-page .off-chip:hover { border-color: var(--el); color: var(--osso); }
+.cr-page .off-chip.on { color: var(--osso); background: rgba(var(--el-rgb), .16); border-color: var(--el); border-bottom-color: var(--c, var(--el)); }
+.cr-page .off-chip.is-empty { opacity: .5; }
+.cr-page .off-chip.is-empty.on { opacity: 1; }
+.cr-page .off-chip.is-none { border-style: dashed; }
+.cr-page .off-empty { margin: 4px 0 0; }
+
+/* gruppi per professione */
+.cr-page .off-group + .off-group { margin-top: 18px; }
+.cr-page .off-group-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 0 10px; border-bottom: 1px solid var(--roccia-3); }
+.cr-page .off-group-ic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 3px; font-size: 1.4rem; background: color-mix(in srgb, var(--c, var(--roccia-4)) 22%, rgba(var(--ossidiana-rgb), .6)); border: 1px solid color-mix(in srgb, var(--c, var(--roccia-4)) 60%, transparent); }
+.cr-page .off-group-t { flex: 1 1 240px; min-width: 0; }
+.cr-page .off-group-t h3 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: 1.02rem; letter-spacing: .03em; color: var(--osso); }
+.cr-page .off-group-t h3 small { margin-left: 6px; font-size: .8rem; color: var(--el-2); }
+.cr-page .off-group-t p { margin: 2px 0 0; font-family: "Alegreya", Georgia, serif; font-size: .84rem; line-height: 1.4; color: var(--osso-2); }
+.cr-page .off-group-t p b { color: var(--osso-body); }
+.cr-page .off-group.is-none .off-group-ic { color: var(--osso-2); }
+.cr-page .off-nudge-msg { margin: 8px 0 0; color: #4ade80; }
+.cr-page .off-nudge-msg.is-err { color: #f87171; }
+
+/* schede degli artigiani */
+.cr-page .off-cards { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; align-items: start; }
+.cr-page .off-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px 14px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .42); border: 1px solid var(--roccia-3); border-top: 3px solid var(--c, var(--roccia-4)); color: var(--osso); }
+.cr-page .off-card.is-open { grid-column: 1 / -1; border-color: rgba(var(--el-rgb), .55); border-top-color: var(--c, var(--el)); box-shadow: 0 0 22px -12px var(--el); }
+.cr-page .off-card-head { display: flex; align-items: center; gap: 10px; }
+.cr-page .off-card-ic { flex: 0 0 auto; font-size: 1.5rem; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c, var(--el)) 70%, transparent)); }
+.cr-page .off-card-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-card-who b { font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-page .off-card-who small { font-size: .8rem; color: var(--osso-2); }
+.cr-page .off-pill { flex: 0 0 auto; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--roccia-3); font-family: "Alegreya SC", "Alegreya", serif; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--osso-2); white-space: nowrap; }
+.cr-page .off-pill.is-work { color: var(--el-2); border-color: rgba(var(--el-rgb), .55); background: rgba(var(--el-rgb), .1); }
+.cr-page .off-pill.is-ok { color: #4ade80; border-color: rgba(74, 222, 128, .5); background: rgba(74, 222, 128, .08); }
+.cr-page .off-pill.is-bad { color: #f87171; border-color: rgba(248, 113, 113, .5); }
+.cr-page .off-pill.is-none { border-style: dashed; }
+.cr-page .off-card-xp .off-xp { margin-top: 0; }
+.cr-page .off-card-xp small { display: block; margin-top: 4px; font-family: "Alegreya", Georgia, serif; font-size: .78rem; color: var(--osso-2); }
+.cr-page .off-card-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.cr-page .off-card-nums > div { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 6px 4px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .5); border: 1px solid var(--roccia-3); }
+.cr-page .off-card-nums dt { order: 2; font-family: "Alegreya SC", "Alegreya", serif; font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-card-nums dd { order: 1; margin: 0; font-family: "Cinzel", Georgia, serif; font-size: 1.1rem; line-height: 1.2; color: var(--osso); white-space: nowrap; }
+.cr-page .off-card-nums dd i { font-style: normal; font-size: .72rem; color: var(--osso-2); }
+.cr-page .off-card-nums dd.is-gold { color: var(--oro); font-size: .98rem; }
+.cr-page .off-card-nums .is-used dd { color: var(--osso-2); }
+.cr-page .off-card-bench { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 7px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .5); border: 1px solid var(--roccia-3); border-left: 3px solid var(--q, var(--el)); font-family: "Alegreya", Georgia, serif; font-size: .88rem; }
+.cr-page .off-card-bench > span { flex: 1 1 160px; min-width: 0; }
+.cr-page .off-card-bench small { color: var(--osso-2); font-size: .8rem; }
+.cr-page .off-card-bench .off-ghost { min-height: 34px; padding: 4px 10px; font-size: .8rem; }
+.cr-page .off-card-stock ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.cr-page .off-card-stock li { padding: 3px 8px; border-radius: 3px; background: rgba(var(--el-rgb), .1); border: 1px solid rgba(var(--el-rgb), .35); font-family: "Alegreya", Georgia, serif; font-size: .8rem; color: var(--osso); }
+.cr-page .off-card-stock li.is-enh { background: rgba(var(--oro-rgb, 194, 160, 70), .1); border-color: rgba(var(--oro-rgb, 194, 160, 70), .4); }
+.cr-page .off-card-stock li b { font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: var(--el-2); }
+.cr-page .off-card-stock > small { font-family: "Alegreya", Georgia, serif; font-size: .8rem; font-style: italic; color: var(--osso-2); }
+.cr-page .off-card-toggle { align-self: flex-start; min-height: 36px; padding: 6px 14px; border-radius: 3px; background: transparent; border: 1px solid var(--roccia-3); color: var(--osso-body); font-family: "Cinzel", Georgia, serif; font-size: .78rem; letter-spacing: .04em; cursor: pointer; }
+.cr-page .off-card-toggle:hover, .cr-page .off-card-toggle[aria-expanded="true"] { border-color: var(--el); color: var(--osso); }
+
+/* gestione aperta */
+.cr-page .off-manage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 12px; border-top: 1px dashed var(--roccia-3); }
+.cr-page .off-manage-sec { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cr-page .off-manage-sec.is-wide { grid-column: 1 / -1; }
+.cr-page .off-manage-sec .off-label { margin: 0; }
+.cr-page .off-manage-sec > small, .cr-page .off-manage-btns > small { font-family: "Alegreya", Georgia, serif; font-size: .8rem; color: var(--osso-2); }
+.cr-page .off-manage-sec .off-input { width: 100%; min-height: 40px; }
+.cr-page .off-manage-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cr-page .off-manage-btns .off-ghost { min-height: 38px; }
+.cr-page .off-manage-btns > small { flex: 1 1 100%; }
+.cr-page .off-manage-sec.is-danger { padding-top: 10px; border-top: 1px dashed rgba(248, 113, 113, .35); }
+.cr-page .off-manage-sec.is-danger > .off-ghost { align-self: flex-start; min-height: 38px; }
+
+/* righe di scorta con il nome intero */
+.cr-page .off-stockrows { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
+.cr-page .off-stockrow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .45); border: 1px solid var(--roccia-3); }
+.cr-page .off-stockrow.on { border-color: rgba(var(--el-rgb), .55); background: rgba(var(--el-rgb), .08); }
+.cr-page .off-stockrow-ic { font-size: 1.15rem; text-align: center; }
+.cr-page .off-stockrow-main { display: flex; flex-direction: column; min-width: 0; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-stockrow-main b { font-size: .88rem; color: var(--osso); }
+.cr-page .off-stockrow-main small { font-size: .74rem; line-height: 1.35; color: var(--osso-2); }
+.cr-page .off-step { display: inline-flex; align-items: center; border-radius: 3px; border: 1px solid var(--roccia-3); background: rgba(var(--ossidiana-rgb), .6); }
+.cr-page .off-step button { width: 36px; height: 36px; border: 0; background: transparent; color: var(--el-2); font-size: 1.1rem; cursor: pointer; }
+.cr-page .off-step button:hover:not(:disabled) { background: rgba(var(--el-rgb), .15); color: var(--osso); }
+.cr-page .off-step button:disabled { opacity: .3; cursor: not-allowed; }
+.cr-page .off-step b { min-width: 28px; text-align: center; font-family: "Cinzel", Georgia, serif; font-size: .92rem; color: var(--osso); }
+
+/* scorte per oggetto */
+.cr-page .off-stockpage { display: flex; flex-direction: column; gap: 12px; }
+.cr-page .off-stockgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; align-items: start; }
+.cr-page .off-sitem { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .42); border: 1px solid var(--roccia-3); }
+.cr-page .off-sitem.on { border-color: rgba(var(--el-rgb), .5); }
+.cr-page .off-sitem-head { display: flex; align-items: flex-start; gap: 10px; }
+.cr-page .off-sitem-ic { font-size: 1.5rem; line-height: 1.2; }
+.cr-page .off-sitem-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; font-family: "Alegreya", Georgia, serif; }
+.cr-page .off-sitem-t b { font-size: .95rem; color: var(--osso); }
+.cr-page .off-sitem-t small { font-size: .76rem; line-height: 1.35; color: var(--el-2); }
+.cr-page .off-sitem-n { display: flex; flex-direction: column; align-items: center; min-width: 50px; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--roccia-3); }
+.cr-page .off-sitem.on .off-sitem-n { border-color: rgba(var(--el-rgb), .5); background: rgba(var(--el-rgb), .1); }
+.cr-page .off-sitem-n b { font-family: "Cinzel", Georgia, serif; font-size: 1.1rem; line-height: 1.1; color: var(--osso); }
+.cr-page .off-sitem-n small { white-space: nowrap; font-family: "Alegreya SC", "Alegreya", serif; font-size: .56rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso-2); }
+.cr-page .off-sitem-about { margin: 0; font-family: "Alegreya", Georgia, serif; font-size: .8rem; font-style: italic; line-height: 1.4; color: var(--osso-2); }
+.cr-page .off-holders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cr-page .off-holders li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 2px 2px 8px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .5); font-family: "Alegreya", Georgia, serif; font-size: .88rem; }
+.cr-page .off-holders li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-page .off-assign { display: flex; gap: 6px; }
+.cr-page .off-assign .off-input { flex: 1 1 auto; min-width: 0; min-height: 38px; padding: 4px 8px; font-size: .86rem; }
+.cr-page .off-assign .off-ghost { min-width: 48px; min-height: 38px; }
+
+/* spese e registro ora sono pannelli a sé */
+.cr-page .off-spese.off-box, .cr-page .off-ledger.off-box { margin-top: 0; }
+.cr-page .off-spese-list li .off-ghost { min-height: 36px; }
+.cr-page .off-spese-t, .cr-page .off-ledger-t { flex: 1 1 320px; margin: 0; }
+.cr-page .off-ledger .off-ledger-head { align-items: center; }
+.cr-page .off-spese > .nx-nota { margin-top: 10px; }
+.cr-page .off-ledger-row { min-height: 48px; }
+
+@media (max-width: 640px) {
+  .cr-page .off-cards, .cr-page .off-stockgrid, .cr-page .off-stockrows { grid-template-columns: 1fr; }
+  .cr-page .off-manage { grid-template-columns: 1fr; }
+  .cr-page .off-sitem-about { display: none; } /* sul telefono basta nome + effetto: 18 schede sono già tante */
+  .cr-page .off-card { padding: 10px 12px; }
+  .cr-page .off-card-nums dd { font-size: 1rem; }
+  .cr-page .off-todo { grid-template-columns: 1fr; }
+  .cr-page .off-todo li { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+  .cr-page .off-todo .off-ghost { grid-column: 2; justify-self: end; min-height: 38px; }
+  /* sul telefono i filtri scorrono in orizzontale: una riga, niente muro di chip */
+  .cr-page .off-chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: -4px; padding: 0 4px 6px; scrollbar-width: thin; }
+  .cr-page .off-chip { flex: 0 0 auto; }
+  .cr-page .off-group-head .off-ghost { width: 100%; min-height: 40px; }
 }

@@ -92,12 +92,18 @@ function whenLabel(ms, now) {
   return `${wd} · ${hm}`;
 }
 
+// Il Master dell'Officina (anche per la testata di /officina). In DEV
+// `?vista=player` fa vedere al Master la pagina con i limiti di un giocatore.
+export function useOfficinaMaster() {
+  const { currentUser } = useAuth();
+  const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
+  return MASTER_EMAILS.includes(currentUser?.email) && !devPlayerView;
+}
+
 export default function CraftingOfficina() {
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
-  // In DEV `?vista=player` fa vedere al Master la pagina con i limiti di un giocatore (per provarli).
-  const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
-  const isMaster = MASTER_EMAILS.includes(currentUser?.email) && !devPlayerView;
+  const isMaster = useOfficinaMaster();
   const [charData, setCharData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -181,11 +187,13 @@ export default function CraftingOfficina() {
   const revealed = ready && revealedId === pendingEntry.id;    // ritirato: si vede l'oggetto
 
   // Battito di un secondo finché c'è un lavoro sul banco.
+  // Il Master batte anche lui sul tavolo e sugli artigiani (conti alla rovescia di tutti).
+  const masterLive = isMaster && (tab === "master" || tab === "artigiani" || tab === "banco");
   useEffect(() => {
-    if (!working) return;
+    if (!working && !masterLive) return;
     const t = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(t);
-  }, [working]);
+  }, [working, masterLive]);
 
   // Componenti selezionati che non si possiedono più (es. il Master li ha tolti): via.
   useEffect(() => {
@@ -550,7 +558,11 @@ export default function CraftingOfficina() {
   // quelle pieghe sono del giocatore. Per provare il flusso da giocatore resta
   // `?vista=player` in DEV, che spegne `isMaster` e rimette tutto.
   const TABS = isMaster ? [
-    { key: "master", label: "Il tavolo", n: tableChars.filter((c) => (c.crafting?.log || []).some((e) => !e.inboxId && !e.skipped)).length },
+    { key: "master", label: "Il tavolo", n: tableChars.filter((c) => benchOf(c.crafting)).length },
+    { key: "artigiani", label: "Artigiani", n: tableChars.filter((c) => c.crafting?.profession).length },
+    { key: "scorte", label: "Scorte" },
+    { key: "spese", label: "Spese", n: openSpese(tableChars).length },
+    { key: "registro", label: "Registro" },
     { key: "statistiche", label: "Statistiche" },
     { key: "progressi", label: "Progressi" },
   ] : [
@@ -1059,9 +1071,13 @@ export default function CraftingOfficina() {
 
       {/* ══ PIEGA: IL MASTER ══ */}
       {curTab === "master" && isMaster && (<>
+        <MasterTodo chars={tableChars} nowMs={nowMs} goTab={setTab} />
         <MasterBoard chars={tableChars} nowMs={nowMs} />
-        <MasterPanel chars={tableChars} />
       </>)}
+      {curTab === "artigiani" && isMaster && <MasterArtisans chars={tableChars} nowMs={nowMs} />}
+      {curTab === "scorte" && isMaster && <MasterStock chars={tableChars} />}
+      {curTab === "spese" && isMaster && <CraftSpese chars={tableChars} />}
+      {curTab === "registro" && isMaster && <CraftLedger chars={tableChars} reload={async () => {}} patchChar={() => {}} />}
 
       {/* ══ PIEGA: LE STATISTICHE (solo Master) ══ */}
       {curTab === "statistiche" && isMaster && <CraftStats chars={tableChars} />}
@@ -1177,22 +1193,110 @@ function MasterBoard({ chars, nowMs }) {
   );
 }
 
-// ── Pannello del Master: professioni, PE, usi, scorte e lavori di tutti gli eroi attivi ──
-function MasterPanel({ chars }) {
-  const [busy, setBusy] = useState("");
-  const [nudge, setNudge] = useState(""); // esito dell'avviso "scegli una professione"
-  const load = async () => {}; // i personaggi arrivano già in tempo reale (onSnapshot)
+// ── IL GOVERNO DEL MASTER (2026-09-23) ──────────────────────────────────────
+// Prima era UNA piega chiusa ("Master · professioni, PE, scorte") con dentro
+// tutto: righe di PG con le scorte scritte solo come icona + numero, le spese,
+// il registro. Ora ogni cosa ha la sua piega: Artigiani (per professione),
+// Scorte (per componente / potenziatore), Spese, Registro. I nomi si leggono
+// sempre per intero: un 🪵 3 non dice a nessuno cos'è.
 
-  // Eroi che non hanno ancora scelto la professione: si può avvisarli in un tocco.
+// Il lavoro sul banco di un PG (la voce non ancora mandata né scartata).
+const benchOf = (cr) => (Array.isArray(cr?.log) ? cr.log : []).find((e) => !e.inboxId && !e.skipped) || null;
+// Spese dei materiali ancora aperte (da mandare a Foundry o da segnare pagate).
+function openSpese(chars) {
+  const rows = [];
+  for (const c of chars) {
+    for (const e of (Array.isArray(c.crafting?.log) ? c.crafting.log : [])) {
+      if (Number(e.costMo) > 0 && !e.goldInboxId && !e.goldDone) rows.push({ c, e });
+    }
+  }
+  return rows.sort((a, b) => (b.e.at || 0) - (a.e.at || 0));
+}
+
+// Scrive un patch sul personaggio e tiene il segno di chi è occupato.
+function useCharAct() {
+  const [busy, setBusy] = useState("");
+  async function act(uid, patch, key = uid) {
+    setBusy(key);
+    try { await updateDoc(doc(db, "characters", uid), patch); }
+    catch (e) { alert("Errore: " + (e.message || e)); }
+    finally { setBusy(""); }
+  }
+  return { busy, setBusy, act };
+}
+
+// Il lavoro sul banco finisce subito (il Master lo "sblocca").
+async function finishBenchNow(c, entry) {
+  const srv = await serverNow().catch(() => new Date());
+  const log = (c.crafting?.log || []).map((e) => (e.id === entry.id ? { ...e, readyAt: srv.getTime() - 1000, finishedByMaster: true } : e));
+  await updateDoc(doc(db, "characters", c.uid), { "crafting.log": log, "crafting.busyUntil": deleteField() });
+}
+
+// ── "Da sistemare": in cima al tavolo, cosa aspetta il Master ──
+function MasterTodo({ chars, nowMs, goTab }) {
+  const spese = openSpese(chars);
+  const speseMo = spese.reduce((a, r) => a + (Number(r.e.costMo) || 0), 0);
+  const senza = chars.filter((c) => !c.crafting?.profession).length;
+  const cursed = chars.filter((c) => benchOf(c.crafting)?.cursed).length;
+  const ready = chars.filter((c) => { const b = benchOf(c.crafting); return b && !b.failed && (Number(b.readyAt) || 0) <= nowMs; }).length;
+  const items = [
+    spese.length && { key: "spese", tone: "gold", icon: "💰", n: spese.length, text: `${spese.length === 1 ? "spesa" : "spese"} dei materiali da scalare su Foundry (${fmtMo(speseMo)})`, cta: "Apri le spese" },
+    cursed && { key: "master", tone: "curse", icon: "☠", n: cursed, text: cursed === 1 ? "oggetto maledetto sul banco: il giocatore non lo sa" : "oggetti maledetti sul banco: i giocatori non lo sanno", cta: null },
+    ready && { key: "master", tone: "ok", icon: "✓", n: ready, text: ready === 1 ? "lavoro finito: lo ritira il giocatore" : "lavori finiti: li ritirano i giocatori", cta: null },
+    senza && { key: "artigiani", tone: "", icon: "🔔", n: senza, text: senza === 1 ? "eroe senza professione" : "eroi senza professione", cta: "Vedi chi" },
+  ].filter(Boolean);
+  if (!items.length) return <p className="off-todo off-todo--clear">✓ Niente da sistemare: nessuna spesa aperta, tutti hanno una professione.</p>;
+  return (
+    <ul className="off-todo" aria-label="Da sistemare">
+      {items.map((it, i) => (
+        <li key={i} className={it.tone ? `is-${it.tone}` : ""}>
+          <span className="off-todo-ic" aria-hidden="true">{it.icon}</span>
+          <span className="off-todo-t"><b>{it.n}</b> {it.text}</span>
+          {it.cta && <button type="button" className="off-ghost" onClick={() => goTab(it.key)}>{it.cta} →</button>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ── Stepper di una scorta: − n + con il nome scritto per intero ──
+function StockRow({ icon, name, sub, n, disabled, onMinus, onPlus }) {
+  return (
+    <li className={`off-stockrow${n > 0 ? " on" : ""}`}>
+      <span className="off-stockrow-ic" aria-hidden="true">{icon}</span>
+      <span className="off-stockrow-main"><b>{name}</b>{sub && <small>{sub}</small>}</span>
+      <span className="off-step">
+        <button type="button" disabled={disabled || n <= 0} onClick={onMinus} aria-label={`Togli ${name}`}>−</button>
+        <b aria-live="polite">{n}</b>
+        <button type="button" disabled={disabled} onClick={onPlus} aria-label={`Aggiungi ${name}`}>+</button>
+      </span>
+    </li>
+  );
+}
+
+const compSub = (k) => [`−${k.minutes} min`, `+1d${COMPONENT_ROLL_DIE} al tiro`, componentEffectLabel(k)].filter(Boolean).join(" · ");
+const enhSub = (e) => `${e.applies.map((t) => FT_LABEL[t] || t).join(", ")} · ${e.desc}`;
+
+// ── ARTIGIANI: una scheda per PG, raggruppate per professione ──
+function MasterArtisans({ chars, nowMs }) {
+  const { busy, setBusy, act } = useCharAct();
+  const [filter, setFilter] = useState("all"); // "all" · chiave professione · "none"
+  const [openUid, setOpenUid] = useState("");
+  const [nudge, setNudge] = useState("");
+  const now = new Date(nowMs);
+
+  const byProf = PROFESSIONI.map((p) => ({ p, list: chars.filter((c) => c.crafting?.profession === p.key) }));
   const senza = chars.filter((c) => !c.crafting?.profession);
+  const groups = [
+    ...byProf.filter((g) => g.list.length && (filter === "all" || filter === g.p.key)),
+    ...(senza.length && (filter === "all" || filter === "none") ? [{ p: null, list: senza }] : []),
+  ];
 
   // Un doc in `notifications` per ciascuno: la campanella dell'app e, via
   // `pushOnNotification` (functions), anche la notifica push sul telefono.
   async function nudgeSenzaProfessione() {
     if (!senza.length) return;
-    if (!window.confirm(`Mandare l'avviso dell'Officina a ${senza.length} eroi senza professione?
-
-${senza.map((c) => c.name).join(", ")}`)) return;
+    if (!window.confirm(`Mandare l'avviso dell'Officina a ${senza.length} eroi senza professione?\n\n${senza.map((c) => c.name).join(", ")}`)) return;
     setBusy("nudge"); setNudge("");
     try {
       await Promise.all(senza.map((c) => addDoc(collection(db, "notifications"), {
@@ -1206,96 +1310,237 @@ ${senza.map((c) => c.name).join(", ")}`)) return;
     finally { setBusy(""); }
   }
 
-  async function act(uid, patch) {
-    setBusy(uid);
-    try { await updateDoc(doc(db, "characters", uid), patch); }
-    catch (e) { alert("Errore: " + (e.message || e)); }
-    finally { setBusy(""); }
-  }
+  return (
+    <div className="nx-pannello off-box off-arts">
+      <div className="off-sec-head">
+        <span className="nx-tag">👥 Artigiani</span>
+        <p className="nx-nota">{chars.length - senza.length} artigiani su {chars.length} eroi. Tocca <b>Gestisci</b> per cambiare professione, PE, usi e scorte.</p>
+      </div>
 
-  // Il lavoro sul banco finisce subito (il Master lo "sblocca").
-  async function finishNow(c, entry) {
-    const srv = await serverNow().catch(() => new Date());
-    const log = (c.crafting?.log || []).map((e) => (e.id === entry.id ? { ...e, readyAt: srv.getTime() - 1000, finishedByMaster: true } : e));
-    await act(c.uid, { "crafting.log": log, "crafting.busyUntil": deleteField() });
-  }
+      {/* Filtro per professione: bottoni, NON role="tab" (covo.css ci metterebbe le rune). */}
+      <div className="off-chips" aria-label="Filtra per professione">
+        <button type="button" className={`off-chip${filter === "all" ? " on" : ""}`} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>Tutti <i>{chars.length}</i></button>
+        {byProf.map(({ p, list }) => (
+          <button key={p.key} type="button" className={`off-chip${filter === p.key ? " on" : ""}${list.length ? "" : " is-empty"}`} aria-pressed={filter === p.key} style={{ "--c": p.carColor }} onClick={() => setFilter(p.key)}>
+            <span aria-hidden="true">{p.icon}</span> {p.name.split(" / ")[0]} <i>{list.length}</i>
+          </button>
+        ))}
+        <button type="button" className={`off-chip is-none${filter === "none" ? " on" : ""}`} aria-pressed={filter === "none"} onClick={() => setFilter("none")}>Senza professione <i>{senza.length}</i></button>
+      </div>
+
+      {groups.length === 0 && (
+        <p className="nx-nota off-empty">{filter === "none" ? "Tutti hanno scelto una professione." : `Nessuno è ${PROFESSIONI.find((p) => p.key === filter)?.name || "artigiano"}, per ora.`}</p>
+      )}
+
+      {groups.map(({ p, list }) => (
+        <section key={p?.key || "none"} className={`off-group${p ? "" : " is-none"}`} style={p ? { "--c": p.carColor } : undefined}>
+          <header className="off-group-head">
+            <span className="off-group-ic" aria-hidden="true">{p ? p.icon : "·"}</span>
+            <div className="off-group-t">
+              <h3>{p ? p.name : "Senza professione"} <small>{list.length}</small></h3>
+              <p>{p ? <>Tira con <b>{p.caratteristica}</b> · postazione in sessione: {postazioneFor(p.key)}</> : "Non possono ancora creare: la professione la scelgono loro dall'Officina (o gliela dai tu da Gestisci)."}</p>
+            </div>
+            {!p && (
+              <button type="button" className="off-ghost" disabled={busy === "nudge"} onClick={nudgeSenzaProfessione}>{busy === "nudge" ? "Invio…" : `🔔 Avvisali (${list.length})`}</button>
+            )}
+          </header>
+          {!p && nudge && <p className={`nx-nota off-nudge-msg${nudge.startsWith("Errore") ? " is-err" : ""}`}>{nudge}</p>}
+          <ul className="off-cards">
+            {list.map((c) => (
+              <ArtisanCard key={c.uid} c={c} now={now} nowMs={nowMs} open={openUid === c.uid} onToggle={() => setOpenUid(openUid === c.uid ? "" : c.uid)} busy={busy} setBusy={setBusy} act={act} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function ArtisanCard({ c, now, nowMs, open, onToggle, busy, setBusy, act }) {
+  const [confirmReset, setConfirmReset] = useState(false);
+  const cr = c.crafting || {};
+  const p = PROFESSIONI.find((x) => x.key === cr.profession) || null;
+  const pr = progression(cr.xp || 0);
+  const al = craftAllowance(cr, now);
+  const bench = benchOf(cr);
+  const left = bench ? (Number(bench.readyAt) || 0) - nowMs : 0;
+  const total = Math.max(Number(cr.totalCount) || 0, (cr.log || []).length);
+  const comps = COMPONENTS.map((k) => ({ ...k, n: Number(cr.components?.[k.key]) || 0 })).filter((k) => k.n > 0);
+  const enhs = ENHANCERS.map((e) => ({ ...e, n: Number(cr.enhancers?.[e.key]) || 0 })).filter((e) => e.n > 0);
+  const isBusy = busy === c.uid;
+  const tm = bench ? tierMeta(bench.targetTier || bench.tier) : null;
+  const st = !p ? { k: "none", t: "senza professione" }
+    : bench ? (bench.failed ? { k: "bad", t: "💥 disastro" } : left > 0 ? { k: "work", t: "⚒ al lavoro" } : { k: "ok", t: "✓ da ritirare" })
+    : { k: "idle", t: "banco libero" };
 
   return (
-    <details className="nx-pannello off-box off-master">
-      <summary>🎯 Master · professioni, PE, scorte <small>({chars.length} eroi · {senza.length} senza professione)</small></summary>
-      <div className="off-master-nudge">
-        <span>
-          <b>{senza.length}</b> {senza.length === 1 ? "eroe non ha" : "eroi non hanno"} ancora una professione{senza.length ? `: ${senza.map((c) => c.name).join(", ")}` : "."}
-        </span>
-        <button type="button" className="off-ghost" disabled={busy === "nudge" || !senza.length} onClick={nudgeSenzaProfessione}>
-          {busy === "nudge" ? "Invio…" : `🔔 Avvisali (${senza.length})`}
-        </button>
-        {nudge && <em className={nudge.startsWith("Errore") ? "is-err" : ""}>{nudge}</em>}
+    <li className={`off-card${open ? " is-open" : ""}`} style={p ? { "--c": p.carColor } : undefined}>
+      <div className="off-card-head">
+        <span className="off-card-ic" aria-hidden="true">{p ? p.icon : "?"}</span>
+        <div className="off-card-who">
+          <b>{c.name}</b>
+          <small>{p ? <>{pr.grado.icon} {pr.grado.name} · livello {pr.level.lv}{pr.bonus ? ` · ${sign(pr.bonus)} al tiro` : ""}</> : "nessuna arte"}</small>
+        </div>
+        <span className={`off-pill is-${st.k}`}>{st.t}</span>
       </div>
-      <ul className="off-master-list">
-        {chars.map((c) => {
-          const cr = c.crafting || {};
-          const p = PROFESSIONI.find((x) => x.key === cr.profession);
-          const pr = progression(cr.xp || 0);
-          const al = craftAllowance(cr);
-          const bench = (cr.log || []).find((e) => !e.inboxId && !e.skipped) || null;
-          const benchLeft = bench ? (Number(bench.readyAt) || 0) - Date.now() : 0;
-          return (
+
+      {p && (
+        <div className="off-card-xp">
+          <div className="off-xp" role="progressbar" aria-label="Esperienza verso il prossimo livello" aria-valuenow={pr.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${pr.pct}%` }} /></div>
+          <small>{pr.xp} PE{pr.next ? ` · ${pr.next.xp - pr.xp} al livello ${pr.next.lv}` : " · livello massimo"}</small>
+        </div>
+      )}
+
+      <dl className="off-card-nums">
+        <div className={al.usedToday ? "is-used" : ""}><dt>Oggi</dt><dd>{al.usedToday ? 1 : 0}<i>/{CRAFT_MAX_PER_DAY}</i></dd></div>
+        <div className={al.weekCount >= CRAFT_MAX_PER_WEEK ? "is-used" : ""}><dt>Settimana</dt><dd>{al.weekCount}<i>/{CRAFT_MAX_PER_WEEK}</i></dd></div>
+        <div><dt>Creazioni</dt><dd>{total}</dd></div>
+        <div title={hasPurse(c) ? `sulla scheda ${fmtMo(sheetGp(c))}${goldPending(cr) ? ` · ${fmtMo(goldPending(cr))} in sospeso` : ""}` : "oro non ancora sincronizzato da Foundry"}><dt>Oro</dt><dd className="is-gold">{hasPurse(c) ? fmtMo(availableGp(c)).replace(" mo", "") : "—"}{hasPurse(c) && <i> mo</i>}</dd></div>
+      </dl>
+
+      {bench && (
+        <div className={`off-card-bench${bench.failed ? " is-fail" : ""}`} style={{ "--q": bench.failed ? "#b91c1c" : tm.color }}>
+          <span>{bench.failed ? "💥 Fallimento critico" : <>{tm.icon} {bench.pickName || bench.name}{bench.cursed ? " ☠" : ""}</>}</span>
+          <small>{left > 0 ? `pronto tra ${fmtCountdown(left)}` : "finito"}</small>
+          {left > 0 && <button type="button" className="off-ghost" disabled={isBusy} onClick={async () => { setBusy(c.uid); try { await finishBenchNow(c, bench); } catch (e) { alert("Errore: " + (e.message || e)); } finally { setBusy(""); } }}>⏩ Termina ora</button>}
+        </div>
+      )}
+
+      <div className="off-card-stock">
+        {comps.length || enhs.length ? (
+          <ul>
+            {comps.map((k) => <li key={k.key} title={compSub(k)}><span aria-hidden="true">{k.icon}</span> {k.name} <b>×{k.n}</b></li>)}
+            {enhs.map((e) => <li key={e.key} className="is-enh" title={e.desc}><span aria-hidden="true">{e.icon}</span> {e.name} <b>×{e.n}</b></li>)}
+          </ul>
+        ) : <small>Nessuna scorta assegnata.</small>}
+      </div>
+
+      <button type="button" className="off-card-toggle" aria-expanded={open} onClick={onToggle}>{open ? "▾ Chiudi" : "⚙ Gestisci"}</button>
+
+      {open && (
+        <div className="off-manage">
+          <div className="off-manage-sec">
+            <span className="off-label">Professione</span>
+            <select className="off-input" value={cr.profession || ""} disabled={isBusy} onChange={(e) => act(c.uid, { "crafting.profession": e.target.value })} aria-label={`Professione di ${c.name}`}>
+              <option value="">— nessuna professione —</option>
+              {PROFESSIONI.map((x) => <option key={x.key} value={x.key}>{x.icon} {x.name}</option>)}
+            </select>
+            <small>Cambiarla non tocca PE né registro.</small>
+          </div>
+          <div className="off-manage-sec">
+            <span className="off-label">Esperienza e usi</span>
+            <div className="off-manage-btns">
+              <button type="button" className="off-ghost" disabled={isBusy || !(Number(cr.xp) > 0)} onClick={() => act(c.uid, { "crafting.xp": Math.max(0, (Number(cr.xp) || 0) - 25) })}>−25 PE</button>
+              <button type="button" className="off-ghost" disabled={isBusy} onClick={() => act(c.uid, { "crafting.xp": (Number(cr.xp) || 0) + 25 })}>+25 PE</button>
+              <button type="button" className="off-ghost" disabled={isBusy || (!al.usedToday && !al.weekCount)} onClick={() => act(c.uid, { "crafting.weekCount": 0, "crafting.lastDayKey": "" })}>↺ Azzera usi</button>
+            </div>
+            <small>"Azzera usi" ridà la prova di oggi e le 3 della settimana.</small>
+          </div>
+          <div className="off-manage-sec is-wide">
+            <span className="off-label">Componenti trovati in sessione <small>(ognuno: meno tempo e +1d{COMPONENT_ROLL_DIE} al tiro)</small></span>
+            <ul className="off-stockrows">
+              {COMPONENTS.map((k) => {
+                const n = Number(cr.components?.[k.key]) || 0;
+                return <StockRow key={k.key} icon={k.icon} name={k.name} sub={compSub(k)} n={n} disabled={isBusy}
+                  onMinus={() => act(c.uid, { [`crafting.components.${k.key}`]: n - 1 })} onPlus={() => act(c.uid, { [`crafting.components.${k.key}`]: n + 1 })} />;
+              })}
+            </ul>
+          </div>
+          <div className="off-manage-sec is-wide">
+            <span className="off-label">Potenziatori <small>(si consumano quando l'oggetto va a Foundry)</small></span>
+            <ul className="off-stockrows">
+              {ENHANCERS.map((e) => {
+                const n = Number(cr.enhancers?.[e.key]) || 0;
+                return <StockRow key={e.key} icon={e.icon} name={e.name} sub={enhSub(e)} n={n} disabled={isBusy}
+                  onMinus={() => act(c.uid, { [`crafting.enhancers.${e.key}`]: n - 1 })} onPlus={() => act(c.uid, { [`crafting.enhancers.${e.key}`]: n + 1 })} />;
+              })}
+            </ul>
+          </div>
+          <div className="off-manage-sec is-wide is-danger">
+            {confirmReset ? (
+              <div className="off-manage-btns">
+                <small>Cancello professione, PE, registro, scorte e oro in sospeso di <b>{c.name}</b>. Non si torna indietro.</small>
+                <button type="button" className="off-ghost is-danger" disabled={isBusy} onClick={async () => { await act(c.uid, { crafting: deleteField() }); setConfirmReset(false); }}>Sì, azzera tutto</button>
+                <button type="button" className="off-ghost" onClick={() => setConfirmReset(false)}>No</button>
+              </div>
+            ) : (
+              <button type="button" className="off-ghost is-danger" disabled={isBusy || !c.crafting} onClick={() => setConfirmReset(true)}>Reset totale del crafting…</button>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ── SCORTE: chi ha cosa, per ogni componente e potenziatore ──
+function MasterStock({ chars }) {
+  const { busy, act } = useCharAct();
+  const artisans = chars.filter((c) => c.crafting?.profession);
+  const pool = artisans.length ? artisans : chars;
+  const sections = [
+    { field: "components", title: "Componenti trovati in sessione", note: `Si consumano all'avvio del lavoro: ognuno toglie tempo e dà +1d${COMPONENT_ROLL_DIE} al tiro, al massimo ${MAX_COMPONENTS} per prova.`, items: COMPONENTS.map((k) => ({ ...k, sub: compSub(k), about: k.desc })) },
+    { field: "enhancers", title: "Potenziatori", note: "Cambiano l'oggetto su Foundry (danno, colpire, CA, rarità): il giocatore li vede al banco solo se ne ha uno adatto.", items: ENHANCERS.map((e) => ({ ...e, sub: e.applies.map((t) => FT_LABEL[t] || t).join(", "), about: e.desc })) },
+  ];
+  return (
+    <div className="off-stockpage">
+      {sections.map((s) => {
+        const inCirc = s.items.reduce((a, it) => a + pool.reduce((b, c) => b + (Number(c.crafting?.[s.field]?.[it.key]) || 0), 0), 0);
+        return (
+          <div key={s.field} className="nx-pannello off-box">
+            <div className="off-sec-head">
+              <span className="nx-tag">{s.field === "components" ? "🧺" : "💠"} {s.title}</span>
+              <p className="nx-nota">{s.note} <b>{inCirc}</b> in mano ai giocatori.</p>
+            </div>
+            <ul className="off-stockgrid">
+              {s.items.map((it) => (
+                <StockItemCard key={it.key} it={it} field={s.field} pool={pool} busy={busy} act={act} />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StockItemCard({ it, field, pool, busy, act }) {
+  const [to, setTo] = useState("");
+  const holders = pool.map((c) => ({ c, n: Number(c.crafting?.[field]?.[it.key]) || 0 })).filter((h) => h.n > 0);
+  const tot = holders.reduce((a, h) => a + h.n, 0);
+  const path = `crafting.${field}.${it.key}`;
+  const target = pool.find((c) => c.uid === to);
+  const tn = target ? Number(target.crafting?.[field]?.[it.key]) || 0 : 0;
+  return (
+    <li className={`off-sitem${tot ? " on" : ""}`}>
+      <div className="off-sitem-head">
+        <span className="off-sitem-ic" aria-hidden="true">{it.icon}</span>
+        <div className="off-sitem-t"><b>{it.name}</b><small>{it.sub}</small></div>
+        <span className="off-sitem-n" title="in circolo"><b>{tot}</b><small>in giro</small></span>
+      </div>
+      <p className="off-sitem-about">{it.about}</p>
+      {holders.length > 0 && (
+        <ul className="off-holders">
+          {holders.map(({ c, n }) => (
             <li key={c.uid}>
-              <div className="off-master-row">
-                <b>{c.name}</b>
-                <select className="off-input" value={cr.profession || ""} disabled={busy === c.uid} onChange={(e) => act(c.uid, { "crafting.profession": e.target.value })}>
-                  <option value="">— nessuna professione —</option>
-                  {PROFESSIONI.map((x) => <option key={x.key} value={x.key}>{x.icon} {x.name}</option>)}
-                </select>
-                <small>{p ? `${pr.grado.name} · lv ${pr.level.lv} · ${pr.xp} PE` : "—"} · settimana {al.weekCount}/{CRAFT_MAX_PER_WEEK}{al.usedToday ? " · oggi usata" : ""}</small>
-              </div>
-              {bench && (
-                <div className="off-master-bench">
-                  <small>Sul banco:</small> {tierMeta(bench.tier).icon} {bench.name} · {benchLeft > 0 ? `pronto tra ${fmtCountdown(benchLeft)}` : "finito, da ritirare"}
-                  {benchLeft > 0 && <button type="button" className="off-ghost" disabled={busy === c.uid} onClick={() => finishNow(c, bench)}>⏩ Termina ora</button>}
-                </div>
-              )}
-              <div className="off-master-enh">
-                <small>Componenti trovati:</small>
-                {COMPONENTS.map((k) => {
-                  const n = Number(cr.components?.[k.key]) || 0;
-                  return (
-                    <span key={k.key} className={`off-stock${n > 0 ? " on" : ""}`} title={`${k.name} · −${k.minutes} min`}>
-                      <button type="button" disabled={busy === c.uid || n <= 0} onClick={() => act(c.uid, { [`crafting.components.${k.key}`]: n - 1 })} aria-label={`Togli ${k.name}`}>−</button>
-                      <b>{k.icon} {n}</b>
-                      <button type="button" disabled={busy === c.uid} onClick={() => act(c.uid, { [`crafting.components.${k.key}`]: n + 1 })} aria-label={`Assegna ${k.name}`}>+</button>
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="off-master-enh">
-                <small>Potenziatori assegnati:</small>
-                {ENHANCERS.map((e) => {
-                  const n = Number(cr.enhancers?.[e.key]) || 0;
-                  return (
-                    <span key={e.key} className={`off-stock${n > 0 ? " on" : ""}`} title={e.name}>
-                      <button type="button" disabled={busy === c.uid || n <= 0} onClick={() => act(c.uid, { [`crafting.enhancers.${e.key}`]: n - 1 })} aria-label={`Togli ${e.name}`}>−</button>
-                      <b>{e.icon} {n}</b>
-                      <button type="button" disabled={busy === c.uid} onClick={() => act(c.uid, { [`crafting.enhancers.${e.key}`]: n + 1 })} aria-label={`Assegna ${e.name}`}>+</button>
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="off-master-acts">
-                <button type="button" className="off-ghost" disabled={busy === c.uid} onClick={() => act(c.uid, { "crafting.xp": (Number(cr.xp) || 0) + 25 })}>+25 PE</button>
-                <button type="button" className="off-ghost" disabled={busy === c.uid || !(Number(cr.xp) > 0)} onClick={() => act(c.uid, { "crafting.xp": Math.max(0, (Number(cr.xp) || 0) - 25) })}>−25 PE</button>
-                <button type="button" className="off-ghost" disabled={busy === c.uid} onClick={() => act(c.uid, { "crafting.weekCount": 0, "crafting.lastDayKey": "" })}>Azzera usi</button>
-                <button type="button" className="off-ghost" disabled={busy === c.uid || !c.crafting} onClick={() => { if (window.confirm(`Azzerare del tutto il crafting di ${c.name} (professione, PE, registro, scorte)?`)) act(c.uid, { crafting: deleteField() }); }}>Reset totale</button>
-              </div>
+              <span>{c.name}</span>
+              <span className="off-step">
+                <button type="button" disabled={busy === `${c.uid}${it.key}`} onClick={() => act(c.uid, { [path]: n - 1 }, `${c.uid}${it.key}`)} aria-label={`Togli ${it.name} a ${c.name}`}>−</button>
+                <b>{n}</b>
+                <button type="button" disabled={busy === `${c.uid}${it.key}`} onClick={() => act(c.uid, { [path]: n + 1 }, `${c.uid}${it.key}`)} aria-label={`Dai ${it.name} a ${c.name}`}>+</button>
+              </span>
             </li>
-          );
-        })}
-      </ul>
-      <CraftSpese chars={chars} />
-      <p className="nx-nota">Gli oggetti creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
-      <CraftLedger chars={chars} reload={load} patchChar={() => {}} />
-    </details>
+          ))}
+        </ul>
+      )}
+      <div className="off-assign">
+        <select className="off-input" value={to} onChange={(e) => setTo(e.target.value)} aria-label={`Assegna ${it.name} a`}>
+          <option value="">Assegna a…</option>
+          {pool.map((c) => <option key={c.uid} value={c.uid}>{c.name}</option>)}
+        </select>
+        <button type="button" className="off-ghost" disabled={!target || busy === `${to}${it.key}`} onClick={() => act(to, { [path]: tn + 1 }, `${to}${it.key}`)}>+1</button>
+      </div>
+    </li>
   );
 }
 
@@ -1308,15 +1553,7 @@ function CraftSpese({ chars }) {
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
 
-  const rows = [];
-  for (const c of chars) {
-    const log = Array.isArray(c.crafting?.log) ? c.crafting.log : [];
-    for (const e of log) {
-      if (!(Number(e.costMo) > 0) || e.goldInboxId || e.goldDone) continue;
-      rows.push({ c, e });
-    }
-  }
-  rows.sort((a, b) => (b.e.at || 0) - (a.e.at || 0));
+  const rows = openSpese(chars);
   const totale = rows.reduce((a, r) => a + (Number(r.e.costMo) || 0), 0);
 
   // Scrive la voce nella coda e segna la prova come "mandata".
@@ -1371,9 +1608,9 @@ function CraftSpese({ chars }) {
   });
 
   return (
-    <div className="off-spese">
+    <div className="nx-pannello off-box off-spese">
       <div className="off-spese-head">
-        <span className="off-label">💰 Spese dei materiali <small>(da scalare dall'oro su Foundry)</small></span>
+        <div className="off-sec-head off-spese-t"><span className="nx-tag">💰 Spese dei materiali</span><p className="nx-nota">Monete già spese al banco e non ancora scalate dall'oro su Foundry: mandale in coda o segnale come pagate.</p></div>
         <div className="off-spese-sum"><span><b>{rows.length}</b><small>aperte</small></span><span><b>{fmtMo(totale)}</b><small>in totale</small></span></div>
         {rows.length > 1 && (
           <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act("all", async () => { for (const r of rows) await sendOne(r); setMsg(`✓ ${rows.length} spese mandate alla coda di Foundry.`); })}>
@@ -1401,6 +1638,7 @@ function CraftSpese({ chars }) {
         </ul>
       )}
       {msg && <p className={`nx-nota off-spese-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</p>}
+      <p className="nx-nota">Gli <strong>oggetti</strong> creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
       <p className="nx-nota">La macro <strong>Crea Oggetti dal sito → Foundry</strong> riconosce queste voci (<code>kind: "gold"</code>), toglie le monete all'attore col <code>firebaseUID</code> giusto e le cancella dalla coda.</p>
     </div>
   );
@@ -1641,9 +1879,9 @@ function CraftLedger({ chars, reload, patchChar }) {
   }, []) : [];
 
   return (
-    <div className="off-ledger">
+    <div className="nx-pannello off-box off-ledger">
       <div className="off-ledger-head">
-        <span className="off-label">📊 Registro dei craft <small>(totale a vita · oggi · questa settimana; il dettaglio tiene le ultime 40 prove di ogni PG)</small></span>
+        <div className="off-sec-head off-ledger-t"><span className="nx-tag">📊 Registro dei craft</span><p className="nx-nota">Tocca un personaggio per vedere le sue prove giorno per giorno (le ultime 40). Da lì puoi annullarne una.</p></div>
         <div className="off-ledger-sum">
           <span><b>{sum("total")}</b><small>totale</small></span>
           <span><b>{sum("today")}</b><small>oggi</small></span>
@@ -1670,7 +1908,7 @@ function CraftLedger({ chars, reload, patchChar }) {
           <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate in coda <small>· ✕ elimina una prova e la annulla del tutto</small></span>
           {weeks.map((w) => (
             <div key={w.key} className="off-ledger-week">
-              <div className="off-ledger-wk"><b>Settimana da domenica {dayLabel(w.key)}</b>{w.key === weekKey && <em>in corso</em>}<small>{w.days.reduce((a, d) => a + d.items.length, 0)} prove</small></div>
+              <div className="off-ledger-wk"><b>Settimana da {dayLabel(w.key)}</b>{w.key === weekKey && <em>in corso</em>}<small>{w.days.reduce((a, d) => a + d.items.length, 0)} prove</small></div>
               {w.days.map((d) => (
                 <div key={d.key} className="off-ledger-day">
                   <div className="off-ledger-dk">{dayLabel(d.key)}{d.key === dayKey && <em>oggi</em>}<small>{d.items.length}</small></div>
