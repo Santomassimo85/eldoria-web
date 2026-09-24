@@ -122,6 +122,67 @@ function buildItemData(d) {
 }
 
 // ----------------------------------------------------------------
+// TROVA L'ATTORE DI UN PERSONAGGIO DEL SITO (2026-09-24)
+// 1) flag world.firebaseUID sull'attore (la via normale);
+// 2) se manca, chiede a Firestore il personaggio characters/{uid}, che la
+//    macro di sincronizzazione ha segnato con foundryActorId/foundryUser:
+//    a) l'attore con quell'id;  b) l'unico attore "character" di cui
+//    l'utente foundryUser e' proprietario;  c) l'unico attore con lo
+//    stesso nome del personaggio.
+// Quando lo trova per le vie 2, SCRIVE il flag: dalla volta dopo e' la via 1.
+// ----------------------------------------------------------------
+const _normNome = (x) => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/[´`'’ʼ]/g, "'").replace(/\s+/g, " ").trim();
+const _cacheAttori = new Map();
+
+async function trovaAttore(uid) {
+  if (!uid) return null;
+  if (_cacheAttori.has(uid)) return _cacheAttori.get(uid);
+  const pg = game.actors.contents.filter((a) => a.type === "character");
+
+  let actor = game.actors.contents.find((a) => a.getFlag("world", "firebaseUID") === uid) || null;
+  let via = "flag";
+
+  if (!actor) {
+    let c = {};
+    try {
+      const res = await fetch(`${BASE}/characters/${uid}?key=${FIREBASE_CONFIG.apiKey}`
+        + "&mask.fieldPaths=name&mask.fieldPaths=foundryActorId&mask.fieldPaths=foundryUser");
+      if (res.ok) c = obj((await res.json()).fields || {});
+    } catch (e) { console.warn("[Import] Lettura personaggio fallita:", e); }
+
+    // a) id dell'attore scritto dalla sync (scartato se e' gia' di un altro)
+    const perId = c.foundryActorId ? game.actors.get(c.foundryActorId) : null;
+    if (perId && !perId.getFlag("world", "firebaseUID")) { actor = perId; via = "id della sync"; }
+
+    // b) l'utente di Foundry proprietario
+    if (!actor && c.foundryUser) {
+      const u = game.users.find((x) => x.name === c.foundryUser);
+      const suoi = u ? pg.filter((a) => (a.ownership?.[u.id] ?? 0) >= 3
+        && !a.getFlag("world", "firebaseUID")) : [];
+      if (suoi.length === 1) { actor = suoi[0]; via = `proprietario ${u.name}`; }
+      else if (suoi.length > 1) console.warn(`[Import] ${c.foundryUser} possiede ${suoi.length} attori: ${suoi.map((a) => a.name).join(", ")}. Sincronizza la scheda giusta per sceglierla.`);
+    }
+
+    // c) stesso nome
+    if (!actor && c.name) {
+      const omonimi = pg.filter((a) => _normNome(a.name) === _normNome(c.name)
+        && !a.getFlag("world", "firebaseUID"));
+      if (omonimi.length === 1) { actor = omonimi[0]; via = "nome"; }
+    }
+
+    if (actor) {
+      await actor.setFlag("world", "firebaseUID", uid);
+      console.log(`[Import] ${actor.name} collegato a ${c.name || uid} (via ${via}), per sempre.`);
+      ui.notifications.info(`🔗 ${actor.name} collegato al sito (${via}).`);
+    }
+  }
+
+  _cacheAttori.set(uid, actor);
+  return actor;
+}
+
+// ----------------------------------------------------------------
 // MAIN
 // ----------------------------------------------------------------
 (async () => {
@@ -154,10 +215,10 @@ function buildItemData(d) {
     try {
       // ── SPESA DI MONETE (Officina): non è un oggetto ──
       if (d.kind === "gold") {
-        const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
+        const actor = await trovaAttore(d.targetUid);
         if (!actor) {
           console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per la spesa di ${d.amount} mo. Salto.`);
-          ui.notifications.warn(`Spesa di ${d.amount} mo: ${d.targetName || d.targetUid} non e' collegato a nessun attore. Lancia la macro "Collega attori al sito".`);
+          ui.notifications.warn(`Spesa di ${d.amount} mo: ${d.targetName || d.targetUid} non e' collegato a nessun attore. Sincronizza una volta la sua scheda (macro di sync) e rilancia.`);
           skipped++;
           continue; // lascia in coda per riprovare
         }
@@ -224,10 +285,10 @@ function buildItemData(d) {
 
       if (d.target === "player") {
         // trova l'attore col flag firebaseUID corrispondente
-        const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
+        const actor = await trovaAttore(d.targetUid);
         if (!actor) {
           console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per "${d.name}". Salto.`);
-          ui.notifications.warn(`"${d.name}": ${d.targetName || d.targetUid} non e' collegato a nessun attore. Lancia la macro "Collega attori al sito".`);
+          ui.notifications.warn(`"${d.name}": ${d.targetName || d.targetUid} non e' collegato a nessun attore. Sincronizza una volta la sua scheda (macro di sync) e rilancia.`);
           skipped++;
           continue; // lascia in coda per riprovare
         }

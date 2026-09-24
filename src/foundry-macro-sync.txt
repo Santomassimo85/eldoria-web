@@ -328,6 +328,14 @@ if (!actor) {
       ...abilityMap
     });
 
+    /* COLLEGAMENTO ATTORE <-> SITO (2026-09-24)
+       La sync e' l'unico momento in cui si SA con certezza quale attore e'
+       quale personaggio del sito (l'ha scelto il DM nella tendina): lo si
+       scrive da tutti e due i lati. Sull'attore il flag world.firebaseUID,
+       sul personaggio foundryActorId + foundryUser. La macro degli oggetti
+       usa il flag e, se manca, ritrova l'attore da questi campi. */
+    const baseActor = game.actors.get(actor.id) || actor; // token non collegato -> attore base
+
     /* PAYLOAD COMPLETO */
     const classItem = actor.itemTypes.class?.[0];
     const firestoreData = { fields: {
@@ -345,12 +353,16 @@ if (!actor) {
       spellSlots: fsArr(slots),
       skills:     fsArr(skills),
       actions:    fsArr(actions),
-      inventory:  fsArr(inventory)
+      inventory:  fsArr(inventory),
+      foundryActorId:   fsStr(baseActor.id),
+      foundryActorName: fsStr(baseActor.name),
+      foundryUser:      fsStr(targetName)
     }};
 
     const mask = ["name", "class", "subclass", "race", "background", "image", "level",
                   "stats", "currency", "currencyPurse", "currencyBags",
-                  "spellSlots", "skills", "actions", "inventory"]
+                  "spellSlots", "skills", "actions", "inventory",
+                  "foundryActorId", "foundryActorName", "foundryUser"]
                  .map(f => `updateMask.fieldPaths=${f}`).join("&");
 
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/characters/${firebaseUID}?key=${FIREBASE_CONFIG.apiKey}&${mask}`;
@@ -362,6 +374,10 @@ if (!actor) {
         body: JSON.stringify(firestoreData)
       });
       if (res.ok) {
+        if (baseActor.getFlag("world", "firebaseUID") !== firebaseUID) {
+          await baseActor.setFlag("world", "firebaseUID", firebaseUID);
+          console.log(`[Sync] ${baseActor.name} collegato al sito (${firebaseUID}).`);
+        }
         const oroTxt = borse.length
           ? ` · ${totale.gp} mo (${tasche.gp} addosso, ${totale.gp - tasche.gp} in ${borse.length} ${borse.length === 1 ? "borsa" : "borse"})`
           : ` · ${totale.gp} mo`;
