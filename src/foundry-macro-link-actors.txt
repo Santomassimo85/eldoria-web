@@ -14,7 +14,8 @@
 //
 // COSA FA QUESTA MACRO
 // Scarica l'elenco dei personaggi dal sito (collection `characters`),
-// lo confronta con gli attori di Foundry per NOME e, quando l'abbinamento
+// lo confronta con gli attori di Foundry (prima per GIOCATORE proprietario,
+// con la mappa UTENTI, poi per NOME) e, quando l'abbinamento
 // è sicuro (un solo attore per un solo personaggio), scrive il flag.
 // Non tocca nient'altro dell'attore. Rilanciarla non fa danni.
 // Alla fine stampa un riepilogo: collegati, già a posto, ambigui, non trovati.
@@ -34,6 +35,25 @@ const FIREBASE_CONFIG = {
 const FORZA = {
   // "Palar": "abc123…",
 };
+
+// Utente di Foundry -> UID del sito: LA STESSA `uidMap` della macro di
+// sincronizzazione (copiala da lì). Se l'attore ha come proprietario uno di
+// questi utenti, il collegamento è sicuro anche quando il nome dell'attore
+// non somiglia a quello del personaggio sul sito.
+const UTENTI = {
+  // "NomeUtenteFoundry": "UID_FIREBASE",   ← compila in Foundry, non nel repo
+};
+
+// UID dal giocatore proprietario dell'attore (permesso OWNER, non GM).
+function uidDalProprietario(attore) {
+  const uids = new Set();
+  for (const [userId, lvl] of Object.entries(attore.ownership || {})) {
+    if (userId === "default" || lvl < 3) continue;
+    const u = game.users?.get(userId);
+    if (u && !u.isGM && UTENTI[u.name]) uids.add(UTENTI[u.name]);
+  }
+  return uids.size === 1 ? [...uids][0] : null;
+}
 
 const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
 
@@ -90,7 +110,16 @@ const firstTok = (s) => norm(s).split(/[\s'"\-]+/)[0];
       continue;
     }
 
-    // 2c) abbinamento per nome: prima il nome intero, poi il primo nome
+    // 2c) dal giocatore proprietario (UTENTI): il più affidabile
+    const daUtente = uidDalProprietario(attore);
+    if (daUtente) {
+      const c = personaggi.find((p) => p.uid === daUtente);
+      await attore.setFlag("world", "firebaseUID", daUtente);
+      fatti.push({ attore: attore.name, sito: c ? c.name : "(dal proprietario)", uid: daUtente });
+      continue;
+    }
+
+    // 2d) abbinamento per nome: prima il nome intero, poi il primo nome
     let match = personaggi.filter((p) => norm(p.name) === norm(attore.name));
     if (!match.length) match = personaggi.filter((p) => firstTok(p.name) === firstTok(attore.name));
 
