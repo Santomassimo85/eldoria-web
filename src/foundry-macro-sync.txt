@@ -182,6 +182,12 @@ if (!actor) {
 
   /* ---- Costruisce i dati e li invia ---- */
   async function run() {
+    // uidMap vuota = e' stata incollata la copia del repo (sanificata):
+    // la tendina uscirebbe vuota. Serve la versione del Master con la mappa.
+    if (!Object.keys(uidMap).length) {
+      ui.notifications.error("uidMap e' vuota: questa e' la copia del repo senza giocatori. Incolla la versione DM (foundry-macro-sync-DM.txt) o compila uidMap.", { permanent: true });
+      return;
+    }
     const targetName = await chooseTarget();
     if (!targetName) { ui.notifications.warn("Sincronizzazione annullata."); return; }
     const firebaseUID = uidMap[targetName];
