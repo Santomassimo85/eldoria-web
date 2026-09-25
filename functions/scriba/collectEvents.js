@@ -11,6 +11,7 @@
 
 const { CONTINENTI } = require("./places");
 const { exanthiaMonthInfo } = require("./calendar");
+const { buildPalinsesto } = require("./palinsesto");
 
 const stripHtml = (html) =>
     String(html ?? "")
@@ -86,28 +87,38 @@ async function loadOneShotDirective(db) {
     }
 }
 
-// ── Numero precedente (continuità: il mondo prosegue, non riparte) ──────────
-async function collectPreviousIssue(db, edition) {
-    if (!edition || edition <= 1) return null;
+// ── Numeri recenti (continuità + memoria di cosa NON ripetere) ──────────────
+// Leggiamo gli ultimi RECENT_ISSUES numeri inviati: i titoli servono a dare
+// seguito ai fili, il testo intero a scovare le parole abusate, il
+// `palinsesto` salvato a non ripescare gli stessi argomenti e luoghi.
+const RECENT_ISSUES = 5;
+async function collectRecentIssues(db, edition) {
+    if (!edition || edition <= 1) return [];
     let docs = [];
     try {
         const snap = await db.collection("newsletters").where("status", "==", "sent").get();
         docs = snap.docs.map((d) => d.data());
     } catch (e) {
-        console.error("[scriba] newsletters (prev):", e);
-        return null;
+        console.error("[scriba] newsletters (recenti):", e);
+        return [];
     }
-    const prev = docs
-        .filter((d) => Number(d.number) < edition)
-        .sort((a, b) => Number(b.number) - Number(a.number))[0];
-    if (!prev || !prev.content) return null;
-    const c = prev.content;
     const heads = (arr) => (Array.isArray(arr) ? arr.map((a) => a.headline).filter(Boolean) : []);
-    return {
-        numero: prev.number,
-        motto: c.edition_motto || "",
-        titoli: [c.lead?.headline, ...heads(c.dalle_terre), ...heads(c.arena)].filter(Boolean).slice(0, 8),
-    };
+    const bodies = (arr) => (Array.isArray(arr) ? arr.map((a) => `${a.headline || ""} ${a.body || ""}`) : []);
+    return docs
+        .filter((d) => Number(d.number) < edition && d.content)
+        .sort((a, b) => Number(b.number) - Number(a.number))
+        .slice(0, RECENT_ISSUES)
+        .map((d) => {
+            const c = d.content;
+            const secs = [c.dalle_terre, c.voci_di_taverna, c.listini];
+            return {
+                numero: d.number,
+                motto: c.edition_motto || "",
+                titoli: [c.lead?.headline, ...secs.flatMap(heads)].filter(Boolean),
+                testo: [c.lead?.headline, c.lead?.body, ...secs.flatMap(bodies)].join(" "),
+                palinsesto: d.palinsesto || null,
+            };
+        });
 }
 
 // ── Arene / tornei di gladiatori (con RAZZA dei combattenti) ────────────────
@@ -267,23 +278,32 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
 
     const characters = await loadCharacters(db);
 
-    const [dossier, arene, mercato, npcs, incarichi, numeroPrecedente, indicazioniRedazione] = await Promise.all([
+    const [dossier, arene, mercato, npcs, incarichi, recenti, indicazioniRedazione] = await Promise.all([
         collectDossier(db, fromMs),
         collectArenas(db, fromMs, characters),
         collectMarket(db, fromMs),
         collectNpcs(db),
         collectQuests(db),
-        collectPreviousIssue(db, edition),
+        collectRecentIssues(db, edition),
         loadOneShotDirective(db),
     ]);
 
+    // Il piano del numero, tirato a sorte (vedi palinsesto.js).
+    const palinsesto = buildPalinsesto({ recent: recenti });
+    // Il clima del mese entra nei dati SOLO quando il palinsesto lo concede:
+    // altrimenti Claude lo metteva in ogni pezzo (8 numeri di "caldo torrido").
+    const meseInfo = exanthiaMonthInfo(edition);
+    const mese = palinsesto.climaNelNumero ? meseInfo : { ...meseInfo, clima: "" };
+
     return {
+        // IL PIANO DI QUESTO NUMERO: argomenti, luoghi, toni, formati. Da seguire.
+        palinsesto,
         // Indicazione del direttore valida SOLO per questo numero (può chiedere
         // una réclame, dare risalto a un tema, ecc.). Vuoto = nessuna direttiva.
         indicazioniRedazione,
         periodoGiorni: days,
         // Cornice temporale del mondo: stagione, festa e divinità del mese.
-        mese: exanthiaMonthInfo(edition),
+        mese,
         // Geografia reale: l'ossatura su cui ancorare le notizie.
         geografia: CONTINENTI,
         // Cronaca dell'arena (sport): campioni e sfide recenti, da pubblicare.
@@ -294,8 +314,8 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
         npcNoti: npcs,
         eroiDelReame: summarizeHeroes(characters),
         incarichiAperti: incarichi,
-        // Continuità con l'uscita precedente (titoli, per dare seguito).
-        numeroPrecedente,
+        // Titoli degli ultimi numeri: per dare seguito a UN filo e per NON ripetere il resto.
+        numeriRecenti: recenti.map((r) => ({ numero: r.numero, motto: r.motto, titoli: r.titoli })),
         // DOSSIER RISERVATO: solo per consapevolezza. NON pubblicare, NON citare
         // gli avventurieri né le loro imprese. Sfondo, non cronaca.
         dossierRiservato: dossier,

@@ -852,6 +852,8 @@ async function proposeEditionToMaster(dbAdmin, { edition, built, createdBy = "au
   const docRef = await dbAdmin.collection("newsletters").add({
     number: edition, status: "draft", content: built.content, images: built.images, html: cleanHtml,
     sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(), createdBy,
+    // Il piano tirato a sorte: il numero dopo lo legge per non ripetere argomenti e luoghi.
+    palinsesto: built.data?.palinsesto || null,
   });
 
   const masterHtml = renderScribaHtml({

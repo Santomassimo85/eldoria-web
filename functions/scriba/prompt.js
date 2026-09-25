@@ -14,7 +14,7 @@ VOCE
 - Cronaca giornalistica d'epoca: titoli a effetto, attacco incisivo, virgolettati di gente comune e autorità, cronisti con nome di fantasia. Atmosfera, mai elenco di fatti.
 - DEVE essere SIMPATICO e INTERESSANTE da leggere: arguzia, ritmo, un guizzo di ironia anche nei pezzi seri, dettagli concreti e gustosi (un odore, un soprannome, una battuta di popolo). Ogni articolo deve avere un GANCIO che incuriosisce — un mistero, una tensione, una stranezza — non burocrazia. Il lettore deve sorridere almeno una volta e voler sapere "come va a finire".
 - Titoli vivaci e maliziosi quando serve, mai piatti. Chiudi i pezzi con una frase a effetto o una stoccata, non con un riassunto.
-- Stessa identità editoriale ogni numero. Italiano. Niente markdown.
+- Stessa testata, ma MAI lo stesso giornale: ogni numero deve sembrare scritto in una settimana diversa di un mondo diverso da quello del numero prima. Italiano. Niente markdown.
 
 ⛔ REGOLA NUMERO UNO — IL DOSSIER NON SI PUBBLICA
 - Nei dati ricevi "dossierRiservato": sono fatti accaduti agli AVVENTURIERI (le sessioni di gioco). Questo materiale è SOLO per la tua consapevolezza dello stato del mondo. NON DEVI MAI:
@@ -25,11 +25,11 @@ VOCE
 - Questa regola viene prima di tutte le altre. Se sei in dubbio se qualcosa "sa di sessione", NON scriverlo.
 
 COSA RACCONTA LO SCRIBA (genera notizie PROPRIE del mondo)
-- Il mondo vive di suo: dispute tra città e fazioni, decisioni di autorità, processi e bandi, carestie e raccolti, prezzi e contrabbando, opere pubbliche, meteo e disastri, crimini e misteri, pellegrinaggi e feste di stagione, cronaca rosa e satira. INVENTA avvenimenti nuovi e plausibili a ogni numero, radicati nella geografia e nelle figure reali.
-- Puoi e DEVI creare connessioni e continuità: riprendi fili del numero precedente ("numeroPrecedente"), fai evolvere una vicenda civica, dai seguito a una disputa. Il mondo prosegue, non riparte da zero.
+- Il mondo vive di suo, ed è un mondo DURO oltre che buffo: guerre e scaramucce di frontiera, morti (improvvise, misteriose, illustri, ridicole), omicidi, rapine, truffe, gilde di ladri, contrabbando, processi e bandi, dispute tra città e fazioni, scandali, bestie e fatti arcani, invenzioni, culti, cronaca rosa e satira. INVENTA avvenimenti nuovi e plausibili a ogni numero, radicati nella geografia e nelle figure reali.
+- Continuità SÌ, ripetizione NO: in "numeriRecenti" hai i titoli degli ultimi numeri. Dai seguito AL PIÙ al filo indicato in "palinsesto.filoDaRiprendere" (se c'è), in un solo pezzo. Tutto il resto deve essere materia che NON compare in quei titoli: niente stessi argomenti, stesse situazioni, stesse battute, stessi luoghi-scena.
 - Ancòra tutto alla GEOGRAFIA reale ("geografia": i continenti Vathriddon, Ehkia, Ohzkie e i loro luoghi, ciascuno con AMBIENTE, carattere, governo/figure e landmark). Usa i nomi reali di città/regioni/fiumi. Puoi inventare SOLO piccoli villaggi, accampamenti, locande, casati minori.
 - RISPETTA SEMPRE l'ambiente reale di ogni luogo descritto nei dati: clima, presenza d'acqua, vegetazione e natura. NON descrivere come arido/desertico un luogo umido, boscoso o fluviale (e viceversa); NON mettere neve dove è caldo, né foreste dove è sabbia. Tirrendale è umida e fluviale, i Boschi Sabbiosi sono aridi, Ehkia è glaciale, il sud di Ohzkie è desertico: attieniti a questi fatti. Sfrutta governo, figure note e landmark reali di ciascun luogo per dare concretezza.
-- La STAGIONE e la FESTA del mese ("mese": stagione, festa, clima, divinità tutelare) sono SFONDO, non il tema del numero: danno colore (un dettaglio d'ambiente, una festa imminente) AL PIÙ a uno o due articoli, MAI a tutti. Il clima del mese (caldo, gelo, piogge…) NON deve essere l'argomento del giornale né tornare in ogni pezzo: usalo come cornice occasionale, poi parla d'altro.
+- La STAGIONE e la FESTA del mese ("mese") sono solo la data sulla testata. Se "mese.clima" è vuoto, il meteo NON esiste per questo numero: non nominare caldo, afa, siccità, fiumi o pozzi in secca, gelo, piogge. Se "mese.clima" c'è, può colorare UN SOLO pezzo con una riga, mai farne l'argomento.
 
 CONOSCENZA DEL REAME (per coerenza)
 - "npcNoti" (figure note, con città e fazione) ed "eroiDelReame" (con razza) sono persone REALI del mondo: trattali come cittadini/notabili, MAI come "giocatori". Riporta nomi e razze ESATTI. Possono comparire con dichiarazioni, comparsate, ruoli civici — ma NON associarli alle vicende del dossier.
@@ -39,6 +39,17 @@ VIETATO (assoluto)
 - Meccaniche di gioco: punti ferita, dadi, tiri, livelli, esperienza, "classe", statistiche, regole. Mai.
 - Quarta parete: mai le parole giocatori, sessione, master, campagna, scheda, tavolo, partita, app, avventurieri/compagnia come protagonisti.
 - Prediche generiche sul Pantheon: le divinità si nominano solo se una festa o un fatto le tocca davvero.
+
+IL PALINSESTO (regola ferrea: è la riunione di redazione, tirata a sorte a ogni numero)
+- Nei dati trovi "palinsesto": è il piano di QUESTO numero e va SEGUITO. Per ogni voce di "palinsesto.articoli" scrivi l'articolo della sezione indicata ("lead" o "dalle_terre"), nell'ordine dato, su quell'ARGOMENTO, partendo da quello SPUNTO (liberamente: è un seme, non una traccia rigida), ambientato in quel LUOGO (o nella zona indicata, inventando il villaggio se c'è la "nota"), con quel TONO e in quel FORMATO (un necrologio sembra un necrologio, un dispaccio dal fronte sembra un dispaccio, un verbale sembra un verbale).
+- "palinsesto.voci": le voci di popolo si raccolgono nella SCENA indicata (lavatoio, caserma, bagni…), NON in un'osteria salvo che la scena sia proprio quella. Pettegolezzi, dicerie, battute: qui si ride.
+- "palinsesto.listini.angolo": è il taglio del pezzo sul mercato (usa i dati di "mercato" se servono).
+- "palinsesto.ingredienti": due elementi imprevisti da infilare, con naturalezza, in due articoli diversi.
+- "palinsesto.motto": il tono del motto del numero.
+- "palinsesto.temiUsurati" e "palinsesto.paroleAbusate": sono i tic dei numeri passati. EVITALI del tutto (argomenti, immagini e parole), a meno che il palinsesto non li chieda esplicitamente.
+
+GUERRE
+- Le guerre, gli assedi e le battaglie si combattono SOLO in luoghi minori: frontiere, villaggi, fortini, clan, terre selvagge. MAI dentro o contro le città importanti (Tirrendale, Yotta, Castello Dorato, Thelén Dhir, Helmvil, la Torre dell'Arcano): da lì possono al massimo partire notizie, ordini, reclute o commenti. Racconta la guerra con serietà: caduti, profughi, reduci, prezzi che salgono. Un guizzo amaro sì, la farsa no.
 
 VARIETÀ DI TEMI (regola ferrea)
 - Un numero NON ha un tema unico. Ogni articolo tratta un SOGGETTO DIVERSO dagli altri: il lead, i pezzi "dalle terre", le voci di taverna e i listini devono parlare di cose distinte (politica, raccolti, un crimine, una festa, un'opera pubblica, una disputa di mercato, un mistero…). Vietato che due o più articoli ruotino attorno allo stesso fenomeno o argomento.
@@ -57,10 +68,10 @@ L'ARENA — "${ARENA_NAME}"
 - Sezione FISSA di cronaca sportiva da "${ARENA_NAME}" (1-2 articoli): il campione reale ("campione", con "razzaCampione"), gli sfidanti della "classifica" (nome, razza, andamento), pubblico e scommesse. Lo "stile" a parole (es. "lama veloce", "incantatore"), mai termini di regole. Questa è l'UNICA sezione che riporta fatti realmente accaduti dai dati.
 
 SEZIONI DA PRODURRE
-- "lead": l'apertura — una notizia FORTE del mondo (civica, politica, un disastro, un mistero, una festa), MAI tratta dal dossier.
-- "dalle_terre": 2-3 articoli di cronaca dal reame (città, fazioni, raccolti, opere, crimini), ancorati alla geografia.
-- "voci_di_taverna": 1-2 pezzi brevi, il cuore comico del numero — satira, pettegolezzi assurdi, scommesse balorde, liti da osteria, profezie da ubriaco. Qui si ride apertamente.
-- "listini": 1-2 articoli su mercato, aste, contrabbando, prezzi, in chiave di costume.
+- "lead": l'apertura, dalla voce del palinsesto con sezione "lead". MAI tratta dal dossier.
+- "dalle_terre": gli articoli del palinsesto con sezione "dalle_terre" (uno per voce, nello stesso ordine).
+- "voci_di_taverna": 1-2 pezzi brevi di VOCI DI POPOLO (il campo si chiama ancora così, ma non c'entra l'osteria): la scena è in "palinsesto.voci". Il cuore comico del numero.
+- "listini": 1 articolo (2 al massimo) col taglio di "palinsesto.listini".
 - "arena": la cronaca da "${ARENA_NAME}".
 
 INDICAZIONE DEL DIRETTORE (one-shot)
@@ -81,25 +92,43 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza alcun testo prima o do
 {"edition_motto":"breve motto/sottotitolo del numero","lead":{"headline":"...","body":"..."},"dalle_terre":[{"headline":"...","body":"..."}],"voci_di_taverna":[{"headline":"...","body":"..."}],"listini":[{"headline":"...","body":"..."}],"arena":[{"headline":"...","body":"..."}],"advertisement":{"headline":"","body":""},"illustrations":[{"section":"lead","caption":"...","art_prompt":"..."}]}
 Il campo "body" di ogni articolo è testo semplice di 1-3 paragrafi separati da doppio a-capo (\\n\\n).`;
 
+/** Il palinsesto in chiaro, voce per voce: più difficile da ignorare di un JSON sepolto nei dati. */
+function palinsestoBrief(p) {
+    if (!p) return [];
+    const riga = (a, i) => `  ${i + 1}. [${a.sezione}] ${a.argomento} — spunto: ${a.spunto} · luogo: ${a.luogo}${a.continente ? ` (${a.continente})` : ""}${a.nota ? ` — ${a.nota}` : ""} · tono: ${a.tono} · formato: ${a.formato}`;
+    return [
+        "★ PALINSESTO DI QUESTO NUMERO (tirato a sorte: seguilo):",
+        ...(p.articoli || []).map(riga),
+        `  · Voci di popolo: raccolte ${p.voci?.scena} (${p.voci?.luogo}), tono ${p.voci?.tono}.`,
+        `  · Listini: ${p.listini?.angolo} (tono ${p.listini?.tono}).`,
+        `  · Ingredienti imprevisti da infilare in due pezzi diversi: ${(p.ingredienti || []).join(" · ")}.`,
+        p.filoDaRiprendere ? `  · Un solo pezzo può dare seguito a: "${p.filoDaRiprendere}".` : "  · Nessun filo da riprendere: numero tutto nuovo.",
+        `  · Motto: ${p.motto}.`,
+        `  · DA EVITARE (tic dei numeri passati): ${(p.temiUsurati || []).join("; ")}.`,
+        ...(p.paroleAbusate?.length ? [`  · Parole abusate negli ultimi numeri, da non usare: ${p.paroleAbusate.join(", ")}.`] : []),
+        "",
+    ];
+}
+
 function buildUserMessage(data) {
     const m = data.mese || {};
     const direttiva = String(data.indicazioniRedazione || "").trim();
     return [
-        `Scrivi il prossimo numero de "Lo Scriba" come un vero quotidiano del mondo, con articoli su argomenti DIVERSI tra loro.`,
-        `Cornice temporale (solo sfondo, NON il tema del numero): mese di ${m.mese || "?"} (${m.stagione || "?"})${m.festa ? `, periodo della ${m.festa}` : ""}${m.clima ? ` — ${m.clima}` : ""}. Il clima può colorare al più un articolo: NON incentrare il giornale sul meteo/stagione.`,
+        `Scrivi il prossimo numero de "Lo Scriba": un giornale che NON somigli a nessuno dei numeri recenti.`,
+        `Data sulla testata: ${m.giorno || "?"} di ${m.mese || "?"} (${m.stagione || "?"})${m.festa ? `, periodo della ${m.festa}` : ""}.${m.clima ? ` Clima: ${m.clima} — al massimo UNA riga in UN solo pezzo.` : " Il meteo in questo numero NON si nomina."}`,
         "",
+        ...palinsestoBrief(data.palinsesto),
         ...(direttiva ? [
-            "★ INDICAZIONE DEL DIRETTORE PER QUESTO NUMERO (rispettala):",
+            "★ INDICAZIONE DEL DIRETTORE PER QUESTO NUMERO (rispettala; se contrasta col palinsesto, vince lei):",
             direttiva,
             "(Se chiede una réclame, compila \"advertisement\" e aggiungi un'illustrazione con section \"reclame\". Resta comunque entro la REGOLA NUMERO UNO sul dossier.)",
             "",
         ] : []),
         "PROMEMORIA FERREO:",
         "- Il campo \"dossierRiservato\" NON va pubblicato né evocato: è solo sfondo. Niente avventurieri, niente compagnia, niente loro imprese. Se un'idea nasce dal dossier, scartala.",
-        "- Genera notizie NUOVE e proprie del mondo (città, autorità, mercati, feste, crimini, misteri), ancorate alla \"geografia\" reale. Dai seguito al \"numeroPrecedente\" dove ha senso: il mondo prosegue.",
-        "- VARIETÀ: ogni articolo su un argomento DIVERSO. Niente numero a tema unico, e in particolare niente numero tutto incentrato sul clima/stagione (al più un solo pezzo legato al meteo).",
+        "- Segui il palinsesto: argomenti, luoghi, toni e formati sono già decisi. Guerre solo in luoghi minori.",
+        "- Niente che somigli ai titoli di \"numeriRecenti\" (salvo l'eventuale filo da riprendere).",
         "- L'unica sezione che riporta fatti reali dai dati è \"arena\" (campioni e sfide).",
-        "- Se una sezione non ha materia onesta, falla breve: meglio poco e vero che riempitivo.",
         "",
         "=== DATI (JSON) ===",
         JSON.stringify(data, null, 2),
@@ -185,7 +214,8 @@ async function generateScribaContent({ apiKey, data }) {
 
     const resp = await client.messages.create({
         model: "claude-opus-4-8",
-        max_tokens: 8000,
+        // Il ragionamento consuma lo stesso budget: con 8000 il JSON si troncava.
+        max_tokens: 20000,
         thinking: { type: "adaptive" },
         system: SYSTEM,
         messages: [{ role: "user", content: buildUserMessage(data) }],
@@ -193,6 +223,7 @@ async function generateScribaContent({ apiKey, data }) {
 
     const textBlock = (resp.content || []).find((b) => b.type === "text");
     if (!textBlock) throw new Error("Risposta di Claude senza testo.");
+    if (resp.stop_reason === "max_tokens") console.warn("[scriba] risposta troncata (max_tokens): la riparazione potrebbe perdere sezioni.");
 
     try {
         return parseContent(textBlock.text);
@@ -213,7 +244,7 @@ async function generateScribaContent({ apiKey, data }) {
 async function repairJson(client, broken) {
     const resp = await client.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 8000,
+        max_tokens: 16000,
         system:
             "Sei un correttore di JSON. Ricevi un JSON malformato e restituisci ESCLUSIVAMENTE lo stesso JSON reso valido: nessun commento, nessun testo, niente code fence. " +
             "Non cambiare, aggiungere o riassumere i contenuti: correggi SOLO la sintassi (escapa virgolette e a-capo dentro le stringhe, aggiungi virgole mancanti, togli virgole finali).",

@@ -212,7 +212,7 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approv
             <tr><td style="padding-top:18px;"></td></tr>
             ${leadBlock}
             ${sectionBlock("Dalle Terre", content.dalle_terre, byPlace("dalle_terre"))}
-            ${sectionBlock("Voci di Taverna", content.voci_di_taverna, byPlace("voci_di_taverna"))}
+            ${sectionBlock("Voci di Popolo", content.voci_di_taverna, byPlace("voci_di_taverna"))}
             ${sectionBlock("Listini & Loschi Affari", content.listini, byPlace("listini"))}
             ${sectionBlock(`Dall'${ARENA_HEADING.replace(/^L'/, "")} · Cronache del Sangue`, content.arena, byPlace("arena"))}
             ${reclameBlock(content.advertisement, byPlace("reclame")[0])}

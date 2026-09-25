@@ -12,7 +12,7 @@ import { exanthiaDateLabel } from "../data/exanthiaCalendar";
 
 const SECTIONS = [
   { key: "dalle_terre", label: "Dalle Terre" },
-  { key: "voci_di_taverna", label: "Voci di Taverna" },
+  { key: "voci_di_taverna", label: "Voci di Popolo" },
   { key: "listini", label: "Listini & Loschi Affari" },
   { key: "arena", label: "L'Arena Vermiglia" },
 ];
