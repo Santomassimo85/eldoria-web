@@ -16,6 +16,7 @@
 // sa cosa è già stato usato e sceglie altro.
 
 const { CONTINENTI } = require("./places");
+const normName = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 // ── utilità casuali ─────────────────────────────────────────────────────────
 const rnd = (n) => Math.floor(Math.random() * n);
@@ -202,13 +203,14 @@ const INGREDIENTI = [
 ];
 
 // Città "importanti": qui la guerra NON arriva (le guerre stanno ai margini).
+// Confronto per nome normalizzato: su /Geo i nomi hanno maiuscole e apostrofi diversi.
 const CITTA_IMPORTANTI = new Set([
     "Tirrendale", "Il Sacello Antico di Tirrendale", "Yotta", "Castello Dorato", "Thelén Dhir",
-    "Helmvil", "Torre dell'Arcano",
-]);
+    "Helmvil", "Torre dell'Arcano", "Alendill", "Plia", "Montagne di Ferro",
+].map((n) => normName(n)));
 
 // Luoghi minori dove comunque la guerra non arriva, per lore (Gossvill: "sempre indenne").
-const MAI_GUERRA = new Set(["Gossvill"]);
+const MAI_GUERRA = new Set(["Gossvill", "Montagna dei Morti"].map((n) => normName(n)));
 
 // Frontiere dove si combatte davvero (oltre ai luoghi minori reali).
 const FRONTI_MINORI = [
@@ -217,7 +219,8 @@ const FRONTI_MINORI = [
     "le dune del sud di Ohzkie", "gli isolotti rocciosi al largo di Ohzkie", "le colline terrazzate del nord di Ohzkie",
 ];
 
-const TUTTI_I_LUOGHI = CONTINENTI.flatMap((c) => c.luoghi.map((l) => ({ nome: l.nome, continente: c.nome })));
+/** Elenco piatto {nome, continente} da una geografia a continenti. */
+const flatPlaces = (geo) => geo.flatMap((c) => (c.luoghi || []).map((l) => ({ nome: l.nome, continente: c.nome })));
 
 // Temi triti da tenere lontani a meno che il palinsesto non li chieda.
 const TEMI_USURATI = [
@@ -253,7 +256,7 @@ function overusedWords(recent) {
 }
 
 // ── scelta dei luoghi, lontano da quelli usati di recente ───────────────────
-function pickPlaces(n, usedRecently) {
+function pickPlaces(TUTTI_I_LUOGHI, n, usedRecently) {
     const used = new Set(usedRecently);
     const fresh = shuffle(TUTTI_I_LUOGHI.filter((l) => !used.has(l.nome)));
     const stale = shuffle(TUTTI_I_LUOGHI.filter((l) => used.has(l.nome)));
@@ -270,8 +273,8 @@ function pickPlaces(n, usedRecently) {
     return out;
 }
 
-function luogoGuerra(usedRecently) {
-    const minori = TUTTI_I_LUOGHI.filter((l) => !CITTA_IMPORTANTI.has(l.nome) && !MAI_GUERRA.has(l.nome) && !usedRecently.includes(l.nome));
+function luogoGuerra(TUTTI_I_LUOGHI, usedRecently) {
+    const minori = TUTTI_I_LUOGHI.filter((l) => !CITTA_IMPORTANTI.has(normName(l.nome)) && !MAI_GUERRA.has(normName(l.nome)) && !usedRecently.includes(l.nome));
     // Metà delle volte un luogo reale minore, metà una frontiera (con villaggi inventati).
     if (minori.length && Math.random() < 0.5) return pick(minori);
     return { nome: pick(FRONTI_MINORI), continente: "", inventabile: true };
@@ -281,7 +284,8 @@ function luogoGuerra(usedRecently) {
  * Tira a sorte il piano del numero.
  * @param {{recent: Array<{numero:number, testo:string, titoli:string[], palinsesto?:object}>}} args
  */
-function buildPalinsesto({ recent = [] } = {}) {
+function buildPalinsesto({ recent = [], geografia = CONTINENTI } = {}) {
+    const TUTTI_I_LUOGHI = flatPlaces(geografia);
     const lastPlans = recent.map((r) => r.palinsesto).filter(Boolean);
     const usedCats = new Set(lastPlans.slice(0, 2).flatMap((p) => (p.articoli || []).map((a) => a.cat)));
     const usedPlaces = lastPlans.slice(0, 3).flatMap((p) => (p.articoli || []).map((a) => a.luogo)).filter(Boolean);
@@ -301,20 +305,20 @@ function buildPalinsesto({ recent = [] } = {}) {
     };
 
     const nTerre = 2 + rnd(2); // 2 o 3
-    const luoghi = pickPlaces(1 + nTerre + 1, usedPlaces);
+    const luoghi = pickPlaces(TUTTI_I_LUOGHI, 1 + nTerre + 1, usedPlaces);
 
     const articoli = [];
     const formati = new Set();
     const lead = drawTopic((a) => a.grave && a.cat !== lastLeadCat);
-    articoli.push({ sezione: "lead", ...slot(lead, luoghi[0], usedPlaces, formati) });
+    articoli.push({ sezione: "lead", ...slot(lead, luoghi[0], usedPlaces, formati, TUTTI_I_LUOGHI) });
     for (let i = 0; i < nTerre; i++) {
-        articoli.push({ sezione: "dalle_terre", ...slot(drawTopic(), luoghi[1 + i], usedPlaces, formati) });
+        articoli.push({ sezione: "dalle_terre", ...slot(drawTopic(), luoghi[1 + i], usedPlaces, formati, TUTTI_I_LUOGHI) });
     }
 
     // Almeno UNO fra guerra/morte/crimine deve esserci sempre.
     if (!articoli.some((a) => ["guerra", "morte", "crimine"].includes(a.cat))) {
         const forced = weighted(pesati.filter((a) => ["guerra", "morte", "crimine"].includes(a.cat)));
-        articoli[articoli.length - 1] = { sezione: "dalle_terre", ...slot(forced, luoghi[nTerre], usedPlaces, formati) };
+        articoli[articoli.length - 1] = { sezione: "dalle_terre", ...slot(forced, luoghi[nTerre], usedPlaces, formati, TUTTI_I_LUOGHI) };
     }
 
     const scena = weighted(SCENE_VOCI.map((s) => (typeof s === "string" ? { s, w: 1 } : s))).s;
@@ -351,19 +355,19 @@ function formatoPer(cat, used) {
     return f;
 }
 
-function slot(topic, luogo, usedPlaces, usedFormats = new Set()) {
+function slot(topic, luogo, usedPlaces, usedFormats = new Set(), all = []) {
     const guerra = topic.cat === "guerra";
-    const l = guerra ? luogoGuerra(usedPlaces) : luogo;
+    const l = guerra ? luogoGuerra(all, usedPlaces) : luogo;
     return {
         cat: topic.cat,
         argomento: topic.nome,
         spunto: pick(topic.spunti),
         luogo: l.nome,
         continente: l.continente || "",
-        ...(l.inventabile ? { nota: "inventa tu il villaggio o il fortino in questa zona" } : {}),
+        ...(l.inventabile ? { nota: "zona di frontiera: NON inventare città né villaggi; al massimo una valle, un passo, un guado, un colle o un fortino senza nome famoso" } : {}),
         tono: pick(TONI),
         formato: formatoPer(topic.cat, usedFormats),
     };
 }
 
-module.exports = { buildPalinsesto, CITTA_IMPORTANTI };
+module.exports = { buildPalinsesto, CITTA_IMPORTANTI, normName };

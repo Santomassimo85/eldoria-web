@@ -11,7 +11,7 @@
 
 const { CONTINENTI } = require("./places");
 const { exanthiaMonthInfo } = require("./calendar");
-const { buildPalinsesto } = require("./palinsesto");
+const { buildPalinsesto, normName } = require("./palinsesto");
 
 const stripHtml = (html) =>
     String(html ?? "")
@@ -34,6 +34,49 @@ function toMillis(v) {
     if (v instanceof Date) return v.getTime();
     if (typeof v._seconds === "number") return v._seconds * 1000;
     return 0;
+}
+
+// ── Geografia = i luoghi di /Geo (collection geo_archive) ───────────────────
+// È la fonte VIVA: un luogo aggiunto su /Geo entra nel giornale da solo. Per i
+// luoghi che places.js già conosce teniamo la sua sintesi (ha l'AMBIENTE: clima,
+// acqua, vegetazione, che Claude deve rispettare); per quelli nuovi usiamo la
+// descrizione di /Geo, accorciata. Se Firestore non risponde → solo places.js.
+const GEO_DESC_MAX = 900;
+async function loadGeografia(db) {
+    let docs = [];
+    try {
+        const snap = await db.collection("geo_archive").get();
+        docs = snap.docs.map((d) => d.data()).filter((d) => d && d.name);
+    } catch (e) {
+        console.error("[scriba] geo_archive:", e);
+        return CONTINENTI;
+    }
+    if (!docs.length) return CONTINENTI;
+
+    const known = new Map();
+    for (const c of CONTINENTI) for (const l of c.luoghi) known.set(normName(l.nome), { ...l, continente: c.nome });
+    // Alias: su /Geo alcuni nomi sono scritti diversamente.
+    known.set(normName('Monastero "Monaci delle Sabbie"'), known.get(normName("Monastero dei Monaci delle Sabbie")));
+
+    const byCont = new Map(CONTINENTI.map((c) => [c.nome, { nome: c.nome, descrizione: c.descrizione, luoghi: [] }]));
+    const altrove = { nome: "Altri luoghi", descrizione: "Luoghi del mondo senza continente indicato.", luoghi: [] };
+    const seen = new Set();
+    for (const d of docs) {
+        const key = normName(d.name);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const k = known.get(key);
+        const poi = (Array.isArray(d.pointsOfInterest) ? d.pointsOfInterest : [])
+            .map((p) => (typeof p === "string" ? p : p?.label)).filter(Boolean);
+        const nome = k?.nome || String(d.name).trim();
+        const descrizione = k?.descrizione
+            || truncate(stripHtml(d.description) + (poi.length ? ` Punti noti: ${poi.join(", ")}.` : ""), GEO_DESC_MAX);
+        const cont = k?.continente || String(d.continent || "").trim();
+        (byCont.get(cont) || altrove).luoghi.push({ nome, descrizione });
+    }
+    const out = [...byCont.values()].filter((c) => c.luoghi.length);
+    if (altrove.luoghi.length) out.push(altrove);
+    return out;
 }
 
 // ── Anagrafe del reame (eroi): serve a conoscere RAZZA e ruolo di chi compare ─
@@ -276,7 +319,7 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
     const toMs = Date.now();
     const fromMs = toMs - days * 24 * 60 * 60 * 1000;
 
-    const characters = await loadCharacters(db);
+    const [characters, geografia] = await Promise.all([loadCharacters(db), loadGeografia(db)]);
 
     const [dossier, arene, mercato, npcs, incarichi, recenti, indicazioniRedazione] = await Promise.all([
         collectDossier(db, fromMs),
@@ -289,7 +332,7 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
     ]);
 
     // Il piano del numero, tirato a sorte (vedi palinsesto.js).
-    const palinsesto = buildPalinsesto({ recent: recenti });
+    const palinsesto = buildPalinsesto({ recent: recenti, geografia });
     // Il clima del mese entra nei dati SOLO quando il palinsesto lo concede:
     // altrimenti Claude lo metteva in ogni pezzo (8 numeri di "caldo torrido").
     const meseInfo = exanthiaMonthInfo(edition);
@@ -305,7 +348,7 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
         // Cornice temporale del mondo: stagione, festa e divinità del mese.
         mese,
         // Geografia reale: l'ossatura su cui ancorare le notizie.
-        geografia: CONTINENTI,
+        geografia,
         // Cronaca dell'arena (sport): campioni e sfide recenti, da pubblicare.
         arene,
         // Mercato/aste: da pubblicare in chiave di costume.
