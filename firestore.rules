@@ -352,6 +352,11 @@ service cloud.firestore {
       allow update: if isLoggedIn();
     }
 
+    // Registro dei set del Mercato Nero: solo il Master (la Forgia lo tiene allineato agli items)
+    match /market_sets/{setId} {
+      allow read, write: if isMaster();
+    }
+
     match /settings/market_config {
       allow read: if isLoggedIn();
       allow write: if isMaster();

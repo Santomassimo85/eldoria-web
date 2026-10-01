@@ -5331,3 +5331,99 @@
 /* ☠ Oggetto maledetto dall'1 naturale all'Officina: lo vede solo il Master,
    e la maledizione NON finisce nella descrizione che va su Foundry. */
 .fdy-cursed { background: rgba(168, 85, 247, .16) !important; border-color: rgba(168, 85, 247, .5) !important; color: #e9d5ff !important; }
+
+/* ═══ REGISTRO DEI SET (Forgia del Mercato Nero, solo Master) ═══ */
+.mkadm-sets {
+  background: var(--roccia-2);
+  border: 1.5px solid rgba(var(--el-rgb), 0.3);
+  border-radius: 3px;
+  padding: 16px 20px 20px;
+  margin: 0 0 24px;
+}
+.mkadm-sets-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px;
+  cursor: pointer; list-style: none;
+}
+.mkadm-sets-head::-webkit-details-marker { display: none; }
+.mkadm-sets-head h2 { margin: 0; font-family: var(--font-title); font-size: 1.25rem; color: var(--osso); }
+.mkadm-sets-head h2 small {
+  margin-left: 8px; font-family: var(--font-sc); font-size: .62rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--el-soft); vertical-align: middle;
+}
+.mkadm-sets-head::after { content: "▾"; color: var(--el-soft); transition: transform .2s; }
+.mkadm-sets:not([open]) .mkadm-sets-head::after { transform: rotate(-90deg); }
+.mkadm-sets-count { font-family: var(--font-num); font-size: .78rem; color: var(--osso-2); margin-left: auto; }
+.mkadm-sets-intro { color: var(--osso-2); font-size: .88rem; margin: 10px 0 12px; }
+.mkadm-sets-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.mkadm-sets-tools input { flex: 1 1 220px; }
+.mkadm-sets-manual {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px; margin-bottom: 14px;
+  background: var(--roccia-3); border: 1px dashed rgba(var(--el-rgb), .45); border-radius: 3px;
+}
+.mkadm-sets-manual .mkadm-btn-primary { align-self: flex-start; flex: 0 0 auto; }
+.mkadm-sets-note { margin: 0; color: var(--osso-2); font-size: .85rem; font-style: italic; }
+
+.mkadm-sets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.mkadm-setcard {
+  background: var(--roccia-3); border: 1px solid rgba(var(--el-rgb), .25); border-radius: 3px;
+  transition: border-color .15s;
+}
+.mkadm-setcard:hover, .mkadm-setcard.is-open { border-color: rgba(var(--el-rgb), .6); }
+.mkadm-setcard.is-open { grid-column: 1 / -1; }
+.mkadm-setcard-top {
+  width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+  padding: 12px 14px; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit;
+}
+.mkadm-setcard-name { font-family: var(--font-title); font-size: 1rem; color: var(--osso); }
+.mkadm-setcard-frac { font-family: var(--font-num); font-weight: 700; color: var(--el-soft); }
+.mkadm-setcard-frac.is-full { color: #4ade80; }
+.mkadm-setcard-pips { grid-column: 1 / -1; display: flex; gap: 4px; }
+.mkadm-setcard-pips i {
+  flex: 1; height: 6px; border-radius: 1px;
+  background: rgba(var(--osso-rgb), .12); border: 1px solid rgba(var(--el-rgb), .25);
+}
+.mkadm-setcard-pips i.on { background: linear-gradient(90deg, var(--el), var(--el-2)); border-color: transparent; }
+.mkadm-setcard-sub { grid-column: 1 / -1; font-size: .8rem; color: var(--osso-2); }
+
+.mkadm-setcard-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(var(--el-rgb), .2); padding-top: 12px; }
+.mkadm-setcard-bonuses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mkadm-setcard-bonuses li { color: var(--osso-body); font-size: .88rem; }
+.mkadm-setcard-bonuses strong { display: inline-block; min-width: 42px; font-family: var(--font-num); color: var(--el-soft); }
+.mkadm-setcard-pieces { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.mkadm-setcard-pieces li {
+  display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center;
+  padding: 8px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-radius: 3px;
+}
+.mkadm-setcard-pieces li.is-eliminato { opacity: .7; }
+.mkadm-setcard-pimg {
+  width: 44px; height: 44px; border-radius: 3px; overflow: hidden; display: grid; place-items: center;
+  background: var(--roccia-4, var(--roccia-3)); color: var(--el-soft);
+}
+.mkadm-setcard-pimg img { width: 100%; height: 100%; object-fit: cover; }
+.mkadm-setcard-pinfo { display: flex; flex-direction: column; min-width: 0; }
+.mkadm-setcard-pinfo strong { color: var(--osso); font-size: .9rem; line-height: 1.2; }
+.mkadm-setcard-pinfo small { color: var(--osso-2); font-size: .74rem; }
+.mkadm-setcard-pstate { color: var(--osso-body) !important; }
+.mkadm-setcard-addpiece { display: flex; gap: 8px; flex-wrap: wrap; }
+.mkadm-setcard-addpiece input { flex: 1 1 200px; }
+.mkadm-setcard-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mkadm-setcard-actions .mkadm-btn-primary { flex: 0 0 auto; padding: 9px 16px; }
+.mkadm-setcard-confirm { display: inline-flex; align-items: center; gap: 8px; color: var(--osso-body); font-size: .85rem; }
+.mkadm-setcard-confirm .mkadm-set-bonus-remove { width: auto; padding: 0 10px; }
+
+/* nel form: il set scritto esiste già? */
+.mkadm-set-known {
+  padding: 10px 12px; border-radius: 3px;
+  background: rgba(var(--el-rgb), .08); border: 1px solid rgba(var(--el-rgb), .4);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mkadm-set-known p { margin: 0; color: var(--osso-body); font-size: .88rem; }
+.mkadm-set-known strong { color: var(--osso); }
+.mkadm-set-known-list { color: var(--osso-2) !important; font-size: .8rem !important; }
+.mkadm-set-known.is-new { margin: 0; color: var(--el-soft); font-size: .85rem; background: none; border-style: dashed; }
+@media (max-width: 640px) {
+  .mkadm-sets { padding: 14px; }
+  .mkadm-sets-count { margin-left: 0; width: 100%; }
+  .mkadm-sets-grid { grid-template-columns: 1fr; }
+}

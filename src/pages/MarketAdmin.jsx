@@ -8,6 +8,7 @@ import { ref as storageRef, uploadBytes, uploadString, getDownloadURL, deleteObj
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
+import SetRegistry, { reconcileSets, setSlug } from "./MarketSetRegistry";
 import {
   EMPTY_FOUNDRY, resolveFoundryType,
   FOUNDRY_TYPES, FOUNDRY_DAMAGE_TYPES, FOUNDRY_ACTION_TYPES,
@@ -314,6 +315,11 @@ export default function MarketAdmin() {
   const [rarityFilter, setRarityFilter] = useState("all");
   const [rattoFilter, setRattoFilter] = useState("all");
   const [setNameFilter, setSetNameFilter] = useState("all"); // "all" | "any" | "none" | "<setName>"
+  // Registro dei set (market_sets): sopravvive alla cancellazione degli oggetti
+  const [setRegistry, setSetRegistry] = useState([]);
+  const [setRegistryLoaded, setSetRegistryLoaded] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
+  const reconcilingRef = useRef(false);
   const [sortBy, setSortBy] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [descSearchQuery, setDescSearchQuery] = useState("");
@@ -555,9 +561,51 @@ export default function MarketAdmin() {
     });
     const unsubItems = onSnapshot(collection(db, "items"), (snap) => {
       setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setItemsLoaded(true);
     });
-    return () => { unsubConfig(); unsubItems(); };
+    const unsubSets = onSnapshot(collection(db, "market_sets"), (snap) => {
+      setSetRegistry(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setSetRegistryLoaded(true);
+    }, (err) => console.error("market_sets", err));
+    return () => { unsubConfig(); unsubItems(); unsubSets(); };
   }, [currentUser]);
+
+  // Tiene il registro dei set allineato al magazzino: pezzi nuovi, venduti,
+  // tolti dal mercato. Scrive solo i set che sono cambiati.
+  useEffect(() => {
+    if (!itemsLoaded || !setRegistryLoaded || reconcilingRef.current) return;
+    const writes = reconcileSets(items, setRegistry);
+    if (!writes.length) return;
+    reconcilingRef.current = true;
+    Promise.all(writes.map(w => w.data
+      ? setDoc(doc(db, "market_sets", w.id), w.data)
+      : deleteDoc(doc(db, "market_sets", w.id))))
+      .catch(err => console.error("registro set", err))
+      .finally(() => { reconcilingRef.current = false; });
+  }, [items, setRegistry, itemsLoaded, setRegistryLoaded]);
+
+  const saveSetDoc = (id, { id: _omit, ...data }) => setDoc(doc(db, "market_sets", id), data);
+  const deleteSetDoc = (id) => deleteDoc(doc(db, "market_sets", id));
+
+  // "Forgia un nuovo pezzo" dal registro: form pulito, già legato al set
+  const handleNewSetPiece = (set) => {
+    setEditId(null);
+    setActiveTab("manual");
+    setFormData({
+      ...initialFormData,
+      inSet: true,
+      setName: set.name,
+      setSize: set.size || 5,
+      setBonuses: (set.bonuses || []).map(b => ({ pieces: Number(b.pieces) || 1, effect: String(b.effect || "") })),
+    });
+    requestAnimationFrame(() => document.querySelector(".mkadm-workshop")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const handleShowSetInStock = (name) => {
+    setFilter("all");
+    setSetNameFilter(name);
+    requestAnimationFrame(() => document.querySelector(".mkadm-inventory")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const handleUpdateCountdown = async () => {
     await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown }, { merge: true });
@@ -916,7 +964,7 @@ export default function MarketAdmin() {
         const sName = String(i.setPayload?.name || "").trim();
         if (setNameFilter === "any" && !sName) return false;
         else if (setNameFilter === "none" && sName) return false;
-        else if (setNameFilter !== "any" && setNameFilter !== "none" && sName !== setNameFilter) return false;
+        else if (setNameFilter !== "any" && setNameFilter !== "none" && setSlug(sName) !== setSlug(setNameFilter)) return false;
       }
       // ricerca per nome (attiva solo da 3+ caratteri)
       if (searchActive && !String(i.name || "").toLowerCase().includes(q)) return false;
@@ -1357,8 +1405,12 @@ export default function MarketAdmin() {
                       className="admin-field-input"
                       placeholder="Es. Set del Drago d'Oro"
                       value={formData.setName}
+                      list="mkadm-set-names"
                       onChange={(e) => setFormData({ ...formData, setName: e.target.value })}
                     />
+                    <datalist id="mkadm-set-names">
+                      {setRegistry.map(s => <option key={s.id} value={s.name} />)}
+                    </datalist>
                   </div>
                   <div className="mkadm-field">
                     <label>Pezzi totali</label>
@@ -1417,6 +1469,40 @@ export default function MarketAdmin() {
                     ＋ Aggiungi bonus
                   </button>
                 </div>
+
+                {(() => {
+                  const known = formData.setName.trim() && setRegistry.find(s => s.id === setSlug(formData.setName));
+                  if (!known) return formData.setName.trim() ? (
+                    <p className="mkadm-set-known is-new">✦ Set nuovo: verrà aggiunto al Registro dei Set.</p>
+                  ) : null;
+                  const ps = Object.entries(known.pieces || {}).filter(([k]) => k !== editId).map(([, p]) => p);
+                  const sameRules = Number(known.size) === Number(formData.setSize)
+                    && JSON.stringify((known.bonuses || []).map(b => [Number(b.pieces), b.effect]))
+                      === JSON.stringify([...formData.setBonuses].filter(b => b.effect.trim()).sort((a, b) => a.pieces - b.pieces).map(b => [Number(b.pieces), b.effect.trim()]));
+                  return (
+                    <div className="mkadm-set-known">
+                      <p>
+                        ⛓ <strong>{known.name}</strong> esiste già: {ps.length}/{known.size} pezzi
+                        {ps.length >= known.size ? " — è già completo" : ""}.
+                      </p>
+                      {ps.length > 0 && <p className="mkadm-set-known-list">{ps.map(p => p.name).join(" · ")}</p>}
+                      {!sameRules && (
+                        <button
+                          type="button"
+                          className="mkadm-set-bonus-add"
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            setName: known.name,
+                            setSize: known.size || 5,
+                            setBonuses: (known.bonuses || []).map(b => ({ pieces: Number(b.pieces) || 1, effect: String(b.effect || "") })),
+                          }))}
+                        >
+                          ↺ Usa pezzi totali e bonus del registro
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {formData.setName && formData.setBonuses.some(b => b.effect.trim()) && (
                   <p className="mkadm-price-hint" style={{ color: "var(--el)", borderColor: "#a78bfa55" }}>
@@ -1780,6 +1866,17 @@ export default function MarketAdmin() {
           </div>
         </aside>
       </div>
+
+      {/* ─── REGISTRO DEI SET (solo il Master) ─── */}
+      {currentUser.email === MASTER_EMAIL && (
+        <SetRegistry
+          sets={setRegistry}
+          onNewPiece={handleNewSetPiece}
+          onShowInStock={handleShowSetInStock}
+          onSave={saveSetDoc}
+          onDelete={deleteSetDoc}
+        />
+      )}
 
       {/* ─── INVENTORY ─── */}
       <div className="mkadm-inventory">
