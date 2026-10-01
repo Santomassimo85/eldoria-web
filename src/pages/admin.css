@@ -1695,6 +1695,10 @@
   border-top: 1px dashed rgba(var(--el-rgb), 0.3);
 }
 .mkadm-preview-desc p { margin: 0 0 6px; }
+/* HTML della descrizione: style.css forza p/li a #272727, qui deve restare chiaro */
+.mkadm-preview-desc :is(p, li, span, div) { color: inherit; }
+.mkadm-preview-desc :is(em, i) { color: var(--osso-2); }
+.mkadm-preview-desc :is(strong, b) { color: var(--osso); }
 
 .mkadm-preview-set {
   margin-top: 10px;
