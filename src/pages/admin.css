@@ -1342,7 +1342,8 @@
 .mkadm-gen-btn {
   flex: 0 0 auto;
   background: linear-gradient(135deg, var(--el), var(--el-deep));
-  color: var(--roccia-3);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
   border: none;
   border-radius: 999px;
   padding: 5px 13px;
@@ -5427,3 +5428,8 @@
   .mkadm-sets-count { margin-left: 0; width: 100%; }
   .mkadm-sets-grid { grid-template-columns: 1fr; }
 }
+
+/* 🎲 idea a caso nel tab "Genera con AI" */
+.mkadm-ai-dice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.mkadm-ai-dice small { color: var(--osso-2); font-size: .82rem; }
+.mkadm-ai-dice strong { color: var(--el-soft); }

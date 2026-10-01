@@ -11,6 +11,8 @@
 //
 // Powered by Claude (stessa chiave del generatore NPC: ANTHROPIC_API_KEY).
 
+import { paroleVietate, violazioniNome, troppoSimile, tiraDadiNome, istruzioniNome } from "../src/data/marketIdeas.js";
+
 // Scarica l'immagine e la converte in base64 (source affidabile per la vision,
 // anche con URL firmati di Firebase Storage). Gestisce anche le data: URI.
 async function fetchImageAsBlock(img) {
@@ -29,13 +31,13 @@ async function fetchImageAsBlock(img) {
   return { type: "image", source: { type: "base64", media_type: ct, data: buf.toString("base64") } };
 }
 
-const PROMPT_NOME = ({ rarita, tipoOggetto }) =>
-`Sei il nomenclatore di oggetti magici per la campagna fantasy dark "Eldoria" (D&D 5e).
-Osserva l'immagine dell'oggetto e proponi UN solo nome, in ITALIANO, evocativo e in stile fantasy.
+const PROMPT_NOME = ({ rarita, tipoOggetto, regole, scartato }) =>
+`Sei il nomenclatore di oggetti per il mercato nero della campagna fantasy "Eldoria" (D&D 5e).
+Osserva l'immagine dell'oggetto e proponi UN solo nome, in ITALIANO.
 Indizi: rarità "${rarita || "?"}", categoria "${tipoOggetto || "?"}".
-Regole:
-- Da 2 a 4 parole, niente articoli iniziali superflui.
-- Coerente con ciò che VEDI nell'immagine.
+${scartato ? `Il nome "${scartato}" è stato SCARTATO: proponine uno completamente diverso.\n` : ""}${regole}
+Regole generali:
+- Coerente con ciò che VEDI nell'immagine, ma senza descriverla parola per parola.
 - Rispondi SOLO con il nome, senza virgolette, senza punto finale, senza altro testo.`;
 
 // Quante Proprietà Speciali in base alla rarità (con un po' di varietà random).
@@ -96,6 +98,7 @@ ${extraLine}
 
 Regole:
 - Basati su ciò che VEDI: tipo d'arma/armatura/accessorio, elementi magici, simboli.
+- Evita i cliché (draghi, rune, abissi, ombre, stelle, sangue) se l'immagine non li mostra chiaramente: preferisci dettagli concreti e inattesi.
 - Usa SOLO i tag <p>, <em>, <strong>. NON ripetere il nome dell'oggetto come titolo (è gestito a parte).
 - Rispetta ESATTAMENTE i blocchi richiesti sopra: non aggiungere né togliere sezioni.
 - Niente backtick, niente \`\`\`html, niente testo fuori dall'HTML. Tono evocativo ma conciso.`;
@@ -119,12 +122,15 @@ Regole:
 - Niente danni, niente tiri salvezza in combattimento, niente "1 volta al giorno" da arma. È roba da TAVOLO e da interpretazione.
 - Basati su ciò che VEDI nell'immagine; se l'oggetto sembra un'arma, rendilo comunque inoffensivo e ridicolo.
 - Usa SOLO i tag <p>, <em>, <strong>. NON ripetere il nome come titolo.
+- Evita i cliché (draghi, rune, abissi, ombre, stelle) se l'immagine non li mostra chiaramente.
 - Niente backtick, niente \`\`\`html, niente testo fuori dall'HTML. Tono leggero e divertente.`;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
   const { tipo, img, nome, rarita, tipoOggetto } = req.body || {};
+  const nomiEsistenti = (Array.isArray(req.body?.nomiEsistenti) ? req.body.nomiEsistenti : [])
+    .map((n) => String(n || "").trim()).filter(Boolean).slice(-150);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Chiave Anthropic mancante." });
   if (!img) return res.status(400).json({ error: "Carica prima un'immagine." });
@@ -134,8 +140,37 @@ export default async function handler(req, res) {
   try {
     const imageBlock = await fetchImageAsBlock(img);
     const isNome = tipo === "nome";
+    if (isNome) {
+      // Fino a 3 tentativi, ognuno con una forma del nome tirata ai dadi: si
+      // scarta il nome con parole vietate/abusate, già esistente o uguale a quello attuale.
+      const vietate = paroleVietate(nomiEsistenti, "");
+      let scelto = "", scartato = "";
+      for (let i = 0; i < 3; i++) {
+        const regole = istruzioniNome({ dadi: tiraDadiNome(), vietate, nomiEsistenti });
+        const rr = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5",
+            max_tokens: 60,
+            temperature: 1,
+            messages: [{ role: "user", content: [imageBlock, { type: "text", text: PROMPT_NOME({ rarita, tipoOggetto, regole, scartato }) }] }],
+          }),
+        });
+        const dd = await rr.json();
+        if (dd.error) return res.status(500).json({ error: dd.error.message });
+        const n = (dd.content || []).map((b) => b.text || "").join("").trim()
+          .split("\n")[0].replace(/^["'«»*]+|["'«».*]+$/g, "").trim();
+        if (!n) continue;
+        scelto = n;
+        if (!violazioniNome(n, vietate).length && !troppoSimile(n, nomiEsistenti) && n !== nome) break;
+        scartato = n;
+      }
+      if (!scelto) return res.status(500).json({ error: "Nessun nome generato." });
+      return res.status(200).json({ nome: scelto });
+    }
     const prompt =
-      isNome          ? PROMPT_NOME({ rarita, tipoOggetto }) :
+      isNome          ? "" :
       tipo === "gdr"  ? PROMPT_GDR({ nome, tipoOggetto }) :
                         PROMPT_DESC({ nome, rarita, tipoOggetto, plan: planDescription(rarita) });
 

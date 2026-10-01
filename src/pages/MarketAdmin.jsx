@@ -9,6 +9,7 @@ import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
 import SetRegistry, { reconcileSets, setSlug } from "./MarketSetRegistry";
+import { ideaCasuale } from "../data/marketIdeas";
 import {
   EMPTY_FOUNDRY, resolveFoundryType,
   FOUNDRY_TYPES, FOUNDRY_DAMAGE_TYPES, FOUNDRY_ACTION_TYPES,
@@ -343,6 +344,18 @@ export default function MarketAdmin() {
   const [aiStyle, setAiStyle] = useState("olio");  // stile dell'immagine
   const [aiBusy, setAiBusy] = useState("");        // "" | "img" | "info"
   const [aiError, setAiError] = useState("");
+  // Rarità tirata dal 🎲 insieme al prompt (vale solo finché il prompt è quello del dado)
+  const [aiDice, setAiDice] = useState(null); // { prompt, rarita }
+
+  // 🎲 Idea a caso: compone un prompt da raccolte ampie (oggetto, materiale,
+  // origine, motivi, stranezza, tono). Rispetta il Tipo scelto, se c'è.
+  const tiraIdeaCasuale = () => {
+    const idea = ideaCasuale(aiType || undefined);
+    setAiPrompt(idea.prompt);
+    setAiDice({ prompt: idea.prompt, rarita: idea.rarita });
+    setAiError("");
+    return idea;
+  };
 
   const AI_STYLES = [
     { key: "olio", label: "🖼 Olio" },
@@ -363,8 +376,11 @@ export default function MarketAdmin() {
   // Pipeline: prompt → immagine (Gemini) → carica su Storage → info+Foundry
   // (Claude tool use) → compila il form e passa alla scheda per revisione/salvataggio.
   const generateItemFromPrompt = async () => {
-    const p = aiPrompt.trim();
-    if (!p || aiBusy) return;
+    if (aiBusy) return;
+    // Prompt vuoto = casualità totale: lo tira il dado.
+    let p = aiPrompt.trim();
+    let dice = aiDice && aiDice.prompt === p ? aiDice : null;
+    if (!p) { const idea = tiraIdeaCasuale(); p = idea.prompt; dice = idea; }
     setAiError("");
     // 1) Immagine dal prompt.
     setAiBusy("img");
@@ -393,7 +409,15 @@ export default function MarketAdmin() {
       const rInfo = await fetch("/api/genera-oggetto-completo", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: p, img: imgUrl, rarita: aiRarity || undefined, tipoOggetto: aiType || undefined, mode: aiMode }),
+        body: JSON.stringify({
+          prompt: p,
+          img: imgUrl,
+          // "Decide l'AI" + prompt del dado = rarità tirata a sorte (l'AI da sola sceglie sempre le stesse)
+          rarita: aiRarity || (dice && aiMode !== "gdr" ? dice.rarita : undefined),
+          tipoOggetto: aiType || undefined,
+          mode: aiMode,
+          nomiEsistenti,
+        }),
       });
       const dInfo = await rInfo.json();
       if (!rInfo.ok || dInfo.error) throw new Error(dInfo.error || "info non generate");
@@ -440,6 +464,7 @@ export default function MarketAdmin() {
           nome: formData.name,
           rarita: formData.class,
           tipoOggetto: formData.type,
+          nomiEsistenti,
         }),
       });
       const data = await r.json();
@@ -583,6 +608,14 @@ export default function MarketAdmin() {
       .catch(err => console.error("registro set", err))
       .finally(() => { reconcilingRef.current = false; });
   }, [items, setRegistry, itemsLoaded, setRegistryLoaded]);
+
+  // Nomi già usati (magazzino + pezzi del registro dei set, anche cancellati):
+  // l'AI li riceve per non ripeterli e per vietare le parole abusate.
+  const nomiEsistenti = useMemo(() => {
+    const out = new Set(items.map(i => String(i.name || "").trim()).filter(Boolean));
+    setRegistry.forEach(s => Object.values(s.pieces || {}).forEach(p => p.name && out.add(String(p.name).trim())));
+    return [...out];
+  }, [items, setRegistry]);
 
   const saveSetDoc = (id, { id: _omit, ...data }) => setDoc(doc(db, "market_sets", id), data);
   const deleteSetDoc = (id) => deleteDoc(doc(db, "market_sets", id));
@@ -1139,11 +1172,19 @@ export default function MarketAdmin() {
               <textarea
                 className="admin-field-textarea"
                 rows="4"
-                placeholder="Es. Una spada lunga élfica intrisa di ghiaccio eterno, elsa d'argento con rune blu che pulsano di gelo…"
+                placeholder="Scrivi tu l'idea, oppure lascia vuoto (o premi 🎲) e la tira il dado: oggetto, materiale, origine, motivi e stranezza a caso."
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 disabled={!!aiBusy}
               />
+              <div className="mkadm-ai-dice">
+                <button type="button" className="mkadm-gen-btn" onClick={tiraIdeaCasuale} disabled={!!aiBusy}>
+                  🎲 Idea a caso
+                </button>
+                {aiDice && aiDice.prompt === aiPrompt && aiMode !== "gdr" && !aiRarity && (
+                  <small>Rarità tirata: <strong>{aiDice.rarita}</strong></small>
+                )}
+              </div>
             </div>
 
             <div className="mkadm-field-row">
@@ -1186,9 +1227,9 @@ export default function MarketAdmin() {
               type="button"
               className="mkadm-btn-primary mkadm-ai-go"
               onClick={generateItemFromPrompt}
-              disabled={!aiPrompt.trim() || !!aiBusy}
+              disabled={!!aiBusy}
             >
-              {aiBusy === "img" ? "🎨 Disegno l'immagine…" : aiBusy === "info" ? "⚒ Scrivo scheda e dati Foundry…" : "✨ Genera oggetto"}
+              {aiBusy === "img" ? "🎨 Disegno l'immagine…" : aiBusy === "info" ? "⚒ Scrivo scheda e dati Foundry…" : aiPrompt.trim() ? "✨ Genera oggetto" : "🎲 Genera un oggetto a caso"}
             </button>
             {aiError && <p className="mkadm-gen-error">{aiError}</p>}
             <p className="mkadm-ai-note">

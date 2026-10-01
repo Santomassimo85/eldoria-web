@@ -11,7 +11,42 @@
 //
 // Powered by Claude (ANTHROPIC_API_KEY, stessa del generatore NPC/oggetti).
 
-export const config = { maxDuration: 45 };
+import { paroleVietate, violazioniNome, troppoSimile, tiraDadiNome, istruzioniNome } from "../src/data/marketIdeas.js";
+
+export const config = { maxDuration: 60 };
+
+const callClaude = async (apiKey, body) => {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+};
+
+const pulisciNome = (t) => String(t || "").trim().split("\n")[0].replace(/^["'«»*]+|["'«».*]+$/g, "").trim();
+
+// Il nome uscito usa parole vietate o copia un nome esistente? Lo rifà Haiku,
+// con un'altra forma tirata ai dadi (max 2 tentativi; se fallisce tiene l'ultimo).
+async function rinominaSeServe(apiKey, oggetto, { vietate, nomiEsistenti, prompt }) {
+  let nome = oggetto.name;
+  for (let i = 0; i < 2; i++) {
+    const colpe = violazioniNome(nome, vietate);
+    if (!colpe.length && !troppoSimile(nome, nomiEsistenti)) return nome;
+    const testo = [
+      `Dai un NUOVO nome, in italiano, a questo oggetto di un mercato nero fantasy.`,
+      `Richiesta del master: "${prompt}". Categoria: ${oggetto.type}. Rarità: ${oggetto.class}.`,
+      `Scheda: ${String(oggetto.description).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 600)}`,
+      `Il nome proposto "${nome}" NON va bene${colpe.length ? ` (usa parole vietate: ${colpe.join(", ")})` : " (esiste già)"}.`,
+      istruzioniNome({ dadi: tiraDadiNome(), vietate, nomiEsistenti }),
+      `Rispondi SOLO con il nome, senza virgolette né punto finale.`,
+    ].join("\n");
+    const d = await callClaude(apiKey, { model: "claude-haiku-4-5", max_tokens: 60, temperature: 1, messages: [{ role: "user", content: testo }] });
+    const nuovo = pulisciNome((d.content || []).map((b) => b.text || "").join(""));
+    if (nuovo) nome = nuovo;
+  }
+  return nome;
+}
 
 // Scarica l'immagine (o legge la data: URI) come blocco vision per Claude.
 async function fetchImageAsBlock(img) {
@@ -48,7 +83,7 @@ const TOOL = {
   input_schema: {
     type: "object",
     properties: {
-      name: { type: "string", description: "Nome evocativo in ITALIANO, 2-4 parole, senza virgolette." },
+      name: { type: "string", description: "Nome in ITALIANO, nella FORMA indicata dalle regole del NOME nel messaggio, senza virgolette." },
       type: { type: "string", enum: ITEM_TYPES, description: "Categoria dell'oggetto." },
       class: { type: "string", enum: RARITIES, description: "Rarità." },
       description: {
@@ -85,11 +120,15 @@ const TOOL = {
   },
 };
 
-const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode }) => {
+const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode, nomeRegole, vietate }) => {
   const richiesta = [
     `Progetta UN oggetto per il Mercato Nero della campagna dark fantasy "Eldoria" (D&D 5e) a partire da questa richiesta del master:`,
     `"${String(prompt || "").trim()}"`,
     img ? "Osserva ANCHE l'immagine allegata e rendi i dati coerenti con ciò che si vede." : "",
+    "",
+    nomeRegole,
+    `Anche nella DESCRIZIONE evita le parole vietate (${vietate.radici.map((r) => r.label).join(", ")}) e i cliché: niente draghi, rune o abissi se il master non li chiede.`,
+    "",
   ];
 
   if (mode === "gdr") {
@@ -129,6 +168,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
   const { prompt, img, rarita, tipoOggetto, mode } = req.body || {};
+  const nomiEsistenti = (Array.isArray(req.body?.nomiEsistenti) ? req.body.nomiEsistenti : [])
+    .map((n) => String(n || "").trim()).filter(Boolean).slice(-150);
   const isGdr = mode === "gdr";
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Chiave Anthropic mancante." });
@@ -138,25 +179,18 @@ export default async function handler(req, res) {
     const imageBlock = await fetchImageAsBlock(img);
     const content = [];
     if (imageBlock) content.push(imageBlock);
-    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto, mode }) });
+    const vietate = paroleVietate(nomiEsistenti, prompt);
+    const nomeRegole = istruzioniNome({ dadi: tiraDadiNome(), vietate, nomiEsistenti });
+    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto, mode, nomeRegole, vietate }) });
 
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1500,
-        tools: [TOOL],
-        tool_choice: { type: "tool", name: "crea_oggetto" },
-        messages: [{ role: "user", content }],
-      }),
+    const data = await callClaude(apiKey, {
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      temperature: 1,
+      tools: [TOOL],
+      tool_choice: { type: "tool", name: "crea_oggetto" },
+      messages: [{ role: "user", content }],
     });
-
-    const data = await r.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
 
     const toolBlock = (data.content || []).find((b) => b.type === "tool_use" && b.name === "crea_oggetto");
@@ -208,6 +242,10 @@ export default async function handler(req, res) {
         saveAbility: "", saveDC: "",
       };
     }
+
+    try {
+      oggetto.name = await rinominaSeServe(apiKey, oggetto, { vietate, nomiEsistenti, prompt });
+    } catch { /* il nome originale resta */ }
 
     return res.status(200).json({ oggetto });
   } catch (e) {
