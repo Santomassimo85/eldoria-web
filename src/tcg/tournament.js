@@ -32,7 +32,7 @@
 
 import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
-  addDoc, collection, runTransaction,
+  addDoc, collection, runTransaction, getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
@@ -427,15 +427,36 @@ export async function advanceRound() {
   await notifyRoundReady(matches, nextRoundNo, totalRounds, partsMap);
 }
 
+/* Chiude i doc tcg_matches del torneo ancora aperti/attivi: a torneo
+   finito o azzerato nessun bracket li punta più, e restavano "active"
+   per sempre (relitti in cui i giocatori finivano dentro). */
+async function closeLeftoverTournamentMatches() {
+  try {
+    const snap = await getDocs(collection(db, MCOL));
+    const open = snap.docs.filter((d) => {
+      const m = d.data();
+      return m.tournament && m.status !== "finished" && m.status !== "ended";
+    });
+    await Promise.all(open.map((d) =>
+      updateDoc(d.ref, { status: "finished", updatedAt: serverTimestamp() })
+        .catch(() => {})
+    ));
+  } catch {
+    /* offline: non blocca la chiusura del torneo */
+  }
+}
+
 export async function endTournament() {
   await updateDoc(tref(), {
     status: "ended",
     updatedAt: serverTimestamp(),
   });
+  await closeLeftoverTournamentMatches();
 }
 
 export async function resetTournament() {
   await setDoc(tref(), defaultTournamentDoc());
+  await closeLeftoverTournamentMatches();
 }
 
 /* ---------- player actions ---------- */

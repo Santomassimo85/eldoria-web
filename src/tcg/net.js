@@ -72,6 +72,11 @@ export function watchLobby(uid, cb) {
           .filter(
             (m) =>
               sideForUid(m, uid) !== null &&
+              // I match del TORNEO si aprono SOLO dal tabellone: se la lobby
+              // li aggancia, un relitto di un torneo vecchio (rimasto
+              // "active" dopo un reset) trascina il giocatore in una
+              // partita morta, e "Abbandona" lo rimanda al torneo.
+              !m.tournament &&
               // "active" conta come mio SOLO se lo stato è davvero giocabile
               // (ha entrambi i player). Un doc active con state rotto/parziale
               // intrappolava il giocatore in "Caricamento partita…" senza
