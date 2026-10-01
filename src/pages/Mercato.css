@@ -230,6 +230,7 @@
   text-transform: uppercase;
   margin: 0 0 12px;
 }
+.mercato-page .closed-sub { margin: 0; color: var(--osso-2); font-style: italic; }
 .mercato-page .timer-display {
   font-family: var(--font-title);
   font-size: 1.6rem;
@@ -819,7 +820,7 @@
   background: none; border: none; padding: 0;
   display: flex; justify-content: space-between; align-items: center;
 }
-.mercato-page .ic-rarity-stars { font-size: .6rem; color: var(--rarity-edge, #ffe08a); text-shadow: 0 0 6px var(--rarity-edge, transparent); }
+.mercato-page .ic-rarity-stars { font-size: .6rem; color: var(--rarity-ink, var(--rarity-edge, #ffe08a)); text-shadow: 0 0 6px var(--rarity-edge, transparent); }
 .mercato-page .ic-rarity-label { font-family: "Alegreya", Georgia, serif; font-weight: 700; font-size: .58rem; letter-spacing: .16em; color: var(--oro); text-shadow: none; }
 /* l'ANELLO: gradiente conico che orbita, accelera al passaggio */
 .mercato-page .ic-image-frame {
@@ -951,13 +952,13 @@
 .mercato-page .ic-rarity-banner { top: 12px; left: 14px; right: 14px; }
 .mercato-page .ic-rarity-label {
   font-size: .68rem; letter-spacing: .18em;
-  color: var(--rarity-edge, var(--oro));
+  color: var(--rarity-ink, var(--rarity-edge, var(--oro)));
   text-shadow: 0 0 10px color-mix(in srgb, var(--rarity-edge, var(--oro)) 80%, transparent);
   padding: 3px 9px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--oro)) 55%, transparent);
   background: rgba(var(--ossidiana-rgb),.6);
 }
-.mercato-page .ic-rarity-stars { font-size: .7rem; color: var(--rarity-edge, #ffe08a); text-shadow: 0 0 8px var(--rarity-edge, transparent); }
+.mercato-page .ic-rarity-stars { font-size: .7rem; color: var(--rarity-ink, var(--rarity-edge, #ffe08a)); text-shadow: 0 0 8px var(--rarity-edge, transparent); }
 .mercato-page .item-card.sold .ic-rarity-label, .mercato-page .item-card.sold .ic-rarity-stars { opacity: .6; }
 
 /* ── SMARTPHONE (2026-09-08): una merce per riga, mercante compatto, statistiche

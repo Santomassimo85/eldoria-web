@@ -1009,7 +1009,7 @@ export default function MarketAdmin() {
               {savingClosing ? "…" : "Salva chiusura"}
             </button>
           </div>
-          <p className="mkadm-config-hint" style={{ margin: "6px 2px 0", fontSize: "0.8rem", color: "#7a6a4a", lineHeight: 1.4 }}>
+          <p className="mkadm-config-hint" style={{ margin: "6px 2px 0", fontSize: "0.8rem", color: "var(--osso-2)", lineHeight: 1.4 }}>
             Impostala <strong>una sola volta</strong>: vale come scadenza per <strong>tutti</strong> gli oggetti (esistenti in vendita e nuovi). Non serve più metterla per singolo oggetto.
           </p>
 
@@ -1248,7 +1248,7 @@ export default function MarketAdmin() {
                   })}
                 </select>
                 {formData.petItemKey && PET_ITEMS[formData.petItemKey] && (
-                  <p className="mkadm-price-hint" style={{ color: "#0d9488", borderColor: "#5eead455" }}>
+                  <p className="mkadm-price-hint" style={{ color: "#2dd4bf", borderColor: "#5eead455" }}>
                     <span className="mkadm-price-hint-icon">{PET_ITEMS[formData.petItemKey].icon}</span>
                     <span>{PET_ITEMS[formData.petItemKey].desc}</span>
                   </p>
@@ -1288,7 +1288,7 @@ export default function MarketAdmin() {
                   </select>
                 </div>
                 <div className="mkadm-field" style={{ gridColumn: "1 / -1" }}>
-                  <p className="mkadm-price-hint" style={{ color: "#6d28d9", borderColor: "#a78bfa55" }}>
+                  <p className="mkadm-price-hint" style={{ color: "#c4b5fd", borderColor: "#a78bfa55" }}>
                     <span className="mkadm-price-hint-icon">🎴</span>
                     <span>
                       {TCG_PACK_FLAVOR(formData.tcgPackRarity, formData.tcgPackElement)}
@@ -1322,7 +1322,7 @@ export default function MarketAdmin() {
                   })}
                 </select>
                 {formData.tcgCardId && TCG_CARDS[formData.tcgCardId] && (
-                  <p className="mkadm-price-hint" style={{ color: "#b45309", borderColor: "#fcd34d55" }}>
+                  <p className="mkadm-price-hint" style={{ color: "#fbbf24", borderColor: "#fcd34d55" }}>
                     <span className="mkadm-price-hint-icon">
                       {TCG_ELEMENT_ICON[TCG_CARDS[formData.tcgCardId].element]}
                     </span>
@@ -1478,7 +1478,7 @@ export default function MarketAdmin() {
 
             <div className="mkadm-field">
               <label>Scadenza asta</label>
-              <p className="mkadm-price-hint" style={{ color: "#6a5b41", borderColor: "#d9c79a" }}>
+              <p className="mkadm-price-hint" style={{ color: "var(--osso-2)", borderColor: "rgba(var(--el-rgb), .35)" }}>
                 <span className="mkadm-price-hint-icon">⏳</span>
                 <span>
                   {marketClosing

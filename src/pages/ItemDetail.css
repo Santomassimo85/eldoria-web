@@ -106,7 +106,7 @@
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--oro)) 60%, transparent);
   background: rgba(var(--ossidiana-rgb), .6);
-  color: var(--rarity-edge, var(--oro));
+  color: var(--rarity-ink, var(--rarity-edge, var(--oro)));
   font-size: .68rem;
   letter-spacing: .18em;
   text-shadow: 0 0 10px color-mix(in srgb, var(--rarity-edge, var(--oro)) 80%, transparent);
@@ -254,7 +254,7 @@
   border: 1px solid rgba(var(--el-rgb), .4); background: rgba(var(--roccia-rgb), .7);
   color: var(--el-soft); font-size: .64rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
 }
-.item-detail-page .mc-tag[class*="rarity-"] { color: var(--rarity-edge, var(--oro)); border-color: color-mix(in srgb, var(--rarity-edge, var(--oro)) 60%, transparent); }
+.item-detail-page .mc-tag[class*="rarity-"] { color: var(--rarity-ink, var(--rarity-edge, var(--oro))); border-color: color-mix(in srgb, var(--rarity-edge, var(--oro)) 60%, transparent); }
 .item-detail-page .mc-tag.tag-auction { color: var(--oro); border-color: rgba(var(--oro-rgb), .5); }
 .item-detail-page .mc-tag.tag-fixed { color: var(--el-2); border-color: rgba(var(--el-rgb), .5); }
 .item-detail-page .mc-tag.tag-sold { color: #fb923c; border-color: rgba(251, 146, 60, .5); }
@@ -269,6 +269,10 @@
   color: var(--osso-body); line-height: 1.7;
 }
 .item-detail-page .mc-description summary { cursor: pointer; color: var(--el-soft); font-weight: 700; }
+/* la descrizione è HTML del Master: style.css forza p/li a #272727, qui deve restare chiara */
+.item-detail-page .mc-description :is(p, li, span, div, td, th) { color: inherit; }
+.item-detail-page .mc-description :is(em, i) { color: var(--osso-2); }
+.item-detail-page .mc-description :is(strong, b) { color: var(--osso); }
 .item-detail-page .mc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
 .item-detail-page .mc-stat {
   display: flex; flex-direction: column; gap: 4px;

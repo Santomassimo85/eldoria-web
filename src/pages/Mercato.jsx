@@ -272,9 +272,12 @@ const MarketAdminTable = ({ items, marketStats, onRemoveBid, onClearAllBids, onD
 export default function Mercato() {
   useParallaxScroll();
   const { currentUser } = useAuth();
-  const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
+  // In DEV `?vista=player` fa vedere al Master il mercato come un giocatore.
+  const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
+  const isMaster = !devPlayerView && currentUser && currentUser.email === MASTER_EMAIL;
 
   const [items, setItems] = useState([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   const [marketConfig, setMarketConfig] = useState(null);
   const [marketStats, setMarketStats] = useState(null);
   const [userRattoPoints, setUserRattoPoints] = useState(0);
@@ -288,6 +291,7 @@ export default function Mercato() {
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => snap.exists() && setMarketConfig(snap.data()));
     const unsubItems = onSnapshot(collection(db, "items"), (snap) => {
       setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setItemsLoaded(true);
     });
     const unsubStats = onSnapshot(doc(db, "market_stats", "global"), (snap) =>
       setMarketStats(snap.exists() ? snap.data() : null)
@@ -459,11 +463,11 @@ export default function Mercato() {
 
   const ratto = useMemo(() => getRattoStats(userRattoPoints), [userRattoPoints]);
 
+  const isMarketOpen = typeof marketConfig?.isOpen === "boolean"
+    ? marketConfig.isOpen
+    : (marketConfig?.nextOpening ? new Date() >= new Date(marketConfig.nextOpening) : true);
+
   const filteredItems = useMemo(() => {
-    const now = new Date();
-    const isMarketOpen = typeof marketConfig?.isOpen === "boolean"
-      ? marketConfig.isOpen
-      : (marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true);
     const list = items.filter((item) => {
       if (!isMaster && !isMarketOpen) return false;
       // Livello Ratto: la riserva scatta solo dal livello 2 in su.
@@ -491,7 +495,7 @@ export default function Mercato() {
         default: return 0;
       }
     });
-  }, [items, marketConfig, searchTerm, filterType, filterRarity, filterSold, sortBy, isMaster, ratto.lv]);
+  }, [items, isMarketOpen, searchTerm, filterType, filterRarity, filterSold, sortBy, isMaster, ratto.lv]);
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
@@ -560,7 +564,20 @@ export default function Mercato() {
           <div id="merc-banco" className="gl-sezlabel">La Merce del Nesso</div>
           <p className="gl-vetrata-sub merc-sezsub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
 
-          {filteredItems.length === 0 ? (
+          {!itemsLoaded ? (
+            <div className="market-closed-container">
+              <p className="closed-sub">Mastro Ratto sta aprendo i bauli…</p>
+            </div>
+          ) : filteredItems.length === 0 && (isMaster || isMarketOpen) ? (
+            <div className="market-closed-container">
+              <h2 className="closed-title">{items.length ? "Niente che corrisponda" : "Il banco è vuoto"}</h2>
+              <p className="closed-sub">
+                {items.length
+                  ? "Nessun oggetto con questi filtri: prova a cambiare ricerca, tipo o rarità."
+                  : "Non c'è ancora merce esposta."}
+              </p>
+            </div>
+          ) : filteredItems.length === 0 ? (
             <div className="market-closed-container">
               <h2 className="closed-title">Il Mercato è Chiuso</h2>
               {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() && (

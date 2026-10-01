@@ -92,7 +92,8 @@ export default function ItemDetail() {
   const { currentUser } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
+  const isMaster = !devPlayerView && currentUser?.email === MASTER_EMAIL;
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);

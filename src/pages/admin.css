@@ -1663,7 +1663,7 @@
 .mkadm-preview-name {
   font-family: var(--font-title);
   font-size: 1.2rem;
-  color: var(--rarity-edge, var(--red));
+  color: var(--rarity-ink, var(--rarity-edge, var(--red)));
   margin: 0 0 10px;
   line-height: 1.2;
   border-bottom: 1px solid rgba(var(--el-rgb), 0.3);
@@ -2061,7 +2061,7 @@
 .mkadm-inv-name {
   font-family: var(--font-title);
   font-size: 0.92rem;
-  color: var(--rarity-edge, var(--red));
+  color: var(--rarity-ink, var(--rarity-edge, var(--red)));
   margin: 0;
   line-height: 1.2;
   overflow: hidden;
@@ -2156,7 +2156,7 @@
   padding: 1px 8px;
   border: 1px solid;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(var(--ossidiana-rgb), 0.55);
   white-space: nowrap;
 }
 
