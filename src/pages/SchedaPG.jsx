@@ -316,6 +316,11 @@ export default function SchedaPG() {
   const skills = data.skills || [];
   const slots = data.spellSlots || [];
   const cur = data.currency || {};
+  // Le monete spese all'Officina escono SUBITO dalla borsa, anche se su
+  // Foundry si scalano solo alla prossima importazione del Master: la scheda
+  // del sito le toglie già (stesso conto della borsa dell'Officina).
+  const craftPending = Math.max(0, Number(data.crafting?.goldPending) || 0);
+  const coinOf = (k) => (k === "gp" && craftPending ? Math.max(0, (Number(cur.gp) || 0) - craftPending) : (cur[k] ?? 0));
   const inv = data.inventory || [];
   const initial = (data.name || "?").trim().charAt(0).toUpperCase();
   const keyStats = keyStatsFor(data.class);
@@ -536,10 +541,13 @@ export default function SchedaPG() {
                 <div className="spg-coins">
                   {["pp", "gp", "ep", "sp", "cp"].map(k => (
                     <div key={k} className={"spg-coin " + k}>
-                      <div className="cv">{cur[k] ?? 0}</div><div className="cl">{k.toUpperCase()}</div>
+                      <div className="cv">{coinOf(k)}</div><div className="cl">{k.toUpperCase()}</div>
                     </div>
                   ))}
                 </div>
+                {craftPending > 0 && (
+                  <div className="spg-hint">⚒ {craftPending} MO già spese all'Officina (tolte qui, su Foundry si scalano alla prossima importazione).</div>
+                )}
                 {inv.length ? (() => {
                   const loose = inv.filter(i => !i.container && !i.isContainer);
                   const containers = inv.filter(i => i.isContainer);

@@ -23,7 +23,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { addDoc, collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
@@ -384,13 +384,19 @@ export default function CraftingOfficina() {
         pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
         // Con l'1 naturale i materiali di pregio vanno sprecati: niente ✦.
         invest: investOpt.key, upgraded: !failed && !fumble && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
-        goldInboxId: "", goldDone: false,
+        goldInboxId: "", goldDone: false, goldAuto: false,
         dist, outcome: failed ? "" : outWork.outcome,
         xp: failed ? 0 : xpWithInvestment(xpForCraft(tier, nat20), investOpt), xpPaid: false, nat20, inboxId: "", enhancer: "", choice: "", note: "",
         failed, fumble, critRoll, skipped: false, // anche il disastro sta sul banco: due minuti di barra rossa
         cursed: !!curse, curse, // SOLO PER IL MASTER: il giocatore non deve vederla mai
         componentProof: {}, toolsProof: toolsOn ? toolsEv.label : "",
       };
+      // La spesa parte DA SOLA verso Foundry (2026-10-03): stesso documento
+      // `kind: "gold"` che prima mandava il Master a mano, scritto nella stessa
+      // transazione del tiro. Descrive la rarità MIRATA, non l'esito: la coda
+      // è leggibile e il tiro resta segreto fino al ritiro.
+      const goldRef = !isMaster && paidMo > 0 ? doc(collection(db, "foundry_inbox")) : null;
+      if (goldRef) { entry.goldInboxId = goldRef.id; entry.goldAuto = true; }
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
       await runTransaction(db, async (tx) => {
         const ref = doc(db, "characters", uid);
@@ -421,7 +427,8 @@ export default function CraftingOfficina() {
           // dell'Officina non ancora scalata sull'attore di Foundry, e
           // `availableGp` la toglie dall'oro della scheda. Il Master la chiude
           // quando la manda alla macro (o la segna "già pagata").
-          "crafting.goldPending": Math.max(0, (Number(cur.goldPending) || 0) + (Number(entry.costMo) || 0)),
+          // Il Master non paga: niente spesa in sospeso.
+          "crafting.goldPending": Math.max(0, (Number(cur.goldPending) || 0) + (goldRef ? (Number(entry.costMo) || 0) : 0)),
         };
         // I componenti: dalla scorta del Master si consumano (uno per tipo); altrimenti
         // devono risultare sulla scheda Foundry o comprati al Mercato (il Master li toglie lui).
@@ -434,6 +441,21 @@ export default function CraftingOfficina() {
           entry.componentProof[k] = ev.ok && ev.label ? `${ev.label} · da togliere dalla scheda` : "Master";
         }
         tx.update(ref, patch);
+        if (goldRef) tx.set(goldRef, {
+          status: "pending",
+          ...craftGoldPayload({
+            crafter: { uid, name: charData?.name || "" },
+            amount: entry.costMo,
+            tierLabel: targetMeta.label,
+            itemName: entry.pickName || "",
+            components: entry.components.map((k) => componentByKey(k)?.name || k),
+            note: prof.name,
+          }),
+          // la macro, scalato l'oro, lo toglie anche da `crafting.goldPending`
+          pendingOnSite: true,
+          origin: "crafting", crafterUid: uid, crafterName: charData?.name || "", craftEntryId: entry.id,
+          createdAt: serverTimestamp(),
+        });
       });
       // Il dado rotola davanti a tutti, ma il numero lo vede solo il Master:
       // per i giocatori si ferma su una runa (2026-09-22).
@@ -933,7 +955,7 @@ export default function CraftingOfficina() {
           <p className="nx-nota off-esito-cost">
             💰 Materiali: <b>{fmtMo(activeEntry.costMo || 0)}</b>
             {activeEntry.halfCost ? <> invece di {fmtMo(activeEntry.listCostMo || 0)} — <strong>20 naturale</strong>, te n'è bastata metà.</> : "."}
-            {" "}{activeEntry.goldInboxId ? "Spesa già mandata al Master per Foundry." : "Già uscita dalla tua borsa; il Master la scala anche su Foundry."}
+            {" "}{activeEntry.goldAuto ? "Già uscita dalla tua borsa: su Foundry si scala da sola alla prossima importazione del Master." : activeEntry.goldInboxId ? "Spesa già mandata al Master per Foundry." : "Già uscita dalla tua borsa; il Master la scala anche su Foundry."}
           </p>
           {activeEntry.upgraded && <p className="nx-nota off-esito-up">✦ <strong>Fattura superiore</strong>: hai speso il {investmentByKey(activeEntry.invest).costPct}% in più di materiali ({fmtMo(activeEntry.costMo || 0)}) e l'oggetto esce potenziato.</p>}
           {(activeEntry.compRolls || []).length > 0 && (
@@ -1569,20 +1591,21 @@ function CraftSpese({ chars }) {
         components: (e.components || []).map((k) => componentByKey(k)?.name || k),
         failed: !!e.failed, nat20: !!e.halfCost, note: p ? p.name : "",
       }),
+      // come le spese automatiche: resta in `goldPending` finché la macro non
+      // la scala, poi la toglie lei (niente oro che "risale" nel frattempo)
+      pendingOnSite: true,
       origin: "crafting", crafterUid: c.uid, crafterName: c.name || "", craftEntryId: e.id,
       createdAt: serverTimestamp(),
     });
     // Transazione: il registro si rilegge fresco (con "Manda tutte" due spese
-    // dello stesso PG si sovrascriverebbero) e l'oro esce da `goldPending` una
-    // volta sola: da qui in poi a scalarlo è la macro di Foundry.
+    // dello stesso PG si sovrascriverebbero).
     await runTransaction(db, async (tx) => {
       const cref = doc(db, "characters", c.uid);
       const snap = await tx.get(cref);
       const cur = snap.exists() ? (snap.data().crafting || {}) : {};
       const log = Array.isArray(cur.log) ? cur.log : [];
       tx.update(cref, {
-        "crafting.goldPending": pendingAfterClose(cur, e.id),
-        "crafting.log": log.map((x) => (x.id === e.id ? { ...x, goldInboxId: ref.id } : x)),
+        "crafting.log": log.map((x) => (x.id === e.id ? { ...x, goldInboxId: ref.id, goldAuto: true } : x)),
       });
     });
   }
@@ -1610,7 +1633,7 @@ function CraftSpese({ chars }) {
   return (
     <div className="nx-pannello off-box off-spese">
       <div className="off-spese-head">
-        <div className="off-sec-head off-spese-t"><span className="nx-tag">💰 Spese dei materiali</span><p className="nx-nota">Monete già spese al banco e non ancora scalate dall'oro su Foundry: mandale in coda o segnale come pagate.</p></div>
+        <div className="off-sec-head off-spese-t"><span className="nx-tag">💰 Spese dei materiali</span><p className="nx-nota">Dal 3 ottobre le spese vanno in coda <strong>da sole</strong> al momento del tiro: qui restano solo quelle vecchie, mai mandate. Mandale in coda o segnale come pagate.</p></div>
         <div className="off-spese-sum"><span><b>{rows.length}</b><small>aperte</small></span><span><b>{fmtMo(totale)}</b><small>in totale</small></span></div>
         {rows.length > 1 && (
           <button type="button" className="off-ghost" disabled={!!busy} onClick={() => act("all", async () => { for (const r of rows) await sendOne(r); setMsg(`✓ ${rows.length} spese mandate alla coda di Foundry.`); })}>
@@ -1639,7 +1662,7 @@ function CraftSpese({ chars }) {
       )}
       {msg && <p className={`nx-nota off-spese-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</p>}
       <p className="nx-nota">Gli <strong>oggetti</strong> creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
-      <p className="nx-nota">La macro <strong>Crea Oggetti dal sito → Foundry</strong> riconosce queste voci (<code>kind: "gold"</code>), toglie le monete all'attore col <code>firebaseUID</code> giusto e le cancella dalla coda.</p>
+      <p className="nx-nota">Su Foundry basta UNA macro, <strong>Crea Oggetti dal sito → Foundry</strong>: crea gli oggetti nell'inventario, toglie le monete delle spese (tasche e poi borse), aggiorna l'oro anche sul sito e svuota la coda. Le spese in coda ora: {fmtMo(chars.reduce((a, c) => a + goldPending(c.crafting), 0))} in sospeso.</p>
     </div>
   );
 }
@@ -1824,6 +1847,12 @@ function CraftLedger({ chars, reload, patchChar }) {
     let newLog = null;
     try {
       const ref = doc(db, "characters", uid);
+      // Spesa automatica ancora in coda? Allora la macro non l'ha scalata:
+      // si toglie dalla coda e l'oro torna in borsa. Se non c'è più, è già
+      // stata scalata su Foundry e il sito è già allineato.
+      const goldQueued = e.goldAuto && e.goldInboxId
+        ? await getDoc(doc(db, "foundry_inbox", e.goldInboxId)).then((d) => d.exists()).catch(() => false)
+        : false;
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         const cur = snap.exists() ? (snap.data().crafting || {}) : {};
@@ -1838,7 +1867,7 @@ function CraftLedger({ chars, reload, patchChar }) {
           "crafting.xp": Math.max(0, (Number(cur.xp) || 0) - xpOf(e)),
           // La prova non esiste più: se la sua spesa era ancora aperta, l'oro
           // torna in borsa (se era già andata a Foundry la macro l'ha scalata).
-          "crafting.goldPending": pendingAfterClose(cur, e.id),
+          "crafting.goldPending": pendingAfterClose(cur, e.id, { queued: goldQueued }),
         };
         if (cur.weekKey && cur.weekKey === e.weekKey) patch["crafting.weekCount"] = Math.max(0, (Number(cur.weekCount) || 0) - 1);
         if (cur.lastDayKey && cur.lastDayKey === e.dayKey && !log.some((x) => x.dayKey === e.dayKey)) patch["crafting.lastDayKey"] = "";

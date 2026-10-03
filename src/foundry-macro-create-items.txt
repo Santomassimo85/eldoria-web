@@ -17,8 +17,18 @@
 // `system.currency`, e senza frugarci un PG che tiene l'oro nello zaino
 // risultava a zero. Si paga prima con le tasche, poi con le borse.
 //
-// USO: lanciala come GM quando vuoi importare gli oggetti in coda.
-// (Funziona identica su Foundry online: la macro gira nel tuo browser.)
+// E' L'UNICA MACRO CHE SERVE per l'Officina: oggetti da aggiungere E monete
+// da togliere passano tutti da qui. (La "sync" e' l'altra direzione: porta la
+// scheda Foundry sul sito.)
+//
+// USO: lanciala come GM. Con AUTO_OGNI_MINUTI > 0 resta accesa da sola e
+// ricontrolla la coda ogni N minuti finche' il tuo Foundry e' aperto (se
+// ricarichi la pagina, rilanciala una volta). Rilanciarla non crea doppioni.
+//
+// AUTOMATICO (2026-10-03): le spese entrano in coda DA SOLE quando il
+// giocatore tira al banco; quando la macro le scala su Foundry scrive anche
+// il nuovo oro sul sito (characters/{uid}.currency.gp) e toglie la spesa da
+// `crafting.goldPending`. Niente piu' bottoni "Manda a Foundry" per il Master.
 //
 // NOTA: gli oggetti "player" (e le spese in monete) vanno nell'attore che ha
 //   il flag `world.firebaseUID` uguale all'UID del personaggio sul sito.
@@ -39,6 +49,9 @@ const FIREBASE_CONFIG = {
 // e poi le borse, false = prima le borse. (Le monete IN PIU' vanno sempre
 // addosso al PG, mai dentro una borsa.)
 const PRIMA_LE_TASCHE = true;
+
+// Ogni quanti minuti ricontrollare la coda da sola (0 = solo quando la lanci).
+const AUTO_OGNI_MINUTI = 2;
 
 const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
 
@@ -183,10 +196,34 @@ async function trovaAttore(uid) {
 }
 
 // ----------------------------------------------------------------
+// SITO: dopo aver scalato le monete su Foundry, scrive sul personaggio del
+// sito l'oro nuovo (totale tasche + borse, come fa la sync) e, per le spese
+// automatiche dell'Officina, toglie l'importo da crafting.goldPending.
+// Una sola scrittura atomica (commit con increment).
+// ----------------------------------------------------------------
+async function aggiornaSito(uid, gpDopo, scalaPending) {
+  const nome = `projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/characters/${uid}`;
+  const write = {
+    update: { name: nome, fields: { currency: { mapValue: { fields: { gp: { integerValue: String(Math.max(0, Math.round(gpDopo))) } } } } } },
+    updateMask: { fieldPaths: ["currency.gp"] },
+    currentDocument: { exists: true },
+  };
+  if (scalaPending > 0) {
+    write.updateTransforms = [{ fieldPath: "crafting.goldPending", increment: { integerValue: String(-Math.round(scalaPending)) } }];
+  }
+  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:commit?key=${FIREBASE_CONFIG.apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ writes: [write] }),
+  });
+  if (!res.ok) throw new Error(`sito non aggiornato (${res.status}): ${await res.text()}`);
+}
+
+// ----------------------------------------------------------------
 // MAIN
 // ----------------------------------------------------------------
-(async () => {
-  ui.notifications.info("Importazione oggetti dal sito in corso…");
+async function importaDalSito(silenziosa = false) {
+  if (!silenziosa) ui.notifications.info("Importazione oggetti dal sito in corso…");
 
   // 1) leggi la coda
   let docs = [];
@@ -199,14 +236,14 @@ async function trovaAttore(uid) {
       ...obj(doc.fields || {})
     }));
   } catch (e) {
-    ui.notifications.error("Errore lettura coda Firestore.");
+    if (!silenziosa) ui.notifications.error("Errore lettura coda Firestore.");
     console.error(e);
     return;
   }
 
   const pending = docs.filter(d => d.status === "pending");
   if (!pending.length) {
-    ui.notifications.info("Nessun oggetto in coda.");
+    if (!silenziosa) ui.notifications.info("Nessun oggetto in coda.");
     return;
   }
 
@@ -276,6 +313,15 @@ async function trovaAttore(uid) {
           whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
         });
         console.log(`[Import] ${add ? "+" : "−"}${amount} mo → ${actor.name} (${prima} → ${dopo})`, mosse);
+        // Il sito si allinea subito (senza aspettare la sync della scheda).
+        // Se non ci riesce la voce si cancella lo stesso: l'oro su Foundry e'
+        // gia' stato scalato e rifarlo sarebbe peggio. Lo sistema la sync.
+        try {
+          await aggiornaSito(d.targetUid, dopo, d.pendingOnSite && !add ? amount : 0);
+        } catch (e) {
+          console.warn("[Import] Oro scalato su Foundry ma il sito non si e' aggiornato:", e);
+          ui.notifications.warn(`${actor.name}: oro scalato su Foundry, ma il sito non si e' aggiornato. Lancia la sync della sua scheda.`);
+        }
         await fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
         gold++;
         continue;
@@ -309,5 +355,30 @@ async function trovaAttore(uid) {
     }
   }
 
-  ui.notifications.info(`✅ Creati ${created} oggetti${gold ? `, ${gold} spese scalate` : ""}${skipped ? `, ${skipped} saltati` : ""}.`);
+  if (!silenziosa || created || gold || skipped) {
+    ui.notifications.info(`✅ Creati ${created} oggetti${gold ? `, ${gold} spese scalate` : ""}${skipped ? `, ${skipped} saltati` : ""}.`);
+  }
+}
+
+// ----------------------------------------------------------------
+// AVVIO: un giro subito e, se richiesto, uno ogni AUTO_OGNI_MINUTI.
+// Il timer vecchio si spegne prima di accenderne uno nuovo, e un giro non
+// parte se il precedente non e' ancora finito: niente doppioni.
+// ----------------------------------------------------------------
+(async () => {
+  if (!game.user.isGM) { ui.notifications.warn("Questa macro la lancia solo il GM."); return; }
+  const G = (window.__eldoriaImport ||= { timer: null, inCorso: false });
+  const giro = async (silenziosa) => {
+    if (G.inCorso) return;
+    G.inCorso = true;
+    try { await importaDalSito(silenziosa); }
+    catch (e) { console.error("[Import] giro fallito:", e); }
+    finally { G.inCorso = false; }
+  };
+  if (G.timer) { clearInterval(G.timer); G.timer = null; }
+  await giro(false);
+  if (AUTO_OGNI_MINUTI > 0) {
+    G.timer = setInterval(() => giro(true), AUTO_OGNI_MINUTI * 60 * 1000);
+    ui.notifications.info(`🔁 Importazione automatica accesa: ogni ${AUTO_OGNI_MINUTI} minuti finche' Foundry resta aperto.`);
+  }
 })();

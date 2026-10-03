@@ -10,10 +10,16 @@
 //
 //     oro disponibile = currency.gp − crafting.goldPending
 //
-// Quando il Master manda la spesa a Foundry (o la segna "già pagata") la voce
-// esce da `goldPending`: da lì in poi a scalarla è la macro, e il sync riporta
-// in `currency.gp` il valore giusto. Niente doppie sottrazioni.
-//
+// AUTOMATICO (2026-10-03): al tiro la spesa entra DA SOLA nella coda di
+// Foundry (`foundry_inbox`, `kind: "gold"`, `pendingOnSite: true`) e la voce
+// del registro porta `goldInboxId` + `goldAuto: true`. Resta in `goldPending`
+// finché la macro "Crea Oggetti dal sito → Foundry" non la scala davvero:
+// allora la macro, nello stesso colpo, scrive su `characters/{uid}` il nuovo
+// `currency.gp` e toglie l'importo da `goldPending`. Il giocatore vede l'oro
+// scalato dal momento del tiro, senza salti all'indietro.
+// Le spese di prima (senza `goldAuto`) seguono la vecchia regola: escono da
+// `goldPending` quando il Master le manda o le segna "già pagate".
+
 // Si ragiona in MONETE D'ORO come la macro (`system.currency.gp`): platino,
 // argento e rame non entrano nel conto, si cambiano al tavolo.
 
@@ -52,12 +58,19 @@ export function affordFromSnapshot(data, costMo) {
 }
 
 // Chiude la spesa di UNA prova: le sue monete escono da `goldPending` una volta
-// sola. Da lì in poi la sottrazione la fa Foundry (macro) o è già stata fatta a
-// mano, e il sync rimette a posto `currency.gp`. Idempotente: se la voce
-// risulta già mandata, già pagata o sparita, il contatore non si muove.
-export function pendingAfterClose(crafting, entryId) {
+// sola. Idempotente: se la voce risulta già chiusa o sparita il contatore non
+// si muove.
+// Spese automatiche (`goldAuto`): restano in sospeso finché la macro non le
+// scala, quindi si chiudono qui SOLO se il documento è ancora in coda
+// (`queued: true`, cioè lo stiamo togliendo noi: la prova viene cancellata).
+// Se la macro l'ha già scalata, ci ha già pensato lei.
+export function pendingAfterClose(crafting, entryId, { queued = false } = {}) {
   const log = Array.isArray(crafting?.log) ? crafting.log : [];
   const e = log.find((x) => x?.id === entryId);
-  if (!e || e.goldInboxId || e.goldDone) return goldPending(crafting);
-  return Math.max(0, goldPending(crafting) - (Math.max(0, Number(e.costMo) || 0)));
+  const pend = goldPending(crafting);
+  if (!e) return pend;
+  const cost = Math.max(0, Number(e.costMo) || 0);
+  if (e.goldAuto) return queued ? Math.max(0, pend - cost) : pend;
+  if (e.goldInboxId || e.goldDone) return pend;
+  return Math.max(0, pend - cost);
 }
