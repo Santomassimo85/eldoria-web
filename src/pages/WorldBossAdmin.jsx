@@ -154,13 +154,31 @@ const sanitizeActions = (arr, min) => {
 
 // Prompt per lo sprite pixel-art: soggetto SOLO, su fondo magenta uniforme che
 // poi rimuoviamo lato client (chroma key). Niente sfondo/scena/testo.
-const pixelArtPrompt = (name, desc, dead) => `Pixel art sprite of a single fantasy ${dead ? "defeated/dead " : ""}creature or character for a tactical RPG game.
-Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}
-${dead
-    ? "Pose: defeated — collapsed, lying down, or as a corpse/remains."
-    : "Pose: a SINGLE idle standing pose, full body, three-quarter view facing the viewer."}
-Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.
-CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
+// Lo sprite "morto" si disegna PARTENDO DA QUELLO VIVO (passato come immagine
+// di riferimento): senza, l'IA inventava un'altra creatura (2026-10-03).
+// Due forme: "corpse" = la stessa creatura stesa a terra, "tomb" = una tomba
+// che porta i suoi segni (arma, elmo, colori).
+const pixelArtPrompt = (name, desc, dead, { deadStyle = "corpse", withRef = false } = {}) => {
+  const bg = "CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery. No text, no frame, no border. Only the subject on flat magenta.";
+  const style = "Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.";
+  const subject = `Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}`;
+  if (!dead) return `Pixel art sprite of a single fantasy creature or character for a tactical RPG game.
+${subject}
+Pose: a SINGLE idle standing pose, full body, three-quarter view facing the viewer.
+${style}
+${bg}`;
+  const refLine = withRef
+    ? "The attached image is the LIVING sprite of this EXACT creature. Keep it the SAME individual: same species, anatomy, body shape, colors and palette, armor, clothes, weapons and accessories, same pixel-art style, same pixel density and roughly the same scale. Do NOT invent a different creature."
+    : subject;
+  const pose = deadStyle === "tomb"
+    ? "Draw its GRAVE instead of the creature: a single small tombstone or burial cairn with a low mound of earth, decorated with this creature's signature items (its weapon, helmet, mask, horns or a scrap of its clothing resting on or against the stone) and using the same color palette, so it is obvious whose grave it is. No living creature in the image."
+    : "Draw the SAME creature DEAD: collapsed and lying flat on its side or back on the ground, eyes closed or empty, limbs limp, its weapon dropped beside it. Horizontal composition (wider than tall). It must be clearly recognizable as the same creature, just defeated.";
+  return `Pixel art sprite for a tactical RPG game: the defeated form of ${name || "a fantasy monster"}.
+${refLine}
+${pose}
+${style}
+${bg}`;
+};
 
 // Rimuove lo sfondo a tinta unita (magenta) con un flood-fill dai bordi: così
 // non cancella eventuali pixel dello stesso colore "intrappolati" nel soggetto.
@@ -344,6 +362,23 @@ const FacingPicker = ({ value, onChange, imageUrl, name }) => {
   );
 };
 
+const blobToDataUrl = (blob) => new Promise((resolve) => {
+  const fr = new FileReader();
+  fr.onload = () => resolve(String(fr.result || ""));
+  fr.onerror = () => resolve("");
+  fr.readAsDataURL(blob);
+});
+
+// Come l'IA disegna lo sprite "morto": la stessa creatura stesa o la sua tomba.
+// Bottoni con aria-pressed (mai role="tab": covo.css ci metterebbe le rune).
+const DeadStylePicker = ({ value, onChange }) => (
+  <div className="wb-deadstyle" aria-label="Forma dello sprite morto generato">
+    {[["corpse", "💀 Steso a terra"], ["tomb", "🪦 Tomba"]].map(([k, l]) => (
+      <button key={k} type="button" aria-pressed={value === k} className={value === k ? "is-on" : ""} onClick={() => onChange(k)}>{l}</button>
+    ))}
+  </div>
+);
+
 const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "var(--oro)" }) => {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = React.useRef(null);
@@ -444,6 +479,8 @@ export default function WorldBossAdmin() {
 
   // ── Generazione IA (testo + sprite) ──
   const [genState, setGenState] = useState({}); // spinner per slot: { boss, minion, genNewAlive, ... }
+  // Forma dello sprite "morto" generato dall'IA: la creatura stesa o la sua tomba.
+  const [deadStyle, setDeadStyle] = useState("corpse");
   const [bossSpunto, setBossSpunto] = useState("");     // spunto facoltativo per il boss IA
   const [minionSpunto, setMinionSpunto] = useState(""); // spunto facoltativo per il minion IA
 
@@ -525,22 +562,29 @@ export default function WorldBossAdmin() {
   };
 
   // Genera uno sprite pixel-art (sfondo rimosso) e lo applia via `apply(url)`.
-  const generateSprite = async ({ name, desc, dead, slotKey, apply }) => {
+  // `ref` = lo sprite VIVO (data URL o URL dello Storage): il morto lo copia.
+  // Restituisce { url, ref } così chi genera vivo+morto passa il primo al secondo.
+  const generateSprite = async ({ name, desc, dead, slotKey, apply, ref = "" }) => {
     if (!name?.trim()) { alert("Dai prima un nome al soggetto, così l'IA sa cosa disegnare."); return; }
     setGenState((s) => ({ ...s, [slotKey]: true }));
     try {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: pixelArtPrompt(name, desc, dead) }),
+        body: JSON.stringify({
+          prompt: pixelArtPrompt(name, desc, dead, { deadStyle, withRef: !!(dead && ref) }),
+          ...(dead && ref ? { refs: [ref] } : {}),
+        }),
       });
       const data = await r.json();
       if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
       const blob = await dataUrlToTransparentBlob(data.immagine);
       const url = await uploadBlobToStorage(blob);
       apply(url);
+      return { url, ref: await blobToDataUrl(blob) };
     } catch (e) {
       alert("Generazione sprite fallita: " + (e.message || e));
+      return null;
     } finally {
       setGenState((s) => ({ ...s, [slotKey]: false }));
     }
@@ -569,14 +613,17 @@ export default function WorldBossAdmin() {
         actions: sanitizeActions(data.actions, MIN_ACTIONS),
       }));
       // Genera anche gli sprite pixel-art (vivo + tomba) col nome/descrizione appena creati.
-      generateSprite({
-        name: data.name, desc: data.description, dead: false, slotKey: "genNewAlive",
-        apply: (url) => setNewBoss((b) => ({ ...b, imageUrl: url })),
-      });
-      generateSprite({
-        name: data.name, desc: data.description, dead: true, slotKey: "genNewDead",
-        apply: (url) => setNewBoss((b) => ({ ...b, deadImageUrl: url })),
-      });
+      // In fila: il morto parte dal vivo appena disegnato.
+      (async () => {
+        const alive = await generateSprite({
+          name: data.name, desc: data.description, dead: false, slotKey: "genNewAlive",
+          apply: (url) => setNewBoss((b) => ({ ...b, imageUrl: url })),
+        });
+        await generateSprite({
+          name: data.name, desc: data.description, dead: true, slotKey: "genNewDead", ref: alive?.ref || "",
+          apply: (url) => setNewBoss((b) => ({ ...b, deadImageUrl: url })),
+        });
+      })();
     } catch (e) {
       alert("Genera boss: " + (e.message || e));
     } finally {
@@ -603,14 +650,17 @@ export default function WorldBossAdmin() {
         actions: sanitizeActions(data.actions, 1),
       }));
       // Genera anche gli sprite pixel-art (vivo + tomba) del minion.
-      generateSprite({
-        name: data.name, desc: "", dead: false, slotKey: "genMinionAlive",
-        apply: (url) => setMinionForm((m) => ({ ...m, imageUrl: url })),
-      });
-      generateSprite({
-        name: data.name, desc: "", dead: true, slotKey: "genMinionDead",
-        apply: (url) => setMinionForm((m) => ({ ...m, deadImageUrl: url })),
-      });
+      // In fila: il morto parte dal vivo appena disegnato.
+      (async () => {
+        const alive = await generateSprite({
+          name: data.name, desc: "", dead: false, slotKey: "genMinionAlive",
+          apply: (url) => setMinionForm((m) => ({ ...m, imageUrl: url })),
+        });
+        await generateSprite({
+          name: data.name, desc: "", dead: true, slotKey: "genMinionDead", ref: alive?.ref || "",
+          apply: (url) => setMinionForm((m) => ({ ...m, deadImageUrl: url })),
+        });
+      })();
     } catch (e) {
       alert("Genera minion: " + (e.message || e));
     } finally {
@@ -1048,13 +1098,14 @@ export default function WorldBossAdmin() {
             </div>
             <div className="wb-sprite-slot">
               <span className="wb-slot-tag">Forma sconfitta</span>
+              <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
               <SpriteDropzone
                 label="Sprite Morto"
                 icon="💀"
                 value={newBoss.deadImageUrl}
                 uploading={uploadState.newDead}
                 generating={genState.genNewDead}
-                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: true, slotKey: "genNewDead", apply: (url) => { cleanupStorageUrl(newBoss.deadImageUrl); setNewBoss((b) => ({ ...b, deadImageUrl: url })); } })}
+                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: true, slotKey: "genNewDead", ref: newBoss.imageUrl || "", apply: (url) => { cleanupStorageUrl(newBoss.deadImageUrl); setNewBoss((b) => ({ ...b, deadImageUrl: url })); } })}
                 onFile={onNewDead}
                 onClear={() => {
                   cleanupStorageUrl(newBoss.deadImageUrl);
@@ -1140,13 +1191,14 @@ export default function WorldBossAdmin() {
                 />
               </div>
               <div className="wb-sprite-slot">
-                <span className="wb-slot-tag">Tomba (morto)</span>
+                <span className="wb-slot-tag">Sprite morto</span>
+                <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
                 <SpriteDropzone
                   label="Sprite Morto" icon="🪦"
                   value={minionForm.deadImageUrl}
                   uploading={uploadState.minionDead}
                   generating={genState.genMinionDead}
-                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: true, slotKey: "genMinionDead", apply: (url) => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: url })); } })}
+                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: true, slotKey: "genMinionDead", ref: minionForm.imageUrl || "", apply: (url) => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: url })); } })}
                   onFile={onMinionDead}
                   onClear={() => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: "" })); }}
                   accent="#7a0808"
@@ -1326,13 +1378,14 @@ export default function WorldBossAdmin() {
                           }}
                           accent="var(--oro)"
                         />
+                        <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
                         <SpriteDropzone
                           label="Sprite Morto"
                           icon="💀"
                           value={editData.deadImageUrl}
                           uploading={uploadState.editDead}
                           generating={genState.genEditDead}
-                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: true, slotKey: "genEditDead", apply: (url) => { cleanupStorageUrl(editData.deadImageUrl); setEditData((d) => ({ ...d, deadImageUrl: url })); } })}
+                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: true, slotKey: "genEditDead", ref: editData.imageUrl || "", apply: (url) => { cleanupStorageUrl(editData.deadImageUrl); setEditData((d) => ({ ...d, deadImageUrl: url })); } })}
                           onFile={onEditDead}
                           onClear={() => {
                             cleanupStorageUrl(editData.deadImageUrl);
