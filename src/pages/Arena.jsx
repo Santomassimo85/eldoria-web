@@ -4049,6 +4049,7 @@ export default function Arena() {
   // NON include gli acquisti della Bottega (settimanali, si riscelgono ogni torneo).
   const buildSavedCharPayload = () => JSON.parse(JSON.stringify({
     label:     `${charPreview.name || "PG"} · ${charPreview.class}`,
+    name:      charPreview.name || "",   // serve al Master: i suoi PG hanno nomi propri
     savedAt:   new Date().toISOString(),
     class:     charPreview.class,
     stats:     { ...charPreview.stats },
@@ -4106,6 +4107,7 @@ export default function Arena() {
   const joinWithSavedChar = async (slot) => {
     const sc = savedArenaChars[slot];
     if (!sc) return;
+    setMasterJoinSetup(false);
     await openLoadoutPicker();
     await loadSavedArenaChar(slot, sc);
   };
@@ -4157,9 +4159,12 @@ export default function Arena() {
     let base = {};
     try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
     const ownedTitles = getCharTitles(base);
+    // Il Master entra coi nomi dei suoi PG (non con quello della sua scheda);
+    // i salvataggi senza `name` lo ricavano dall'etichetta "Nome · Classe".
+    const masterName = isMaster ? (sc.name || String(sc.label || "").split(" · ")[0] || "").trim() : "";
     setCharPreview({
-      name:        base.name || "Avventuriero",
-      image:       base.image || null,
+      name:        masterName || base.name || "Avventuriero",
+      image:       isMaster ? null : (base.image || null),
       class:       sc.class,
       stats:       { ...(sc.stats || {}) },
       arenaBuffs:  base.arenaBuffs || {},
@@ -10313,6 +10318,11 @@ export default function Arena() {
 
           {masterJoinSetup && arenaMeta.phase === "registration" && (
             <div className="master-join-setup">
+              {savedArenaChars.some(Boolean) && renderSavedPicker({
+                useLabel: "⚔ Entra con",
+                onUse: joinWithSavedChar,
+                hint: "…oppure creane uno nuovo qui sotto.",
+              })}
               <h4 className="master-join-setup-title">Crea il tuo personaggio</h4>
               <input
                 className="master-join-input"
