@@ -185,3 +185,21 @@ body.covo-arena ::selection { background: rgba(var(--el-rgb), .55); color: var(-
 body .arena-page .saved-char-warn { margin-top: 4px; font-size: .74rem; line-height: 1.3; color: var(--oro); }
 body .arena-page .loadout-save-hint { flex-basis: 100%; font-size: .78rem; color: var(--osso-2, var(--osso)); opacity: .85; }
 body .arena-page .btn-save-slot:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── PG salvati: selezione singola (2026-10-03) ── */
+body .arena-page .saved-char-pick { cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+body .arena-page .saved-char-pick:hover { border-color: var(--el); }
+body .arena-page .saved-char-pick:focus-visible { outline: 2px solid var(--el); outline-offset: 2px; }
+body .arena-page .saved-char-pick.is-selected {
+  border: 2px solid var(--el) !important;
+  background: rgba(var(--el-rgb), .2) !important;
+  box-shadow: 0 0 0 1px rgba(var(--el-rgb), .35), 0 0 14px rgba(var(--el-rgb), .25);
+}
+body .arena-page .saved-char-pick.is-selected .saved-char-slot { color: var(--el-2); }
+body .arena-page .saved-char-pick .saved-char-actions { justify-content: flex-end; }
+body .arena-page .saved-char-use { width: 100%; margin: 4px 0 6px; }
+body .arena-page .saved-char-use:disabled { opacity: .55; cursor: default; }
+body .arena-page .btn-join.btn-join--secondario {
+  background: transparent !important; border: 1px dashed rgba(var(--el-rgb), .6) !important;
+  color: var(--osso) !important; -webkit-text-fill-color: var(--osso); box-shadow: none !important;
+}

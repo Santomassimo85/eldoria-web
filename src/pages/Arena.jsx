@@ -3084,6 +3084,9 @@ export default function Arena() {
   // Personaggi d'Arena salvati dal giocatore (4 slot): build completo pronto da
   // ripescare all'iscrizione al torneo. Caricati dalla scheda in openLoadoutPicker.
   const [savedArenaChars, setSavedArenaChars] = useState(() => Array(SAVED_ARENA_SLOTS).fill(null));
+  // PG salvato SELEZIONATO (uno solo): `characters.arenaSavedActive` = indice dello slot.
+  // Si sceglie con un tocco sulla carta e si usa per torneo e Sfide Libere.
+  const [activeSavedSlot, setActiveSavedSlot] = useState(null);
   // Slot riserva del Master attualmente in creazione (0..3) o null se non in modalità riserva.
   const [reserveSlotTarget, setReserveSlotTarget] = useState(null);
   const [pendingStats, setPendingStats]     = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
@@ -3477,7 +3480,12 @@ export default function Arena() {
   useEffect(() => {
     if (!currentUser) return;
     return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
-      if (snap.exists()) setMyArenaBuffs(snap.data().arenaBuffs || {});
+      if (!snap.exists()) return;
+      const d = snap.data();
+      setMyArenaBuffs(d.arenaBuffs || {});
+      // PG salvati sempre aggiornati: servono già all'ingresso (prima del loadout).
+      setSavedArenaChars(Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => (Array.isArray(d.arenaSavedChars) ? (d.arenaSavedChars[i] ?? null) : null)));
+      setActiveSavedSlot(Number.isInteger(d.arenaSavedActive) ? d.arenaSavedActive : null);
     });
   }, [currentUser]);
 
@@ -4065,9 +4073,10 @@ export default function Arena() {
     if (next[slot] && !window.confirm(`Sovrascrivere lo slot ${slot + 1} (${next[slot].label})?`)) return;
     next[slot] = buildSavedCharPayload();
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next });
+      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next, arenaSavedActive: slot });
       setSavedArenaChars(next);
-      alert(`✅ Personaggio salvato nello slot ${slot + 1}.`);
+      setActiveSavedSlot(slot);
+      alert(`✅ Personaggio salvato nello slot ${slot + 1} e selezionato.`);
     } catch (e) { console.error("saveArenaCharToSlot", e); alert("Salvataggio non riuscito."); }
   };
 
@@ -4076,16 +4085,74 @@ export default function Arena() {
     if (!sc || !window.confirm(`Eliminare il PG salvato nello slot ${slot + 1} (${sc.label})?`)) return;
     const next = Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => savedArenaChars[i] ?? null);
     next[slot] = null;
+    const wasActive = activeSavedSlot === slot;
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next });
+      await updateDoc(doc(db, "characters", currentUser.uid), wasActive ? { arenaSavedChars: next, arenaSavedActive: null } : { arenaSavedChars: next });
       setSavedArenaChars(next);
+      if (wasActive) setActiveSavedSlot(null);
     } catch (e) { console.error("deleteSavedArenaChar", e); }
+  };
+
+  // Seleziona UN PG salvato (tocco sulla carta). Lo stato locale cambia subito,
+  // la scheda si aggiorna in background.
+  const selectSavedArenaChar = (slot) => {
+    if (!savedArenaChars[slot]) return;
+    setActiveSavedSlot(slot);
+    updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedActive: slot }).catch((e) => console.error("selectSavedArenaChar", e));
+  };
+
+  // Dall'ingresso del torneo: apre il loadout e ci carica dentro il PG selezionato
+  // (si arriva dritti alla revisione: resta da scegliere solo la Bottega).
+  const joinWithSavedChar = async (slot) => {
+    const sc = savedArenaChars[slot];
+    if (!sc) return;
+    await openLoadoutPicker();
+    await loadSavedArenaChar(slot, sc);
+  };
+
+  // Elenco dei PG salvati a selezione singola + CTA "usa questo".
+  const renderSavedPicker = ({ useLabel, onUse, hint }) => {
+    const sel = savedArenaChars[activeSavedSlot] ? activeSavedSlot : null;
+    const selSc = sel != null ? savedArenaChars[sel] : null;
+    return (
+      <div className="saved-chars-block">
+        <div className="hp-roll-title">💾 I tuoi PG salvati</div>
+        <div className="saved-chars-grid" role="radiogroup" aria-label="PG salvati">
+          {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => {
+            const sc = savedArenaChars[i];
+            if (!sc) return <div key={i} className="saved-char-card saved-char-empty">Slot {i + 1}<span>vuoto</span></div>;
+            const miss = savedCharMissing(sc);
+            const on = sel === i;
+            return (
+              <div key={i} className={`saved-char-card saved-char-pick${on ? " is-selected" : ""}`}
+                role="radio" aria-checked={on} tabIndex={0}
+                onClick={() => selectSavedArenaChar(i)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectSavedArenaChar(i); } }}>
+                <div className="saved-char-slot">{on ? "✓ Selezionato" : `Slot ${i + 1}`}</div>
+                <div className="saved-char-name">{sc.label}</div>
+                <div className="saved-char-meta">❤ {sc.rolledHp} HP</div>
+                {miss.length > 0 && (
+                  <div className="saved-char-warn" title="Salvato prima di finire l'equipaggiamento: caricalo e completalo, poi risalvalo">⚠ Da completare: {miss.map((m) => m.label).join(", ")}</div>
+                )}
+                <div className="saved-char-actions">
+                  <button className="saved-char-del" title="Elimina" onClick={(e) => { e.stopPropagation(); deleteSavedArenaChar(i); }}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn-join saved-char-use" disabled={!selSc} onClick={() => onUse(sel)}>
+          {selSc ? `${useLabel} · ${selSc.label}` : "Tocca un PG per selezionarlo"}
+        </button>
+        {hint && <div className="saved-chars-hint">{hint}</div>}
+      </div>
+    );
   };
 
   // Carica un PG salvato: identità (nome/immagine/buff/titoli/Bottega) sempre dalla
   // scheda attuale; build (classe/stat/HP/loadout) dallo slot. Salta la creazione.
-  const loadSavedArenaChar = async (slot) => {
-    const sc = savedArenaChars[slot];
+  const loadSavedArenaChar = async (slot, scArg) => {
+    const sc = scArg || savedArenaChars[slot];
     if (!sc) return;
     let base = {};
     try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
@@ -10587,32 +10654,11 @@ export default function Arena() {
                   🎭 Stai creando un <strong>PG di Riserva</strong> (Slot {(reserveSlotTarget ?? 0) + 1}) — un bot che entrerà automaticamente quando gli iscritti sono in numero dispari.
                 </div>
               )}
-              {loadoutContext !== "reserve" && savedArenaChars.some(Boolean) && (
-                <div className="saved-chars-block">
-                  <div className="hp-roll-title">💾 I tuoi PG salvati</div>
-                  <div className="saved-chars-grid">
-                    {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => {
-                      const sc = savedArenaChars[i];
-                      if (!sc) return <div key={i} className="saved-char-card saved-char-empty">Slot {i + 1}<span>vuoto</span></div>;
-                      return (
-                        <div key={i} className="saved-char-card">
-                          <div className="saved-char-slot">Slot {i + 1}</div>
-                          <div className="saved-char-name">{sc.label}</div>
-                          <div className="saved-char-meta">❤ {sc.rolledHp} HP</div>
-                          {(() => { const miss = savedCharMissing(sc); return miss.length ? (
-                            <div className="saved-char-warn" title="Salvato prima di finire l'equipaggiamento: caricalo e completalo, poi risalvalo">⚠ Da completare: {miss.map((m) => m.label).join(", ")}</div>
-                          ) : null; })()}
-                          <div className="saved-char-actions">
-                            <button className="btn-join" onClick={() => loadSavedArenaChar(i)}>Carica</button>
-                            <button className="saved-char-del" title="Elimina" onClick={() => deleteSavedArenaChar(i)}>🗑</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="saved-chars-hint">…oppure crea un nuovo personaggio scegliendo la classe qui sotto.</div>
-                </div>
-              )}
+              {loadoutContext !== "reserve" && savedArenaChars.some(Boolean) && renderSavedPicker({
+                useLabel: "⚔ Usa",
+                onUse: (i) => loadSavedArenaChar(i),
+                hint: "…oppure crea un nuovo personaggio scegliendo la classe qui sotto.",
+              })}
               {/* Titolo + scorciatoia "Genera a caso" sulla stessa riga: la via veloce è a portata di pollice */}
               <div className="lizza-classe-testa">
                 <div className="hp-roll-title">Classe</div>
@@ -11514,11 +11560,11 @@ export default function Arena() {
 
                 </div>{/* /loadout-tab-body */}
 
-                {loadoutContext === "tournament" && !reloadoutMode && (() => {
+                {(loadoutContext === "tournament" || loadoutContext === "fun") && !reloadoutMode && (() => {
                   const saveMissing = savedCharMissing(buildSavedCharPayload());
                   return (
                     <div className="loadout-save-row">
-                      <span className="loadout-save-label">💾 Salva questo PG (per i prossimi tornei):</span>
+                      <span className="loadout-save-label">💾 Salva questo PG (per tornei e Sfide Libere):</span>
                       {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => (
                         <button key={i} type="button" className="btn-save-slot" disabled={saveMissing.length > 0}
                           title={saveMissing.length ? `Completa prima: ${saveMissing.map((m) => m.label).join(", ")}` : `Salva nello slot ${i + 1}`}
@@ -11590,8 +11636,13 @@ export default function Arena() {
                           : "sei un Campione: puoi iscriverti"}
                       </div>
                     )}
-                    <button className="btn-join" onClick={openLoadoutPicker} disabled={lockedOut}>
-                      ⚔ Crea il tuo Personaggio
+                    {!lockedOut && savedArenaChars.some(Boolean) && renderSavedPicker({
+                      useLabel: "⚔ Iscriviti con",
+                      onUse: joinWithSavedChar,
+                      hint: "Si apre il PG già pronto: scegli la Bottega della settimana e conferma.",
+                    })}
+                    <button className={`btn-join${savedArenaChars.some(Boolean) ? " btn-join--secondario" : ""}`} onClick={openLoadoutPicker} disabled={lockedOut}>
+                      {savedArenaChars.some(Boolean) ? "＋ Crea un nuovo Personaggio" : "⚔ Crea il tuo Personaggio"}
                     </button>
                   </>
                 );
