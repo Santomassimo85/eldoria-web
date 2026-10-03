@@ -2520,6 +2520,29 @@ function finalizeLoadout(cfg, classKey, level) {
 
 // Wrapper: costruisce il loadout grezzo e vi applica reqLevel + scaling limiti
 // (finalizeLoadout). Tutte le chiamate esterne continuano a usare getLoadoutConfig.
+// ── PG d'Arena salvati: cosa manca al build (2026-10-03) ──
+// Il salvataggio prima accettava anche un equipaggiamento a metà (solo armi, o
+// un'arma della Bottega che non si salva): ricaricato, il PG non era iscrivibile
+// e al giocatore sembrava di non poterlo scegliere. Conta SOLO il kit di classe
+// (la Bottega è settimanale e non entra nel salvataggio). [] = completo.
+// Ogni voce: { tab, label } con la stessa chiave delle schede del loadout.
+function savedCharMissing(sc) {
+  if (!sc?.class) return [{ tab: "weapons", label: "classe" }];
+  const cls = String(sc.class).toLowerCase();
+  const config = getLoadoutConfig(sc.class, undefined);
+  const out = [];
+  if (!(sc.weapons || []).length) out.push({ tab: "weapons", label: "1 arma" });
+  const spellsLeft = (config?.maxSpells || 0) - (sc.spells || []).length;
+  if (spellsLeft > 0) out.push({ tab: "magic", label: `${spellsLeft} incantesim${spellsLeft === 1 ? "o" : "i"}` });
+  if (!sc.armor) out.push({ tab: "armor", label: "armatura" });
+  if (isRangerClass(cls) && !sc.pet) out.push({ tab: "companion", label: "compagno animale" });
+  if (isWarlockClass(cls) && !sc.demon) out.push({ tab: "companion", label: "demone" });
+  if (isArtificerClass(cls) && !sc.construct) out.push({ tab: "companion", label: "costrutto" });
+  const items = Object.values(sc.itemCounts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  if (items < 1) out.push({ tab: "items", label: "1 oggetto" });
+  return out;
+}
+
 function getLoadoutConfig(charClass, level) {
   const classKey = getClassKey(charClass);
   return finalizeLoadout(getRawLoadoutConfig(charClass, level), classKey, level);
@@ -3445,7 +3468,9 @@ export default function Arena() {
   const [funAcceptMatchId, setFunAcceptMatchId] = useState(null);
   const [aiMatchPending, setAiMatchPending] = useState(false);
 
-  const isMaster = currentUser?.email === "santomassimo85@gmail.com";
+  // In DEV `?vista=player` mostra la pagina come la vede un giocatore (stesso doc characters).
+  const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
+  const isMaster = currentUser?.email === "santomassimo85@gmail.com" && !devPlayerView;
 
   // ── My arena buffs (sblocchi acquistati in Bottega) — usato per gating classi/buff anche prima della loadout. ──
   const [myArenaBuffs, setMyArenaBuffs] = useState({});
@@ -4034,6 +4059,8 @@ export default function Arena() {
 
   const saveArenaCharToSlot = async (slot) => {
     if (!charPreview?.class || !charPreview?.rolledHp) { alert("Completa prima il personaggio (classe, caratteristiche e HP)."); return; }
+    const missing = savedCharMissing(buildSavedCharPayload());
+    if (missing.length) { alert(`Prima di salvarlo completa l'equipaggiamento di classe: manca ${missing.map((m) => m.label).join(", ")}.\n(Gli acquisti della Bottega non si salvano: si riscelgono a ogni torneo.)`); return; }
     const next = Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => savedArenaChars[i] ?? null);
     if (next[slot] && !window.confirm(`Sovrascrivere lo slot ${slot + 1} (${next[slot].label})?`)) return;
     next[slot] = buildSavedCharPayload();
@@ -4088,10 +4115,12 @@ export default function Arena() {
     setPendingConstruct(sc.construct || null);
     setPendingTitle((sc.title && ownedTitles.includes(sc.title)) ? sc.title : null);
     setPendingMarketSel({});   // Bottega: si riseleziona (catalogo settimanale)
-    setLoadoutContext("tournament");
+    // Il contesto resta quello da cui si è partiti: caricare un PG salvato dentro
+    // una Sfida Libera (anche accettandola) non deve iscrivere al torneo.
+    setLoadoutContext((c) => (c === "fun" ? "fun" : "tournament"));
     setReloadoutMode(false);
-    setFunAcceptMatchId(null);
-    setLoadoutTab("weapons");
+    // Salvataggio vecchio incompleto: si apre dritto sulla scheda che manca.
+    setLoadoutTab(savedCharMissing(sc)[0]?.tab || "weapons");
     setLoadoutPhase("selecting");
   };
 
@@ -10570,6 +10599,9 @@ export default function Arena() {
                           <div className="saved-char-slot">Slot {i + 1}</div>
                           <div className="saved-char-name">{sc.label}</div>
                           <div className="saved-char-meta">❤ {sc.rolledHp} HP</div>
+                          {(() => { const miss = savedCharMissing(sc); return miss.length ? (
+                            <div className="saved-char-warn" title="Salvato prima di finire l'equipaggiamento: caricalo e completalo, poi risalvalo">⚠ Da completare: {miss.map((m) => m.label).join(", ")}</div>
+                          ) : null; })()}
                           <div className="saved-char-actions">
                             <button className="btn-join" onClick={() => loadSavedArenaChar(i)}>Carica</button>
                             <button className="saved-char-del" title="Elimina" onClick={() => deleteSavedArenaChar(i)}>🗑</button>
@@ -11482,16 +11514,24 @@ export default function Arena() {
 
                 </div>{/* /loadout-tab-body */}
 
-                {loadoutContext === "tournament" && !reloadoutMode && (
-                  <div className="loadout-save-row">
-                    <span className="loadout-save-label">💾 Salva questo PG (per i prossimi tornei):</span>
-                    {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => (
-                      <button key={i} type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(i)}>
-                        Slot {i + 1}{savedArenaChars[i] ? " ✎" : ""}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {loadoutContext === "tournament" && !reloadoutMode && (() => {
+                  const saveMissing = savedCharMissing(buildSavedCharPayload());
+                  return (
+                    <div className="loadout-save-row">
+                      <span className="loadout-save-label">💾 Salva questo PG (per i prossimi tornei):</span>
+                      {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => (
+                        <button key={i} type="button" className="btn-save-slot" disabled={saveMissing.length > 0}
+                          title={saveMissing.length ? `Completa prima: ${saveMissing.map((m) => m.label).join(", ")}` : `Salva nello slot ${i + 1}`}
+                          onClick={() => saveArenaCharToSlot(i)}>
+                          Slot {i + 1}{savedArenaChars[i] ? " ✎" : ""}
+                        </button>
+                      ))}
+                      {saveMissing.length > 0 && (
+                        <span className="loadout-save-hint">Si salva quando è completo: manca {saveMissing.map((m) => m.label).join(", ")} (la Bottega non conta, si risceglie a ogni torneo).</span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* ── Footer fisso: annulla + azione intelligente ── */}
                 <div className="loadout-actions loadout-actions--sticky">

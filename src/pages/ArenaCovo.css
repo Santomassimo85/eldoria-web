@@ -180,3 +180,8 @@ body.covo-arena ::selection { background: rgba(var(--el-rgb), .55); color: var(-
 @media (prefers-reduced-motion: reduce) {
   body.covo-arena .arena-page * { animation-duration: .01ms !important; }
 }
+
+/* PG salvati: avviso "da completare" e riga di salvataggio bloccata finché il kit non è completo (2026-10-03) */
+body .arena-page .saved-char-warn { margin-top: 4px; font-size: .74rem; line-height: 1.3; color: var(--oro); }
+body .arena-page .loadout-save-hint { flex-basis: 100%; font-size: .78rem; color: var(--osso-2, var(--osso)); opacity: .85; }
+body .arena-page .btn-save-slot:disabled { opacity: .45; cursor: not-allowed; }
