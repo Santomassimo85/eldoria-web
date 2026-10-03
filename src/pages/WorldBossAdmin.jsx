@@ -20,6 +20,7 @@ import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
 import { DMG_TYPE_OPTIONS } from "./worldBossSpells";
+import { resetWorldBossFight } from "../data/worldBossReset";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
@@ -865,14 +866,35 @@ export default function WorldBossAdmin() {
     }
   };
 
+  // Cambiare boss = battaglia nuova: minion evocati, turni, log e strascichi
+  // sugli eroi si azzerano (prima restavano le tombe dei servi del boss vecchio).
+  const toggleBoss = async (boss) => {
+    const waking = !boss.isActive;
+    const ok = window.confirm(waking
+      ? `Risvegliare "${boss.name}" per una battaglia NUOVA?
+
+Si azzera il fight: via i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi tolti, e ${boss.name} torna a PV pieni.`
+      : `Nascondere "${boss.name}"?
+
+Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo, log svuotato, scudi e buff degli eroi tolti.`);
+    if (!ok) return;
+    try {
+      await updateDoc(doc(db, "bosses", boss.id), { isActive: waking });
+      await resetWorldBossFight({ boss: waking ? boss : null });
+    } catch (err) {
+      alert("Errore: " + (err.message || err));
+    }
+  };
+
   const handleDeleteBoss = async (boss) => {
-    if (!window.confirm(`Eliminare "${boss.name}"? L'azione è irreversibile.`)) return;
+    if (!window.confirm(`Eliminare "${boss.name}"? L'azione è irreversibile.${boss.isActive ? "\n\nEra attivo: si azzera anche il fight (minion evocati, turni, log)." : ""}`)) return;
     try {
       await Promise.all([
         cleanupStorageUrl(boss.imageUrl),
         cleanupStorageUrl(boss.deadImageUrl),
       ]);
       await deleteDoc(doc(db, "bosses", boss.id));
+      if (boss.isActive) await resetWorldBossFight();
     } catch (err) {
       alert("Errore eliminazione: " + err.message);
     }
@@ -1261,7 +1283,7 @@ export default function WorldBossAdmin() {
                       </span>
                     </button>
                     <button type="button" className={`wb-minion-toggle ${m.isActive ? "active" : ""}`} onClick={() => toggleMinion(m)}
-                      title={m.isActive ? "Attivo — clicca per disattivare" : "Disattivato — clicca per attivare"}>
+                      title={m.isActive ? "⚡ Scende in campo da solo quando il Master preme Inizia battaglia — clicca per toglierlo" : "Clicca per farlo scendere in campo da solo all'inizio della battaglia (altrimenti si evoca a mano dal fight)"}>
                       {m.isActive ? "⚡" : "○"}
                     </button>
                     <button type="button" className="wb-minion-del" onClick={() => deleteMinion(m)} title="Elimina">🗑</button>
@@ -1349,7 +1371,7 @@ export default function WorldBossAdmin() {
 
                         <div className="wb-card-actions">
                           <button
-                            onClick={() => updateDoc(doc(db, "bosses", boss.id), { isActive: !boss.isActive })}
+                            onClick={() => toggleBoss(boss)}
                             className={`wb-btn ${boss.isActive ? "warn" : "primary"}`}
                           >
                             {boss.isActive ? "🌑 Nascondi" : "🌕 Risveglia"}

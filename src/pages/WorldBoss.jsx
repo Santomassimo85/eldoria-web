@@ -29,6 +29,7 @@ import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { resetWorldBossFight } from "../data/worldBossReset";
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
 // Etichetta di un'azione di boss/minion nel pannello Master: icona, tipo e se
@@ -1249,7 +1250,8 @@ export default function WorldBoss() {
       const bump = parseInt(action.acBonus) || 0;
       if (bump <= 0) return alert("Imposta un bonus CA > 0 per questa abilità.");
       const newAc = (boss.ac || 10) + bump;
-      await updateDoc(enemyRef(boss), { ac: newAc });
+      // `baseAc` = la CA prima del primo buff: l'azzeramento della battaglia la rimette.
+      await updateDoc(enemyRef(boss), { ac: newAc, ...(boss.baseAc == null ? { baseAc: boss.ac || 10 } : {}) });
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
@@ -1422,14 +1424,14 @@ export default function WorldBoss() {
   };
 
   // ── MINION (solo Master): evoca dalla Caserma, cura/scuda/congeda ──
-  const spawnMinion = async () => {
-    const def = minionDefs.find((d) => d.id === spawnDefId) || minionDefs[0];
+  const spawnMinion = async (defArg = null, already = minionInstances) => {
+    const def = defArg || minionDefs.find((d) => d.id === spawnDefId) || minionDefs[0];
     if (!def) return alert("Nessun minion attivo in Caserma: crealo e attivalo in DM Admin → World Boss.");
-    const sameKind = minionInstances.filter((m) => m.defId === def.id).length;
+    const sameKind = already.filter((m) => m.defId === def.id).length;
     const name = sameKind > 0 ? `${def.name} ${sameKind + 1}` : def.name;
     try {
       await addDoc(collection(db, "world_boss_minions"), {
-        defId: def.id, name,
+        defId: def.id, name, bossId: activeBosses[0]?.id || null,
         hp: parseInt(def.hp) || 1, maxHp: parseInt(def.hp) || 1, ac: parseInt(def.ac) || 10, shield: 0,
         imageUrl: def.imageUrl || "", deadImageUrl: def.deadImageUrl || "",
         facing: def.facing === "right" ? "right" : "left",
@@ -1454,6 +1456,16 @@ export default function WorldBoss() {
   const removeMinion = async (m) => {
     if (!window.confirm(`Congedare ${m.name} dalla battaglia?`)) return;
     await deleteDoc(doc(db, "world_boss_minions", m.id));
+  };
+  // Battaglia da capo, dal fight stesso: stessa pulizia di quando il Master
+  // cambia boss in DM Admin (minion, turni, log, strascichi sugli eroi, boss a PV pieni).
+  const resetFight = async () => {
+    const boss = activeBosses[0] || null;
+    if (!window.confirm(`Azzerare la battaglia?
+
+Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi tolti${boss ? `, ${boss.name} a PV pieni` : ""}.`)) return;
+    try { await resetWorldBossFight({ boss }); }
+    catch (e) { alert("Azzeramento fallito: " + (e.message || e)); }
   };
   const clearMinions = async () => {
     if (!minionInstances.length || !window.confirm("Congedare TUTTI i minion evocati?")) return;
@@ -1496,6 +1508,11 @@ export default function WorldBoss() {
         actedPlayers: [], turnNumber: 1, lastSwitchedAt: serverTimestamp(),
         attackCounts: {},
       });
+      // I minion segnati ⚡ in Caserma scendono in campo col boss (se non ce
+      // n'è già nessuno evocato a mano).
+      if (!minionInstances.length) {
+        for (const def of minionDefs.filter((d) => d.isActive)) await spawnMinion(def, []);
+      }
       await addDoc(collection(db, "world_boss_chat"), {
         text: `⚔️ LA BATTAGLIA HA INIZIO! ${boss.name} vi sfida! Eroi, è il vostro momento!`,
         senderName: "Master System", uid: BOSS_SYSTEM_UID,
@@ -1587,6 +1604,7 @@ export default function WorldBoss() {
           <div className="rpg-dm-topbar">
             <span className="rpg-dm-badge">DM</span>
             <button className="rpg-topbar-btn" onClick={clearChat}>Pulisci Log</button>
+            <button className="rpg-topbar-btn" onClick={resetFight}>🧹 Azzera battaglia</button>
           </div>
         )}
       </div>
@@ -1930,13 +1948,14 @@ export default function WorldBoss() {
                             ? <option value="">Nessuna sagoma in Caserma</option>
                             : minionDefs.map((d) => <option key={d.id} value={d.id}>{d.isActive ? "⚡ " : ""}{d.name} · {d.hp} HP · CA {d.ac}</option>)}
                         </select>
-                        <button className="rpg-btn rpg-btn--hero rpg-btn--spawn" onClick={spawnMinion} disabled={!minionDefs.length}>Evoca</button>
+                        <button className="rpg-btn rpg-btn--hero rpg-btn--spawn" onClick={() => spawnMinion()} disabled={!minionDefs.length}>Evoca</button>
                       </div>
                       <p className="rpg-hint">
                         {minionDefs.length === 0
                           ? "Nessuna sagoma: creala nella Caserma (DM Admin → World Boss Fight), poi torna qui."
                           : "Il servo compare in scena accanto al boss e qui sotto come attaccante. Puoi evocarne più copie."}
                         {minionInstances.length > 0 && <> <button className="rpg-link-btn" onClick={clearMinions}>Congeda tutti i minion ({minionInstances.length})</button></>}
+                        {" "}<button className="rpg-link-btn" onClick={resetFight}>🧹 Azzera battaglia</button>
                       </p>
                     </div>
                   )}
@@ -2157,6 +2176,7 @@ export default function WorldBoss() {
 
                 {/* ── Log ── */}
                 <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginTop: 10 }} onClick={clearChat}>🗑 Pulisci Log</button>
+                <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginTop: 8 }} onClick={resetFight}>🧹 Azzera battaglia</button>
               </div>
             )}
             {!isMaster && (
