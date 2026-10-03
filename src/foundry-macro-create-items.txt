@@ -173,16 +173,21 @@ async function trovaAttore(uid) {
       const u = game.users.find((x) => x.name === c.foundryUser);
       const suoi = u ? pg.filter((a) => (a.ownership?.[u.id] ?? 0) >= 3
         && !a.getFlag("world", "firebaseUID")) : [];
-      if (suoi.length === 1) { actor = suoi[0]; via = `proprietario ${u.name}`; }
+      // piu' attori dello stesso utente: si sceglie quello col nome del PG
+      const scelti = suoi.length > 1 ? suoi.filter((a) => _normNome(a.name) === _normNome(c.name)
+        || _normNome(a.name).split(" ")[0] === _normNome(c.name).split(" ")[0]) : suoi;
+      if (scelti.length === 1) { actor = scelti[0]; via = `proprietario ${u.name}`; }
       else if (suoi.length > 1) console.warn(`[Import] ${c.foundryUser} possiede ${suoi.length} attori: ${suoi.map((a) => a.name).join(", ")}. Sincronizza la scheda giusta per sceglierla.`);
     }
 
-    // c) stesso nome
+    // c) stesso nome (intero, poi solo il primo nome)
     if (!actor && c.name) {
-      const omonimi = pg.filter((a) => _normNome(a.name) === _normNome(c.name)
-        && !a.getFlag("world", "firebaseUID"));
+      const liberi = pg.filter((a) => !a.getFlag("world", "firebaseUID"));
+      let omonimi = liberi.filter((a) => _normNome(a.name) === _normNome(c.name));
+      if (!omonimi.length) omonimi = liberi.filter((a) => _normNome(a.name).split(" ")[0] === _normNome(c.name).split(" ")[0]);
       if (omonimi.length === 1) { actor = omonimi[0]; via = "nome"; }
     }
+    if (!actor) console.warn(`[Import] Attore non trovato per "${c.name || uid}" (uid ${uid}). Utente Foundry sul sito: ${c.foundryUser || "nessuno"}. Lancia la sync dalla scheda di quel PG, oppure mettigli il flag a mano: game.actors.getName("NOME").setFlag("world","firebaseUID","${uid}")`);
 
     if (actor) {
       await actor.setFlag("world", "firebaseUID", uid);
