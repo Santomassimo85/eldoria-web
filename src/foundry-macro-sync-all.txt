@@ -274,13 +274,18 @@ function matchActors(actors, site) {
     if (flag && byUid.has(flag)) return { actor, uid: flag, how: "flag" };
     const byId = site.filter((c) => c.foundryActorId === actor.id);
     if (byId.length === 1) return { actor, uid: byId[0].uid, how: "id attore" };
-    const owned = ownerNames(actor).filter((n) => uidMap[n]);
+    // Solo UID che esistono su Firestore: un PATCH su un UID senza documento
+    // ricreerebbe un personaggio cancellato (es. Kael & Mora, 2026-10-04).
+    const owned = ownerNames(actor).filter((n) => uidMap[n] && byUid.has(uidMap[n]));
+    const ownedMissing = ownerNames(actor).filter((n) => uidMap[n] && !byUid.has(uidMap[n]));
     if (owned.length === 1) return { actor, uid: uidMap[owned[0]], how: `owner ${owned[0]}` };
     const n = normName(actor.name);
     const byName = site.filter((c) => c.name && normName(c.name) === n);
     if (byName.length === 1) return { actor, uid: byName[0].uid, how: "nome" };
     const why = owned.length > 1 ? `piu' owner in uidMap (${owned.join(", ")})`
-      : byName.length > 1 ? "nome ambiguo sul sito" : "nessun personaggio sul sito";
+      : byName.length > 1 ? "nome ambiguo sul sito"
+      : ownedMissing.length ? `UID di ${ownedMissing[0]} senza personaggio su Firestore`
+      : "nessun personaggio sul sito";
     return { actor, uid: null, how: why };
   });
 
@@ -311,7 +316,7 @@ function matchActors(actors, site) {
 function confirmDialog(rows) {
   const ok = rows.filter((r) => r.uid);
   const ko = rows.filter((r) => !r.uid);
-  const li = ok.map((r) => `<li><strong>${esc(r.actor.name)}</strong> → ${esc(r.site?.name || r.uid)} <em style="opacity:.6">(${esc(r.how)})</em></li>`).join("");
+  const li = ok.map((r) => `<li><strong>${esc(r.actor.name)}</strong> → ${esc(r.site?.name || r.uid)} <em style="opacity:.6">(${esc(r.how)})</em><br><code style="opacity:.5;font-size:10px">${esc(r.uid)}</code></li>`).join("");
   const skip = ko.length
     ? `<p style="margin-top:8px">Saltati (${ko.length}):</p><ul style="opacity:.7">${ko.map((r) => `<li>${esc(r.actor.name)} — ${esc(r.how)}</li>`).join("")}</ul>`
     : "";
