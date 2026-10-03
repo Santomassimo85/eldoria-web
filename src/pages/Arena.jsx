@@ -3456,6 +3456,8 @@ export default function Arena() {
 
   // Master join setup
   const [masterJoinSetup, setMasterJoinSetup] = useState(false);
+  // PG già pronto scelto dal Master per entrare: { kind: "reserve" | "saved", i } (uno solo).
+  const [masterPick, setMasterPick] = useState(null);
   const [masterJoinName, setMasterJoinName]   = useState("");
   const [masterJoinClass, setMasterJoinClass] = useState("");
   const [equipSelections, setEquipSelections] = useState({});
@@ -4127,6 +4129,7 @@ export default function Arena() {
             const on = sel === i;
             return (
               <div key={i} className={`saved-char-card saved-char-pick${on ? " is-selected" : ""}`}
+                style={{ "--cls": classColor(sc.class) }}
                 role="radio" aria-checked={on} tabIndex={0}
                 onClick={() => selectSavedArenaChar(i)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectSavedArenaChar(i); } }}>
@@ -4288,6 +4291,57 @@ export default function Arena() {
       setReserveSlotTarget(null);
       cancelLoadout();
     } catch (e) { console.error("saveReserveToSlot", e); alert("Salvataggio non riuscito."); }
+  };
+
+  // Il Master entra nel torneo con un PG di Riserva: lo snapshot del bot viene
+  // riaperto nel loadout (armi/magie/abilità ricavate dalle azioni salvate per
+  // nome; le automatiche di classe e i compagni si ricostruiscono da soli),
+  // così si rivede, si sceglie la Bottega e si conferma come un'iscrizione normale.
+  const enterWithReserve = async (slot) => {
+    const r = masterReserves[slot];
+    if (!r) return;
+    setMasterJoinSetup(false);
+    await openLoadoutPicker();
+    let base = {};
+    try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
+    const config = getLoadoutConfig(r.class, undefined);
+    const acts = r.selectedActions || [];
+    const pickFrom = (opts) => {
+      const names = new Set((opts || []).map((o) => o.name));
+      return acts.filter((a) => names.has(a.name));
+    };
+    const { maxHp, ac, ...stats } = r.stats || {};
+    const itemCounts = { pozione_cura: 0, bomba: 0, pozione_veleno: 0 };
+    (r.selectedItemKeys || []).forEach((k) => { itemCounts[k] = (itemCounts[k] || 0) + 1; });
+    setCharPreview({
+      name:        r.name || `Riserva ${slot + 1}`,
+      image:       null,
+      class:       r.class,
+      stats:       { ...stats },
+      arenaBuffs:  base.arenaBuffs || {},
+      arenaTitles: getCharTitles(base),
+      classLevels: {},
+      arenaSubclass: base.arenaSubclass || {},
+      arenaWeekly: base.arenaWeekly || null,
+      rolledHp:    r.rolledHp ?? maxHp ?? null,
+      hpRerollCount: 99,
+    });
+    setPendingStats({ ...stats });
+    setPendingWeapons(pickFrom(config?.weaponOptions));
+    setPendingSpells(pickFrom(config?.spellOptions));
+    setPendingSkills(pickFrom(config?.skillOptions));
+    setPendingArmor(r.selectedArmor || null);
+    setPendingShield(!!r.hasShield);
+    setPendingItemCounts(itemCounts);
+    setPendingPet(r.selectedPet || null);
+    setPendingDemon(r.selectedDemon || null);
+    setPendingConstruct(r.selectedConstruct || null);
+    setPendingTitle(null);
+    setPendingMarketSel({});
+    setLoadoutContext("tournament");
+    setReloadoutMode(false);
+    setLoadoutTab("weapons");
+    setLoadoutPhase("selecting");
   };
 
   const deleteReserve = async (slot) => {
@@ -10318,12 +10372,40 @@ export default function Arena() {
 
           {masterJoinSetup && arenaMeta.phase === "registration" && (
             <div className="master-join-setup">
-              {savedArenaChars.some(Boolean) && renderSavedPicker({
-                useLabel: "⚔ Entra con",
-                onUse: joinWithSavedChar,
-                hint: "…oppure creane uno nuovo qui sotto.",
-              })}
-              <h4 className="master-join-setup-title">Crea il tuo personaggio</h4>
+              {(() => {
+                const ready = [
+                  ...masterReserves.map((r, i) => r && { kind: "reserve", i, name: r.name, cls: r.class, hp: r.rolledHp ?? r.stats?.maxHp, ac: r.stats?.ac, tag: `Riserva ${i + 1}` }),
+                  ...savedArenaChars.map((sc, i) => sc && { kind: "saved", i, name: sc.name || String(sc.label || "").split(" · ")[0], cls: sc.class, hp: sc.rolledHp, ac: null, tag: `Salvato ${i + 1}` }),
+                ].filter(Boolean);
+                if (!ready.length) return null;
+                const cur = ready.find((x) => masterPick && x.kind === masterPick.kind && x.i === masterPick.i) || null;
+                return (
+                  <div className="saved-chars-block master-ready">
+                    <h4 className="master-join-setup-title">Entra con un PG già pronto</h4>
+                    <div className="saved-chars-grid" role="radiogroup" aria-label="PG pronti">
+                      {ready.map((x) => {
+                        const on = cur === x;
+                        return (
+                          <div key={`${x.kind}${x.i}`} className={`saved-char-card saved-char-pick${on ? " is-selected" : ""}`}
+                            style={{ "--cls": classColor(x.cls) }}
+                            role="radio" aria-checked={on} tabIndex={0}
+                            onClick={() => setMasterPick({ kind: x.kind, i: x.i })}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMasterPick({ kind: x.kind, i: x.i }); } }}>
+                            <div className="saved-char-slot">{on ? "✓ Selezionato" : x.tag}</div>
+                            <div className="saved-char-name">{x.name}</div>
+                            <div className="saved-char-meta"><span className="saved-char-cls">{CLASS_ICONS[(x.cls || "").toLowerCase()] || "✦"} {CLASS_IT[x.cls] || x.cls}</span> · ❤ {x.hp}{x.ac ? ` · 🛡 ${x.ac}` : ""}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button className="btn-join saved-char-use" disabled={!cur}
+                      onClick={() => (cur.kind === "reserve" ? enterWithReserve(cur.i) : joinWithSavedChar(cur.i))}>
+                      {cur ? `⚔ Entra con ${cur.name}` : "Tocca un PG per selezionarlo"}
+                    </button>
+                  </div>
+                );
+              })()}
+              <h4 className="master-join-setup-title">…oppure crea un personaggio nuovo</h4>
               <input
                 className="master-join-input"
                 placeholder="Nome personaggio…"
@@ -10369,10 +10451,10 @@ export default function Arena() {
                   const r = masterReserves[i];
                   if (r) {
                     return (
-                      <div key={i} className={`reserve-slot reserve-slot--filled reserve-slot--${i}`}>
+                      <div key={i} className={`reserve-slot reserve-slot--filled reserve-slot--${i}`} style={{ "--rc": classColor(r.class), "--cls": classColor(r.class) }}>
                         <div className="reserve-slot-idx">Riserva {i + 1}</div>
                         <div className="reserve-slot-name">{r.name}</div>
-                        <div className="reserve-slot-meta">{r.class} · ❤ {r.rolledHp ?? r.stats?.maxHp} · 🛡 {r.stats?.ac}</div>
+                        <div className="reserve-slot-meta"><span className="saved-char-cls">{CLASS_ICONS[(r.class || "").toLowerCase()] || "✦"} {CLASS_IT[r.class] || r.class}</span> · ❤ {r.rolledHp ?? r.stats?.maxHp} · 🛡 {r.stats?.ac}</div>
                         <div className="reserve-slot-actions">
                           <button className="reserve-slot-recreate" onClick={() => openReserveCreate(i)}>Ricrea</button>
                           <button className="reserve-slot-del" title="Elimina" onClick={() => deleteReserve(i)}>🗑</button>
