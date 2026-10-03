@@ -697,10 +697,16 @@ export function reshuffleSideForMulligan(state, side) {
   const allCards = [...handIds, ...(p.deck || [])];
   p.deck = shuffle(allCards);
   p.hand = [];
+  // In PvP i due giocatori rimescolano in parallelo partendo dallo stesso
+  // _seq: con newInst() le due mani nuove prendevano gli STESSI instId
+  // (creature dei due lati scambiate in attacchi/blocchi/bersagli). Id
+  // riservati al side, fuori dalla numerazione normale: la mano vecchia
+  // torna nel mazzo come cardId, quindi riusarli a ogni mulligan è sicuro.
+  const base = side === "p1" ? 200000 : 100000;
   for (let i = 0; i < OPENING_HAND; i++) {
     if (p.deck.length === 0) break;
     const cardId = p.deck.shift();
-    p.hand.push({ instId: newInst(state), cardId });
+    p.hand.push({ instId: "i" + (base + i + 1), cardId });
   }
   return state;
 }

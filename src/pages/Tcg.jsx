@@ -420,16 +420,30 @@ export default function Tcg() {
   // l'ancora sul createdAt espelleva i giocatori appena entravano.
   // In più: un match torneo rimasto "ended" senza vincitore (relitto del
   // bug del timer) viene rimesso "active" al rientro, così si gioca.
+  // UNA scrittura per match e per client (ref): un serverTimestamp() ancora
+  // in volo si legge null nello snapshot locale, e ogni nuova scrittura ne
+  // produce uno nuovo → senza il ref questo effetto riscriveva startedAt a
+  // ogni snapshot, in loop, per tutta la partita, intasando la coda di
+  // Firestore (le mosse vere restavano dietro: partita che non parte o si
+  // pianta, battito in ritardo → "avversario disconnesso").
+  const startMarkRef = useRef({ started: null, revived: null });
   useEffect(() => {
     if (screen !== "pvp" || !match || !matchId) return;
     if (match.tournament && match.status === "ended" && !match.state?.winner) {
+      if (startMarkRef.current.revived === matchId) return;
+      startMarkRef.current.revived = matchId;
       reviveMatch(matchId);
       return;
     }
-    if (match.startedAt) return;
+    // la chiave presente (anche null = timestamp in attesa) basta
+    if (match.startedAt !== undefined) return;
+    if (startMarkRef.current.started === matchId) return;
     const mul = match.mulligan;
     const committed = (s) => !mul || !mul[s] || mul[s].committed;
-    if (committed("p0") && committed("p1")) markMatchStarted(matchId);
+    if (committed("p0") && committed("p1")) {
+      startMarkRef.current.started = matchId;
+      markMatchStarted(matchId);
+    }
   }, [screen, match, matchId]);
 
   // wait for the persisted profile before deciding anything (no flash

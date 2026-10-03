@@ -22,7 +22,7 @@
 
 import {
   collection, query, orderBy, onSnapshot, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, getDoc,
+  deleteDoc, doc, serverTimestamp, getDoc, runTransaction,
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
@@ -32,6 +32,11 @@ import { notifyUser } from "../utils/notify.js";
 const COL = "tcg_matches";
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // open challenges expire after 5 min
 const DISCONNECT_MS = 45 * 1000; // no heartbeat for 45s => opponent gone
+
+// Un serverTimestamp() appena scritto, finché il server non conferma, si
+// legge null nello snapshot locale: con "estimate" arriva l'ora locale
+// stimata, così startedAt/seen/createdAt non sembrano mai "mancanti".
+const TS_ESTIMATE = { serverTimestamps: "estimate" };
 
 const tsMillis = (t) =>
   t && typeof t.toMillis === "function" ? t.toMillis() : t ? +new Date(t) : 0;
@@ -52,7 +57,7 @@ export function watchLobby(uid, cb) {
     (snap) => {
       const now = Date.now();
       const all = [];
-      snap.forEach((d) => all.push({ id: d.id, ...d.data() }));
+      snap.forEach((d) => all.push({ id: d.id, ...d.data(TS_ESTIMATE) }));
 
       const open = all.filter(
         (m) =>
@@ -67,6 +72,13 @@ export function watchLobby(uid, cb) {
       // "Connessione alla partita…" spinner. The master account, having
       // done all the testing, accumulates many of these.
       const RECENT_END_MS = 3 * 60 * 1000;
+      const STALE_ACTIVE_MS = 15 * 60 * 1000;
+      const lastActivity = (m) =>
+        Math.max(
+          tsMillis(m.updatedAt || m.createdAt),
+          tsMillis(m.seen?.p0),
+          tsMillis(m.seen?.p1)
+        );
       const mine =
         all
           .filter(
@@ -82,6 +94,11 @@ export function watchLobby(uid, cb) {
               // intrappolava il giocatore in "Caricamento partita…" senza
               // mai lasciarlo tornare a creare/accettare sfide.
               ((m.status === "active" &&
+                // …e solo se qualcuno ci ha giocato di recente: un match
+                // lasciato a metà (scheda chiusa da entrambi) restava
+                // "active" per sempre e ritrascinava i due giocatori in
+                // una partita morta ogni volta che aprivano la lobby.
+                now - lastActivity(m) < STALE_ACTIVE_MS &&
                 m.state &&
                 m.state.players &&
                 m.state.players.p0 &&
@@ -143,6 +160,7 @@ export async function acceptChallenge(match, uid, name, deck, cover, classChoice
   const fresh = await getDoc(ref);
   if (!fresh.exists() || fresh.data().status !== "open") return null;
   const data = fresh.data();
+  if (data.challenger?.uid === uid) return null; // la propria sfida
 
   const starter = Math.random() < 0.5 ? "p0" : "p1";
   const p0Class = data.classes?.p0 || null;
@@ -157,21 +175,30 @@ export async function acceptChallenge(match, uid, name, deck, cover, classChoice
     p1Class,
   });
 
-  await updateDoc(ref, {
-    status: "active",
-    challenged: { uid, name: name || "Ospite" },
-    covers: { p0: data.covers?.p0 || "nature", p1: cover || "nature" },
-    classes: { p0: p0Class, p1: p1Class },
-    state,
-    // Mulligan: ciascun giocatore può rimescolare fino a 2 volte e poi
-    // commit. Il GameTable resta gated finché entrambi hanno committato.
-    mulligan: {
-      p0: { used: 0, committed: false },
-      p1: { used: 0, committed: false },
-    },
-    updatedAt: serverTimestamp(),
-    seen: { p0: serverTimestamp(), p1: serverTimestamp() },
+  // In transazione: due giocatori che accettano la stessa sfida insieme
+  // si sovrascrivevano, e chi perdeva la gara restava su "Connessione
+  // alla partita…" in un match dove non era più nessuno dei due lati.
+  const taken = await runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref);
+    if (!cur.exists() || cur.data().status !== "open") return false;
+    tx.update(ref, {
+      status: "active",
+      challenged: { uid, name: name || "Ospite" },
+      covers: { p0: data.covers?.p0 || "nature", p1: cover || "nature" },
+      classes: { p0: p0Class, p1: p1Class },
+      state,
+      // Mulligan: ciascun giocatore può rimescolare fino a 2 volte e poi
+      // commit. Il GameTable resta gated finché entrambi hanno committato.
+      mulligan: {
+        p0: { used: 0, committed: false },
+        p1: { used: 0, committed: false },
+      },
+      updatedAt: serverTimestamp(),
+      seen: { p0: serverTimestamp(), p1: serverTimestamp() },
+    });
+    return true;
   });
+  if (!taken) return null;
 
   // Avvisa lo sfidante che la sua sfida è stata accettata: potrebbe
   // essersi allontanato dopo aver creato la sfida aperta.
@@ -184,17 +211,17 @@ export async function acceptChallenge(match, uid, name, deck, cover, classChoice
   return match.id;
 }
 
-/* MULLIGAN — aggiorna SOLO i campi del side rimescolato (hand + deck +
-   instance seq) e l'used count. Usa dot-notation così un reshuffle
+/* MULLIGAN — aggiorna SOLO i campi del side rimescolato (hand + deck)
+   e l'used count. Il contatore _seq.inst NON si tocca: le carte nuove
+   hanno id riservati al side (vedi reshuffleSideForMulligan), così due
+   mulligan contemporanei non producono instId doppi. Usa dot-notation così un reshuffle
    contemporaneo dell'avversario sull'altro side non si sovrascrive. */
 export async function pushMulliganReshuffle(matchId, side, newState, newUsed) {
   const newHand = newState?.players?.[side]?.hand ?? [];
   const newDeck = newState?.players?.[side]?.deck ?? [];
-  const newSeqInst = newState?._seq?.inst ?? 0;
   await updateDoc(doc(db, COL, matchId), {
     [`state.players.${side}.hand`]: newHand,
     [`state.players.${side}.deck`]: newDeck,
-    [`state._seq.inst`]: newSeqInst,
     [`mulligan.${side}.used`]: newUsed,
     updatedAt: serverTimestamp(),
   });
@@ -245,7 +272,7 @@ export async function reviveMatch(matchId) {
 export function watchMatch(matchId, cb) {
   return onSnapshot(doc(db, COL, matchId), (d) => {
     if (!d.exists()) return cb(null);
-    cb({ id: d.id, ...d.data() });
+    cb({ id: d.id, ...d.data(TS_ESTIMATE) });
   });
 }
 
