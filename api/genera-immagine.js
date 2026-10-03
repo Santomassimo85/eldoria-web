@@ -13,7 +13,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile, refs, characters } = req.body || {};
+  const { prompt, npc, stile, refs, characters, aspectRatio } = req.body || {};
+  // Formato dell'immagine (es. "16:9" per gli sfondi di battaglia). Solo
+  // quelli che Gemini accetta; altrimenti il suo predefinito (quadrato).
+  const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+  const ratio = RATIOS.includes(aspectRatio) ? aspectRatio : null;
 
   // Nota di proporzioni corporee dedotta dalla razza (per non disegnare tutti
   // uguali: halfling bassissimi, mezz'orchi alti e possenti, ecc.).
@@ -133,7 +137,7 @@ ${castBlock}ISTRUZIONI SUI RIFERIMENTI (IMPORTANTISSIMO):
         },
         body: JSON.stringify({
           contents: [{ parts: reqParts }],
-          generationConfig: { temperature: 1 }
+          generationConfig: { temperature: 1, ...(ratio ? { imageConfig: { aspectRatio: ratio } } : {}) }
         })
       }
     );

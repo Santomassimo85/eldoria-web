@@ -5437,3 +5437,6 @@
 .mkadm-ai-dice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
 .mkadm-ai-dice small { color: var(--osso-2); font-size: .82rem; }
 .mkadm-ai-dice strong { color: var(--el-soft); }
+
+/* Sprite Personaggi: idea per lo sfondo del World Boss generato dall'IA (2026-10-03) */
+.adm .wbs-bg-idea { width: 100%; margin-top: 8px; resize: vertical; min-height: 44px; font-family: var(--font-ui); }

@@ -259,6 +259,53 @@ export default function PlayerSpritesAdmin() {
     reader.readAsDataURL(file);
   };
 
+  // ── Sfondo del World Boss con l'IA (2026-10-03) ──
+  // Parte dal boss ATTIVO (nome + descrizione) e da un'idea facoltativa del
+  // Master; Gemini lo disegna in 16:9 e pixel art, con il terreno libero in
+  // basso (lì stanno boss ed eroi). Salvato come un caricamento a mano.
+  const [activeBoss, setActiveBoss] = useState(null);
+  useEffect(() => onSnapshot(collection(db, "bosses"), (snap) => {
+    const b = snap.docs.map((d) => ({ id: d.id, ...d.data() })).find((x) => x.isActive);
+    setActiveBoss(b || null);
+  }), []);
+  const [bgIdea, setBgIdea] = useState("");
+  const [bgBusy, setBgBusy] = useState(false);
+  const generateBattleBg = async () => {
+    if (bgBusy) return;
+    if (!activeBoss && !bgIdea.trim()) { alert("Nessun boss attivo: scrivi tu che luogo disegnare, oppure risveglia un boss in DM Admin → World Boss."); return; }
+    if (battleBg && !window.confirm("Sostituire lo sfondo attuale del World Boss con uno generato dall'IA?")) return;
+    setBgBusy(true);
+    try {
+      const desc = String(activeBoss?.description || "").replace(/\s+/g, " ").slice(0, 600);
+      const prompt = `Wide 16:9 background scene for a turn-based fantasy RPG boss battle, detailed 16-bit pixel art, cinematic lighting, dark and atmospheric.
+${activeBoss ? `This is the lair / battlefield of the boss "${activeBoss.name}".${desc ? ` About the boss: ${desc}` : ""}` : ""}
+${bgIdea.trim() ? `Setting requested by the game master (follow it closely): ${bgIdea.trim()}` : "Invent a fitting, memorable place that matches the boss's nature and powers."}
+Composition: open, mostly flat ground across the lower third (the boss will stand on the left and the heroes on the right, drawn on top of this image), the scenery and points of interest in the upper two thirds.
+EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI, no frame, no border.`;
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt, aspectRatio: "16:9" }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("immagine non leggibile")); i.src = data.immagine; });
+      const MAX_W = 1280;
+      const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL("image/jpeg", 0.72);
+      await setDoc(doc(db, "battle_meta", "turn_tracker"), { battleBg: compressed }, { merge: true });
+      setBattleBg(compressed);
+    } catch (e) {
+      alert("Generazione sfondo fallita: " + (e.message || e));
+    } finally {
+      setBgBusy(false);
+    }
+  };
+
   const removeBattleBg = async () => {
     await setDoc(doc(db, "battle_meta", "turn_tracker"), { battleBg: "" }, { merge: true });
     setBattleBg(null);
@@ -323,8 +370,13 @@ export default function PlayerSpritesAdmin() {
             <input ref={bgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => loadBattleBg(e.target.files[0])} />
             <div className="adm-btn-row">
               <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => bgInputRef.current?.click()}>📁 {battleBg ? "Cambia" : "Carica"}</button>
+              <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={bgBusy} onClick={generateBattleBg}
+                title="Gemini disegna lo sfondo partendo dal boss attivo e dalla tua idea">{bgBusy ? "⏳ Disegno…" : "✨ Genera con l'IA"}</button>
               {battleBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={removeBattleBg}>✖ Rimuovi</button>}
             </div>
+            <textarea className="wbs-in wbs-bg-idea" rows={2} value={bgIdea} onChange={(e) => setBgIdea(e.target.value)}
+              placeholder={activeBoss ? `Idea (facoltativa) per la tana di ${activeBoss.name}: es. "cripta allagata, luce di torce verdi"` : "Nessun boss attivo: scrivi tu il luogo da disegnare"} />
+            <small className="wb-ai-hint">{activeBoss ? <>Parte da <strong>{activeBoss.name}</strong> (boss attivo) e dalla tua idea. </> : null}Esce panoramico, in pixel art, col terreno libero in basso per boss ed eroi.</small>
           </div>
           {/* Arena BG */}
           <div>
