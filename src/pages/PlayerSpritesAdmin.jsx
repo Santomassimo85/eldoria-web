@@ -40,6 +40,25 @@ Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-ali
 CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
 };
 
+// Specchia un'immagine (data URL o URL) sull'asse verticale, pixel per pixel
+// (niente smoothing: la pixel art resta nitida). Restituisce un data URL PNG.
+const mirrorDataUrl = (src) => new Promise((resolve, reject) => {
+  const img = new Image();
+  if (!/^data:/.test(src)) img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0);
+    try { resolve(canvas.toDataURL("image/png")); } catch (e) { reject(e); }
+  };
+  img.onerror = () => reject(new Error("immagine non leggibile"));
+  img.src = src;
+});
+
 export default function PlayerSpritesAdmin() {
   const { currentUser } = useAuth();
   const [characters, setCharacters] = useState([]);
@@ -134,6 +153,28 @@ export default function PlayerSpritesAdmin() {
     };
     reader.readAsDataURL(file);
   };
+
+  // ⇆ Gira: specchia lo sprite (sinistra ↔ destra) e lo risalva al suo posto.
+  // Si gira l'IMMAGINE, non un'impostazione: vale ovunque lo sprite si usi.
+  const [flipBusy, setFlipBusy] = useState({});
+  const flipSprite = async (col, id, field, src) => {
+    const key = `${id}:${field}`;
+    if (!src || flipBusy[key]) return;
+    setFlipBusy((b) => ({ ...b, [key]: true }));
+    try {
+      const flipped = await mirrorDataUrl(src);
+      await updateDoc(doc(db, col, id), { [field]: flipped });
+    } catch (e) {
+      alert("Non riesco a girare lo sprite: " + (e.message || e));
+    } finally {
+      setFlipBusy((b) => ({ ...b, [key]: false }));
+    }
+  };
+  const FlipBtn = ({ col, id, field, src }) => src ? (
+    <button className="adm-btn adm-btn--ghost wbs-mini-btn" disabled={!!flipBusy[`${id}:${field}`]}
+      title="Specchia lo sprite: se guarda a destra lo fa guardare a sinistra, e viceversa"
+      onClick={() => flipSprite(col, id, field, src)}>{flipBusy[`${id}:${field}`] ? "⏳" : "⇆ Gira"}</button>
+  ) : null;
 
   const removeSprite = async (charId) => {
     await updateDoc(doc(db, "characters", charId), { spriteUrl: "" });
@@ -321,7 +362,10 @@ export default function PlayerSpritesAdmin() {
                       : <div className="wbs-sprite-ph" style={{ height: 70 }}>👹</div>}
                     <input ref={(el) => { minionFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
                       onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "spriteUrl")} />
-                    <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionFileRefs.current[m.id]?.click()}>📁</button>
+                    <div className="adm-btn-row">
+                      <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionFileRefs.current[m.id]?.click()}>📁</button>
+                      <FlipBtn col="player_sprites" id={m.id} field="spriteUrl" src={m.spriteUrl} />
+                    </div>
                   </div>
                   <div className="wbs-slot">
                     <span className="wbs-slot-label">Morto</span>
@@ -330,7 +374,10 @@ export default function PlayerSpritesAdmin() {
                       : <div className="wbs-sprite-ph" style={{ height: 70 }}>💀</div>}
                     <input ref={(el) => { minionDeadFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
                       onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "deadSpriteUrl")} />
-                    <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionDeadFileRefs.current[m.id]?.click()}>💀</button>
+                    <div className="adm-btn-row">
+                      <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionDeadFileRefs.current[m.id]?.click()}>💀</button>
+                      <FlipBtn col="player_sprites" id={m.id} field="deadSpriteUrl" src={m.deadSpriteUrl} />
+                    </div>
                   </div>
                 </div>
                 <input className="wbs-in wbs-name" value={m.name || ""} onChange={(e) => patchMinion(m.id, { name: e.target.value })} placeholder="Nome" />
@@ -355,7 +402,7 @@ export default function PlayerSpritesAdmin() {
       {/* ── Sprite eroi ── */}
       <div className="adm-panel">
         <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
-        <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion). Serve un avatar sulla scheda.</small>
+        <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion). Serve un avatar sulla scheda. <strong>⇆ Gira</strong> = specchia lo sprite: nel fight gli eroi stanno a destra, quindi devono guardare a <strong>sinistra</strong>, verso il boss (l'anteprima qui è identica alla battaglia).</small>
         <div className="wbs-grid">
           {characters.map((char) => (
             <div key={char.id} className="wbs-card">
@@ -380,6 +427,7 @@ export default function PlayerSpritesAdmin() {
                     <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={!!genBusy[`${char.id}:vivo`] || !char.image}
                       title={char.image ? "Genera lo sprite dall'avatar con Gemini" : "Serve un avatar sulla scheda PG"}
                       onClick={() => generateHeroSprite(char, false)}>{genBusy[`${char.id}:vivo`] ? "⏳ Disegno…" : "✨ Genera"}</button>
+                    <FlipBtn col="characters" id={char.id} field="spriteUrl" src={char.spriteUrl} />
                     {char.spriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeSprite(char.id)}>✖</button>}
                   </div>
                 </div>
@@ -396,6 +444,7 @@ export default function PlayerSpritesAdmin() {
                     <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={!!genBusy[`${char.id}:morto`] || !char.image}
                       title={char.image ? "Genera la tomba dall'avatar con Gemini" : "Serve un avatar sulla scheda PG"}
                       onClick={() => generateHeroSprite(char, true)}>{genBusy[`${char.id}:morto`] ? "⏳ Disegno…" : "✨ Genera"}</button>
+                    <FlipBtn col="characters" id={char.id} field="deadSpriteUrl" src={char.deadSpriteUrl} />
                     {char.deadSpriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeDeadSprite(char.id)}>✖</button>}
                   </div>
                 </div>
