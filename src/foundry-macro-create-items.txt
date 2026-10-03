@@ -229,12 +229,24 @@ async function aggiornaSito(uid, gpDopo, scalaPending) {
 // ----------------------------------------------------------------
 async function importaDalSito(silenziosa = false) {
   if (!silenziosa) ui.notifications.info("Importazione oggetti dal sito in corso…");
+  if (/^TU[OA]_/.test(FIREBASE_CONFIG.projectId) || /^TU[OA]_/.test(FIREBASE_CONFIG.apiKey)) {
+    ui.notifications.error("Macro senza chiavi: incolla la copia foundry-macro-create-items-DM.txt (quella sul Desktop), non quella del sito.", { permanent: true });
+    return;
+  }
 
   // 1) leggi la coda
   let docs = [];
   try {
     const res = await fetch(`${BASE}/foundry_inbox?key=${FIREBASE_CONFIG.apiKey}&pageSize=200`);
     const data = await res.json();
+    // Un errore del database NON e' una coda vuota: dillo chiaro.
+    if (!res.ok || data.error) {
+      const m = data.error?.message || `HTTP ${res.status}`;
+      console.error("[Import] Lettura coda fallita:", res.status, data);
+      ui.notifications.error(`Coda del sito non leggibile: ${m}`, { permanent: !silenziosa });
+      return;
+    }
+    console.log(`[Import] Coda letta: ${(data.documents || []).length} voci (progetto ${FIREBASE_CONFIG.projectId}).`);
     docs = (data.documents || []).map(doc => ({
       _path: doc.name,                         // path completo per DELETE
       _id: doc.name.split("/").pop(),
