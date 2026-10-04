@@ -47,7 +47,28 @@ export async function loadSessions(party) {
   const snap = await getDocs(q);
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((s) => !s.autosave) // il salvataggio automatico non è una sessione dell'archivio
     .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0));
+}
+
+// ── Salvataggio automatico (2026-10-04) ───────────────────────────────────
+// Bozza e sessione generate finivano solo nello stato della pagina: chiudendo
+// la scheda prima di "Salva" si perdeva tutto. Ora ogni bozza/sessione
+// generata va SUBITO in dm_sessions/autosave-<party> (autosave: true, escluso
+// dall'archivio); la pagina la ripropone finché non la salvi o la scarti.
+const autosaveRef = (party) => doc(db, SESSIONS, `autosave-${String(party || "").toLowerCase()}`);
+
+export async function saveAutosave(party, data) {
+  await setDoc(autosaveRef(party), { party, autosave: true, ...data, savedAt: serverTimestamp() });
+}
+
+export async function loadAutosave(party) {
+  const snap = await getDoc(autosaveRef(party));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function clearAutosave(party) {
+  await deleteDoc(autosaveRef(party));
 }
 
 // Elimina definitivamente una sessione generata (party + numero).

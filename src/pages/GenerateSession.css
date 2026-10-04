@@ -52,3 +52,14 @@
 .gs-draft .gs-draft-fight { color: #e8705f; filter: none; }
 .gs-draft .gs-draft-act-n, .gs-draft-row > b, .gs-draft-block > b, .gs-ctx-info b { color: var(--el); }
 .gs-draft-act ul, .gs-draft-block ul { list-style: disc; }
+
+/* Salvataggio automatico: bozza/sessione non salvata da riprendere */
+.gs-autosave {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 0 0 14px; padding: 12px 14px;
+  border: 1px solid rgba(var(--el-rgb), .45); border-left: 4px solid var(--el);
+  background: var(--roccia-2); border-radius: 3px; color: var(--osso); line-height: 1.45;
+}
+.gs-autosave b { color: var(--el); }
+.gs-autosave-actions { display: flex; gap: 8px; }
+.gs-autosave-actions .sumadm-btn { min-height: 38px; }

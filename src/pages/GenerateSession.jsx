@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadSessionContext, requestSessionDraft, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession, loadLoreRegistry, linkifySessionHtml } from "../utils/dmSessions";
+import { loadSessionContext, requestSessionDraft, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession, loadLoreRegistry, linkifySessionHtml, saveAutosave, loadAutosave, clearAutosave } from "../utils/dmSessions";
 import { pickWorld, trimRecapsForDraft, trimRecapsForSession } from "../utils/sessionWorld";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
@@ -72,8 +72,44 @@ export default function GenerateSession() {
   const [redoOpen, setRedoOpen] = useState(false);   // riquadro "Rifai" con le indicazioni
   const [draftTips, setDraftTips] = useState("");
   const [ctxInfo, setCtxInfo] = useState(null);      // { recaps, lastTitle, preps } = cosa ha letto
+  const [autosave, setAutosave] = useState(null);    // bozza/sessione generata e non ancora salvata
 
   const chars = useMemo(() => charactersOf(partyId), [partyId]);
+
+  // Bozza/sessione generata e non salvata di questo gruppo (salvataggio automatico).
+  useEffect(() => {
+    if (tab !== "nuova" || !isDmUser(currentUser?.email) || !party) return;
+    let alive = true;
+    loadAutosave(party.id).then((a) => { if (alive) setAutosave(a); }).catch(() => {});
+    return () => { alive = false; };
+  }, [tab, partyId, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cosa salvare in automatico: il form + bozza + sessione generata.
+  const autosaveNow = (patch) => {
+    const data = { sessionNumber: Number(sessionNumber) || 0, durata, focus, note, suggestedTitle, involved, draft: null, generated: null, ...patch };
+    setAutosave(data);
+    saveAutosave(party.id, data).catch((e) => console.warn("[autosave]", e));
+  };
+
+  const restoreAutosave = () => {
+    const a = autosave;
+    if (!a) return;
+    if (a.sessionNumber) setSessionNumber(String(a.sessionNumber));
+    if (a.durata) setDurata(a.durata);
+    setFocus(a.focus || "");
+    setNote(a.note || "");
+    setSuggestedTitle(a.suggestedTitle || "");
+    if (Array.isArray(a.involved) && a.involved.length) setInvolved(a.involved);
+    setDraft(a.draft || null);
+    setGenerated(a.generated || null);
+    setStatus(a.generated ? "↩ Sessione ripresa dal salvataggio automatico: controlla e salva." : "↩ Bozza ripresa dal salvataggio automatico.");
+  };
+
+  const discardAutosave = async () => {
+    if (!window.confirm("Scartare definitivamente la bozza/sessione non salvata?")) return;
+    await clearAutosave(party.id).catch(() => {});
+    setAutosave(null);
+  };
 
   // Scheda "nuova": legge subito i riassunti del gruppo per dire cosa vede il
   // generatore e proporre il numero della prossima sessione (riassunti + 1).
@@ -224,6 +260,7 @@ export default function GenerateSession() {
         ...(previous ? { previousDraft: previous, draftFeedback: tips } : {}),
       });
       setDraft(d);
+      autosaveNow({ draft: d });
       setRedoOpen(false);
       setDraftTips("");
       setStatus(`📝 Bozza pronta: accettala, rifalla o chiudila${fmtUsage(usage)}.`);
@@ -234,7 +271,10 @@ export default function GenerateSession() {
     }
   };
 
-  const closeDraft = () => { setDraft(null); setRedoOpen(false); setDraftTips(""); setStatus(""); };
+  const closeDraft = () => {
+    setDraft(null); setRedoOpen(false); setDraftTips(""); setStatus("");
+    clearAutosave(party.id).catch(() => {}); setAutosave(null);
+  };
 
   // 2) Sessione completa, sulla bozza approvata.
   const handleGenerate = async () => {
@@ -254,6 +294,7 @@ export default function GenerateSession() {
       // Nomi di PG, NPC e luoghi → link colorati alle loro schede (gratis: niente token).
       result.html = linkifySessionHtml(result.html, registry);
       setGenerated(result);
+      autosaveNow({ draft, generated: { html: result.html, summary: result.summary || null, warning: result.warning || "" } });
       const comp = sessionCompleteness(result.html);
       if (!comp.complete || result.warning) {
         setStatus(`⚠️ Generazione probabilmente TRONCATA${result.warning ? ` — ${result.warning}` : ""}. Meglio rigenerare, magari con durata più corta.`);
@@ -279,6 +320,7 @@ export default function GenerateSession() {
         summary: generated.summary,
         durata,
       });
+      await clearAutosave(party.id).catch(() => {}); // salvata davvero: il salvataggio automatico non serve più
       navigate(`/sessions/${party.id.toLowerCase()}/${Number(sessionNumber)}`);
     } catch (err) {
       setStatus(`❌ Salvataggio fallito: ${err.message || err}`);
@@ -405,6 +447,22 @@ export default function GenerateSession() {
           </div>
         )}
       </div>
+
+      {/* Salvataggio automatico: bozza/sessione generata e non ancora salvata */}
+      {autosave && (autosave.draft || autosave.generated) && !draft && !generated && (
+        <div className="gs-autosave">
+          <span>
+            💾 C'è {autosave.generated ? "una sessione generata" : "una bozza"} non salvata di {party.id}
+            {autosave.draft?.titolo ? <>: <b>«{autosave.draft.titolo}»</b></> : null}
+            {autosave.sessionNumber ? ` · Sessione ${autosave.sessionNumber}` : ""}
+            {autosave.savedAt?.toDate ? ` · ${autosave.savedAt.toDate().toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}` : ""}
+          </span>
+          <span className="gs-autosave-actions">
+            <button type="button" className="sumadm-btn primary" onClick={restoreAutosave}>↩ Riprendi</button>
+            <button type="button" className="sumadm-btn ghost" onClick={discardAutosave}>Scarta</button>
+          </span>
+        </div>
+      )}
 
       {status && (
         <div className={status.startsWith("✅") ? "admin-status-ok" : status.startsWith("❌") ? "admin-status-err" : "admin-status-ok"}>
