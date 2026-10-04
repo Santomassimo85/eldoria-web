@@ -113,8 +113,8 @@ export async function loadPartyContext(party, { summaryCap = 1500 } = {}) {
     recaps = rsnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map((s) => ({
-        sessionNumber: s.order,
+      .map((s, i) => ({
+        sessionNumber: i + 1, // numero nel gruppo: `order` è globale fra i gruppi
         title: s.title,
         summary: stripHtml(s.content).slice(0, summaryCap),
       }));
@@ -133,6 +133,64 @@ export async function loadPartyContext(party, { summaryCap = 1500 } = {}) {
     pastSummaries: [...recaps, ...genSummaries],
     lastSessionHtml: last?.htmlContent || "",
   };
+}
+
+// HTML → testo, senza <style>/<script> (le prep generate iniziano con decine
+// di KB di CSS, che al modello non servono).
+const htmlToText = (html) =>
+  String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Contesto per il generatore (bozza e sessione), riletto a OGNI richiesta:
+//  - recaps: i riassunti VERI del gruppo (`summaries`), numerati 1..N nel
+//    gruppo (l'`order` è globale fra i gruppi); le ultime 3 quasi per intero,
+//    le altre accorciate;
+//  - preps: le prep già generate (`dm_sessions`) = cosa era PREVISTO;
+//  - lastPrepText: il testo dell'ultima prep, senza CSS.
+export async function loadSessionContext(party) {
+  let rows = [];
+  try {
+    const rsnap = await getDocs(query(collection(db, "summaries"), where("party", "==", party)));
+    rows = rsnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  } catch { /* se la collezione non è leggibile, prosegui senza */ }
+  const recaps = rows.map((s, i) => ({
+    n: i + 1,
+    title: s.title || "",
+    date: s.date || "",
+    text: htmlToText(s.content).slice(0, i >= rows.length - 3 ? 6000 : 1200),
+  }));
+
+  const gen = await loadSessions(party).catch(() => []);
+  const preps = gen.map((s) => ({ sessionNumber: s.sessionNumber, title: s.title || "", summary: s.summary || {} }));
+  const last = gen[gen.length - 1];
+
+  return {
+    recaps,
+    preps,
+    lastPrepText: last ? htmlToText(last.htmlContent).slice(0, 10000) : "",
+    lastPrepNumber: last?.sessionNumber || 0,
+  };
+}
+
+// Chiede a /api/generate-session la BOZZA della sessione (scaletta JSON).
+export async function requestSessionDraft(payload) {
+  const resp = await fetch("/api/generate-session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...payload, mode: "draft" }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  if (!data.draft) throw new Error("Nessuna bozza ricevuta.");
+  return data.draft;
 }
 
 // "Leggi i riassunti": legge TUTTI i riassunti del party e restituisce
@@ -198,7 +256,7 @@ export function parseGenerated(text) {
   return { html, summary };
 }
 
-// Chiama /api/generate-session. L'endpoint accumula tutto lato server (lo
+// Chiama /api/generate-session (sessione completa). L'endpoint accumula tutto lato server (lo
 // streaming Node→browser su Vercel viene reciso dopo pochi KB) e risponde con
 // un JSON unico { text }. onChunk(fullText, fullText) è chiamato una volta a
 // fine generazione, per aggiornare il contatore. Ritorna { html, summary }.
@@ -213,7 +271,7 @@ export async function streamGenerateSession(payload, onChunk) {
   const full = data.text || "";
   if (!full) throw new Error("Nessun contenuto generato.");
   if (onChunk) onChunk(full, full);
-  return parseGenerated(full);
+  return { ...parseGenerated(full), warning: data.warning || "" };
 }
 
 // Salva/aggiorna una sessione generata.

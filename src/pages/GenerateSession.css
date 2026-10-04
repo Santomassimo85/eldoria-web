@@ -1,0 +1,54 @@
+/* Generatore di Sessioni: riga "cosa legge" + BOZZA (scaletta da approvare) */
+.gs-ctx-info { margin: 4px 0 12px; font-size: .9rem; line-height: 1.45; opacity: .85; }
+.gs-ctx-info b { color: var(--el); font-weight: 600; }
+.gs-flow-hint { display: block; margin-top: 8px; opacity: .7; }
+
+.gs-draft {
+  border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14);
+  border-top: 3px solid var(--party-color, var(--el));
+  background: var(--roccia-2);
+  border-radius: 3px;
+  padding: 18px 18px 16px;
+  line-height: 1.5;
+}
+.gs-draft-kicker { font-family: var(--font-sc, inherit); font-size: .8rem; letter-spacing: .08em; opacity: .75; }
+.gs-draft-title { margin: 4px 0 2px; font-family: var(--font-title, inherit); font-size: 1.6rem; line-height: 1.15; }
+.gs-draft-sub { margin: 0 0 8px; font-style: italic; opacity: .8; }
+.gs-draft-logline { margin: 0 0 12px; font-size: 1.02rem; }
+.gs-draft-row { margin: 8px 0; }
+.gs-draft-row > b, .gs-draft-block > b { color: var(--el); margin-right: 4px; }
+
+.gs-draft-acts { list-style: none; margin: 14px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.gs-draft-act {
+  background: var(--roccia-1);
+  border-left: 3px solid var(--party-color, var(--el));
+  border-radius: 2px;
+  padding: 10px 12px;
+}
+.gs-draft-act p { margin: 6px 0; }
+.gs-draft-act ul, .gs-draft-block ul { margin: 6px 0 0; padding-left: 20px; }
+.gs-draft-act li { margin: 2px 0; }
+.gs-draft-act-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.gs-draft-act-n { font-family: var(--font-num, inherit); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--el); }
+.gs-draft-place { font-size: .88rem; opacity: .8; }
+.gs-draft-fight { color: var(--sangue, #c0392b); font-weight: 600; filter: brightness(1.4); }
+.gs-draft-npc { font-size: .9rem; opacity: .85; }
+.gs-draft-block { margin: 10px 0; }
+.gs-draft-questions { background: rgba(var(--el-rgb), .08); border-radius: 3px; padding: 10px 12px; }
+.gs-draft-questions small { display: block; margin-top: 6px; opacity: .7; }
+
+.gs-draft-redo { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.gs-draft-redo label { font-weight: 600; }
+.gs-draft-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.gs-draft-actions .sumadm-btn { min-height: 40px; }
+.gs-draft-actions .sumadm-btn.primary { flex: 1 1 220px; }
+
+/* Una regola globale dà ai <p> un grigio scuro: qui il testo va sempre chiaro. */
+.gs-draft, .gs-draft p, .gs-draft li, .gs-draft strong, .gs-draft label,
+.gs-ctx-info, .gs-flow-hint { color: var(--osso); }
+.gs-draft-sub, .gs-draft-place, .gs-draft-npc, .gs-draft-kicker,
+.gs-flow-hint, .gs-draft-questions small { color: var(--osso-2, #b9af9d); }
+.gs-draft-title { color: var(--osso); }
+.gs-draft .gs-draft-fight { color: #e8705f; filter: none; }
+.gs-draft .gs-draft-act-n, .gs-draft-row > b, .gs-draft-block > b, .gs-ctx-info b { color: var(--el); }
+.gs-draft-act ul, .gs-draft-block ul { list-style: disc; }

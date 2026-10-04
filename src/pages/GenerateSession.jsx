@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession } from "../utils/dmSessions";
+import { loadSessionContext, requestSessionDraft, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession } from "../utils/dmSessions";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
+import "./GenerateSession.css";
 
 const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const isDmUser = (email) => DM_EMAILS.includes(email);
@@ -19,6 +20,13 @@ function toRoman(num) {
   for (const [v, s] of map) while (x >= v) { r += s; x -= v; }
   return r;
 }
+
+// Cosa ha letto il generatore, in breve (per la riga sotto il form).
+const infoOf = (ctx) => ({
+  recaps: ctx.recaps.length,
+  lastTitle: ctx.recaps[ctx.recaps.length - 1]?.title || "",
+  preps: ctx.preps.length,
+});
 
 export default function GenerateSession() {
   const { currentUser } = useAuth();
@@ -56,7 +64,27 @@ export default function GenerateSession() {
   const [recapErr, setRecapErr] = useState("");
   const [selectedTopics, setSelectedTopics] = useState([]); // etichette dei fili da riprendere
 
+  // ── Bozza: prima la scaletta, poi (se il DM accetta) la sessione completa ──
+  const [draft, setDraft] = useState(null);          // scaletta proposta (JSON)
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [redoOpen, setRedoOpen] = useState(false);   // riquadro "Rifai" con le indicazioni
+  const [draftTips, setDraftTips] = useState("");
+  const [ctxInfo, setCtxInfo] = useState(null);      // { recaps, lastTitle, preps } = cosa ha letto
+
   const chars = useMemo(() => charactersOf(partyId), [partyId]);
+
+  // Scheda "nuova": legge subito i riassunti del gruppo per dire cosa vede il
+  // generatore e proporre il numero della prossima sessione (riassunti + 1).
+  useEffect(() => {
+    if (tab !== "nuova" || !isDmUser(currentUser?.email) || !party) return;
+    let alive = true;
+    loadSessionContext(party.id).then((ctx) => {
+      if (!alive) return;
+      setCtxInfo(infoOf(ctx));
+      setSessionNumber((cur) => cur || String(Math.max(ctx.recaps.length, ctx.lastPrepNumber) + 1));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [tab, partyId, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carica l'archivio quando la scheda "Archivio" è attiva o cambia party.
   useEffect(() => {
@@ -102,6 +130,11 @@ export default function GenerateSession() {
     setPartyId(id);
     setInvolved(charactersOf(id)); // di default tutti i PG del gruppo
     setGenerated(null);
+    setDraft(null);
+    setRedoOpen(false);
+    setDraftTips("");
+    setCtxInfo(null);
+    setSessionNumber(""); // lo ripropone l'effetto, dai riassunti del nuovo gruppo
     setStatus("");
     setRecap(null);
     setRecapErr("");
@@ -134,55 +167,85 @@ export default function GenerateSession() {
   const toggleChar = (name) =>
     setInvolved((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
 
-  const handleGenerate = async (e) => {
-    e.preventDefault();
-    if (busy) return;
+  // Contesto riletto a OGNI richiesta: riassunti veri + prep + mondo.
+  const collectPayload = async () => {
+    const [ctx, world] = await Promise.all([loadSessionContext(party.id), loadWorldReference()]);
+    setCtxInfo(infoOf(ctx));
+    return {
+      party: party.id,
+      world: party.world,
+      groupCharacters: party.characters,
+      closingChronicle: party.closingChronicle,
+      sessionNumber: Number(sessionNumber),
+      suggestedTitle,
+      focus,
+      involvedCharacters: involved,
+      durata,
+      note,
+      recaps: ctx.recaps,
+      preps: ctx.preps,
+      lastPrepText: ctx.lastPrepText,
+      // Fili scelti dai chip "Fili della campagna": vanno reintrodotti in modo sensato.
+      resumeThreads: (recap?.topics || [])
+        .filter((t) => selectedTopics.includes(t.label))
+        .map((t) => ({ label: t.label, note: t.note })),
+      // [C] Mondo esistente: città (Geo) + NPC per riuso e precisione.
+      worldCities: world.cities,
+      worldNpcs: world.npcs,
+    };
+  };
+
+  // 1) Bozza: la scaletta di come vuole scrivere la sessione.
+  //    Con `tips` è un "Rifai": riceve la bozza scartata + le indicazioni.
+  const handleDraft = async (e, tips) => {
+    e?.preventDefault?.();
+    if (busy || draftBusy) return;
     if (!sessionNumber) { setStatus("❌ Inserisci il numero della sessione."); return; }
+    if (!focus.trim()) { setStatus("❌ Scrivi il focus: cosa deve succedere."); return; }
+    const previous = tips != null ? draft : null;
+    setDraftBusy(true);
+    setGenerated(null);
+    setStatus("📚 Rileggo i riassunti del gruppo…");
+    try {
+      const payload = await collectPayload();
+      setStatus(previous ? "✍️ Rifaccio la bozza con le tue indicazioni…" : "✍️ Preparo la bozza… (di solito meno di un minuto)");
+      const d = await requestSessionDraft({
+        ...payload,
+        ...(previous ? { previousDraft: previous, draftFeedback: tips } : {}),
+      });
+      setDraft(d);
+      setRedoOpen(false);
+      setDraftTips("");
+      setStatus("📝 Bozza pronta: accettala, rifalla o chiudila.");
+    } catch (err) {
+      setStatus(`❌ Bozza non riuscita: ${err.message || err}`);
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const closeDraft = () => { setDraft(null); setRedoOpen(false); setDraftTips(""); setStatus(""); };
+
+  // 2) Sessione completa, sulla bozza approvata.
+  const handleGenerate = async () => {
+    if (busy || !draft) return;
     setBusy(true);
     setGenerated(null);
     setProgress(0);
-    setStatus("📚 Raccolgo il contesto del party…");
+    setStatus("📚 Rileggo i riassunti del gruppo…");
     try {
       // Template grafico [A] — caricato solo qui (chunk separato).
       const templateHtml = (await import("../../reference_sessions/sessione_20.html?raw")).default;
-      // Contesto narrativo [B] + riferimento mondo [C] (città + NPC esistenti).
-      const [ctx, world] = await Promise.all([
-        loadPartyContext(party.id),
-        loadWorldReference(),
-      ]);
-
-      setStatus("✍️ Genero la sessione… può richiedere 1–3 minuti, attendi senza ricaricare.");
-      const payload = {
-        party: party.id,
-        world: party.world,
-        groupCharacters: party.characters,
-        closingChronicle: party.closingChronicle,
-        sessionNumber: Number(sessionNumber),
-        suggestedTitle,
-        focus,
-        involvedCharacters: involved,
-        durata,
-        note,
-        templateHtml,
-        pastSummaries: ctx.pastSummaries,
-        lastSessionHtml: ctx.lastSessionHtml,
-        // Fili scelti dai chip "Fili della campagna": vanno reintrodotti in modo sensato.
-        resumeThreads: (recap?.topics || [])
-          .filter((t) => selectedTopics.includes(t.label))
-          .map((t) => ({ label: t.label, note: t.note })),
-        // [C] Mondo esistente: città (Geo) + NPC per riuso e precisione.
-        worldCities: world.cities,
-        worldNpcs: world.npcs,
-      };
-
-      const result = await streamGenerateSession(payload, (_chunk, full) => setProgress(full.length));
+      const payload = await collectPayload();
+      setStatus("✍️ Scrivo la sessione dalla bozza approvata… può richiedere 2–5 minuti, attendi senza ricaricare.");
+      const result = await streamGenerateSession({ ...payload, templateHtml, approvedDraft: draft }, (_chunk, full) => setProgress(full.length));
       if (!result.html || !result.html.includes("<")) throw new Error("Output non valido (nessun HTML).");
       setGenerated(result);
       const comp = sessionCompleteness(result.html);
-      if (!comp.complete) {
-        setStatus(`⚠️ Generazione probabilmente TRONCATA (${comp.panes}/${comp.tabs || "?"} sezioni con contenuto). Meglio rigenerare, magari con durata più corta.`);
+      if (!comp.complete || result.warning) {
+        setStatus(`⚠️ Generazione probabilmente TRONCATA (${comp.panes}/${comp.tabs || "?"} sezioni con contenuto)${result.warning ? ` — ${result.warning}` : ""}. Meglio rigenerare, magari con durata più corta.`);
       } else {
-        setStatus("✅ Sessione generata. Controlla l'anteprima e salva.");
+        setStatus("✅ Sessione scritta. Controlla l'anteprima e salva.");
       }
     } catch (err) {
       setStatus(`❌ ${err.message || err}`);
@@ -198,7 +261,7 @@ export default function GenerateSession() {
       await saveSession({
         party: party.id,
         sessionNumber: Number(sessionNumber),
-        title: suggestedTitle || generated.summary?.titolo || `Sessione ${toRoman(sessionNumber)}`,
+        title: suggestedTitle || draft?.titolo || generated.summary?.titolo || `Sessione ${toRoman(sessionNumber)}`,
         htmlContent: generated.html,
         summary: generated.summary,
         durata,
@@ -340,7 +403,7 @@ export default function GenerateSession() {
         {/* FORM */}
         <section className="sumadm-card">
           <div className="sumadm-card-head"><h2>✨ Nuova sessione · {party.name}</h2></div>
-          <form onSubmit={handleGenerate} className="sumadm-form">
+          <form onSubmit={handleDraft} className="sumadm-form">
             <div className="sumadm-row3">
               <div className="sumadm-field">
                 <label>Numero sessione {sessionNumber && <small>({toRoman(sessionNumber)})</small>}</label>
@@ -388,11 +451,20 @@ export default function GenerateSession() {
                 placeholder="Vincoli, NPC da includere, tono, combattimenti voluti…" />
             </div>
 
+            {ctxInfo && (
+              <p className="gs-ctx-info">
+                📚 Legge {ctxInfo.recaps} riassunt{ctxInfo.recaps === 1 ? "o" : "i"} di {party.id}
+                {ctxInfo.lastTitle ? <> · ultimo: <b>«{ctxInfo.lastTitle}»</b></> : null}
+                {ctxInfo.preps ? ` · ${ctxInfo.preps} prep precedent${ctxInfo.preps === 1 ? "e" : "i"}` : ""} — più luoghi e NPC dell'Atlante. Li rilegge a ogni richiesta.
+              </p>
+            )}
+
             <div className="sumadm-actions">
-              <button type="submit" disabled={busy} className="sumadm-btn primary">
-                {busy ? "⏳ Genero…" : "🪄 Genera sessione"}
+              <button type="submit" disabled={busy || draftBusy} className="sumadm-btn primary">
+                {draftBusy ? "⏳ Preparo la bozza…" : draft ? "📝 Nuova bozza da capo" : "📝 Proponi la bozza"}
               </button>
             </div>
+            <small className="gs-flow-hint">Prima ti propone la scaletta: la sessione completa la scrive solo quando la accetti.</small>
           </form>
         </section>
 
@@ -402,9 +474,23 @@ export default function GenerateSession() {
             <h2>👁 Anteprima</h2>
             {generated && <small>Sessione {toRoman(sessionNumber)} · {party.id}</small>}
           </div>
-          {!generated ? (
+          {!generated && draft ? (
+            <DraftCard
+              draft={draft}
+              party={party}
+              busy={busy}
+              draftBusy={draftBusy}
+              redoOpen={redoOpen}
+              setRedoOpen={setRedoOpen}
+              tips={draftTips}
+              setTips={setDraftTips}
+              onAccept={handleGenerate}
+              onRedo={() => handleDraft(null, draftTips.trim())}
+              onClose={closeDraft}
+            />
+          ) : !generated ? (
             <p className="sumadm-empty">
-              {busy ? "Generazione in corso…" : "L'anteprima della sessione apparirà qui dopo la generazione."}
+              {draftBusy ? "Sto preparando la bozza…" : "Qui comparirà la bozza: la scaletta di come vuole scrivere la sessione. Poi, se la accetti, l'anteprima della sessione."}
             </p>
           ) : (
             <>
@@ -419,7 +505,7 @@ export default function GenerateSession() {
                   {saving ? "💾 Salvo…" : "💾 Salva sessione"}
                 </button>
                 <button className="sumadm-btn ghost" onClick={() => setGenerated(null)} disabled={saving}>
-                  Scarta
+                  {draft ? "↩ Torna alla bozza" : "Scarta"}
                 </button>
               </div>
             </>
@@ -481,5 +567,91 @@ export default function GenerateSession() {
         </>
       )}
     </section>
+  );
+}
+
+// ── Bozza della sessione: scaletta + Accetta / Rifai (con indicazioni) / Chiudi ──
+function DraftCard({ draft, party, busy, draftBusy, redoOpen, setRedoOpen, tips, setTips, onAccept, onRedo, onClose }) {
+  const atti = Array.isArray(draft.atti) ? draft.atti : [];
+  const fili = (Array.isArray(draft.fili) ? draft.fili : []).filter((f) => f && (f.filo || f.come));
+  const dubbi = (Array.isArray(draft.dubbi) ? draft.dubbi : []).filter(Boolean);
+  const locked = busy || draftBusy;
+  return (
+    <div className="gs-draft" style={{ "--party-color": party.color }}>
+      <span className="gs-draft-kicker">📝 Bozza · come vuole scriverla</span>
+      <h3 className="gs-draft-title">{draft.titolo || "Senza titolo"}</h3>
+      {draft.sottotitolo && <p className="gs-draft-sub">{draft.sottotitolo}</p>}
+      {draft.logline && <p className="gs-draft-logline">{draft.logline}</p>}
+      {draft.ripartenza && (
+        <p className="gs-draft-row"><b>↪ Si riparte da</b> {draft.ripartenza}</p>
+      )}
+
+      <ol className="gs-draft-acts">
+        {atti.map((a, i) => (
+          <li key={i} className="gs-draft-act">
+            <div className="gs-draft-act-head">
+              <span className="gs-draft-act-n">Atto {i + 1}</span>
+              <strong>{a.titolo}</strong>
+              {a.luogo && <span className="gs-draft-place">📍 {a.luogo}</span>}
+            </div>
+            {a.sintesi && <p>{a.sintesi}</p>}
+            {Array.isArray(a.scene) && a.scene.filter(Boolean).length > 0 && (
+              <ul>{a.scene.filter(Boolean).map((sc, j) => <li key={j}>{sc}</li>)}</ul>
+            )}
+            {a.scontro && <p className="gs-draft-fight">⚔ {a.scontro}</p>}
+            {Array.isArray(a.npc) && a.npc.filter(Boolean).length > 0 && (
+              <p className="gs-draft-npc">👤 {a.npc.filter(Boolean).join(" · ")}</p>
+            )}
+          </li>
+        ))}
+      </ol>
+
+      {fili.length > 0 && (
+        <div className="gs-draft-block">
+          <b>🧵 Fili ripresi</b>
+          <ul>{fili.map((f, i) => <li key={i}><b>{f.filo}</b>{f.come ? ` — ${f.come}` : ""}</li>)}</ul>
+        </div>
+      )}
+      {draft.colpoDiScena && <p className="gs-draft-row"><b>⚡ Colpo di scena</b> {draft.colpoDiScena}</p>}
+      {draft.bottino && <p className="gs-draft-row"><b>💰 Bottino</b> {draft.bottino}</p>}
+      {draft.finale && <p className="gs-draft-row"><b>🎬 Finale</b> {draft.finale}</p>}
+      {dubbi.length > 0 && (
+        <div className="gs-draft-block gs-draft-questions">
+          <b>❓ Domande per te</b>
+          <ul>{dubbi.map((q, i) => <li key={i}>{q}</li>)}</ul>
+          <small>Rispondi con "Rifai" e scrivi le risposte nelle indicazioni.</small>
+        </div>
+      )}
+
+      {redoOpen && (
+        <div className="gs-draft-redo">
+          <label htmlFor="gs-tips">Cosa cambiare? (opzionale)</label>
+          <textarea
+            id="gs-tips"
+            className="admin-field-textarea"
+            rows="4"
+            value={tips}
+            onChange={(e) => setTips(e.target.value)}
+            placeholder="Es. niente combattimento nell'atto 2, fai tornare il Corvo prima, il finale più cupo…"
+            autoFocus
+          />
+        </div>
+      )}
+
+      <div className="gs-draft-actions">
+        {!redoOpen ? (<>
+          <button type="button" className="sumadm-btn primary" onClick={onAccept} disabled={locked}>
+            {busy ? "⏳ Scrivo la sessione…" : "✅ Accetta e scrivi la sessione"}
+          </button>
+          <button type="button" className="sumadm-btn ghost" onClick={() => setRedoOpen(true)} disabled={locked}>🔁 Rifai</button>
+          <button type="button" className="sumadm-btn ghost" onClick={onClose} disabled={locked}>✖ Chiudi</button>
+        </>) : (<>
+          <button type="button" className="sumadm-btn primary" onClick={onRedo} disabled={locked}>
+            {draftBusy ? "⏳ Rifaccio…" : tips.trim() ? "🔁 Rifai con queste indicazioni" : "🔁 Rifai (taglio diverso)"}
+          </button>
+          <button type="button" className="sumadm-btn ghost" onClick={() => setRedoOpen(false)} disabled={locked}>Annulla</button>
+        </>)}
+      </div>
+    </div>
   );
 }
