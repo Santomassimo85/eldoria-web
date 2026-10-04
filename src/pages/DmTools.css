@@ -235,3 +235,15 @@ textarea.npcgen-input.dmt-prompt {
 /* l'anteprima riusa .rsx-page: niente spazio per la testata del sito */
 .rsx-page.dmt-ria-preview { padding: 0; min-height: 0; }
 .dmt-ria-preview .rsx-scroll { margin: 0 auto; }
+
+/* Cronaca: titolo in due parti + anteprima sempre in fondo */
+.dmt-ria-prev { margin: 0 0 12px; font-size: .92rem; color: var(--osso-2, var(--osso)); }
+.dmt-ria-prev b { color: var(--el); }
+.dmt-title-split { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; }
+@media (max-width: 640px) { .dmt-title-split { grid-template-columns: 1fr; } }
+.dmt-title-suggest {
+  margin-top: 6px; padding: 4px 8px; border: 1px dashed rgba(var(--el-rgb), .5); border-radius: 3px;
+  background: transparent; color: var(--el); font: .85rem var(--font-ui, inherit); cursor: pointer; text-align: left;
+}
+.dmt-preview-k { margin-top: 22px; }
+.dmt-ria-preview { margin-top: 8px; }

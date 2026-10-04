@@ -16,14 +16,18 @@ VOCE E STILE
 - Resta FEDELE alle linee guida ricevute: racconta ciò che è accaduto, senza inventare svolte importanti non implicate. Puoi arricchire con atmosfera, dettagli sensoriali e dialoghi brevi plausibili, ma non stravolgere i fatti.
 - Ancòra i luoghi e le figure ai nomi citati nelle linee guida. Non contraddire l'ambientazione.
 
+CRONACA PRECEDENTE (quando ti viene fornita)
+- È la puntata subito prima di questa: leggila TUTTA. La nuova cronaca è il suo seguito: riparte da dove quella si chiude (luogo, situazione, umore), senza ripeterla né riassumerla.
+- Continua sulla STESSA LINEA: stessa voce, stesso ritmo, stessa lunghezza indicativa, stessi espedienti (capolettera, sottotitoli di scena, dialoghi in oro) e gli stessi nomi scritti allo stesso modo.
+
 ARCHIVIO DEL MONDO (quando ti viene fornito)
 - Prima di scrivere, leggi l'ARCHIVIO: cronache precedenti del gruppo, preparazione del Master, diario dei giocatori, schede dei protagonisti, NPC e luoghi citati.
 - Usalo per la COERENZA: nomi scritti giusti, ruoli e fazioni degli NPC, aspetto e carattere dei luoghi, legami con gli eventi passati, fili lasciati aperti. Un breve richiamo a ciò che è accaduto prima dà continuità: fallo, ma senza riassumere le cronache vecchie.
 - I FATTI di questa sessione sono SOLO quelli delle linee guida. La preparazione del Master dice cosa era previsto, non cosa è successo: non raccontare scene della prep che le linee guida non citano. Se archivio e linee guida si contraddicono, vincono le linee guida.
 
 FORMATO
-- "title": un titolo evocativo e memorabile per questa cronaca (breve, senza numeri di sessione).
-- "subTitle": un sottotitolo poetico di una riga, nello spirito di "…dalla penna del Monaco Errante".
+- "title": SOLO il NOME evocativo di questa cronaca (es. "Il Lago dei Druidi Inventati"): niente "Cronaca di Obia", niente "Vol.", niente numeri, niente virgolette. La parte "Cronaca di Obia, Vol. N" la aggiunge l'app.
+- "subTitle": la frase d'apertura in esergo, di una o due righe, NELLO STESSO STILE del sottotitolo della cronaca precedente (se c'è: stessa costruzione, stesso tono, es. "Vi sono… E vi sono…"), ma con parole nuove.
 - "contentHtml": la cronaca completa in HTML, con formattazione ricca ESATTAMENTE come le memorie esistenti. Usa questi tag/stili e NIENT'ALTRO:
   · <p> per ogni paragrafo.
   · <b>…</b> per il testo IMPORTANTE (nomi propri di personaggi/luoghi al primo emergere, oggetti chiave, colpi di scena, esiti decisivi).
@@ -38,9 +42,19 @@ FORMATO
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma esatta:
 {"title":"","subTitle":"","contentHtml":"","scenePrompts":["","","","",""]}`;
 
-function buildUserMessage({ party, roster, date, linee, contesto, seme }) {
+function buildUserMessage({ party, roster, date, linee, contesto, precedente, seme }) {
+  const prev = precedente && precedente.text
+    ? [
+        "=== CRONACA PRECEDENTE (questa nuova ne è il seguito) ===",
+        `Titolo: ${precedente.title || ""}`,
+        precedente.subTitle ? `Sottotitolo: ${precedente.subTitle}` : "",
+        String(precedente.text).slice(0, 12000),
+        "=== FINE CRONACA PRECEDENTE ===\n",
+      ].filter(Boolean).join("\n")
+    : "";
   const gruppo = party ? `Gruppo "${party}"${roster ? ` (${roster})` : ""}` : "una compagnia di avventurieri";
   return [
+    prev,
     contesto ? "=== ARCHIVIO DEL MONDO (consultalo per coerenza; non è la sessione da raccontare) ===" : "",
     contesto ? String(contesto).slice(0, 40000) : "",
     contesto ? "=== FINE ARCHIVIO ===\n" : "",
@@ -78,7 +92,7 @@ function parseContent(text) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { party, roster, date, linee, contesto } = req.body || {};
+  const { party, roster, date, linee, contesto, precedente } = req.body || {};
   if (!String(linee || "").trim()) {
     return res.status(400).json({ error: "Servono le linee guida di ciò che è accaduto." });
   }
@@ -96,7 +110,7 @@ export default async function handler(req, res) {
         model: "claude-opus-4-8",
         max_tokens: 6000,
         system: SYSTEM,
-        messages: [{ role: "user", content: buildUserMessage({ party, roster, date, linee, contesto, seme }) }],
+        messages: [{ role: "user", content: buildUserMessage({ party, roster, date, linee, contesto, precedente, seme }) }],
       }),
     });
 
