@@ -1,23 +1,24 @@
 // ================================================================
-// MACRO FOUNDRY: Collega e sincronizza i PG ATTIVI → Crit Happens (versione DM, 2026-10-04)
+// MACRO FOUNDRY: UNICA macro del Master — Sito ↔ Foundry (versione DM, 2026-10-04)
 // ================================================================
 // Copia di riferimento: qui SENZA la chiave API e SENZA la mappa
 // giocatore→UID (repo pubblico). La copia pronta del Master sta in
 // Desktop/foundry-macro-sync-all-DM.txt; in Foundry e' "Fetch admin".
+// Sostituisce anche "itemsFromApp" (oggetti e monete dell'Officina).
 //
-// Niente token, niente tendine. Parte dall'APP, non dagli attori:
-// - PG attivi = personaggi del sito meno quelli nascosti nell'app
-//   (src/data/hiddenPlayers.js letto da GitHub; se non risponde,
-//   ATTIVI_DI_RISERVA) e meno "master";
-// - per ognuno trova l'attore: flag world.firebaseUID → foundryActorId
-//   → personaggio assegnato al giocatore (foundryUser) → unico attore
-//   posseduto dal giocatore → nome;
-// - lo COLLEGA: flag sul sito, giocatore proprietario (Owner), attore
-//   assegnato come personaggio del giocatore, e toglie il flag da altri
-//   attori che puntavano allo stesso PG;
-// - poi SINCRONIZZA scheda, monete (tasche + borse), inventario, azioni.
-// Prima mostra il piano (cosa collega e cosa sistema), alla fine
-// sussurra al GM il riepilogo.
+// Niente token, niente tendine. Un clic, tre passi (prima mostra il piano):
+// 1. COLLEGA i PG ATTIVI dell'app (personaggi del sito meno i nascosti di
+//    src/data/hiddenPlayers.js, letto da GitHub; riserva ATTIVI_DI_RISERVA;
+//    escluso "master") ai loro attori: flag world.firebaseUID, giocatore
+//    Owner, attore assegnato come personaggio del giocatore. Attore cercato
+//    per flag → foundryActorId → personaggio assegnato → unico posseduto → nome.
+// 2. CODA DELL'APP → FOUNDRY (foundry_inbox): oggetti creati all'Officina o
+//    dal form "Crea Oggetto" nell'inventario del PG (o negli Oggetti del
+//    mondo), SPESE in monete del crafting scalate da tasche e poi borse, con
+//    currency.gp e crafting.goldPending aggiornati subito sul sito.
+// 3. SCHEDE → SITO: scheda, monete (tasche + borse), inventario, azioni.
+// Poi resta accesa: ogni CODA_OGNI_MINUTI porta da sola oggetti e spese
+// nuove e risincronizza i PG toccati, finche' Foundry resta aperto.
 // ================================================================
 
 const FIREBASE_CONFIG = {
@@ -366,7 +367,194 @@ function makePlan(active) {
   return rows;
 }
 
-function confirmDialog(rows, fonte) {
+/* =================================================================
+   CODA DELL'APP → FOUNDRY (ex macro "itemsFromApp", 2026-10-04)
+   `foundry_inbox` su Firestore: oggetti creati all'Officina / dal form
+   "Crea Oggetto" e SPESE in monete (kind "gold") del crafting.
+   - oggetti "player" → inventario dell'attore del PG; "world" → Oggetti del mondo;
+   - monete: si scalano dalle tasche e poi dalle borse (i contenitori dnd5e
+     hanno una loro currency), il sito si aggiorna subito (currency.gp e
+     crafting.goldPending), la voce si cancella dalla coda.
+   Una voce il cui PG non ha attore resta in coda: non si perde niente.
+   ================================================================= */
+
+// Da dove si attinge per primo quando si paga: true = prima le tasche, poi le borse.
+const PRIMA_LE_TASCHE = true;
+// Dopo il primo giro, ogni quanti minuti ricontrollare da sola la coda
+// (finché Foundry resta aperto). 0 = solo quando la lanci.
+const CODA_OGNI_MINUTI = 2;
+
+function val(v) {
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return Number(v.doubleValue);
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue !== undefined) return null;
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  if (v.mapValue) return obj(v.mapValue.fields || {});
+  if (v.arrayValue) return (v.arrayValue.values || []).map(val);
+  return null;
+}
+function obj(fields) {
+  const o = {};
+  for (const [k, v] of Object.entries(fields)) o[k] = val(v);
+  return o;
+}
+
+const DND_MAJOR = parseInt((game.system.version || "3").split(".")[0]) || 3;
+
+function buildItemData(d) {
+  const descHtml = /<[a-z][\s\S]*>/i.test(d.description || "")
+    ? (d.description || "")
+    : `<p>${(d.description || "").replace(/\n/g, "<br>")}</p>`;
+  const system = {
+    description: { value: descHtml, chat: "" },
+    quantity: d.quantity || 1,
+    price: { value: d.price || 0, denomination: "gp" },
+    rarity: d.rarity || "",
+    identified: true,
+  };
+  system.weight = DND_MAJOR >= 3 ? { value: d.weight || 0, units: "lb" } : (d.weight || 0);
+  const parts = [];
+  if (d.damageFormula) parts.push([d.damageFormula, d.damageType || ""]);
+  if (d.damage2Formula) parts.push([d.damage2Formula, d.damage2Type || ""]);
+  if (parts.length || d.versatileFormula) system.damage = { parts, versatile: d.versatileFormula || "" };
+  if (d.actionType) system.actionType = d.actionType;
+  if (d.attackBonus) system.attackBonus = String(d.attackBonus);
+  if (d.saveAbility && d.saveDC) system.save = { ability: d.saveAbility, dc: d.saveDC, scaling: "flat" };
+  if (d.foundryType === "weapon") {
+    system.proficient = d.proficient ? 1 : 0;
+    const props = Array.isArray(d.properties) ? d.properties : [];
+    system.properties = DND_MAJOR >= 3 ? props : props.reduce((o, k) => (o[k] = true, o), {});
+  }
+  if (d.foundryType === "equipment" && d.armorType) {
+    system.armor = { value: d.armorValue || 0, type: d.armorType, dex: null };
+    system.type = { value: d.armorType };
+  }
+  const out = { name: d.name || "Oggetto", type: d.foundryType || "loot", system };
+  if (d.img) out.img = d.img;
+  return out;
+}
+
+async function leggiCoda() {
+  const res = await fetch(`${BASE}/foundry_inbox?key=${FIREBASE_CONFIG.apiKey}&pageSize=200`);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
+  return (data.documents || [])
+    .map((doc) => ({ _path: doc.name, _id: doc.name.split("/").pop(), ...obj(doc.fields || {}) }))
+    .filter((d) => d.status === "pending");
+}
+
+const descriviVoce = (d) => d.kind === "gold"
+  ? `${d.targetName || d.targetUid}: ${d.op === "add" ? "+" : "−"}${d.amount} mo (${d.reason || "spesa"})`
+  : `${d.name || "Oggetto"} → ${d.target === "player" ? (d.targetName || d.targetUid) : "Oggetti del mondo"}`;
+
+// Dopo aver scalato su Foundry: oro nuovo sul sito + spesa tolta da goldPending.
+async function aggiornaSito(uid, gpDopo, scalaPending) {
+  const nome = `projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/characters/${uid}`;
+  const write = {
+    update: { name: nome, fields: { currency: { mapValue: { fields: { gp: { integerValue: String(Math.max(0, Math.round(gpDopo))) } } } } } },
+    updateMask: { fieldPaths: ["currency.gp"] },
+    currentDocument: { exists: true },
+  };
+  if (scalaPending > 0) {
+    write.updateTransforms = [{ fieldPath: "crafting.goldPending", increment: { integerValue: String(-Math.round(scalaPending)) } }];
+  }
+  const res = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:commit?key=${FIREBASE_CONFIG.apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ writes: [write] }),
+  });
+  if (!res.ok) throw new Error(`sito non aggiornato (${res.status}): ${await res.text()}`);
+}
+
+const cancellaVoce = (d) => fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
+
+async function scalaMonete(actor, d) {
+  const amount = Math.max(0, Number(d.amount) || 0);
+  const add = d.op === "add";
+  const borse = actor.items.filter((i) =>
+    (i.type === "container" || i.type === "backpack") && foundry.utils.getProperty(i, "system.currency"));
+  const casse = [
+    { nome: "tasche", leggi: () => Number(foundry.utils.getProperty(actor, "system.currency.gp")) || 0,
+      scrivi: (v) => actor.update({ "system.currency.gp": v }) },
+    ...borse.map((b) => ({ nome: b.name,
+      leggi: () => Number(foundry.utils.getProperty(b, "system.currency.gp")) || 0,
+      scrivi: (v) => b.update({ "system.currency.gp": v }) })),
+  ];
+  if (!PRIMA_LE_TASCHE) casse.reverse();
+  const prima = casse.reduce((a, c) => a + c.leggi(), 0);
+  const mosse = [];
+  let resto = amount;
+  if (add) {
+    // le monete in più vanno sempre addosso al PG
+    const t = casse.find((c) => c.nome === "tasche") || casse[0];
+    await t.scrivi(t.leggi() + amount);
+    mosse.push(`${t.nome} +${amount}`);
+    resto = 0;
+  } else {
+    for (const c of casse) {
+      if (resto <= 0) break;
+      const ha = c.leggi();
+      if (ha <= 0) continue;
+      const preso = Math.min(ha, resto);
+      await c.scrivi(ha - preso);
+      resto -= preso;
+      mosse.push(`${c.nome} −${preso}`);
+    }
+  }
+  const dopo = casse.reduce((a, c) => a + c.leggi(), 0);
+  await ChatMessage.create({
+    speaker: { alias: "Officina" },
+    content: `<p><strong>${esc(actor.name)}</strong>: ${add ? "+" : "−"}${amount} mo (${prima} → ${dopo}).</p>`
+      + (mosse.length > 1 ? `<p style="font-size:.9em;opacity:.8">Presi da: ${esc(mosse.join(", "))}.</p>` : "")
+      + `<p style="font-size:.9em;opacity:.8">${esc(d.reason || "")}</p>`
+      + (resto ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${resto} mo, tasche e borse sono a 0.</p>` : ""),
+    whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
+  });
+  // Il sito si allinea subito. Se non ci riesce la voce si cancella lo stesso:
+  // l'oro su Foundry è già scalato e rifarlo sarebbe peggio (lo sistema la sync).
+  try { await aggiornaSito(d.targetUid, dopo, d.pendingOnSite && !add ? amount : 0); }
+  catch (e) { console.warn("[Coda] oro scalato su Foundry ma il sito non si è aggiornato:", e); }
+}
+
+// Processa la coda. attoreDi(uid) → attore del PG (dal piano dei collegamenti).
+// Ritorna { oggetti, spese, saltate, toccati:Set(uid), righe:[] }.
+async function processaCoda(voci, attoreDi) {
+  const esito = { oggetti: 0, spese: 0, saltate: 0, toccati: new Set(), righe: [] };
+  for (const d of voci) {
+    try {
+      if (d.kind === "gold" || d.target === "player") {
+        const actor = attoreDi(d.targetUid);
+        if (!actor) {
+          esito.saltate++;
+          esito.righe.push(`⏸ ${descriviVoce(d)} — PG senza attore, resta in coda`);
+          continue;
+        }
+        if (d.kind === "gold") { await scalaMonete(actor, d); esito.spese++; }
+        else { await actor.createEmbeddedDocuments("Item", [buildItemData(d)]); esito.oggetti++; }
+        esito.toccati.add(d.targetUid);
+      } else {
+        await Item.create(buildItemData(d));
+        esito.oggetti++;
+      }
+      await cancellaVoce(d);
+      esito.righe.push(`✓ ${descriviVoce(d)}`);
+    } catch (e) {
+      console.error("[Coda]", d, e);
+      esito.saltate++;
+      esito.righe.push(`✗ ${descriviVoce(d)} — ${e.message || e}`);
+    }
+  }
+  return esito;
+}
+
+// Attore di un UID qualsiasi (anche di un PG non attivo che ha roba in coda).
+function attoreDaFlag(uid) {
+  return game.actors.find((a) => a.type === "character" && a.getFlag("world", "firebaseUID") === uid) || null;
+}
+
+function confirmDialog(rows, fonte, coda) {
   const ok = rows.filter((r) => r.actor);
   const ko = rows.filter((r) => !r.actor);
   const li = ok.map((r) => `<li><strong>${esc(r.c.name)}</strong> ← ${esc(r.actor.name)} · ${esc(r.user?.name || "nessun utente")}`
@@ -376,12 +564,21 @@ function confirmDialog(rows, fonte) {
   const skip = ko.length
     ? `<p style="margin-top:8px;color:#b00">Non trovati (${ko.length}):</p><ul>${ko.map((r) => `<li>${esc(r.c.name)} — ${esc(r.how)}</li>`).join("")}</ul>`
     : "";
+  const codaHtml = coda.errore
+    ? `<p style="color:#b00">Coda dell'app non leggibile: ${esc(coda.errore)}</p>`
+    : coda.voci.length
+      ? `<ul>${coda.voci.map((d) => `<li>${esc(descriviVoce(d))}</li>`).join("")}</ul>`
+      : `<p style="opacity:.6">Niente in coda.</p>`;
   return new Promise((resolve) => {
     new Dialog({
-      title: `Collega e sincronizza ${ok.length} PG attivi`,
-      content: `<div style="padding:6px;max-height:440px;overflow:auto"><p style="opacity:.7">PG attivi presi dall'app (${esc(fonte)}).</p><ul>${li || "<li>Nessuno.</li>"}</ul>${skip}</div>`,
+      title: `Collega, porta il crafting e sincronizza (${ok.length} PG)`,
+      content: `<div style="padding:6px;max-height:460px;overflow:auto">`
+        + `<h3 style="margin:0 0 4px">1 · PG attivi (${esc(fonte)})</h3><ul>${li || "<li>Nessuno.</li>"}</ul>${skip}`
+        + `<h3 style="margin:10px 0 4px">2 · Dall'app a Foundry (${coda.voci.length})</h3>${codaHtml}`
+        + `<h3 style="margin:10px 0 4px">3 · Schede, monete e inventario → sito</h3><p style="opacity:.7">Dopo il passo 2, così sul sito risultano già i soldi scalati e gli oggetti nuovi.</p>`
+        + `</div>`,
       buttons: {
-        ok: { icon: '<i class="fas fa-cloud-upload-alt"></i>', label: `Collega e sincronizza (${ok.length})`, callback: () => resolve(ok.length > 0) },
+        ok: { icon: '<i class="fas fa-cloud-upload-alt"></i>', label: "Vai", callback: () => resolve(true) },
         no: { icon: '<i class="fas fa-times"></i>', label: "Annulla", callback: () => resolve(false) }
       },
       default: "ok",
@@ -400,14 +597,14 @@ async function linkOne(r) {
 }
 
 /* ---- Scheda, monete, inventario → sito ---- */
-async function syncOne(r) {
-  const base = game.actors.get(r.actor.id) || r.actor;
+async function syncOne(uid, actor, userName) {
+  const base = game.actors.get(actor.id) || actor;
   const { fields, gp, gpBags } = buildFields(base);
   fields.foundryActorId   = fsStr(base.id);
   fields.foundryActorName = fsStr(base.name);
-  if (r.user) fields.foundryUser = fsStr(r.user.name);
+  if (userName) fields.foundryUser = fsStr(userName);
   const mask = Object.keys(fields).map((f) => `updateMask.fieldPaths=${f}`).join("&");
-  const res = await fetch(`${BASE}/characters/${r.c.uid}?key=${FIREBASE_CONFIG.apiKey}&${mask}`, {
+  const res = await fetch(`${BASE}/characters/${uid}?key=${FIREBASE_CONFIG.apiKey}&${mask}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fields })
@@ -425,41 +622,86 @@ async function syncOne(r) {
     ui.notifications.error("Manca la chiave API: incolla la versione DM (foundry-macro-sync-all-DM.txt).", { permanent: true });
     return;
   }
+  // Un solo giro alla volta, e un solo timer (spegne anche quello della vecchia "itemsFromApp").
+  const G = (window.__eldoriaImport ||= { timer: null, inCorso: false });
+  if (G.inCorso) { ui.notifications.warn("C'è già un giro in corso: aspetta che finisca."); return; }
 
   let site;
   try { site = await loadSiteCharacters(); }
   catch (e) { console.error(e); ui.notifications.error("Non riesco a leggere i personaggi del sito (F12 per i dettagli)."); return; }
   const hidden = await loadHidden();
   const active = activeCharacters(site, hidden);
-  if (!active.length) { ui.notifications.warn("Nessun PG attivo trovato sul sito."); return; }
-
   const rows = makePlan(active);
-  if (!(await confirmDialog(rows, hidden ? "lista dell'app" : "lista di riserva della macro"))) {
-    ui.notifications.warn("Sincronizzazione annullata.");
+  const coda = { voci: [], errore: "" };
+  try { coda.voci = await leggiCoda(); } catch (e) { coda.errore = e.message; }
+
+  if (!(await confirmDialog(rows, hidden ? "lista dell'app" : "lista di riserva della macro", coda))) {
+    ui.notifications.warn("Annullato.");
     return;
   }
 
+  G.inCorso = true;
   const report = [];
-  for (const r of rows) {
-    if (!r.actor) { report.push({ pg: r.c.name, attore: "—", esito: `non trovato: ${r.how}` }); continue; }
-    try {
-      await linkOne(r);
-      const { gp, gpBags } = await syncOne(r);
-      report.push({ pg: r.c.name, attore: r.actor.name, giocatore: r.user?.name || "—", esito: "ok", mo: gp, inBorse: gpBags, sistemato: r.fix.join(" · ") });
-    } catch (e) {
-      console.error(`[Sync] ${r.c.name}:`, e);
-      report.push({ pg: r.c.name, attore: r.actor.name, esito: `errore: ${e.message}` });
+  let esitoCoda = null;
+  try {
+    // 1) COLLEGA
+    for (const r of rows) {
+      if (!r.actor) continue;
+      try { await linkOne(r); } catch (e) { console.error(`[Collega] ${r.c.name}:`, e); r.linkErr = e.message; }
     }
-  }
+    // 2) CODA DELL'APP → FOUNDRY (oggetti e monete del crafting)
+    const perUid = new Map(rows.filter((r) => r.actor).map((r) => [r.c.uid, r.actor]));
+    const attoreDi = (uid) => perUid.get(uid) || attoreDaFlag(uid);
+    if (coda.voci.length) esitoCoda = await processaCoda(coda.voci, attoreDi);
+    // 3) SCHEDE → SITO
+    for (const r of rows) {
+      if (!r.actor) { report.push({ pg: r.c.name, esito: `non trovato: ${r.how}` }); continue; }
+      try {
+        const { gp, gpBags } = await syncOne(r.c.uid, r.actor, r.user?.name);
+        report.push({ pg: r.c.name, esito: r.linkErr ? `ok (collegamento: ${r.linkErr})` : "ok", mo: gp, inBorse: gpBags, sistemato: r.fix.join(" · ") });
+      } catch (e) {
+        console.error(`[Sync] ${r.c.name}:`, e);
+        report.push({ pg: r.c.name, esito: `errore: ${e.message}` });
+      }
+    }
+  } finally { G.inCorso = false; }
   console.table(report);
 
-  const ok = report.filter((x) => x.esito === "ok");
-  const ko = report.filter((x) => x.esito !== "ok");
+  const ok = report.filter((x) => x.esito.startsWith("ok"));
+  const ko = report.filter((x) => !x.esito.startsWith("ok"));
   const righe = ok.map((x) => `<li>${esc(x.pg)} · ${x.mo} mo${x.inBorse ? ` (${x.inBorse} in borsa)` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
   const male = ko.map((x) => `<li style="opacity:.7">${esc(x.pg)} — ${esc(x.esito)}</li>`).join("");
+  const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} spese${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
   ChatMessage.create({
     whisper: ChatMessage.getWhisperRecipients("GM"),
-    content: `<h3>☁ PG attivi sul sito: ${ok.length}/${report.length}</h3><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
+    content: `<h3>☁ Sito ↔ Foundry</h3>${codaRighe}<p><strong>Schede sul sito:</strong> ${ok.length}/${report.length}</p><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
   });
-  ui.notifications.info(`✅ Collegati e sincronizzati ${ok.length} PG${ko.length ? ` · ${ko.length} con problemi (vedi chat)` : ""}.`);
+  ui.notifications.info(`✅ ${ok.length} PG sincronizzati${esitoCoda ? ` · dall'app ${esitoCoda.oggetti} oggetti e ${esitoCoda.spese} spese` : ""}${ko.length ? ` · ${ko.length} con problemi (vedi chat)` : ""}.`);
+
+  // 4) CODA IN AUTOMATICO: finché Foundry resta aperto, ogni CODA_OGNI_MINUTI
+  //    porta da solo oggetti e spese nuove dell'Officina e aggiorna sul sito
+  //    la scheda dei PG toccati. Niente finestre, niente doppioni.
+  if (G.timer) { clearInterval(G.timer); G.timer = null; }
+  if (CODA_OGNI_MINUTI > 0) {
+    const nomeUtente = new Map(rows.filter((r) => r.actor).map((r) => [r.c.uid, r.user?.name]));
+    const perUid = new Map(rows.filter((r) => r.actor).map((r) => [r.c.uid, r.actor]));
+    G.timer = setInterval(async () => {
+      if (G.inCorso) return;
+      G.inCorso = true;
+      try {
+        const voci = await leggiCoda();
+        if (!voci.length) return;
+        const es = await processaCoda(voci, (uid) => perUid.get(uid) || attoreDaFlag(uid));
+        for (const uid of es.toccati) {
+          const a = perUid.get(uid) || attoreDaFlag(uid);
+          if (a) await syncOne(uid, a, nomeUtente.get(uid)).catch((e) => console.warn("[Coda] sync:", e));
+        }
+        if (es.oggetti || es.spese) {
+          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} spese.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
+        }
+      } catch (e) { console.warn("[Coda] giro automatico:", e); }
+      finally { G.inCorso = false; }
+    }, CODA_OGNI_MINUTI * 60 * 1000);
+    ui.notifications.info(`🔁 Officina automatica accesa: ogni ${CODA_OGNI_MINUTI} minuti porto oggetti e spese finché Foundry resta aperto.`);
+  }
 })();
