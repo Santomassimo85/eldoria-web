@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadSessionContext, requestSessionDraft, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession } from "../utils/dmSessions";
+import { loadSessionContext, requestSessionDraft, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession, loadLoreRegistry, linkifySessionHtml } from "../utils/dmSessions";
+import { pickWorld, trimRecapsForDraft, trimRecapsForSession } from "../utils/sessionWorld";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 import "./GenerateSession.css";
@@ -168,9 +169,20 @@ export default function GenerateSession() {
     setInvolved((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
 
   // Contesto riletto a OGNI richiesta: riassunti veri + prep + mondo.
-  const collectPayload = async () => {
+  // Contesto riletto a OGNI richiesta, ma SNELLO (pochi token):
+  //  - bozza: ultimi 3 riassunti per esteso, 5 in breve, i vecchi solo titolo;
+  //  - sessione: la bozza approvata ha già la continuità → solo l'ultimo riassunto;
+  //  - mondo: per intero solo luoghi/NPC citati, gli altri solo come nomi.
+  const collectPayload = async (mode = "draft", extraText = "") => {
     const [ctx, world] = await Promise.all([loadSessionContext(party.id), loadWorldReference()]);
     setCtxInfo(infoOf(ctx));
+    // Fili scelti dai chip "Fili della campagna": vanno reintrodotti in modo sensato.
+    const resumeThreads = (recap?.topics || [])
+      .filter((t) => selectedTopics.includes(t.label))
+      .map((t) => ({ label: t.label, note: t.note }));
+    const lastRecap = ctx.recaps[ctx.recaps.length - 1]?.text || "";
+    const relevant = [focus, note, suggestedTitle, involved.join(" "), resumeThreads.map((t) => `${t.label} ${t.note || ""}`).join(" "), lastRecap, extraText].join("\n");
+    const isSession = mode === "session";
     return {
       party: party.id,
       world: party.world,
@@ -182,18 +194,15 @@ export default function GenerateSession() {
       involvedCharacters: involved,
       durata,
       note,
-      recaps: ctx.recaps,
-      preps: ctx.preps,
-      lastPrepText: ctx.lastPrepText,
-      // Fili scelti dai chip "Fili della campagna": vanno reintrodotti in modo sensato.
-      resumeThreads: (recap?.topics || [])
-        .filter((t) => selectedTopics.includes(t.label))
-        .map((t) => ({ label: t.label, note: t.note })),
-      // [C] Mondo esistente: città (Geo) + NPC per riuso e precisione.
-      worldCities: world.cities,
-      worldNpcs: world.npcs,
+      recaps: isSession ? trimRecapsForSession(ctx.recaps) : trimRecapsForDraft(ctx.recaps),
+      preps: isSession ? [] : ctx.preps.slice(-3),
+      lastPrepText: isSession ? "" : ctx.lastPrepText,
+      resumeThreads,
+      ...pickWorld(world, relevant),
     };
   };
+
+  const fmtUsage = (u) => (u && (u.input || u.output) ? ` · ${(u.input || 0).toLocaleString("it-IT")} token letti, ${(u.output || 0).toLocaleString("it-IT")} scritti` : "");
 
   // 1) Bozza: la scaletta di come vuole scrivere la sessione.
   //    Con `tips` è un "Rifai": riceve la bozza scartata + le indicazioni.
@@ -207,16 +216,16 @@ export default function GenerateSession() {
     setGenerated(null);
     setStatus("📚 Rileggo i riassunti del gruppo…");
     try {
-      const payload = await collectPayload();
+      const payload = await collectPayload("draft", previous ? JSON.stringify(previous) : "");
       setStatus(previous ? "✍️ Rifaccio la bozza con le tue indicazioni…" : "✍️ Preparo la bozza… (di solito meno di un minuto)");
-      const d = await requestSessionDraft({
+      const { draft: d, usage } = await requestSessionDraft({
         ...payload,
         ...(previous ? { previousDraft: previous, draftFeedback: tips } : {}),
       });
       setDraft(d);
       setRedoOpen(false);
       setDraftTips("");
-      setStatus("📝 Bozza pronta: accettala, rifalla o chiudila.");
+      setStatus(`📝 Bozza pronta: accettala, rifalla o chiudila${fmtUsage(usage)}.`);
     } catch (err) {
       setStatus(`❌ Bozza non riuscita: ${err.message || err}`);
     } finally {
@@ -234,16 +243,21 @@ export default function GenerateSession() {
     setProgress(0);
     setStatus("📚 Rileggo i riassunti del gruppo…");
     try {
-      const payload = await collectPayload();
+      const [payload, registry] = await Promise.all([
+        collectPayload("session", JSON.stringify(draft)),
+        loadLoreRegistry().catch(() => null),
+      ]);
       setStatus("✍️ Scrivo la sessione dalla bozza approvata… di solito 1–2 minuti, attendi senza ricaricare.");
       const result = await streamGenerateSession({ ...payload, approvedDraft: draft }, (_chunk, full) => setProgress(full.length));
       if (!result.html || !result.html.includes("<")) throw new Error("Output non valido (nessun HTML).");
+      // Nomi di PG, NPC e luoghi → link colorati alle loro schede (gratis: niente token).
+      result.html = linkifySessionHtml(result.html, registry);
       setGenerated(result);
       const comp = sessionCompleteness(result.html);
       if (!comp.complete || result.warning) {
         setStatus(`⚠️ Generazione probabilmente TRONCATA${result.warning ? ` — ${result.warning}` : ""}. Meglio rigenerare, magari con durata più corta.`);
       } else {
-        setStatus("✅ Sessione scritta. Controlla l'anteprima e salva.");
+        setStatus(`✅ Sessione scritta. Controlla l'anteprima e salva${fmtUsage(result.usage)}.`);
       }
     } catch (err) {
       setStatus(`❌ ${err.message || err}`);
@@ -495,7 +509,7 @@ export default function GenerateSession() {
               <iframe
                 title="Anteprima sessione"
                 srcDoc={withSessionRuntime(generated.html)}
-                sandbox="allow-scripts allow-popups"
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 style={{ width: "100%", height: "70vh", border: "1px solid rgba(var(--oro-rgb),0.4)", borderRadius: 12, background: "#050807" }}
               />
               <div className="sumadm-actions" style={{ marginTop: 14 }}>

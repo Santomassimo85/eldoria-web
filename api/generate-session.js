@@ -54,6 +54,7 @@ function buildSystem({ party, world, closingChronicle, actsPlan }) {
 - I RIASSUNTI delle sessioni giocate sono la VERITÀ. L'ULTIMO dice dove si trova il gruppo ORA: si riparte da lì.
 - Le PREP precedenti dicono solo cosa era PREVISTO: se contraddicono i riassunti, vincono i riassunti.
 - Riusa luoghi e NPC esistenti con i loro nomi esatti; inventane solo se serve davvero. Intreccia i FILI indicati dal DM.
+- Scrivi i nomi di NPC, luoghi e PG ESATTAMENTE come nei dati: l'app li trasforma da sola in link colorati alle loro schede. Tu non scrivere link né <a>.
 - Se ricevi una BOZZA APPROVATA, è il piano vincolante: stessi atti, luoghi, scontri, NPC, colpo di scena, bottino e finale. Sviluppala, non cambiarla.
 
 [REGOLE]
@@ -61,7 +62,7 @@ ${NO_PLAYER_ACTIONS}
 - DIALOGHI: pochi, solo degli NPC, una battuta breve ciascuno e solo quando serve a dare il tono o un'informazione chiave. Al massimo 6 battute in tutta la sessione. In corsivo con le virgolette basse: <i>«così»</i>.
 - TEMPI: ${actsPlan}. Ogni atto ha la sua fascia oraria (es. 0:00–0:45) e ogni scena i minuti indicativi. Nelle Note per il DM indica cosa tagliare se si è in ritardo e cosa aggiungere se si è in anticipo.
 - SCONTRI: stat block compatti su UNA riga per tipo di nemico (CA, PF, attacco +bonus e danni in dadi, eventuale tratto o TS con CD), più una riga di tattica.
-- Meccaniche D&D 5e reali. ITALIANO. Breve: in tutto circa 1.200–2.000 parole.
+- Meccaniche D&D 5e reali. ITALIANO. Breve: in tutto circa 1.000–1.500 parole.
 
 [FORMATO HTML — SOLO QUESTI TAG E QUESTE CLASSI]
 Scrivi SOLO il contenuto del <body> (niente <html>, <head>, <style>, <script>, niente CSS né attributi style). Usa esattamente questa struttura:
@@ -89,7 +90,7 @@ Scrivi SOLO il contenuto del <body> (niente <html>, <head>, <style>, <script>, n
 }
 
 // Guscio grafico fisso e leggero: il modello scrive solo il contenuto.
-const SHELL_CSS = `*{box-sizing:border-box}body{margin:0;background:#16130f;color:#e9e2d3;font:16px/1.55 Georgia,"Times New Roman",serif}main{max-width:860px;margin:0 auto;padding:28px 18px 60px}header{border-bottom:2px solid #c9a25a;padding-bottom:12px;margin-bottom:20px}h1{font-size:1.9rem;margin:0 0 4px;color:#f3e7c9}h2{font-size:1.3rem;margin:0 0 10px;color:#e3c27d;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:#b9a67e;margin:16px 0 6px}.sub{margin:0;font-style:italic;color:#cfc3a8}.meta{margin:6px 0 0;font-size:.9rem;color:#a99d84}.box,.atto{background:#1f1b15;border:1px solid #3a3226;border-radius:6px;padding:16px 18px;margin:0 0 16px}.atto{border-left:4px solid #c9a25a}.tempo{font:600 .85rem/1.6 ui-monospace,Consolas,monospace;color:#16130f;background:#c9a25a;border-radius:4px;padding:1px 8px;align-self:center}.min{font:600 .8rem ui-monospace,Consolas,monospace;color:#c9a25a}.luogo{margin:0 0 4px;color:#cfc3a8}p{margin:6px 0}ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{color:#f3e7c9}i{color:#e3c27d}.npc{background:#262017;border-radius:4px;padding:8px 12px;margin:8px 0}.scontro{background:#2a1714;border:1px solid #5a2a22;border-radius:4px;padding:10px 12px;margin:10px 0}.scontro>b:first-child{color:#f08a76}.chiusura{text-align:center;margin-top:26px;color:#cfc3a8}@media print{body{background:#fff;color:#111}.box,.atto,.npc,.scontro{background:#fff;border-color:#999}b,h1,h2,i{color:#111}.tempo{background:#ddd;color:#111}}`;
+const SHELL_CSS = `*{box-sizing:border-box}body{margin:0;background:#16130f;color:#e9e2d3;font:16px/1.55 Georgia,"Times New Roman",serif}main{max-width:860px;margin:0 auto;padding:28px 18px 60px}header{border-bottom:2px solid #c9a25a;padding-bottom:12px;margin-bottom:20px}h1{font-size:1.9rem;margin:0 0 4px;color:#f3e7c9}h2{font-size:1.3rem;margin:0 0 10px;color:#e3c27d}h2::after{content:"";display:block;clear:both}h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:#b9a67e;margin:16px 0 6px}.sub{margin:0;font-style:italic;color:#cfc3a8}.meta{margin:6px 0 0;font-size:.9rem;color:#a99d84}.box,.atto{background:#1f1b15;border:1px solid #3a3226;border-radius:6px;padding:16px 18px;margin:0 0 16px}.atto{border-left:4px solid #c9a25a}.tempo{float:right;margin:4px 0 0 10px;font:600 .85rem/1.6 ui-monospace,Consolas,monospace;color:#16130f;background:#c9a25a;border-radius:4px;padding:1px 8px}.min{font:600 .8rem ui-monospace,Consolas,monospace;color:#c9a25a}.luogo{margin:0 0 4px;color:#cfc3a8}p{margin:6px 0}ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{color:#f3e7c9}i{color:#e3c27d}.npc{background:#262017;border-radius:4px;padding:8px 12px;margin:8px 0}.scontro{background:#2a1714;border:1px solid #5a2a22;border-radius:4px;padding:10px 12px;margin:10px 0}.scontro>b:first-child{color:#f08a76}.chiusura{text-align:center;margin-top:26px;color:#cfc3a8}a.lore-link{text-decoration:none;border-bottom:1px dotted currentColor;font-weight:600}a.lore-link--npc{color:#f0a35e}a.lore-link--city{color:#6fc3d6}a.lore-link--char{color:#a8d77f}a.lore-link:hover{border-bottom-style:solid}.legenda{font-size:.8rem;color:#a99d84;margin:0 0 16px}.legenda span{margin-right:12px;font-weight:600}@media print{body{background:#fff;color:#111}.box,.atto,.npc,.scontro{background:#fff;border-color:#999}b,h1,h2,i{color:#111}.tempo{background:#ddd;color:#111}}`;
 
 // Avvolge il contenuto del modello nel guscio fisso. Se il modello ha comunque
 // scritto un documento intero, ne tiene solo il body.
@@ -102,6 +103,7 @@ function wrapSimple(fragment, title) {
   return `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>${SHELL_CSS}</style></head>
 <body class="sess-simple"><main>
+<p class="legenda">Link: <span style="color:#f0a35e">NPC</span><span style="color:#6fc3d6">Luoghi</span><span style="color:#a8d77f">PG</span></p>
 ${body}
 </main></body></html>`;
 }
@@ -110,8 +112,9 @@ function buildPast(b) {
   // Forma nuova: riassunti veri + prep separate.
   if (Array.isArray(b.recaps) || Array.isArray(b.preps)) {
     const recaps = (b.recaps || []).map((r) =>
-      `• Sessione ${r.n}${r.title ? ` «${r.title}»` : ""}${r.date ? ` (${r.date})` : ""}:\n${r.text || "(vuoto)"}`
-    ).join("\n\n") || "(nessun riassunto: è un inizio)";
+      // senza testo = solo il titolo (i riassunti più vecchi)
+      `• Sessione ${r.n}${r.title ? ` «${r.title}»` : ""}${r.date ? ` (${r.date})` : ""}${r.text ? `:\n${r.text}` : ""}`
+    ).join("\n") || "(nessun riassunto: è un inizio)";
     const preps = (b.preps || []).map((s) => {
       const sum = s.summary || {};
       const txt = [sum.panoramica, sum.ganciAperti && `Ganci: ${sum.ganciAperti}`].filter(Boolean).join(" — ");
@@ -146,6 +149,15 @@ ${lastHtml}`;
 }
 
 function buildWorld(b) {
+  // Gli altri luoghi/NPC del mondo arrivano solo come NOMI (pochi token).
+  const on = b.worldNames || {};
+  const others = (on.cities?.length || on.npcs?.length)
+    ? `
+
+[INPUT C-3] ALTRI LUOGHI E NPC ESISTENTI, solo i nomi (se ti servono usali con questi nomi esatti, senza inventare dettagli che non conosci):
+Luoghi: ${(on.cities || []).join(", ") || "—"}
+NPC: ${(on.npcs || []).join(", ") || "—"}`
+    : "";
   const cities = Array.isArray(b.worldCities) && b.worldCities.length
     ? b.worldCities.map((c) => `• ${c.name}${c.continent ? ` (${c.continent})` : ""}${c.desc ? `: ${c.desc}` : ""}`).join("\n")
     : "(nessuna città in archivio)";
@@ -165,7 +177,7 @@ function buildWorld(b) {
 ${cities}
 
 [INPUT C-2] NPC ESISTENTI, per città (usa i loro nomi e ruoli esatti quando ambienti lì):
-${npcs}`;
+${npcs}${others}`;
 }
 
 // Bozza (oggetto JSON) → testo leggibile per il prompt.
@@ -270,9 +282,31 @@ ${NO_PLAYER_ACTIONS}
 - Concreto e breve: è una scaletta da leggere in un minuto, non la prep. ITALIANO.
 - In "dubbi" metti 0-3 domande per il DM solo se una scelta importante dipende da lui.
 
-Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma:
+Dentro i testi NON usare mai i doppi apici ": per citazioni e nomi usa le virgolette basse «».
+Rispondi chiamando lo strumento bozza_sessione, con i campi in questa forma:
 {"titolo":"","sottotitolo":"","ripartenza":"dove e come riparte il gruppo, dall'ultimo riassunto","logline":"la sessione in due frasi","atti":[{"titolo":"","luogo":"","sintesi":"","scene":["",""],"scontro":"","npc":[""]}],"fili":[{"filo":"","come":"come torna in questa sessione"}],"colpoDiScena":"","bottino":"","finale":"come si chiude / cliffhanger","dubbi":[""]}`;
 }
+
+// La bozza arriva come input di uno "strumento": l'API garantisce un JSON
+// valido (col testo libero capitava un apice non escapato → "Bozza illeggibile").
+const S = { type: "string" };
+const DRAFT_TOOL = {
+  name: "bozza_sessione",
+  description: "Scaletta della sessione da far approvare al DM.",
+  input_schema: {
+    type: "object",
+    properties: {
+      titolo: S, sottotitolo: S, ripartenza: S, logline: S,
+      atti: { type: "array", items: { type: "object", properties: {
+        titolo: S, luogo: S, sintesi: S, scene: { type: "array", items: S }, scontro: S, npc: { type: "array", items: S },
+      }, required: ["titolo", "luogo", "sintesi", "scene"] } },
+      fili: { type: "array", items: { type: "object", properties: { filo: S, come: S }, required: ["filo", "come"] } },
+      colpoDiScena: S, bottino: S, finale: S,
+      dubbi: { type: "array", items: S },
+    },
+    required: ["titolo", "ripartenza", "logline", "atti", "finale"],
+  },
+};
 
 // Estrae il JSON della bozza tollerando fence o testo attorno.
 function parseDraft(text) {
@@ -280,14 +314,36 @@ function parseDraft(text) {
   const a = t.indexOf("{");
   const z = t.lastIndexOf("}");
   if (a === -1 || z <= a) throw new Error("la bozza non è in formato JSON");
-  return JSON.parse(t.slice(a, z + 1));
+  const raw = t.slice(a, z + 1);
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    // Errore tipico: doppi apici dentro un testo ("il "Corvo" ritorna").
+    // Si riprova facendo l'escape delle virgolette che non sono di struttura.
+    try { return JSON.parse(repairQuotes(raw)); } catch { throw e; }
+  }
+}
+
+// Una " è di STRUTTURA se prima (saltando gli spazi) c'è { [ , : oppure se
+// dopo c'è : , } ] — le altre stanno dentro un testo e vanno escapate.
+function repairQuotes(s) {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch !== '"' || s[i - 1] === "\\") { out += ch; continue; }
+    let p = i - 1; while (p >= 0 && /\s/.test(s[p])) p--;
+    let n = i + 1; while (n < s.length && /\s/.test(s[n])) n++;
+    const structural = p < 0 || "{[,:".includes(s[p]) || n >= s.length || ":,}]".includes(s[n]);
+    out += structural ? ch : '\\"';
+  }
+  return out;
 }
 
 // Chiamata a Claude in streaming (la connessione resta viva durante le
 // generazioni lunghe), accumulando il testo. Verso il browser si risponde UNA
 // volta sola in JSON: lo streaming Node→browser su Vercel viene reciso dopo
 // pochi KB ("network error").
-async function callClaude({ system, user, maxTokens }) {
+async function callClaude({ system, user, maxTokens, tool = null }) {
   const upstream = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -301,6 +357,7 @@ async function callClaude({ system, user, maxTokens }) {
       stream: true,
       system,
       messages: [{ role: "user", content: user }],
+      ...(tool ? { tools: [tool], tool_choice: { type: "tool", name: tool.name } } : {}),
     }),
   });
   if (!upstream.ok || !upstream.body) {
@@ -315,6 +372,7 @@ async function callClaude({ system, user, maxTokens }) {
   let full = "";
   let streamErr = "";
   let stopReason = "";
+  const usage = { input: 0, output: 0 };
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -329,12 +387,17 @@ async function callClaude({ system, user, maxTokens }) {
       try {
         const ev = JSON.parse(data);
         if (ev.type === "content_block_delta" && ev.delta?.text) full += ev.delta.text;
-        else if (ev.type === "message_delta" && ev.delta?.stop_reason) stopReason = ev.delta.stop_reason;
+        else if (ev.type === "content_block_delta" && ev.delta?.partial_json) full += ev.delta.partial_json; // tool: JSON garantito
+        else if (ev.type === "message_start") usage.input = ev.message?.usage?.input_tokens || 0;
+        else if (ev.type === "message_delta") {
+          if (ev.delta?.stop_reason) stopReason = ev.delta.stop_reason;
+          if (ev.usage?.output_tokens) usage.output = ev.usage.output_tokens;
+        }
         else if (ev.type === "error") streamErr = ev.error?.message || "errore di streaming upstream";
       } catch { /* riga SSE non-JSON: ignora */ }
     }
   }
-  return { full, streamErr, stopReason };
+  return { full, streamErr, stopReason, usage };
 }
 
 export default async function handler(req, res) {
@@ -349,25 +412,26 @@ export default async function handler(req, res) {
 
   try {
     if (isDraft) {
-      const { full, streamErr } = await callClaude({
+      const { full, streamErr, usage } = await callClaude({
         system: buildDraftSystem({ party: b.party, world: b.world || "", actsPlan }),
         user: buildUserMessage(b, { draft: true }),
-        maxTokens: 6000,
+        maxTokens: 4000, // scaletta: ~3.000 token; il limite si paga solo se usato
+        tool: DRAFT_TOOL,
       });
       if (!full) return res.status(502).json({ error: streamErr || "Nessuna bozza generata." });
       try {
-        return res.status(200).json({ draft: parseDraft(full) });
+        return res.status(200).json({ draft: parseDraft(full), usage });
       } catch (e) {
-        return res.status(502).json({ error: "Bozza illeggibile: " + e.message, raw: full.slice(0, 2000) });
+        return res.status(502).json({ error: "Bozza illeggibile: " + e.message, raw: full.slice(0, 12000) });
       }
     }
 
-    const { full, streamErr, stopReason } = await callClaude({
+    const { full, streamErr, stopReason, usage } = await callClaude({
       system: buildSystem({
         party: b.party, world: b.world || "", closingChronicle: b.closingChronicle || "Cronache", actsPlan,
       }),
       user: buildUserMessage(b),
-      maxTokens: 10000, // traccia base: ~1.200–2.000 parole stanno larghe
+      maxTokens: 6000, // traccia base: ~1.000–1.500 parole
     });
     if (!full) return res.status(502).json({ error: streamErr || "Nessun contenuto generato." });
     // Contenuto del modello → documento completo col guscio fisso.
@@ -379,7 +443,7 @@ export default async function handler(req, res) {
     const text = `---HTML---\n${wrapSimple(fragment, title)}\n${summaryPart}`;
     const truncated = stopReason === "max_tokens" || !fragment.includes("<!--FINE-->");
     const warning = streamErr || (truncated ? "La sessione potrebbe essere troncata (manca la fine)." : "");
-    return res.status(200).json({ text, ...(warning ? { warning } : {}) });
+    return res.status(200).json({ text, usage, ...(warning ? { warning } : {}) });
   } catch (e) {
     if (!res.headersSent) return res.status(e.status || 500).json({ error: "Generazione fallita: " + e.message });
     try { res.end(); } catch { /* noop */ }

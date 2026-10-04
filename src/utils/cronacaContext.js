@@ -6,6 +6,7 @@
 // Ogni fonte è facoltativa: se una lettura fallisce, si va avanti senza.
 import { db } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { normText, mentioned } from "./nameMatch";
 
 const MAX_TOTAL = 36000; // tetto di caratteri dell'archivio intero
 
@@ -27,33 +28,7 @@ const cut = (s, n) => {
   return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, "") + "…" : t;
 };
 
-// Confronto di nomi senza maiuscole, accenti e apostrofi.
-const norm = (s) =>
-  String(s || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/['’`]/g, "")
-    .toLowerCase();
-
-// Titoli e particelle che da soli non identificano nessuno.
-const NOT_A_NAME = new Set([
-  "lady", "lord", "sire", "signore", "signora", "mastro", "padre", "madre", "fratello", "sorella",
-  "conte", "contessa", "duca", "duchessa", "barone", "baronessa", "principe", "principessa",
-  "regina", "capitano", "comandante", "generale", "maestro", "sommo", "alto", "vecchio", "vecchia",
-  "della", "delle", "dello", "degli", "dalla", "dalle", "the", "von",
-]);
-
-// Il nome compare nel testo? Prova il nome intero, poi ogni parola
-// significativa (≥ 4 lettere, niente titoli: "Conte Aldric" → "aldric").
-function mentioned(name, haystack) {
-  const n = norm(name).replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
-  if (n.length < 3) return false;
-  const esc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  if (new RegExp(`\\b${esc(n)}\\b`).test(haystack)) return true;
-  return n.split(" ")
-    .filter((w) => w.length >= 4 && !NOT_A_NAME.has(w))
-    .some((w) => new RegExp(`\\b${esc(w)}\\b`).test(haystack));
-}
+const norm = normText;
 
 const safe = (p) => p.then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() }))).catch(() => []);
 const ts = (v) => (v?.toMillis ? v.toMillis() : typeof v === "number" ? v : Date.parse(v || "") || 0);
@@ -151,8 +126,8 @@ export async function buildCronacaContext({ party, linee, members = [], summarie
 
   // 6) Luoghi dell'Atlante (/Geo) citati.
   const placeHits = places
-    .filter((p) => p.name && mentioned(p.name, hay))
-    .sort((a, b) => Number(mentioned(b.name, inLinee)) - Number(mentioned(a.name, inLinee)))
+    .filter((p) => p.name && mentioned(p.name, hay, { partial: false }))
+    .sort((a, b) => Number(mentioned(b.name, inLinee, { partial: false })) - Number(mentioned(a.name, inLinee, { partial: false })))
     .slice(0, 8);
   if (placeHits.length) {
     blocks.push(`## LUOGHI CITATI (Atlante)\n${placeHits.map((p) => `- ${p.name}${p.continent ? ` (${p.continent})` : ""}: ${cut(stripHtml(p.description), 700)}`).join("\n")}`);

@@ -14,6 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { PARTIES, sessionDocId } from "../data/parties";
+import { buildLoreRegistry, linkifyLoreHtml } from "./loreLinks";
 
 const SESSIONS = "dm_sessions";
 const PARTIES_COL = "parties";
@@ -175,7 +176,7 @@ export async function loadSessionContext(party) {
   return {
     recaps,
     preps,
-    lastPrepText: last ? htmlToText(last.htmlContent).slice(0, 10000) : "",
+    lastPrepText: last ? htmlToText(last.htmlContent).slice(0, 3000) : "",
     lastPrepNumber: last?.sessionNumber || 0,
   };
 }
@@ -190,7 +191,7 @@ export async function requestSessionDraft(payload) {
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
   if (!data.draft) throw new Error("Nessuna bozza ricevuta.");
-  return data.draft;
+  return { draft: data.draft, usage: data.usage || null };
 }
 
 // "Leggi i riassunti": legge TUTTI i riassunti del party e restituisce
@@ -271,7 +272,7 @@ export async function streamGenerateSession(payload, onChunk) {
   const full = data.text || "";
   if (!full) throw new Error("Nessun contenuto generato.");
   if (onChunk) onChunk(full, full);
-  return { ...parseGenerated(full), warning: data.warning || "" };
+  return { ...parseGenerated(full), warning: data.warning || "", usage: data.usage || null };
 }
 
 // Salva/aggiorna una sessione generata.
@@ -294,4 +295,42 @@ export async function saveSession({ party, sessionNumber, title, htmlContent, su
     { merge: true }
   );
   return id;
+}
+
+// ── Link alle cose già esistenti ──────────────────────────────────────────
+// I nomi di PG, NPC e luoghi della sessione diventano link colorati alle loro
+// schede del sito, con lo stesso registro dei riassunti (utils/loreLinks).
+// Li aggiunge l'app DOPO la generazione: all'AI non costano token.
+export async function loadLoreRegistry() {
+  const [chars, npcs, geo] = await Promise.all([
+    getDocs(collection(db, "characters")).catch(() => null),
+    getDocs(collection(db, "npcs")).catch(() => null),
+    getDocs(collection(db, "geo_archive")).catch(() => null),
+  ]);
+  const list = (snap) => (snap ? snap.docs.map((d) => ({ id: d.id, ...d.data() })) : []);
+  return buildLoreRegistry({
+    characters: list(chars),
+    npcs: list(npcs),
+    cities: list(geo).map((g) => g.name).filter(Boolean),
+  });
+}
+
+// Documento della sessione → stesso documento con i nomi linkati. I link si
+// aprono in una nuova scheda (l'anteprima e il dettaglio sono iframe).
+export function linkifySessionHtml(html, registry) {
+  if (!html || !registry?.regex || typeof DOMParser === "undefined") return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const root = doc.querySelector("main") || doc.body;
+    if (!root) return html;
+    root.innerHTML = linkifyLoreHtml(root.innerHTML, registry);
+    root.querySelectorAll("a[data-lore]").forEach((a) => {
+      a.setAttribute("href", window.location.origin + a.getAttribute("data-href"));
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
+    });
+    return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+  } catch {
+    return html;
+  }
 }

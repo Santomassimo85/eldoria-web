@@ -91,7 +91,7 @@ export default function SessionDetail() {
           <iframe
             title={`Sessione ${session.sessionNumber} — ${party.id}`}
             srcDoc={withSessionRuntime(session.htmlContent || "<p>Nessun contenuto.</p>")}
-            sandbox="allow-scripts allow-popups"
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             style={{
               width: "100%",
               height: "85vh",
