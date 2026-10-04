@@ -15,7 +15,7 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png";
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
   "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
-  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
+  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
   "LEAF": ["Soran", "Zethir", "Aksel", "Dago"],
 };

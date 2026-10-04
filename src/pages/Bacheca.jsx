@@ -19,7 +19,7 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
   "AMEA": ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
-  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
+  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
   "LEAF": ["Soran", "Zethir Nightwhisper", "Aksel", "Dago"],
 };

@@ -36,8 +36,8 @@ const PARTIES = [
   { key: "ENOX",  label: "ENOX",  members: [
     { name: "Makenna",    image: "/assets/player/Makenna.jpeg" },
     { name: "Temistocle", image: "/assets/player/Temistocle.jpeg" },
-    { name: "Alaric",     image: "/assets/player/alaric.png" },
     { name: "Lael",       image: "/assets/player/lael.jpg" },
+    { name: "Palar",      image: "/assets/player/palar.webp" },
   ] },
   { key: "Unico", label: "Storia del Mondo", members: [] },
 ];

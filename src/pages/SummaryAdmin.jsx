@@ -30,7 +30,7 @@ const PARTIES = [
   { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius" },
   { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe" },
   { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Zethir, Aksel, Dago" },
-  { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Makenna, Temistocle, Alaric, Lael" },
+  { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Makenna, Temistocle, Lael, Palar" },
   { key: "Unico", label: "Storia del Mondo", color: "var(--oro)", roster: "Cronache globali" },
 ];
 

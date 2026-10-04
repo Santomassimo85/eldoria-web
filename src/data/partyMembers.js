@@ -23,7 +23,6 @@ export const PARTY_MEMBERS = {
   ENOX: [
     { name: "Makenna",    race: "Changeling", class: "Ladro",    image: "/assets/player/Makenna.jpeg" },
     { name: "Temistocle", race: "Halfling",   class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
-    { name: "Alaric",     race: "Halfling",   class: "Warlock",  image: "/assets/player/alaric.png" },
     { name: "Lael",       race: "Alto Elfo",  class: "Mago",     image: "/assets/player/lael.jpg" },
     { name: "Palar",      race: "Dragonide (gemma, ametista)", class: "Paladino", image: "/assets/player/palar.webp" },
   ],

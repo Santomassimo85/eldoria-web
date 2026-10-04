@@ -31,7 +31,7 @@ const COMASTER_EMAIL = "ripperti96@gmail.com";
 const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
   LEAF: ["Soran", "Zethir Nightwhisper", "Aksel", "Dago"],
-  ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
+  ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   LAC:  ["Horn", "Thinkle Muschioverde", "Cleofe"],
 };
 
