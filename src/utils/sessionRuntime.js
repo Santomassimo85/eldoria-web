@@ -14,6 +14,17 @@
 const RUNTIME_SCRIPT = `
 <script>
 (function () {
+  // Link a PG/NPC/luoghi: niente pagine nuove, la pagina che ospita
+  // l'iframe apre il popup (components/LorePopup.jsx).
+  document.addEventListener("click", function (e) {
+    var a = e.target && e.target.closest ? e.target.closest("a[data-lore]") : null;
+    if (!a) return;
+    e.preventDefault();
+    try {
+      window.parent.postMessage({ type: "crit-lore", key: a.getAttribute("data-key") || "", href: a.getAttribute("data-href") || "", text: a.textContent || "" }, "*");
+    } catch (err) {}
+  }, true);
+
   function init() {
     // ── Tab / step ───────────────────────────────────────────────────────
     var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));

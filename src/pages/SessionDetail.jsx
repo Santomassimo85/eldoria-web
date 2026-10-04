@@ -5,9 +5,14 @@ import { partyById } from "../data/parties";
 import { loadSession } from "../utils/dmSessions";
 import { withSessionRuntime } from "../utils/sessionRuntime";
 import "./admin.css";
+import SessionLorePopup from "../components/LorePopup";
 
 const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const isDmUser = (email) => DM_EMAILS.includes(email);
+
+// Testo dei riquadri di riepilogo: una regola globale dà ai <p> un grigio
+// scuro (illeggibile sul fondo scuro), quindi il colore va messo qui.
+const SUM_STYLE = `.sessdet-sum{color:var(--osso,#ece5d6);line-height:1.6;white-space:pre-line;margin:0}`;
 
 export default function SessionDetail() {
   const { party: partyParam, number } = useParams();
@@ -46,6 +51,7 @@ export default function SessionDetail() {
 
   return (
     <section className="admin-summary-page sumadm">
+      <style>{SUM_STYLE}</style>
       <Link to={archiveUrl} className="adm-back">← Archivio {party.id}</Link>
 
       {loading ? (
@@ -73,13 +79,13 @@ export default function SessionDetail() {
           {session.summary && (session.summary.panoramica || session.summary.bottino || session.summary.ganciAperti) && (
             <div className="sumadm-workshop" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 16, marginBottom: 24 }}>
               {session.summary.panoramica && (
-                <div className="sumadm-card"><div className="sumadm-card-head"><h2>📋 Panoramica</h2></div><p>{session.summary.panoramica}</p></div>
+                <div className="sumadm-card"><div className="sumadm-card-head"><h2>📋 Panoramica</h2></div><p className="sessdet-sum">{session.summary.panoramica}</p></div>
               )}
               {session.summary.bottino && (
-                <div className="sumadm-card"><div className="sumadm-card-head"><h2>💰 Bottino</h2></div><p>{session.summary.bottino}</p></div>
+                <div className="sumadm-card"><div className="sumadm-card-head"><h2>💰 Bottino</h2></div><p className="sessdet-sum">{session.summary.bottino}</p></div>
               )}
               {session.summary.ganciAperti && (
-                <div className="sumadm-card"><div className="sumadm-card-head"><h2>🪝 Ganci aperti</h2></div><p>{session.summary.ganciAperti}</p></div>
+                <div className="sumadm-card"><div className="sumadm-card-head"><h2>🪝 Ganci aperti</h2></div><p className="sessdet-sum">{session.summary.ganciAperti}</p></div>
               )}
             </div>
           )}
@@ -100,6 +106,7 @@ export default function SessionDetail() {
               background: "#050807",
             }}
           />
+          <SessionLorePopup />
         </>
       )}
     </section>

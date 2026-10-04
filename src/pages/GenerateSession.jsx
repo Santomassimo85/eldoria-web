@@ -7,6 +7,7 @@ import { pickWorld, trimRecapsForDraft, trimRecapsForSession } from "../utils/se
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 import "./GenerateSession.css";
+import SessionLorePopup from "../components/LorePopup";
 
 const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const isDmUser = (email) => DM_EMAILS.includes(email);
@@ -578,6 +579,8 @@ export default function GenerateSession() {
           )}
         </>
       )}
+      {/* Clic sui link di PG/NPC/luoghi nell'anteprima → popup qui, senza cambiare pagina */}
+      <SessionLorePopup />
     </section>
   );
 }
