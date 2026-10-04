@@ -3,6 +3,10 @@
 // accaduto e le espande in un riassunto nello stile delle memorie di Eldoria
 // (voce del "Monaco Errante"). Restituisce JSON pronto per la pagina /riassunti.
 // La chiave Anthropic resta qui, nascosta (Vercel).
+// Con `contesto` riceve anche l'archivio del mondo letto dal client del Master
+// (src/utils/cronacaContext.js): cronache precedenti, prep, diario, PG, NPC, luoghi.
+
+export const config = { maxDuration: 300 };
 
 const SYSTEM = `Sei il Monaco Errante, cronista delle "Cronache di Eldoria": raccogli le gesta delle compagnie di avventurieri sessione dopo sessione e le trascrivi come memorie del reame.
 
@@ -11,6 +15,11 @@ VOCE E STILE
 - I PROTAGONISTI sono i personaggi del gruppo indicato (usa i loro nomi, che ti vengono forniti). Sono eroi reali del mondo, non "giocatori": non nominare MAI giocatori, sessioni, master, dadi, punti ferita, tiri, livelli, classi, meccaniche o regole. Nessuna quarta parete.
 - Resta FEDELE alle linee guida ricevute: racconta ciò che è accaduto, senza inventare svolte importanti non implicate. Puoi arricchire con atmosfera, dettagli sensoriali e dialoghi brevi plausibili, ma non stravolgere i fatti.
 - Ancòra i luoghi e le figure ai nomi citati nelle linee guida. Non contraddire l'ambientazione.
+
+ARCHIVIO DEL MONDO (quando ti viene fornito)
+- Prima di scrivere, leggi l'ARCHIVIO: cronache precedenti del gruppo, preparazione del Master, diario dei giocatori, schede dei protagonisti, NPC e luoghi citati.
+- Usalo per la COERENZA: nomi scritti giusti, ruoli e fazioni degli NPC, aspetto e carattere dei luoghi, legami con gli eventi passati, fili lasciati aperti. Un breve richiamo a ciò che è accaduto prima dà continuità: fallo, ma senza riassumere le cronache vecchie.
+- I FATTI di questa sessione sono SOLO quelli delle linee guida. La preparazione del Master dice cosa era previsto, non cosa è successo: non raccontare scene della prep che le linee guida non citano. Se archivio e linee guida si contraddicono, vincono le linee guida.
 
 FORMATO
 - "title": un titolo evocativo e memorabile per questa cronaca (breve, senza numeri di sessione).
@@ -29,9 +38,12 @@ FORMATO
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma esatta:
 {"title":"","subTitle":"","contentHtml":"","scenePrompts":["","","","",""]}`;
 
-function buildUserMessage({ party, roster, date, linee, seme }) {
+function buildUserMessage({ party, roster, date, linee, contesto, seme }) {
   const gruppo = party ? `Gruppo "${party}"${roster ? ` (${roster})` : ""}` : "una compagnia di avventurieri";
   return [
+    contesto ? "=== ARCHIVIO DEL MONDO (consultalo per coerenza; non è la sessione da raccontare) ===" : "",
+    contesto ? String(contesto).slice(0, 40000) : "",
+    contesto ? "=== FINE ARCHIVIO ===\n" : "",
     `Scrivi la cronaca dell'ultima sessione per ${gruppo}.`,
     date ? `Data in gioco: ${date}.` : "",
     "",
@@ -66,7 +78,7 @@ function parseContent(text) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { party, roster, date, linee } = req.body || {};
+  const { party, roster, date, linee, contesto } = req.body || {};
   if (!String(linee || "").trim()) {
     return res.status(400).json({ error: "Servono le linee guida di ciò che è accaduto." });
   }
@@ -82,9 +94,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-opus-4-8",
-        max_tokens: 4000,
+        max_tokens: 6000,
         system: SYSTEM,
-        messages: [{ role: "user", content: buildUserMessage({ party, roster, date, linee, seme }) }],
+        messages: [{ role: "user", content: buildUserMessage({ party, roster, date, linee, contesto, seme }) }],
       }),
     });
 

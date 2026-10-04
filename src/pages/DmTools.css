@@ -197,3 +197,18 @@ textarea.npcgen-input.dmt-prompt {
   color: var(--oro);
   font-weight: 700;
 }
+
+/* Cronaca: interruttore "leggi l'archivio" + cosa ha letto */
+.dmt-archive-toggle {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-top: 16px; cursor: pointer; line-height: 1.4;
+}
+.dmt-archive-toggle input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--el); flex: none; }
+.dmt-archive-toggle small { display: block; opacity: .7; }
+.dmt-archive-used {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--roccia-1); border-left: 2px solid var(--el);
+  border-radius: 3px; font-size: .9rem; line-height: 1.45;
+}
+.dmt-archive-used b { color: var(--el); font-weight: 600; }

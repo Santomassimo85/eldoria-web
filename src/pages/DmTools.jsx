@@ -4,6 +4,7 @@ import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { logAgent } from "../utils/agentLog";
+import { buildCronacaContext } from "../utils/cronacaContext";
 import GlacierHero from "../components/glacier/GlacierHero";
 import "../GeneraNPC.css";
 import "./DmTools.css";
@@ -160,6 +161,8 @@ export default function DmTools() {
   const [saved, setSaved]       = useState(false);
   const [allSummaries, setAllSummaries] = useState([]);
   const [refOff, setRefOff]     = useState({});        // { [name]: true } = escluso dai riferimenti
+  const [useArchive, setUseArchive] = useState(true);   // legge l'archivio dell'app prima di scrivere
+  const [riaUsed, setRiaUsed]   = useState(null);      // [{label, items}] = cosa ha letto
 
   // Carica una volta l'elenco riassunti (per numero di sessione + ordine).
   useEffect(() => {
@@ -318,11 +321,20 @@ export default function DmTools() {
   // ── Cronaca: genera / rigenera il riassunto dalle linee guida ──
   async function generaCronaca() {
     if (!ria.linee.trim()) { setRiaMsg("Scrivi prima le linee guida della sessione."); return; }
-    setRiaBusy(true); setRiaMsg("Il Monaco Errante sta scrivendo…"); setSaved(false);
+    setRiaBusy(true); setSaved(false);
     try {
+      let contesto = "";
+      setRiaUsed(null);
+      if (useArchive) {
+        setRiaMsg("Il Monaco Errante sfoglia l'archivio…");
+        const ctx = await buildCronacaContext({ party: ria.party, linee: ria.linee, members: membersOf(ria.party), summaries: allSummaries });
+        contesto = ctx.text;
+        setRiaUsed(ctx.used);
+      }
+      setRiaMsg("Il Monaco Errante sta scrivendo…");
       const r = await fetch("/api/genera-riassunto", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ party: ria.party, roster: rosterOf(ria.party), date: ria.date, linee: ria.linee })
+        body: JSON.stringify({ party: ria.party, roster: rosterOf(ria.party), date: ria.date, linee: ria.linee, contesto })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -559,6 +571,19 @@ export default function DmTools() {
               placeholder="Elenca gli eventi salienti: dove sono andati, chi hanno incontrato, cosa hanno scoperto, i colpi di scena, come si è chiusa la sessione… Il Monaco Errante li trasformerà in cronaca." />
             <small className="dmt-hint">Sessione automatica: <b>#{sessionNumber}</b> del gruppo {ria.party}. Titolo e numero vengono assegnati al momento del caricamento.</small>
           </div>
+          <label className="dmt-archive-toggle">
+            <input type="checkbox" checked={useArchive} onChange={e => setUseArchive(e.target.checked)} />
+            <span>📚 Leggi l'archivio prima di scrivere <small>(cronache precedenti, prep del Master, diario, schede PG, NPC e luoghi citati)</small></span>
+          </label>
+          {riaUsed && (
+            <div className="dmt-archive-used">
+              {riaUsed.length === 0
+                ? <span>Archivio vuoto per questo gruppo: ha scritto solo dalle linee guida.</span>
+                : riaUsed.map(u => (
+                  <span key={u.label}><b>{u.label}:</b> {u.items.join(", ")}</span>
+                ))}
+            </div>
+          )}
           <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generaCronaca} disabled={riaBusy}>
             {riaBusy ? "Sto scrivendo…" : riaOut ? "↻ Rigenera cronaca" : "⚒ Genera cronaca"}
           </button>
