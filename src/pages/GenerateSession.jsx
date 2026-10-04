@@ -234,16 +234,14 @@ export default function GenerateSession() {
     setProgress(0);
     setStatus("📚 Rileggo i riassunti del gruppo…");
     try {
-      // Template grafico [A] — caricato solo qui (chunk separato).
-      const templateHtml = (await import("../../reference_sessions/sessione_20.html?raw")).default;
       const payload = await collectPayload();
-      setStatus("✍️ Scrivo la sessione dalla bozza approvata… può richiedere 2–5 minuti, attendi senza ricaricare.");
-      const result = await streamGenerateSession({ ...payload, templateHtml, approvedDraft: draft }, (_chunk, full) => setProgress(full.length));
+      setStatus("✍️ Scrivo la sessione dalla bozza approvata… di solito 1–2 minuti, attendi senza ricaricare.");
+      const result = await streamGenerateSession({ ...payload, approvedDraft: draft }, (_chunk, full) => setProgress(full.length));
       if (!result.html || !result.html.includes("<")) throw new Error("Output non valido (nessun HTML).");
       setGenerated(result);
       const comp = sessionCompleteness(result.html);
       if (!comp.complete || result.warning) {
-        setStatus(`⚠️ Generazione probabilmente TRONCATA (${comp.panes}/${comp.tabs || "?"} sezioni con contenuto)${result.warning ? ` — ${result.warning}` : ""}. Meglio rigenerare, magari con durata più corta.`);
+        setStatus(`⚠️ Generazione probabilmente TRONCATA${result.warning ? ` — ${result.warning}` : ""}. Meglio rigenerare, magari con durata più corta.`);
       } else {
         setStatus("✅ Sessione scritta. Controlla l'anteprima e salva.");
       }

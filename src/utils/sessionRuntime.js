@@ -121,6 +121,11 @@ const RUNTIME_SCRIPT = `
 // deve chiudersi. Usato per avvisare PRIMA di salvare un HTML troncato.
 export function sessionCompleteness(html) {
   const h = String(html || "");
+  // Formato semplice (dal 2026-10-04): niente tab, il modello chiude con <!--FINE-->.
+  if (/class=["']sess-simple["']/.test(h)) {
+    const acts = (h.match(/class=["']atto["']/g) || []).length;
+    return { tabs: acts, panes: acts, complete: /<!--FINE-->/.test(h) };
+  }
   const ids = new Set([...h.matchAll(/\bid=["']([^"']+)["']/g)].map((m) => m[1]));
   const tabs = [...new Set([...h.matchAll(/\bdata-tab=["']([^"']+)["']/g)].map((m) => m[1]))];
   const panes = tabs.filter((t) => ids.has(t));

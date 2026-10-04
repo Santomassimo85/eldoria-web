@@ -1,12 +1,13 @@
 // api/generate-session.js
-// Genera la PREP di una sessione D&D come HTML stand-alone, nello stile del
-// template grafico fornito, usando il contesto narrativo del party.
+// Genera la PREP di una sessione D&D: una traccia BASE (cosa succede, cosa
+// fare, tempi), non un documento grafico. Il modello scrive solo il contenuto
+// con pochi tag; il guscio grafico fisso lo aggiunge `wrapSimple`. Così l'output
+// è circa metà di prima e la generazione dura circa metà (2026-10-04).
 // Strumento privato (solo master) — l'autorizzazione è lato client/rotta.
 //
 // Input (POST JSON):
 //   party, world, groupCharacters[], closingChronicle   // meta party
 //   sessionNumber, suggestedTitle, focus, involvedCharacters[], durata, note  // form
-//   templateHtml            // [A] guscio grafico (reference_sessions/sessione_20.html)
 //   recaps[]                // [B-a] riassunti REALI (summaries) del gruppo, cronologici: { n, title, date, text }
 //   preps[]                 // [B-b] prep già generate (dm_sessions): cosa era PREVISTO, non accaduto
 //   lastPrepText            // [B-c] testo dell'ultima prep generata (senza CSS)
@@ -27,11 +28,11 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-8";
 
 // Durata scelta → struttura in atti (passata nel prompt).
 const DURATION_PLAN = {
-  "2h":    "3 atti da ~40 minuti ciascuno (data-duration timer: 2400s)",
-  "2.30h": "3 atti da ~50 minuti ciascuno (data-duration timer: 3000s)",
-  "3h":    "4 atti da ~45 minuti ciascuno (data-duration timer: 2700s)",
-  "3.30h": "4 atti da ~52 minuti ciascuno (data-duration timer: 3120s)",
-  "4h":    "4-5 atti da ~50 minuti ciascuno (data-duration timer: 3000s)",
+  "2h":    "3 atti da ~40 minuti ciascuno",
+  "2.30h": "3 atti da ~50 minuti ciascuno",
+  "3h":    "4 atti da ~45 minuti ciascuno",
+  "3.30h": "4 atti da ~52 minuti ciascuno",
+  "4h":    "4-5 atti da ~50 minuti ciascuno",
 };
 
 function toRoman(num) {
@@ -43,56 +44,66 @@ function toRoman(num) {
   return r;
 }
 
-function buildSystem({ party, world, closingChronicle, durata, actsPlan }) {
-  return `Sei un assistente esperto di Dungeon Master per il party ${party} della campagna "Crit Happens" di Luca, ambientata in ${world}. Generi la PREPARAZIONE di UNA sessione di D&D 5e come singolo documento HTML stand-alone (CSS e JS inline, nessuna dipendenza esterna). È uno strumento PRIVATO per il DM: una traccia dettagliata da seguire al tavolo.
+// Regola comune a bozza e sessione: il DM non può decidere per i giocatori.
+const NO_PLAYER_ACTIONS = `- NON scrivere MAI cosa fanno, dicono, decidono o provano i personaggi dei giocatori ("Caius lancia…", "Tanagar decide…", "il party sceglie di…" come fatto compiuto). I giocatori sono liberi: descrivi SITUAZIONI, cosa fanno gli NPC e il mondo, cosa c'è in gioco, e le reazioni possibili nella forma "Se il gruppo… → …".`;
 
-[INPUT A — TEMPLATE GRAFICO]
-Riceverai un file HTML di riferimento. Serve SOLO come modello grafico/strutturale: riusa la sua struttura, le sue classi CSS, i suoi widget (nav-tabs a scomparsa, timer per atto con data-duration, .scene, .combat-card con .enemy-grid/.enemy-card, .quote, .info-box, .crypt-box, .twist-box, .missive-box, .npc-card, keyword span colorati) e il layout responsive. IGNORA COMPLETAMENTE il suo contenuto narrativo (personaggi, luoghi, trama del template): è di un'altra sessione e non c'entra.
-NON scrivere NESSUN blocco <script>: il JavaScript (switch tab, timer, collassabili) viene iniettato dall'app che mostra il documento. A te servono solo markup e CSS, con le STESSE classi e gli STESSI attributi del template (.tab-btn con data-tab, .tab-content con id corrispondente, .collapsible-header, .timer-widget con .timer-display data-duration e .timer-btn data-action start/pause/reset). Il primo .tab-btn e il primo .tab-content devono avere già la classe "active".
+function buildSystem({ party, world, closingChronicle, actsPlan }) {
+  return `Sei un assistente di Dungeon Master per il party ${party} della campagna "Crit Happens", ambientata in ${world}. Scrivi la PREP di UNA sessione di D&D 5e: una traccia BASE e veloce da consultare al tavolo, per capire cosa succede, cosa fare e come scandire i tempi. Niente letteratura: frasi brevi, concrete, utili.
 
-[PALETTE]
-Scegli una palette tematica NUOVA e DIVERSA a ogni sessione, coerente col mood di QUESTA sessione (es. gelo/notte, foresta, fuoco, mare, sacro, veleno…). Ridefinisci le variabili CSS in :root con colori adatti al tema. NON copiare pedissequamente la palette del template.
+[CONTINUITÀ]
+- I RIASSUNTI delle sessioni giocate sono la VERITÀ. L'ULTIMO dice dove si trova il gruppo ORA: si riparte da lì.
+- Le PREP precedenti dicono solo cosa era PREVISTO: se contraddicono i riassunti, vincono i riassunti.
+- Riusa luoghi e NPC esistenti con i loro nomi esatti; inventane solo se serve davvero. Intreccia i FILI indicati dal DM.
+- Se ricevi una BOZZA APPROVATA, è il piano vincolante: stessi atti, luoghi, scontri, NPC, colpo di scena, bottino e finale. Sviluppala, non cambiarla.
 
-[CONTINUITÀ — INPUT B]
-Riceverai il contesto narrativo del party:
-- i RIASSUNTI delle sessioni giocate (ordine cronologico): sono la VERITÀ, è ciò che è accaduto davvero. L'ULTIMO riassunto dice dove si trova il gruppo ORA: la sessione riparte da lì.
-- le PREP delle sessioni precedenti: dicono cosa il DM aveva PREVISTO. Non è detto che sia andata così: se una prep contraddice i riassunti, vincono i riassunti; quello che nella prep non è stato giocato puoi riusarlo solo se ha ancora senso.
-Usali per garantire continuità: riprendi ganci aperti, NPC, luoghi, oggetti e cliffhanger. NON contraddire la storia. Se non c'è contesto passato, tratta questa come una sessione d'apertura coerente col mondo.
+[REGOLE]
+${NO_PLAYER_ACTIONS}
+- DIALOGHI: pochi, solo degli NPC, una battuta breve ciascuno e solo quando serve a dare il tono o un'informazione chiave. Al massimo 6 battute in tutta la sessione. In corsivo con le virgolette basse: <i>«così»</i>.
+- TEMPI: ${actsPlan}. Ogni atto ha la sua fascia oraria (es. 0:00–0:45) e ogni scena i minuti indicativi. Nelle Note per il DM indica cosa tagliare se si è in ritardo e cosa aggiungere se si è in anticipo.
+- SCONTRI: stat block compatti su UNA riga per tipo di nemico (CA, PF, attacco +bonus e danni in dadi, eventuale tratto o TS con CD), più una riga di tattica.
+- Meccaniche D&D 5e reali. ITALIANO. Breve: in tutto circa 1.200–2.000 parole.
 
-[BOZZA APPROVATA]
-Se ricevi una BOZZA APPROVATA dal DM, è il piano vincolante: stessi atti nello stesso ordine, stessi luoghi, scontri, NPC, colpo di scena, bottino e finale. Il tuo compito è svilupparla in una prep completa e giocabile, non cambiarla.
-
-[FILI DA RIPRENDERE]
-Il DM può indicarti dei "fili" della campagna che vuole far tornare in QUESTA sessione (es. "Il Corvo", "La Mummia"). Se presenti, DEVI intrecciarli nella trama in modo naturale e sensato — non forzato, non tutti in blocco: falli riemergere con tempismo (un ricomparire, una rivelazione, una conseguenza) coerente con dove si trovano i personaggi e con la loro storia passata. Ogni filo indicato deve avere un momento riconoscibile nella sessione.
-
-[MONDO ESISTENTE — INPUT C]
-Riceverai l'elenco delle CITTÀ/LUOGHI e degli NPC che già esistono nel mondo (archivio geografico + anagrafe). REGOLE:
-- RIUSA i luoghi e gli NPC esistenti ogni volta che è plausibile, invece di inventarne di nuovi. La coerenza col mondo già scritto viene prima dell'originalità.
-- Sii PRECISO: se ambienti una scena in una città presente nell'elenco, usa i suoi NPC reali (nome, ruolo, fazione) e i dettagli della sua descrizione. Es.: se in quella città vive un arcanista o un re già schedati, sono LORO a comparire, con i loro nomi esatti.
-- Puoi creare un nuovo luogo/NPC SOLO se la trama lo richiede davvero e nessuno di quelli esistenti è adatto; in tal caso rendilo coerente col mondo.
-- Non contraddire descrizioni, ruoli o fazioni degli elementi esistenti. Nomi esatti come nell'elenco.
-
-[STRUTTURA]
-Questa sessione deve avere: ${actsPlan}. Header con numero sessione in numeri romani, titolo, sottotitolo-citazione, riga data. meta-bar (Durata, Party, Luogo, Focus). nav-tabs: Panoramica + un tab per Atto + "Bottino & Indizi" + "Note DM". Timer con data-duration corretto per ogni atto. Combat con stat block concreti (CA, PF, attacchi +bonus, danni in dadi, TS/CD, tratti). Chiudi con una citazione delle "${closingChronicle}".
-
-[BUDGET — PRIORITÀ ASSOLUTA]
-Il documento deve arrivare COMPLETO fino a </html>, con il pannello .tab-content di OGNI tab dichiarato nella nav. Un documento troncato è INUTILIZZABILE. Per starci nel budget:
-- COMPATTA il CSS: niente commenti, niente righe vuote, selettori sulla stessa riga. Riusa le classi del template ma non ricopiarne la formattazione estesa.
-- Se lo spazio stringe, ACCORCIA la prosa degli atti — non omettere MAI un pannello.
-
-[REGOLE DI STILE]
-- Prosa in ITALIANO. Tono epico ma non pomposo, concreto.
-- Dialoghi in corsivo con virgolette basse: «così».
-- Meccaniche D&D 5e reali e giocabili (CA, PF, TS su caratteristica, CD, danni in dadi, condizioni).
-- Sii COMPLETO ma ECONOMICO: contenuto ricco e utile al tavolo, senza prolissità. Priorità alla giocabilità.
+[FORMATO HTML — SOLO QUESTI TAG E QUESTE CLASSI]
+Scrivi SOLO il contenuto del <body> (niente <html>, <head>, <style>, <script>, niente CSS né attributi style). Usa esattamente questa struttura:
+<header><h1>Titolo</h1><p class="sub">sottotitolo in una riga</p><p class="meta">Sessione N · Durata · Luogo · Focus</p></header>
+<section class="box"><h2>Panoramica</h2><p><b>Si riparte da:</b> …</p><p><b>Cosa c'è in gioco:</b> …</p><p><b>Scaletta:</b> Atto I 0:00–0:45 · Atto II …</p></section>
+<section class="atto"><h2>Atto I — Titolo <span class="tempo">0:00–0:45</span></h2>
+  <p class="luogo">📍 Luogo</p>
+  <h3>Cosa succede</h3><p>…</p>
+  <h3>Scene</h3><ol><li><b>Nome scena</b> <span class="min">~15 min</span> — situazione, cosa trova il gruppo, prove possibili (abilità e CD).</li></ol>
+  <h3>Se il gruppo…</h3><ul><li>…prova a X → conseguenza</li></ul>
+  <div class="npc"><b>Nome NPC</b> — ruolo · cosa vuole · come si comporta. <i>«battuta facoltativa»</i></div>
+  <div class="scontro"><b>⚔ Scontro: titolo</b><ul><li><b>Nemico ×2</b> — CA 13 · PF 22 · Spada +4 (1d8+2) · tratto</li></ul><p><b>Tattica:</b> …</p></div>
+</section>
+(un <section class="atto"> per ogni atto; ometti h3, npc e scontro che non servono)
+<section class="box"><h2>Bottino e indizi</h2><ul><li>…</li></ul></section>
+<section class="box"><h2>Note per il DM</h2><ul><li>Se siete in ritardo: …</li><li>Se siete in anticipo: …</li><li>…</li></ul></section>
+<p class="chiusura"><i>«citazione di chiusura»</i> — ${closingChronicle}</p>
+<!--FINE-->
 
 [OUTPUT — formato ESATTO, nient'altro]
-Rispondi SOLO così, senza testo prima o dopo, senza backticks:
 ---HTML---
-<!DOCTYPE html> … documento completo stand-alone …
+…il contenuto del body come sopra, che finisce con <!--FINE-->…
 ---SUMMARY---
-{"panoramica": "...", "bottino": "...", "ganciAperti": "..."}
-Il blocco SUMMARY deve essere JSON valido su una riga o poche righe.`;
+{"panoramica": "...", "bottino": "...", "ganciAperti": "..."}`;
+}
+
+// Guscio grafico fisso e leggero: il modello scrive solo il contenuto.
+const SHELL_CSS = `*{box-sizing:border-box}body{margin:0;background:#16130f;color:#e9e2d3;font:16px/1.55 Georgia,"Times New Roman",serif}main{max-width:860px;margin:0 auto;padding:28px 18px 60px}header{border-bottom:2px solid #c9a25a;padding-bottom:12px;margin-bottom:20px}h1{font-size:1.9rem;margin:0 0 4px;color:#f3e7c9}h2{font-size:1.3rem;margin:0 0 10px;color:#e3c27d;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:#b9a67e;margin:16px 0 6px}.sub{margin:0;font-style:italic;color:#cfc3a8}.meta{margin:6px 0 0;font-size:.9rem;color:#a99d84}.box,.atto{background:#1f1b15;border:1px solid #3a3226;border-radius:6px;padding:16px 18px;margin:0 0 16px}.atto{border-left:4px solid #c9a25a}.tempo{font:600 .85rem/1.6 ui-monospace,Consolas,monospace;color:#16130f;background:#c9a25a;border-radius:4px;padding:1px 8px;align-self:center}.min{font:600 .8rem ui-monospace,Consolas,monospace;color:#c9a25a}.luogo{margin:0 0 4px;color:#cfc3a8}p{margin:6px 0}ul,ol{margin:6px 0;padding-left:22px}li{margin:4px 0}b{color:#f3e7c9}i{color:#e3c27d}.npc{background:#262017;border-radius:4px;padding:8px 12px;margin:8px 0}.scontro{background:#2a1714;border:1px solid #5a2a22;border-radius:4px;padding:10px 12px;margin:10px 0}.scontro>b:first-child{color:#f08a76}.chiusura{text-align:center;margin-top:26px;color:#cfc3a8}@media print{body{background:#fff;color:#111}.box,.atto,.npc,.scontro{background:#fff;border-color:#999}b,h1,h2,i{color:#111}.tempo{background:#ddd;color:#111}}`;
+
+// Avvolge il contenuto del modello nel guscio fisso. Se il modello ha comunque
+// scritto un documento intero, ne tiene solo il body.
+function wrapSimple(fragment, title) {
+  let body = String(fragment || "").trim();
+  const m = body.match(/<body[^>]*>([\s\S]*?)(<\/body>|$)/i);
+  if (m) body = m[1];
+  body = body.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<\/?(html|head)[^>]*>/gi, "");
+  const safeTitle = String(title || "Sessione").replace(/[<>&]/g, "");
+  return `<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>${SHELL_CSS}</style></head>
+<body class="sess-simple"><main>
+${body}
+</main></body></html>`;
 }
 
 function buildPast(b) {
@@ -239,14 +250,10 @@ ${formatDraft(b.approvedDraft)}
 
   return `${head}
 ${approved}
-========================================
-[INPUT A] TEMPLATE GRAFICO (usa SOLO la forma, ignora il contenuto):
-${b.templateHtml || "(template mancante)"}
-
 ${context}
 
 ========================================
-Genera ora la Sessione ${roman} nel formato richiesto (---HTML--- poi ---SUMMARY---).`;
+Scrivi ora la Sessione ${roman} nel formato richiesto (---HTML--- poi ---SUMMARY---), breve e pratica.`;
 }
 
 function buildDraftSystem({ party, world, actsPlan }) {
@@ -256,6 +263,7 @@ REGOLE
 - Leggi con attenzione i RIASSUNTI delle sessioni giocate: sono la verità. L'ULTIMO riassunto dice dove si trova il gruppo ora: la bozza riparte da lì, in modo esplicito.
 - Le PREP precedenti dicono cosa era previsto, non cosa è accaduto: se contraddicono i riassunti, vincono i riassunti.
 - Segui il FOCUS e le NOTE del DM: sono la richiesta. Intreccia i FILI indicati.
+${NO_PLAYER_ACTIONS}
 - Riusa luoghi e NPC esistenti con i loro nomi esatti; inventane solo se serve davvero.
 - Struttura: ${actsPlan}. Ogni atto ha un luogo, cosa succede in concreto, 2-4 scene chiave, l'eventuale scontro (nemici, quanti, difficoltà indicativa per il gruppo; vuoto se non c'è) e gli NPC presenti.
 - Se il DM ti ha dato indicazioni su una bozza precedente, rispettale alla lettera e cambia ciò che chiede.
@@ -336,7 +344,6 @@ export default async function handler(req, res) {
   const b = req.body || {};
   const isDraft = b.mode === "draft";
   if (!b.party || !b.sessionNumber) return res.status(400).json({ error: "Servono party e sessionNumber." });
-  if (!isDraft && !b.templateHtml) return res.status(400).json({ error: "Template grafico mancante." });
 
   const actsPlan = DURATION_PLAN[b.durata] || "4 atti da ~45 minuti ciascuno";
 
@@ -357,15 +364,22 @@ export default async function handler(req, res) {
 
     const { full, streamErr, stopReason } = await callClaude({
       system: buildSystem({
-        party: b.party, world: b.world || "", closingChronicle: b.closingChronicle || "Cronache",
-        durata: b.durata, actsPlan,
+        party: b.party, world: b.world || "", closingChronicle: b.closingChronicle || "Cronache", actsPlan,
       }),
       user: buildUserMessage(b),
-      maxTokens: 32000, // Opus 4.8 arriva a 128K; 32K ≈ 120KB HTML = sessione molto ricca
+      maxTokens: 10000, // traccia base: ~1.200–2.000 parole stanno larghe
     });
     if (!full) return res.status(502).json({ error: streamErr || "Nessun contenuto generato." });
-    const warning = streamErr || (stopReason === "max_tokens" ? "Limite di lunghezza raggiunto: la sessione potrebbe essere troncata." : "");
-    return res.status(200).json({ text: full, ...(warning ? { warning } : {}) });
+    // Contenuto del modello → documento completo col guscio fisso.
+    const h = full.indexOf("---HTML---");
+    const sIdx = full.indexOf("---SUMMARY---");
+    const fragment = full.slice(h >= 0 ? h + 10 : 0, sIdx > h ? sIdx : undefined);
+    const summaryPart = sIdx >= 0 ? full.slice(sIdx) : "---SUMMARY---\n{}";
+    const title = (fragment.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "").replace(/<[^>]+>/g, "").trim();
+    const text = `---HTML---\n${wrapSimple(fragment, title)}\n${summaryPart}`;
+    const truncated = stopReason === "max_tokens" || !fragment.includes("<!--FINE-->");
+    const warning = streamErr || (truncated ? "La sessione potrebbe essere troncata (manca la fine)." : "");
+    return res.status(200).json({ text, ...(warning ? { warning } : {}) });
   } catch (e) {
     if (!res.headersSent) return res.status(e.status || 500).json({ error: "Generazione fallita: " + e.message });
     try { res.end(); } catch { /* noop */ }
