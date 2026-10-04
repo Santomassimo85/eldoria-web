@@ -1,25 +1,23 @@
 // ================================================================
-// MACRO FOUNDRY: Sincronizza TUTTI i PG → Crit Happens (versione DM, 2026-10-04)
+// MACRO FOUNDRY: Collega e sincronizza i PG ATTIVI → Crit Happens (versione DM, 2026-10-04)
 // ================================================================
 // Copia di riferimento: qui SENZA la chiave API e SENZA la mappa
 // giocatore→UID (repo pubblico). La copia pronta del Master sta in
-// Desktop/foundry-macro-sync-all-DM.txt.
+// Desktop/foundry-macro-sync-all-DM.txt; in Foundry e' "Fetch admin".
 //
-// Come la "Sincronizza Scheda", ma senza tendina e senza token:
-// - con dei token SELEZIONATI sincronizza solo quelli;
-// - senza selezione sincronizza TUTTI gli attori di tipo "character".
-// Ogni attore trova il suo personaggio del sito da solo, in quest'ordine:
-//   1. flag world.firebaseUID sull'attore (lo scrive ogni sync);
-//   2. characters/{uid}.foundryActorId = id dell'attore;
-//   3. proprietario (Owner) dell'attore che sta in uidMap;
-//   4. nome dell'attore = nome del personaggio sul sito (unico).
-// Se due attori puntano allo stesso personaggio si salta quello dubbio.
-// Le armi accurate usano da sole la caratteristica migliore (FOR o DES).
-// Prima di inviare mostra l'elenco degli abbinamenti; alla fine sussurra
-// al GM il riepilogo (sincronizzati, saltati, errori).
-// Scrive gli stessi campi della sync singola (stats, currency = tasche +
-// borse, currencyPurse, currencyBags, inventory, actions, …) + il
-// collegamento foundryActorId/foundryActorName/foundryUser e il flag.
+// Niente token, niente tendine. Parte dall'APP, non dagli attori:
+// - PG attivi = personaggi del sito meno quelli nascosti nell'app
+//   (src/data/hiddenPlayers.js letto da GitHub; se non risponde,
+//   ATTIVI_DI_RISERVA) e meno "master";
+// - per ognuno trova l'attore: flag world.firebaseUID → foundryActorId
+//   → personaggio assegnato al giocatore (foundryUser) → unico attore
+//   posseduto dal giocatore → nome;
+// - lo COLLEGA: flag sul sito, giocatore proprietario (Owner), attore
+//   assegnato come personaggio del giocatore, e toglie il flag da altri
+//   attori che puntavano allo stesso PG;
+// - poi SINCRONIZZA scheda, monete (tasche + borse), inventario, azioni.
+// Prima mostra il piano (cosa collega e cosa sistema), alla fine
+// sussurra al GM il riepilogo.
 // ================================================================
 
 const FIREBASE_CONFIG = {
@@ -254,7 +252,7 @@ async function loadSiteCharacters() {
   return out;
 }
 
-/* ---- Utente Foundry proprietario dell'attore (non GM) ---- */
+/* ---- Nomi utente dei proprietari (non GM) ---- */
 function ownerNames(actor) {
   const names = [];
   for (const [userId, lvl] of Object.entries(actor.ownership || {})) {
@@ -265,67 +263,125 @@ function ownerNames(actor) {
   return names;
 }
 
-/* ---- Abbina ogni attore al suo personaggio ---- */
-function matchActors(actors, site) {
-  const byUid = new Map(site.map((c) => [c.uid, c]));
-  const userByUid = new Map(Object.entries(uidMap).map(([n, u]) => [u, n]));
-  const rows = actors.map((actor) => {
-    const flag = actor.getFlag("world", "firebaseUID");
-    if (flag && byUid.has(flag)) return { actor, uid: flag, how: "flag" };
-    const byId = site.filter((c) => c.foundryActorId === actor.id);
-    if (byId.length === 1) return { actor, uid: byId[0].uid, how: "id attore" };
-    // Solo UID che esistono su Firestore: un PATCH su un UID senza documento
-    // ricreerebbe un personaggio cancellato (es. Kael & Mora, 2026-10-04).
-    const owned = ownerNames(actor).filter((n) => uidMap[n] && byUid.has(uidMap[n]));
-    const ownedMissing = ownerNames(actor).filter((n) => uidMap[n] && !byUid.has(uidMap[n]));
-    if (owned.length === 1) return { actor, uid: uidMap[owned[0]], how: `owner ${owned[0]}` };
-    const n = normName(actor.name);
-    const byName = site.filter((c) => c.name && normName(c.name) === n);
-    if (byName.length === 1) return { actor, uid: byName[0].uid, how: "nome" };
-    const why = owned.length > 1 ? `piu' owner in uidMap (${owned.join(", ")})`
-      : byName.length > 1 ? "nome ambiguo sul sito"
-      : ownedMissing.length ? `UID di ${ownedMissing[0]} senza personaggio su Firestore`
-      : "nessun personaggio sul sito";
-    return { actor, uid: null, how: why };
-  });
+/* ---- Chi è ATTIVO sull'app ---- */
+// Stessa lista dell'app: src/data/hiddenPlayers.js, letta da GitHub (repo
+// pubblico). Attivi = personaggi del sito non nascosti, escluso "master".
+// Se GitHub non risponde si usa ATTIVI_DI_RISERVA (aggiornata al 2026-10-04).
+const HIDDEN_URL = "https://raw.githubusercontent.com/Santomassimo85/eldoria-web/main/src/data/hiddenPlayers.js";
+const ATTIVI_DI_RISERVA = [
+  "XabKC5DlEAPtEnqLU7BVGL8S9Jo1", // Garroth
+  "aRVJF5qBpyQdZCNA8aAQG5kl4QH2", // Tanagar
+  "G66OrKRV6DRrE8WO0XuAshvBM0x1", // Caius
+  "ipAONmlrnmgb2p9ncTbOLlY75cT2", // Soran
+  "6NELjFDvEWU3Z0vxCUPkwBg0GBP2", // Zethir
+  "LAn3oXhTgVRNoeUh1ttsew2Fh6I3", // Dago
+  "8kRI5YVJ9GcpoYCxlW0a6Gfk1p33", // Makenna
+  "4U4aXNSiBfS4p5kBTegN72HiKYz2", // Temistocle
+  "V2vkQqUoFqSmQ374nZTQnaiAwPB3", // Lael
+  "0IViBp4oX4YYCuSjgfK8NxORp202"  // Palar
+];
 
-  // Due attori sullo stesso personaggio: vince chi e' gia' collegato
-  // (flag o foundryActorId), gli altri si saltano.
-  const groups = new Map();
-  for (const r of rows) if (r.uid) {
-    if (!groups.has(r.uid)) groups.set(r.uid, []);
-    groups.get(r.uid).push(r);
+const firstName = (s) => normName(s).split(/[\s"']+/)[0] || "";
+
+async function loadHidden() {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  try {
+    const res = await fetch(HIDDEN_URL, { signal: ac.signal, cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const src = await res.text();
+    const block = (name) => (src.match(new RegExp(`${name}\\s*=\\s*new Set\\(\\[([\\s\\S]*?)\\]\\)`)) || [])[1] || "";
+    const strings = (b) => [...b.replace(/\/\/[^\n]*/g, "").matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    const uids = new Set(strings(block("HIDDEN_PLAYER_UIDS")));
+    const names = new Set(strings(block("HIDDEN_PLAYER_NAMES")).map(normName));
+    if (!uids.size) throw new Error("lista vuota");
+    return { uids, names, fonte: "app" };
+  } catch (e) {
+    console.warn("[Sync] lista dei nascosti non letta, uso la riserva:", e);
+    return null;
+  } finally { clearTimeout(t); }
+}
+
+function activeCharacters(site, hidden) {
+  if (!hidden) return site.filter((c) => ATTIVI_DI_RISERVA.includes(c.uid));
+  return site.filter((c) =>
+    c.name &&
+    normName(c.name) !== "master" &&
+    !hidden.uids.has(c.uid) &&
+    !hidden.names.has(firstName(c.name)));
+}
+
+/* ---- Utente Foundry del personaggio ---- */
+function userFor(c) {
+  const byName = c.foundryUser ? game.users.find((u) => normName(u.name) === normName(c.foundryUser)) : null;
+  if (byName) return byName;
+  const fromMap = Object.entries(uidMap).find(([, uid]) => uid === c.uid)?.[0];
+  return fromMap ? game.users.getName(fromMap) : null;
+}
+
+/* ---- Attore del personaggio ---- */
+// flag world.firebaseUID → foundryActorId → personaggio assegnato all'utente
+// → unico attore posseduto dall'utente (o quello con lo stesso nome) → nome.
+function actorFor(c, user, chars) {
+  const flagged = chars.filter((a) => a.getFlag("world", "firebaseUID") === c.uid);
+  if (flagged.length === 1) return { actor: flagged[0], how: "flag" };
+  if (flagged.length > 1) {
+    const pick = flagged.find((a) => a.id === c.foundryActorId) || flagged.find((a) => normName(a.name) === normName(c.name));
+    if (pick) return { actor: pick, how: "flag (doppione risolto)" };
   }
-  for (const [uid, list] of groups) {
-    if (list.length < 2) continue;
-    const sure = list.filter((r) => r.how === "flag" || r.how === "id attore");
-    const sameName = list.filter((r) => normName(r.actor.name) === normName(byUid.get(uid)?.name));
-    const keep = sure.length === 1 ? sure[0] : sameName.length === 1 ? sameName[0] : null;
-    for (const r of list) if (r !== keep) {
-      r.how = `doppione di ${byUid.get(uid)?.name || uid}`;
-      r.uid = null;
+  const byId = c.foundryActorId ? game.actors.get(c.foundryActorId) : null;
+  if (byId && byId.type === "character") return { actor: byId, how: "id attore" };
+  if (user?.character && user.character.type === "character") return { actor: user.character, how: `assegnato a ${user.name}` };
+  if (user) {
+    const owned = chars.filter((a) => (a.ownership?.[user.id] ?? 0) >= 3);
+    if (owned.length === 1) return { actor: owned[0], how: `posseduto da ${user.name}` };
+    const same = owned.filter((a) => normName(a.name) === normName(c.name));
+    if (same.length === 1) return { actor: same[0], how: `posseduto da ${user.name}` };
+  }
+  const byName = chars.filter((a) => normName(a.name) === normName(c.name));
+  if (byName.length === 1) return { actor: byName[0], how: "nome" };
+  return { actor: null, how: byName.length > 1 ? "più attori con lo stesso nome" : "nessun attore trovato" };
+}
+
+/* ---- Piano: per ogni PG attivo, attore + cosa va sistemato ---- */
+function makePlan(active) {
+  const chars = game.actors.filter((a) => a.type === "character");
+  const used = new Map();
+  const rows = active.map((c) => {
+    const user = userFor(c);
+    const { actor, how } = actorFor(c, user, chars);
+    const fix = [];
+    if (actor) {
+      if (actor.getFlag("world", "firebaseUID") !== c.uid) fix.push("collegamento al sito");
+      if (user && (actor.ownership?.[user.id] ?? 0) < 3) fix.push(`${user.name} proprietario`);
+      if (user && user.character?.id !== actor.id) fix.push(`assegnato a ${user.name}`);
+      const stale = chars.filter((a) => a.id !== actor.id && a.getFlag("world", "firebaseUID") === c.uid);
+      if (stale.length) fix.push(`tolto il collegamento da ${stale.map((a) => a.name).join(", ")}`);
+      if (used.has(actor.id)) return { c, user, actor: null, how: `attore già usato da ${used.get(actor.id)}`, fix: [] };
+      used.set(actor.id, c.name);
+      return { c, user, actor, how, fix, stale };
     }
-  }
-  for (const r of rows) if (r.uid) {
-    r.site = byUid.get(r.uid);
-    r.user = userByUid.get(r.uid) || r.site?.foundryUser || ownerNames(r.actor)[0] || "";
-  }
+    return { c, user, actor: null, how, fix: [] };
+  });
   return rows;
 }
 
-function confirmDialog(rows) {
-  const ok = rows.filter((r) => r.uid);
-  const ko = rows.filter((r) => !r.uid);
-  const li = ok.map((r) => `<li><strong>${esc(r.actor.name)}</strong> → ${esc(r.site?.name || r.uid)} <em style="opacity:.6">(${esc(r.how)})</em><br><code style="opacity:.5;font-size:10px">${esc(r.uid)}</code></li>`).join("");
+function confirmDialog(rows, fonte) {
+  const ok = rows.filter((r) => r.actor);
+  const ko = rows.filter((r) => !r.actor);
+  const li = ok.map((r) => `<li><strong>${esc(r.c.name)}</strong> ← ${esc(r.actor.name)} · ${esc(r.user?.name || "nessun utente")}`
+    + ` <em style="opacity:.6">(${esc(r.how)})</em>`
+    + (r.fix.length ? `<br><span style="color:#c07b00">da sistemare: ${esc(r.fix.join(" · "))}</span>` : "")
+    + `</li>`).join("");
   const skip = ko.length
-    ? `<p style="margin-top:8px">Saltati (${ko.length}):</p><ul style="opacity:.7">${ko.map((r) => `<li>${esc(r.actor.name)} — ${esc(r.how)}</li>`).join("")}</ul>`
+    ? `<p style="margin-top:8px;color:#b00">Non trovati (${ko.length}):</p><ul>${ko.map((r) => `<li>${esc(r.c.name)} — ${esc(r.how)}</li>`).join("")}</ul>`
     : "";
   return new Promise((resolve) => {
     new Dialog({
-      title: `Sincronizza ${ok.length} PG sul sito`,
-      content: `<div style="padding:6px;max-height:420px;overflow:auto"><ul>${li || "<li>Nessun abbinamento.</li>"}</ul>${skip}</div>`,
+      title: `Collega e sincronizza ${ok.length} PG attivi`,
+      content: `<div style="padding:6px;max-height:440px;overflow:auto"><p style="opacity:.7">PG attivi presi dall'app (${esc(fonte)}).</p><ul>${li || "<li>Nessuno.</li>"}</ul>${skip}</div>`,
       buttons: {
-        ok: { icon: '<i class="fas fa-cloud-upload-alt"></i>', label: `Sincronizza (${ok.length})`, callback: () => resolve(ok.length > 0) },
+        ok: { icon: '<i class="fas fa-cloud-upload-alt"></i>', label: `Collega e sincronizza (${ok.length})`, callback: () => resolve(ok.length > 0) },
         no: { icon: '<i class="fas fa-times"></i>', label: "Annulla", callback: () => resolve(false) }
       },
       default: "ok",
@@ -334,14 +390,24 @@ function confirmDialog(rows) {
   });
 }
 
+/* ---- Collega attore ↔ giocatore ↔ sito ---- */
+async function linkOne(r) {
+  const base = game.actors.get(r.actor.id) || r.actor;
+  if (base.getFlag("world", "firebaseUID") !== r.c.uid) await base.setFlag("world", "firebaseUID", r.c.uid);
+  if (r.user && (base.ownership?.[r.user.id] ?? 0) < 3) await base.update({ [`ownership.${r.user.id}`]: 3 });
+  if (r.user && r.user.character?.id !== base.id) await r.user.update({ character: base.id });
+  for (const a of r.stale || []) await a.unsetFlag("world", "firebaseUID");
+}
+
+/* ---- Scheda, monete, inventario → sito ---- */
 async function syncOne(r) {
-  const baseActor = game.actors.get(r.actor.id) || r.actor;
-  const { fields, gp, gpBags } = buildFields(r.actor);
-  fields.foundryActorId   = fsStr(baseActor.id);
-  fields.foundryActorName = fsStr(baseActor.name);
-  if (r.user) fields.foundryUser = fsStr(r.user);
+  const base = game.actors.get(r.actor.id) || r.actor;
+  const { fields, gp, gpBags } = buildFields(base);
+  fields.foundryActorId   = fsStr(base.id);
+  fields.foundryActorName = fsStr(base.name);
+  if (r.user) fields.foundryUser = fsStr(r.user.name);
   const mask = Object.keys(fields).map((f) => `updateMask.fieldPaths=${f}`).join("&");
-  const res = await fetch(`${BASE}/characters/${r.uid}?key=${FIREBASE_CONFIG.apiKey}&${mask}`, {
+  const res = await fetch(`${BASE}/characters/${r.c.uid}?key=${FIREBASE_CONFIG.apiKey}&${mask}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fields })
@@ -349,9 +415,6 @@ async function syncOne(r) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error?.message || `HTTP ${res.status}`);
-  }
-  if (baseActor.getFlag("world", "firebaseUID") !== r.uid) {
-    await baseActor.setFlag("world", "firebaseUID", r.uid);
   }
   return { gp, gpBags };
 }
@@ -363,39 +426,40 @@ async function syncOne(r) {
     return;
   }
 
-  const selected = canvas.tokens?.controlled?.map((t) => t.actor).filter(Boolean) || [];
-  const actors = selected.length
-    ? [...new Map(selected.map((a) => [a.id, a])).values()]
-    : game.actors.filter((a) => a.type === "character");
-  if (!actors.length) { ui.notifications.warn("Nessun attore da sincronizzare."); return; }
-
   let site;
   try { site = await loadSiteCharacters(); }
   catch (e) { console.error(e); ui.notifications.error("Non riesco a leggere i personaggi del sito (F12 per i dettagli)."); return; }
+  const hidden = await loadHidden();
+  const active = activeCharacters(site, hidden);
+  if (!active.length) { ui.notifications.warn("Nessun PG attivo trovato sul sito."); return; }
 
-  const rows = matchActors(actors, site);
-  if (!(await confirmDialog(rows))) { ui.notifications.warn("Sincronizzazione annullata."); return; }
+  const rows = makePlan(active);
+  if (!(await confirmDialog(rows, hidden ? "lista dell'app" : "lista di riserva della macro"))) {
+    ui.notifications.warn("Sincronizzazione annullata.");
+    return;
+  }
 
   const report = [];
   for (const r of rows) {
-    if (!r.uid) { report.push({ attore: r.actor.name, sito: "—", esito: `saltato: ${r.how}` }); continue; }
+    if (!r.actor) { report.push({ pg: r.c.name, attore: "—", esito: `non trovato: ${r.how}` }); continue; }
     try {
+      await linkOne(r);
       const { gp, gpBags } = await syncOne(r);
-      report.push({ attore: r.actor.name, sito: r.site?.name || r.uid, esito: "ok", mo: gp, inBorse: gpBags });
+      report.push({ pg: r.c.name, attore: r.actor.name, giocatore: r.user?.name || "—", esito: "ok", mo: gp, inBorse: gpBags, sistemato: r.fix.join(" · ") });
     } catch (e) {
-      console.error(`[Sync] ${r.actor.name}:`, e);
-      report.push({ attore: r.actor.name, sito: r.site?.name || r.uid, esito: `errore: ${e.message}` });
+      console.error(`[Sync] ${r.c.name}:`, e);
+      report.push({ pg: r.c.name, attore: r.actor.name, esito: `errore: ${e.message}` });
     }
   }
   console.table(report);
 
   const ok = report.filter((x) => x.esito === "ok");
   const ko = report.filter((x) => x.esito !== "ok");
-  const righe = ok.map((x) => `<li>${esc(x.attore)} · ${x.mo} mo${x.inBorse ? ` (${x.inBorse} in borsa)` : ""}</li>`).join("");
-  const male = ko.map((x) => `<li style="opacity:.7">${esc(x.attore)} — ${esc(x.esito)}</li>`).join("");
+  const righe = ok.map((x) => `<li>${esc(x.pg)} · ${x.mo} mo${x.inBorse ? ` (${x.inBorse} in borsa)` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
+  const male = ko.map((x) => `<li style="opacity:.7">${esc(x.pg)} — ${esc(x.esito)}</li>`).join("");
   ChatMessage.create({
     whisper: ChatMessage.getWhisperRecipients("GM"),
-    content: `<h3>☁ Sync sul sito: ${ok.length}/${report.length}</h3><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
+    content: `<h3>☁ PG attivi sul sito: ${ok.length}/${report.length}</h3><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
   });
-  ui.notifications.info(`✅ Sincronizzati ${ok.length} PG${ko.length ? ` · ${ko.length} saltati/errori (vedi chat)` : ""}.`);
+  ui.notifications.info(`✅ Collegati e sincronizzati ${ok.length} PG${ko.length ? ` · ${ko.length} con problemi (vedi chat)` : ""}.`);
 })();
