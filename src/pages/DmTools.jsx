@@ -6,9 +6,12 @@ import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storag
 import { logAgent } from "../utils/agentLog";
 import { buildCronacaContext } from "../utils/cronacaContext";
 import GlacierHero from "../components/glacier/GlacierHero";
+import HtmlToolbar from "../components/HtmlToolbar";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
+import "./Riassunti.css";
+import "./RiassuntoSingolo.css";
 
 // Gruppi di gioco (chiavi come lo Scriptorium/SummaryAdmin) con i membri e i
 // loro avatar (stessi asset di Party.jsx), usati come riferimento per le immagini.
@@ -163,6 +166,10 @@ export default function DmTools() {
   const [refOff, setRefOff]     = useState({});        // { [name]: true } = escluso dai riferimenti
   const [useArchive, setUseArchive] = useState(true);   // legge l'archivio dell'app prima di scrivere
   const [riaUsed, setRiaUsed]   = useState(null);      // [{label, items}] = cosa ha letto
+  const [riaView, setRiaView]   = useState("edit");    // "edit" = scheda del riassunto · "preview" = come si vedrà
+  const [riaOrder, setRiaOrder] = useState("");        // vuoto = in coda (max+1)
+  const [imgUrl, setImgUrl]     = useState("");        // URL incollato a mano
+  const riaContentRef = useRef(null);
 
   // Carica una volta l'elenco riassunti (per numero di sessione + ordine).
   useEffect(() => {
@@ -172,6 +179,7 @@ export default function DmTools() {
   }, []);
 
   const sessionNumber = allSummaries.filter((s) => (s.party || "AMEA") === ria.party).length + 1;
+  const nextOrder = allSummaries.reduce((m, s) => Math.max(m, Number(s.order) || 0), 0) + 1;
 
   // Membri del gruppo selezionato = avatar di riferimento per le immagini.
   const partyChars = membersOf(ria.party);
@@ -339,6 +347,7 @@ export default function DmTools() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setRiaOut(data);
+      setRiaView("edit");
       setScena((data.scenePrompts && data.scenePrompts[0]) || data.scenePrompt || "");
       setSceneIdx(1); // la prossima "scena casuale" pesca la 2ª scena
       setGallery([]);
@@ -397,6 +406,22 @@ export default function DmTools() {
     return next;
   });
 
+  // ── Cronaca: immagini proprie (file dal PC o URL) nella stessa galleria ──
+  function addImageFiles(files) {
+    [...(files || [])].filter((f) => f.type.startsWith("image/")).forEach((f) => {
+      const rd = new FileReader();
+      rd.onload = () => setGallery((g) => [...g, { url: rd.result, cover: g.length === 0 }]);
+      rd.readAsDataURL(f);
+    });
+  }
+  function addImageUrl() {
+    const u = imgUrl.trim();
+    if (!/^https?:\/\//i.test(u)) { setRiaMsg("Incolla un URL che inizi con http(s)://"); return; }
+    setGallery((g) => [...g, { url: u, cover: g.length === 0 }]);
+    setImgUrl("");
+  }
+  const setRiaField = (k) => (e) => { setRiaOut((o) => ({ ...o, [k]: e.target.value })); setSaved(false); };
+
   // ── Cronaca: carica nelle Memorie (numero sessione + titolo automatici) ──
   async function caricaRiassunto() {
     if (!riaOut || saving) return;
@@ -408,7 +433,8 @@ export default function DmTools() {
       const uploaded = []; // { url, cover }
       for (let i = 0; i < gallery.length; i++) {
         const im = gallery[i];
-        if (!im.url?.startsWith("data:")) continue;
+        if (!im.url) continue;
+        if (!im.url.startsWith("data:")) { uploaded.push({ url: im.url, cover: im.cover }); continue; } // URL già pubblico
         const path = `summaries/${Date.now()}-${i}-${safe}.png`;
         const sref = storageRef(storage, path);
         await uploadString(sref, im.url, "data_url");
@@ -419,8 +445,7 @@ export default function DmTools() {
       const coverImage = coverEntry ? coverEntry.url : "";
       const images = uploaded.filter((u) => u.url !== coverImage).map((u) => u.url);
       // order globale = max+1 → la cronaca diventa l'ultima sessione del gruppo.
-      const maxOrder = allSummaries.reduce((m, s) => Math.max(m, Number(s.order) || 0), 0);
-      const order = maxOrder + 1;
+      const order = Number(riaOrder) || nextOrder;
       const docId = `${ria.party}_${Date.now()}`;
       await setDoc(doc(db, "summaries", docId), {
         title: riaOut.title.trim(),
@@ -712,16 +737,77 @@ export default function DmTools() {
             </div>
           )}
 
-          {tab === "cronaca" && riaOut && (
+          {tab === "cronaca" && riaOut && (() => {
+            const coverUrl = (gallery.find((im) => im.cover) || gallery[0])?.url || "";
+            const extraImgs = gallery.filter((im) => im.url !== coverUrl);
+            return (
             <div className="npcgen-card dmt-cronaca">
-              {gallery.find((im) => im.cover) && (
-                <img className="npcgen-img dmt-cronaca-cover" src={gallery.find((im) => im.cover).url} alt={"Copertina — " + riaOut.title} />
-              )}
-              <p className="dmt-cronaca-eyebrow">❦ Cronache di Eldoria · Gruppo {ria.party}{ria.date ? ` · ${ria.date}` : ""}</p>
-              <p className="npcgen-name">{riaOut.title}</p>
-              {riaOut.subTitle && <p className="npcgen-role">{riaOut.subTitle}</p>}
-              <hr className="npcgen-divider" />
-              <div className="dmt-cronaca-body rs-summary-html" dangerouslySetInnerHTML={{ __html: riaOut.contentHtml }} />
+              {/* Modifica | Anteprima */}
+              <div className="dmt-ria-switch" role="group" aria-label="Vista del riassunto">
+                <button type="button" aria-pressed={riaView === "edit"} className={riaView === "edit" ? "on" : ""} onClick={() => setRiaView("edit")}>✎ Scheda del riassunto</button>
+                <button type="button" aria-pressed={riaView === "preview"} className={riaView === "preview" ? "on" : ""} onClick={() => setRiaView("preview")}>👁 Anteprima</button>
+              </div>
+
+              {riaView === "preview" ? (
+                /* Stesso markup e stesse classi di RiassuntoSingolo: si vede come in /riassunti */
+                <section className="rsx-page dmt-ria-preview">
+                  <article className="nx-pannello rsx-scroll">
+                    {coverUrl && (
+                      <div className="rsx-cover">
+                        <img className="nx-modale-img" src={coverUrl} alt={riaOut.title || "Memoria"} />
+                      </div>
+                    )}
+                    <header className="rsx-head nx-testata">
+                      <span className="nx-kicker rsx-eyebrow">Cronache di Eldoria · Gruppo {ria.party}</span>
+                      <h1 className="nx-titolo rsx-title">{riaOut.title || "Senza titolo"}</h1>
+                      {ria.date && <p className="nx-meta rsx-date">{ria.date}</p>}
+                      {riaOut.subTitle && <p className="nx-nota rsx-sub">{riaOut.subTitle}</p>}
+                    </header>
+                    <div className="rs-summary-html nx-prosa rsx-body" dangerouslySetInnerHTML={{ __html: riaOut.contentHtml }} />
+                    {extraImgs.length > 0 && (
+                      <div className="summary-gallery rsx-gallery">
+                        {extraImgs.map((im, i) => (
+                          <span key={i} className="summary-gallery-item"><img src={im.url} alt={`immagine ${i + 1}`} /></span>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                </section>
+              ) : (<>
+                <p className="dmt-cronaca-eyebrow">❦ Scheda del riassunto · come nel form delle Memorie</p>
+                <div className="dmt-field">
+                  <label className="npcgen-label">Titolo</label>
+                  <input className="npcgen-input" value={riaOut.title || ""} onChange={setRiaField("title")} />
+                </div>
+                <div className="dmt-field">
+                  <label className="npcgen-label">Sottotitolo</label>
+                  <input className="npcgen-input" value={riaOut.subTitle || ""} placeholder="…dalla penna del Monaco Errante" onChange={setRiaField("subTitle")} />
+                </div>
+                <div className="dmt-row dmt-row3">
+                  <div className="dmt-field">
+                    <label className="npcgen-label">Gruppo</label>
+                    <select className="npcgen-input" value={ria.party} onChange={e => { setRia({ ...ria, party: e.target.value }); setSaved(false); }}>
+                      {PARTIES.map(p => (
+                        <option key={p.key} value={p.key}>{p.members.length ? `${p.key} (${rosterOf(p.key)})` : p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dmt-field">
+                    <label className="npcgen-label">Data (in gioco)</label>
+                    <input className="npcgen-input" value={ria.date} placeholder="14 di Eldarin 1852" onChange={e => { setRia({ ...ria, date: e.target.value }); setSaved(false); }} />
+                  </div>
+                  <div className="dmt-field">
+                    <label className="npcgen-label">Ordine</label>
+                    <input className="npcgen-input" type="number" min="1" value={riaOrder} placeholder={String(nextOrder)} onChange={e => { setRiaOrder(e.target.value); setSaved(false); }} />
+                  </div>
+                </div>
+                <small className="dmt-hint">Sarà la sessione <b>#{sessionNumber}</b> del gruppo {ria.party}. Ordine vuoto = in coda ({nextOrder}).</small>
+                <div className="dmt-field">
+                  <label className="npcgen-label">Contenuto (HTML consentito)</label>
+                  <HtmlToolbar textAreaRef={riaContentRef} formData={riaOut} setFormData={(v) => { setRiaOut(v); setSaved(false); }} fieldName="contentHtml" />
+                  <textarea ref={riaContentRef} className="npcgen-input dmt-ria-content" rows={16} value={riaOut.contentHtml || ""} onChange={setRiaField("contentHtml")} />
+                </div>
+              </>)}
 
               {/* IMMAGINI DELLA CRONACA */}
               <p className="npcgen-k">Immagini della cronaca</p>
@@ -761,6 +847,16 @@ export default function DmTools() {
                 </button>
               </div>
 
+              <div className="dmt-own-img">
+                <label className="npcgen-btn npcgen-btn--ghost dmt-own-file">
+                  📁 Carica dal PC
+                  <input type="file" accept="image/*" multiple hidden onChange={e => { addImageFiles(e.target.files); e.target.value = ""; }} />
+                </label>
+                <input className="npcgen-input" value={imgUrl} placeholder="…oppure incolla l'URL di un'immagine" onChange={e => setImgUrl(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addImageUrl(); }} />
+                <button type="button" className="npcgen-btn npcgen-btn--ghost" onClick={addImageUrl} disabled={!imgUrl.trim()}>＋ Aggiungi</button>
+              </div>
+              <small className="dmt-hint">La ★ copertina va in testa al riassunto, le altre immagini in fondo.</small>
+
               {gallery.length > 0 && (
                 <div className="dmt-gallery">
                   {gallery.map((im, i) => (
@@ -776,12 +872,18 @@ export default function DmTools() {
                 </div>
               )}
 
-              {/* CARICA */}
-              <button className="npcgen-btn" style={{ marginTop: 16 }} onClick={caricaRiassunto} disabled={saving || saved}>
-                {saving ? "Carico…" : saved ? "✅ Caricato" : "📤 Carica nelle Memorie"}
-              </button>
+              {/* SALVA */}
+              <div className="dmt-ria-save">
+                {riaView === "edit" && (
+                  <button type="button" className="npcgen-btn npcgen-btn--ghost" onClick={() => setRiaView("preview")}>👁 Guarda l'anteprima</button>
+                )}
+                <button className="npcgen-btn" onClick={caricaRiassunto} disabled={saving || saved || !riaOut.title?.trim() || !riaOut.contentHtml?.trim()}>
+                  {saving ? "Salvo…" : saved ? "✅ Salvato nelle Memorie" : `📤 Salva come riassunto (${ria.party} · #${sessionNumber})`}
+                </button>
+              </div>
             </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>
