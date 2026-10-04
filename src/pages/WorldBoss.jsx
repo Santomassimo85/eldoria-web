@@ -453,6 +453,7 @@ export default function WorldBoss() {
   const handleManualDamageToBoss = async (die) => {
     const boss = currentTarget; // boss o minion scelto dal giocatore
     if (!boss || isUserLocked) return;
+    if (!(await claimTurn())) return;
     const sides = parseInt(die.replace("d", ""));
     let totalRoll = 0;
     let rollsDetail = [];
@@ -688,6 +689,7 @@ export default function WorldBoss() {
   // Cura da ABILITÀ (Lay on Hands, Second Wind, Turn the Tide): uno o più alleati, cap al massimo.
   const castSkillHeal = async (action, skill, targetIds) => {
     if (isUserLocked || !targetIds?.length) return;
+    if (!(await claimTurn())) return;
     const formula = resolveSkillFormula(skill);
     const { total, detail } = rollDetail(formula);
     const rows = [];
@@ -720,6 +722,7 @@ export default function WorldBoss() {
   // PF temporanei da ABILITÀ (Form of Dread, Wild Shape) → scudo del PG (non si sommano: resta il maggiore).
   const castSkillShield = async (action, skill) => {
     if (isUserLocked) return;
+    if (!(await claimTurn())) return;
     const formula = resolveSkillFormula(skill);
     const { total, detail } = rollDetail(formula);
     const cur = charData?.stats?.shield ?? 0;
@@ -740,9 +743,43 @@ export default function WorldBoss() {
     } catch (err) { console.error("Errore scudo (abilità):", err); }
   };
 
+  // UNA azione per turno. Il turno si PRENOTA prima di tirare, in transazione:
+  // prima si segnava "ha agito" solo a fine azione (dopo il dado animato), e
+  // nel frattempo i bottoni restavano vivi → con doppi clic o due schede aperte
+  // un eroe attaccava 2-3 volte nello stesso turno (Lael, 2026-10-04).
+  // `turnClaimRef` blocca i clic ravvicinati sullo stesso client prima ancora
+  // che la transazione risponda; la transazione blocca le altre schede/dispositivi.
+  const turnClaimRef = useRef(false);
+  useEffect(() => {
+    if (!(turnState.actedPlayers || []).includes(myUid)) turnClaimRef.current = false;
+  }, [turnState.actedPlayers, turnState.turnNumber, myUid]);
+
+  const claimTurn = async () => {
+    if (isMaster) return true;
+    if (turnClaimRef.current) return false;
+    turnClaimRef.current = true;
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "battle_meta", "turn_tracker");
+        const snap = await tx.get(ref);
+        const d = snap.data() || {};
+        if ((d.actedPlayers || []).includes(myUid)) throw new Error("already-acted");
+        if (d.phase === "boss") throw new Error("boss-phase");
+        tx.update(ref, { actedPlayers: arrayUnion(myUid) });
+      });
+      return true;
+    } catch (e) {
+      if (e.message === "already-acted") window.alert("Hai già agito in questo turno.");
+      else if (e.message === "boss-phase") window.alert("È il turno del boss: aspetta il prossimo turno degli eroi.");
+      else { turnClaimRef.current = false; console.error("Prenotazione turno:", e); }
+      return false;
+    }
+  };
+
   const endMyTurn = async () => {
-    if (turnState.actedPlayers.includes(currentUser.uid)) return;
-    await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(currentUser.uid) });
+    // Il turno è già prenotato da claimTurn: arrayUnion è idempotente e serve
+    // solo per "Fine Turno" senza azione. Il quorum si controlla sempre.
+    await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(myUid) });
     try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
   };
 
@@ -803,6 +840,7 @@ export default function WorldBoss() {
     if (isUserLocked) return;
     const target = players.find((p) => p.id === targetId);
     if (!target) return;
+    if (!(await claimTurn())) return;
     const formula = action.damage && action.damage !== "0" ? action.damage : "1d8";
     const spellMod = getSpellMod(charData);
     const cleanFormula = String(formula).replace(/@mod/g, spellMod);
@@ -835,6 +873,7 @@ export default function WorldBoss() {
   // previous self-buff so stacking is intentional.
   const castSelfBuff = async (action, bonusOverride = null) => {
     if (isUserLocked) return;
+    if (!(await claimTurn())) return;
     const acBonus = bonusOverride || selfBuffAcBonus(action);
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), {
@@ -861,6 +900,7 @@ export default function WorldBoss() {
   // Stores `nextTurnCondition: "advantage"` on each selected character — same field already used.
   const castBuffOnTargets = async (action, targetIds) => {
     if (isUserLocked || !targetIds.length) return;
+    if (!(await claimTurn())) return;
     try {
       const batch = writeBatch(db);
       targetIds.forEach((uid) => {
@@ -889,6 +929,7 @@ export default function WorldBoss() {
   const castDebuffOnBoss = async (action) => {
     const boss = currentTarget;
     if (!boss || isUserLocked) return;
+    if (!(await claimTurn())) return;
     try {
       await updateDoc(enemyRef(boss), {
         nextTurnCondition: "disadvantage",
@@ -917,6 +958,7 @@ export default function WorldBoss() {
   const castAreaSpell = async (action, aoe, enemiesArg = null, skill = null) => {
     const targets = enemiesArg?.length ? enemiesArg : livingEnemies;
     if (isUserLocked || !targets.length) return;
+    if (!(await claimTurn())) return;
     const spellMod = getSpellMod(charData);
     const dcMod = aoe.dcAbility ? statMod(charData, aoe.dcAbility) : spellMod;
     const dc = 8 + getProfBonus(charData) + dcMod;
@@ -974,6 +1016,7 @@ export default function WorldBoss() {
   const castAutoHitSpell = async (action, auto) => {
     const boss = currentTarget;
     if (!boss || isUserLocked) return;
+    if (!(await claimTurn())) return;
     const formula = auto.formula.replace(/@mod/g, getSpellMod(charData));
     const darts = [];
     let totalDamage = 0;
@@ -1096,6 +1139,7 @@ export default function WorldBoss() {
       return;
     }
 
+    if (!(await claimTurn())) return; // dopo lo smistamento: le magie/abilità sopra prenotano da sé
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto" || skill?.kind === "attack";
     const condition = charData.nextTurnCondition;
     let d20, rollLabel;

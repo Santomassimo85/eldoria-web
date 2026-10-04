@@ -3063,6 +3063,10 @@ const ARENA_ARCHETYPE_BY_CLASS = {
 };
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
+// Firma di un match per il controllo di concorrenza: ogni azione cambia almeno
+// uno di questi campi (i log crescono a ogni mossa).
+const matchSig = (m) => `${m?.status}|${m?.turn}|${(m?.logs || []).length}|${m?.winner || ""}`;
+
 export default function Arena() {
   const { currentUser } = useAuth();
   const [arenaMeta, setArenaMeta]             = useState(null);
@@ -3392,6 +3396,8 @@ export default function Arena() {
   // Senza, online (latenza > local) si possono accumulare clic che partono da uno
   // stato stantio e l'azione "non succede nulla" agli occhi dell'utente.
   const actionInFlightRef = useRef(false);
+  // Firma dell'ultima versione di ogni match scritta da QUESTO client (vedi commitArenaMatches).
+  const ownMatchSigRef = useRef({});
 
   // ── Commit transazionale dei match ────────────────────────────────────────
   // BUG storico (lost update): ogni azione scriveva l'INTERO array `matches`
@@ -3405,9 +3411,12 @@ export default function Arena() {
   // Firestore e rimpiazza SOLO i match che questa azione ha realmente
   // toccato (aggiunti/modificati/rimossi), preservando le modifiche concorrenti
   // agli altri match. `extraFields` per eventuali campi top-level (es. fine torneo).
-  const commitArenaMatches = async (nextMatches, extraFields = null) => {
+  // baseOverride: i match da cui l'azione è stata costruita, quando NON sono
+  // quelli di questo render (l'IA parte da arenaMetaRef, più recente).
+  const commitArenaMatches = async (nextMatches, extraFields = null, baseOverride = null) => {
     const ref = doc(db, "arena_meta", "global");
-    const base = arenaMeta?.matches || [];
+    const base = baseOverride || arenaMeta?.matches || [];
+    const baseById = new Map(base.map(m => [m.matchId, m]));
     const baseStr = new Map(base.map(m => [m.matchId, JSON.stringify(m)]));
     const nextById = new Map(nextMatches.map(m => [m.matchId, m]));
     // match aggiunti o modificati da QUESTA azione rispetto alla base locale.
@@ -3428,6 +3437,21 @@ export default function Arena() {
       if (!snap.exists()) return; // niente doc: non ricreiamo nulla (come prima)
       const fresh = snap.data().matches || [];
       const freshIds = new Set(fresh.map(m => m.matchId));
+      // Controllo di concorrenza: un match che questa azione modifica deve essere
+      // sul server com'era quando l'azione è partita (o come l'ha lasciato la
+      // NOSTRA commit precedente). Se nel frattempo è andato avanti — azione da
+      // un'altra scheda/dispositivo, turno già passato — l'azione si annulla:
+      // prima la versione locale vecchia sovrascriveva quella nuova, e con due
+      // schede si poteva agire due volte o ritentare un tiro andato male.
+      for (const fm of fresh) {
+        if (!changedIds.has(fm.matchId)) continue;
+        const bm = baseById.get(fm.matchId);
+        if (!bm) continue;
+        const fs_ = matchSig(fm);
+        if (fs_ !== matchSig(bm) && fs_ !== ownMatchSigRef.current[fm.matchId]) {
+          throw new Error("arena-stale");
+        }
+      }
       const result = [];
       // 1) match già sul server: la nostra versione se l'abbiamo toccato,
       //    altrimenti la versione FRESCA (preserva modifiche concorrenti);
@@ -3442,7 +3466,16 @@ export default function Arena() {
       }
       merged = result;
       tx.update(ref, { matches: result, ...(extraFields || {}) });
+    }).catch((e) => {
+      if (e.message === "arena-stale") {
+        alert("⚠ Lo scontro è già andato avanti (azione da un'altra scheda o turno passato): questa azione è annullata.");
+      }
+      throw e;
     });
+    for (const id of changedIds) {
+      const m = nextById.get(id);
+      if (m) ownMatchSigRef.current[id] = matchSig(m);
+    }
     // Allinea subito lo stato locale al risultato autorevole, così un'azione
     // immediatamente successiva parte da una base coerente (l'onSnapshot
     // confermerà lo stesso valore poco dopo).
@@ -4650,10 +4683,28 @@ export default function Arena() {
       }
     }
 
-    await updateDoc(doc(db, "arena_meta", "global"), {
-      waitingList: arrayUnion(currentUser.uid),
-      [`characterSnapshots.${currentUser.uid}`]: snapshot,
-    });
+    // Iscrizione in TRANSAZIONE: un account = un posto. Prima bastava avere il
+    // form aperto (altra scheda, o approvazione del Master arrivata durante il
+    // loadout) per finire sia fra gli iscritti sia di nuovo in lista d'attesa,
+    // riscrivendo anche lo snapshot già approvato (Lael, 2026-10-04).
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "arena_meta", "global");
+        const cur = (await tx.get(ref)).data() || {};
+        if ((cur.participants || []).includes(currentUser.uid)) throw new Error("already-registered");
+        if (cur.phase && cur.phase !== "registration") throw new Error("registration-closed");
+        tx.update(ref, {
+          waitingList: arrayUnion(currentUser.uid),
+          [`characterSnapshots.${currentUser.uid}`]: snapshot,
+        });
+      });
+    } catch (e) {
+      if (e.message === "already-registered") alert("⚠ Sei già iscritto a questo torneo: non puoi iscriverti una seconda volta.");
+      else if (e.message === "registration-closed") alert("⚠ Le iscrizioni al torneo sono chiuse.");
+      else alert("⚠ Iscrizione non riuscita: " + e.message);
+      cancelLoadout();
+      return;
+    }
     cancelLoadout();
   };
 
@@ -5519,7 +5570,7 @@ export default function Arena() {
         logs: [...x.logs, `🎲 ${aiSnap.name} tira iniziativa: ${roll}`],
       };
     });
-    await commitArenaMatches(updatedMatches);
+    await commitArenaMatches(updatedMatches, null, meta.matches);
   };
 
   // Master AI turn handler — chains heal → first-turn buff → attack → Action
@@ -5618,7 +5669,7 @@ export default function Arena() {
           : {};
         return { ...x, players, logs: [...x.logs, resultLog], ...next };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return; // on pass, the watcher re-fires with pendingControlSave cleared
     }
 
@@ -5669,7 +5720,7 @@ export default function Arena() {
         });
         return { ...x, players, logs: [...x.logs, resultLog] };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return; // watcher will re-fire; AI then acts (or ticks poison) next time
     }
 
@@ -5708,7 +5759,7 @@ export default function Arena() {
         }
         return { ...x, players: rawPlayers, logs: [...x.logs, log] };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return; // watcher re-fires; AI then takes its action
     }
 
@@ -5745,7 +5796,7 @@ export default function Arena() {
         }
         return { ...x, players: rawPlayers, logs: [...x.logs, log] };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return;
     }
 
@@ -5762,7 +5813,7 @@ export default function Arena() {
         );
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, `🌀 ${aiName} è sotto controllo: turno saltato (${remaining} rimanenti).`] };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return;
     }
 
@@ -5797,7 +5848,7 @@ export default function Arena() {
         });
         return { ...x, players, logs: [...x.logs, healLog] };
       });
-      await commitArenaMatches(withArenaFx(updatedMatches, matchId, "heal", aiId));
+      await commitArenaMatches(withArenaFx(updatedMatches, matchId, "heal", aiId), null, meta.matches);
       return; // next tick of the useEffect will trigger the attack
     }
 
@@ -6160,7 +6211,7 @@ export default function Arena() {
         });
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, passLog] };
       });
-      await commitArenaMatches(updatedMatches);
+      await commitArenaMatches(updatedMatches, null, meta.matches);
       return;
     }
 
@@ -6411,7 +6462,7 @@ export default function Arena() {
         logs,
       };
     });
-    await commitArenaMatches(updatedMatches);
+    await commitArenaMatches(updatedMatches, null, meta.matches);
   };
 
   // ── Guardiano dell'IA (Sfide Libere vs IA) — gira SOLO sul client di aiOwnerId ──
