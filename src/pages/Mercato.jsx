@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import "../styles/cinematic.css";
 import "./Mercato.css";
+import { isFoundryMarketItem, auctionWinnerUid, wonItemInboxDoc } from "../utils/foundryMap";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -363,12 +364,27 @@ export default function Mercato() {
           rattoPoints: increment(1)
         });
 
+        const buyerName = (winnerBidData && winnerBidData.charName) ? winnerBidData.charName : "Un eroe";
+        // L'oggetto vinto va DA SOLO nella coda di Foundry (inventario del vincitore):
+        // "Fetch admin" lo crea su Foundry. Pet e TCG non sono oggetti D&D.
+        let foundryInboxId = null;
+        if (isFoundryMarketItem(item)) {
+          const inboxRef = doc(collection(db, "foundry_inbox"));
+          transaction.set(inboxRef, {
+            ...wonItemInboxDoc({ ...item, finalPrice: winnerAmount }, winnerUid, buyerName, currentUser?.email || ""),
+            createdAt: serverTimestamp(),
+          });
+          foundryInboxId = inboxRef.id;
+        }
+
         // Aggiorna l'oggetto nel mercato
         transaction.update(doc(db, "items", item.id), {
           isSold: true,
-          buyerName: (winnerBidData && winnerBidData.charName) ? winnerBidData.charName : "Un eroe",
+          buyerName,
+          buyerUid: winnerUid,
           finalPrice: winnerAmount,
-          soldAt: new Date().toISOString()
+          soldAt: new Date().toISOString(),
+          ...(foundryInboxId ? { foundryInboxId } : {}),
         });
 
         // --- RIMBORSO E NOTIFICA AGLI SCONFITTI ---
@@ -389,11 +405,42 @@ export default function Mercato() {
           }
         }
       });
-      alert("✅ Oggetto consegnato, player notificati e +1 Punto Ratto assegnato!");
+      alert(isFoundryMarketItem(item)
+        ? "✅ Oggetto consegnato e messo in coda per Foundry (lo crea \"Fetch admin\"), player notificati e +1 Punto Ratto!"
+        : "✅ Oggetto consegnato, player notificati e +1 Punto Ratto assegnato!");
     } catch (err) {
       console.error("Errore durante la consegna:", err);
       alert("Errore durante la consegna. Controlla la console.");
     }
+  };
+
+  // Aste vinte prima del 2026-10-04 (o finite senza invio): le manda in coda.
+  const wonNotSent = useMemo(
+    () => items.filter((i) => i.isSold && !i.foundryInboxId && isFoundryMarketItem(i)),
+    [items]
+  );
+  const [sendingWon, setSendingWon] = useState(false);
+  const handleSendWonToFoundry = async () => {
+    if (sendingWon || !wonNotSent.length) return;
+    const list = wonNotSent.map((i) => `• ${i.name} → ${i.buyerName || "?"}`).join("\n");
+    if (!window.confirm(`Mandare in coda per Foundry ${wonNotSent.length} oggetti vinti?\n\n${list}`)) return;
+    setSendingWon(true);
+    const skipped = [];
+    let sent = 0;
+    for (const it of wonNotSent) {
+      const uid = auctionWinnerUid(it);
+      if (!uid) { skipped.push(it.name); continue; }
+      try {
+        const ref = await addDoc(collection(db, "foundry_inbox"), {
+          ...wonItemInboxDoc(it, uid, it.buyerName, currentUser?.email || ""),
+          createdAt: serverTimestamp(),
+        });
+        await setDoc(doc(db, "items", it.id), { foundryInboxId: ref.id, buyerUid: uid }, { merge: true });
+        sent++;
+      } catch (e) { console.error("[Mercato → Foundry]", it.name, e); skipped.push(it.name); }
+    }
+    setSendingWon(false);
+    alert(`✅ ${sent} oggetti in coda per Foundry: lancia "Fetch admin".${skipped.length ? `\n⚠ Non inviati (vincitore non chiaro): ${skipped.join(", ")}` : ""}`);
   };
 
   const handleMasterRemoveBid = async (item, playerUid, amount) => {
@@ -528,6 +575,14 @@ export default function Mercato() {
           )}
 
           {isMaster && <div className="admin-notice">⚠️ VISTA MASTER ATTIVA</div>}
+          {isMaster && wonNotSent.length > 0 && (
+            <div className="admin-notice merc-won-notice">
+              📦 {wonNotSent.length} oggetti vinti non ancora mandati a Foundry
+              <button type="button" className="merc-won-btn" onClick={handleSendWonToFoundry} disabled={sendingWon}>
+                {sendingWon ? "Invio…" : "📤 Manda in coda"}
+              </button>
+            </div>
+          )}
 
           <div className="mercato-controls">
             <input

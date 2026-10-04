@@ -980,3 +980,13 @@
   .mercato-page .ic-act { flex: 1 1 auto; }
   .mercato-page .item-card .item-name { font-size: .95rem; }
 }
+
+/* Master: aste vinte non ancora mandate a Foundry (2026-10-04) */
+.merc-won-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.merc-won-btn {
+  min-height: 34px; padding: 4px 12px; cursor: pointer;
+  border: 1px solid var(--el); border-radius: 3px;
+  background: rgba(var(--el-rgb), .18); color: var(--osso); font: 600 .9rem var(--font-ui, inherit);
+}
+.merc-won-btn:hover { background: rgba(var(--el-rgb), .32); }
+.merc-won-btn:disabled { opacity: .6; cursor: wait; }

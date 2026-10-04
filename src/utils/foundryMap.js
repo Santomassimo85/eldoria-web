@@ -153,3 +153,32 @@ export const marketItemToFormState = (item) => {
     saveDC: f.saveDC ?? "",
   };
 };
+
+/* ── Aste vinte → coda di Foundry (2026-10-04) ──────────────────────────────
+   Quando il Master consegna un'asta, l'oggetto va DA SOLO in `foundry_inbox`
+   con destinazione l'inventario del vincitore; "Fetch admin" su Foundry lo crea.
+   Uova/oggetti pet e roba del TCG NON sono oggetti D&D: restano fuori. */
+export const isFoundryMarketItem = (item) => !item?.petPayload && !item?.tcgPayload;
+
+// Vincitore di un'asta già chiusa: buyerUid (dal 2026-10-04) oppure l'offerta
+// pari al prezzo finale fatta dal personaggio col nome registrato.
+export const auctionWinnerUid = (item) => {
+  if (item?.buyerUid) return item.buyerUid;
+  const bids = Object.entries(item?.bids || {});
+  const amountOf = (b) => (typeof b === "object" ? Number(b?.amount) : Number(b)) || 0;
+  const hits = bids.filter(([, b]) => amountOf(b) === Number(item?.finalPrice)
+    && (typeof b !== "object" || !item?.buyerName || b?.charName === item.buyerName));
+  return hits.length === 1 ? hits[0][0] : null;
+};
+
+// Documento completo per `foundry_inbox` (status, origine, set compreso).
+export const wonItemInboxDoc = (item, winnerUid, winnerName, createdBy = "") => {
+  const p = marketItemToFoundryPayload(item, { target: "player", targetUid: winnerUid, targetName: winnerName || "" });
+  const set = item?.setPayload;
+  if (set?.name) {
+    const bonus = (set.bonuses || []).map((b) => `${b.pieces} pezzi: ${b.effect}`).join(" · ");
+    p.description = `${p.description || ""}\n\nSet «${set.name}» (${set.size || "?"} pezzi)${bonus ? ` — ${bonus}` : ""}`.trim();
+  }
+  if (item?.finalPrice) p.price = Number(item.finalPrice) || p.price;
+  return { status: "pending", ...p, origin: "market", marketItemId: item?.id || "", createdBy };
+};
