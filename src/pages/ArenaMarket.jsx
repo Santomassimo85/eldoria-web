@@ -89,6 +89,20 @@ export default function ArenaMarket() {
 
   const vetrinaItems = marketItems.filter(it => it.active);
 
+  // ── Quando si può comprare (2026-10-04) ──────────────────────────────────
+  // Gli acquisti non toccano MAI un match in corso: la merce si monta solo al
+  // (ri)equipaggiamento (iscrizione o pausa Bottega tra i round). Quindi a
+  // torneo in combattimento è bloccato solo chi sta ANCORA combattendo; chi ha
+  // finito il suo match (o non è nel torneo) compra subito e userà la merce
+  // dal prossimo ri-equipaggiamento. Prima era bloccato chiunque per tutto il
+  // round, col bottone acceso e un avviso lontano: "clicco e non succede niente".
+  const myUid = currentUser?.uid;
+  const inLiveMatch = !!myUid && (arenaMeta?.matches || []).some(
+    m => m.kind !== "fun" && m.status !== "finished" && (m.players || []).some(p => p.id === myUid)
+  );
+  const buyLocked = !isMaster && arenaMeta?.phase === "combat" && inLiveMatch;
+  const buyLater  = !isMaster && arenaMeta?.phase === "combat" && !inLiveMatch;
+
   // ── Ricerca: classi + vetrina ──
   const q = query.trim().toLowerCase();
   const ownedClasses = ARENA_CLASSES.filter(cls => !cls.hiddenUnlessOwned || (buffs[cls.hiddenUnlessOwned] ?? 0) > 0);
@@ -109,8 +123,8 @@ export default function ArenaMarket() {
     if (!currentUser || !charData) return;
     // Acquisti consentiti prima dell'inizio del torneo e nelle pause Bottega tra
     // i round (fase "shopping"). Durante un round in combattimento sono bloccati.
-    if (!isMaster && arenaMeta?.phase === "combat") {
-      showMsg("Torneo in corso: potrai acquistare nella pausa Bottega tra un round e l'altro.", "err");
+    if (buyLocked) {
+      showMsg("Stai combattendo: potrai acquistare appena finisce il tuo match.", "err");
       return;
     }
     if (coins < item.price) { showMsg("Monete insufficienti.", "err"); return; }
@@ -140,7 +154,9 @@ export default function ArenaMarket() {
       arenaCoins: increment(-item.price),
       arenaWeekly: { weekKey, purchases },
     });
-    showMsg(`Acquistato: ${item.name}! Valido fino a ${weekEndLabel(weekKey)} · solo tornei.`);
+    showMsg(buyLater
+      ? `Acquistato: ${item.name}! Lo monti alla prossima pausa Bottega (ri-equipaggiamento) · valido fino a ${weekEndLabel(weekKey)}.`
+      : `Acquistato: ${item.name}! Valido fino a ${weekEndLabel(weekKey)} · solo tornei.`);
   };
 
   if (!currentUser) {
@@ -178,7 +194,8 @@ export default function ArenaMarket() {
           <span className="bt-pillola" role="listitem">🏟 Solo tornei</span>
           <span className="bt-pillola" role="listitem">⚔ Classi base Lv.3</span>
           {arenaMeta?.phase === "shopping" && <span className="bt-pillola bt-pillola--on" role="listitem">🛒 Pausa Bottega aperta</span>}
-          {!isMaster && arenaMeta?.phase === "combat" && <span className="bt-pillola bt-pillola--off" role="listitem">⚔ Torneo in corso · acquisti chiusi</span>}
+          {buyLocked && <span className="bt-pillola bt-pillola--off" role="listitem">⚔ Stai combattendo · acquisti a fine match</span>}
+          {buyLater && <span className="bt-pillola bt-pillola--on" role="listitem">🛒 Acquisti aperti · si montano alla pausa Bottega</span>}
         </div>
       </header>
 
@@ -241,8 +258,10 @@ export default function ArenaMarket() {
             )}
             {arenaMeta?.phase === "shopping" ? (
               <div className="am-message">🛒 Pausa Bottega aperta: acquista e ri-equipaggiati, il prossimo round parte allo scadere del tempo.</div>
-            ) : (!isMaster && arenaMeta?.phase === "combat") ? (
-              <div className="am-message am-message--err">⚔ Torneo in corso: gli acquisti riaprono nella pausa Bottega tra un round e l'altro.</div>
+            ) : buyLocked ? (
+              <div className="am-message am-message--err">⚔ Stai combattendo: gli acquisti si aprono appena finisce il tuo match.</div>
+            ) : buyLater ? (
+              <div className="am-message">🛒 Il tuo match è finito: puoi comprare. La merce si monta alla pausa Bottega tra un round e l'altro (ri-equipaggiamento).</div>
             ) : null}
 
             {/* RICEVUTA: i tuoi acquisti della settimana */}
@@ -338,9 +357,10 @@ export default function ArenaMarket() {
                             <button
                               className="am-buy-btn"
                               onClick={() => buyMarketItem(item)}
-                              disabled={maxed || !canAfford}
+                              disabled={maxed || !canAfford || buyLocked}
+                              title={buyLocked ? "Stai combattendo: compra a fine match" : undefined}
                             >
-                              {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
+                              {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : buyLocked ? "⚔ A fine match" : "Acquista"}
                             </button>
                           </div>
                         </article>
