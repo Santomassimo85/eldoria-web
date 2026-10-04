@@ -63,3 +63,54 @@
 .gs-autosave b { color: var(--el); }
 .gs-autosave-actions { display: flex; gap: 8px; }
 .gs-autosave-actions .sumadm-btn { min-height: 38px; }
+
+/* Nuova sessione · Archivio: due lame del Covo (2026-10-04) */
+.gs-modes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin: 0 0 18px;
+}
+.gs-mode {
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  min-height: 72px; padding: 14px 18px;
+  text-align: left; cursor: pointer;
+  background: var(--roccia-1);
+  border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14);
+  border-top: 3px solid rgba(var(--el-rgb), .35);
+  border-radius: 3px;
+  color: var(--osso);
+  transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+}
+.gs-mode:hover { background: var(--roccia-2); border-top-color: var(--el); transform: translateY(-1px); }
+.gs-mode:focus-visible { outline: 2px solid var(--el); outline-offset: 2px; }
+.gs-mode.on {
+  background: linear-gradient(180deg, rgba(var(--el-rgb), .22), var(--roccia-2) 70%);
+  border-color: rgba(var(--el-rgb), .55);
+  border-top-color: var(--el);
+  box-shadow: 0 0 0 1px rgba(var(--el-rgb), .25), 0 10px 26px -14px rgba(var(--el-rgb), .7);
+}
+.gs-mode.on::after {
+  /* filo acceso sotto la lama attiva */
+  content: ""; position: absolute; left: 18px; right: 18px; bottom: -1px; height: 2px;
+  background: var(--el); box-shadow: 0 0 10px var(--el);
+}
+.gs-mode-icon {
+  flex: none; display: grid; place-items: center;
+  width: 42px; height: 42px; border-radius: 50%;
+  font-size: 1.3rem; line-height: 1;
+  background: var(--roccia-3); border: 1px solid rgba(var(--el-rgb), .35);
+}
+.gs-mode.on .gs-mode-icon { background: rgba(var(--el-rgb), .25); border-color: var(--el); }
+.gs-mode-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gs-mode-title {
+  font-family: var(--font-title, inherit); font-size: 1.35rem; line-height: 1.1;
+  color: var(--osso);
+}
+.gs-mode.on .gs-mode-title { color: var(--el); }
+.gs-mode-sub { font-family: var(--font-ui, inherit); font-size: .85rem; color: var(--osso-2, #b9af9d); }
+@media (max-width: 560px) {
+  .gs-mode { min-height: 60px; padding: 10px 12px; gap: 10px; }
+  .gs-mode-icon { width: 34px; height: 34px; font-size: 1.05rem; }
+  .gs-mode-title { font-size: 1.1rem; }
+  .gs-mode-sub { display: none; }
+}

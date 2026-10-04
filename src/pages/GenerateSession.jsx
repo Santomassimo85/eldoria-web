@@ -350,23 +350,22 @@ export default function GenerateSession() {
         </div>
       </header>
 
-      {/* Schede: Nuova sessione · Archivio */}
-      <div className="sumadm-filter-tabs" style={{ marginBottom: 14 }}>
-        <button
-          type="button"
-          className={`sumadm-filter ${tab === "nuova" ? "on" : ""}`}
-          onClick={() => setTab("nuova")}
-          style={tab === "nuova" ? { background: "#8a6212", borderColor: "#8a6212", color: "#fff" } : { borderColor: "#8a6212", color: "#8a6212" }}
-        >
-          ✨ Nuova sessione
+      {/* Schede: Nuova sessione · Archivio — due "lame" del Covo, grandi e col sottotitolo.
+          Bottoni con aria-pressed (NON role="tab": covo.css ci metterebbe le rune). */}
+      <div className="gs-modes" role="group" aria-label="Nuova sessione o archivio">
+        <button type="button" className={`gs-mode${tab === "nuova" ? " on" : ""}`} aria-pressed={tab === "nuova"} onClick={() => setTab("nuova")}>
+          <span className="gs-mode-icon" aria-hidden="true">✒</span>
+          <span className="gs-mode-text">
+            <span className="gs-mode-title">Nuova sessione</span>
+            <span className="gs-mode-sub">Bozza → sessione, dai riassunti del gruppo</span>
+          </span>
         </button>
-        <button
-          type="button"
-          className={`sumadm-filter ${tab === "archivio" ? "on" : ""}`}
-          onClick={() => setTab("archivio")}
-          style={tab === "archivio" ? { background: "#8a6212", borderColor: "#8a6212", color: "#fff" } : { borderColor: "#8a6212", color: "#8a6212" }}
-        >
-          📖 Archivio {sessions.length > 0 && tab === "archivio" ? `(${sessions.length})` : ""}
+        <button type="button" className={`gs-mode${tab === "archivio" ? " on" : ""}`} aria-pressed={tab === "archivio"} onClick={() => setTab("archivio")}>
+          <span className="gs-mode-icon" aria-hidden="true">📜</span>
+          <span className="gs-mode-text">
+            <span className="gs-mode-title">Archivio{sessions.length > 0 && tab === "archivio" ? ` · ${sessions.length}` : ""}</span>
+            <span className="gs-mode-sub">Le sessioni salvate di {party.id}</span>
+          </span>
         </button>
       </div>
 
