@@ -5440,3 +5440,22 @@
 
 /* Sprite Personaggi: idea per lo sfondo del World Boss generato dall'IA (2026-10-03) */
 .adm .wbs-bg-idea { width: 100%; margin-top: 8px; resize: vertical; min-height: 44px; font-family: var(--font-ui); }
+
+/* ── Bacheca: generatore IA delle missioni (Claude + Gemini) ── */
+.qstadm-gen {
+  display: grid; gap: 10px; margin: 0 0 18px; padding: 14px;
+  background: var(--roccia-3); border: 1px solid rgba(var(--el-rgb), .35);
+  border-top: 2px solid var(--el); border-radius: 3px;
+}
+.qstadm-gen-head { display: grid; gap: 2px; }
+.qstadm-gen-head strong { font-family: var(--font-sc); color: var(--osso); letter-spacing: .04em; }
+.qstadm-gen-head small, .qstadm-gen-actions small { color: var(--osso-muted, var(--osso-body)); font-size: .78rem; }
+.qstadm-gen-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.qstadm-gen-err { margin: 0; color: var(--sangue-soft, #e07a6a); font-size: .85rem; }
+.qstadm-gen-info { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.qstadm-gen-info p { flex-basis: 100%; margin: 4px 0 0; font-size: .85rem; color: var(--osso-body); }
+.qstadm-gen-chip {
+  font-size: .74rem; padding: 3px 9px; border-radius: 3px;
+  border: 1px solid rgba(var(--oro-rgb), .4); color: var(--osso-body);
+}
+.qstadm-gen-chip.new { border-color: rgba(var(--el-rgb), .7); color: var(--el-2); }

@@ -7,6 +7,7 @@ import {
   updateDoc,
   doc,
   onSnapshot,
+  getDocs,
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -17,6 +18,7 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { logAgent } from "../utils/agentLog";
 import "./admin.css";
 
 const PARTY_ROSTER = {
@@ -130,6 +132,43 @@ const DropZone = ({ value, uploading, onFile, onClear, label, icon = "📜" }) =
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+/* ── Generatore IA: estratto del mondo dell'app per Claude ── */
+const plain = (html, n) => {
+  const t = String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return t.length > n ? `${t.slice(0, n)}…` : t;
+};
+
+async function loadQuestWorld() {
+  const safe = (p) => p.then((s) => s.docs.map((d) => d.data())).catch(() => []);
+  const [npcs, places] = await Promise.all([
+    safe(getDocs(collection(db, "npcs"))),
+    safe(getDocs(collection(db, "geo_archive"))),
+  ]);
+  return {
+    npcs: npcs.filter((n) => n.name).map((n) => {
+      const where_ = [n.location, n.linkedCity].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ");
+      return { name: n.name, meta: [n.role, n.faction, where_].filter(Boolean).join(" · "), desc: plain(n.description, 140) };
+    }),
+    places: places.filter((p) => p.name).map((p) => ({
+      name: p.name, meta: p.continent || "", desc: plain(p.description, 180),
+    })),
+  };
+}
+
+const dataUrlToBlob = (dataUrl) => {
+  const [head, b64] = dataUrl.split(",");
+  const mime = /data:([^;]+)/.exec(head)?.[1] || "image/png";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+};
+
+const questImagePrompt = (scene, zona) => `Illustrazione fantasy per una missiva appesa alla bacheca di una locanda, campagna di gioco di ruolo D&D.
+Scena: ${scene}${zona ? ` Luogo: ${zona}.` : ""}
+Stile: arte epica dark fantasy dipinta, composizione cinematografica, chiaroscuro drammatico, colori profondi, atmosfera di mistero e pericolo, molto dettagliata.
+Niente testo, niente scritte, niente lettere leggibili, niente cornici, niente interfacce.`;
+
 export default function QuestAdmin() {
   const { currentUser } = useAuth();
   // Il co-master non ha accesso alla Console (/dm-admin): torna agli Strumenti DM.
@@ -144,6 +183,13 @@ export default function QuestAdmin() {
   const [filterDiff, setFilterDiff] = useState("all");
   const [filterTarget, setFilterTarget] = useState("all");
   const [search, setSearch] = useState("");
+
+  // ── Generatore IA (Claude scrive, Gemini illustra) ──
+  const [gen, setGen] = useState({ idea: "", zona: "", diff: "" });
+  const [genBusy, setGenBusy] = useState("");   // "" | "testo" | "immagine"
+  const [genErr, setGenErr] = useState("");
+  const [genInfo, setGenInfo] = useState(null); // { masterNote, senderIsNew, zonaIsNew, imagePrompt, zona }
+  const [genWorld, setGenWorld] = useState(null);
 
   useEffect(() => {
     const unsubQ = onSnapshot(collection(db, "quests"), (snap) => {
@@ -198,6 +244,79 @@ export default function QuestAdmin() {
     if (url) {
       if (formData.coverImage) cleanupStorageUrl(formData.coverImage);
       setFormData((d) => ({ ...d, coverImage: url }));
+    }
+  };
+
+  const generateImage = async (scene, zona) => {
+    setGenBusy("immagine");
+    setGenErr("");
+    try {
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: questImagePrompt(scene, zona), aspectRatio: "3:2" }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.immagine) throw new Error(data.error || "Nessuna immagine.");
+      const url = await uploadCover(dataUrlToBlob(data.immagine));
+      if (url) {
+        setFormData((d) => {
+          if (d.coverImage) cleanupStorageUrl(d.coverImage);
+          return { ...d, coverImage: url };
+        });
+      }
+      logAgent("genera-immagine", "success", "Copertina di una missione generata", {}, { count: true });
+    } catch (e) {
+      setGenErr(`Illustrazione non riuscita: ${e.message} (il testo resta, puoi riprovare).`);
+      logAgent("genera-immagine", "error", e.message);
+    } finally {
+      setGenBusy("");
+    }
+  };
+
+  const generateQuest = async () => {
+    if (genBusy) return;
+    setGenBusy("testo");
+    setGenErr("");
+    setGenInfo(null);
+    try {
+      const world = genWorld || await loadQuestWorld();
+      if (!genWorld) setGenWorld(world);
+      const r = await fetch("/api/genera-missione", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...gen,
+          target: formData.targetCharacter,
+          npcs: world.npcs,
+          places: world.places,
+          recent: quests.map((q) => q.title).filter(Boolean).slice(-15),
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.quest) throw new Error(data.error || "Nessuna missione.");
+      const g = data.quest;
+      setEditingId(null);
+      setFormData((d) => ({
+        ...d,
+        title: g.title || "",
+        desc: g.letter || "",
+        diff: DIFFICULTIES.some((x) => x.key === g.diff) ? g.diff : d.diff,
+        cr: String(g.cr || d.cr),
+        zona: g.zona || "",
+        rewardGold: Number(g.rewardGold) || 0,
+        rewardItem: g.rewardItem || "",
+        rewardOther: g.rewardOther || "",
+      }));
+      setSender(g.sender || "");
+      setGenInfo({ masterNote: g.masterNote, senderIsNew: g.senderIsNew, zonaIsNew: g.zonaIsNew, imagePrompt: g.imagePrompt, zona: g.zona });
+      logAgent("genera-missione", "success", `Missione generata: ${g.title}`, {}, { count: true });
+      setGenBusy("");
+      if (g.imagePrompt) await generateImage(g.imagePrompt, g.zona);
+    } catch (e) {
+      setGenErr(`Generazione non riuscita: ${e.message}`);
+      logAgent("genera-missione", "error", e.message);
+      setGenBusy("");
     }
   };
 
@@ -343,6 +462,66 @@ export default function QuestAdmin() {
             <h2>{editingId ? "✎ Modifica Pergamena" : "✨ Nuova Missiva"}</h2>
             {editingId && <span className="qstadm-edit-tag">{editingId.slice(0, 14)}…</span>}
           </div>
+
+          {!editingId && (
+            <div className="qstadm-gen">
+              <div className="qstadm-gen-head">
+                <strong>🪄 Genera con l'IA</strong>
+                <small>Claude scrive la lettera (usa NPC e luoghi dell'app o ne inventa), Gemini la illustra. Poi la rivedi e la appendi.</small>
+              </div>
+              <textarea
+                className="admin-field-textarea"
+                rows="2"
+                placeholder="Idea facoltativa: «un mugnaio sente cantare il fiume di notte», «scorta di un carico di sale»…"
+                value={gen.idea}
+                onChange={(e) => setGen({ ...gen, idea: e.target.value })}
+              />
+              <div className="qstadm-row2">
+                <input
+                  className="admin-field-input"
+                  list="qstadm-gen-places"
+                  placeholder="Zona (facoltativa)"
+                  value={gen.zona}
+                  onChange={(e) => setGen({ ...gen, zona: e.target.value })}
+                  onFocus={() => { if (!genWorld) loadQuestWorld().then(setGenWorld); }}
+                />
+                <datalist id="qstadm-gen-places">
+                  {(genWorld?.places || []).map((p) => <option key={p.name} value={p.name} />)}
+                </datalist>
+                <select
+                  className="admin-field-select"
+                  value={gen.diff}
+                  onChange={(e) => setGen({ ...gen, diff: e.target.value })}
+                >
+                  <option value="">Difficoltà: decide l'IA</option>
+                  {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.icon} {d.key}</option>)}
+                </select>
+              </div>
+              <div className="qstadm-gen-actions">
+                <button type="button" className="qstadm-btn primary" onClick={generateQuest} disabled={!!genBusy || uploading}>
+                  {genBusy === "testo" ? "✍ Scrivo la lettera…" : genBusy === "immagine" ? "🎨 Dipingo l'illustrazione…" : "🪄 Genera missione"}
+                </button>
+                {genInfo?.imagePrompt && (
+                  <button type="button" className="qstadm-btn ghost" onClick={() => generateImage(genInfo.imagePrompt, genInfo.zona)} disabled={!!genBusy || uploading}>
+                    🎨 Nuova illustrazione
+                  </button>
+                )}
+                <small>Destinatario: quello scelto sotto ({formData.targetCharacter === "All" ? "pubblica" : formData.targetCharacter}).</small>
+              </div>
+              {genErr && <p className="qstadm-gen-err" role="alert">{genErr}</p>}
+              {genInfo && (
+                <div className="qstadm-gen-info">
+                  <span className={`qstadm-gen-chip${genInfo.senderIsNew ? " new" : ""}`}>
+                    ✉ {genInfo.senderIsNew ? "Mittente nuovo" : "Mittente dall'app"}
+                  </span>
+                  <span className={`qstadm-gen-chip${genInfo.zonaIsNew ? " new" : ""}`}>
+                    📍 {genInfo.zonaIsNew ? "Luogo nuovo" : "Luogo dall'app"}
+                  </span>
+                  {genInfo.masterNote && <p><strong>Solo per te:</strong> {genInfo.masterNote}</p>}
+                </div>
+              )}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="qstadm-form">
             <div className="qstadm-row2">

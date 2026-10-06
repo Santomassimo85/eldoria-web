@@ -68,6 +68,17 @@ export const AGENTS = [
     interagisci: null,
   },
   {
+    id: "genera-missione",
+    nome: "Penna di Hemile",
+    sigillo: "📜",
+    kind: "strumento",
+    motore: "Claude + Gemini",
+    file: "api/genera-missione.js",
+    sommario: "Scrive missioni per la Bacheca con la lettera del mittente.",
+    cosaFa: "Inventa una missione e la lettera di chi la chiede, usando NPC e luoghi dell'app (o creandone di nuovi); il Pennello Arcano ne dipinge la copertina.",
+    interagisci: { tipo: "link", to: "/dm-admin/quests", label: "Vai alla Bacheca del Master" },
+  },
+  {
     id: "obsidian-sync",
     nome: "Amanuense d'Obsidian",
     sigillo: "🗂️",
