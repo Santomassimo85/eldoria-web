@@ -197,3 +197,12 @@
 /* ── AMBIENT FX: contenuto sopra, layer dietro ── */
 .bacheca-page > * { position: relative; z-index: 1; }
 .bacheca-page > .ambient-fx { position: fixed; z-index: 0; }
+
+/* ── Missione del mese (una al mese per gruppo) ── */
+.bacheca-page .bch-month-lock {
+  margin: 10px auto 14px; max-width: 760px; padding: 10px 14px;
+  border: 1px solid rgba(var(--el-rgb), .45); border-left: 3px solid var(--el);
+  background: rgba(var(--ossidiana-rgb), .55); border-radius: 3px; text-align: center;
+}
+.bacheca-page .bch-month-lock.is-warn { border-color: rgba(var(--oro-rgb), .55); border-left-color: var(--oro); }
+.bacheca-page .btn-quest-locked { margin-top: 10px; padding: 7px 14px; font-size: .62rem; opacity: .75; cursor: not-allowed; }

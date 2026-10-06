@@ -1,31 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./admin.css";
 import "../styles/cinematic.css";
 import "./QuestDetail.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import GlacierHero from "../components/glacier/GlacierHero";
+import { getPartyByCharName, acceptQuest } from "../data/questLimits";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"]; // master + co-master
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png";
-
-// ── Unica fonte di verità per i party ─────────────────────────
-const PARTY_ROSTER = {
-  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
-  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
-  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Soran", "Zethir", "Aksel", "Dago"],
-};
-
-const getPartyByCharName = (name) => {
-  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
-    if (members.includes(name)) return party;
-  }
-  return "Senza Gruppo";
-};
 
 export default function QuestDetail() {
   useParallaxScroll();
@@ -37,6 +23,8 @@ export default function QuestDetail() {
   const [loading, setLoading]         = useState(true);
   const [userCharName, setUserCharName] = useState(null); // null = ancora in caricamento
   const [userParty, setUserParty]     = useState("");
+  const [notice, setNotice]           = useState("");
+  const [busy, setBusy]               = useState(false);
 
   const isMaster = MASTER_EMAILS.includes(currentUser?.email);
 
@@ -65,17 +53,18 @@ export default function QuestDetail() {
   }, [id]);
 
   const handleAccept = async () => {
-    if (!userCharName) { alert("Il tuo personaggio non ha un nome valido!"); return; }
-    const party = getPartyByCharName(userCharName);
+    if (!userCharName) { setNotice("Il tuo personaggio non ha un nome valido!"); return; }
+    if (busy) return;
+    setBusy(true);
+    setNotice("");
     try {
-      await updateDoc(doc(db, "quests", id), {
-        acceptedBy:    userCharName,
-        acceptedParty: party,
-        status:        "in_progress",
-      });
+      await acceptQuest({ questId: id, charName: userCharName, isMaster });
       navigate("/bacheca");
     } catch (err) {
-      console.error("Errore salvataggio missione:", err);
+      if (err?.code === "limit" || err?.code === "taken") setNotice(err.message);
+      else { console.error("Errore salvataggio missione:", err); setNotice("Qualcosa è andato storto, riprova."); }
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -164,9 +153,11 @@ export default function QuestDetail() {
 
           {!isAccepted ? (
             <div className="qd-azioni">
-              <button onClick={handleAccept} className="gl-cta questDetailButton">
+              <button onClick={handleAccept} className="gl-cta questDetailButton" disabled={busy}>
                 ⚔ Accetta missione
               </button>
+              <p className="nx-nota">Ogni gruppo può prendere una sola missione al mese.</p>
+              {notice && <p className="nx-nota" role="alert">{notice}</p>}
             </div>
           ) : (
             <div className="nx-citazione qd-presa">

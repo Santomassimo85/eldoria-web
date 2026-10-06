@@ -8,28 +8,17 @@ import AmbientFX from "../components/AmbientFX";
 import GlacierHero from "../components/glacier/GlacierHero";
 import {
   collection, onSnapshot, doc, getDoc,
-  updateDoc, query, where, getDocs,
+  query, where, getDocs,
   writeBatch, serverTimestamp
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
+import {
+  PARTY_ROSTER, NO_PARTY, getPartyByCharName, questSlotOf, questLockRef,
+  questMonthKey, nextMonthLabel, acceptQuest, releaseQuest,
+} from "../data/questLimits";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"]; // master + co-master
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
-
-// ── Unica fonte di verità per i party ─────────────────────────
-const PARTY_ROSTER = {
-  "AMEA": ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
-  "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
-  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Soran", "Zethir Nightwhisper", "Aksel", "Dago"],
-};
-
-const getPartyByCharName = (name) => {
-  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
-    if (members.includes(name)) return party;
-  }
-  return "Senza Gruppo";
-};
 
 export default function Bacheca() {
   const navigate = useNavigate();
@@ -38,7 +27,7 @@ export default function Bacheca() {
   const [userParty, setUserParty]       = useState("");
   const [loading, setLoading]           = useState(true);
   const [hoveredId, setHoveredId]       = useState(null);
-  const [query, setQuery]               = useState("");
+  const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState(null); // null | "available" | "accepted"
 
   const { currentUser } = useAuth();
@@ -66,50 +55,60 @@ export default function Bacheca() {
     return () => unsub();
   }, []);
 
+  // ── Sigillo del mese: una missione al mese per gruppo ──────
+  const [monthLock, setMonthLock] = useState(null);
+  const [notice, setNotice]       = useState("");
+  const [busyId, setBusyId]       = useState(null);
+  useEffect(() => {
+    if (!userCharName || isMaster) { setMonthLock(null); return; }
+    const ref = questLockRef(questSlotOf(userCharName, userParty), questMonthKey());
+    return onSnapshot(ref, (snap) => setMonthLock(snap.exists() ? snap.data() : null), () => setMonthLock(null));
+  }, [userCharName, userParty, isMaster]);
+  const monthTaken = !!monthLock;
+
   // ── Accetta / Rilascia ─────────────────────────────────────
   const toggleQuestStatus = async (quest, accept) => {
+    if (busyId) return;
+    setBusyId(quest.id);
+    setNotice("");
     try {
-      const batch    = writeBatch(db);
-      const questRef = doc(db, "quests", quest.id);
+      if (!accept) {
+        await releaseQuest(quest);
+        return;
+      }
+      if (!userCharName) { setNotice("Il tuo personaggio non ha un nome valido."); return; }
+      await acceptQuest({ questId: quest.id, charName: userCharName, isMaster });
 
-      batch.update(questRef, {
-        acceptedBy:    accept ? userCharName : null,
-        acceptedParty: accept ? userParty    : null,
-        status:        accept ? "in_progress" : "available",
-      });
-
-      if (accept) {
-        const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
-        const membersNames = isPartyQuest ? (PARTY_ROSTER[quest.targetParty] || []) : [];
-
-        if (membersNames.length > 0) {
-          const charQuery = query(collection(db, "characters"), where("name", "in", membersNames));
-          const charSnaps = await getDocs(charQuery);
-          charSnaps.forEach((memberDoc) => {
-            const notifyRef = doc(collection(db, "notifications"));
-            batch.set(notifyRef, {
-              userId:    memberDoc.id,
-              title:     "⚔️ Missione di Gruppo!",
-              message:   `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. Preparatevi!`,
-              read:      false,
-              timestamp: serverTimestamp(),
-            });
-          });
-        } else {
-          const notifyRef = doc(collection(db, "notifications"));
-          batch.set(notifyRef, {
-            userId:    currentUser.uid,
-            title:     "📜 Incarico Accettato",
-            message:   `Hai preso in carico la missione: "${quest.title}".`,
+      // la missione va al gruppo: avvisa tutti i membri del party di chi l'ha presa
+      const batch = writeBatch(db);
+      const membersNames = userParty !== NO_PARTY ? (PARTY_ROSTER[userParty] || []) : [];
+      if (membersNames.length > 0) {
+        const charQuery = query(collection(db, "characters"), where("name", "in", membersNames));
+        const charSnaps = await getDocs(charQuery);
+        charSnaps.forEach((memberDoc) => {
+          batch.set(doc(collection(db, "notifications")), {
+            userId:    memberDoc.id,
+            title:     "⚔️ Missione di Gruppo!",
+            message:   `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. È la missione del mese: preparatevi!`,
             read:      false,
             timestamp: serverTimestamp(),
           });
-        }
+        });
+      } else {
+        batch.set(doc(collection(db, "notifications")), {
+          userId:    currentUser.uid,
+          title:     "📜 Incarico Accettato",
+          message:   `Hai preso in carico la missione: "${quest.title}".`,
+          read:      false,
+          timestamp: serverTimestamp(),
+        });
       }
-
-      await batch.commit();
+      await batch.commit().catch((err) => console.error("Notifiche missione:", err));
     } catch (err) {
-      console.error("Errore gestione incarico:", err);
+      if (err?.code === "limit" || err?.code === "taken") setNotice(err.message);
+      else { console.error("Errore gestione incarico:", err); setNotice("Qualcosa è andato storto, riprova."); }
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -140,7 +139,7 @@ export default function Bacheca() {
   }).filter(q => q._visible);
 
   // ── Ricerca: titolo / gruppo / personaggio + filtro stato ──
-  const q = query.trim().toLowerCase();
+  const q = search.trim().toLowerCase();
   const matchesQuest = (quest) => {
     const byStatus =
       statusFilter == null ? true :
@@ -170,14 +169,14 @@ export default function Bacheca() {
         eyebrow="Bacheca di Hemile"
         title={<>Hemile's<br />Board</>}
         seal={userCharName
-          ? `${userCharName}${userParty && userParty !== "Senza Gruppo" ? ` · Party ${userParty}` : ""}`
+          ? `${userCharName}${userParty && userParty !== NO_PARTY ? ` · Party ${userParty}` : ""}`
           : undefined}
         tagline="Pergamene, sigilli e missive attendono mani coraggiose."
         actions={<a href="#bacheca-albo" className="gl-cta" aria-label="Scorri all'albo">✦ Apri l'albo</a>}
       >
         <p className="bch-glacier-greet">
           Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
-          {userParty && userParty !== "Senza Gruppo" ? <> — Party <strong>{userParty}</strong></> : ""}.
+          {userParty && userParty !== NO_PARTY ? <> — Party <strong>{userParty}</strong></> : ""}.
         </p>
       </GlacierHero>
 
@@ -185,7 +184,17 @@ export default function Bacheca() {
       <div id="bacheca-albo" className="gl-sezlabel">Incarichi · Le Missive</div>
       <p className="nx-nota bch-sezsub">
         Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+        {" "}Ogni gruppo può prendere <strong>una sola missione al mese</strong>.
       </p>
+
+      {!isMaster && monthTaken && (
+        <p className="nx-nota bch-month-lock" role="status">
+          🛡 {userParty !== NO_PARTY ? <>Il party <strong>{userParty}</strong> ha</> : "Hai"} già preso la missione del mese:{" "}
+          <strong>"{monthLock.questTitle}"</strong>{monthLock.by ? <> (scelta da {monthLock.by})</> : null}.
+          {" "}La prossima dal <strong>{nextMonthLabel()}</strong>.
+        </p>
+      )}
+      {notice && <p className="nx-nota bch-month-lock is-warn" role="alert">{notice}</p>}
 
       {!loading && questEntries.length > 0 && (
         <div className="bch-toolbar">
@@ -193,8 +202,8 @@ export default function Bacheca() {
             type="search"
             className="bch-search"
             placeholder="Cerca per titolo, gruppo o personaggio…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             aria-label="Cerca missive"
           />
           <div className="nx-pillole bch-filtri" role="group" aria-label="Filtra per stato">
@@ -301,6 +310,7 @@ export default function Bacheca() {
                           <button
                             type="button"
                             className="nx-pillola btn-quest btn-quest-release"
+                            disabled={busyId === quest.id}
                             onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, false); }}
                           >
                             Rilascia
@@ -310,13 +320,20 @@ export default function Bacheca() {
                     )}
 
                     {!isAccepted && isHovered && quest._canOpen && (
-                      <button
-                        type="button"
-                        className="gl-cta btn-quest btn-quest-accept"
-                        onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
-                      >
-                        Accetta ora
-                      </button>
+                      monthTaken && !isMaster ? (
+                        <span className="nx-pillola btn-quest btn-quest-locked" aria-disabled="true">
+                          Missione del mese già presa
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="gl-cta btn-quest btn-quest-accept"
+                          disabled={busyId === quest.id}
+                          onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
+                        >
+                          Accetta ora
+                        </button>
+                      )
                     )}
                   </>
                 )}
