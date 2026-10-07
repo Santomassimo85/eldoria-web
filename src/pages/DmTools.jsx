@@ -29,7 +29,7 @@ const PARTIES = [
   ] },
   { key: "LEAF",  label: "LEAF",  members: [
     { name: "Soran",  image: "/assets/player/Soran.png" },
-    { name: "Zethir", image: "/assets/player/Zethir.jpeg" },
+    { name: "Zethir", image: "/assets/player/Zethir.jpeg?v=2" },
     { name: "Aksel",  image: "/assets/player/Aksel.png" },
     { name: "Dago",   image: "/assets/player/dago.jpeg" },
   ] },
