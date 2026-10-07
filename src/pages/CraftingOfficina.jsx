@@ -39,7 +39,8 @@ import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import { affordFromSnapshot, availableGp, canAfford, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
 import "./CraftingOfficina.css";
 
-const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
+// Officina = solo il Master governa; il co-master (Luisa/Makenna) ci lavora da giocatrice (2026-10-07).
+const MASTER_EMAILS = ["santomassimo85@gmail.com"];
 const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
 
 // Qualità dei materiali e aiuto al banco: scelte DISMESSE il 2026-09-22 (al loro
