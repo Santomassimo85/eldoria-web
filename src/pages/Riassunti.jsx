@@ -1,6 +1,7 @@
 // src/pages/Riassunti.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { isAdminEmail } from "../utils/roles";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ToggleSection from "./ToggleSection";
 import GlacierHero from "../components/glacier/GlacierHero";
@@ -167,7 +168,7 @@ ${summariesHtml}
 export default function Riassunti() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const isMaster = currentUser?.email === MASTER_EMAIL;
+    const isMaster = isAdminEmail(currentUser?.email);
     // Deep-link a un riassunto specifico: /riassunti?s=<id>
     const [searchParams] = useSearchParams();
     const targetId = searchParams.get('s');

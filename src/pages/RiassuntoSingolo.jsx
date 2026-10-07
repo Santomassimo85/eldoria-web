@@ -3,6 +3,7 @@
 // NON è linkata dal menu: serve a condividere un riassunto specifico coi player.
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { isAdminEmail } from "../utils/roles";
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase/firestore';
@@ -33,7 +34,7 @@ export default function RiassuntoSingolo() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const isMaster = currentUser?.email === MASTER_EMAIL;
+    const isMaster = isAdminEmail(currentUser?.email);
 
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);

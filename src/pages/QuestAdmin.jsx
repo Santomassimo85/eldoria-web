@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { db, storage } from "../firebase";
 import {
   collection,
@@ -172,7 +173,7 @@ Niente testo, niente scritte, niente lettere leggibili, niente cornici, niente i
 export default function QuestAdmin() {
   const { currentUser } = useAuth();
   // Il co-master non ha accesso alla Console (/dm-admin): torna agli Strumenti DM.
-  const isMainMaster = currentUser?.email === MASTER_EMAIL;
+  const isMainMaster = isAdminEmail(currentUser?.email); // master o co-master: tornano alla Console
   const [quests, setQuests] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(false);

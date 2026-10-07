@@ -1,14 +1,13 @@
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
 import "./admin.css";
+import { isAdminEmail, isMainMaster } from "../utils/roles";
 
 export default function AdminPanel() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const MASTER_EMAIL = "santomassimo85@gmail.com";
-
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isAdminEmail(currentUser.email)) {
     return (
       <section className="adm" style={{ "--cine-accent": "#fde68a", "--cine-accent-2": "#fbbf24" }}>
         <div className="adm-masthead">
@@ -24,7 +23,7 @@ export default function AdminPanel() {
 
   // Pannelli raggruppati per TIPOLOGIA, ogni area con il suo colore acceso
   // (--g: tinge intestazione, bordo, icona e cue delle piastrelle).
-  const GROUPS = [
+  const ALL_GROUPS = [
     {
       label: "Economia & Gilda", color: "#fbbf24", glyph: "🪙",
       items: [
@@ -73,6 +72,12 @@ export default function AdminPanel() {
       ],
     },
   ];
+
+  // Il co-master non gestisce i giochi (Mercato, World Boss, sprite di battaglia): li gioca da player.
+  const GAME_PATHS = ["/dm-admin/market", "/dm-admin/world-boss", "/dm-admin/player-sprites"];
+  const GROUPS = isMainMaster(currentUser.email)
+    ? ALL_GROUPS
+    : ALL_GROUPS.map(g => ({ ...g, items: g.items.filter(i => !GAME_PATHS.includes(i.path)) })).filter(g => g.items.length);
 
   const totalTools = GROUPS.reduce((n, g) => n + g.items.length, 0);
 

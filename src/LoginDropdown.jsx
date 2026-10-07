@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { isAdminEmail } from "./utils/roles";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { db } from "./firebase";
@@ -207,7 +208,7 @@ export default function LoginDropdown() {
             📜 Scheda Personaggio
           </button>
 
-          {isMaster && (
+          {isAdminEmail(currentUser?.email) && (
             <>
               <div className="ld-divider" />
               <p className="ld-section-label">Master Panel</p>

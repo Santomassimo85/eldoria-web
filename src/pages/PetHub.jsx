@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { db } from "../firebase";
 import { doc, onSnapshot, updateDoc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
@@ -189,7 +190,7 @@ export default function PetHub() {
       <div className="ph-tab-body">
         {tab === "arena"    && <PetArena embedded />}
         {tab === "nido"     && <BestiariaNido uid={currentUser.uid} />}
-        {tab === "compagni" && <PetCompagniPanel uid={currentUser.uid} isMaster={currentUser.email === MASTER_EMAIL} />}
+        {tab === "compagni" && <PetCompagniPanel uid={currentUser.uid} isMaster={isAdminEmail(currentUser.email)} />}
         {tab === "shop"     && <BestiariaShop uid={currentUser.uid} />}
       </div>
     </section>

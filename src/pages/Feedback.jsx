@@ -10,6 +10,7 @@
    ============================================================ */
 
 import React, { useEffect, useMemo, useState } from "react";
+import { isAdminEmail } from "../utils/roles";
 import {
   doc, collection, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc,
   addDoc, serverTimestamp, query, orderBy, where,
@@ -778,7 +779,7 @@ export default function Feedback() {
   useParallaxScroll();
   const { currentUser } = useAuth();
   const [characterName, setCharacterName] = useState("");
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isAdminEmail(currentUser?.email);
 
   // Read the character name once so we can stamp it onto the feedback.
   useEffect(() => {

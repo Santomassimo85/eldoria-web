@@ -74,6 +74,7 @@ import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
+import { isAdminEmail } from "./utils/roles";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -139,9 +140,8 @@ function NavDropdown({ label, children, closeAll, id, openId, setOpenId }) {
   );
 }
 
-// Elenco dei co-master: hanno accesso agli strumenti DM ma non al pannello admin completo.
-const CO_MASTER_EMAILS = ["ripperti96@gmail.com"];
-const isDmUser = (email) => email === MASTER_EMAIL_UI || CO_MASTER_EMAILS.includes(email);
+// Master + co-master (src/utils/roles.js): il co-master usa tutto tranne i giochi.
+const isDmUser = isAdminEmail;
 
 // --- Link al Generatore NPC (master + co-master) ---
 const NpcGenNavLink = ({ closeMenu }) => {
@@ -185,7 +185,7 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
 // --- Link "Agenti" (Il Concilio) — solo Master, voce di primo livello ---
 const ConcilioNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  if (!isAdminEmail(currentUser?.email)) return null;
   return (
     <NavLink
       to="/agenti"
@@ -202,7 +202,7 @@ const ConcilioNavLink = ({ closeMenu }) => {
 // --- Componente Link Admin Condizionale ---
 const AdminNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email === MASTER_EMAIL_UI) {
+  if (isAdminEmail(currentUser?.email)) {
     return (
       <NavLink
         to="/dm-admin"
@@ -215,49 +215,6 @@ const AdminNavLink = ({ closeMenu }) => {
     );
   }
   return null;
-};
-
-// --- Link DM dedicati al co-master (summaries + black market + bacheca missioni) ---
-const SummaryAdminNavLink = ({ closeMenu }) => {
-  const { currentUser } = useAuth();
-  if (!CO_MASTER_EMAILS.includes(currentUser?.email)) return null;
-  const linkStyle = { backgroundColor: "var(--gold)", color: "var(--red)", fontWeight: "bold" };
-  return (
-    <>
-      <NavLink
-        to="/dm-admin/summaries"
-        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
-        onClick={closeMenu}
-        style={linkStyle}
-      >
-        RIASSUNTI
-      </NavLink>
-      <NavLink
-        to="/dm-admin/market"
-        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
-        onClick={closeMenu}
-        style={linkStyle}
-      >
-        MARKET
-      </NavLink>
-      <NavLink
-        to="/dm-admin/quests"
-        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
-        onClick={closeMenu}
-        style={linkStyle}
-      >
-        BACHECA
-      </NavLink>
-      <NavLink
-        to="/dm/generate-session"
-        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
-        onClick={closeMenu}
-        style={linkStyle}
-      >
-        GENERA SESSIONE
-      </NavLink>
-    </>
-  );
 };
 
 // --- TCG nav link — hidden while the page is locked unless the
@@ -462,7 +419,7 @@ function OnlinePresence() {
   const [open, setOpen]               = useState(false);
   const [, setTick]                   = useState(0);
   const lastWriteRef                  = useRef(0);
-  const isMaster = currentUser?.email === MASTER_EMAIL_UI;
+  const isMaster = isAdminEmail(currentUser?.email);
 
   // Scrivi lastSeen in characters/{uid} — usa la collection che ha già le regole
   const writePresence = useRef(null);
@@ -767,7 +724,6 @@ export default function App() {
           <DmToolsDropdown closeMenu={closeMenu} openId={openDd} setOpenId={setOpenDd} />
           <ConcilioNavLink closeMenu={closeMenu} />
           <AdminNavLink closeMenu={closeMenu} />
-          <SummaryAdminNavLink closeMenu={closeMenu} />
         </nav>
       </header>
       )}

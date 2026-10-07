@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { isAdminEmail } from "../utils/roles";
 import changelog from "../data/changelog.json";
 import "./Updates.css";
 import GlacierHero from "../components/glacier/GlacierHero";
@@ -41,7 +42,7 @@ function fmtDate(iso) {
 
 export default function Updates() {
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isAdminEmail(currentUser?.email);
 
   // texts: Set di testi di singole voci nascosti
   // versionNums: Set di numeri versione (es. "17.14") nascosti per intero

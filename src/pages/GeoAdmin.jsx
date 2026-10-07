@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { db, storage } from "../firebase";
 import {
   collection,
@@ -135,7 +136,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
   const descRef = useRef(null);
 
   useEffect(() => {
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
+    if (!currentUser || !isAdminEmail(currentUser.email)) return;
 
     const unsubLocs = onSnapshot(collection(db, "geo_archive"), (snap) => {
       setLocations(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -155,7 +156,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
     return () => { unsubLocs(); unsubNpcs(); };
   }, [currentUser, editTarget]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isAdminEmail(currentUser.email)) {
     return <div className="denied-msg">Accesso Negato</div>;
   }
 

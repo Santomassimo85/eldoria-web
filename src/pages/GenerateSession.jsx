@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
@@ -334,7 +335,7 @@ export default function GenerateSession() {
 
   // Il co-master non ha accesso alla Console del Master (/dm-admin): per lui il
   // back-link torna alla home invece di finire su una pagina "Accesso negato".
-  const isPrimaryMaster = currentUser?.email === "santomassimo85@gmail.com";
+  const isPrimaryMaster = isAdminEmail(currentUser?.email);
   const backTo = isPrimaryMaster ? "/dm-admin" : "/";
   const backLabel = isPrimaryMaster ? "← Console del Master" : "← Torna alla home";
 

@@ -4,6 +4,7 @@
 // (azioni e ragionamenti), e permette di interagirci. Solo per il Master.
 
 import { useState, useEffect, useMemo } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { httpsCallable } from "firebase/functions";
 import {
   collection, query, orderBy, limit, onSnapshot,
@@ -274,7 +275,7 @@ function TesoreriaClaude() {
 
 export default function Concilio() {
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isAdminEmail(currentUser?.email);
 
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);

@@ -20,8 +20,8 @@ import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const CO_MASTER_EMAILS = ["ripperti96@gmail.com"];
-const canAccessMarket = (email) => email === MASTER_EMAIL || CO_MASTER_EMAILS.includes(email);
+// Mercato Nero = area di GIOCO: la gestisce solo il Master; il co-master ci compra da player (src/utils/roles.js).
+const canAccessMarket = (email) => email === MASTER_EMAIL;
 const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
 // Livelli Ratto (allineati a Mercato.jsx)
 const RATTO_LEVELS_ADMIN = [

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { isAdminEmail } from "../utils/roles";
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
@@ -56,7 +57,7 @@ export default function PlatinumAdmin() {
     );
   }, [characters, query]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isAdminEmail(currentUser.email)) {
     return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
   }
 

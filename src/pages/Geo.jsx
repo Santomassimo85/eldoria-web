@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, onSnapshot, getDocs } from "firebase/firestore";
@@ -44,7 +45,7 @@ export default function Geo() {
   const [query, setQuery] = useState("");
   const [activeContinent, setActiveContinent] = useState(null);
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === "santomassimo85@gmail.com";
+  const isMaster = isAdminEmail(currentUser?.email);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const focusSlug = searchParams.get("focus");

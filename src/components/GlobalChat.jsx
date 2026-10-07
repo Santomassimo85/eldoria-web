@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { isAdminEmail } from "../utils/roles";
 import { db } from "../firebase";
 import {
   collection, addDoc, query, orderBy, limit, onSnapshot,
@@ -21,6 +22,8 @@ export default function GlobalChat() {
   const chatWindowRef = useRef(null);
   const isOpenRef = useRef(false);
   const isMaster = currentUser?.email === MASTER_EMAIL;
+  // Il co-master scrive col suo PG ma può ripulire la chat come il Master.
+  const canModerate = isAdminEmail(currentUser?.email);
 
   const scrollToBottom = (behavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
@@ -141,7 +144,7 @@ export default function GlobalChat() {
       <div className={`global-chat-window ${isOpen ? "visible" : ""}`}>
         <div className="chat-header">
           <span className="chat-header-title">Locanda di Exanthia</span>
-          {isMaster && (
+          {canModerate && (
             <button className="master-cleanup-btn" onClick={handleManualCleanup} title="Ripulisci chat">🗑</button>
           )}
         </div>
@@ -155,7 +158,7 @@ export default function GlobalChat() {
                 <div className="msg-meta">
                   <span className="msg-user">{m.displayName}</span>
                   {m.timestamp && <span className="msg-timestamp">{formatTimestamp(m.timestamp)}</span>}
-                  {(isMaster || m.uid === currentUser.uid) && (
+                  {(canModerate || m.uid === currentUser.uid) && (
                     <span className="msg-delete" onClick={() => deleteSingleMessage(m.id)} title="Elimina">✕</span>
                   )}
                 </div>

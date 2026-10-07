@@ -667,7 +667,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
   const { messages, uid, confirmedAction, email } = req.body || {};
-  const isMaster = (email || "").toLowerCase() === MASTER_EMAIL;
+  // Master o co-master (stesse email di src/utils/roles.js).
+  const isMaster = [MASTER_EMAIL, "ripperti96@gmail.com"].includes((email || "").toLowerCase());
   const apiKey = process.env.FIREBASE_API_KEY || "AIzaSyBGv3dT_2-ztsAwx0B4s42YtPL-Q1UBMcM";
   const geminiKey = process.env.GEMINI_API_KEY;
 
