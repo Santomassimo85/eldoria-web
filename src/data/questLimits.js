@@ -1,4 +1,4 @@
-// ── Bacheca: party e limite di UNA missione al mese per gruppo ─────────────
+// ── Bacheca: party e limite di UNA missione ogni quindicina per gruppo (2 al mese) ─────────────
 // Unica fonte per Bacheca.jsx e QuestDetail.jsx (prima ognuna aveva il suo
 // roster, con nomi diversi: "Garroth" vs "Garroth Tel´Arion").
 import { db } from "../firebase";
@@ -20,21 +20,30 @@ export const getPartyByCharName = (name) => {
   return NO_PARTY;
 };
 
-// Mese di calendario a Roma: "2026-10".
-export const questMonthKey = (date = new Date()) => {
+// ── Periodo = QUINDICINA (2026-10-07: prima era il mese) ──
+// Una missione per gruppo ogni quindicina fissa di calendario, a Roma:
+// giorni 1–15 → "2026-10-1", dal 16 a fine mese → "2026-10-2". Quindi 2 al mese.
+// (I nomi questMonthKey/nextMonthLabel restano per non toccare chi li usa.)
+const romeYMD = (date) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Rome", year: "numeric", month: "2-digit",
+    timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit",
   }).formatToParts(date);
-  const y = parts.find((p) => p.type === "year").value;
-  const m = parts.find((p) => p.type === "month").value;
-  return `${y}-${m}`;
+  const get = (t) => Number(parts.find((p) => p.type === t).value);
+  return { y: get("year"), m: get("month"), d: get("day") };
 };
 
-// "1 novembre"
+export const questMonthKey = (date = new Date()) => {
+  const { y, m, d } = romeYMD(date);
+  return `${y}-${String(m).padStart(2, "0")}-${d <= 15 ? 1 : 2}`;
+};
+
+// Inizio della prossima quindicina: "16 ottobre" oppure "1 novembre".
 export const nextMonthLabel = (date = new Date()) => {
-  const [y, m] = questMonthKey(date).split("-").map(Number);
-  const first = new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 1, 12));
-  return first.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  const { y, m, d } = romeYMD(date);
+  const next = d <= 15
+    ? new Date(Date.UTC(y, m - 1, 16, 12))
+    : new Date(Date.UTC(m === 12 ? y + 1 : y, m % 12, 1, 12));
+  return next.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 };
 
 // Chi "consuma" la missione del mese: il gruppo, o il singolo se non ha gruppo.
@@ -52,7 +61,7 @@ export const questLockRef = (slot, month) => doc(db, "quest_month_locks", questL
 export class QuestLimitError extends Error {
   constructor(code, lock) {
     super(code === "limit"
-      ? `Il gruppo ha già preso la missione del mese: "${lock?.questTitle || "?"}". La prossima dal ${nextMonthLabel()}.`
+      ? `Il gruppo ha già preso la missione di questa quindicina: "${lock?.questTitle || "?"}". La prossima dal ${nextMonthLabel()}.`
       : "Questa missione è già stata presa da qualcun altro.");
     this.code = code;
     this.lock = lock;

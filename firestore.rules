@@ -413,7 +413,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn();
     }
-    // Bacheca: una missione al mese per gruppo (sigillo scritto/tolto dalla Bacheca)
+    // Bacheca: una missione ogni quindicina per gruppo (sigillo scritto/tolto dalla Bacheca)
     match /quest_month_locks/{lockId} {
       allow read: if true;
       allow write: if isLoggedIn();

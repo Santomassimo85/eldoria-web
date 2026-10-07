@@ -156,7 +156,7 @@ export default function QuestDetail() {
               <button onClick={handleAccept} className="gl-cta questDetailButton" disabled={busy}>
                 ⚔ Accetta missione
               </button>
-              <p className="nx-nota">Ogni gruppo può prendere una sola missione al mese.</p>
+              <p className="nx-nota">Ogni gruppo può prendere una missione ogni due settimane (dall’1 al 15 e dal 16 a fine mese).</p>
               {notice && <p className="nx-nota" role="alert">{notice}</p>}
             </div>
           ) : (

@@ -55,7 +55,7 @@ export default function Bacheca() {
     return () => unsub();
   }, []);
 
-  // ── Sigillo del mese: una missione al mese per gruppo ──────
+  // ── Sigillo della quindicina: una missione ogni 2 settimane per gruppo ──────
   const [monthLock, setMonthLock] = useState(null);
   const [notice, setNotice]       = useState("");
   const [busyId, setBusyId]       = useState(null);
@@ -89,7 +89,7 @@ export default function Bacheca() {
           batch.set(doc(collection(db, "notifications")), {
             userId:    memberDoc.id,
             title:     "⚔️ Missione di Gruppo!",
-            message:   `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. È la missione del mese: preparatevi!`,
+            message:   `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. È la missione della quindicina: preparatevi!`,
             read:      false,
             timestamp: serverTimestamp(),
           });
@@ -184,12 +184,12 @@ export default function Bacheca() {
       <div id="bacheca-albo" className="gl-sezlabel">Incarichi · Le Missive</div>
       <p className="nx-nota bch-sezsub">
         Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
-        {" "}Ogni gruppo può prendere <strong>una sola missione al mese</strong>.
+        {" "}Ogni gruppo può prendere <strong>una missione ogni due settimane</strong> (dall’1 al 15 e dal 16 a fine mese).
       </p>
 
       {!isMaster && monthTaken && (
         <p className="nx-nota bch-month-lock" role="status">
-          🛡 {userParty !== NO_PARTY ? <>Il party <strong>{userParty}</strong> ha</> : "Hai"} già preso la missione del mese:{" "}
+          🛡 {userParty !== NO_PARTY ? <>Il party <strong>{userParty}</strong> ha</> : "Hai"} già preso la missione di questa quindicina:{" "}
           <strong>"{monthLock.questTitle}"</strong>{monthLock.by ? <> (scelta da {monthLock.by})</> : null}.
           {" "}La prossima dal <strong>{nextMonthLabel()}</strong>.
         </p>
@@ -322,7 +322,7 @@ export default function Bacheca() {
                     {!isAccepted && isHovered && quest._canOpen && (
                       monthTaken && !isMaster ? (
                         <span className="nx-pillola btn-quest btn-quest-locked" aria-disabled="true">
-                          Missione del mese già presa
+                          Missione della quindicina già presa
                         </span>
                       ) : (
                         <button
