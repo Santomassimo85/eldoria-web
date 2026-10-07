@@ -292,6 +292,8 @@ export default function QuestAdmin() {
           npcs: world.npcs,
           places: world.places,
           recent: quests.map((q) => q.title).filter(Boolean).slice(-15),
+          // Mittenti già usati: il server non li ripesca (prima usciva sempre Oksa).
+          recentSenders: [...quests.map((q) => q.sender), sender].filter(Boolean).slice(-10),
         }),
       });
       const data = await r.json();

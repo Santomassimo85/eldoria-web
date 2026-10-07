@@ -38,14 +38,37 @@ const GOLD_BY_DIFF = { Facile: "50–150", Media: "150–400", Difficile: "400�
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { idea = "", zona = "", diff = "", target = "All", npcs = [], places = [], recent = [] } = req.body || {};
+  const { idea = "", zona = "", diff = "", target = "All", npcs = [], places = [], recent = [], recentSenders = [] } = req.body || {};
   const seme = Math.floor(Math.random() * 1e9);
 
   const TONI = ["supplichevole", "freddo e d'affari", "minaccioso", "ironico", "disperato", "pomposo e burocratico", "misterioso e reticente", "affettuoso ma preoccupato"];
   const tono = TONI[seme % TONI.length];
 
-  const npcList = (Array.isArray(npcs) ? npcs : []).slice(0, 80)
+  // ── MITTENTE A SORTE (2026-10-07) ──
+  // Prima l'AI riceveva sempre TUTTI gli NPC nello stesso ordine e sceglieva lei:
+  // finiva quasi sempre su Oksa Mael (un oste, "naturale" per una bacheca di
+  // locanda). Ora il mittente si decide QUI: o un NPC dell'app pescato a caso fra
+  // quelli non usati di recente, o un mittente inventato. All'AI arriva solo un
+  // campione mescolato dell'elenco, per citarli nella lettera.
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const firstWord = (s) => norm(s).split(/[\s,]+/).find((w) => w.length > 2) || norm(s);
+  const used = (Array.isArray(recentSenders) ? recentSenders : []).map(norm).filter(Boolean);
+  const wasUsed = (n) => used.some((s) => s.includes(firstWord(n.name)));
+  const shuffle = (a) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  const allNpcs = (Array.isArray(npcs) ? npcs : []).filter((n) => n && n.name);
+  const named = idea ? allNpcs.find((n) => norm(idea).includes(firstWord(n.name))) : null;
+  const fresh = shuffle(allNpcs.filter((n) => !wasUsed(n)));
+  // Un NPC nominato dal Master nell'idea decide lui; altrimenti 60% NPC dell'app, 40% nuovo.
+  const senderMode = named ? "idea" : (fresh.length && Math.random() < 0.6 ? "npc" : "new");
+  const chosen = senderMode === "npc" ? fresh[0] : null;
+  const sample = [...(chosen ? [chosen] : []), ...shuffle(allNpcs.filter((n) => n !== chosen)).slice(0, 14)];
+  const npcList = sample
     .map((n) => `- ${n.name}${n.meta ? ` (${n.meta})` : ""}${n.desc ? `: ${n.desc}` : ""}`).join("\n");
+  const senderRule = senderMode === "npc"
+    ? `- Il MITTENTE è ${chosen.name}${chosen.meta ? ` (${chosen.meta})` : ""}, NPC dell'app: usa il nome identico, senderIsNew=false, e trova un motivo credibile perché scriva proprio lui/lei.`
+    : senderMode === "new"
+      ? "- Il MITTENTE è una persona NUOVA, inventata (nome non banale, mestiere, luogo), senderIsNew=true. Non usare come mittente nessun NPC dell'elenco (puoi citarli nella lettera)."
+      : "- Il MITTENTE: segui l'idea del Master (se nomina un NPC dell'elenco, usa il nome identico e senderIsNew=false).";
   const placeList = (Array.isArray(places) ? places : []).slice(0, 50)
     .map((p) => `- ${p.name}${p.meta ? ` (${p.meta})` : ""}${p.desc ? `: ${p.desc}` : ""}`).join("\n");
   const recentList = (Array.isArray(recent) ? recent : []).slice(0, 15).join(" · ");
@@ -54,14 +77,15 @@ export default async function handler(req, res) {
 Scrivi UNA missione nuova per i giocatori e la LETTERA con cui qualcuno la chiede.
 
 ## MONDO DELL'APP (usalo per primo)
-NPC esistenti:
+NPC esistenti (un campione a caso):
 ${npcList || "(nessuno)"}
 
 Luoghi esistenti:
 ${placeList || "(nessuno)"}
 
 ## REGOLE
-- Il MITTENTE: se un NPC dell'elenco ha un motivo credibile per scrivere, usa lui (nome identico) e senderIsNew=false. Altrimenti inventa una persona nuova (nome non banale, mestiere, luogo) e senderIsNew=true. Puoi citare nella lettera altri NPC dell'elenco.
+${senderRule}
+- Hemile appende le lettere, non le scrive: il mittente non è un oste o un locandiere, salvo che sia quello stabilito qui sopra.${used.length ? `\n- Non usare come mittenti (hanno già scritto di recente): ${recentSenders.slice(0, 10).join(" · ")}.` : ""}
 - Il LUOGO: preferisci un luogo dell'elenco (nome identico, zonaIsNew=false). Se ne inventi uno, che sia un posto minore (una valle, una miniera, un mulino, un guado, un santuario) ATTORNO a un luogo reale, e scrivilo come "Miniera di X, presso <luogo reale>" con zonaIsNew=true. Non inventare città né regni.
 - La LETTERA: 120–220 parole, in italiano, voce e grafia del mittente (tono ${tono}; un commerciante non scrive come un sacerdote). Saluto, cosa è successo, cosa chiede, cosa offre, firma. Dettagli concreti (nomi, luoghi, un indizio) ma lascia qualcosa di non detto. Niente formule da videogioco ("missione", "PE", "loot"). Non scrivere mai cosa fanno o dicono i personaggi dei giocatori.
 - Ricompensa coerente con la difficoltà (Corone indicative: ${Object.entries(GOLD_BY_DIFF).map(([k, v]) => `${k} ${v}`).join(", ")}) e con chi paga: un contadino offre poco e magari un favore.
