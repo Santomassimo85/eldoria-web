@@ -1,0 +1,55 @@
+/* ── Arena · Cronache dei match (Covo, token) ───────────────────────────── */
+.achr { display: grid; gap: 14px; max-width: 980px; margin: 0 auto; padding: 0 0 40px; }
+.achr-scope { display: inline-flex; gap: 0; border: 1px solid rgba(var(--osso-rgb), .18); border-radius: 3px; overflow: hidden; justify-self: start; }
+.achr-scope button { background: var(--roccia-2); color: var(--osso-2); border: 0; padding: 8px 16px; min-height: 36px; font-family: var(--font-sc, inherit); cursor: pointer; }
+.achr-scope button[aria-pressed="true"] { background: var(--el-deep, var(--roccia-4)); color: var(--osso); }
+.achr-empty, .achr-err { color: var(--osso-2); font-style: italic; margin: 6px 0; }
+.achr-err { color: var(--sangue); }
+.achr-list { display: grid; gap: 10px; }
+
+.achr-card { background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .12); border-top: 2px solid rgba(var(--osso-rgb), .22); border-radius: 3px; }
+.achr-card.is-win { border-top-color: var(--oro); }
+.achr-card.is-loss { border-top-color: var(--sangue); }
+.achr-card.is-open { border-color: rgba(var(--el-rgb), .45); }
+
+.achr-head { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind chev" "vs chev" "meta chev"; gap: 6px 12px; text-align: left; background: transparent; border: 0; color: var(--osso); padding: 12px 14px; cursor: pointer; }
+.achr-kind { grid-area: kind; font-family: var(--font-sc, inherit); font-size: .8rem; letter-spacing: .06em; color: var(--el); text-transform: uppercase; }
+.achr-vs { grid-area: vs; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; font-family: var(--font-head, inherit); font-size: 1.1rem; }
+.achr-vs-sep { font-style: normal; font-family: var(--font-num, inherit); font-size: .75rem; color: var(--osso-3); }
+.achr-fighter small { margin-left: 6px; font-family: var(--font-num, inherit); font-size: .72rem; color: var(--osso-2); }
+.achr-fighter.is-winner { color: var(--oro); }
+.achr-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .82rem; color: var(--osso-2); }
+.achr-res { font-family: var(--font-sc, inherit); }
+.achr-res.is-win { color: var(--oro); }
+.achr-res.is-loss { color: var(--sangue); }
+.achr-keep { color: var(--osso-3); }
+.achr-chev { grid-area: chev; align-self: center; font-size: 1.1rem; color: var(--osso-2); }
+
+.achr-log { border-top: 1px solid rgba(var(--osso-rgb), .12); padding: 10px 14px 14px; }
+.achr-detail-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--osso-2); margin-bottom: 8px; cursor: pointer; }
+.achr-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 70vh; overflow-y: auto; }
+.achr-line { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 8px; padding: 6px 4px; border-bottom: 1px solid rgba(var(--osso-rgb), .06); }
+.achr-line.has-hp { background: rgba(var(--roccia-3-rgb), .35); }
+.achr-line.is-audit { background: rgba(var(--sangue-rgb), .14); }
+.achr-n { font-family: var(--font-num, inherit); font-size: .72rem; color: var(--osso-3); text-align: right; padding-top: 3px; }
+.achr-body { min-width: 0; }
+.achr-text { margin: 0; color: var(--osso); line-height: 1.45; overflow-wrap: anywhere; }
+.achr-ts { font-family: var(--font-num, inherit); font-size: .7rem; color: var(--osso-3); margin-right: 8px; }
+.achr-detail { margin: 2px 0 0; font-size: .82rem; color: var(--osso-2); overflow-wrap: anywhere; }
+
+.achr-hp { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.achr-hp-chip { font-family: var(--font-num, inherit); font-size: .72rem; padding: 1px 7px; border-radius: 3px; border: 1px solid rgba(var(--osso-rgb), .2); color: var(--osso-2); white-space: nowrap; }
+.achr-hp-chip.is-down { border-color: rgba(var(--sangue-rgb), .55); color: var(--osso); }
+.achr-hp-chip.is-up { border-color: rgba(var(--el-rgb), .5); }
+.achr-hp-chip b { font-weight: 600; }
+
+/* La stessa traccia nella cronaca dal vivo del match */
+.match-log-scroll .achr-hp, .chc-log-scroll .achr-hp { margin: 3px 0 0; }
+
+@media (max-width: 640px) {
+  .achr { padding: 0 0 90px; }
+  .achr-head { padding: 10px 12px; }
+  .achr-vs { font-size: 1rem; }
+  .achr-log { padding: 8px 10px 12px; }
+  .achr-line { grid-template-columns: 1.8em minmax(0, 1fr); gap: 6px; }
+}

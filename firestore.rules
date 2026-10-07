@@ -196,6 +196,13 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    // Cronache complete dei match (si conservano per gli ultimi 8 match di ogni giocatore).
+    match /arena_chronicles/{matchId} {
+      allow read: if isLoggedIn();
+      allow create, update: if isLoggedIn();
+      allow delete: if isMaster() || (isLoggedIn() && request.auth.uid in resource.data.participantIds);
+    }
+
     match /arena_tournament_history/{docId} {
       allow read: if true; // albo dei campioni, consultabile (assistente di gioco)
       allow create: if isLoggedIn();

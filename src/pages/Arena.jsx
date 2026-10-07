@@ -14,6 +14,10 @@ import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (fo
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import { currentWeekKey } from "../data/arenaWeek";
+import { serverClockOffset } from "../data/serverClock";
+import { auditArenaMatch } from "../utils/arenaIntegrity";
+import { saveChronicle } from "../utils/arenaChronicle";
+import ArenaChronicles, { HpTrace } from "./ArenaChronicles";
 import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, malusTypeLabel } from "../data/arenaDamageTypes";
 import "./Arena.css";
 import "./ArenaHero.css";
@@ -1032,6 +1036,35 @@ const processWsKnockouts = (players) => {
   return { players: updated, extraLogs };
 };
 
+// Rete di sicurezza sulla fine dello scontro: alcune strade (TS automatici, TS
+// del veleno/Corona della Pazzia, DoT, attacco automatico a tempo scaduto)
+// portavano un giocatore a 0 PF senza chiudere il match né passare il turno.
+// Qui, per un match attivo: druido in forma selvatica a 0 → torna umano; resta un
+// solo vivo → vince; il turno è di un morto → passa al prossimo vivo.
+function finalizeArenaMatch(m) {
+  if (!m || m.status !== "active" || !Array.isArray(m.players) || m.players.length < 2) return m;
+  const { players, extraLogs } = processWsKnockouts(m.players);
+  let out = extraLogs.length ? { ...m, players, logs: [...(m.logs || []), ...extraLogs] } : m;
+  const alive = out.players.filter(p => (Number(p.hp) || 0) > 0);
+  if (alive.length <= 1) {
+    const w = alive[0] || null;
+    const already = (out.logs || []).some(l => /È IL VINCITORE/.test(typeof l === "string" ? l : (l?.pub || "")));
+    return {
+      ...out, status: "finished", winner: w?.id || null,
+      logs: already || !w ? (out.logs || []) : [...(out.logs || []), `🏆 ${String(w.name || "?").toUpperCase()} È IL VINCITORE!`],
+    };
+  }
+  const cur = out.players.find(p => p.id === out.turn);
+  if (cur && (Number(cur.hp) || 0) <= 0) {
+    const i = out.players.findIndex(p => p.id === out.turn);
+    for (let k = 1; k <= out.players.length; k++) {
+      const nx = out.players[(i + k) % out.players.length];
+      if ((Number(nx.hp) || 0) > 0) { out = { ...out, turn: nx.id }; break; }
+    }
+  }
+  return out;
+}
+
 const FONTE_DI_MAGIA_ACTION = {
   name: "Fonte di Magia", hitBonus: 0, damage: "—", statKey: null,
   type: "skill", icon: "🔮", info: "Ripristina 2 slot magia a scelta · 2 cariche", special: "fonte_di_magia", maxUses: 2,
@@ -1440,6 +1473,16 @@ const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare i
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
 const ARENA_SHOP_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora di acquisti tra un round e l'altro
 const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
+
+// Ora del SERVER per scadenze e timeout dei turni (src/data/serverClock.js). Prima
+// contava l'orologio del telefono: un dispositivo avanti di un'ora faceva scattare
+// subito l'attacco automatico sul turno dell'altro, uno indietro scriveva scadenze
+// già passate. Lo scarto si misura all'apertura dell'Arena; se la sonda fallisce
+// resta 0 (comportamento di prima).
+let _arenaClockOffset = 0;
+const arenaNow = () => Date.now() + _arenaClockOffset;
+// Margine prima di considerare scaduto un turno (piccoli scarti residui fra dispositivi).
+const ARENA_EXPIRY_GRACE_MS = 20 * 1000;
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -2622,14 +2665,15 @@ function rollDmg(formula, opts = {}) {
 function displayLog(log, viewerUid) {
   if (!log) return '';
   if (typeof log === 'string') return log;
-  if (log.attId === viewerUid) return log.att;
-  if (log.defId === viewerUid) return log.def;
-  return log.pub;
+  // Molte voci hanno solo `pub`: senza ripiego chi attacca o subisce vedeva una riga VUOTA.
+  if (log.attId === viewerUid && log.att) return log.att;
+  if (log.defId === viewerUid && log.def) return log.def;
+  return log.pub || log.att || log.def || '';
 }
 function logPubText(log) {
   if (!log) return '';
   if (typeof log === 'string') return log;
-  return log.pub;
+  return log.pub || log.att || log.def || '';
 }
 
 // Sostituisce ogni 🎲 nel testo del log con l'icona poliedrica giusta. Il tipo di
@@ -3399,6 +3443,16 @@ export default function Arena() {
   // Firma dell'ultima versione di ogni match scritta da QUESTO client (vedi commitArenaMatches).
   const ownMatchSigRef = useRef({});
 
+  // Scarto fra l'orologio del dispositivo e quello del server (vedi arenaNow).
+  useEffect(() => {
+    let alive = true;
+    serverClockOffset()
+      .then(o => { if (alive && Math.abs(o) < 7 * 24 * 3600 * 1000) _arenaClockOffset = o; })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+
   // ── Commit transazionale dei match ────────────────────────────────────────
   // BUG storico (lost update): ogni azione scriveva l'INTERO array `matches`
   // ricalcolato dall'istantanea locale (`arenaMeta`) con
@@ -3418,6 +3472,18 @@ export default function Arena() {
     const base = baseOverride || arenaMeta?.matches || [];
     const baseById = new Map(base.map(m => [m.matchId, m]));
     const baseStr = new Map(base.map(m => [m.matchId, JSON.stringify(m)]));
+    // Integrità: ogni variazione di PF finisce in cronaca (traccia ❤ sulla voce
+    // dell'azione, o una riga apposta se l'azione non ne ha scritte), i PF NaN
+    // tornano al valore di prima, e chi va a 0 chiude il match / perde il turno.
+    const closedHere = [];
+    nextMatches = nextMatches.map(m => {
+      const bm = baseById.get(m.matchId);
+      if (!bm || bm === m || baseStr.get(m.matchId) === JSON.stringify(m)) return m;
+      const audited = auditArenaMatch(bm, m);
+      const fin = finalizeArenaMatch(audited);
+      if (fin.status === "finished" && m.status !== "finished" && bm.status !== "finished") closedHere.push(fin);
+      return fin;
+    });
     const nextById = new Map(nextMatches.map(m => [m.matchId, m]));
     // match aggiunti o modificati da QUESTA azione rispetto alla base locale.
     // (I match non toccati vengono restituiti per riferimento dai vari .map,
@@ -3480,6 +3546,15 @@ export default function Arena() {
     // immediatamente successiva parte da una base coerente (l'onSnapshot
     // confermerà lo stesso valore poco dopo).
     setArenaMeta(prev => (prev ? { ...prev, matches: merged, ...(extraFields || {}) } : prev));
+    // Match chiusi dalla rete di sicurezza (non dall'azione): ricompense/scommesse
+    // come per una chiusura normale (le funzioni guardano lo stato di prima).
+    if (closedHere.length) {
+      try {
+        await awardRoundCoins(closedHere);
+        await resolveBetsForFinishedMatches(closedHere);
+        await recordMatchHistory(closedHere);
+      } catch (e) { console.error("[arena] chiusura automatica:", e); }
+    }
     // Se questa commit ha completato un round di torneo, apre in automatico la
     // finestra di acquisti (salta se la commit era la chiusura del torneo).
     if (!extraFields?.phase && !extraFields?.tournamentWinner) {
@@ -3509,6 +3584,25 @@ export default function Arena() {
   // In DEV `?vista=player` mostra la pagina come la vede un giocatore (stesso doc characters).
   const devPlayerView = import.meta.env.DEV && new URLSearchParams(window.location.search).get("vista") === "player";
   const isMaster = currentUser?.email === "santomassimo85@gmail.com" && !devPlayerView;
+
+  // ── Cronache: ogni match concluso si salva per intero in arena_chronicles,
+  // così resta rileggibile anche quando sparisce da arena_meta. Lo salva chi ha
+  // combattuto (o il Master, che vede tutto): il primo che arriva, una volta sola.
+  const chronicleDoneRef = useRef(new Set());
+  useEffect(() => {
+    if (!currentUser || !arenaMeta?.matches) return;
+    const snaps = arenaMeta.characterSnapshots || {};
+    for (const m of arenaMeta.matches) {
+      if (m.status !== "finished" || !m.matchId || (m.players || []).length < 2) continue;
+      if (!isMaster && !m.players.some(p => p.id === currentUser.uid)) continue;
+      if (chronicleDoneRef.current.has(m.matchId)) continue;
+      chronicleDoneRef.current.add(m.matchId);
+      saveChronicle(m, snaps).catch(e => {
+        chronicleDoneRef.current.delete(m.matchId);
+        console.warn("[arena] cronaca non salvata:", e);
+      });
+    }
+  }, [arenaMeta?.matches, arenaMeta?.characterSnapshots, currentUser, isMaster]);
 
   // ── My arena buffs (sblocchi acquistati in Bottega) — usato per gating classi/buff anche prima della loadout. ──
   const [myArenaBuffs, setMyArenaBuffs] = useState({});
@@ -4605,7 +4699,7 @@ export default function Arena() {
           players: [playerObj, aiPlayerObj],
           status: "initiative",
           turn: null,
-          turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+          turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
           logs: [
             `🛡 ${snapshot.name || "?"} sfida ${aiSnap.name} — Hard Mode AI.`,
             `⚡ Tirate iniziativa.`,
@@ -4640,7 +4734,7 @@ export default function Arena() {
             players: [...(m.players || []), playerObj],
             status: "initiative",
             turn: null,
-            turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+            turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
             logs: [...(m.logs || []), `⚔ ${snapshot.name || "?"} accetta la sfida! Tirate iniziativa.`],
           };
         });
@@ -5150,7 +5244,7 @@ export default function Arena() {
       kind: "group",
       group,
       players: pair.map(id => buildPlayerForMatch(id, snapshots)),
-      status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+      status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
       logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
       isFFA:  false,
     }, snapshots));
@@ -5161,7 +5255,7 @@ export default function Arena() {
     kind: "final",
     group: null,
     players: [buildPlayerForMatch(winnerA, snapshots), buildPlayerForMatch(winnerB, snapshots)],
-    status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+    status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
     logs:   ["🏆 La Finale ha inizio!"], winner: null, participantsAwarded: [],
     isFFA:  false,
   }, snapshots);
@@ -5351,7 +5445,7 @@ export default function Arena() {
       r1Matches.push(withAiFlags({
         matchId: `GA_R1_M${idx}`, kind: "group", group: "A",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
-        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+        status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
       }, snapshots));
     });
@@ -5359,7 +5453,7 @@ export default function Arena() {
       r1Matches.push(withAiFlags({
         matchId: `GB_R1_M${idx}`, kind: "group", group: "B",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
-        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+        status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
       }, snapshots));
     });
@@ -5516,7 +5610,7 @@ export default function Arena() {
         ...m, players: updatedPlayers,
         status:     allRolled ? "active" : "initiative",
         turn:       allRolled ? sorted[0].id : null,
-        turnExpiry: allRolled ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString() : (m.turnExpiry || new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString()),
+        turnExpiry: allRolled ? new Date(arenaNow() + ARENA_TURN_DURATION).toISOString() : (m.turnExpiry || new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString()),
         fightStartAt: allRolled ? new Date().toISOString() : (m.fightStartAt || null),
         logs:   [...m.logs, `🎲 ${mySnap?.name ?? "?"} tira iniziativa: ${roll}${advTag}`],
       };
@@ -5564,8 +5658,8 @@ export default function Arena() {
         status:      allRolled ? "active" : "initiative",
         turn:        allRolled ? sorted[0].id : null,
         turnExpiry:  allRolled
-          ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString()
-          : (x.turnExpiry || new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString()),
+          ? new Date(arenaNow() + ARENA_TURN_DURATION).toISOString()
+          : (x.turnExpiry || new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString()),
         fightStartAt: allRolled ? new Date().toISOString() : (x.fightStartAt || null),
         logs: [...x.logs, `🎲 ${aiSnap.name} tira iniziativa: ${roll}`],
       };
@@ -5613,7 +5707,7 @@ export default function Arena() {
       const sign  = ctrlMod >= 0 ? "+" : "";
       const buffTag = saveBuffBonus > 0 ? `+${saveBuffBonus}🛡` : "";
       const tsLabel = isCorona ? "Corona della Pazzia" : "Controllo";
-      const expiry  = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const expiry  = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
 
       let resultLog;
       const passTurnAfter = !pass; // fail → end AI turn (skip / corona)
@@ -5803,7 +5897,7 @@ export default function Arena() {
     // ── Control budget burning down without a pending save (rare edge case) ──
     if ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave) {
       const remaining = Math.max(0, (aiPlayer.controlLostTurns ?? 0) - 1);
-      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = meta.matches.map(x => {
         if (x.matchId !== matchId) return x;
         const players = x.players.map(p =>
@@ -5954,7 +6048,7 @@ export default function Arena() {
 
       if (_picked && (_picked.score + _casterBias) > _weaponBaseline) {
         const sp = _picked.spell;
-        const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+        const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
 
         let logMsg;
         let dmgToTarget = 0;
@@ -6179,7 +6273,7 @@ export default function Arena() {
     // scalare i timer a round, incluso il blocco arma: ogni turno saltato conta.
     // Senza questo ramo il turno restava incastrato sull'IA o il debuff non scalava.
     if (availableWeapons.length === 0) {
-      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const lockedOut = _aiLockTurns > 0 && weapons.length > 0;
       const passLog = lockedOut
         ? `🔩 ${aiName} ha l'arma incandescente e non può attaccare — passa il turno.`
@@ -6457,7 +6551,7 @@ export default function Arena() {
         ...x,
         players: rawPlayers,
         turn: human.id,
-        turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+        turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(),
         ...aiDistancePatch,
         logs,
       };
@@ -6637,7 +6731,7 @@ export default function Arena() {
       const rawSmiteDmg = (wDmg + sDmg + smiteStrMod + readAidDmgBonus(myMatchPlayer)) * critMult;
       const totalDmg = applyDefenderDamageMods(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
 
-      const smiteExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const smiteExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const hitStr = isHit ? `COLPISCE` : `MANCA`;
       const strPart = smiteStrMod !== 0 ? `+${smiteStrMod} FOR` : "";
       const aidPart = smiteAidBonus ? ` +${smiteAidBonus} Aiuto` : "";
@@ -6724,7 +6818,7 @@ export default function Arena() {
       const rawSneakDmg = (wDmg + sneakDmg + dexMod) * critMult;
       const totalDmg = applyDefenderDamageMods(rawSneakDmg, defenderSnap, defMatchPlayer, false);
 
-      const sneakExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const sneakExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const critTag = isCrit ? " ★CRITICO★" : "";
       const dexPart = dexMod !== 0 ? `+${dexMod} DES` : "";
       const aidPart = aidBonus ? ` +${aidBonus} Aiuto` : "";
@@ -6817,7 +6911,7 @@ export default function Arena() {
         def: `🌑 ${attName} è scivolato nell'ombra...`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
-      const stealthExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const stealthExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const me = m.players.find(p => p.id === currentUser.uid);
@@ -6861,7 +6955,7 @@ export default function Arena() {
         def: `🪤 Sei trafitto dai Triboli — ${tsTag}: svantaggio e sanguinamento ${bleedDice}/turno per ${tnLbl}.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
-      const triboliExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const triboliExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
@@ -6938,7 +7032,7 @@ export default function Arena() {
         def: `🕸 Sei avvolto dalla Ragnatela — TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarti.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
-      const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const webExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
@@ -6975,7 +7069,7 @@ export default function Arena() {
         def: `☠ ${attName} ti ha colpito con Veleno${dmgNote} — ${damage} danni! Devi superare un TS COS (CD 15)`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
-      const poisonExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const poisonExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       let updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const rawPlayers = m.players.map(p => {
@@ -7269,7 +7363,7 @@ export default function Arena() {
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const onHitLog = _onHit.logs.length ? `⚔️ ${action.name} all'impatto → ${_onHit.logs.join(" · ")}` : null;
 
-    const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const newTurnExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
     let updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -7397,7 +7491,7 @@ export default function Arena() {
   const handleMoveClose = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
     const log = { pub: `⚔️ ${myName} chiude la distanza e ingaggia in mischia.`, attId: currentUser.uid, ts: new Date().toISOString() };
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p =>
@@ -7420,7 +7514,7 @@ export default function Arena() {
     const turns = action?.shieldBuffTurns ?? 3;
     const spellName = action?.name || "Scudo";
     const log = { pub: `🛡 ${myName} lancia ${spellName}! (+${bonus} CA per ${turns} turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
-    const shieldExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const shieldExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -7439,7 +7533,7 @@ export default function Arena() {
     const turns  = action?.saveFaithTurns ?? 2;
     const spellName = action?.name || "Scudo della Fede";
     const log = { pub: `🛡 ${myName} lancia ${spellName}! (+${bonus} a TUTTI i tiri salvezza per ${turns} turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -7463,7 +7557,7 @@ export default function Arena() {
     const turns  = action?.aidDmgTurns ?? 2;
     const spellName = action?.name || "Aiuto";
     const log = { pub: `🤝 ${myName} lancia ${spellName}! (+${bonus} al danno per ${turns} turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -7485,7 +7579,7 @@ export default function Arena() {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const { total: healAmt, rolls: healRolls } = rollDmg("1d12");
     const totalHeal = healAmt + 5;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -7510,7 +7604,7 @@ export default function Arena() {
       const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
       const me = myMatch?.players.find(p => p.id === currentUser.uid);
       if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
@@ -7536,7 +7630,7 @@ export default function Arena() {
     const myName = mySnap?.name || "Bardo";
     const bonusVal = action.buffBonus ?? getMagicDetectBonusForClass((mySnap?.class || "").toLowerCase());
     const attacksVal = action.buffAttacks ?? 1;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -7627,7 +7721,7 @@ export default function Arena() {
   const handleInvisibility = async (matchId, action) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "Bardo";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const duration = action.invisibilityDuration ?? 1;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -8002,7 +8096,7 @@ export default function Arena() {
         const log = saved
           ? `💫 ${myName} tenta un Colpo Stordente su ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — resiste!`
           : `💫 ${myName} stordisce ${targetName} con un Colpo Stordente (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 1 turno!`;
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
       });
       await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
     } finally {
@@ -8042,7 +8136,7 @@ export default function Arena() {
       const log = saved
         ? `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno · svantaggio per 2 turni.`
         : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 3 turni · svantaggio per 3 turni.`;
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
   };
@@ -8070,7 +8164,7 @@ export default function Arena() {
       const log = `👹 Il Demone di ${myName} drena ${targetName} 🎲(${rolls})=${dmg} PF e ridona al padrone gli stessi ${dmg} PF!`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
   };
@@ -8099,7 +8193,7 @@ export default function Arena() {
       const log = `🤖 Il Golem di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni · prossimo colpo subìto sarà dimezzato.`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "slash", targetId));
   };
@@ -8126,7 +8220,7 @@ export default function Arena() {
       const log = `🐍 Il Serpente di ${myName} morde ${targetName} 🎲(${rolls})=${dmg} danni · veleno 1d6 per 2 turni.`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "poison", targetId));
   };
@@ -8134,7 +8228,7 @@ export default function Arena() {
   // ── FORGIA ARMATURA (Artefice) — +2 CA per 2 turni ─────────────────────────
   const handleArmorForge = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8151,7 +8245,7 @@ export default function Arena() {
   // ── FONTE DI MAGIA (Sorcerer) — recupera 2 SLOT condivisi (Lv1/Lv2 a scelta) ──
   const handleFonteConfirm = async (matchId, fonteAction, addLv1, addLv2) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Stregone";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8182,7 +8276,7 @@ export default function Arena() {
   // spell che colpisce aggiunge 1d12 ai danni (vedi spell damage path).
   const handlePattoDemoniaco = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const { total: selfDmg, rolls: selfRolls } = rollDmg("1d4");
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -8204,7 +8298,7 @@ export default function Arena() {
   const handleMagicalCunning = async (matchId, cunningAction) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Oscuro Cultore";
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8231,7 +8325,7 @@ export default function Arena() {
   const handleRecuperoArcano = async (matchId, recuperoAction, lv1Names, lv2Names) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Mago";
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8296,7 +8390,7 @@ export default function Arena() {
         const alive = updatedPlayers.filter(p => p.hp > 0);
         if (alive.length === 1)
           return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
       }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
@@ -8344,7 +8438,7 @@ export default function Arena() {
         const alive = updatedPlayers.filter(p => p.hp > 0);
         if (alive.length === 1)
           return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
       }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
@@ -8412,7 +8506,7 @@ export default function Arena() {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "Paladino";
     const bonusVal = getAidBonusForClass((mySnap?.class || "").toLowerCase());
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8433,7 +8527,7 @@ export default function Arena() {
     const myName = mySnap?.name || "?";
     const bonus = action.tsBonus ?? 3;
     const attacks = action.tsAttacks ?? 3;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8453,7 +8547,7 @@ export default function Arena() {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "?";
     const turns = action.weaponLockTurns ?? 2;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8479,7 +8573,7 @@ export default function Arena() {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "?";
     const turns = action.advantageTurns ?? 2;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8501,7 +8595,7 @@ export default function Arena() {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "?";
     const turns = action.disadvantageTurns ?? 3;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8528,7 +8622,7 @@ export default function Arena() {
       const me = myMatch?.players.find(p => p.id === currentUser.uid);
       if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     }
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8552,7 +8646,7 @@ export default function Arena() {
     const myName = mySnap?.name || "?";
     const dc = action.saveDotDC ?? getSpellSaveDC(mySnap);
     const ability = action.saveDotAbility || "con";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     await runTransaction(db, async (tx) => {
       const ref  = doc(db, "arena_meta", "global");
       const snap = await tx.get(ref);
@@ -8581,7 +8675,7 @@ export default function Arena() {
   // ── SKIP TURN (bersaglio invisibile, non puoi attaccare) ────────────────────
   const handleSkipForcedTurn = async (matchId, reason = "invisible") => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
@@ -8597,7 +8691,7 @@ export default function Arena() {
 
   // ── Salta turno perché sotto controllo (TS controllo fallito) ────────────
   const skipControlTurn = async (matchId) => {
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
@@ -8616,7 +8710,7 @@ export default function Arena() {
 
   // ── Termina turno volontariamente (Monaco/Ladro doppie armi: salta le azioni rimanenti) ─
   const endMultiActionTurn = async (matchId) => {
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
@@ -8633,7 +8727,7 @@ export default function Arena() {
   // I buff "al prossimo attacco" (magic_detect, aiuto, veleno) restano intatti perché non hai attaccato.
   const handleSkipTurn = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p => {
@@ -8706,7 +8800,7 @@ export default function Arena() {
   // Ritornare alla forma umana è l'azione del turno: dopo il ritorno il turno passa.
   const revertWildShape = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const myPData = m.players.find(p => p.id === currentUser.uid);
@@ -8738,7 +8832,7 @@ export default function Arena() {
       ? action.healModStat.toUpperCase()
       : getSpellcastingAbility((mySnap?.class || "").toLowerCase()).toUpperCase();
     const modPart  = spellMod !== 0 ? ` ${spellMod >= 0 ? "+" : ""}${spellMod} ${modKey}` : "";
-    const healExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const healExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     await runTransaction(db, async (tx) => {
       const ref  = doc(db, "arena_meta", "global");
       const snap = await tx.get(ref);
@@ -8892,7 +8986,7 @@ export default function Arena() {
       attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
 
-    const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const newTurnExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     let spellAbsorbedLog = null;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -8980,7 +9074,7 @@ export default function Arena() {
   const handleControlSpell = async (matchId, targetId, action) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
-    const ctrlExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const ctrlExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     const ctrlDC      = getSpellSaveDC(mySnap);
     const saveAbility = parseSpellSaveAbility(action);
     await runTransaction(db, async (tx) => {
@@ -9095,7 +9189,7 @@ export default function Arena() {
           const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
           let nextIndex = (currentIndex + 1) % m.players.length;
           while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-          extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
+          extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString() };
         }
         if (context === "control_spell" || context === "corona_pazzia") {
           const isCorona = p.pendingControlSave === "corona_pazzia" || context === "corona_pazzia";
@@ -9121,7 +9215,7 @@ export default function Arena() {
             const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
             let nextIndex = (currentIndex + 1) % m.players.length;
             while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-            extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
+            extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString() };
           } else {
             // Regular control spell: burn one turn of the control budget, auto-skip, re-roll TS next turn until pass or budget exhausted.
             const remaining = Math.max(0, (p.controlLostTurns ?? 2) - 1);
@@ -9138,7 +9232,7 @@ export default function Arena() {
             const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
             let nextIndex = (currentIndex + 1) % m.players.length;
             while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-            extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
+            extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString() };
           }
         }
         return up;
@@ -9186,7 +9280,7 @@ export default function Arena() {
       const currentIndex = m.players.findIndex(p => p.id === currentUser.uid);
       let nextIndex = (currentIndex + 1) % m.players.length;
       while (updatedPlayers[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIndex].id, turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await commitArenaMatches(updatedMatches);
   };
@@ -9324,7 +9418,7 @@ export default function Arena() {
 
   const handleArenaAutoPass = useCallback(async () => {
     if (!arenaMeta?.matches) return;
-    const now = Date.now();
+    const now = arenaNow() - ARENA_EXPIRY_GRACE_MS; // ora del server, con margine
 
     const expiredInitMatch = arenaMeta.matches.find(m => {
       if (m.status !== "initiative" || !m.turnExpiry) return false;
@@ -9336,9 +9430,11 @@ export default function Arena() {
     });
     if (!expiredInitMatch && !expiredActiveMatch) return;
 
+    let autoClosed = [];
     try {
       const metaRef = doc(db, "arena_meta", "global");
       await runTransaction(db, async (transaction) => {
+        autoClosed = [];
         const snap = await transaction.get(metaRef);
         if (!snap.exists()) return;
         const data = snap.data();
@@ -9347,7 +9443,8 @@ export default function Arena() {
         if (expiredInitMatch) {
           const match = data.matches?.find(m => m.matchId === expiredInitMatch.matchId);
           if (!match || match.status !== "initiative" || !match.turnExpiry) return;
-          if (Date.now() < new Date(match.turnExpiry).getTime()) return;
+          if (arenaNow() - ARENA_EXPIRY_GRACE_MS < new Date(match.turnExpiry).getTime()) return;
+          if (data.timerPaused && match.kind !== "fun") return; // torneo in pausa: niente timeout
           const snapshots = data.characterSnapshots || {};
           const newLogs = [...match.logs];
           const updatedPlayers = match.players.map(p => {
@@ -9369,7 +9466,7 @@ export default function Arena() {
             ...match, players: updatedPlayers,
             status: allRolled ? "active" : "initiative",
             turn: allRolled ? sorted[0].id : null,
-            turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+            turnExpiry: new Date(arenaNow() + ARENA_TURN_DURATION).toISOString(),
             fightStartAt: allRolled ? new Date().toISOString() : (match.fightStartAt || null),
             logs: newLogs,
           };
@@ -9381,7 +9478,8 @@ export default function Arena() {
         // ── Turno attivo scaduto → posizione difensiva ───────────────────────
         const match = data.matches?.find(m => m.matchId === expiredActiveMatch.matchId);
         if (!match || match.status !== "active" || !match.turn || !match.turnExpiry) return;
-        if (Date.now() < new Date(match.turnExpiry).getTime()) return;
+        if (arenaNow() - ARENA_EXPIRY_GRACE_MS < new Date(match.turnExpiry).getTime()) return;
+        if (data.timerPaused && match.kind !== "fun") return; // torneo in pausa: niente timeout
         if (match.lastAutoPassAt && Date.now() - new Date(match.lastAutoPassAt).getTime() < 10000) return;
 
         const currentTurnId = match.turn;
@@ -9425,8 +9523,10 @@ export default function Arena() {
             const mod = data.characterSnapshots?.[p.id]?.stats?.con ?? 0;
             const total = d20 + mod + autoSaveFaith;
             const pass = total >= 15;
-            if (!pass) { up.hp = Math.max(0, (up.hp ?? 0) - (Math.floor(Math.random()*6)+1 + Math.floor(Math.random()*6)+1)); }
-            newLogs2.push(`🎲 ${p.name} TS COS automatico: ${d20}+${mod}${autoFaithSign}=${total} vs CD 15 → ${pass ? "✅ PASSA" : "❌ FALLISCE — Avvelenato!"}`);
+            // Prima i 2d6 si toglievano in SILENZIO (la riga diceva solo "Avvelenato!").
+            const { total: conDmg, rolls: conRolls } = pass ? { total: 0, rolls: "" } : rollDmg("2d6");
+            if (!pass) up.hp = Math.max(0, (up.hp ?? 0) - conDmg);
+            newLogs2.push(`🎲 ${p.name} TS COS automatico: ${d20}+${mod}${autoFaithSign}=${total} vs CD 15 → ${pass ? "✅ PASSA" : `❌ FALLISCE — Avvelenato! Subisce ${conDmg} danni da veleno [🎲${conRolls}].`}`);
             delete up.pendingConSave;
             autoRolledSave = true;
           }
@@ -9574,15 +9674,23 @@ export default function Arena() {
           newLogs2.push(`🛡 ${currentPlayerObj.name} non ha agito — Posizione Difensiva`);
         }
 
-        const newExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
-        const updatedMatch = {
+        const newExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
+        // Traccia dei PF in cronaca + chiusura se qualcuno è andato a 0 (prima il
+        // match restava "attivo" con un morto e il turno poteva finire a lui).
+        const updatedMatch = finalizeArenaMatch(auditArenaMatch(match, {
           ...match, players: updatedPlayers, turn: nextTurnId,
           turnExpiry: newExpiry, lastAutoPassAt: new Date().toISOString(),
           logs: newLogs2,
-        };
+        }));
+        if (updatedMatch.status === "finished") autoClosed = [updatedMatch];
         const updatedMatches = data.matches.map(m => m.matchId === expiredActiveMatch.matchId ? updatedMatch : m);
         transaction.update(metaRef, { matches: updatedMatches });
       });
+      if (autoClosed.length) {
+        await awardRoundCoins(autoClosed);
+        await resolveBetsForFinishedMatches(autoClosed);
+        await recordMatchHistory(autoClosed);
+      }
     } catch (e) {
       console.error("Errore auto-pass arena:", e);
     }
@@ -9597,7 +9705,7 @@ export default function Arena() {
     if (arenaMeta.phase !== "combat" && !hasFunInProgress) return;
     const interval = setInterval(() => {
       if (arenaMeta?.timerPaused) return;
-      const now = Date.now();
+      const now = arenaNow() - ARENA_EXPIRY_GRACE_MS;
       const hasExpiredInit = arenaMeta.matches?.some(m => {
         if (m.status !== "initiative" || !m.turnExpiry) return false;
         return now >= new Date(m.turnExpiry).getTime();
@@ -9879,13 +9987,14 @@ export default function Arena() {
           },
           { key: "libera", title: "Arena Libera", sub: "Sfide 1v1 d'allenamento, senza bonus della Bottega", onClick: () => setArenaView("libera") },
           { key: "gesta", title: "Le Mie Gesta", sub: "Classi giocate, vittorie e statistiche nel tempo", onClick: () => setArenaView("gesta") },
+          { key: "cronache", title: "Cronache dei Match", sub: "Rileggi i tuoi ultimi scontri riga per riga", onClick: () => setArenaView("cronache") },
           { key: "albo", title: "Albo dei Campioni", sub: `${champions.length} ${champions.length === 1 ? "eroe" : "eroi"} nella leggenda`, onClick: () => setArenaView("albo") },
           { key: "regole", title: "Regole & Classi", sub: "Come funziona l'Arena", onClick: () => setArenaView("regole") },
           { key: "dadi", title: "I Tuoi Dadi", sub: `${DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore`, onClick: () => setDicePickerOpen(true) },
           ...(showBet ? [{ key: "bet", title: "Scommesse", sub: "Punta le tue Monete Arena sui duellanti", onClick: () => setBettingDrawerOpen(true) }] : []),
           ...(isMaster ? [{ key: "master", title: "Pannello Master", sub: "Gestisci l'Arena", onClick: () => setArenaView("master") }] : []),
         ];
-        const ICO = { join: "⚔", bracket: "🏟", bottega: "🛍", libera: "🥊", gesta: "📜", albo: "👑", regole: "📖", dadi: "🎲", bet: "💰", master: "🛠" };
+        const ICO = { join: "⚔", cronache: "🗞", bracket: "🏟", bottega: "🛍", libera: "🥊", gesta: "📜", albo: "👑", regole: "📖", dadi: "🎲", bet: "💰", master: "🛠" };
         return (
           <div className="arena-bill">
             {/* ══ PALCO VS (prototipo J "Il Nesso"): lo scontro in corso —
@@ -10169,6 +10278,14 @@ export default function Arena() {
           tournamentHistory={tournamentHistory}
           currentUid={currentUser?.uid}
           isMaster={isMaster}
+        />
+      )}
+
+      {arenaView === "cronache" && currentUser && (
+        <ArenaChronicles
+          currentUid={currentUser.uid}
+          isMaster={isMaster}
+          renderText={(l, uid) => renderLogWithDice(displayLog(l, uid))}
         />
       )}
 
@@ -12342,6 +12459,11 @@ export default function Arena() {
 
           {/* ════════ STORICO — ultimi 10 fight conclusi (sola lettura) ════════ */}
           {combatTab === "history" && (
+            <button type="button" className="combat-empty-link" onClick={() => { setCombatModalOpen(false); setArenaView("cronache"); }}>
+              🗞 Tutte le cronache salvate (ultimi 8 match) →
+            </button>
+          )}
+          {combatTab === "history" && (
             finishedMatches.length === 0 ? (
               <div className="combat-empty">📜 Nessun combattimento concluso, per ora.</div>
             ) : (
@@ -12395,6 +12517,7 @@ export default function Arena() {
                               <p key={i} className="chc-log-entry">
                                 {ts && <span className="log-ts">{ts}</span>}
                                 {renderLogWithDice(text)}
+                                <HpTrace entry={l} players={m.players} />
                               </p>
                             );
                           })}
@@ -14146,6 +14269,7 @@ export default function Arena() {
                         <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""} ${isDotLog ? "log-dot" : ""}`}>
                           {ts && <span className="log-ts">{ts}</span>}
                           {renderLogWithDice(text)}
+                          <HpTrace entry={l} players={m.players} />
                         </p>
                       );
                     })}

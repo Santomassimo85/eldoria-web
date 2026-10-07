@@ -64,6 +64,39 @@ function attacksPerTurn(cls) {
 
 const upper = (s) => String(s || "?").toUpperCase();
 
+// Traccia dei PF sulla riga dell'azione (stesso formato del client,
+// src/utils/arenaIntegrity.js): la cronaca mostra "❤ Nome prima → dopo".
+function withHpTrace(before, players, logs, fromIdx) {
+  const prev = new Map((before || []).map((p) => [p.id, Number(p.hp)]));
+  const hp = {};
+  for (const p of players) {
+    const a = prev.get(p.id);
+    const b = Number(p.hp);
+    if (Number.isFinite(a) && Number.isFinite(b) && a !== b) hp[p.id] = [a, b];
+  }
+  if (!Object.keys(hp).length) return logs;
+  const out = [...logs];
+  for (let i = out.length - 1; i >= fromIdx; i--) {
+    const l = out[i];
+    const t = typeof l === "string" ? l : (l && l.pub) || "";
+    if (/È IL VINCITORE/.test(t)) continue;
+    const obj = typeof l === "string" ? { pub: l, ts: new Date().toISOString() } : { ...l };
+    obj.hp = { ...(obj.hp || {}), ...hp };
+    out[i] = obj;
+    return out;
+  }
+  return out;
+}
+
+// Druido in forma selvatica a 0 PF: torna umano col 60% dei PF (come nel client).
+function wildShapeKnockout(p, logs) {
+  if (!p.wildShape || (p.hp || 0) > 0) return;
+  const mx = p.preWildShapeMaxHp || p.maxHp || 1;
+  const restored = Math.max(1, Math.floor(mx * 0.6));
+  logs.push(`🐾 ${p.name} viene abbattuto in forma selvatica e ritorna alla forma originale (${restored}/${mx} HP)!`);
+  Object.assign(p, { hp: restored, maxHp: mx, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null });
+}
+
 /**
  * Esegue un tick del driver dei bot d'Arena.
  * @param {import("firebase-admin")} admin  istanza firebase-admin inizializzata
@@ -179,6 +212,7 @@ async function runArenaBotTurns(admin) {
             const dmg = Math.max(1, (rollDice(chosen.damage) + statMod + barb) * critMult);
             target.hp = Math.max(0, (target.hp || 0) - dmg);
             logs.push(`💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${isCrit ? " ★CRITICO★" : ""}${autoTag} — ${dmg} danni (${target.hp} HP)`);
+            wildShapeKnockout(target, logs);
           } else {
             logs.push(`🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name}${autoTag} (${hitTotal} vs CA ${targetAc})`);
           }
@@ -188,6 +222,9 @@ async function runArenaBotTurns(admin) {
       changed = true;
 
       // Esito: vincitore o passaggio del turno all'umano.
+      const tracedLogs = withHpTrace(m.players, players, logs, (m.logs || []).length);
+      logs.length = 0;
+      logs.push(...tracedLogs);
       const alive = players.filter((p) => (p.hp || 0) > 0);
       if (alive.length === 1) {
         logs.push(`🏆 ${upper(alive[0].name)} È IL VINCITORE!`);
