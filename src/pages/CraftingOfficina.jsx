@@ -1161,6 +1161,13 @@ function MasterBoard({ chars, nowMs }) {
     finally { setBusy(""); }
   }
 
+  async function nudgeOne(r) {
+    setBusy(r.c.uid);
+    try { await nudgeReady([r.c]); }
+    catch (e) { alert("Errore: " + (e.message || e)); }
+    finally { setBusy(""); }
+  }
+
   return (
     <div className="nx-pannello off-box off-board">
       <div className="off-board-head">
@@ -1199,6 +1206,14 @@ function MasterBoard({ chars, nowMs }) {
                       <span>{r.pct}% · iniziato {whenLabel(b.at, now)}</span>
                       <span>{r.working ? `pronto tra ${fmtCountdown(r.readyAt - nowMs)} (${whenLabel(r.readyAt, now)})` : `pronto ${whenLabel(r.readyAt, now)}`}</span>
                       {r.working && <button type="button" className="off-ghost" disabled={busy === r.c.uid} onClick={() => finishNow(r)}>⏩ Termina ora</button>}
+                      {r.ready && !b.failed && (() => {
+                        const t = nudgedFor(r.cr, b);
+                        return (
+                          <button type="button" className="off-ghost" disabled={busy === r.c.uid} title={t ? `Già avvisato ${whenLabel(t, now)}` : "Manda una notifica al giocatore"} onClick={() => nudgeOne(r)}>
+                            {busy === r.c.uid ? "Invio…" : t ? `🔔 Avvisato ${whenLabel(t, now)} · di nuovo` : "🔔 Avvisa"}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 ) : (
@@ -1225,6 +1240,25 @@ function MasterBoard({ chars, nowMs }) {
 
 // Il lavoro sul banco di un PG (la voce non ancora mandata né scartata).
 const benchOf = (cr) => (Array.isArray(cr?.log) ? cr.log : []).find((e) => !e.inboxId && !e.skipped) || null;
+// Il lavoro finito che aspetta il giocatore (il disastro no: quello lo chiude lui senza oggetto).
+const readyBenchOf = (cr, nowMs) => { const b = benchOf(cr); return b && !b.failed && (Number(b.readyAt) || 0) <= nowMs ? b : null; };
+// Avviso "il tuo lavoro è pronto": un doc in `notifications` (campanella + push via
+// `pushOnNotification`). Non dice cos'è uscito: il tiro resta segreto fino al ritiro.
+// `crafting.readyNudgeAt` serve solo al Master per vedere che l'ha già avvisato.
+async function nudgeReady(list) {
+  const at = Date.now();
+  await Promise.all(list.map(async (c) => {
+    await addDoc(collection(db, "notifications"), {
+      userId: c.uid,
+      title: "📦 Il tuo lavoro all'Officina è pronto",
+      message: "Il pezzo sul banco è finito. Vai in Gilda → L'Officina, premi \"Ritira l'oggetto\" e poi \"Manda al Master per Foundry\": finché non lo ritiri il banco resta occupato e non puoi iniziare un'altra prova.",
+      read: false, timestamp: serverTimestamp(),
+    });
+    await updateDoc(doc(db, "characters", c.uid), { "crafting.readyNudgeAt": at });
+  }));
+}
+// Avvisato DOPO che il lavoro era già finito (un avviso vecchio non conta per il pezzo nuovo).
+const nudgedFor = (cr, b) => { const t = Number(cr?.readyNudgeAt) || 0; return t && t >= (Number(b?.readyAt) || 0) ? t : 0; };
 // Spese dei materiali ancora aperte (da mandare a Foundry o da segnare pagate).
 function openSpese(chars) {
   const rows = [];
@@ -1261,24 +1295,37 @@ function MasterTodo({ chars, nowMs, goTab }) {
   const speseMo = spese.reduce((a, r) => a + (Number(r.e.costMo) || 0), 0);
   const senza = chars.filter((c) => !c.crafting?.profession).length;
   const cursed = chars.filter((c) => benchOf(c.crafting)?.cursed).length;
-  const ready = chars.filter((c) => { const b = benchOf(c.crafting); return b && !b.failed && (Number(b.readyAt) || 0) <= nowMs; }).length;
+  const readyList = chars.filter((c) => readyBenchOf(c.crafting, nowMs));
+  const ready = readyList.length;
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  async function nudgeAll() {
+    if (!window.confirm(`Avvisare che il lavoro è pronto da ritirare?\n\n${readyList.map((c) => c.name).join(", ")}`)) return;
+    setBusy(true); setMsg("");
+    try { await nudgeReady(readyList); setMsg(`✓ Avviso mandato a ${readyList.map((c) => c.name).join(", ")}.`); }
+    catch (e) { setMsg("Errore: " + (e.message || e)); }
+    finally { setBusy(false); }
+  }
   const items = [
     spese.length && { key: "spese", tone: "gold", icon: "💰", n: spese.length, text: `${spese.length === 1 ? "spesa" : "spese"} dei materiali da scalare su Foundry (${fmtMo(speseMo)})`, cta: "Apri le spese" },
     cursed && { key: "master", tone: "curse", icon: "☠", n: cursed, text: cursed === 1 ? "oggetto maledetto sul banco: il giocatore non lo sa" : "oggetti maledetti sul banco: i giocatori non lo sanno", cta: null },
-    ready && { key: "master", tone: "ok", icon: "✓", n: ready, text: ready === 1 ? "lavoro finito: lo ritira il giocatore" : "lavori finiti: li ritirano i giocatori", cta: null },
+    ready && { key: "master", tone: "ok", icon: "✓", n: ready, text: ready === 1 ? "lavoro finito: lo ritira il giocatore" : "lavori finiti: li ritirano i giocatori", cta: busy ? "Invio…" : `🔔 Avvisa (${ready})`, onClick: nudgeAll },
     senza && { key: "artigiani", tone: "", icon: "🔔", n: senza, text: senza === 1 ? "eroe senza professione" : "eroi senza professione", cta: "Vedi chi" },
   ].filter(Boolean);
   if (!items.length) return <p className="off-todo off-todo--clear">✓ Niente da sistemare: nessuna spesa aperta, tutti hanno una professione.</p>;
   return (
-    <ul className="off-todo" aria-label="Da sistemare">
-      {items.map((it, i) => (
-        <li key={i} className={it.tone ? `is-${it.tone}` : ""}>
-          <span className="off-todo-ic" aria-hidden="true">{it.icon}</span>
-          <span className="off-todo-t"><b>{it.n}</b> {it.text}</span>
-          {it.cta && <button type="button" className="off-ghost" onClick={() => goTab(it.key)}>{it.cta} →</button>}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="off-todo" aria-label="Da sistemare">
+        {items.map((it, i) => (
+          <li key={i} className={it.tone ? `is-${it.tone}` : ""}>
+            <span className="off-todo-ic" aria-hidden="true">{it.icon}</span>
+            <span className="off-todo-t"><b>{it.n}</b> {it.text}</span>
+            {it.cta && <button type="button" className="off-ghost" disabled={it.onClick && busy} onClick={it.onClick || (() => goTab(it.key))}>{it.cta}{it.onClick ? "" : " →"}</button>}
+          </li>
+        ))}
+      </ul>
+      {msg && <p className={`nx-nota off-nudge-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</p>}
+    </>
   );
 }
 
