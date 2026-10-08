@@ -10,8 +10,8 @@ import "./admin.css";
 import "./GenerateSession.css";
 import SessionLorePopup from "../components/LorePopup";
 
-const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
-const isDmUser = (email) => DM_EMAILS.includes(email);
+// Master + co-master (Makenna): stesso elenco di roles.js, confronto senza maiuscole.
+const isDmUser = isAdminEmail;
 
 const DURATIONS = ["2h", "2.30h", "3h", "3.30h", "4h"];
 

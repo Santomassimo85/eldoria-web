@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
+import { isAdminEmail } from "../utils/roles";
 import { db, storage } from "../firebase";
 import "./admin.css";
 import {
@@ -21,10 +22,8 @@ import {
 import HtmlToolbar from "../components/HtmlToolbar";
 import { membersOf } from "../data/partyMembers";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
-// Email autorizzate a gestire i riassunti di sessione (master + collaboratore).
-const SUMMARY_EDITORS = [MASTER_EMAIL, "ripperti96@gmail.com"];
-const canEditSummaries = (user) => !!user && SUMMARY_EDITORS.includes(user.email);
+// Master + co-master (Makenna): stesso elenco di roles.js.
+const canEditSummaries = (user) => !!user && isAdminEmail(user.email);
 
 const PARTIES = [
   { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius" },

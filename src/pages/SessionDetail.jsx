@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { isAdminEmail } from "../utils/roles";
 import { partyById } from "../data/parties";
 import { loadSession } from "../utils/dmSessions";
 import { withSessionRuntime } from "../utils/sessionRuntime";
 import "./admin.css";
 import SessionLorePopup from "../components/LorePopup";
 
-const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
-const isDmUser = (email) => DM_EMAILS.includes(email);
+// Master + co-master (Makenna): stesso elenco di roles.js, confronto senza maiuscole.
+const isDmUser = isAdminEmail;
 
 // Testo dei riquadri di riepilogo: una regola globale dà ai <p> un grigio
 // scuro (illeggibile sul fondo scuro), quindi il colore va messo qui.
