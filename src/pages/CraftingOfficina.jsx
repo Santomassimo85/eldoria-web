@@ -125,6 +125,7 @@ export default function CraftingOfficina() {
   const [note, setNote] = useState("");
   const [clockOffset, setClockOffset] = useState(0); // server − dispositivo (ms)
   const [, setTick] = useState(0);                   // battito della barra del tempo
+  const queued = useQueuedIds();                     // per dire "in coda" o "✓ su Foundry"
 
   useEffect(() => {
     if (!uid) return;
@@ -1049,7 +1050,7 @@ export default function CraftingOfficina() {
                   <li key={e.id} style={{ "--q": segreto ? "#6b6252" : tm.color }}>
                     <span className="off-log-ic" aria-hidden="true">{segreto ? "🔨" : tm.icon}</span>
                     <span className="off-log-main"><b>{segreto ? "Sul banco…" : (e.choice || e.name)}{e.upgraded && !segreto ? " ✦" : ""}</b><small>{new Date(e.at).toLocaleDateString("it-IT")}{segreto ? " · 🎲 tiro segreto" : <> · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE</>}{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.costMo ? ` · ${fmtMo(e.costMo)}` : ""}</small></span>
-                    <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
+                    <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{e.inboxId ? sentLabel(e, queued) : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "in lavorazione" : "da ritirare"}</span>
                   </li>
                 );
               })}
@@ -1132,6 +1133,7 @@ function CurseCard({ curse, compact = false }) {
 
 // ── Il tavolo del Master: per ogni artigiano, cosa sta forgiando e a che punto è ──
 function MasterBoard({ chars, nowMs }) {
+  const queued = useQueuedIds();
   const [onlyActive, setOnlyActive] = useState(false);
   const [busy, setBusy] = useState("");
   const now = new Date(nowMs);
@@ -1219,7 +1221,7 @@ function MasterBoard({ chars, nowMs }) {
                 ) : (
                   <div className="off-board-idle">
                     <span className="off-log-st no">banco libero</span>
-                    {r.last ? <small>ultima: {tierMeta(r.last.tier).icon} {r.last.choice || r.last.name} · {new Date(r.last.at).toLocaleDateString("it-IT")} · {entryStatus(r.last, nowMs)}</small> : <small>nessuna creazione ancora</small>}
+                    {r.last ? <small>ultima: {tierMeta(r.last.tier).icon} {r.last.choice || r.last.name} · {new Date(r.last.at).toLocaleDateString("it-IT")} · {entryStatus(r.last, nowMs, queued)}</small> : <small>nessuna creazione ancora</small>}
                   </div>
                 )}
               </li>
@@ -1880,9 +1882,21 @@ const timeLabel = (ms) => new Intl.DateTimeFormat("it-IT", { timeZone: ROME, hou
 // li ha presi (`xpPaid: false`). Le prove di prima del 2026-09-22 non hanno il
 // campo e valgono come già pagate.
 const xpOf = (e) => (e?.xpPaid === false ? 0 : Number(e?.xp) || 0);
-const entryStatus = (e, nowMs) => e.inboxId ? "📦 in coda" : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
+// Documenti ancora in `foundry_inbox`: "Fetch admin" li cancella appena ha creato
+// l'oggetto su Foundry, quindi una voce mandata il cui doc non c'è più è CONSEGNATA.
+// null = coda non ancora letta (allora si dice solo "mandato", senza indovinare).
+function useQueuedIds() {
+  const [ids, setIds] = useState(null);
+  useEffect(() => onSnapshot(collection(db, "foundry_inbox"),
+    (s) => setIds(new Set(s.docs.map((d) => d.id))),
+    () => setIds(null)), []);
+  return ids;
+}
+const sentLabel = (e, queued) => !queued ? "📦 mandato" : queued.has(e.inboxId) ? "📦 in coda" : "✓ su Foundry";
+const entryStatus = (e, nowMs, queued) => e.inboxId ? sentLabel(e, queued) : e.failed ? "💥 fallito" : e.skipped ? "non inviato" : (Number(e.readyAt) || 0) > nowMs ? "⚒ sul banco" : "da ritirare";
 
 function CraftLedger({ chars, reload, patchChar }) {
+  const queued = useQueuedIds();
   const [openUid, setOpenUid] = useState("");
   const [confirmId, setConfirmId] = useState(""); // voce in attesa di conferma di cancellazione
   const [busyId, setBusyId] = useState("");
@@ -1963,7 +1977,7 @@ function CraftLedger({ chars, reload, patchChar }) {
           <span><b>{sum("total")}</b><small>totale</small></span>
           <span><b>{sum("today")}</b><small>oggi</small></span>
           <span><b>{sum("week")}</b><small>settimana</small></span>
-          <span><b>{sum("sent")}</b><small>in coda</small></span>
+          <span><b>{sum("sent")}</b><small>mandati</small></span>
         </div>
       </div>
       {rows.length === 0 ? <p className="nx-nota">Nessuna prova ancora.</p> : (
@@ -1975,14 +1989,14 @@ function CraftLedger({ chars, reload, patchChar }) {
               <span className="off-ledger-n"><b>{r.total}</b></span>
               <span className={`off-ledger-n${r.today ? " is-on" : ""}`}>{r.today}<i>/{CRAFT_MAX_PER_DAY}</i></span>
               <span className={`off-ledger-n${r.week ? " is-on" : ""}`}>{r.week}<i>/{CRAFT_MAX_PER_WEEK}</i></span>
-              <span className="off-ledger-last">{r.last ? <>{tierMeta(r.last.tier).icon} {r.last.choice || r.last.name}<small>{dayLabel(r.last.dayKey)} · {entryStatus(r.last, nowMs)}</small></> : <small>—</small>}</span>
+              <span className="off-ledger-last">{r.last ? <>{tierMeta(r.last.tier).icon} {r.last.choice || r.last.name}<small>{dayLabel(r.last.dayKey)} · {entryStatus(r.last, nowMs, queued)}</small></> : <small>—</small>}</span>
             </button>
           ))}
         </div>
       )}
       {open && (
         <div className="off-ledger-detail">
-          <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate in coda <small>· ✕ elimina una prova e la annulla del tutto</small></span>
+          <span className="off-label">{open.name} · {open.log.length} prove nel registro{open.total > open.log.length ? ` (${open.total} a vita)` : ""} · {open.sent} mandate a Foundry <small>· ✕ elimina una prova e la annulla del tutto</small></span>
           {weeks.map((w) => (
             <div key={w.key} className="off-ledger-week">
               <div className="off-ledger-wk"><b>Settimana da {dayLabel(w.key)}</b>{w.key === weekKey && <em>in corso</em>}<small>{w.days.reduce((a, d) => a + d.items.length, 0)} prove</small></div>
@@ -1994,7 +2008,7 @@ function CraftLedger({ chars, reload, patchChar }) {
                       <li key={e.id} style={{ "--q": tierMeta(e.tier).color }}>
                         <span className="off-ledger-t">{timeLabel(e.at)}</span>
                         <span className="off-ledger-item"><b>{tierMeta(e.tier).icon} {e.choice || e.name}{e.cursed ? " ☠" : ""}</b><small>{tierMeta(e.tier).label}{e.targetTier && normTier(e.targetTier) !== normTier(e.tier) ? ` (mirava ${tierMeta(e.targetTier).label}${e.pickName ? `: ${e.pickName}` : ""})` : ""} · d20 {e.d20}{sign(e.bonus)}={e.total}{e.d12 ? ` · d12 ${e.d12}` : ""} · +{e.xp} PE{e.minutes ? ` · ⏱ ${fmtMinutes(e.minutes)}` : ""}{e.enhancer ? ` · ${ENHANCERS.find((x) => x.key === e.enhancer)?.name || e.enhancer}` : ""}{e.note ? ` · "${e.note}"` : ""}</small>{e.cursed && e.curse && <CurseCard curse={e.curse} compact />}</span>
-                        <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs)}</span>
+                        <span className={`off-log-st${e.inboxId ? " ok" : e.failed ? " bad" : e.skipped ? " no" : ""}`}>{entryStatus(e, nowMs, queued)}</span>
                         {confirmId === e.id ? (
                           <span className="off-ledger-del is-confirm">
                             <small>Annullo la prova: via dal registro, uso restituito, −{e.xp || 0} PE{e.inboxId ? ", tolta dalla coda" : ""}.</small>
