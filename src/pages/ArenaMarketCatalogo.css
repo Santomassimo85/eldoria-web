@@ -126,3 +126,13 @@
   .bt-page .am-cat-row .am-coin-save { grid-column: 2; justify-self: start; }
   .bt-page .am-cat-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Crea con Gemini (2026-10-09) ── */
+.am-cat-ai {
+  margin: 0 0 14px; padding: 12px 14px;
+  border: 1px solid rgba(var(--el-rgb), .45); border-radius: 3px;
+  background: rgba(var(--el-rgb), .07);
+}
+.am-cat-ai-title { display: block; margin-bottom: 8px; font-family: var(--font-sc, inherit); color: var(--el-soft); letter-spacing: .04em; }
+.am-cat-ai-idea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 3.2rem; font: inherit; }
+.am-cat-ai .am-coin-save:disabled { opacity: .6; cursor: progress; }

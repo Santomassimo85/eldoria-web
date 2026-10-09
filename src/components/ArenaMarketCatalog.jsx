@@ -172,6 +172,116 @@ export function marketItemSummary(it) {
   }
 }
 
+// ── "Crea con Gemini" (2026-10-09) ───────────────────────────────────────────
+// Vocabolario mandato a /api/genera-oggetto-arena (una sola fonte: queste liste)
+// e ripulitura della risposta: passa SOLO quello che il motore conosce, con
+// numeri riportati nei limiti; il resto cade sui default del form. Il Master
+// rivede nel banco di lavoro e salva con lo stesso buildPayload di sempre.
+const AI_CATEGORIES = MARKET_CATEGORIES.map(c => c.key);
+function aiVocab() {
+  return {
+    damageTypes: DAMAGE_TYPES.map(t => t.key),
+    malusTypes: MALUS_TYPES.map(m => ({ key: m.key, label: m.label, needsDice: !!m.needsDice, needsTurns: !!m.needsTurns })),
+    buffTypes: BUFF_TYPES.map(b => ({ key: b.key, label: b.label })),
+    castStats: CAST_STATS.map(s => s.key),
+    spells: Object.fromEntries(Object.entries(SPELL_SOURCES).map(([k, src]) => [k, src.spells.map(s => `${s.name} — ${s.info || ""}`)])),
+  };
+}
+const clampInt = (v, lo, hi, def) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
+const okDice = (d, def) => (typeof d === "string" && DICE_RE.test(d.trim()) ? d.trim() : def);
+function aiResist(r) {
+  const out = {};
+  Object.entries(r || {}).forEach(([t, lvl]) => { if (DAMAGE_TYPE_MAP[t] && RESIST_LEVELS[lvl]) out[t] = lvl; });
+  return out;
+}
+function aiEffects(list, withChance) {
+  return (Array.isArray(list) ? list : []).slice(0, 3).map(e => {
+    const kind = ["damage", "heal", "buff", "malus"].includes(e?.kind) ? e.kind : null;
+    if (!kind) return null;
+    const out = { kind };
+    if (kind === "damage" || kind === "heal") out.dice = okDice(e.dice, "1d6");
+    if (kind === "buff") {
+      out.buffType = BUFF_TYPES.some(b => b.key === e.buffType) ? e.buffType : "hit";
+      out.buffAmount = clampInt(e.buffAmount, 1, 5, 1);
+      out.buffTurns = clampInt(e.buffTurns, 1, 10, 3);
+    }
+    if (kind === "malus") {
+      // Malus inventato (es. "acid"): si scarta, non lo si traveste da svantaggio.
+      if (!MALUS_TYPE_MAP[e.malusType]) return null;
+      const m = MALUS_TYPE_MAP[e.malusType];
+      out.malusType = m.key;
+      if (m.needsDice) out.malusDice = okDice(e.malusDice, "1d4");
+      out.malusTurns = m.needsTurns ? clampInt(e.malusTurns, 1, 6, 2) : 1;
+    }
+    if (withChance) out.chance = clampInt(e.chance, 1, 100, 100);
+    return out;
+  }).filter(Boolean);
+}
+export function sanitizeAiItem(raw, forcedCat) {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const category = AI_CATEGORIES.includes(forcedCat) ? forcedCat : (AI_CATEGORIES.includes(r.category) ? r.category : "item");
+  const p = r.payload && typeof r.payload === "object" ? r.payload : {};
+  let payload = {};
+  if (category === "item") {
+    const effect = ["heal", "damage", "buff", "malus", "resist"].includes(p.effect) ? p.effect : "heal";
+    payload = { effect, uses: clampInt(p.uses, 1, 5, 1), extras: aiEffects(p.extras, false) };
+    if (effect === "heal" || effect === "damage") payload.dice = okDice(p.dice, "2d6");
+    if (effect === "buff") Object.assign(payload, {
+      buffType: BUFF_TYPES.some(b => b.key === p.buffType) ? p.buffType : "hit",
+      buffAmount: clampInt(p.buffAmount, 1, 5, 1),
+      buffTurns: clampInt(p.buffTurns, 0, 10, 3), // 0 = tutto il fight
+    });
+    if (effect === "malus") {
+      const m = aiEffects([{ ...p, kind: "malus", malusType: MALUS_TYPE_MAP[p.malusType] ? p.malusType : "disadvantage" }], false)[0];
+      Object.assign(payload, { malusType: m.malusType, malusDice: m.malusDice || "1d6", malusTurns: m.malusTurns });
+    }
+    if (effect === "resist") payload.resist = aiResist(p.resist);
+  } else if (category === "spell") {
+    const cls = SPELL_SOURCES[p.spellClass] ? p.spellClass : null;
+    const norm = (s) => String(s || "").split(" — ")[0].trim().toLowerCase();
+    // Cerca la spell nella sua lista, o in qualunque lista se la classe è sbagliata.
+    let spellClass = cls, sp = cls ? SPELL_SOURCES[cls].spells.find(s => s.name.toLowerCase() === norm(p.spellName)) : null;
+    if (!sp) for (const [k, src] of Object.entries(SPELL_SOURCES)) {
+      const hit = src.spells.find(s => s.name.toLowerCase() === norm(p.spellName));
+      if (hit) { sp = hit; spellClass = k; break; }
+    }
+    const slotCost = {};
+    SCROLL_SLOT_LEVELS.forEach(l => { const n = clampInt(p.slotCost?.[l] ?? p.slotCost?.[String(l)], 0, 4, 0); if (n) slotCost[l] = n; });
+    payload = {
+      spellClass: spellClass || "wizard", spellName: sp?.name || "",
+      charges: clampInt(p.charges, 1, 5, 1),
+      castStat: CAST_STATS.some(s => s.key === p.castStat) ? p.castStat : "int",
+      castStatMin: clampInt(p.castStatMin, 0, 20, 0), slotCost,
+    };
+  } else if (category === "weapon") {
+    const comps = (Array.isArray(p.components) ? p.components : []).slice(0, 3)
+      .map(c => ({ dice: okDice(c?.dice, null), type: DAMAGE_TYPE_MAP[c?.type] ? c.type : "tagliente" }))
+      .filter(c => c.dice);
+    payload = {
+      components: comps.length ? comps : [{ dice: "1d8", type: "tagliente" }],
+      hitBonus: clampInt(p.hitBonus, 0, 3, 0), ranged: !!p.ranged, twoHanded: !!p.twoHanded,
+      onHit: aiEffects(p.onHit, true),
+    };
+  } else if (category === "armor") {
+    payload = { acFixed: clampInt(p.acFixed, 10, 20, 13), resist: aiResist(p.resist) };
+  } else if (category === "pet") {
+    const effect = p.effect === "heal" ? "heal" : "damage";
+    payload = {
+      effect, dice: okDice(p.dice, "2d6"), autoHit: !!p.autoHit, hitBonus: clampInt(p.hitBonus, 0, 6, 3),
+      uses: clampInt(p.uses, 1, 6, 2), onHit: effect === "damage" ? aiEffects(p.onHit, true) : [],
+    };
+  }
+  return {
+    category,
+    name: String(r.name || "").trim().slice(0, 60) || "Articolo senza nome",
+    icon: String(r.icon || "").trim().slice(0, 4),
+    description: String(r.description || "").trim().slice(0, 300),
+    price: clampInt(r.price, 1, 200, 20),
+    maxPerWeek: clampInt(r.maxPerWeek, 1, 5, 1),
+    payload,
+  };
+}
+
 export default function ArenaMarketCatalog() {
   const [items, setItems] = useState([]);
   const [cat, setCat] = useState("item");
@@ -438,12 +548,10 @@ export default function ArenaMarketCatalog() {
     resetForm();
   };
 
-  const editItem = (it) => {
-    setCat(it.category);
-    setEditingId(it.id);
-    setFormOpen(true);
+  // Item salvato (o proposto da Gemini) → campi del banco di lavoro.
+  const itemToForm = (it) => {
     const p = it.payload || {};
-    setForm({
+    return {
       ...EMPTY_FORM,
       name: it.name || "",
       icon: it.icon || "",
@@ -487,7 +595,48 @@ export default function ArenaMarketCatalog() {
       resist: p.resist || {},
       autoHit: !!p.autoHit,
       petHitBonus: String(p.hitBonus ?? 3),
-    });
+    };
+  };
+
+  const editItem = (it) => {
+    setCat(it.category);
+    setEditingId(it.id);
+    setFormOpen(true);
+    setForm(itemToForm(it));
+  };
+
+  // ── Crea con Gemini: idea → articolo già nel formato del motore → banco di lavoro ──
+  const [aiIdea, setAiIdea] = useState("");
+  const [aiCat, setAiCat] = useState("auto"); // "auto" = sceglie Gemini
+  const [aiBusy, setAiBusy] = useState(false);
+  const generateWithAi = async () => {
+    if (aiBusy) return;
+    setAiBusy(true);
+    try {
+      const r = await fetch("/api/genera-oggetto-arena", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          idea: aiIdea.trim(),
+          category: aiCat === "auto" ? "" : aiCat,
+          vocab: aiVocab(),
+          catalog: items.map(it => ({ name: it.name, category: it.category, price: it.price, summary: marketItemSummary(it) })),
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.error || !data.item) throw new Error(data.error || "nessun articolo ricevuto (l'IA funziona solo online)");
+      const it = sanitizeAiItem(data.item, aiCat === "auto" ? "" : aiCat);
+      if (it.category === "spell" && !it.payload.spellName) throw new Error("Gemini ha proposto una spell che il motore non conosce: riprova.");
+      setCat(it.category);
+      setEditingId(null);
+      setFormOpen(true);
+      setForm(itemToForm(it));
+      showMsg(`✨ Proposta: ${it.name}. Controlla i campi qui sotto e premi Crea per salvarla.`);
+    } catch (e) {
+      showMsg(`Gemini: ${e.message || e}`, "err");
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const toggleActive = async (it) => {
@@ -513,6 +662,35 @@ export default function ArenaMarketCatalog() {
       {msg && (
         <div className={`am-message ${msg.type === "err" ? "am-message--err" : ""}`}>{msg.text}</div>
       )}
+
+      {/* ── CREA CON GEMINI: proposta già nel formato del motore, poi si rivede nel form ── */}
+      <div className="am-cat-ai">
+        <span className="am-cat-ai-title">✨ Crea con Gemini</span>
+        <div className="am-cat-grid">
+          <label className="am-cat-field am-cat-field--full">
+            <span>Idea (facoltativa: vuota = sorprendimi)</span>
+            <textarea
+              className="am-coin-input am-cat-ai-idea" rows={2} value={aiIdea} disabled={aiBusy}
+              placeholder="es. un pugnale di ghiaccio che rallenta il nemico · una pozione che cura e dà +1 CA · un falco che becca gli occhi"
+              onChange={e => setAiIdea(e.target.value)}
+            />
+          </label>
+          <label className="am-cat-field am-cat-field--sm">
+            <span>Categoria</span>
+            <select className="am-coin-input" value={aiCat} disabled={aiBusy} onChange={e => setAiCat(e.target.value)}>
+              <option value="auto">Decide Gemini</option>
+              {MARKET_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <button type="button" className="am-coin-save" onClick={generateWithAi} disabled={aiBusy}>
+          {aiBusy ? "✨ Gemini sta forgiando…" : "✨ Genera la proposta"}
+        </button>
+        <p className="am-master-note am-cat-note">
+          Gemini usa solo ciò che il motore dell'Arena sa già fare (tipi di danno, malus, bonus, spell esistenti) e calibra il prezzo sul catalogo.
+          La proposta apre il banco di lavoro: <strong>niente è salvato</strong> finché non premi Crea.
+        </p>
+      </div>
 
       {/* ── FORM CREA/MODIFICA ── */}
       <button className="am-coin-save am-cat-form-toggle" onClick={() => { setFormOpen(o => !o); if (formOpen) resetForm(); }}>
