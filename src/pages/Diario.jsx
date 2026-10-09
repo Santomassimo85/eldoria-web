@@ -190,6 +190,19 @@ export default function Diario() {
       await updateDoc(doc(db, "diary_notes", note.id), {
         [`reactions.${key}.${currentUser.uid}`]: mine ? deleteField() : reactorName,
       });
+      // Avviso all'autore (campanella + push via pushOnNotification), solo
+      // quando la reazione si AGGIUNGE: toglierla non disturba nessuno.
+      const r = REACTIONS.find((x) => x.key === key);
+      if (!mine && r && note.authorUid && note.authorUid !== currentUser.uid) {
+        const snippet = String(note.text || "").replace(/\s+/g, " ").trim();
+        addDoc(collection(db, "notifications"), {
+          userId: note.authorUid,
+          title: `${r.emoji} ${reactorName} ha reagito al tuo diario`,
+          message: `«${snippet.length > 90 ? snippet.slice(0, 90) + "…" : snippet}» — ${r.label}. Apri il Diario di Bordo per vederla.`,
+          read: false,
+          timestamp: serverTimestamp(),
+        }).catch((err) => console.error("[Diario] notifica reazione", err));
+      }
     } catch (err) {
       console.error("[Diario] toggleReaction", err);
       alert("Reazione non salvata. Riprova.");
