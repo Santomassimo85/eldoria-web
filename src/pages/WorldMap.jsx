@@ -22,7 +22,7 @@ import { loreSlug } from "../utils/loreLinks";
 const MAP_URL = "/assets/Exanthia.webp";
 const MAP_W = 2048;
 const MAP_H = 1536;
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isAdminEmail } from "../utils/roles";
 
 const toLatLng = (xPct, yPct) => [MAP_H - (Number(yPct) / 100) * MAP_H, (Number(xPct) / 100) * MAP_W];
 const isMobileViewport = () => window.matchMedia("(max-width: 900px)").matches;
@@ -43,7 +43,7 @@ export default function WorldMap() {
 
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isAdminEmail(currentUser?.email);
 
   // ── Firebase (invariato) ──
   useEffect(() => {

@@ -73,8 +73,8 @@ export default function AdminPanel() {
     },
   ];
 
-  // Il co-master non gestisce i giochi (Mercato, World Boss, sprite di battaglia): li gioca da player.
-  const GAME_PATHS = ["/dm-admin/market", "/dm-admin/world-boss", "/dm-admin/player-sprites"];
+  // Il co-master gestisce tutto tranne il Mercato Nero (2026-10-09): lì resta una giocatrice.
+  const GAME_PATHS = ["/dm-admin/market"];
   const GROUPS = isMainMaster(currentUser.email)
     ? ALL_GROUPS
     : ALL_GROUPS.map(g => ({ ...g, items: g.items.filter(i => !GAME_PATHS.includes(i.path)) })).filter(g => g.items.length);

@@ -10,7 +10,7 @@ import "./WorldBossAdmin.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isAdminEmail } from "../utils/roles";
 
 // Avatar del PG → data URL ridotto (max 640px, jpeg): è il riferimento visivo che
 // passiamo a Gemini così lo sprite somiglia davvero al personaggio.
@@ -340,7 +340,7 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
     setArenaBg(null);
   };
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isAdminEmail(currentUser.email)) {
     return <div className="denied">Accesso Negato.</div>;
   }
 

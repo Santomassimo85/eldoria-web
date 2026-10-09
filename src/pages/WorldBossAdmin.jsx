@@ -26,7 +26,7 @@ import "./WorldBossAdmin.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isAdminEmail } from "../utils/roles";
 
 const MIN_ACTIONS = 2;
 const MAX_ACTIONS = 5;
@@ -909,7 +909,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
     defeated: bosses.filter((b) => (b.hp ?? 0) <= 0).length,
   }), [bosses]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isAdminEmail(currentUser.email)) {
     return <div className="denied">Accesso Negato.</div>;
   }
 
