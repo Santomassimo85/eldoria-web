@@ -21,6 +21,8 @@ import {
 } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
 import { membersOf } from "../data/partyMembers";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 // Master + co-master (Makenna): stesso elenco di roles.js.
 const canEditSummaries = (user) => !!user && isAdminEmail(user.email);
@@ -614,7 +616,7 @@ export default function SummaryAdmin() {
     const rImg = await fetch("/api/genera-immagine", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: scenePromptFull(scena, styleKey), refs, characters }),
+      body: JSON.stringify({ prompt: scenePromptFull(scena, styleKey), refs, characters, tono: getImageTone() }),
     });
     const dImg = await rImg.json();
     if (dImg.error) throw new Error(dImg.error);
@@ -953,6 +955,7 @@ export default function SummaryAdmin() {
                       </button>
                     ))}
                   </div>
+                  <ImageTonePicker compact disabled={!!sceneBusyId} />
                   <small className="sumadm-gallery-hint">
                     Scegli quale <strong>parte del riassunto</strong> illustrare (o una scena a caso): la disegna con i PG coinvolti. Potrai tenerla o rigenerarla.
                   </small>
@@ -1106,6 +1109,7 @@ export default function SummaryAdmin() {
             ))}
           </div>
         </div>
+        <ImageTonePicker compact />
 
         <div className="sumadm-filter-tabs">
           <button
@@ -1202,6 +1206,7 @@ export default function SummaryAdmin() {
                 </button>
               ))}
             </div>
+            <ImageTonePicker compact disabled={!!sceneBusyId} />
 
             <div className="sumadm-picker-list">
               {pickerSections.length === 0 ? (
@@ -1276,6 +1281,7 @@ export default function SummaryAdmin() {
                 </button>
               ))}
             </div>
+            <ImageTonePicker compact disabled={!!sceneBusyId} />
 
             <div className="sumadm-scene-actions">
               <button className="sumadm-btn primary" onClick={commitPending} disabled={!!sceneBusyId}>

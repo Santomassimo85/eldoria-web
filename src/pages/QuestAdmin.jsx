@@ -21,6 +21,8 @@ import { useAuth } from "../AuthContext";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { logAgent } from "../utils/agentLog";
 import "./admin.css";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
@@ -255,7 +257,7 @@ export default function QuestAdmin() {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: questImagePrompt(scene, zona), aspectRatio: "3:2" }),
+        body: JSON.stringify({ prompt: questImagePrompt(scene, zona), aspectRatio: "3:2", tono: getImageTone() }),
       });
       const data = await r.json();
       if (!r.ok || !data.immagine) throw new Error(data.error || "Nessuna immagine.");
@@ -500,6 +502,7 @@ export default function QuestAdmin() {
                   {DIFFICULTIES.map((d) => <option key={d.key} value={d.key}>{d.icon} {d.key}</option>)}
                 </select>
               </div>
+              <ImageTonePicker compact disabled={!!genBusy} />
               <div className="qstadm-gen-actions">
                 <button type="button" className="qstadm-btn primary" onClick={generateQuest} disabled={!!genBusy || uploading}>
                   {genBusy === "testo" ? "✍ Scrivo la lettera…" : genBusy === "immagine" ? "🎨 Dipingo l'illustrazione…" : "🪄 Genera missione"}

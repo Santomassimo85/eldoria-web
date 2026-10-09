@@ -23,6 +23,8 @@ import { DMG_TYPE_OPTIONS } from "./worldBossSpells";
 import { resetWorldBossFight } from "../data/worldBossReset";
 import "./admin.css";
 import "./WorldBossAdmin.css";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -575,6 +577,7 @@ export default function WorldBossAdmin() {
         body: JSON.stringify({
           prompt: pixelArtPrompt(name, desc, dead, { deadStyle, withRef: !!(dead && ref) }),
           ...(dead && ref ? { refs: [ref] } : {}),
+          tono: getImageTone(),
         }),
       });
       const data = await r.json();
@@ -1100,6 +1103,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
             <small>Trascina qui le forme della minaccia</small>
           </div>
 
+          <ImageTonePicker compact />
           <div className="wb-sprite-slots">
             <div className="wb-sprite-slot">
               <span className="wb-slot-tag">Forma viva</span>
@@ -1198,6 +1202,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
               </div>
             </div>
 
+            <ImageTonePicker compact />
             <div className="wb-minion-sprites">
               <div className="wb-sprite-slot">
                 <span className="wb-slot-tag">Sprite vivo</span>
@@ -1385,6 +1390,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
                     <div className="wb-edit">
                       <div className="wb-section-head"><h2>✎ {editData.name || "Modifica"}</h2></div>
 
+                      <ImageTonePicker compact />
                       <div className="wb-edit-sprites">
                         <SpriteDropzone
                           label="Sprite Vivo"

@@ -17,6 +17,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { functions, db } from "../firebase";
 import "./admin.css";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
@@ -56,6 +57,7 @@ export default function LoScribaAdmin() {
   const [editions, setEditions] = useState([]);
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [imageTone, setImageTone] = useState("normale");
   const [days, setDays] = useState(10);
   const [msg, setMsg] = useState(null);     // { type, text }
   const [previewHtml, setPreviewHtml] = useState(null);
@@ -75,6 +77,7 @@ export default function LoScribaAdmin() {
     }, (e) => setMsg({ type: "err", text: "Lettura numeri: " + e.message }));
     const unsubCfg = onSnapshot(doc(db, "settings", "scriba"), (s) => {
       if (!s.exists()) { setEnabled(true); setNotes([]); return; }
+      setImageTone(s.data().imageTone || "normale");
       setEnabled(s.data().enabled !== false);
       // La lista è guidata da Firestore: così dopo l'invio (campo azzerato dal
       // backend) il pannello torna vuoto da solo, senza spunti fantasma.
@@ -211,6 +214,19 @@ export default function LoScribaAdmin() {
       {/* Interruttore automatismo */}
       <div style={{ margin: "8px 0 20px" }}>
         {btn(enabled ? "⏸ Metti in pausa l'automatismo" : "▶ Attiva l'automatismo", toggleEnabled, enabled ? "var(--el-soft)" : "var(--el-2)", "var(--ossidiana)")}
+      </div>
+
+      {/* Tono delle illustrazioni (settings/scriba.imageTone, letto da buildScribaEdition) */}
+      <div style={{ margin: "0 0 20px" }}>
+        <ImageTonePicker
+          label="🎭 Tono delle illustrazioni dei prossimi numeri"
+          value={imageTone}
+          onChange={(k) => run(async () => {
+            await setDoc(doc(db, "settings", "scriba"), { imageTone: k }, { merge: true });
+            setMsg({ type: "ok", text: "Tono delle illustrazioni salvato: vale dal prossimo numero (anche per Riscrivi e Anteprima)." });
+          })}
+          disabled={busy}
+        />
       </div>
 
       {/* Bozza in attesa */}

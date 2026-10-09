@@ -18,6 +18,8 @@ import {
 import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
 import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 // Mercato Nero = area di GIOCO: la gestisce solo il Master; il co-master ci compra da player (src/utils/roles.js).
@@ -392,7 +394,7 @@ export default function MarketAdmin() {
       const rImg = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: artPrompt, stile: aiStyle }),
+        body: JSON.stringify({ prompt: artPrompt, stile: aiStyle, tono: getImageTone() }),
       });
       const dImg = await rImg.json();
       if (!rImg.ok || dImg.error) throw new Error(dImg.error || "immagine non generata");
@@ -1222,6 +1224,7 @@ export default function MarketAdmin() {
                 ))}
               </div>
             </div>
+            <ImageTonePicker compact disabled={!!aiBusy} />
 
             <button
               type="button"

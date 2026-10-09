@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile, refs, characters, aspectRatio } = req.body || {};
+  const { prompt, npc, stile, refs, characters, aspectRatio, tono } = req.body || {};
   // Formato dell'immagine (es. "16:9" per gli sfondi di battaglia). Solo
   // quelli che Gemini accetta; altrimenti il suo predefinito (quadrato).
   const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
@@ -73,6 +73,18 @@ export default async function handler(req, res) {
   };
   const stileLinea = STILI[stile] || STILI.olio;
 
+  // TONO scelto dal Master (src/data/imageTone.js, 2026-10-09): una riga
+  // VINCOLANTE in coda al prompt, che prevale su luce/atmosfera/espressioni
+  // suggerite prima (prima l'IA andava a caso fra comico, epico e macabro).
+  // Lo stile grafico (pixel art, xilografia, acquerello…) resta quello chiesto.
+  const TONI = {
+    normale: "TONO (vincolante): fantasy classico ed equilibrato, credibile e coerente con un gioco di ruolo. NON comico, NON caricaturale, NON horror o macabro: espressioni naturali, colori e luce naturali.",
+    serio: "TONO (vincolante): serio, sobrio e solenne. Atmosfera drammatica e realistica, espressioni gravi e composte, colori contenuti. Niente elementi comici, buffi o caricaturali, niente esagerazioni.",
+    divertente: "TONO (vincolante): divertente e scanzonato. Espressioni buffe ed esagerate, pose comiche, piccoli dettagli spiritosi, colori vivaci e luce calda, un tocco caricaturale. Niente sangue, niente atmosfera cupa o inquietante.",
+    horror: "TONO (vincolante): horror dark fantasy. Atmosfera cupa e inquietante, ombre profonde, luce fredda o malata, colori desaturati, dettagli macabri e perturbanti, espressioni tese o spettrali. Niente elementi comici o allegri.",
+  };
+  const tonoLinea = TONI[tono] || "";
+
   let finalPrompt = "";
   if (prompt && String(prompt).trim()) {
     finalPrompt = String(prompt).trim();
@@ -102,6 +114,9 @@ Inquadratura: ${inq}, ${ang}. Illuminazione: ${luce}. Sfondo: ${sfondo}.
 ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
   } else {
     return res.status(400).json({ error: "Serve un 'prompt' oppure un 'npc'." });
+  }
+  if (tonoLinea) {
+    finalPrompt = `${finalPrompt}\n${tonoLinea} Il tono prevale su luce, atmosfera ed espressioni indicate sopra; formato, stile grafico e sfondo richiesti restano invariati.`;
   }
 
   try {

@@ -38,8 +38,17 @@ async function callGemini(geminiKey, body) {
     return { buffer: Buffer.from(inline.data, "base64"), mime: inline.mimeType || inline.mime_type || "image/png" };
 }
 
-async function generateOne(geminiKey, artPrompt) {
-    const contents = [{ parts: [{ text: STYLE_PREFIX + artPrompt }] }];
+// TONO scelto dal Master in /dm-admin/scriba (settings/scriba.imageTone,
+// 2026-10-09): stesse chiavi di src/data/imageTone.js. Lo stile xilografia resta.
+const TONE_SUFFIX = {
+    normale: " TONE (mandatory): classic, balanced fantasy, believable; NOT comic or caricatural, NOT horror or gory.",
+    serio: " TONE (mandatory): serious, sober and solemn, dramatic and realistic, grave composed expressions; nothing comic or exaggerated.",
+    divertente: " TONE (mandatory): funny and lighthearted, exaggerated comic expressions and poses, witty little details, a caricatural touch; no blood, nothing grim.",
+    horror: " TONE (mandatory): dark fantasy horror, grim and unsettling, deep shadows, macabre and eerie details, tense or ghostly expressions; nothing comic or cheerful.",
+};
+
+async function generateOne(geminiKey, artPrompt, tone) {
+    const contents = [{ parts: [{ text: STYLE_PREFIX + artPrompt + (TONE_SUFFIX[tone] || "") }] }];
     try {
         return await callGemini(geminiKey, { contents, generationConfig: { responseModalities: ["TEXT", "IMAGE"] } });
     } catch (e) {
@@ -54,10 +63,11 @@ async function generateOne(geminiKey, artPrompt) {
  *   illustrations: Array<{section:string, caption:string, art_prompt:string}>,
  *   bucket: import('@google-cloud/storage').Bucket,
  *   prefix: string,   // cartella su Storage, es. "scriba/12"
+ *   tone?: string,    // normale · serio · divertente · horror (settings/scriba.imageTone)
  * }} args
  * @returns {Promise<Array<{url:string, caption:string, placement:string}>>}
  */
-async function generateIllustrations({ geminiKey, illustrations, bucket, prefix }) {
+async function generateIllustrations({ geminiKey, illustrations, bucket, prefix, tone = "" }) {
     if (!geminiKey) { console.warn("[scriba] GEMINI_API_KEY assente: niente immagini."); return []; }
     if (!Array.isArray(illustrations) || !illustrations.length) return [];
 
@@ -67,7 +77,7 @@ async function generateIllustrations({ geminiKey, illustrations, bucket, prefix 
         const ill = list[i];
         if (!ill?.art_prompt) continue;
         try {
-            const { buffer, mime } = await generateOne(geminiKey, ill.art_prompt);
+            const { buffer, mime } = await generateOne(geminiKey, ill.art_prompt, tone);
             const ext = mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "png";
             const token = crypto.randomUUID();
             const file = bucket.file(`${prefix}/${i}.${ext}`);

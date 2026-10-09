@@ -13,6 +13,8 @@ import "./DmTools.css";
 import "./admin.css";
 import "./Riassunti.css";
 import "./RiassuntoSingolo.css";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 // Gruppi di gioco (chiavi come lo Scriptorium/SummaryAdmin) con i membri e i
 // loro avatar (stessi asset di Party.jsx), usati come riferimento per le immagini.
@@ -255,7 +257,7 @@ export default function DmTools() {
       const fullPrompt = `${mapPrompt.trim()}. ${styleSuffix(MAP_STYLES, mapStyle)} No text, no lettering, no labels, no grid, no border.`;
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt })
+        body: JSON.stringify({ prompt: fullPrompt, tono: getImageTone() })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -291,7 +293,7 @@ export default function DmTools() {
       const fullPrompt = `${coverPrompt.trim()}. ${styleSuffix(COVER_STYLES, coverStyle)} No text, no lettering, no map, no grid, no frame, no border.`;
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt })
+        body: JSON.stringify({ prompt: fullPrompt, tono: getImageTone() })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -402,7 +404,7 @@ export default function DmTools() {
       }
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: scenePromptFull(base, imgStyle), refs })
+        body: JSON.stringify({ prompt: scenePromptFull(base, imgStyle), refs, tono: getImageTone() })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -708,6 +710,7 @@ export default function DmTools() {
                     onClick={() => setMapStyle(s.key)}>{s.label}</button>
                 ))}
               </div>
+              <ImageTonePicker compact />
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 10 }} onClick={copyPrompt}>📋 Copia prompt</button>
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaMappa} disabled={mapBusy}>
                 {mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}
@@ -730,6 +733,7 @@ export default function DmTools() {
                     onClick={() => setCoverStyle(s.key)}>{s.label}</button>
                 ))}
               </div>
+              <ImageTonePicker compact />
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaCopertina} disabled={coverBusy || !coverPrompt.trim()}>
                 {coverBusy ? "Sto disegnando la copertina…" : "🖼 Genera copertina"}
               </button>
@@ -815,6 +819,7 @@ export default function DmTools() {
                     onClick={() => setImgStyle(s.key)}>{s.label}</button>
                 ))}
               </div>
+              <ImageTonePicker compact />
 
               {partyChars.length > 0 && (<>
                 <small className="dmt-hint">Personaggi da usare come riferimento negli avatar (tocca per includere/escludere):</small>

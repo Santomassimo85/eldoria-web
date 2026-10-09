@@ -6,6 +6,8 @@
 // (chroma key). Restituisce un dataURL PNG trasparente, pronto da salvare in
 // Firestore (prop_sprites) o da convertire in blob per lo Storage.
 
+import { getImageTone } from "../data/imageTone";
+
 // Prompt per un PROP della mappa (albero/sasso/colonna): oggetto singolo, niente
 // scena, su fondo magenta da rimuovere.
 const PROP_SUBJECT = {
@@ -77,7 +79,7 @@ export async function generateTransparentSpriteDataUrl(prompt, { maxPx = 256 } =
   const r = await fetch("/api/genera-immagine", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, tono: getImageTone() }),
   });
   const data = await r.json();
   if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");

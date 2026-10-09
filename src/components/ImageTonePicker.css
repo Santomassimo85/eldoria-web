@@ -1,0 +1,30 @@
+/* Tono del disegno: chip a radio, token del Covo. */
+.imgtone { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 8px; }
+.imgtone--compact { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.imgtone-label {
+  font-family: var(--font-sc, inherit);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--osso-2, inherit);
+}
+.imgtone-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.imgtone-chip {
+  min-height: 34px;
+  padding: 5px 11px;
+  border-radius: 3px;
+  border: 1px solid var(--roccia-4);
+  background: var(--roccia-2);
+  color: var(--osso);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.imgtone-chip:hover:not(:disabled) { border-color: var(--el-2); }
+.imgtone-chip:disabled { opacity: 0.55; cursor: default; }
+.imgtone-chip.is-on {
+  border-color: var(--el-2);
+  background: rgba(var(--el-rgb), 0.16);
+  box-shadow: 0 0 0 2px rgba(var(--el-rgb), 0.28) inset;
+  font-weight: 700;
+}

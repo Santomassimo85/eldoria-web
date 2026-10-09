@@ -8,6 +8,8 @@ import { CITIES_HUB } from "./data/citiesHub";
 import GlacierHero from "./components/glacier/GlacierHero";
 import "./GeneraNPC.css";
 import "./pages/admin.css";
+import { getImageTone } from "./data/imageTone";
+import ImageTonePicker from "./components/ImageTonePicker";
 
 const initialDest = { name: "", faction: "", location: "", linkedCity: "", description: "" };
 
@@ -80,7 +82,7 @@ export default function GeneraNPC() {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ npc, stile })
+        body: JSON.stringify({ npc, stile, tono: getImageTone() })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -220,6 +222,8 @@ export default function GeneraNPC() {
                 </button>
               ))}
             </div>
+
+            <ImageTonePicker disabled={loadingImg} />
 
             <button
               className="npcgen-btn npcgen-btn--ghost"

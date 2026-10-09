@@ -798,7 +798,10 @@ async function buildScribaEdition(dbAdmin, { days, assetPrefix, edition = 1 }) {
   let images = [];
   try {
     logAgent("scriba", "reason", `Illustro ${(content.illustrations || []).length} immagini con Gemini…`);
+    let tone = "";
+    try { tone = (await dbAdmin.doc("settings/scriba").get()).data()?.imageTone || "normale"; } catch (_) { /* tono libero */ }
     images = await generateIllustrations({
+      tone,
       geminiKey: geminiKeyParam.value(),
       illustrations: content.illustrations || [],
       bucket: admin.storage().bucket(),

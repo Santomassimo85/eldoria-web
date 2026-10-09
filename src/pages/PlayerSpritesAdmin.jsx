@@ -7,6 +7,8 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import "./admin.css";
 import "./WorldBossAdmin.css";
+import { getImageTone } from "../data/imageTone";
+import ImageTonePicker from "../components/ImageTonePicker";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -225,6 +227,7 @@ export default function PlayerSpritesAdmin() {
           prompt: heroSpritePrompt(char, dead),
           refs: [ref],
           characters: [{ name: char.name, race: char.race, class: char.class }],
+          tono: getImageTone(),
         }),
       });
       const data = await r.json();
@@ -285,7 +288,7 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt, aspectRatio: "16:9" }),
+        body: JSON.stringify({ prompt, aspectRatio: "16:9", tono: getImageTone() }),
       });
       const data = await r.json();
       if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
@@ -360,6 +363,7 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
       {/* ── Sfondi ── */}
       <div className="adm-panel" style={{ marginBottom: 18 }}>
         <div className="adm-panel-head"><h2 className="adm-panel-title">🌄 Sfondi di battaglia</h2></div>
+        <ImageTonePicker compact />
         <div className="wbs-bg-grid">
           {/* Battle BG */}
           <div>
@@ -454,6 +458,7 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
       {/* ── Sprite eroi ── */}
       <div className="adm-panel">
         <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
+        <ImageTonePicker compact />
         <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion). Serve un avatar sulla scheda. <strong>⇆ Gira</strong> = specchia lo sprite: nel fight gli eroi stanno a destra, quindi devono guardare a <strong>sinistra</strong>, verso il boss (l'anteprima qui è identica alla battaglia).</small>
         <div className="wbs-grid">
           {characters.map((char) => (
