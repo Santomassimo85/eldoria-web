@@ -13,11 +13,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  collection, addDoc, deleteDoc, doc, getDoc,
+  collection, addDoc, deleteDoc, doc, getDoc, updateDoc, deleteField,
   query, where, orderBy, onSnapshot, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
+import { isAdminEmail, isMainMaster } from "../utils/roles";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 import GlacierHero from "../components/glacier/GlacierHero";
@@ -69,6 +70,20 @@ const fmtDate = (ts) => {
     day: "2-digit", month: "long", year: "numeric",
   });
 };
+/* REAZIONI (2026-10-09): solo Master e co-master (Makenna) reagiscono alle voci
+   dei giocatori; tutti le vedono. Sul doc: `reactions.<key>.<uid> = nome`
+   (chiavi a parole, non emoji, per restare sicure nei percorsi dei campi). */
+const REACTIONS = [
+  { key: "cuore",   emoji: "❤️", label: "Bellissimo" },
+  { key: "ride",    emoji: "😂", label: "Che risate" },
+  { key: "wow",     emoji: "😮", label: "Wow" },
+  { key: "fuoco",   emoji: "🔥", label: "Epico" },
+  { key: "occhio",  emoji: "👀", label: "Interessante…" },
+  { key: "teschio", emoji: "💀", label: "Brutta fine" },
+  { key: "triste",  emoji: "😢", label: "Che tristezza" },
+  { key: "ok",      emoji: "👍", label: "Approvato" },
+];
+
 const fmtTime = (ts) =>
   ts?.toDate ? ts.toDate().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "";
 
@@ -162,6 +177,24 @@ export default function Diario() {
     } catch (err) {
       console.error("[Diario] removeNote", err);
     }
+  };
+
+  const canReact = isAdminEmail(currentUser?.email);
+  const reactorName = isMainMaster(currentUser?.email) ? "Il Master" : (charName || "Co-master");
+  const [pickerFor, setPickerFor] = useState(null); // id della voce col selettore aperto
+
+  const toggleReaction = async (note, key) => {
+    if (!canReact || !currentUser) return;
+    const mine = !!note.reactions?.[key]?.[currentUser.uid];
+    try {
+      await updateDoc(doc(db, "diary_notes", note.id), {
+        [`reactions.${key}.${currentUser.uid}`]: mine ? deleteField() : reactorName,
+      });
+    } catch (err) {
+      console.error("[Diario] toggleReaction", err);
+      alert("Reazione non salvata. Riprova.");
+    }
+    setPickerFor(null);
   };
 
   /* Voci raggruppate per giorno (per righello data nel diario). */
@@ -342,6 +375,14 @@ export default function Diario() {
                           )}
                         </div>
                         <p className="nx-prosa diario-text">{n.text}</p>
+                        <NoteReactions
+                          note={n}
+                          uid={currentUser?.uid}
+                          canReact={canReact && n.authorUid !== currentUser?.uid}
+                          open={pickerFor === n.id}
+                          onOpen={() => setPickerFor(pickerFor === n.id ? null : n.id)}
+                          onToggle={(key) => toggleReaction(n, key)}
+                        />
                       </div>
                     </li>
                   );
@@ -352,5 +393,58 @@ export default function Diario() {
         )}
       </div>
     </section>
+  );
+}
+
+/* Reazioni sotto una voce: chip "emoji n" (il title dice chi ha reagito) e,
+   per Master/co-master, il tastino che apre la fila delle emoji. */
+function NoteReactions({ note, uid, canReact, open, onOpen, onToggle }) {
+  const used = REACTIONS
+    .map((r) => {
+      const who = Object.values(note.reactions?.[r.key] || {});
+      return { ...r, who, mine: !!note.reactions?.[r.key]?.[uid] };
+    })
+    .filter((r) => r.who.length > 0);
+  if (!used.length && !canReact) return null;
+  return (
+    <div className="diario-reactions">
+      {used.map((r) => (
+        <button
+          key={r.key}
+          type="button"
+          className={"diario-react" + (r.mine ? " is-mine" : "")}
+          aria-pressed={r.mine}
+          disabled={!canReact}
+          onClick={() => onToggle(r.key)}
+          title={`${r.label} — ${r.who.join(", ")}`}
+        >
+          <span aria-hidden="true">{r.emoji}</span>
+          <span className="diario-react-who">{r.who.join(" · ")}</span>
+        </button>
+      ))}
+      {canReact && (
+        <button
+          type="button"
+          className={"diario-react diario-react-add" + (open ? " is-open" : "")}
+          aria-expanded={open}
+          onClick={onOpen}
+          title="Aggiungi una reazione"
+        >☺＋</button>
+      )}
+      {canReact && open && (
+        <div className="diario-react-pick" role="group" aria-label="Scegli una reazione">
+          {REACTIONS.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              className={"diario-react-opt" + (note.reactions?.[r.key]?.[uid] ? " is-mine" : "")}
+              aria-pressed={!!note.reactions?.[r.key]?.[uid]}
+              onClick={() => onToggle(r.key)}
+              title={r.label}
+            >{r.emoji}</button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

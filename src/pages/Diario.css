@@ -123,3 +123,28 @@
 /* ── AMBIENT FX: contenuto sopra, layer dietro ── */
 .diario-page > * { position: relative; z-index: 1; }
 .diario-page > .ambient-fx { position: fixed; z-index: 0; }
+
+/* ── reazioni del Master / co-master (2026-10-09) ── */
+.diario-reactions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .55rem; }
+.diario-react {
+  display: inline-flex; align-items: center; gap: .35rem;
+  min-height: 30px; padding: .15rem .6rem; border-radius: 999px;
+  border: 1px solid var(--roccia-4); background: var(--roccia-2); color: var(--osso);
+  font: inherit; font-size: .8rem; line-height: 1.2; cursor: pointer;
+}
+.diario-react:disabled { cursor: default; opacity: 1; }
+.diario-react:not(:disabled):hover { border-color: var(--el-2); }
+.diario-react.is-mine { border-color: var(--el-2); background: rgba(var(--el-rgb), .16); }
+.diario-react-who { color: var(--osso-2); font-size: .74rem; }
+.diario-react-add { color: var(--osso-2); }
+.diario-react-add.is-open { border-color: var(--el-2); color: var(--el-soft); }
+.diario-react-pick {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .3rem;
+  padding: .4rem; border: 1px solid var(--roccia-4); border-radius: 3px; background: var(--roccia-1);
+}
+.diario-react-opt {
+  min-width: 38px; min-height: 38px; font-size: 1.15rem; line-height: 1;
+  border: 1px solid transparent; border-radius: 3px; background: transparent; cursor: pointer;
+}
+.diario-react-opt:hover { border-color: var(--el-2); background: var(--roccia-3); }
+.diario-react-opt.is-mine { border-color: var(--el-2); background: rgba(var(--el-rgb), .18); }

@@ -319,7 +319,9 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 4000
         && request.resource.data.party in ["AMEA", "LEAF", "ENOX", "LAC"];
-      allow update: if false;
+      // Reazioni (2026-10-09): solo Master/co-master, e solo il campo reactions.
+      allow update: if isMaster()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["reactions"]);
       allow delete: if isLoggedIn() && (
         resource.data.authorUid == request.auth.uid || isMaster()
       );
