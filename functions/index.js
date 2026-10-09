@@ -160,31 +160,84 @@ exports.cleanupExpiredSessions = onSchedule(
     },
 );
 
-// ── ARENA · reset settimanale delle Monete Arena ────────────────────────────
-// Lunedì 00:01 (Europe/Rome): ogni personaggio riparte con 60 Monete Arena.
-// È un "portafoglio settimanale": il saldo viene IMPOSTATO a 60 (non sommato),
-// così le vincite/avanzi della settimana precedente si azzerano. Gli acquisti
-// del market scadono già da soli la domenica 24:00 (chiave-settimana lato client).
+// ── ARENA · chiusura della settimana: DOMENICA ALLE 23:00 (2026-10-09) ───────
+// Prima era lunedì 00:01 e toccava solo le monete. Ora, domenica 23:00
+// (Europe/Rome), reset TOTALE della settimana dell'Arena:
+//  - ogni personaggio: Monete Arena IMPOSTATE a 60 (non sommate) e acquisti
+//    della Bottega (`arenaWeekly`) cancellati;
+//  - arena_meta/global: torneo, iscritti e lista d'attesa azzerati, contatore
+//    `weekTournaments` (bonus +20 dal 2° torneo) cancellato. Restano le Sfide
+//    Libere in corso (coi loro snapshot), premi, riserve, championsOnly;
+//  - scommesse ancora aperte: annullate (il portafoglio riparte comunque da 60).
+// Non tocca titoli, storico vincitori, cronache, statistiche.
+// Il client conta già la settimana nuova dalle 23:00 (src/data/arenaWeek.js).
 const ARENA_WEEKLY_COINS = 60;
+// Stessa chiave di src/data/arenaWeek.js: lunedì della settimana, con la
+// domenica dalle 23:00 già nella settimana nuova.
+function arenaWeekKey(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })
+        .formatToParts(new Date(now.getTime() + 3600000));
+    const get = (t) => parts.find((p) => p.type === t)?.value;
+    const wd = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[get("weekday")] ?? 0;
+    return new Date(Date.UTC(+get("year"), +get("month") - 1, +get("day")) - wd * 86400000).toISOString().slice(0, 10);
+}
 exports.arenaWeeklyReset = onSchedule(
-    { schedule: "1 0 * * 1", timeZone: "Europe/Rome", region: "us-central1" },
+    { schedule: "0 23 * * 0", timeZone: "Europe/Rome", region: "us-central1" },
     async () => {
         const dbAdmin = admin.firestore();
+        // 1) Torneo e iscrizioni.
+        try {
+            const ref = dbAdmin.doc("arena_meta/global");
+            await dbAdmin.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                if (!snap.exists) return;
+                const meta = snap.data();
+                const fun = (meta.matches || []).filter((m) => m.kind === "fun");
+                const keep = new Set();
+                fun.forEach((m) => (m.players || []).forEach((p) => keep.add(p.id)));
+                const snaps = {};
+                Object.entries(meta.characterSnapshots || {}).forEach(([uid, s]) => { if (keep.has(uid)) snaps[uid] = s; });
+                tx.update(ref, {
+                    phase: "registration",
+                    participants: [], waitingList: [],
+                    matches: fun, characterSnapshots: snaps,
+                    tournamentWinner: null, currentRound: 1, matchHistory: [],
+                    groupA: [], groupB: [],
+                    shopEndsAt: null, pendingNextMatches: null, pendingNextRound: null,
+                    weekTournaments: FieldValue.delete(),
+                });
+            });
+            console.log("🏟 arenaWeeklyReset: torneo, iscrizioni e lista d'attesa azzerati.");
+        } catch (err) {
+            console.error("❌ arenaWeeklyReset (torneo) fallita:", err);
+        }
+        // 2) Scommesse aperte.
+        try {
+            const bets = await dbAdmin.collection("arena_bets").where("status", "==", "pending").get();
+            await Promise.all(bets.docs.map((d) => d.ref.update({ status: "cancelled", cancelledReason: "reset settimanale (domenica 23:00)" })));
+            if (bets.size) console.log(`🎲 arenaWeeklyReset: ${bets.size} scommesse annullate.`);
+        } catch (err) {
+            console.error("❌ arenaWeeklyReset (scommesse) fallita:", err);
+        }
+        // 3) Monete e acquisti di ogni personaggio.
         try {
             const snap = await dbAdmin.collection("characters").get();
             if (snap.empty) { console.log("⏸ arenaWeeklyReset: nessun personaggio."); return; }
+            const newWeek = arenaWeekKey();
             // Batch da 500 (limite Firestore).
             let batch = dbAdmin.batch();
             let n = 0, total = 0;
             for (const d of snap.docs) {
-                batch.update(d.ref, { arenaCoins: ARENA_WEEKLY_COINS });
+                // Gli acquisti già della settimana NUOVA (fatti dopo le 23:00) restano.
+                const keepWeekly = d.data().arenaWeekly?.weekKey === newWeek;
+                batch.update(d.ref, keepWeekly ? { arenaCoins: ARENA_WEEKLY_COINS } : { arenaCoins: ARENA_WEEKLY_COINS, arenaWeekly: FieldValue.delete() });
                 n++; total++;
                 if (n === 500) { await batch.commit(); batch = dbAdmin.batch(); n = 0; }
             }
             if (n > 0) await batch.commit();
-            console.log(`🪙 arenaWeeklyReset: ${total} personaggi riportati a ${ARENA_WEEKLY_COINS} Monete Arena.`);
+            console.log(`🪙 arenaWeeklyReset: ${total} personaggi a ${ARENA_WEEKLY_COINS} Monete Arena, acquisti della Bottega cancellati.`);
         } catch (err) {
-            console.error("❌ arenaWeeklyReset fallita:", err);
+            console.error("❌ arenaWeeklyReset (monete/acquisti) fallita:", err);
         }
     },
 );

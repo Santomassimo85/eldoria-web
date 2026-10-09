@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import {
   doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc, deleteDoc,
   arrayUnion, arrayRemove, addDoc, collection, serverTimestamp,
-  runTransaction, increment, query, where,
+  runTransaction, increment, query, where, writeBatch,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
@@ -13,7 +13,7 @@ import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
-import { currentWeekKey } from "../data/arenaWeek";
+import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
 import { saveChronicle } from "../utils/arenaChronicle";
@@ -1235,7 +1235,7 @@ const ARENA_ITEMS = [
 
 // ── BOTTEGA SETTIMANALE (market Arena) ───────────────────────────────────────
 // Gli acquisti settimanali (characters.arenaWeekly) valgono SOLO nei tornei e
-// scadono la domenica alle 24:00: weekKey = lunedì della settimana corrente,
+// scadono la domenica alle 23:00 (arenaWeek.js): weekKey = lunedì della settimana corrente,
 // quindi a settimana nuova gli acquisti vecchi semplicemente non contano più.
 // Qui vengono tradotti in pezzi di loadout: azioni (spell/armi/buff/pet),
 // bonus CA e consumabili. Le spell sono RIFERIMENTI alle liste di classe già
@@ -5466,13 +5466,47 @@ export default function Arena() {
     // Snapshot dei bot iniettati → characterSnapshots (per il fight e le schede).
     const snapWrites = {};
     Object.entries(injected).forEach(([botId, snap]) => { snapWrites[`characterSnapshots.${botId}`] = snap; });
-    await updateDoc(doc(db, "arena_meta", "global"), {
-      matches: initialMatches, phase: "combat", currentRound: 1, tournamentWinner: null,
-      groupA, groupB,
-      participants,               // include l'eventuale bot di riserva iniettato
-      masterUid: currentUser.uid, // chi pilota i PG-bot durante il torneo
-      ...snapWrites,
-    });
+    // Tornei della settimana (2026-10-09): `weekTournaments = {weekKey, count}`
+    // contato in transazione, così un doppio clic non avvia (né paga) due volte.
+    // Dal 2° torneo della settimana in poi: +ARENA_TOURNAMENT_BONUS Monete a TUTTI
+    // (si sommano a quelle che hanno). Si azzera domenica alle 23:00 (arenaSundayReset).
+    const wk = currentWeekKey();
+    let nth = 0;
+    try {
+      nth = await runTransaction(db, async (tx) => {
+        const ref = doc(db, "arena_meta", "global");
+        const cur = (await tx.get(ref)).data() || {};
+        if (cur.phase === "combat") throw new Error("già avviato");
+        const n = (cur.weekTournaments?.weekKey === wk ? (cur.weekTournaments.count || 0) : 0) + 1;
+        tx.update(ref, {
+          matches: initialMatches, phase: "combat", currentRound: 1, tournamentWinner: null,
+          groupA, groupB,
+          participants,               // include l'eventuale bot di riserva iniettato
+          masterUid: currentUser.uid, // chi pilota i PG-bot durante il torneo
+          weekTournaments: { weekKey: wk, count: n },
+          ...snapWrites,
+        });
+        return n;
+      });
+    } catch (e) {
+      if (e.message === "già avviato") return alert("Il torneo è già stato avviato.");
+      throw e;
+    }
+    if (nth >= 2) {
+      try {
+        const snap = await getDocs(collection(db, "characters"));
+        let batch = writeBatch(db), n = 0;
+        for (const d of snap.docs) {
+          batch.update(d.ref, { arenaCoins: increment(ARENA_TOURNAMENT_BONUS) });
+          if (++n % 450 === 0) { await batch.commit(); batch = writeBatch(db); }
+        }
+        if (n % 450) await batch.commit();
+        alert(`Torneo n. ${nth} della settimana: +${ARENA_TOURNAMENT_BONUS} Monete Arena a ${n} personaggi.`);
+      } catch (e) {
+        console.error("bonus torneo:", e);
+        alert(`Torneo avviato, ma il bonus di ${ARENA_TOURNAMENT_BONUS} Monete non è stato dato a tutti: usa "Dai monete a tutti" nella Bottega. (${e.message})`);
+      }
+    }
   };
 
   const advanceRound = async () => {
@@ -10159,7 +10193,7 @@ export default function Arena() {
             <h3 className="arena-info-title">🛍 Bottega Settimanale</h3>
             <div className="arena-info-example">
               <p>Tutti combattono con le <strong>classi base al Livello 3</strong>: non esistono livelli da comprare né archetipi. L'unico vantaggio si conquista alla <strong>Bottega Settimanale</strong>, dove il Master mette in vendita <strong>oggetti, incantesimi, armi, armature e pet</strong>.</p>
-              <p>Ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>, poi torni al kit base e la vetrina si rinnova. I potenziamenti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte alla pari, col solo kit base.</p>
+              <p>Ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 23:00</strong>, anche da un torneo all'altro; alle 23:00 di domenica si azzerano acquisti, iscrizioni e torneo, le Monete tornano a 60 e la vetrina si rinnova. Dal <strong>secondo torneo della settimana</strong> in poi, a ogni inizio torneo tutti ricevono <strong>+20 Monete</strong> (si sommano a quelle che hai). I potenziamenti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte alla pari, col solo kit base.</p>
               <p>In fight: gli <strong>oggetti</strong> sono azioni gratuite (1/turno), le <strong>spell</strong> comprate si aggiungono alle tue azioni con le loro cariche, <strong>armi e armature</strong> si sommano a equipaggiamento e CA, i <strong>pet</strong> agiscono come azione bonus con usi limitati.</p>
             </div>
 
@@ -10244,7 +10278,7 @@ export default function Arena() {
               <li><strong>🧪 Pozione di Cura</strong> — 2d12 HP, consuma il turno.</li>
               <li><strong>💣 Bomba</strong> — 2d6 danni al bersaglio, consuma il turno.</li>
               <li><strong>☠ Pozione di Veleno</strong> — applica 1d6 veleno al bersaglio per il turno successivo.</li>
-              <li>Gli oggetti comprati alla <strong>Bottega Settimanale</strong> compaiono nello zaino nei fight di torneo, con i loro usi, fino a domenica alle 24:00.</li>
+              <li>Gli oggetti comprati alla <strong>Bottega Settimanale</strong> compaiono nello zaino nei fight di torneo, con i loro usi, in tutti i tornei della settimana fino a domenica alle 23:00.</li>
             </ul>
 
             <h3 className="arena-info-title">🪙 Monete Arena (MA)</h3>

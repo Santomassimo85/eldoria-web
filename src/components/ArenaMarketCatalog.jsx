@@ -11,7 +11,7 @@ import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS, MALUS_TYPES, MALUS_TYPE_M
 // ── Catalogo del Master (collection `arena_market_items`) ────────────────────
 // Ogni creazione resta salvata per sempre e può essere rimessa in vetrina in
 // qualsiasi momento (`active: true` = acquistabile questa settimana). Gli
-// acquisti dei giocatori valgono fino a domenica alle 24:00 e funzionano SOLO
+// acquisti dei giocatori valgono fino a domenica alle 23:00 e funzionano SOLO
 // nei tornei — l'iniezione nel combattimento avviene in Arena.jsx.
 
 export const MARKET_CATEGORIES = [

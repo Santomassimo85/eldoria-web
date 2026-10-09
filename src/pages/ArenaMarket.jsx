@@ -19,7 +19,7 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 // I livelli NON si comprano più: tutti i personaggi sono base Lv.3. Il Master
 // mette in vetrina le creazioni del catalogo (`arena_market_items.active`);
 // i giocatori le comprano con le Monete Arena e le tengono dal momento
-// dell'acquisto fino a DOMENICA ORE 24:00 (poi tutto torna base e la vetrina
+// dell'acquisto fino a DOMENICA ORE 23:00 (poi tutto torna base e la vetrina
 // si rinnova). Gli acquisti valgono SOLO nei tornei.
 
 export const ARENA_CLASSES = [
@@ -81,7 +81,7 @@ export default function ArenaMarket() {
   const coins      = charData?.arenaCoins ?? 0;
   const buffs      = charData?.arenaBuffs ?? {};
 
-  // ── Settimana corrente: acquisti validi fino a domenica ore 24:00 ──────────
+  // ── Settimana corrente: acquisti validi fino a domenica ore 23:00 ──────────
   const weekKey = currentWeekKey();
   const weekly  = (charData?.arenaWeekly?.weekKey === weekKey) ? charData.arenaWeekly : { weekKey, purchases: [] };
   const weeklyPurchases = weekly.purchases || [];
@@ -381,7 +381,8 @@ export default function ArenaMarket() {
                     <ul className="am-how-list">
                       <li>🗓 Ogni settimana il Master rinnova la <strong>vetrina</strong>: oggetti, incantesimi, armi, armature e pet.</li>
                       <li>🪙 Compri con le <strong>Monete Arena</strong>. Ogni articolo può avere un <strong>massimo di acquisti a settimana</strong>.</li>
-                      <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>. Il lunedì torni <strong>base</strong> (classi Lv.3) e puoi comprare le novità.</li>
+                      <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 23:00</strong>, in tutti i tornei della settimana. Alle 23:00 di domenica torni <strong>base</strong> (classi Lv.3), le Monete ripartono da 60 e puoi comprare le novità.</li>
+                      <li>🪙 Dal <strong>secondo torneo della settimana</strong> in poi, a ogni inizio torneo tutti ricevono <strong>+20 Monete</strong>, sommate a quelle che hai.</li>
                       <li>🏟 Gli acquisti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte col kit base.</li>
                       <li>🛒 <strong>Non è tutto equipaggiato in automatico!</strong> All'iscrizione al torneo gli acquisti compaiono <strong>nella loro tab</strong> del loadout (le armi tra le <strong>Armi</strong>, gli incantesimi tra le <strong>Magie</strong>, gli oggetti tra gli <strong>Oggetti</strong>, le armature nella <strong>Difesa</strong>) come <strong>carte viola</strong>: tocca quelle che vuoi usare. Ciò che non scegli resta a magazzino fino a fine settimana.</li>
                       <li>🎒 <strong>Oggetti</strong>: azione gratuita, 1 per turno (cure, danni o bonus temporanei).</li>
