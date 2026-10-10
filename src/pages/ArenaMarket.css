@@ -541,3 +541,56 @@
 @media (prefers-reduced-motion: reduce) {
   .bt-page .bt-pillola--timer i, .bt-page .bt-merce::after { animation: none !important; transition: none !important; }
 }
+
+/* ══ SOTTOCLASSI (2026-10-10): binario di classi + due schede per classe ══ */
+.bt-page .bt-sotto-classi { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.bt-page .bt-sotto-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
+  padding: 6px 12px; border-radius: 0; cursor: pointer;
+  background: rgba(var(--roccia-rgb), .85); border: 1px solid var(--roccia-3);
+  color: var(--osso-2); font-family: var(--bt-font-b); font-size: .88rem;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.bt-page .bt-sotto-chip:hover { border-color: var(--el); color: var(--osso); }
+.bt-page .bt-sotto-chip.is-on {
+  color: var(--osso); border-color: var(--el);
+  background: linear-gradient(180deg, rgba(var(--el-rgb), .24), rgba(var(--el-rgb), .08));
+}
+.bt-page .bt-sotto-chip.is-mia { border-top: 2px solid var(--el-2); }
+
+.bt-page .bt-sotto-griglia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.bt-page .bt-sotto {
+  position: relative; display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(180deg, var(--roccia-2), var(--roccia));
+  border: 1px solid var(--roccia-3); border-top: 3px solid var(--el);
+  box-shadow: 0 20px 40px -24px #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+.bt-page .bt-sotto--mia { box-shadow: 0 0 0 1px var(--el), 0 0 34px -12px rgba(var(--el-rgb), .7); }
+.bt-page .bt-sotto--spenta { opacity: .6; }
+.bt-page .bt-sotto-testa { display: flex; align-items: center; gap: 12px; }
+.bt-page .bt-sotto-ico {
+  flex: 0 0 auto; width: 46px; height: 46px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; background: rgba(var(--ossidiana-rgb), .6); border: 1px solid var(--roccia-3);
+}
+.bt-page .bt-sotto-nome { margin: 0; font-family: var(--bt-font-t); font-size: 1.25rem; color: var(--osso); line-height: 1.1; }
+.bt-page .bt-sotto-dnd { font-family: var(--bt-font-sc); font-size: .74rem; letter-spacing: .06em; color: var(--el-2); }
+.bt-page .bt-sotto-desc { margin: 0; color: var(--osso-2); font-size: .92rem; line-height: 1.5; }
+.bt-page .bt-sotto-abil { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; }
+.bt-page .bt-sotto-abil li {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px;
+  font-size: .86rem; line-height: 1.4; color: var(--osso-2);
+  padding: 6px 8px; background: rgba(var(--ossidiana-rgb), .45); border-left: 2px solid var(--roccia-3);
+}
+.bt-page .bt-sotto-abil b { color: var(--osso); margin-right: 4px; }
+.bt-page .bt-sotto .am-buy-btn { align-self: stretch; min-height: 40px; }
+
+@media (max-width: 760px) {
+  .bt-page .bt-sotto-griglia { grid-template-columns: 1fr; gap: 10px; }
+  .bt-page .bt-sotto-classi {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    margin: 0 -12px 10px; padding: 0 12px 4px;
+  }
+  .bt-page .bt-sotto-classi::-webkit-scrollbar { display: none; }
+  .bt-page .bt-sotto-chip { flex: 0 0 auto; }
+}

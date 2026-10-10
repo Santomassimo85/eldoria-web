@@ -12,7 +12,7 @@ import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
-import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
+import { getSubclassEffectFor, getSubclassDef } from "../data/arenaSubclasses";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
@@ -1952,6 +1952,19 @@ function classInBracket(cls, classLevels, bracketKey) {
 function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
 }
+// Sottoclasse comprata in Bottega QUESTA settimana per la classe (chiave o null).
+// Vive in characters.arenaWeekly.subclasses = { [classKey]: subclassKey }.
+function ownedSubclassKey(arenaWeekly, cls) {
+  if (!arenaWeekly || arenaWeekly.weekKey !== currentWeekKey() || !cls) return null;
+  const ck = getClassKey(cls);
+  const key = arenaWeekly.subclasses?.[ck];
+  return getSubclassDef(ck, key) ? key : null;
+}
+// Sottoclasse · soglia del critico (Guerriero Campione: 18-20). Mai peggiore della base.
+function subclassCritThreshold(snap, base) {
+  const r = getSubclassEffect(snap).critRange;
+  return r ? Math.min(base, r) : base;
+}
 // Sottoclasse · bonus ai tiri per COLPIRE con armi a distanza (Guerriero "tiratore",
 // Ranger "arco"). Vale solo se l'azione è un attacco con arma a distanza.
 function subclassRangedHit(snap, action, isSpell) {
@@ -3157,6 +3170,9 @@ export default function Arena() {
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
   // Titolo "indossato" scelto in autonomia all'iscrizione al torneo (uno solo). null = nessuno.
   const [pendingTitle, setPendingTitle] = useState(null);
+  // Sottoclasse scelta nel loadout del torneo (null = classe base). Vale solo se
+  // comprata in Bottega questa settimana per la classe in uso (ownedSubclassKey).
+  const [pendingSubclass, setPendingSubclass] = useState(null);
   // Acquisti della Bottega settimanale che il giocatore SCEGLIE di equipaggiare
   // per questo torneo: { [itemId]: true }. Default vuoto = niente equipaggiato
   // (quel che compri resta a magazzino finché non decidi di indossarlo).
@@ -4165,6 +4181,7 @@ export default function Arena() {
     setPendingSpells([]);
     setPendingSkills([]);
     setPendingMarketSel({}); // Bottega: niente equipaggiato finché il player non sceglie
+    setPendingSubclass(null);
     // Default: torneo. Le funzioni fun (openFunCreate/openFunAccept) sovrascrivono dopo questo.
     setLoadoutContext("tournament");
     setFunAcceptMatchId(null);
@@ -4512,6 +4529,9 @@ export default function Arena() {
     setPendingMarketSel({});
     setPendingTitle((snap.titles && snap.titles[0]) || null);
     setPendingPet(null); setPendingDemon(null); setPendingConstruct(null);
+    // Sottoclasse: se la possiede per la classe del torneo gliela proponiamo già
+    // accesa (anche se l'ha comprata adesso, dopo il primo fight). Può spegnerla.
+    setPendingSubclass(ownedSubclassKey(arenaWeekly, snap.class));
     setLoadoutContext("tournament");
     setReloadoutMode(true);
     setLoadoutPhase("selecting");
@@ -4566,8 +4586,12 @@ export default function Arena() {
     // Sottoclassi RITIRATE con la riforma Bottega settimanale: il kit base è la
     // sola classe Lv.3, ogni bonus arriva dagli acquisti in vetrina. Forzare
     // null qui spegne tutti gli effetti (getSubclassEffect legge snap.subclass).
-    const subclassKey = null;
-    const subclassCa  = 0;
+    // Sottoclassi della Bottega (2026-10-10): valgono solo nei tornei e solo se
+    // comprate questa settimana per QUESTA classe.
+    const subclassKey = (loadoutContext === "tournament" && pendingSubclass
+      && pendingSubclass === ownedSubclassKey(charPreview.arenaWeekly, charPreview.class)) ? pendingSubclass : null;
+    const subclassDef = subclassKey ? getSubclassDef(getClassKey(charPreview.class), subclassKey) : null;
+    const subclassCa  = subclassDef?.effect?.ca || 0;
     // Armatura della Bottega: CA FISSA (non si somma nulla: né DES, né scudo, né buff).
     const unarmoredBonus = pendingArmor?.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
     const finalAc   = marketFixedAc != null
@@ -4597,6 +4621,10 @@ export default function Arena() {
       ...(demonAction ? [demonAction] : []),
       ...(constructAction ? [constructAction] : []),
     ];
+    // Abilità della sottoclasse (passive descrittive + azioni attive).
+    (subclassDef?.actions || []).forEach(a => {
+      if (!finalActions.some(b => b.name === a.name)) finalActions.push({ ...a, fromSubclass: true });
+    });
     // Azioni della Bottega settimanale (spell/armi/buff/pet acquistati): niente
     // doppioni per nome (una spell già selezionata non viene aggiunta due volte).
     (marketGear?.actions || []).forEach(a => {
@@ -4611,6 +4639,8 @@ export default function Arena() {
       class:           charPreview.class,
       classLevels:     charPreview.classLevels || {},
       subclass:        subclassKey,
+      subclassName:    subclassDef?.name || null,
+      subclassIcon:    subclassDef?.icon || null,
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
       hasWildShape:    config.hasWildShape,
@@ -6369,7 +6399,7 @@ export default function Arena() {
     const hunterMarkHitBonus = effHunterMark ? 3 : 0;   // Marchio = +3 AL COLPIRE (come il player)
     // Fighter: crit on 19+ (Critico Migliorato).
     const isFighter   = cls.includes("fighter") || cls.includes("guerr");
-    const critThresh  = isFighter ? 19 : 20;
+    const critThresh  = subclassCritThreshold(aiSnap, isFighter ? 19 : 20);
 
     // Roll attack — fighter rerolls 1s (Presenza Possente).
     // Vantaggio/svantaggio: stessa regola del giocatore. Si annullano se entrambi presenti.
@@ -7205,7 +7235,7 @@ export default function Arena() {
       const armorForgeBonus2  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
       const defensiveAcBonus2 = defMatchPlayer?.defensiveBonus ?? 0;
       const defAC2 = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost2 ? 1 : 0) + shieldSkillBonus2 + armorForgeBonus2 + defensiveAcBonus2;
-      const critTh2 = isFighter ? 19 : 20;
+      const critTh2 = subclassCritThreshold(attackerSnap, isFighter ? 19 : 20);
       let total = 0; let anyHit = false; const tags = [];
       for (let i = 0; i < arrows; i++) {
         let r1 = Math.floor(Math.random() * 20) + 1;
@@ -7261,7 +7291,7 @@ export default function Arena() {
     const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
     const defAC    = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost ? 1 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
-    const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
+    const critThreshold = subclassCritThreshold(attackerSnap, isFighter ? 19 : 20); // Critico Migliorato: 19-20 per il guerriero (18 per il Campione)
     // Ladro · Assassinare: un colpo a segno contro un bersaglio a PF pieni è un critico.
     const landsAssassinate = _firstStrike.crit && hitTotal >= defAC;
     const isCrit   = d20 >= critThreshold || landsAssassinate; // nat 20 (o 19 per fighter), o Assassinare
@@ -7819,7 +7849,7 @@ export default function Arena() {
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const log = `🎯 ${myName} segna il bersaglio con il Marchio del Cacciatore! (+3 ai tiri per colpire per 3 turni · bonus action)`;
+    const log = `🎯 ${myName} segna il bersaglio con ${action.name === "Marchio del Cacciatore" ? "il Marchio del Cacciatore" : action.name}! (+3 ai tiri per colpire per 3 turni · bonus action)`;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -8678,7 +8708,8 @@ export default function Arena() {
   const handleSaveDotSpell = async (matchId, targetId, action) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
-    const dc = action.saveDotDC ?? getSpellSaveDC(mySnap);
+    // saveDotStat: CD sulla caratteristica dell'abilità (es. veleno dell'Assassino su DES)
+    const dc = action.saveDotDC ?? (action.saveDotStat ? 8 + getProficiencyBonus(mySnap) + (mySnap?.stats?.[action.saveDotStat] ?? 0) : getSpellSaveDC(mySnap));
     const ability = action.saveDotAbility || "con";
     const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
     await runTransaction(db, async (tx) => {
@@ -10426,7 +10457,7 @@ export default function Arena() {
                   <div key={uid} className="participant-tag participant-title-row">
                     <span className="p-dot approved" />
                     <span className="p-name">{snapshots[uid]?.name || uid}</span>
-                    {snapshots[uid]?.class && <span className="p-class">{snapshots[uid].class}</span>}
+                    {snapshots[uid]?.class && <span className="p-class">{snapshots[uid].class}{snapshots[uid].subclassName ? ` · ${snapshots[uid].subclassIcon || ""} ${snapshots[uid].subclassName}` : ""}</span>}
                     {titles.map(key => ARENA_TITLES[key] && (
                       <span key={key} className="p-title-badge" title={ARENA_TITLES[key].short}>
                         {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}
@@ -10968,6 +10999,7 @@ export default function Arena() {
                     title={cls}
                     onClick={() => {
                       setCharPreview(prev => ({ ...prev, class: cls }));
+                      setPendingSubclass(ownedSubclassKey(charPreview.arenaWeekly, cls));
                       setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
                       setLoadoutPhase("stat-assign");
                     }}
@@ -11292,6 +11324,10 @@ export default function Arena() {
             const dexMod   = charPreview.stats.dex ?? 0;
             const conMod   = charPreview.stats.con ?? 0;
             // Armatura market = CA fissa (ignora DES/scudo); altrimenti calcolo normale.
+            // Sottoclasse posseduta per questa classe (solo torneo) e quella accesa ora.
+            const ownedSubKey  = loadoutContext === "tournament" ? ownedSubclassKey(charPreview.arenaWeekly, charPreview.class) : null;
+            const ownedSubDef  = ownedSubKey ? getSubclassDef(getClassKey(charPreview.class), ownedSubKey) : null;
+            const activeSubDef = ownedSubDef && pendingSubclass === ownedSubKey ? ownedSubDef : null;
             const previewAc = hasMarketArmor
               ? marketFixedAc
               : (pendingArmor
@@ -11300,7 +11336,7 @@ export default function Arena() {
                     ? 10 + Math.max(dexMod, conMod) + (pendingShield ? 1 : 0)
                     : 10 + dexMod + (pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod) + (pendingShield ? 1 : 0)
                   : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + (pendingShield ? 1 : 0)
-                : charPreview.stats.ac);
+                : charPreview.stats.ac) + (hasMarketArmor || !pendingArmor ? 0 : (activeSubDef?.effect?.ca || 0));
 
             // Scudo disabilitato se c'è un'arma a 2 mani selezionata (di classe o comprata)
             const has2HWeapon  = hasAny2H_all;
@@ -11359,7 +11395,7 @@ export default function Arena() {
                   )}
                   <div>
                     <div className="loadout-char-name">{charPreview.name}</div>
-                    <div className="loadout-char-class">{charPreview.class}</div>
+                    <div className="loadout-char-class">{charPreview.class}{activeSubDef ? ` · ${activeSubDef.icon} ${activeSubDef.name}` : ""}</div>
                     <div className="loadout-char-stats">
                       ❤ <strong>{charPreview.rolledHp}</strong> HP · 🛡 CA <strong>{previewAc}</strong>
                       {[["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]].map(([k,lbl]) => {
@@ -11369,6 +11405,34 @@ export default function Arena() {
                     </div>
                   </div>
                 </div>
+
+                {/* ── Sottoclasse della Bottega: base o archetipo (solo torneo) ── */}
+                {ownedSubDef && (
+                  <div className="loadout-subclass">
+                    <div className="loadout-subclass-t">🎓 Sottoclasse della settimana</div>
+                    <div className="loadout-subclass-scelte">
+                      <button type="button" aria-pressed={!activeSubDef}
+                        className={`loadout-subclass-btn${!activeSubDef ? " is-on" : ""}`}
+                        onClick={() => setPendingSubclass(null)}>
+                        <span className="loadout-subclass-ico" aria-hidden="true">{CLASS_ICONS[(charPreview.class || "").toLowerCase()] || "✦"}</span>
+                        <span><b>{CLASS_IT[charPreview.class] || charPreview.class} base</b><small>Il kit di classe, senza archetipo.</small></span>
+                      </button>
+                      <button type="button" aria-pressed={!!activeSubDef}
+                        className={`loadout-subclass-btn${activeSubDef ? " is-on" : ""}`}
+                        onClick={() => setPendingSubclass(ownedSubKey)}>
+                        <span className="loadout-subclass-ico" aria-hidden="true">{ownedSubDef.icon}</span>
+                        <span><b>{ownedSubDef.name}</b><small>{ownedSubDef.desc}</small></span>
+                      </button>
+                    </div>
+                    {activeSubDef && (
+                      <ul className="loadout-subclass-azioni">
+                        {activeSubDef.actions.map(a => (
+                          <li key={a.name}><span aria-hidden="true">{a.icon}</span> <b>{a.name}</b> — {a.info}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
 
                 {/* ── Barra TAB: naviga tra le categorie senza scorrere ── */}
                 <div className="loadout-tabs" role="tablist">
@@ -12531,7 +12595,7 @@ export default function Arena() {
                                   ? <img src={char.image} alt="" className="chc-ava" />
                                   : <div className="chc-ava chc-ava-ph">⚔</div>}
                                 <span className="chc-name">{won ? "👑 " : ""}{p.name}</span>
-                                {char.class && <span className="chc-class">{char.class}</span>}
+                                {char.class && <span className="chc-class">{char.class}{char.subclassName ? ` · ${char.subclassIcon || ""} ${char.subclassName}` : ""}</span>}
                               </div>
                             </React.Fragment>
                           );
@@ -12704,7 +12768,7 @@ export default function Arena() {
                           {isDead && <div className="defeated-banner">Sconfitto</div>}
 
                           <div className="fighter-name">{p.name}</div>
-                          {char.class && <div className="fighter-class">{char.class}</div>}
+                          {char.class && <div className="fighter-class">{char.class}{char.subclassName ? ` · ${char.subclassIcon || ""} ${char.subclassName}` : ""}</div>}
                           {getSnapTitles(char).map(key => ARENA_TITLES[key] && (
                             <div key={key} className="fighter-title-badge" title={ARENA_TITLES[key].short}>
                               {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}

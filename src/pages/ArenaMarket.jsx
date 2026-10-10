@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot, updateDoc, increment } from "firebase/firestore";
+import { doc, collection, onSnapshot, updateDoc, increment, runTransaction } from "firebase/firestore";
 import "../styles/cinematic.css";
 import "./ArenaMarket.css";
 import "./ArenaMarketCatalogo.css";
@@ -12,6 +12,7 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../components/ArenaMarketCatalog";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
+import { ARENA_SUBCLASSES, SUBCLASS_PRICE } from "../data/arenaSubclasses";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -50,6 +51,8 @@ export default function ArenaMarket() {
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState(null); // null | "classes" | "items"
   const [masterTab, setMasterTab] = useState("vetrina"); // master: "vetrina" | "crea" | "soldi"
+  const [subClass, setSubClass] = useState(null);           // classe aperta fra le sottoclassi
+  const [subBusy, setSubBusy] = useState(false);
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
@@ -89,6 +92,15 @@ export default function ArenaMarket() {
 
   const vetrinaItems = marketItems.filter(it => it.active);
 
+  // ── Sottoclassi (2026-10-10): una per classe a settimana, 50 MA, solo dopo
+  // aver CONCLUSO almeno un fight di torneo nella settimana (matchHistory è
+  // scritto a fine match di torneo, con la data). Il Master non ha il vincolo.
+  const ownedSubclasses = weekly.subclasses || {};
+  const fightDoneThisWeek = (arenaMeta?.matchHistory || []).some(
+    e => e.uid === currentUser?.uid && e.ts && currentWeekKey(new Date(e.ts)) === weekKey
+  );
+  const subUnlocked = isMaster || fightDoneThisWeek;
+
   // ── Quando si può comprare (2026-10-04) ──────────────────────────────────
   // Gli acquisti non toccano MAI un match in corso: la merce si monta solo al
   // (ri)equipaggiamento (iscrizione o pausa Bottega tra i round). Quindi a
@@ -116,6 +128,36 @@ export default function ArenaMarket() {
   const showMsg = (text, type = "ok") => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 3500);
+  };
+
+  // ── Acquisto di una sottoclasse (transazione: monete, settimana, una per classe) ──
+  const buySubclass = async (classKey, opt) => {
+    if (!currentUser || subBusy) return;
+    if (!subUnlocked) { showMsg("Le sottoclassi si sbloccano dopo aver concluso il tuo primo fight di torneo della settimana.", "err"); return; }
+    if (buyLocked) { showMsg("Stai combattendo: potrai acquistare appena finisce il tuo match.", "err"); return; }
+    setSubBusy(true);
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "characters", currentUser.uid);
+        const snap = await tx.get(ref);
+        const d = snap.exists() ? snap.data() : {};
+        const wk = currentWeekKey();
+        const cur = d.arenaWeekly?.weekKey === wk ? d.arenaWeekly : { weekKey: wk, purchases: [] };
+        const subs = cur.subclasses || {};
+        if (subs[classKey]) throw new Error("già");
+        if ((d.arenaCoins ?? 0) < SUBCLASS_PRICE) throw new Error("monete");
+        tx.update(ref, {
+          arenaCoins: increment(-SUBCLASS_PRICE),
+          arenaWeekly: { ...cur, subclasses: { ...subs, [classKey]: opt.key } },
+        });
+      });
+      showMsg(`Sottoclasse sbloccata: ${opt.name}! La scegli al loadout del torneo (anche al ri-equipaggiamento tra i round) · valida fino a ${weekEndLabel(weekKey)}.`);
+    } catch (e) {
+      showMsg(e?.message === "già" ? "Hai già scelto la sottoclasse di questa classe per la settimana."
+        : e?.message === "monete" ? "Monete insufficienti." : "Acquisto non riuscito, riprova.", "err");
+    } finally {
+      setSubBusy(false);
+    }
   };
 
   // ── Acquisto settimanale ────────────────────────────────────────────────────
@@ -152,7 +194,7 @@ export default function ArenaMarket() {
 
     await updateDoc(doc(db, "characters", currentUser.uid), {
       arenaCoins: increment(-item.price),
-      arenaWeekly: { weekKey, purchases },
+      arenaWeekly: { ...weekly, weekKey, purchases }, // ...weekly: non perdere le sottoclassi
     });
     showMsg(buyLater
       ? `Acquistato: ${item.name}! Lo monti alla prossima pausa Bottega (ri-equipaggiamento) · valido fino a ${weekEndLabel(weekKey)}.`
@@ -192,7 +234,7 @@ export default function ArenaMarket() {
         <div className="bt-pillole" role="list">
           <span className="bt-pillola bt-pillola--timer" role="listitem"><i aria-hidden="true" />⏳ Acquisti validi fino a {weekEndLabel(weekKey)}</span>
           <span className="bt-pillola" role="listitem">🏟 Solo tornei</span>
-          <span className="bt-pillola" role="listitem">⚔ Classi base Lv.3</span>
+          <span className="bt-pillola" role="listitem">⚔ Classi base Lv.3 · 🎓 sottoclassi</span>
           {arenaMeta?.phase === "shopping" && <span className="bt-pillola bt-pillola--on" role="listitem">🛒 Pausa Bottega aperta</span>}
           {buyLocked && <span className="bt-pillola bt-pillola--off" role="listitem">⚔ Stai combattendo · acquisti a fine match</span>}
           {buyLater && <span className="bt-pillola bt-pillola--on" role="listitem">🛒 Acquisti aperti · si montano alla pausa Bottega</span>}
@@ -267,7 +309,21 @@ export default function ArenaMarket() {
             {/* RICEVUTA: i tuoi acquisti della settimana */}
             <div className="bt-ricevuta">
               <div className="bt-lato-t">🧾 Acquisti della settimana</div>
-              {weeklyPurchases.length === 0 ? (
+              {Object.keys(ownedSubclasses).length > 0 && (
+                <ul className="bt-ricevuta-lista">
+                  {Object.entries(ownedSubclasses).map(([ck, sk]) => {
+                    const o = ARENA_SUBCLASSES[ck]?.options.find(x => x.key === sk);
+                    return o ? (
+                      <li key={ck} className="bt-ricevuta-riga">
+                        <span className="bt-ricevuta-ico" style={{ "--c": "#e879f9" }} aria-hidden="true">{o.icon}</span>
+                        <span className="bt-ricevuta-nome">{o.name}</span>
+                        <span className="bt-ricevuta-qty">🎓</span>
+                      </li>
+                    ) : null;
+                  })}
+                </ul>
+              )}
+              {weeklyPurchases.length === 0 && Object.keys(ownedSubclasses).length === 0 ? (
                 <p className="bt-ricevuta-vuota">Nessun acquisto ancora: il forziere è pieno, la vetrina ti aspetta.</p>
               ) : (<>
                 <ul className="bt-ricevuta-lista">
@@ -307,8 +363,8 @@ export default function ArenaMarket() {
               <section className="bt-sez" aria-label="Le classi del Colosseo">
                 <div className="bt-sez-t"><h2>Le Classi del Colosseo</h2><i aria-hidden="true" /></div>
                 <p className="bt-sez-sub">
-                  Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli, niente archetipi.
-                  L'unico modo per potenziarsi è la <strong>vetrina settimanale</strong>.
+                  Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli.
+                  Ci si potenzia con la <strong>vetrina settimanale</strong> e con le <strong>sottoclassi</strong> qui sotto.
                 </p>
                 {filteredClasses.length === 0 ? (
                   <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
@@ -325,6 +381,74 @@ export default function ArenaMarket() {
                 )}
               </section>
             )}
+
+            {/* SOTTOCLASSI: due archetipi per classe, uno a settimana per classe */}
+            {showClasses && (() => {
+              const classList = ownedClasses.filter(c => ARENA_SUBCLASSES[c.key]);
+              const openKey = subClass || Object.keys(ownedSubclasses)[0] || classList[0]?.key;
+              const openCls = classList.find(c => c.key === openKey) || classList[0];
+              const def = openCls ? ARENA_SUBCLASSES[openCls.key] : null;
+              const mine = openCls ? ownedSubclasses[openCls.key] : null;
+              return (
+                <section className="bt-sez" aria-label="Sottoclassi">
+                  <div className="bt-sez-t"><h2>Sottoclassi</h2><i aria-hidden="true" /><span className="bt-sez-n">🪙 {SUBCLASS_PRICE} MA</span></div>
+                  <p className="bt-sez-sub">
+                    Ogni classe ha <strong>due sottoclassi</strong> con abilità proprie. Ne sblocchi <strong>una per classe</strong>,
+                    a <strong>{SUBCLASS_PRICE} Monete</strong>, e resta tua fino a <strong>{weekEndLabel(weekKey)}</strong>.
+                    Al loadout del torneo scegli ogni volta se combattere con la classe base o con la sottoclasse.
+                  </p>
+                  {!subUnlocked && (
+                    <div className="am-message am-message--err">🔒 Si sbloccano dopo che hai <strong>concluso il tuo primo fight di torneo</strong> della settimana.</div>
+                  )}
+                  <div className="bt-sotto-classi" aria-label="Scegli la classe">
+                    {classList.map(c => (
+                      <button key={c.key} type="button" aria-pressed={c.key === openCls?.key}
+                        className={`bt-sotto-chip${c.key === openCls?.key ? " is-on" : ""}${ownedSubclasses[c.key] ? " is-mia" : ""}`}
+                        onClick={() => setSubClass(c.key)}>
+                        <span aria-hidden="true">{c.icon}</span> {c.name}{ownedSubclasses[c.key] ? " ✔" : ""}
+                      </button>
+                    ))}
+                  </div>
+                  {def && (
+                    <div className="bt-sotto-griglia">
+                      {def.options.map(opt => {
+                        const isMine = mine === opt.key;
+                        const other = mine && !isMine;
+                        const canAfford = coins >= SUBCLASS_PRICE;
+                        const label = isMine ? "✔ Tua questa settimana"
+                          : other ? "Hai scelto l'altra"
+                          : !subUnlocked ? "🔒 Dopo il primo fight"
+                          : buyLocked ? "⚔ A fine match"
+                          : !canAfford ? "Monete insufficienti"
+                          : `Sblocca · ${SUBCLASS_PRICE} MA`;
+                        return (
+                          <article key={opt.key} className={`bt-sotto${isMine ? " bt-sotto--mia" : ""}${other ? " bt-sotto--spenta" : ""}`}>
+                            <div className="bt-sotto-testa">
+                              <span className="bt-sotto-ico" aria-hidden="true">{opt.icon}</span>
+                              <div>
+                                <h3 className="bt-sotto-nome">{opt.name}</h3>
+                                <span className="bt-sotto-dnd">{openCls.name} · {opt.dnd}</span>
+                              </div>
+                            </div>
+                            <p className="bt-sotto-desc">{opt.desc}</p>
+                            <ul className="bt-sotto-abil">
+                              {opt.actions.map(a => (
+                                <li key={a.name}><span aria-hidden="true">{a.icon}</span><span><b>{a.name}</b> {a.info}</span></li>
+                              ))}
+                            </ul>
+                            <button className="am-buy-btn" type="button"
+                              disabled={isMine || other || !subUnlocked || buyLocked || !canAfford || subBusy}
+                              onClick={() => buySubclass(openCls.key, opt)}>
+                              {label}
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
 
             {/* VETRINA: griglia di merci con anello conico di categoria */}
             {showItems && (
@@ -391,6 +515,7 @@ export default function ArenaMarket() {
                       <li>📜 <strong>Spell Scroll</strong>: sono pergamene magiche con un numero di <strong>cariche</strong> e una <strong>caratteristica</strong> per usarle (decise dal Master). Alcuni richiedono un <strong>punteggio minimo</strong> in quella caratteristica: se il tuo è più basso non puoi equipaggiarlo. Le equipaggi dalla tab <strong>Magie</strong> e le lanci anche se di livello alto. ⚠️ Alcuni scroll, per essere equipaggiati, ti fanno <strong>rinunciare a degli spell slot di classe</strong> (es. −1 slot di Lv2 e −1 di Lv3): lo vedi scritto sulla carta.</li>
                       <li>⚔️ <strong>Armi e armature</strong>: le armi comprate compaiono nella selezione <strong>Armi</strong> e contano come armi vere; le <strong>armature</strong> della Bottega hanno una <strong>CA fissa</strong> (es. 12 = hai 12 di CA, non si somma altro) e <strong>sostituiscono</strong> l'armatura base: se ne indossi una, le base si disattivano.</li>
                       <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
+                      <li>🎓 <strong>Sottoclassi</strong>: ogni classe ne ha due (archetipi di D&amp;D, con passive e abilità proprie). Costano <strong>{SUBCLASS_PRICE} Monete</strong>, se ne sblocca <strong>una per classe</strong> e solo dopo aver <strong>concluso il primo fight di torneo</strong> della settimana. Restano tue fino a domenica alle 23:00: al loadout del torneo (anche al ri-equipaggiamento tra i round) scegli se usare la classe base o la sottoclasse.</li>
                     </ul>
                     <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
                   </details>
@@ -533,7 +658,7 @@ function MasterCoinPanel() {
     if (!aw || aw.weekKey !== currentWeekKey()) return;
     if (!window.confirm(`Rimuovere "${name}" dagli acquisti della settimana di questo giocatore?`)) return;
     const purchases = (aw.purchases || []).filter(p => p.itemId !== itemId);
-    await updateDoc(doc(db, "characters", uid), { arenaWeekly: { weekKey: aw.weekKey, purchases } });
+    await updateDoc(doc(db, "characters", uid), { arenaWeekly: { ...aw, purchases } });
   };
 
   // ── Dai N Monete Arena a TUTTI ────────────────────────────────────────────

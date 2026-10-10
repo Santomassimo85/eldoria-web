@@ -275,3 +275,46 @@ body .arena-page.arena-page.arena-page #arena-loadout .loadout-actions--sticky {
   }
   body .arena-page.arena-page.arena-page #arena-loadout .loadout-save-row { padding: 8px 10px !important; }
 }
+
+/* ── SOTTOCLASSE DELLA SETTIMANA nel loadout (2026-10-10) ──
+   Due bottoni affiancati: classe base | sottoclasse comprata in Bottega.
+   Sotto, le abilità che la sottoclasse aggiunge al kit. */
+body .arena-page.arena-page.arena-page .loadout-subclass {
+  margin: 0 0 12px; padding: 10px 12px 12px;
+  background: rgba(var(--roccia-rgb), .85);
+  border: 1px solid var(--roccia-3); border-top: 3px solid var(--el);
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-t {
+  font-family: var(--font-sc, "Alegreya SC", serif); font-size: .82rem; letter-spacing: .08em;
+  color: var(--el-2); margin-bottom: 8px;
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-scelte {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-btn {
+  display: flex !important; align-items: flex-start; gap: 10px; text-align: left;
+  min-height: 44px; padding: 9px 10px !important; cursor: pointer;
+  background: rgba(var(--ossidiana-rgb), .55) !important;
+  border: 1px solid var(--roccia-3) !important; border-radius: 0 !important;
+  color: var(--osso) !important; box-shadow: none !important;
+  font-family: var(--font-ui, "Alegreya", Georgia, serif) !important; font-size: .9rem !important;
+  text-transform: none !important; letter-spacing: 0 !important;
+  transition: border-color .2s, background .2s;
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-btn:hover { border-color: var(--el) !important; }
+body .arena-page.arena-page.arena-page .loadout-subclass-btn.is-on {
+  border-color: var(--el) !important;
+  background: linear-gradient(180deg, rgba(var(--el-rgb), .22), rgba(var(--el-rgb), .08)) !important;
+  box-shadow: inset 0 0 0 1px var(--el) !important;
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-ico { font-size: 1.3rem; line-height: 1.2; }
+body .arena-page.arena-page.arena-page .loadout-subclass-btn b { display: block; color: var(--osso); }
+body .arena-page.arena-page.arena-page .loadout-subclass-btn small { display: block; color: var(--osso-2); font-size: .8rem; line-height: 1.35; margin-top: 2px; }
+body .arena-page.arena-page.arena-page .loadout-subclass-azioni {
+  list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px;
+  font-size: .84rem; color: var(--osso-2); line-height: 1.4;
+}
+body .arena-page.arena-page.arena-page .loadout-subclass-azioni b { color: var(--osso); }
+@media (max-width: 639px) {
+  body .arena-page.arena-page.arena-page .loadout-subclass-scelte { grid-template-columns: 1fr; }
+}
