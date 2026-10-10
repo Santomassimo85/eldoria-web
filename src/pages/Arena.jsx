@@ -11025,6 +11025,37 @@ export default function Arena() {
                   </button>
                 ))}
               </div>
+              {/* ── SOTTOCLASSI: sfide libere = tutte sbloccate; torneo = quelle comprate in Bottega ── */}
+              {(() => {
+                const subTiles = MASTER_JOIN_CLASSES.flatMap(cls =>
+                  selectableSubclasses(loadoutContext, charPreview.arenaWeekly, cls).map(o => ({ cls, o })));
+                if (!subTiles.length) return null;
+                return (<>
+                  <div className="lizza-classe-testa lizza-sotto-testa">
+                    <div className="hp-roll-title">🎓 Sottoclassi</div>
+                    <span className="lizza-sotto-nota">{loadoutContext === "fun" ? "Nelle Sfide Libere sono tutte sbloccate" : "Comprate in Bottega questa settimana"}</span>
+                  </div>
+                  <div className="class-select-grid lizza-sotto-grid">
+                    {subTiles.map(({ cls, o }) => (
+                      <button
+                        key={`${cls}-${o.key}`}
+                        className="class-select-btn lizza-sotto-btn"
+                        title={`${o.name} · ${o.desc}`}
+                        onClick={() => {
+                          setCharPreview(prev => ({ ...prev, class: cls }));
+                          setPendingSubclass(o.key);
+                          setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+                          setLoadoutPhase("stat-assign");
+                        }}
+                      >
+                        <span className="lizza-classe-ico" aria-hidden="true">{o.icon}</span>
+                        <span className="lizza-classe-nome">{o.name}</span>
+                        <span className="lizza-sotto-base">{CLASS_ICONS[cls.toLowerCase()] || "✦"} {CLASS_IT[cls] || cls}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>);
+              })()}
               <button className="btn-cancel-loadout" style={{ marginTop: 18 }} onClick={cancelLoadout}>
                 Annulla
               </button>
@@ -11049,7 +11080,7 @@ export default function Arena() {
                   )}
                   <div>
                     <div className="loadout-char-name">{charPreview.name}</div>
-                    <div className="loadout-char-class">{charPreview.class}</div>
+                    <div className="loadout-char-class">{charPreview.class}{(() => { const d = pendingSubclass && getSubclassDef(getClassKey(charPreview.class), pendingSubclass); return d ? ` · ${d.icon} ${d.name}` : ""; })()}</div>
                   </div>
                 </div>
                 <div className="hp-roll-title">Caratteristiche</div>
@@ -11147,7 +11178,7 @@ export default function Arena() {
                   )}
                   <div>
                     <div className="loadout-char-name">{charPreview.name}</div>
-                    <div className="loadout-char-class">{charPreview.class}</div>
+                    <div className="loadout-char-class">{charPreview.class}{(() => { const d = pendingSubclass && getSubclassDef(getClassKey(charPreview.class), pendingSubclass); return d ? ` · ${d.icon} ${d.name}` : ""; })()}</div>
                   </div>
                 </div>
 

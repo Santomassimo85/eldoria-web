@@ -318,3 +318,21 @@ body .arena-page.arena-page.arena-page .loadout-subclass-azioni b { color: var(-
 @media (max-width: 639px) {
   body .arena-page.arena-page.arena-page .loadout-subclass-scelte { grid-template-columns: 1fr; }
 }
+
+/* ── SOTTOCLASSI nella scelta della classe (2026-10-10): stessa piastrella,
+   nome più lungo su due righe + la classe base in piccolo, filo del respiro in alto ── */
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-testa { margin-top: 6px; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-nota {
+  font-family: var(--font-sc, "Alegreya SC", serif); font-size: .8rem; color: var(--el-2); letter-spacing: .04em;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-btn { border-top: 2px solid var(--el) !important; }
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-btn .lizza-classe-nome {
+  font-size: .95rem; line-height: 1.1; text-align: center; white-space: normal;
+}
+body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-base {
+  font-family: var(--font-ui, "Alegreya", serif); font-size: .78rem; color: var(--osso-2);
+}
+@media (max-width: 639px) {
+  body .arena-page.arena-page.arena-page #arena-loadout .lizza-sotto-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
