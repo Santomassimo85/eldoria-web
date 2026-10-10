@@ -917,3 +917,10 @@
   .rpg-hero-edit-row--custom .rpg-num { width: 64px; flex: 0 0 auto; }
   .rpg-turn-btns .rpg-btn { font-size: .66rem; letter-spacing: .06em; }
 }
+
+/* ── BUONO / CATTIVO (2026-10-10, come nell'Arena): i badge dei buff degli eroi
+   (scudo, +CA, ⬆ vantaggio) in verde, i malus (⬇ svantaggio) in rosso. ── */
+.rpg-ca-badge { color: #8ef0ae; background: rgba(60, 200, 110, .14); border-color: rgba(60, 200, 110, .55); }
+.rpg-ca-badge.rpg-ca-badge--dis { color: #ff9a8f; background: rgba(230, 70, 60, .16); border-color: rgba(230, 70, 60, .55); }
+.rpg-condition-badge--advantage { color: #8ef0ae; background: rgba(60, 200, 110, .12); border-color: rgba(60, 200, 110, .5); }
+.rpg-condition-badge--disadvantage { color: #ff9a8f; background: rgba(230, 70, 60, .16); border-color: rgba(230, 70, 60, .5); }

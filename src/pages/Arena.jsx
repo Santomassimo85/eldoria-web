@@ -628,6 +628,28 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
 // CA che un attacco trova DAVVERO in questo momento (stessa somma dei tiri per
 // colpire) + la CA "di riposo" con cui confrontarla, per colorarla nella scheda:
 // sopra = bonus attivi (verde), sotto = malus (rosso). parts = cosa la cambia.
+// Attacchi speciali che usano l'ARMA equipaggiata (Smite, Attacco Furtivo):
+// prima contavano solo il dado base. Qui si aggiungono i bonus di sottoclasse con
+// arma, i componenti elementali dell'arma (Bottega) con le resistenze del
+// bersaglio, le riduzioni di classe e gli effetti all'impatto dell'arma.
+// raw = danno base già ×crit. Ritorna { damage, onHit, tag }.
+function resolveWeaponRider(raw, weaponAction, attackerSnap, attackerMP, defenderSnap, defenderMP, critMult) {
+  const eff = getSubclassEffect(attackerSnap);
+  const subFlat = (eff.weaponDmg || 0) * (critMult || 1);
+  const subDice = subclassDamageDice(attackerSnap, false);
+  const typed = applyTypedDamage(raw + subFlat, weaponAction, critMult, defenderSnap, false);
+  const damage = applyDefenderDamageMods(typed.total + subDice.bonus, defenderSnap, defenderMP, false);
+  const onHit = (damage > 0 && Array.isArray(weaponAction?.onHit) && weaponAction.onHit.length)
+    ? applyMarketEffects(weaponAction.onHit, attackerMP, defenderMP, true)
+    : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
+  const bits = [];
+  if (subFlat) bits.push(`🎓+${subFlat}`);
+  if (subDice.tag) bits.push(`🎓${subDice.tag}`);
+  typed.parts.forEach(pt => bits.push(`+${pt.amount} ${DAMAGE_TYPE_MAP[pt.type]?.label || pt.type}${pt.resisted ? "🛡" : ""}`));
+  if (onHit.logs.length) bits.push(`impatto: ${onHit.logs.join(" · ")}`);
+  return { damage, onHit, tag: bits.length ? ` (${bits.join(" · ")})` : "" };
+}
+
 // Chip di stato: queste famiglie sono BONUS (verde), tutte le altre MALUS (rosso).
 const GOOD_STATUS_CLS = new Set(["is-shield", "is-buff", "is-rage", "is-energy", "is-wild"]);
 function getDisplayAc(matchPlayer, snap) {
@@ -1797,9 +1819,38 @@ function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSp
 //     NON portano un tipo strutturato → nessuna resistenza tipizzata sul primario.
 //   • Ogni componente extra è tirato ora, ×crit, e ridotto per il suo tipo.
 // Ritorna { total, parts } dove parts elenca i componenti elementali applicati.
+// Tipo di danno di un incantesimo (le spell non hanno damageType strutturato):
+// dal campo se c'è, altrimenti dal testo "Lv1 · Fuoco", "Trucchetto · Necrotico"…
+function spellDamageType(action) {
+  if (!action) return null;
+  if (action.damageType) return action.damageType;
+  const hay = `${action.info || ""} ${action.name || ""}`.toLowerCase();
+  if (/fuoc|fiamm|brucia|incener|infern|meteora|brac|rogo|ardent/.test(hay)) return "fuoco";
+  if (/fredd|ghiacc|\bgelo\b|gelid|congel|brina|glacial/.test(hay))         return "freddo";
+  if (/fulmin|saett|folgor|elettr/.test(hay))                                  return "fulmine";
+  if (/tuono|tonant|boato|fragore/.test(hay))                                  return "tuono";
+  if (/acid/.test(hay))                                                        return "acido";
+  if (/velen|tossic/.test(hay))                                                return "veleno";
+  if (/necrot|vampir|drena/.test(hay))                                         return "necrotico";
+  if (/radiant|sacr|divin|\bluce\b|solare/.test(hay))                          return "radiante";
+  if (/psichic|mental/.test(hay))                                              return "psichico";
+  if (/\bforza\b/.test(hay))                                                   return "forza";
+  return null;
+}
+// Moltiplicatore di resistenza (Bottega) per il danno di un incantesimo.
+// Danno nel tempo (poisonDoT): la bruciatura è fuoco, il resto veleno.
+function dotResistMult(snap, matchPlayer) {
+  const isBurn = matchPlayer?.poisonDoTIcon === "🔥" || matchPlayer?.poisonDoTSourceLabel === "bruciatura";
+  return damageMultiplier(isBurn ? "fuoco" : "veleno", snap?.marketResist || {});
+}
+function spellResistMult(action, defenderSnap) {
+  const t = spellDamageType(action);
+  return t ? damageMultiplier(t, defenderSnap?.marketResist || {}) : 1;
+}
 function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell) {
   const resist = defenderSnap?.marketResist || {};
-  const primaryType = (!isSpell && action?.damageType) ? action.damageType : null;
+  // Incantesimi: il tipo si ricava dal testo (prima nessuna resistenza scattava).
+  const primaryType = isSpell ? spellDamageType(action) : (action?.damageType || null);
   const primaryMult = primaryType ? damageMultiplier(primaryType, resist) : 1;
   let total = primaryRaw * primaryMult;
   let resisted = primaryMult < 1; // resistenza/immunità sul tipo primario
@@ -5928,7 +5979,8 @@ export default function Arena() {
     // mirrors the human flow where the poison hits on turn entry.
     if (aiPlayer.poisonDoT && (aiPlayer.poisonResolvedTurnToken || "") !== (m.turnExpiry || "")) {
       const dice = aiPlayer.poisonDoTDice || "1d6";
-      const { total: poisonDmg, rolls: poisonRolls } = rollDmg(dice);
+      const { total: poisonRawDmg, rolls: poisonRolls } = rollDmg(dice);
+      const poisonDmg = Math.round(poisonRawDmg * dotResistMult(aiSnap, aiPlayer));
       const sourceLabel = aiPlayer.poisonDoTSourceLabel || "veleno";
       const icon = aiPlayer.poisonDoTIcon || "☠";
       const updatedMatches = meta.matches.map(x => {
@@ -6252,7 +6304,8 @@ export default function Arena() {
           let raw = connected ? Math.max(0, dmg + _spellMod + _aiSubSpell) : 0;
           if (halfDamage) raw = Math.floor(raw / 2);
           // Difese del bersaglio contro la magia (Elusione, sottoclassi, Furia).
-          dmgToTarget = raw > 0 ? applyDefenderDamageMods(raw, targetSnap, _tgtMP, true) : 0;
+          const _rawTyped = Math.round(raw * spellResistMult(sp, targetSnap));
+          dmgToTarget = _rawTyped > 0 ? applyDefenderDamageMods(_rawTyped, targetSnap, _tgtMP, true) : 0;
           // Regole elementali base: magia di fuoco/ghiaccio dell'IA → Bruciatura/Congelato.
           const _spellElem = elementalOnHitStatus(sp, true, targetSnap, _tgtMP, dmgToTarget, connected);
           Object.assign(targetPatch, _spellElem.patch);
@@ -6837,7 +6890,8 @@ export default function Arena() {
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sDmg, rolls: sRolls } = isHit ? rollDmg(action.damage || "2d8") : { total: 0, rolls: "" };
       const rawSmiteDmg = (wDmg + sDmg + smiteStrMod + readAidDmgBonus(myMatchPlayer)) * critMult;
-      const totalDmg = applyDefenderDamageMods(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
+      const _smRider = isHit ? resolveWeaponRider(rawSmiteDmg, weaponAction, mySnap, myMatchPlayer, defenderSnap, defMatchPlayer, critMult) : { damage: 0, onHit: { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] }, tag: "" };
+      const totalDmg = _smRider.damage;
 
       const smiteExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const hitStr = isHit ? `COLPISCE` : `MANCA`;
@@ -6846,7 +6900,7 @@ export default function Arena() {
       const hitInfo = `d20(${d20})+${weaponAction.hitBonus}${strPart}+arm(${armorPenalty})${aidPart}=${totalHit} vs CA ${targetAc}`;
       const log = {
         pub: `⚡ ${myName} → Smite Divino su ${defName}: ${hitStr}${isHit ? ` per ${totalDmg} danni${isCrit ? " CRITICO!" : ""}` : ""}`,
-        att: `⚡ Smite Divino su ${defName}: ${hitStr} [${hitInfo}]${isHit ? ` → arma🎲${wRolls}+smite🎲${sRolls}=${totalDmg}${isCrit ? " CRITICO!" : ""}` : ""}`,
+        att: `⚡ Smite Divino su ${defName}: ${hitStr} [${hitInfo}]${isHit ? ` → arma🎲${wRolls}+smite🎲${sRolls}${_smRider.tag}=${totalDmg}${isCrit ? " CRITICO!" : ""}` : ""}`,
         def: `⚡ ${myName} ti colpisce con Smite Divino: ${hitStr}${isHit ? ` per ${totalDmg} danni${isCrit ? " CRITICO!" : ""}` : ""}`,
         ts: new Date().toISOString(),
         attId: currentUser.uid, defId: targetId,
@@ -6857,10 +6911,14 @@ export default function Arena() {
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const rawPlayers = m.players.map(p => {
-          if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, (p.hp ?? 0) - totalDmg) };
+          if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, (p.hp ?? 0) - totalDmg - _smRider.onHit.enemyDmg), ..._smRider.onHit.enemyPatch };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
+            if (_smRider.onHit.selfHeal > 0 || Object.keys(_smRider.onHit.selfPatch).length) {
+              const _mx = mySnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+              p = { ...p, ..._smRider.onHit.selfPatch, hp: Math.min(_mx, (p.hp ?? 0) + _smRider.onHit.selfHeal) };
+            }
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
@@ -6903,7 +6961,9 @@ export default function Arena() {
       const sneakDefRanged       = PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap);
       const sneakFar             = !arenaMeta.matches.find(mm => mm.matchId === matchId)?.distanceClosed;
       const sneakMeleeFarDisadv  = !sneakWpnRanged && sneakFar && sneakDefRanged;
-      const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0 || (myMatchPlayer?.selfAdvTurns ?? 0) > 0;
+      // Sottoclasse · Assassino/Predatore/Ombra: apertura contro un nemico a PF pieni.
+      const sneakFirstStrike     = subclassFirstStrike(attackerSnap, false, defMatchPlayer, defenderSnap);
+      const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0 || (myMatchPlayer?.selfAdvTurns ?? 0) > 0 || sneakFirstStrike.adv;
       const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0 || sneakEagleActive || (myMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || sneakMeleeFarDisadv;
       const sneakD20a = Math.floor(Math.random() * 20) + 1;
       const sneakD20b = (sneakHasAdvantage || sneakHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -6913,8 +6973,9 @@ export default function Arena() {
                 : sneakD20a;
       await showD20Roll(d20, { label: "Attacco Furtivo" });
       const totalHit = d20 + (weaponAction.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
-      const isHit = totalHit >= targetAc;
-      const isCrit = d20 === 20;
+      const isHit = totalHit >= targetAc || d20 === 20;
+      // Critico: 20 naturale (o la soglia della sottoclasse) oppure Assassinare a segno.
+      const isCrit = d20 >= subclassCritThreshold(attackerSnap, 20) || (sneakFirstStrike.crit && isHit);
       const critMult = isCrit ? 2 : 1;
 
       const sneakDiceStr = sneakAttackDice(getSnapLevel(attackerSnap));
@@ -6924,7 +6985,8 @@ export default function Arena() {
       // weapon formulas no longer have a baked ability mod since the
       // double-count fix).
       const rawSneakDmg = (wDmg + sneakDmg + dexMod) * critMult;
-      const totalDmg = applyDefenderDamageMods(rawSneakDmg, defenderSnap, defMatchPlayer, false);
+      const _snRider = isHit ? resolveWeaponRider(rawSneakDmg, weaponAction, attackerSnap, myMatchPlayer, defenderSnap, defMatchPlayer, critMult) : { damage: 0, onHit: { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] }, tag: "" };
+      const totalDmg = _snRider.damage;
 
       const sneakExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
       const critTag = isCrit ? " ★CRITICO★" : "";
@@ -6939,7 +7001,7 @@ export default function Arena() {
           ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [🎲${wRolls}+furtivo 🎲${sneakRolls}+${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ ${attName} manca ${defName} con Attacco Furtivo (${totalHit} vs CA ${targetAc})`,
         att: isHit
-          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
+          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES${_snRider.tag} = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ Manchi ${defName} con Attacco Furtivo [${hitStr}]`,
         def: isHit
           ? `🗡 ${attName} ti ha colpito con Attacco Furtivo${critTag} — ${totalDmg} danni`
@@ -6950,10 +7012,14 @@ export default function Arena() {
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const rawPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg) : p.hp, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg - _snRider.onHit.enemyDmg) : p.hp, ...(isHit ? _snRider.onHit.enemyPatch : {}), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 3)) - 1) };
+            if (_snRider.onHit.selfHeal > 0 || Object.keys(_snRider.onHit.selfPatch).length) {
+              const _mx = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+              p = { ...p, ..._snRider.onHit.selfPatch, hp: Math.min(_mx, (p.hp ?? 0) + _snRider.onHit.selfHeal) };
+            }
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
@@ -8467,7 +8533,8 @@ export default function Arena() {
     const dice = me?.poisonDoTDice || "1d6";
     const sourceLabel = me?.poisonDoTSourceLabel || "veleno";
     const icon = me?.poisonDoTIcon || "☠";
-    const { total: poisonDmg, rolls: poisonRolls } = rollDmg(dice);
+    const { total: poisonRawDmg, rolls: poisonRolls } = rollDmg(dice);
+    const poisonDmg = Math.round(poisonRawDmg * dotResistMult(arenaMeta.characterSnapshots?.[currentUser.uid], me));
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
@@ -8992,9 +9059,10 @@ export default function Arena() {
     // La CD dei TS dipende dalla classe del lanciatore; il bonus al colpire degli
     // attacchi a incantesimo = competenza + mod da incantatore; il TS è nella stat dello spell.
     const { cast: castMode, save: saveAbil } = getSpellCast(action);
-    const castAbility = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
+    // Spell scroll della Bottega: si lancia con la caratteristica scelta dal Master (castStat → statKey).
+    const castAbility = (action.isScroll && action.statKey) ? action.statKey : getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
     const casterMod   = attackerSnap?.stats?.[castAbility] ?? 0;
-    const dc          = getSpellSaveDC(attackerSnap);
+    const dc          = 8 + getProficiencyBonus(attackerSnap) + casterMod;
     const defMatchPlayer      = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const saveBuffBonus  = (defMatchPlayer?.saveBuffAttacks ?? 0) > 0 ? (defMatchPlayer?.saveBuffBonus ?? 0) : 0;
@@ -9018,7 +9086,7 @@ export default function Arena() {
       outcomeLog = "colpisce automaticamente";
     } else if (castMode === "attack") {
       // Tiro per colpire dell'incantatore vs CA del bersaglio.
-      const spellHit = getSpellAttackBonus(attackerSnap);
+      const spellHit = getProficiencyBonus(attackerSnap) + casterMod; // = getSpellAttackBonus, ma con la caratteristica dello scroll
       const mdAtk = attackerMatchPlayer?.magicDetectAttacks ?? 0;
       const aidHit = mdAtk > 0 ? readActiveBonus(attackerMatchPlayer?.magicDetectActive, 0) : readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
       const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
@@ -9072,8 +9140,10 @@ export default function Arena() {
     if (sorcererCrit) rawDmg = Math.floor(rawDmg * 1.5);
     // Difese del bersaglio contro la magia (Elusione, Abiurazione/Immondo −25%,
     // Orso in Furia, Furia −25%…): prima non scattavano mai sugli incantesimi a TS.
-    const damage = rawDmg > 0 ? applyDefenderDamageMods(rawDmg, defenderSnap, defMatchPlayer, true) : 0;
-    const resistTag = damage < rawDmg ? ` | 🛡difese −${rawDmg - damage}` : "";
+    const _spResMult = spellResistMult(action, defenderSnap); // resistenze/immunità/vulnerabilità della Bottega
+    const _rawTyped  = Math.round(rawDmg * _spResMult);
+    const damage = _rawTyped > 0 ? applyDefenderDamageMods(_rawTyped, defenderSnap, defMatchPlayer, true) : 0;
+    const resistTag = (_spResMult === 0 ? " | 🛡immune" : _spResMult > 1 ? " | 💥vulnerabile" : "") + (damage < rawDmg && _spResMult !== 0 ? ` | 🛡difese −${rawDmg - damage}` : "");
     const saves  = damage <= 0; // "nessun danno subìto" per il blocco a valle (assorbi/HP)
     // Tocco Vampirico: cura il caster su danno inflitto.
     const { total: vampHeal, rolls: vampRolls } = (connected && action.vampiric && damage > 0) ? rollDmg(action.vampiricHeal || "1d8") : { total: 0, rolls: "" };
@@ -9421,6 +9491,13 @@ export default function Arena() {
     const composite = marketItem?.effects
       ? applyMarketEffects(marketItem.effects, me, myMatch?.players.find(p => p.id === targetId), false)
       : null;
+    // Azione gratuita: dopo l'oggetto attacchi ancora e a fine turno i contatori
+    // scalano di 1. Senza compenso "+1 CA per 2 turni" copriva un solo attacco nemico.
+    if (composite) {
+      const sp = composite.selfPatch;
+      if (sp.shieldSkillTurns) sp.shieldSkillTurns += 1;
+      if (sp.saveFaithTurns) sp.saveFaithTurns += 1;
+    }
 
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -9649,7 +9726,7 @@ export default function Arena() {
           }
           if (hasPoisonDoT && (p.poisonResolvedTurnToken || "") !== (match.turnExpiry || "")) {
             const dice = p.poisonDoTDice || "1d6";
-            const { total: poisonDmgAuto } = rollDmg(dice);
+            const poisonDmgAuto = Math.round(rollDmg(dice).total * dotResistMult(arenaMeta.characterSnapshots?.[p.id], p));
             up.hp = Math.max(0, (up.hp ?? 0) - poisonDmgAuto);
             const remaining = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
             up.poisonDoT = remaining > 0;
