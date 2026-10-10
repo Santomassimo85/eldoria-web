@@ -947,11 +947,11 @@ body.tcg-infight .online-popup {
 }
 
 /* combat arrows: warm coral = attack, soft cyan = defense.
-   Rendered via React portal to <body> so the SVG lives OUTSIDE the
-   force-landscape −90° rotation. Curve = quadratic Bézier built in JS
-   so the trajectory is a gentle arc instead of a harsh straight line. */
+   The SVG lives INSIDE .tcg-table, in table layout coordinates, so it
+   rotates together with the board under force-landscape. Curve =
+   quadratic Bézier built in JS (gentle arc, not a straight line). */
 .tcg-arrows {
-  position: fixed; left: 0; top: 0; z-index: 4050;
+  position: absolute; left: 0; top: 0; z-index: 4050;
   pointer-events: none; overflow: visible;
 }
 .tcg-arrow {

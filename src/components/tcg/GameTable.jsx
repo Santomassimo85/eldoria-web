@@ -12,7 +12,6 @@
    on the RIGHT rail. Lands auto-tap to pay costs (like MTGA).
    ============================================================ */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
@@ -378,27 +377,47 @@ export default function GameTable({
     setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1600);
   };
 
-  // Screen-space (viewport-relative) center. The arrow SVG is portaled to
-  // <body> so its coord system IS the viewport — no rotation/parent
-  // transform can skew the math (force-landscape rotates the board −90°
-  // on portrait phones, which used to mis-map these coordinates).
+  // Center of an element in the TABLE's own layout coordinates (offset
+  // chain, minus the scroll of every ancestor in between). Transforms are
+  // ignored on purpose: the −90° force-landscape rotation on portrait
+  // phones, the attack lunge (translateY ±46px) and the tapped rotate()
+  // all leave this point where the card actually rests. The arrows SVG
+  // and the floating numbers live INSIDE the table, so they rotate with
+  // it. (getBoundingClientRect = screen space: under the rotation the
+  // arrows started off the card and flew off-screen.)
   const centerOf = (sel) => {
-    const el = tableRef.current && tableRef.current.querySelector(sel);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const root = tableRef.current;
+    const el = root && root.querySelector(sel);
+    if (!el || !el.offsetParent) return null;
+    let x = el.offsetWidth / 2;
+    let y = el.offsetHeight / 2;
+    let n = el;
+    while (n && n !== root) {
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      const p = n.offsetParent;
+      for (let a = n.parentElement; a && a !== p; a = a.parentElement) {
+        x -= a.scrollLeft;
+        y -= a.scrollTop;
+      }
+      if (!p) return null;
+      if (p !== root) {
+        x += p.clientLeft - p.scrollLeft;
+        y += p.clientTop - p.scrollTop;
+      }
+      n = p;
+    }
+    return n === root ? { x, y } : null;
   };
 
   // damage/heal number pinned to a specific card or hero pod
   const anchorFloat = (sel, text, tone, big) => {
     const root = tableRef.current;
-    if (!root) return;
-    const rect = root.getBoundingClientRect();
-    const el = root.querySelector(sel);
-    if (!el || !rect.width) return;
-    const r = el.getBoundingClientRect();
-    const x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
-    const y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    if (!root || !root.clientWidth) return;
+    const c = centerOf(sel);
+    if (!c) return;
+    const x = (c.x / root.clientWidth) * 100;
+    const y = (c.y / root.clientHeight) * 100;
     const id = ++floatSeq.current;
     setFloats((f) => [...f, { id, text, tone, x, y, big }]);
     cineTimers.current.push(
@@ -574,10 +593,10 @@ export default function GameTable({
       setArrows([]);
       return;
     }
-    // SVG is portaled to <body> — viewport-sized so its viewBox is in
-    // screen pixels (matches what getBoundingClientRect returns).
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    // SVG sits inside the table, table-sized: viewBox = table layout px
+    // (same space as centerOf).
+    const vw = root.clientWidth;
+    const vh = root.clientHeight;
     setSvgBox((b) =>
       Math.round(b.w) === Math.round(vw) &&
       Math.round(b.h) === Math.round(vh)
@@ -884,19 +903,19 @@ export default function GameTable({
   const spawnCardReact = (instId, emoji, attempt = 0) => {
     const root = tableRef.current;
     if (!root) return;
-    const rect = root.getBoundingClientRect();
     // Il tavolo non è ancora misurabile (layout non pronto): riprova al frame
     // successivo invece di perdere la reazione.
-    if (!rect.width) {
+    if (!root.clientWidth) {
       if (attempt < 6) requestAnimationFrame(() => spawnCardReact(instId, emoji, attempt + 1));
       return;
     }
-    const el = root.querySelector(`[data-inst="${instId}"]`);
+    // coordinate del tavolo (non dello schermo): giuste anche col tavolo
+    // ruotato in orizzontale sul telefono
+    const c = centerOf(`[data-inst="${instId}"]`);
     let x, y;
-    if (el) {
-      const r = el.getBoundingClientRect();
-      x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
-      y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    if (c) {
+      x = (c.x / root.clientWidth) * 100;
+      y = (c.y / root.clientHeight) * 100;
     } else if (attempt < 6) {
       // La carta bersaglio non è ancora nel DOM (lo snapshot che porta la
       // reazione provoca un re-render del tavolo: la lookup può girare un
@@ -1827,7 +1846,7 @@ export default function GameTable({
         ))}
       </div>
 
-      {arrows.length > 0 && svgBox.w > 0 && createPortal(
+      {arrows.length > 0 && svgBox.w > 0 && (
         <svg
           className="tcg-arrows"
           aria-hidden="true"
@@ -1871,8 +1890,7 @@ export default function GameTable({
               </g>
             );
           })}
-        </svg>,
-        document.body
+        </svg>
       )}
 
       <FloatingLayer floats={floats} />
