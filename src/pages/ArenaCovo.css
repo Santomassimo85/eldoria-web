@@ -219,3 +219,27 @@ body .arena-page.arena-page.arena-page .saved-char-pick[style*="--cls"].is-selec
 body .arena-page.arena-page.arena-page .saved-char-pick[style*="--cls"].is-selected .saved-char-slot { color: var(--cls); -webkit-text-fill-color: var(--cls); }
 body .arena-page.arena-page.arena-page .master-ready { margin: 0 0 14px; }
 body .arena-page.arena-page.arena-page .master-ready .saved-chars-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+/* ── BUONO / CATTIVO a colpo d'occhio (2026-10-10) ──
+   CA della scheda: ▲ verde quando bonus attivi (scudi, sottoclasse, forgia…)
+   la alzano, ▼ rossa quando è sotto la base (Furia irruenta, scudo perso).
+   Chip di stato: bonus verdi, malus rossi (prima il veleno era verde). */
+.arena-combat-dialog .ministat.ministat--ac.is-buff,
+.arena-combat-dialog .fighter-card .ministat.ministat--ac.is-buff {
+  color: #8ef0ae !important; border-color: rgba(60, 200, 110, .6) !important; background: rgba(60, 200, 110, .14) !important;
+}
+.arena-combat-dialog .ministat.ministat--ac.is-malus,
+.arena-combat-dialog .fighter-card .ministat.ministat--ac.is-malus {
+  color: #ff8f84 !important; border-color: rgba(230, 70, 60, .6) !important; background: rgba(230, 70, 60, .14) !important;
+}
+.arena-combat-dialog .ministat--ac small { font-size: .8em; }
+.arena-combat-dialog .fighter-status.is-good {
+  color: #8ef0ae !important; border-left: 3px solid #3fc46f !important;
+}
+.arena-combat-dialog .fighter-status.is-bad {
+  color: #ff9a8f !important; border-left: 3px solid #e0483c !important;
+}
+/* anteprima del loadout: CA alzata dalla sottoclasse */
+body .arena-page.arena-page.arena-page .loadout-char-stats strong.stat-buff {
+  color: #8ef0ae !important; -webkit-text-fill-color: #8ef0ae !important;
+}

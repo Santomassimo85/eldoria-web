@@ -63,7 +63,7 @@ export const ARENA_SUBCLASSES = {
         effect: { ca: 1 },
         actions: [
           passive("Legame con l'Arma", "🔗", "+1 CA: l'arma vincolata non ti lascia mai scoperto"),
-          { name: "Lama Arcana", level: 1, hitBonus: 3, damage: "2d8", statKey: "int", type: "spell", icon: "🗡", info: "Lv1 · Forza · TS DES · 3 usi", maxUses: 3 },
+          { name: "Lama Arcana", level: 1, hitBonus: 3, damage: "2d8", statKey: "int", type: "spell", icon: "🗡", info: "Lv1 · Forza · tiro per colpire · 3 usi", maxUses: 3 },
           { name: "Scudo Mistico", level: 1, hitBonus: 0, damage: "—", statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA per 2 turni · 2 usi", special: "shield_buff", shieldBuffBonus: 3, shieldBuffTurns: 2, maxUses: 2 },
         ],
       },
@@ -184,7 +184,7 @@ export const ARENA_SUBCLASSES = {
         effect: { spellDmg: 1 },
         actions: [
           passive("Imboscata Magica", "✨", "+1 al danno dei tuoi incantesimi"),
-          { name: "Scossa Folgorante", level: 1, hitBonus: 3, damage: "2d8", statKey: "int", type: "spell", icon: "⚡", info: "Lv1 · Fulmine · TS DES · 3 usi", maxUses: 3 },
+          { name: "Scossa Folgorante", level: 1, hitBonus: 3, damage: "2d8", statKey: "int", type: "spell", icon: "⚡", info: "Lv1 · Fulmine · tiro per colpire · 3 usi", maxUses: 3 },
           { name: "Mano Magica Ingannatrice", level: 1, hitBonus: 0, damage: "—", statKey: null, type: "spell", icon: "🖐", info: "Lv1 · Distrai il nemico: attacca a svantaggio per 2 turni · 2 usi", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
           { name: "Sonno", level: 1, hitBonus: 0, damage: "—", statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni · 1 uso", special: "control", maxUses: 1 },
         ],
@@ -200,7 +200,7 @@ export const ARENA_SUBCLASSES = {
         effect: { spellDmg: 2 },
         actions: [
           passive("Invocazione Potenziata", "🔥", "+2 al danno dei tuoi incantesimi"),
-          { name: "Dardo Scolpito", level: 1, hitBonus: 3, damage: "3d8", statKey: null, type: "spell", icon: "☄", info: "Lv1 · Fuoco · TS DES · 2 usi", maxUses: 2 },
+          { name: "Dardo Scolpito", level: 1, hitBonus: 3, damage: "3d8", statKey: null, type: "spell", icon: "☄", info: "Lv1 · Fuoco · TS DES (superato = metà danni) · 2 usi", maxUses: 2 },
         ],
       },
       {

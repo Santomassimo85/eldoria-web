@@ -625,6 +625,28 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
   const recklessAcPenalty = recklessRaging(charSnapshot, matchPlayer) ? -2 : 0;
   return baseAc + shieldAdj + monkAcBonus + recklessAcPenalty;
 }
+// CA che un attacco trova DAVVERO in questo momento (stessa somma dei tiri per
+// colpire) + la CA "di riposo" con cui confrontarla, per colorarla nella scheda:
+// sopra = bonus attivi (verde), sotto = malus (rosso). parts = cosa la cambia.
+// Chip di stato: queste famiglie sono BONUS (verde), tutte le altre MALUS (rosso).
+const GOOD_STATUS_CLS = new Set(["is-shield", "is-buff", "is-rage", "is-energy", "is-wild"]);
+function getDisplayAc(matchPlayer, snap) {
+  // "riposo" = CA della classe base, senza il bonus della sottoclasse (che conta come buff)
+  const subAc = snap?.subclassAc || 0;
+  const base = getEffectiveAc(null, snap) - subAc;
+  const parts = subAc ? [`${snap.subclassName || "sottoclasse"} +${subAc}`] : [];
+  let ac = getEffectiveAc(matchPlayer, snap);
+  if (matchPlayer?.wildShape && WILD_SHAPES[matchPlayer.wildShape]?.ac != null) parts.push(`forma selvatica ${ac}`);
+  else if (ac < base + subAc) parts.push(`furia irruenta ${ac - base - subAc}`);
+  if (snap?.hasShield && matchPlayer?.shieldSuppressed) { ac -= 1; parts.push("scudo inutilizzabile −1"); }
+  const shieldSkill = (matchPlayer?.shieldSkillTurns ?? 0) > 0 ? (matchPlayer?.shieldSkillBonus ?? 3) : 0;
+  if (shieldSkill) { ac += shieldSkill; parts.push(`scudo +${shieldSkill} (${matchPlayer.shieldSkillTurns}t)`); }
+  const forge = (matchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
+  if (forge) { ac += forge; parts.push("forgia +2"); }
+  const def = matchPlayer?.defensiveBonus ?? 0;
+  if (def) { ac += def; parts.push(`difesa ${def > 0 ? "+" : ""}${def}`); }
+  return { ac, base, parts };
+}
 
 // Carica del Guerriero — aggiunto automaticamente (max 3 cariche)
 const CHARGE_ACTION = {
@@ -2197,6 +2219,9 @@ const SPELL_MECHANICS = {
   "Dardo di Fuoco":         { cast: "attack" },
   "Tocco Gelido":           { cast: "attack" },
   "Scossa Folgorante":      { cast: "attack" },
+  // Sottoclassi (arenaSubclasses.js)
+  "Lama Arcana":            { cast: "attack" },
+  "Dardo Scolpito":         { cast: "save_half", save: "dex" },
   "Raggio di Gelo":         { cast: "attack" },
   "Deflagrazione Occulta":  { cast: "attack" },
   "Frusta di Spine":        { cast: "attack" },
@@ -4656,6 +4681,8 @@ export default function Arena() {
       subclass:        subclassKey,
       subclassName:    subclassDef?.name || null,
       subclassIcon:    subclassDef?.icon || null,
+      // CA che la sottoclasse ha sommato davvero (0 con l'armatura fissa della Bottega)
+      subclassAc:      marketFixedAc != null ? 0 : subclassCa,
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
       hasWildShape:    config.hasWildShape,
@@ -6221,9 +6248,11 @@ export default function Arena() {
           }
           let { total: dmg } = connected ? rollDmg(clericBlessedDice(sp.damage, aiSnap)) : { total: 0 };
           if (critHit && connected) dmg += rollDmg(clericBlessedDice(sp.damage, aiSnap)).total; // crit: dadi raddoppiati
-          let raw = connected ? Math.max(0, dmg + _spellMod) : 0;
+          const _aiSubSpell = connected ? (getSubclassEffect(aiSnap).spellDmg || 0) + subclassDamageDice(aiSnap, true).bonus : 0;
+          let raw = connected ? Math.max(0, dmg + _spellMod + _aiSubSpell) : 0;
           if (halfDamage) raw = Math.floor(raw / 2);
-          dmgToTarget = raw;
+          // Difese del bersaglio contro la magia (Elusione, sottoclassi, Furia).
+          dmgToTarget = raw > 0 ? applyDefenderDamageMods(raw, targetSnap, _tgtMP, true) : 0;
           // Regole elementali base: magia di fuoco/ghiaccio dell'IA → Bruciatura/Congelato.
           const _spellElem = elementalOnHitStatus(sp, true, targetSnap, _tgtMP, dmgToTarget, connected);
           Object.assign(targetPatch, _spellElem.patch);
@@ -9034,10 +9063,17 @@ export default function Arena() {
     // Signore della Tempesta (titolo): +1d6 danni da fulmine sulle spell di fulmine/gelo/acqua.
     const stormTitleOn = connected && attackerTitles.includes("signoreTempesta") && isStormSpell(action);
     const { total: stormBonusDmg, rolls: stormRolls } = stormTitleOn ? rollDmg("1d6") : { total: 0, rolls: "" };
-    let rawDmg = connected ? Math.max(0, dmgDice + casterMod + concentrationDmg + aidDmgBonus + stormBonusDmg) : 0;
+    // Sottoclasse: +danno agli incantesimi, dado extra (Artigliere), Ondata Selvaggia.
+    // Prima questo percorso (quasi tutti gli incantesimi a danno) li ignorava.
+    const subSpellDmg = connected ? (getSubclassEffect(attackerSnap).spellDmg || 0) : 0;
+    const { bonus: subSpellDice, tag: subSpellTag } = connected ? subclassDamageDice(attackerSnap, true) : { bonus: 0, tag: "" };
+    let rawDmg = connected ? Math.max(0, dmgDice + casterMod + concentrationDmg + aidDmgBonus + stormBonusDmg + subSpellDmg + subSpellDice) : 0;
     if (halfDamage)  rawDmg = Math.floor(rawDmg / 2);
     if (sorcererCrit) rawDmg = Math.floor(rawDmg * 1.5);
-    const damage = rawDmg;
+    // Difese del bersaglio contro la magia (Elusione, Abiurazione/Immondo −25%,
+    // Orso in Furia, Furia −25%…): prima non scattavano mai sugli incantesimi a TS.
+    const damage = rawDmg > 0 ? applyDefenderDamageMods(rawDmg, defenderSnap, defMatchPlayer, true) : 0;
+    const resistTag = damage < rawDmg ? ` | 🛡difese −${rawDmg - damage}` : "";
     const saves  = damage <= 0; // "nessun danno subìto" per il blocco a valle (assorbi/HP)
     // Tocco Vampirico: cura il caster su danno inflitto.
     const { total: vampHeal, rolls: vampRolls } = (connected && action.vampiric && damage > 0) ? rollDmg(action.vampiricHeal || "1d8") : { total: 0, rolls: "" };
@@ -9052,7 +9088,8 @@ export default function Arena() {
     const halfTag    = halfDamage ? " | ½ TS" : "";
     const stormTag   = stormBonusDmg > 0 ? ` | ⚡tempesta 🎲${stormRolls}=${stormBonusDmg}` : "";
     const vampTag    = vampHeal > 0 ? ` | 🩸cura ${vampHeal} HP [🎲${vampRolls}]` : "";
-    const dmgTail    = damage > 0 ? ` 🎲(${diceRolls})${modSign}${casterMod} ${castAbility.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag}${stormTag}${halfTag} = ${damage} danni${vampTag}` : "";
+    const subTag     = (subSpellDmg > 0 ? ` | 🎓+${subSpellDmg}` : "") + (subSpellTag ? ` | 🎓${subSpellTag}` : "");
+    const dmgTail    = damage > 0 ? ` 🎲(${diceRolls})${modSign}${casterMod} ${castAbility.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag}${stormTag}${subTag}${halfTag}${resistTag} = ${damage} danni${vampTag}` : "";
     const log = {
       pub: connected
         ? `✨ ${attName} → ${action.name}: ${outcomeLog} su ${defName}${dmgTail}`
@@ -11443,7 +11480,7 @@ export default function Arena() {
                     <div className="loadout-char-name">{charPreview.name}</div>
                     <div className="loadout-char-class">{charPreview.class}{activeSubDef ? ` · ${activeSubDef.icon} ${activeSubDef.name}` : ""}</div>
                     <div className="loadout-char-stats">
-                      ❤ <strong>{charPreview.rolledHp}</strong> HP · 🛡 CA <strong>{previewAc}</strong>
+                      ❤ <strong>{charPreview.rolledHp}</strong> HP · 🛡 CA <strong className={activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? "stat-buff" : undefined} title={activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? `+${activeSubDef.effect.ca} da ${activeSubDef.name}` : undefined}>{previewAc}{activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? ` (+${activeSubDef.effect.ca})` : ""}</strong>
                       {[["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]].map(([k,lbl]) => {
                         const v = charPreview.stats[k] ?? 0;
                         return <span key={k}> · {lbl} {v >= 0 ? "+" : ""}{v}</span>;
@@ -12847,7 +12884,17 @@ export default function Arena() {
 
                           {/* 3 mini-stat: CA · Init · Livello */}
                           <div className="fighter-ministats">
-                            <span className="ministat" title="Classe Armatura">🛡 {char?.stats?.ac != null || p.wildShape ? getEffectiveAc(p, char) : "?"}</span>
+                            {(() => {
+                              if (char?.stats?.ac == null && !p.wildShape) return <span className="ministat" title="Classe Armatura">🛡 ?</span>;
+                              const _ac = getDisplayAc(p, char);
+                              const tone = _ac.ac > _ac.base ? " is-buff" : _ac.ac < _ac.base ? " is-malus" : "";
+                              return (
+                                <span className={`ministat ministat--ac${tone}`}
+                                  title={`Classe Armatura ${_ac.ac}${_ac.parts.length ? ` (base ${_ac.base} · ${_ac.parts.join(" · ")})` : ""}`}>
+                                  🛡 {_ac.ac}{_ac.ac !== _ac.base && <small> {_ac.ac > _ac.base ? "▲" : "▼"}</small>}
+                                </span>
+                              );
+                            })()}
                             <span className="ministat" title="Iniziativa">⚡ {p.init > 0 ? p.init : "—"}</span>
                             <span className="ministat" title="Livello">⭐ {fLvl}</span>
                           </div>
@@ -12869,7 +12916,7 @@ export default function Arena() {
                             return (
                               <div className="fighter-statuses">
                                 {statuses.map(s => (
-                                  <div key={s.key} className={`fighter-status ${s.cls}`} title={s.tip}>
+                                  <div key={s.key} className={`fighter-status ${s.cls} ${GOOD_STATUS_CLS.has(s.cls) ? "is-good" : "is-bad"}`} title={s.tip}>
                                     <span className="fighter-status-ico">{s.icon}</span>
                                     <span className="fighter-status-txt">{s.text}</span>
                                   </div>
