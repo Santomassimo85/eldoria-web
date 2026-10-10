@@ -12,7 +12,7 @@ import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
-import { getSubclassEffectFor, getSubclassDef } from "../data/arenaSubclasses";
+import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef } from "../data/arenaSubclasses";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
@@ -1959,6 +1959,21 @@ function ownedSubclassKey(arenaWeekly, cls) {
   const ck = getClassKey(cls);
   const key = arenaWeekly.subclasses?.[ck];
   return getSubclassDef(ck, key) ? key : null;
+}
+// Sottoclassi selezionabili nel loadout, per contesto:
+//   torneo      → solo quella comprata in Bottega questa settimana per la classe
+//   sfide libere (IA e tra amici) → tutte e due, già sbloccate e gratis
+//   riserve     → nessuna
+function selectableSubclasses(context, arenaWeekly, cls) {
+  const ck = getClassKey(cls);
+  if (!cls) return [];
+  if (context === "fun") return ARENA_SUBCLASSES[ck]?.options || [];
+  if (context === "tournament") {
+    const own = ownedSubclassKey(arenaWeekly, cls);
+    const def = own ? getSubclassDef(ck, own) : null;
+    return def ? [def] : [];
+  }
+  return [];
 }
 // Sottoclasse · soglia del critico (Guerriero Campione: 18-20). Mai peggiore della base.
 function subclassCritThreshold(snap, base) {
@@ -4588,8 +4603,8 @@ export default function Arena() {
     // null qui spegne tutti gli effetti (getSubclassEffect legge snap.subclass).
     // Sottoclassi della Bottega (2026-10-10): valgono solo nei tornei e solo se
     // comprate questa settimana per QUESTA classe.
-    const subclassKey = (loadoutContext === "tournament" && pendingSubclass
-      && pendingSubclass === ownedSubclassKey(charPreview.arenaWeekly, charPreview.class)) ? pendingSubclass : null;
+    const subclassKey = (pendingSubclass && selectableSubclasses(loadoutContext, charPreview.arenaWeekly, charPreview.class)
+      .some(o => o.key === pendingSubclass)) ? pendingSubclass : null;
     const subclassDef = subclassKey ? getSubclassDef(getClassKey(charPreview.class), subclassKey) : null;
     const subclassCa  = subclassDef?.effect?.ca || 0;
     // Armatura della Bottega: CA FISSA (non si somma nulla: né DES, né scudo, né buff).
@@ -10999,7 +11014,8 @@ export default function Arena() {
                     title={cls}
                     onClick={() => {
                       setCharPreview(prev => ({ ...prev, class: cls }));
-                      setPendingSubclass(ownedSubclassKey(charPreview.arenaWeekly, cls));
+                      // Torneo: accesa di default quella comprata. Sfide libere: si parte dalla base.
+                      setPendingSubclass(loadoutContext === "tournament" ? ownedSubclassKey(charPreview.arenaWeekly, cls) : null);
                       setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
                       setLoadoutPhase("stat-assign");
                     }}
@@ -11325,9 +11341,8 @@ export default function Arena() {
             const conMod   = charPreview.stats.con ?? 0;
             // Armatura market = CA fissa (ignora DES/scudo); altrimenti calcolo normale.
             // Sottoclasse posseduta per questa classe (solo torneo) e quella accesa ora.
-            const ownedSubKey  = loadoutContext === "tournament" ? ownedSubclassKey(charPreview.arenaWeekly, charPreview.class) : null;
-            const ownedSubDef  = ownedSubKey ? getSubclassDef(getClassKey(charPreview.class), ownedSubKey) : null;
-            const activeSubDef = ownedSubDef && pendingSubclass === ownedSubKey ? ownedSubDef : null;
+            const subOptions   = selectableSubclasses(loadoutContext, charPreview.arenaWeekly, charPreview.class);
+            const activeSubDef = subOptions.find(o => o.key === pendingSubclass) || null;
             const previewAc = hasMarketArmor
               ? marketFixedAc
               : (pendingArmor
@@ -11407,9 +11422,9 @@ export default function Arena() {
                 </div>
 
                 {/* ── Sottoclasse della Bottega: base o archetipo (solo torneo) ── */}
-                {ownedSubDef && (
+                {subOptions.length > 0 && (
                   <div className="loadout-subclass">
-                    <div className="loadout-subclass-t">🎓 Sottoclasse della settimana</div>
+                    <div className="loadout-subclass-t">{loadoutContext === "fun" ? "🎓 Sottoclasse · nelle Sfide Libere sono tutte sbloccate" : "🎓 Sottoclasse della settimana"}</div>
                     <div className="loadout-subclass-scelte">
                       <button type="button" aria-pressed={!activeSubDef}
                         className={`loadout-subclass-btn${!activeSubDef ? " is-on" : ""}`}
@@ -11417,12 +11432,14 @@ export default function Arena() {
                         <span className="loadout-subclass-ico" aria-hidden="true">{CLASS_ICONS[(charPreview.class || "").toLowerCase()] || "✦"}</span>
                         <span><b>{CLASS_IT[charPreview.class] || charPreview.class} base</b><small>Il kit di classe, senza archetipo.</small></span>
                       </button>
-                      <button type="button" aria-pressed={!!activeSubDef}
-                        className={`loadout-subclass-btn${activeSubDef ? " is-on" : ""}`}
-                        onClick={() => setPendingSubclass(ownedSubKey)}>
-                        <span className="loadout-subclass-ico" aria-hidden="true">{ownedSubDef.icon}</span>
-                        <span><b>{ownedSubDef.name}</b><small>{ownedSubDef.desc}</small></span>
-                      </button>
+                      {subOptions.map(o => (
+                        <button key={o.key} type="button" aria-pressed={activeSubDef?.key === o.key}
+                          className={`loadout-subclass-btn${activeSubDef?.key === o.key ? " is-on" : ""}`}
+                          onClick={() => setPendingSubclass(o.key)}>
+                          <span className="loadout-subclass-ico" aria-hidden="true">{o.icon}</span>
+                          <span><b>{o.name}</b><small>{o.desc}</small></span>
+                        </button>
+                      ))}
                     </div>
                     {activeSubDef && (
                       <ul className="loadout-subclass-azioni">
