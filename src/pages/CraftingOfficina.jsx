@@ -28,11 +28,11 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { isHiddenChar } from "../data/hiddenPlayers";
-import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, TIER_ORDER, normTier, postazioneFor, tierByKey, tierByTotal, tierMinGrade } from "../data/crafting";
+import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, SENTIERO_MAESTRO, TIER_ORDER, lineHas, lineItem, normTier, postazioneFor, recipesFor, tierByKey, tierByTotal, tierMinGrade } from "../data/crafting";
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
-import { GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
-import { ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices } from "../data/craftingFoundry";
+import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
+import { DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
@@ -81,6 +81,9 @@ const sign = (n) => (n >= 0 ? `+${n}` : `${n}`);
 const rnd = (n) => 1 + Math.floor(Math.random() * n);
 const tierMeta = tierByKey; // accetta anche le chiavi vecchie (comune/raro/magico/perfetto)
 const FT_LABEL = { weapon: "Arma", equipment: "Armatura / Equipaggiamento", consumable: "Consumabile", loot: "Tesoro / Varie", tool: "Strumento" };
+// Nome e livello d'ingresso di un grado del Sentiero (per il lucchetto delle ricette).
+const gradeOf = (g) => SENTIERO_MAESTRO.find((x) => x.grado === (g || 1)) || SENTIERO_MAESTRO[0];
+const gradeLevel = (g) => XP_LEVELS.find((l) => l.grado === (g || 1))?.lv || 1;
 const RARITY_LABEL = { common: "Comune", uncommon: "Non comune", rare: "Raro", veryRare: "Molto raro", legendary: "Leggendario", artifact: "Artefatto" };
 const ROME = "Europe/Rome";
 // "alle 18:40" se è oggi, altrimenti "dom 21 · 18:40".
@@ -123,6 +126,11 @@ export default function CraftingOfficina() {
   const [choice, setChoice] = useState("");
   const [enhKey, setEnhKey] = useState("");
   const [note, setNote] = useState("");
+  const [resType, setResType] = useState("");          // resistenza scelta al ritiro (ricette "res: choice")
+  // Capacità del Sentiero da spendere in questa prova (2026-10-10).
+  const [useRaddoppio, setUseRaddoppio] = useState(false);
+  const [useFirma, setUseFirma] = useState(false);
+  const [useOpera, setUseOpera] = useState(false);
   const [clockOffset, setClockOffset] = useState(0); // server − dispositivo (ms)
   const [, setTick] = useState(0);                   // battito della barra del tempo
   const queued = useQueuedIds();                     // per dire "in coda" o "✓ su Foundry"
@@ -207,17 +215,34 @@ export default function CraftingOfficina() {
   const abil = prof ? abilityModFor(charData, prof) : 0;
   const toolB = toolsOn ? profBonus(charData) : 0;
   const gradeB = prog.bonus;
-  const paceOpt = paceByKey(pace), investOpt = investmentByKey(invest);
+  const paceOpt = paceByKey(pace);
+  // Materiali docili (livello 8): "Di pregio" costa +25% invece di +50%.
+  const docili = (iv) => (prog.docili && iv.key === "pregio" ? { ...iv, costPct: DOCILI_PREGIO_PCT } : iv);
+  const investOpt = docili(investmentByKey(invest));
+  // Capacità del Sentiero: Raddoppio e Firma una volta a settimana, Opera una per campagna.
+  const raddoppioFree = prog.raddoppio && crafting.raddoppioWeek !== allowBase.weekKey;
+  const firmaFree = prog.firma && crafting.firmaWeek !== allowBase.weekKey;
+  const operaFree = prog.opera && !crafting.operaUsed;
+  const raddoppioOn = useRaddoppio && raddoppioFree && toolsOn;
+  const firmaOn = useFirma && firmaFree;
+  const operaOn = useOpera && operaFree;
+  const perkB = (raddoppioOn ? profBonus(charData) : 0) + (firmaOn ? prog.level.lv : 0);
   const extra = paceOpt.roll + investOpt.roll;
-  const advSum = toolsOn ? 0 : -1;
+  const advSum = (toolsOn ? 0 : -1) + (firmaOn ? 1 : 0);
   const advMode = advSum > 0 ? "adv" : advSum < 0 ? "dis" : "";
-  const bonus = abil + toolB + gradeB + extra;
+  const bonus = abil + toolB + gradeB + extra + perkB;
   const targetCost = PREGIATURA_COSTS.find((c) => c.tier === target);
   const targetMeta = tierMeta(target);
   const catalogo = prof?.catalogo || [];
-  const pickLine = targetMeta.pick && pickIdx >= 0 ? catalogo[pickIdx] || null : null;
+  // Le ricette della rarità mirata (2026-10-10): quelle di un grado non ancora
+  // raggiunto restano col lucchetto. Comune/Non comune/Raro: l'oggetto si
+  // sceglie sempre; Molto raro/Leggendario: una ricetta o il d12 a sorpresa.
+  const recipes = prof ? recipesFor(prof, target, prog.level.grado).sort((a, b) => Number(a.locked) - Number(b.locked)) : [];
+  const pickLineRaw = pickIdx >= 0 ? catalogo[pickIdx] || null : null;
+  const pickLine = pickLineRaw && lineHas(pickLineRaw, target) && (pickLineRaw.grado || 1) <= prog.level.grado ? pickLineRaw : null;
+  const pickItem = pickLine ? lineItem(pickLine, target) : null;
   const needsPick = targetMeta.pick && !pickLine; // rarità a scelta: serve l'oggetto
-  const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, pace, ritmoBottega: prog.level.lv >= 6 }), [target, toolsOn, comps, pace, prog.level.lv]);
+  const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, pace, ritmoBottega: prog.level.lv >= 6, manoFerma: prog.manoFerma }), [target, toolsOn, comps, pace, prog.level.lv, prog.manoFerma]);
   // Costo dei materiali con l'investimento scelto e PE attesi se il tiro conferma la rarità.
   const baseMo = tierMo(target);
   const costMo = investCostMo(baseMo, investOpt);
@@ -240,9 +265,9 @@ export default function CraftingOfficina() {
       const tier = merged ? "common" : TIER_ORDER[i];
       if (merged && rows.some((r) => r.tier === "common")) { rows[rows.length - 1].range = `${low}–${String(rows[rows.length - 1].range).split(/[–-]/).pop()}`; continue; }
       const tm = tierMeta(tier);
-      const name = tm.pick
-        ? (pickLine ? pickLine[tier][0] : "— scegli l'oggetto qui sopra —")
-        : `un oggetto a caso della tabella ${tm.label} (d12)`;
+      const name = pickLine
+        ? (lineItem(pickLine, tier)?.[0] || `un oggetto a caso della tabella ${tm.label} (d12)`)
+        : tm.pick ? "— scegli l'oggetto qui sopra —" : `un oggetto a caso della tabella ${tm.label} (d12)`;
       const dist = Math.max(0, idxT - TIER_ORDER.indexOf(tier));
       rows.push({
         key: TIER_ORDER[i], tier, top: i === idxT, merged,
@@ -268,11 +293,12 @@ export default function CraftingOfficina() {
     const enh = ENHANCERS.find((x) => x.key === enhKey) || null;
     return craftedItemToFoundryPayload({
       profession: activeProf, tier: activeEntry.tier, name: activeEntry.name, desc: activeEntry.desc,
-      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [], upgraded: !!activeEntry.upgraded,
-      crafter: { uid, name: charData?.name || "", gradeName: prog.grado.name },
+      choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [], upgraded: !!activeEntry.upgraded, resType,
+      crafter: { uid, name: charData?.name || "", gradeName: prog.grado.name, level: prog.level.lv },
       roll: { d20: activeEntry.d20, bonus: activeEntry.bonus, total: activeEntry.total, d12: activeEntry.d12 },
     });
-  }, [activeEntry, activeProf, previewName, enhKey, note, charData?.name, prog.grado.name, uid]);
+  }, [activeEntry, activeProf, previewName, enhKey, note, resType, charData?.name, prog.grado.name, prog.level.lv, uid]);
+  const needsRes = !!activeEntry && !activeEntry.failed && needsResChoice(activeEntry.name, previewName);
   const previewType = preview ? preview.foundryType : "";
   // Si mostrano SOLO i potenziatori che il personaggio possiede davvero: gli altri
   // sparivano dietro un lucchetto e rubavano spazio. Il Master li vede tutti
@@ -309,6 +335,24 @@ export default function CraftingOfficina() {
     finally { setBusy(false); }
   }
 
+  // ── Specializzazione: al livello 10 se ne sceglie UNA, per sempre (la cambia solo il Master). ──
+  async function chooseSpec(key) {
+    if (!prof || busy) return;
+    setBusy(true);
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "characters", uid);
+        const snap = await tx.get(ref);
+        const cur = snap.exists() ? (snap.data().crafting || {}) : {};
+        if (cur.spec) throw new Error("Hai già una specializzazione.");
+        if (progression(cur.xp || 0).level.lv < 10) throw new Error("La specializzazione si sceglie al livello 10.");
+        tx.update(ref, { "crafting.spec": key });
+      });
+      setMsg("");
+    } catch (e) { setMsg("Errore: " + (e.message || e)); }
+    finally { setBusy(false); }
+  }
+
   function toggleComp(key) {
     setComps((cur) => cur.includes(key) ? cur.filter((k) => k !== key) : cur.length >= MAX_COMPONENTS ? cur : [...cur, key]);
   }
@@ -337,7 +381,8 @@ export default function CraftingOfficina() {
       // esce comunque, ma sempre alla rarità più bassa (Scarso, anche per chi
       // di solito la salverebbe col grado Artigiano) e con una MALEDIZIONE che
       // vede solo il Master. Il giocatore vede solo un pezzo venuto male.
-      const fumble = d20 === 1;
+      // Opera Definitiva: nemmeno l'1 naturale fa scendere il tiro.
+      const fumble = d20 === 1 && !operaOn;
       const critRoll = paceOpt.critFail ? rnd(100) : 0;
       const paceFail = !!paceOpt.critFail && critRoll <= paceOpt.critFail;
       const failed = paceFail;
@@ -349,8 +394,10 @@ export default function CraftingOfficina() {
         while (tierMinGrade(tier) > prog.level.grado) tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
         if (tier === "scarso" && prog.scarsoAsComune) tier = "common";
       }
+      // Opera Definitiva (livello 9, una volta per campagna): mai sotto la mirata.
+      if (operaOn && !failed) tier = target;
       // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
-      const picked = pickLine && tierMeta(tier).pick ? pickLine[tier] : null;
+      const picked = pickLine ? lineItem(pickLine, tier) : null;
       const d12 = picked ? 0 : rnd(12);
       const failDesc = `La fretta ha rovinato tutto: i materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`;
       const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
@@ -382,8 +429,9 @@ export default function CraftingOfficina() {
         id: `${startMs}-${d20}${d12}`, at: startMs, readyAt: startMs + (failed ? failMs : outWork.minutes * 60000), minutes: failed ? FAIL_MINUTES : outWork.minutes, work: outWork, plannedMinutes: work.minutes,
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
-        bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus }, compRolls, total, d12, name, desc,
-        pick: pickLine ? pickLine.key : "", pickName: pickLine ? pickLine[target][0] : "",
+        bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus, perks: perkB }, compRolls, total, d12, name, desc,
+        pick: pickLine ? pickLine.key : "", pickName: pickItem ? pickItem[0] : "",
+        perks: { raddoppio: raddoppioOn, firma: firmaOn, opera: operaOn },
         // Con l'1 naturale i materiali di pregio vanno sprecati: niente ✦.
         invest: investOpt.key, upgraded: !failed && !fumble && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
         goldInboxId: "", goldDone: false, goldAuto: false,
@@ -442,6 +490,10 @@ export default function CraftingOfficina() {
           if (!ev.ok && !isMaster) throw new Error(`${c?.name || k}: non risulta tra le tue cose.`);
           entry.componentProof[k] = ev.ok && ev.label ? `${ev.label} · da togliere dalla scheda` : "Master";
         }
+        // Le capacità del Sentiero si spendono qui, sullo stato fresco.
+        if (raddoppioOn) { if (cur.raddoppioWeek === al.weekKey) throw new Error("Il Raddoppio l'hai già usato questa settimana."); patch["crafting.raddoppioWeek"] = al.weekKey; }
+        if (firmaOn) { if (cur.firmaWeek === al.weekKey) throw new Error("La Firma del Maestro l'hai già usata questa settimana."); patch["crafting.firmaWeek"] = al.weekKey; }
+        if (operaOn) { if (cur.operaUsed) throw new Error("L'Opera Definitiva l'hai già usata."); patch["crafting.operaUsed"] = entry.id; }
         tx.update(ref, patch);
         if (goldRef) tx.set(goldRef, {
           status: "pending",
@@ -462,7 +514,8 @@ export default function CraftingOfficina() {
       // Il dado rotola davanti a tutti, ma il numero lo vede solo il Master:
       // per i giocatori si ferma su una runa (2026-09-22).
       await showD20Roll(d20, { label: `Pregiatura · ${prof.name}`, hidden: !isMaster });
-      setComps([]); setPickIdx(-1); setInvest(""); setChoice(""); setEnhKey(""); setNote(""); setRevealedId("");
+      setComps([]); setPickIdx(-1); setInvest(""); setChoice(""); setEnhKey(""); setNote(""); setRevealedId(""); setResType("");
+      setUseRaddoppio(false); setUseFirma(false); setUseOpera(false);
       const tm = tierMeta(tier);
       const compTxt = compRolls.length ? ` (componenti +${compBonus})` : "";
       if (failed) setMsg(`💥 Fallimento critico della fretta (${critRoll}/100 sotto il ${paceOpt.critFail}%): il lavoro sta andando a rotoli. Fra ${FAIL_MINUTES} minuti vedrai i danni.`);
@@ -503,7 +556,7 @@ export default function CraftingOfficina() {
           "crafting.xp": (Number(cur.xp) || 0) + (Number(e.xp) || 0),
         });
       });
-      setRevealedId(pendingEntry.id); setChoice(itemChoices(pendingEntry.name)[0]); setEnhKey(""); setNote("");
+      setRevealedId(pendingEntry.id); setChoice(itemChoices(pendingEntry.name)[0]); setEnhKey(""); setNote(""); setResType("");
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
     finally { setBusy(false); }
   }
@@ -514,14 +567,16 @@ export default function CraftingOfficina() {
     const enh = ENHANCERS.find((x) => x.key === enhKey) || null;
     const ev = enh ? enhancerEvidence(enh, { charData, marketItems, isMaster }) : null;
     if (enh && !ev.ok) { setMsg(`Errore: ${enh.name} non risulta tra i tuoi oggetti (${ev.label}).`); return; }
+    const pickedChoice = itemChoices(entry.name).length > 1 ? choice : "";
+    if (needsResChoice(entry.name, pickedChoice) && !resType) { setMsg("Errore: scegli prima a quale tipo di danno dà resistenza."); return; }
     setBusy(true); setMsg("");
     try {
       const p = PROFESSIONI.find((x) => x.key === entry.profession) || prof;
       const payload = craftedItemToFoundryPayload({
         profession: p, tier: entry.tier, name: entry.name, desc: entry.desc,
-        choice: itemChoices(entry.name).length > 1 ? choice : "",
-        enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [], upgraded: !!entry.upgraded,
-        crafter: { uid, name: charData?.name || currentUser.email, gradeName: prog.grado.name },
+        choice: pickedChoice,
+        enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [], upgraded: !!entry.upgraded, resType,
+        crafter: { uid, name: charData?.name || currentUser.email, gradeName: prog.grado.name, level: prog.level.lv },
         roll: { d20: entry.d20, bonus: entry.bonus, total: entry.total, d12: entry.d12 },
       });
       const inv = investmentByKey(entry.invest);
@@ -535,7 +590,7 @@ export default function CraftingOfficina() {
         origin: "crafting", crafterUid: uid, crafterName: charData?.name || "",
         craft: {
           profession: p.key, tier: entry.tier, targetTier: entry.targetTier, d20: entry.d20, total: entry.total, d12: entry.d12,
-          enhancer: enh?.key || "", enhancerSource: ev?.source || "", enhancerProof: ev?.label || "", note: note.trim(),
+          enhancer: enh?.key || "", enhancerSource: ev?.source || "", enhancerProof: ev?.label || "", note: note.trim(), resType: resType || "",
           cost: fmtMo(entry.costMo || tierMo(entry.targetTier)), investment: inv.key, investmentPct: inv.costPct, upgraded: !!entry.upgraded, mods: conds,
           minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
           components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
@@ -611,7 +666,7 @@ export default function CraftingOfficina() {
                 <span className="off-prof-ic" aria-hidden="true">{prof.icon}</span>
                 <div>
                   <div className="nx-nome off-prof-name">{charData?.name || "Il tuo personaggio"} · {prof.name}</div>
-                  <div className="nx-meta">{prog.grado.icon} {prog.grado.name} · livello {prog.level.lv} · {prog.xp} PE {prog.next ? `(${prog.next.xp - prog.xp} al livello ${prog.next.lv})` : "· massimo"}</div>
+                  <div className="nx-meta">{prog.grado.icon} {prog.grado.name} · livello {prog.level.lv} · {prog.xp} PE {prog.next ? `(${prog.next.xp - prog.xp} al livello ${prog.next.lv})` : "· massimo"}{crafting.spec ? ` · 🎓 ${prof.specializzazioni.find((x) => x.key === crafting.spec)?.name || ""}` : ""}</div>
                 </div>
               </div>
               <div className="off-xp" role="progressbar" aria-valuenow={prog.pct} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${prog.pct}%` }} /></div>
@@ -721,32 +776,38 @@ export default function CraftingOfficina() {
                   );
                 })}
               </div>
-              {targetCost && <p className="nx-nota off-cost">{targetMeta.pick ? "Se il tiro non conferma la rarità esce lo stesso oggetto della rarità sotto; sotto 6 uno Scarso a caso." : "L'oggetto lo decide il d12 alla fine; con un tiro basso esce un oggetto a caso della rarità uscita."}</p>}
+              {targetCost && <p className="nx-nota off-cost">{targetMeta.pick ? "Se il tiro non conferma la rarità esce la stessa ricetta alla rarità sotto; sotto 6 uno Scarso a caso." : "Scegli una ricetta (con un tiro basso esce la sua versione più semplice) oppure il d12 a sorpresa."}</p>}
 
-              <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> {targetMeta.pick ? "L'oggetto" : "L'oggetto lo decide il dado"} <small>{targetMeta.pick ? `uno dei ${catalogo.length} del ${prof.name}` : `tabella ${targetMeta.label}, d12`}</small></h3>
-              {targetMeta.pick ? (
-                <div className="off-items">
-                  {catalogo.map((line, i) => {
-                    const [nm, ds] = line[target] || ["—", ""];
-                    const below = target !== "common" ? line[TIER_ORDER[TIER_ORDER.indexOf(target) - 1]]?.[0] : "";
-                    return (
-                      <button key={line.key} type="button" className={`off-item${pickIdx === i ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(i)}>
-                        <span className="off-item-ic" aria-hidden="true">{line.icon}</span>
-                        <span className="off-item-main"><b>{nm}</b><small>{ds}</small>{pickIdx === i && below && <em>con un tiro basso: {below}</em>}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="off-random" style={{ "--q": targetMeta.color }}>
-                  <span className="off-random-die" aria-hidden="true">d12</span>
-                  <span className="off-random-main">
-                    <b>{targetMeta.icon} {targetMeta.label}: {prof.creazioni[target]?.length || 12} possibili creazioni</b>
-                    <small>Escono a caso alla fine del lavoro. Le vedi tutte nel <Link to="/crafting#cr-professioni">manuale</Link>, alla scheda del {prof.name}.</small>
-                    {prog.level.lv >= 4 && prof.creazioni[target]?.length === 12 && <em>👁 Occhio esperto · con 1: {prof.creazioni[target][0][0]} · con 12: {prof.creazioni[target][11][0]}</em>}
-                  </span>
-                </div>
-              )}
+              <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> L'oggetto <small>{targetMeta.pick ? `le ricette ${targetMeta.label} del ${prof.name}` : "una ricetta o il d12 a sorpresa"}</small></h3>
+              <div className="off-items">
+                {!targetMeta.pick && (
+                  <button type="button" className={`off-item off-item--d12${!pickLine ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(-1)}>
+                    <span className="off-item-ic" aria-hidden="true">🎲</span>
+                    <span className="off-item-main">
+                      <b>A sorpresa · d12</b>
+                      <small>{prof.creazioni[target]?.length || 12} possibili creazioni {targetMeta.label}: esce a caso alla fine del lavoro.</small>
+                      {prog.level.lv >= 4 && prof.creazioni[target]?.length === 12 && <em>👁 Occhio esperto · con 1: {prof.creazioni[target][0][0]} · con 12: {prof.creazioni[target][11][0]}</em>}
+                    </span>
+                  </button>
+                )}
+                {recipes.map(({ line, i, locked }) => {
+                  const [nm, ds] = line[target] || ["—", ""];
+                  const below = target !== "common" ? lineItem(line, TIER_ORDER[TIER_ORDER.indexOf(target) - 1])?.[0] : "";
+                  const g = gradeOf(line.grado);
+                  return (
+                    <button key={line.key} type="button" disabled={locked} className={`off-item${pickIdx === i ? " on" : ""}${locked ? " is-locked" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(i)} title={locked ? `Ricetta del grado ${g.name}` : ds}>
+                      <span className="off-item-ic" aria-hidden="true">{locked ? "🔒" : line.icon}</span>
+                      <span className="off-item-main">
+                        <b>{nm.split(" / ").join(" · ")}</b>
+                        <small>{locked ? `Si apre da ${g.icon} ${g.name}, al livello ${gradeLevel(line.grado)} della professione.` : ds}</small>
+                        {(line.grado || 1) > 1 && !locked && <i className="off-item-grade">{g.icon} ricetta da {g.name}</i>}
+                        {pickIdx === i && below && <em>con un tiro basso: {below.split(" / ").join(" · ")}</em>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!targetMeta.pick && <p className="nx-nota off-cost">Le creazioni a sorpresa le vedi tutte nel <Link to="/crafting#cr-professioni">manuale</Link>, alla scheda del {prof.name}.</p>}
 
               <h3 className="off-h"><span className="orb" aria-hidden="true">✦</span> Cosa può uscire <small>il tiro decide oggetto, tempo e PE</small></h3>
               <div className="off-bands">
@@ -818,10 +879,10 @@ export default function CraftingOfficina() {
                 <div className="off-tile">
                   <span className="off-tile-h">💰 Quanto spendi <small>base {fmtMo(baseMo)}</small></span>
                   <div className="off-seg off-seg--col" role="radiogroup" aria-label="Investimento nei materiali">
-                    {INVESTMENTS.map((iv) => (
+                    {INVESTMENTS.map(docili).map((iv) => (
                       <button key={iv.key || "base"} type="button" role="radio" aria-checked={invest === iv.key} className={`off-seg-btn${invest === iv.key ? " on" : ""}`} onClick={() => setInvest(iv.key)} title={iv.desc}>
                         <span aria-hidden="true">{iv.icon}</span> {iv.label}
-                        <i className="off-seg-n">{iv.costPct ? `${fmtMo(investCostMo(baseMo, iv))} · +${iv.costPct}%` : fmtMo(baseMo)}</i>
+                        <i className="off-seg-n">{iv.costPct ? `${fmtMo(investCostMo(baseMo, iv))} · +${iv.costPct}%${prog.docili && iv.key === "pregio" ? " (materiali docili)" : ""}` : fmtMo(baseMo)}</i>
                       </button>
                     ))}
                   </div>
@@ -840,6 +901,31 @@ export default function CraftingOfficina() {
                   </div>
                   <span className="off-tile-fx">{paceOpt.mult === 1 ? "tempo pieno, tiro normale" : <><em>×{paceOpt.mult === 0.5 ? "½" : paceOpt.mult} tempo</em> · {sign(paceOpt.roll)} al tiro{paceOpt.critFail ? <> · <em>{paceOpt.critFail}% fallimento critico</em>: perdi i materiali</> : null}</>}</span>
                 </div>
+
+                {/* capacità del Sentiero: si spendono al tiro */}
+                {(prog.raddoppio || prog.firma || prog.opera) && (
+                  <div className="off-tile">
+                    <span className="off-tile-h">📜 Capacità del Sentiero</span>
+                    <div className="off-seg off-seg--col">
+                      {prog.raddoppio && (
+                        <button type="button" role="switch" aria-checked={raddoppioOn} className={`off-seg-btn${raddoppioOn ? " on" : ""}`} disabled={!raddoppioFree || !toolsOn} onClick={() => setUseRaddoppio((v) => !v)}>
+                          <span aria-hidden="true">⚒</span> Raddoppio <i className="off-seg-n">{!raddoppioFree ? "già usato questa settimana" : !toolsOn ? "servono gli strumenti" : `+${profBonus(charData)} al tiro · 1 a settimana`}</i>
+                        </button>
+                      )}
+                      {prog.firma && (
+                        <button type="button" role="switch" aria-checked={firmaOn} className={`off-seg-btn${firmaOn ? " on" : ""}`} disabled={!firmaFree} onClick={() => setUseFirma((v) => !v)}>
+                          <span aria-hidden="true">✒</span> Firma del Maestro <i className="off-seg-n">{firmaFree ? `vantaggio e +${prog.level.lv} al tiro · 1 a settimana` : "già usata questa settimana"}</i>
+                        </button>
+                      )}
+                      {prog.opera && (
+                        <button type="button" role="switch" aria-checked={operaOn} className={`off-seg-btn${operaOn ? " on" : ""}`} disabled={!operaFree} onClick={() => setUseOpera((v) => !v)}>
+                          <span aria-hidden="true">👑</span> Opera Definitiva <i className="off-seg-n">{operaFree ? `esce sicuro ${targetMeta.label} · 1 per campagna` : "già usata"}</i>
+                        </button>
+                      )}
+                    </div>
+                    {operaOn && <span className="off-tile-fx"><em>Opera Definitiva</em>: il tiro non scende sotto {targetMeta.label}, nemmeno con un 1 naturale. Non torna più.</span>}
+                  </div>
+                )}
               </div>
 
               {/* riepilogo: tempo + tiro + spesa */}
@@ -862,6 +948,7 @@ export default function CraftingOfficina() {
                     <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
                     {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>spesa/ritmo</small></span>}
                     {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
+                    {perkB !== 0 && <span className="off-piece"><b>{sign(perkB)}</b><small>Sentiero</small></span>}
                     <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
                   </div>
                   <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(Math.round(costMo * NAT20_COST_MULT))}</i></span>
@@ -881,7 +968,7 @@ export default function CraftingOfficina() {
                 </button>
                 {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
                 {allow.can && !purse.ok && <span className="nx-nota off-why is-short">I materiali si pagano prima di iniziare: servono {fmtMo(purse.cost)} e in borsa hai {fmtMo(purse.have)}. Vendi qualcosa, fatti pagare una taglia, o punta a una rarità più bassa.</span>}
-                {allow.can && pickLine && <span className="nx-nota off-why">{targetMeta.icon} {pickLine[target][0]} · {fmtMo(costMo)}</span>}
+                {allow.can && pickItem && <span className="nx-nota off-why">{targetMeta.icon} {pickItem[0].split(" / ").join(" · ")} · {fmtMo(costMo)}</span>}
               </div>
             </div>
           </div>
@@ -978,6 +1065,17 @@ export default function CraftingOfficina() {
             </div>
           )}
 
+          {needsRes && (
+            <div className="off-field">
+              <span className="off-label">Resistenza a… <small>(scegli il tipo di danno: finisce sulla scheda Foundry)</small></span>
+              <div className="off-choices">
+                {DAMAGE_TYPES_IT.map(([k, l]) => (
+                  <button key={k} type="button" className={`nx-pillola${resType === k ? " on" : ""}`} onClick={() => setResType(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="off-field">
             <span className="off-label">Potenziatore <small>(facoltativo · qui ci sono solo i tuoi)</small></span>
             {enhancersFor.length > 0 && <div className="off-choices">
@@ -1014,11 +1112,26 @@ export default function CraftingOfficina() {
               <dt>Quantità</dt><dd>{preview.quantity}</dd>
               {preview.foundryType === "weapon" && (<>
                 <dt>Attacco</dt><dd>{preview.actionType === "rwak" ? "Arma a distanza" : "Arma da mischia"}{preview.attackBonus ? ` · +${preview.attackBonus} al colpire` : ""}</dd>
-                <dt>Danno</dt><dd>{preview.damageFormula} {preview.damageType}{preview.versatileFormula ? ` (versatile ${preview.versatileFormula})` : ""}{preview.damage2Formula ? ` + ${preview.damage2Formula} ${preview.damage2Type}` : ""}</dd>
+                <dt>Danno</dt><dd>{preview.damageFormula} {preview.damageType}{preview.versatileFormula ? ` (versatile ${preview.versatileFormula})` : ""}{preview.damage2Formula ? ` + ${preview.damage2Formula} ${preview.damage2Type}` : ""}{(preview.extraDamage || []).map((x) => ` + ${x.formula} ${x.type}`).join("")}</dd>
                 <dt>Proprietà</dt><dd>{preview.properties.length ? preview.properties.join(", ") : "—"}</dd>
               </>)}
               {preview.foundryType === "equipment" && preview.armorType && (<>
                 <dt>Armatura</dt><dd>{preview.armorType} · CA {preview.armorValue}</dd>
+              </>)}
+              {preview.foundryType !== "weapon" && preview.actionType === "heal" && (<>
+                <dt>Cura</dt><dd>{preview.damageFormula} {preview.damageType === "temphp" ? "punti ferita temporanei" : "punti ferita"}</dd>
+              </>)}
+              {preview.foundryType !== "weapon" && preview.actionType !== "heal" && preview.damageFormula && (<>
+                <dt>Danno</dt><dd>{preview.damageFormula} {preview.damageType}{(preview.extraDamage || []).map((x) => ` + ${x.formula} ${x.type}`).join("")}</dd>
+              </>)}
+              {preview.saveDC > 0 && (<>
+                <dt>Tiro salvezza</dt><dd>{String(preview.saveAbility).toUpperCase()} CD {preview.saveDC}</dd>
+              </>)}
+              {preview.uses && (<>
+                <dt>Usi</dt><dd>{preview.uses.max}{preview.uses.per === "day" ? " al giorno" : preview.uses.per === "charges" ? (preview.uses.max === 1 ? " (si consuma)" : " cariche") : ""}{preview.uses.recovery ? ` · recupera ${preview.uses.recovery}` : ""}</dd>
+              </>)}
+              {(preview.effects || []).length > 0 && (<>
+                <dt>Effetti</dt><dd>{preview.effects[0].changes.map((c) => `${c.key.replace("system.", "")} ${c.value}`).join(" · ")}{preview.effects[0].transfer ? " (sempre attivi)" : " (quando lo usi)"}</dd>
               </>)}
               <dt>Destinazione</dt><dd>Inventario di {preview.targetName || "te"}</dd>
               <dt>Descrizione</dt><dd className="off-form-desc">{preview.description}</dd>
@@ -1026,7 +1139,7 @@ export default function CraftingOfficina() {
           </details>
 
           <div className="off-go off-go--bar">
-            <button type="button" className="cta off-cta" disabled={busy} onClick={() => sendToFoundry(activeEntry)}>{busy ? "Invio…" : "📦 Manda al Master per Foundry"}</button>
+            <button type="button" className="cta off-cta" disabled={busy || (needsRes && !resType)} onClick={() => sendToFoundry(activeEntry)}>{busy ? "Invio…" : needsRes && !resType ? "Scegli prima la resistenza" : "📦 Manda al Master per Foundry"}</button>
             <button type="button" className="off-ghost" disabled={busy} onClick={() => skipEntry(activeEntry)}>Non inviare</button>
           </div>
         </div>
@@ -1081,6 +1194,30 @@ export default function CraftingOfficina() {
       {/* ══ PIEGA: I PROGRESSI ══ */}
       {curTab === "progressi" && (
         <div className="nx-pannello off-box off-xp-table">
+          {prof && !isMaster && (
+            <div className="off-traits">
+              <span className="off-label">{prof.icon} Cosa sai fare da {prof.name} <small>(in gioco)</small></span>
+              <ul className="off-traits-list">
+                <li className="is-on"><b>Livello 1</b><span>{prof.bonusIniziale}</span></li>
+                <li className={prog.level.lv >= 5 ? "is-on" : ""}><b>Livello 5</b><span>{prof.potenziamento}</span></li>
+                <li className={crafting.spec ? "is-on" : ""}>
+                  <b>Livello 10 · specializzazione</b>
+                  {crafting.spec ? (
+                    <span>🎓 <strong>{prof.specializzazioni.find((x) => x.key === crafting.spec)?.name}</strong>: {prof.specializzazioni.find((x) => x.key === crafting.spec)?.desc}</span>
+                  ) : (
+                    <span className="off-spec">
+                      {prof.specializzazioni.map((sp) => (
+                        <button key={sp.key} type="button" className="off-spec-btn" disabled={busy || prog.level.lv < 10} onClick={() => chooseSpec(sp.key)}>
+                          <b>{sp.name}</b><small>{sp.desc}</small>
+                        </button>
+                      ))}
+                      <small className="off-spec-note">{prog.level.lv < 10 ? "Al livello 10 ne scegli una sola, per sempre." : "Scegline una: è per sempre (la cambia solo il Master)."}</small>
+                    </span>
+                  )}
+                </li>
+              </ul>
+            </div>
+          )}
           <span className="off-label">📈 Esperienza delle professioni <small>(PE per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${XP_PER_TIER[t]}`).join(" · ")}; 20 naturale = doppi; +5% o +10% se spendi di più nei materiali)</small></span>
           <ol className="off-levels">
             {XP_LEVELS.map((l) => (

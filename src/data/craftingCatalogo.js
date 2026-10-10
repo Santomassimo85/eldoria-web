@@ -441,3 +441,601 @@ export const LEGGENDARI = {
     T("Occhio Arcano Permanente", "Sfera di cristallo: un Occhio Arcano sempre attivo che controlli con un'azione, ovunque entro 1 km."),
   ],
 };
+
+/* ============================================================
+   RICETTE DI GRADO (2026-10-10)
+   ------------------------------------------------------------
+   Le 6 linee qui sopra sono dell'Apprendista. Ogni grado del
+   Sentiero apre 2 linee nuove: Discepolo e Artigiano fino al Raro,
+   Maestro fino al Molto raro, Leggenda fino al Leggendario — così
+   anche Molto raro e Leggendario diventano oggetti che si scelgono.
+   `min` = la rarità più bassa a cui la linea si sceglie; sotto,
+   con un tiro basso, esce la versione più semplice della stessa
+   linea (sempre definita da Comune in su).
+   Il terzo elemento della tupla è la MECCANICA per Foundry
+   (vedi `itemMech` in fondo e craftingFoundry.js):
+     base   parola-chiave per riconoscere arma/armatura se il nome non basta
+     plus   +N al colpire e ai danni (armi) o alla CA (armature)
+     extra  [dado, tipo] danno in più sull'arma
+     heal / temp   formula di cura / punti ferita temporanei
+     dmg    [dado, tipo] danno del consumabile; save [car, CD]
+     uses   [quanti, "day"|"charges"|"lr"|"sr", recupero]
+     fx     effetti attivi: "ac+1", "save+1", "res:fire", "imm:poison",
+            "str=21", "con=19", "int=19", "spell+1", "dc+1", "swim=40", "fly=30", "climb=30"
+     res: "choice"  resistenza a scelta al ritiro
+     type / ctype   tipo dnd5e e sottotipo del consumabile
+   ============================================================ */
+
+const M = (name, desc, mech) => (mech ? [name, desc, mech] : [name, desc]);
+const G = (grado, min, key, icon, t) => ({ key, icon, grado, min, ...t });
+
+export const RICETTE_GRADO = {
+  // ── FABBRO ─────────────────────────────────────────────────
+  fabbro: [
+    G(2, "uncommon", "rovente", "🔥", {
+      common: M("Spada Lunga", "Arma da guerra: 1d8 taglienti, versatile (1d10)."),
+      uncommon: M("Spada Lunga Rovente", "1d8 taglienti + 1d4 fuoco. Conta come magica.", { base: "spada lunga", extra: ["1d4", "fire"] }),
+      rare: M("Lingua di Fuoco", "Spada lunga: 1d8 taglienti + 2d6 fuoco; a comando la lama arde e fa luce in 12 m.", { base: "spada lunga", extra: ["2d6", "fire"] }),
+    }),
+    G(2, "common", "mezza", "🛡", {
+      common: M("Mezza Armatura", "Armatura media: CA 15 + Destrezza (max +2), svantaggio a Furtività."),
+      uncommon: M("Mezza Armatura +1", "CA 16 + Destrezza (max +2). Conta come magica."),
+      rare: M("Mezza Armatura +2", "CA 17 + Destrezza (max +2). Conta come magica."),
+    }),
+    G(3, "uncommon", "gelo", "❄", {
+      common: M("Ascia da Battaglia", "Arma da guerra: 1d8 taglienti, versatile (1d10)."),
+      uncommon: M("Ascia da Battaglia del Gelo", "1d8 taglienti + 1d4 freddo. Conta come magica.", { base: "ascia da battaglia", extra: ["1d4", "cold"] }),
+      rare: M("Ascia Brinata", "Ascia da battaglia: 1d8 taglienti + 2d6 freddo; chi colpisci perde 3 m di velocità fino al tuo prossimo turno.", { base: "ascia da battaglia", extra: ["2d6", "cold"] }),
+    }),
+    G(3, "rare", "resistenza", "🔰", {
+      common: M("Cotta di Maglia", "Armatura pesante: CA 16, richiede Forza 13, svantaggio a Furtività."),
+      uncommon: M("Cotta di Maglia +1", "CA 17. Conta come magica."),
+      rare: M("Cotta di Maglia della Resistenza", "CA 16 e resistenza a un tipo di danno, scelto al ritiro.", { base: "cotta di maglia", res: "choice" }),
+    }),
+    G(4, "rare", "superiore", "⚔", {
+      common: M("Spada Lunga / Ascia da Battaglia / Martello da Guerra", "Arma da guerra a scelta: 1d8, versatile (1d10)."),
+      uncommon: M("Spada Lunga +1 / Ascia da Battaglia +1 / Martello da Guerra +1", "+1 al colpire e ai danni. Conta come magica."),
+      rare: M("Spada Lunga +2 / Ascia da Battaglia +2 / Martello da Guerra +2", "+2 al colpire e ai danni. Conta come magica."),
+      veryRare: M("Spada Lunga +3 / Ascia da Battaglia +3 / Martello da Guerra +3", "+3 al colpire e ai danni. Conta come magica."),
+    }),
+    G(4, "rare", "bastione", "🏰", {
+      common: M("Armatura Completa", "Armatura pesante: CA 18, richiede Forza 15, svantaggio a Furtività."),
+      uncommon: M("Armatura Completa +1", "CA 19. Conta come magica."),
+      rare: M("Armatura Completa +2", "CA 20. Conta come magica."),
+      veryRare: M("Armatura Completa +3", "CA 21. Conta come magica."),
+    }),
+    G(5, "rare", "vorpal", "🗡", {
+      common: M("Spada Lunga", "Arma da guerra: 1d8 taglienti, versatile (1d10)."),
+      uncommon: M("Spada Lunga +1", "+1 al colpire e ai danni. Conta come magica."),
+      rare: M("Spada Lunga +2", "+2 al colpire e ai danni. Conta come magica."),
+      veryRare: M("Spada Lunga +3", "+3 al colpire e ai danni. Conta come magica."),
+      legendary: M("Lama Vorpal", "Spada lunga +3. Con un 20 naturale recide la testa di una creatura che ne ha una (le creature leggendarie subiscono invece 6d8 taglienti in più).", { base: "spada lunga", plus: 3 }),
+    }),
+    G(5, "rare", "fulmini", "⚡", {
+      common: M("Martello da Guerra", "Arma da guerra: 1d8 contundenti, versatile (1d10)."),
+      uncommon: M("Martello da Guerra +1", "+1 al colpire e ai danni. Conta come magico."),
+      rare: M("Martello da Guerra +2", "+2 al colpire e ai danni. Conta come magico."),
+      veryRare: M("Martello del Tuono", "Martello da guerra +2: 1d8 contundenti + 2d6 tuono.", { base: "martello da guerra", plus: 2, extra: ["2d6", "thunder"] }),
+      legendary: M("Martello dei Fulmini", "Martello da guerra +3: 1d8 contundenti + 2d6 fulmine. 1 volta al giorno, lanciato, scatena un fulmine: 8d6 fulmine in una linea di 18 m, TS Destrezza CD 17 per dimezzare.", { base: "martello da guerra", plus: 3, extra: ["2d6", "lightning"], uses: [1, "day"] }),
+    }),
+  ],
+
+  // ── ALCHIMISTA ─────────────────────────────────────────────
+  alchimista: [
+    G(2, "uncommon", "acido", "🧪", {
+      common: M("Acido", "Fiala da lancio (6 m): 2d6 danni da acido."),
+      uncommon: M("Acido Concentrato", "Fiala da lancio (6 m), schizza in 1,5 m: 4d6 acido, TS Destrezza CD 13 per dimezzare.", { ctype: "trinket", dmg: ["4d6", "acid"], save: ["dex", 13] }),
+      rare: M("Fiala di Dissoluzione", "Esplode in una sfera di 3 m: 6d6 acido, TS Destrezza CD 15 per dimezzare; corrode le armature non magiche (−1 CA finché non si riparano).", { ctype: "trinket", dmg: ["6d6", "acid"], save: ["dex", 15] }),
+    }),
+    G(2, "uncommon", "olio", "🫗", {
+      common: M("Olio dell'Arma", "Spalmato su una lama: non arrugginisce e non perde il filo per una settimana."),
+      uncommon: M("Olio Infuocato", "Spalmato su un'arma (1 minuto di effetto): +1d4 danni da fuoco a ogni colpo.", { ctype: "potion" }),
+      rare: M("Olio dell'Affilatura", "Spalmato su un'arma (1 ora di effetto): +1 al colpire e ai danni, e conta come magica.", { ctype: "potion" }),
+    }),
+    G(3, "uncommon", "mente", "🧠", {
+      common: M("Infuso Lucido", "Per 1 ora non puoi addormentarti né essere stordito dalla stanchezza."),
+      uncommon: M("Pozione della Lettura del Pensiero", "Bevuta: come Individuazione dei Pensieri (CD 13) per 1 minuto.", { ctype: "potion", save: ["wis", 13] }),
+      rare: M("Pozione della Chiaroveggenza", "Bevuta: come l'incantesimo Chiaroveggenza per 10 minuti, su un luogo che conosci.", { ctype: "potion" }),
+    }),
+    G(3, "uncommon", "gas", "💨", {
+      common: M("Fiala Fumogena", "Lanciata (6 m): nube di 3 m che oscura pesantemente per 1 minuto."),
+      uncommon: M("Fiala Soporifera", "Nube di 3 m: TS Costituzione CD 13 o addormentato per 1 minuto (si sveglia se subisce danni).", { ctype: "trinket", save: ["con", 13] }),
+      rare: M("Fiala di Gas Tossico", "Nube di 6 m: 4d8 veleno, TS Costituzione CD 15 per dimezzare; chi fallisce è avvelenato per 1 minuto.", { ctype: "trinket", dmg: ["4d8", "poison"], save: ["con", 15] }),
+    }),
+    G(4, "rare", "viverna", "🐲", {
+      common: M("Veleno Base", "Da applicare su una lama: +1d4 danni da veleno al primo colpo entro 1 minuto."),
+      uncommon: M("Veleno del Serpente", "Al primo colpo: TS Costituzione CD 11 o 3d6 danni da veleno (metà se riesce)."),
+      rare: M("Veleno Paralizzante", "Al primo colpo: TS Costituzione CD 13 o paralizzato per 1 minuto (ripete il TS a fine turno)."),
+      veryRare: M("Veleno di Viverna", "Al primo colpo: TS Costituzione CD 15 o 7d6 danni da veleno (metà se riesce).", { ctype: "poison", dmg: ["7d6", "poison"], save: ["con", 15] }),
+    }),
+    G(4, "rare", "giganti", "💪", {
+      common: M("Tonico del Facchino", "Per 8 ore la tua capacità di carico raddoppia."),
+      uncommon: M("Pozione della Forza di Gigante delle Colline", "La tua Forza diventa 21 per 1 ora."),
+      rare: M("Pozione della Forza di Gigante del Fuoco", "La tua Forza diventa 25 per 1 ora."),
+      veryRare: M("Pozione della Forza di Gigante delle Nuvole", "La tua Forza diventa 27 per 1 ora.", { ctype: "potion", fx: ["str=27"] }),
+    }),
+    G(5, "rare", "ombra", "🌑", {
+      common: M("Fiala Fumogena", "Lanciata (6 m): nube di 3 m che oscura pesantemente per 1 minuto."),
+      uncommon: M("Pozione dell'Ombra", "Per 1 ora le ombre ti coprono: vantaggio alle prove di Furtività in penombra.", { ctype: "potion" }),
+      rare: M("Pozione della Velocità", "Come l'incantesimo Velocità per 1 minuto (senza concentrazione).", { ctype: "potion" }),
+      veryRare: M("Pozione di Invisibilità", "Sei invisibile per 1 ora; l'effetto finisce se attacchi o lanci un incantesimo.", { ctype: "potion" }),
+      legendary: M("Elisir dell'Eclisse", "Per 1 ora sei invisibile anche mentre attacchi (come Invisibilità Superiore, senza concentrazione) e puoi usare Passo Velato 3 volte.", { ctype: "potion" }),
+    }),
+    G(5, "rare", "vita", "❤", {
+      common: M("Pozione di Guarigione", "Bevuta come azione: recupera 2d4+2 punti ferita."),
+      uncommon: M("Pozione di Guarigione Maggiore", "Recupera 4d4+4 punti ferita."),
+      rare: M("Pozione di Guarigione Superiore", "Recupera 8d4+8 punti ferita."),
+      veryRare: M("Pozione di Guarigione Suprema", "Recupera 10d4+20 punti ferita.", { ctype: "potion", heal: "10d4+20" }),
+      legendary: M("Elisir della Vita", "Versato in bocca a chi è morto da meno di 10 giorni lo riporta in vita con tutti i punti ferita, come Rianimare Morti. Su un vivo: recupera 20d4+40 punti ferita.", { ctype: "potion", heal: "20d4+40" }),
+    }),
+  ],
+
+  // ── INTAGLIATORE / FALEGNAME ───────────────────────────────
+  intagliatore: [
+    G(2, "common", "balestra", "🎯", {
+      common: M("Balestra Leggera", "Arma semplice: 1d8 perforanti, gittata 24/96, ricarica, due mani.", { base: "balestra" }),
+      uncommon: M("Balestra Leggera +1", "+1 al colpire e ai danni. Conta come magica.", { base: "balestra" }),
+      rare: M("Balestra Leggera +2", "+2 al colpire e ai danni. Conta come magica.", { base: "balestra" }),
+    }),
+    G(2, "common", "scudo", "🛡", {
+      common: M("Scudo di Quercia", "Scudo di legno: +2 alla CA.", { base: "scudo" }),
+      uncommon: M("Scudo di Quercia +1", "+3 alla CA in tutto. Conta come magico.", { base: "scudo" }),
+      rare: M("Scudo di Quercia +2", "+4 alla CA in tutto. Conta come magico.", { base: "scudo" }),
+    }),
+    G(3, "uncommon", "adepto", "🪄", {
+      common: M("Bastone Ferrato", "Arma semplice: 1d6 contundenti, versatile (1d8)."),
+      uncommon: M("Bastone dell'Adepto", "Bastone e focus arcano: +1 ai tiri per colpire con gli incantesimi.", { base: "bastone", fx: ["spell+1"] }),
+      rare: M("Bastone dell'Adepto Superiore", "Bastone e focus arcano: +2 ai tiri per colpire con gli incantesimi.", { base: "bastone", fx: ["spell+2"] }),
+    }),
+    G(3, "uncommon", "bacchette", "✨", {
+      common: M("Bacchetta Inerte", "Focus arcano ben bilanciato: +1 alle prove di Arcano per identificare incantesimi."),
+      uncommon: M("Bacchetta della Ragnatela", "7 cariche: 1 carica = Ragnatela (CD 15). Recupera 1d6+1 cariche all'alba.", { ctype: "wand", save: ["dex", 15], uses: [7, "day", "1d6+1"] }),
+      rare: M("Bacchetta dei Fulmini", "7 cariche: 1 carica = Fulmine (8d6 fulmine, linea di 30 m, TS Destrezza CD 15 per dimezzare). Recupera 1d6+1 cariche all'alba.", { ctype: "wand", dmg: ["8d6", "lightning"], save: ["dex", 15], uses: [7, "day", "1d6+1"] }),
+    }),
+    G(4, "rare", "arco", "🏹", {
+      common: M("Arco Lungo", "Arma da guerra: 1d8 perforanti, gittata 45/180, pesante, due mani."),
+      uncommon: M("Arco Lungo +1", "+1 al colpire e ai danni. Conta come magico."),
+      rare: M("Arco Lungo +2", "+2 al colpire e ai danni. Conta come magico."),
+      veryRare: M("Arco Lungo +3", "+3 al colpire e ai danni. Conta come magico."),
+    }),
+    G(4, "rare", "metamorfosi", "🦎", {
+      common: M("Bacchetta Inerte", "Focus arcano ben bilanciato: +1 alle prove di Arcano per identificare incantesimi."),
+      uncommon: M("Bacchetta dei Dardi Incantati", "7 cariche: 1 carica = Dardo Incantato di 1°, fino a 3 cariche per alzare il livello. Recupera 1d6+1 all'alba."),
+      rare: M("Bacchetta delle Palle di Fuoco", "7 cariche: 1 carica = Palla di Fuoco di 3° (CD 15), fino a 3 cariche per alzare il livello. Recupera 1d6+1 all'alba."),
+      veryRare: M("Bacchetta della Metamorfosi", "7 cariche: 1 carica = Metamorfosi (CD 15). Recupera 1d6+1 cariche all'alba.", { ctype: "wand", save: ["wis", 15], uses: [7, "day", "1d6+1"] }),
+    }),
+    G(5, "rare", "giuramento", "🌅", {
+      common: M("Arco Lungo", "Arma da guerra: 1d8 perforanti, gittata 45/180, pesante, due mani."),
+      uncommon: M("Arco Lungo +1", "+1 al colpire e ai danni. Conta come magico."),
+      rare: M("Arco Lungo +2", "+2 al colpire e ai danni. Conta come magico."),
+      veryRare: M("Arco Lungo +3", "+3 al colpire e ai danni. Conta come magico."),
+      legendary: M("Arco del Giuramento", "Arco lungo +3. Dici \"morte rapida al mio nemico\": per 7 giorni quel bersaglio subisce 3d6 perforanti in più dalle tue frecce e non ha copertura contro di esse (1 volta all'alba).", { base: "arco lungo", plus: 3, uses: [1, "day"] }),
+    }),
+    G(5, "rare", "potere", "🔱", {
+      common: M("Bastone Ferrato", "Arma semplice: 1d6 contundenti, versatile (1d8)."),
+      uncommon: M("Bastone +1", "+1 al colpire e ai danni; focus arcano. Conta come magico."),
+      rare: M("Bastone +2", "+2 al colpire e ai danni; focus arcano. Conta come magico."),
+      veryRare: M("Bastone del Fuoco", "10 cariche: Mani Brucianti (1), Palla di Fuoco (3), Muro di Fuoco (4), CD 15. Recupera 1d6+4 cariche all'alba.", { base: "bastone", uses: [10, "day", "1d6+4"] }),
+      legendary: M("Bastone del Potere", "Bastone +2: +2 alla CA, ai tiri salvezza e ai tiri per colpire con gli incantesimi. 20 cariche per Dardo Incantato, Palla di Fuoco, Fulmine, Cono di Freddo e altri (CD 17). Recupera 2d8+4 cariche all'alba.", { base: "bastone", plus: 2, fx: ["ac+2", "save+2", "spell+2"], uses: [20, "day", "2d8+4"] }),
+    }),
+  ],
+
+  // ── SARTO / TESSITORE ──────────────────────────────────────
+  sarto: [
+    G(2, "common", "borchiato", "🥋", {
+      common: M("Armatura di Cuoio Borchiato", "Armatura leggera: CA 12 + Destrezza."),
+      uncommon: M("Armatura di Cuoio Borchiato +1", "CA 13 + Destrezza. Conta come magica."),
+      rare: M("Armatura di Cuoio Borchiato +2", "CA 14 + Destrezza. Conta come magica."),
+    }),
+    G(2, "uncommon", "elfico", "🍃", {
+      common: M("Mantello da Viaggio", "Impermeabile e caldo: non soffri il freddo lieve né la pioggia."),
+      uncommon: M("Mantello Elfico", "Con il cappuccio alzato le prove di Percezione per vederti hanno svantaggio, e tu hai vantaggio a Furtività per nasconderti."),
+      rare: M("Mantello del Pipistrello", "Vantaggio a Furtività; al buio puoi volare a 12 m (tenendo i lembi) e 1 volta al giorno trasformarti in pipistrello.", { uses: [1, "day"] }),
+    }),
+    G(3, "uncommon", "resistenza", "🔰", {
+      common: M("Mantello con Cappuccio", "Caldo e discreto: vantaggio a non farsi riconoscere a distanza."),
+      uncommon: M("Mantello del Viandante", "Chi lo indossa non soffre il caldo né il freddo estremi (fino a −45 °C e +50 °C)."),
+      rare: M("Mantello della Resistenza", "Resistenza a un tipo di danno, scelto al ritiro, mentre lo indossi.", { type: "equipment", res: "choice" }),
+    }),
+    G(3, "uncommon", "saltatore", "👢", {
+      common: M("Stivali da Viaggio", "Comodi e resistenti: ignori il terreno difficile della strada nelle marce."),
+      uncommon: M("Stivali del Saltatore", "Le tue distanze di salto triplicano."),
+      rare: M("Stivali Alati", "Velocità di volo pari a quella di camminata, fino a 4 ore al giorno (anche spezzate).", { fx: ["fly=30"], uses: [4, "day"] }),
+    }),
+    G(4, "rare", "borchiato3", "🥋", {
+      common: M("Armatura di Cuoio Borchiato", "Armatura leggera: CA 12 + Destrezza."),
+      uncommon: M("Armatura di Cuoio Borchiato +1", "CA 13 + Destrezza. Conta come magica."),
+      rare: M("Armatura di Cuoio Borchiato +2", "CA 14 + Destrezza. Conta come magica."),
+      veryRare: M("Armatura di Cuoio Borchiato +3", "CA 15 + Destrezza. Conta come magica."),
+    }),
+    G(4, "rare", "aracnide", "🕷", {
+      common: M("Mantello con Cappuccio", "Caldo e discreto: vantaggio a non farsi riconoscere a distanza."),
+      uncommon: M("Mantello di Protezione", "+1 alla CA e a tutti i tiri salvezza mentre lo indossi."),
+      rare: M("Mantello del Dislocamento", "Sembri stare altrove: gli attacchi contro di te hanno svantaggio (si spegne fino al tuo turno se vieni colpito)."),
+      veryRare: M("Mantello dell'Aracnide", "Resistenza al veleno, scali come un ragno (anche sui soffitti), non resti invischiato nelle ragnatele e 1 volta al giorno lanci Ragnatela (CD 13).", { type: "equipment", fx: ["res:poison", "climb=30"], uses: [1, "day"] }),
+    }),
+    G(5, "rare", "arcimago", "🌌", {
+      common: M("Veste Arcana", "Tunica da incantatore con tasche per i componenti: +1 alle prove di Arcano."),
+      uncommon: M("Veste Utile", "Toppe cucite che diventano oggetti: 4d4 toppe fra corda, torce, pozione di guarigione, scala, cavallo da soma…"),
+      rare: M("Veste degli Occhi", "Vedi in ogni direzione, scurovisione 36 m, vedi gli invisibili e l'Etereo entro 36 m. Svantaggio ai TS contro la Luce."),
+      veryRare: M("Veste delle Stelle", "+1 a tutti i tiri salvezza. 6 stelle: ognuna lancia Dardo Incantato di 5° livello; recupera 1d6 stelle a mezzanotte.", { type: "equipment", fx: ["save+1"], uses: [6, "day", "1d6"] }),
+      legendary: M("Veste dell'Arcimago", "Senza armatura la tua CA è 15 + Destrezza; vantaggio ai tiri salvezza contro gli incantesimi; +2 alla CD dei tuoi incantesimi e ai tiri per colpire con essi.", { type: "equipment", fx: ["dc+2", "spell+2"] }),
+    }),
+    G(5, "rare", "invisibile", "👻", {
+      common: M("Mantello con Cappuccio", "Caldo e discreto: vantaggio a non farsi riconoscere a distanza."),
+      uncommon: M("Mantello Elfico", "Con il cappuccio alzato le prove di Percezione per vederti hanno svantaggio, e tu hai vantaggio a Furtività per nasconderti."),
+      rare: M("Mantello del Dislocamento", "Sembri stare altrove: gli attacchi contro di te hanno svantaggio (si spegne fino al tuo turno se vieni colpito)."),
+      veryRare: M("Mantello dell'Ombra Viva", "1 volta al giorno, come azione bonus, diventi invisibile per 1 minuto (finisce se attacchi).", { type: "equipment", uses: [1, "day"] }),
+      legendary: M("Mantello dell'Invisibilità", "Alzando il cappuccio diventi invisibile, fino a 2 ore al giorno anche spezzate (finisce se attacchi o lanci un incantesimo).", { type: "equipment", uses: [2, "day"] }),
+    }),
+  ],
+
+  // ── ERBORISTA ──────────────────────────────────────────────
+  erborista: [
+    G(2, "uncommon", "infuso", "🍵", {
+      common: M("Unguento Curativo", "Spalmato in 1 minuto: recupera 1d4+1 punti ferita (3 dosi)."),
+      uncommon: M("Infuso del Guaritore", "Bevuto come azione: recupera 2d4+2 punti ferita.", { ctype: "potion", heal: "2d4+2" }),
+      rare: M("Infuso del Bosco Antico", "Bevuto: recupera 4d4+4 punti ferita e neutralizza un veleno.", { ctype: "potion", heal: "4d4+4" }),
+    }),
+    G(2, "uncommon", "spine", "🌵", {
+      common: M("Polvere Urticante", "Soffiata in faccia (1,5 m): prurito e lacrime, svantaggio alla prossima prova di Percezione."),
+      uncommon: M("Polvere di Spine", "Lanciata in un cubo di 3 m: 2d4 perforanti, TS Destrezza CD 12 per dimezzare.", { ctype: "trinket", dmg: ["2d4", "piercing"], save: ["dex", 12] }),
+      rare: M("Seme dei Rovi", "Lanciato a 9 m: per 10 minuti un cerchio di 6 m diventa terreno difficile e chi lo attraversa subisce 2d4 perforanti ogni 1,5 m (come Crescita di Spine).", { ctype: "trinket", dmg: ["2d4", "piercing"] }),
+    }),
+    G(3, "uncommon", "corteccia", "🌳", {
+      common: M("Tisana Riposante", "Bevuta durante un riposo breve: recuperi 1d4 punti ferita in più per ogni Dado Vita speso."),
+      uncommon: M("Infuso dell'Orso", "Bevuto: 2d6 punti ferita temporanei per 1 ora.", { ctype: "potion", temp: "2d6" }),
+      rare: M("Infuso della Pelle di Corteccia", "Per 1 ora la tua CA non può essere inferiore a 16 (come Pelle di Corteccia).", { ctype: "potion" }),
+    }),
+    G(3, "uncommon", "sonno", "💤", {
+      common: M("Erba del Sonno", "In tisana: chi la beve si addormenta subito e riposa profondamente per 8 ore."),
+      uncommon: M("Polline Soporifero", "Soffiato in un cono di 4,5 m: TS Costituzione CD 13 o addormentato per 1 minuto (si sveglia se subisce danni).", { ctype: "trinket", save: ["con", 13] }),
+      rare: M("Fiore del Lungo Sonno", "Soffiato in un cono di 4,5 m: TS Costituzione CD 15 o addormentato per 1 ora (si sveglia solo se subisce danni).", { ctype: "trinket", save: ["con", 15] }),
+    }),
+    G(4, "rare", "balsamo", "🫙", {
+      common: M("Unguento Curativo", "Spalmato in 1 minuto: recupera 1d4+1 punti ferita (3 dosi)."),
+      uncommon: M("Unguento di Keoghtom", "Vasetto con 3 dosi: ogni dose cura 2d8+2 e rimuove veleno e malattia."),
+      rare: M("Unguento della Guarigione Profonda", "Vasetto con 3 dosi: ogni dose cura 4d8+4, rimuove veleno, malattia e un livello di sfinimento."),
+      veryRare: M("Balsamo della Rinascita", "Vasetto con 2 dosi: ogni dose cura 8d8+8 e rimuove tutti i livelli di sfinimento.", { ctype: "potion", heal: "8d8+8", uses: [2, "charges"] }),
+    }),
+    G(4, "rare", "loto", "🪷", {
+      common: M("Veleno Naturale", "Su una lama: +1d4 danni da veleno al primo colpo entro 1 minuto."),
+      uncommon: M("Veleno del Serpente Runico", "Al primo colpo: TS Costituzione CD 11 o 2d6 danni da veleno e avvelenato per 1 minuto."),
+      rare: M("Belladonna Nera", "Ingerita o su lama: TS Costituzione CD 14 o 4d6 danni da veleno e avvelenato per 1 ora (metà danni se riesce)."),
+      veryRare: M("Loto Nero", "Su lama: TS Costituzione CD 17 o 8d6 danni da veleno e avvelenato per 24 ore (metà danni se riesce).", { ctype: "poison", dmg: ["8d6", "poison"], save: ["con", 17] }),
+    }),
+    G(5, "rare", "seme", "🌱", {
+      common: M("Seme di Quercia", "Piantato, in un giorno diventa un alberello robusto: buon riparo per la notte."),
+      uncommon: M("Seme della Crescita", "Piantato: come l'incantesimo Crescita Vegetale su 30 m."),
+      rare: M("Seme del Guardiano", "Piantato: per 1 ora un albero risvegliato combatte al tuo fianco (statistiche di un Albero Risvegliato).", { ctype: "trinket" }),
+      veryRare: M("Seme della Foresta Viva", "Piantato: come Muro di Spine (CD 17), 7d8 perforanti.", { ctype: "trinket", dmg: ["7d8", "piercing"], save: ["dex", 17] }),
+      legendary: M("Seme dell'Albero del Mondo", "Piantato fra gli alleati: ognuno entro 9 m recupera 10d8 punti ferita e si libera da veleni, malattie e maledizioni minori.", { ctype: "trinket", heal: "10d8" }),
+    }),
+    G(5, "rare", "panacea", "💧", {
+      common: M("Antidoto Naturale", "Neutralizza un veleno comune e dà vantaggio ai TS contro il veleno per 1 ora."),
+      uncommon: M("Rimedio Potente", "Cura una malattia o un veleno, come Ristorare Inferiore."),
+      rare: M("Rimedio Universale", "Come Ristorare Inferiore, e in più rimuove un livello di sfinimento e una maledizione minore."),
+      veryRare: M("Panacea", "Bevuta: come l'incantesimo Ristorare Superiore.", { ctype: "potion" }),
+      legendary: M("Lacrima di Yggdrasil", "Bevuta: recuperi 70 punti ferita e guarisci da cecità, sordità e ogni malattia (come Guarigione).", { ctype: "potion", heal: "70" }),
+    }),
+  ],
+
+  // ── CUOCO / MASTRO BIRRAIO ─────────────────────────────────
+  cuoco: [
+    G(2, "uncommon", "rancio", "🥘", {
+      common: M("Stufato del Cacciatore", "Un pasto caldo: chi lo mangia nel riposo breve recupera 1d6 punti ferita in più."),
+      uncommon: M("Pasticcio del Soldato", "Mangiato: 1d8 punti ferita temporanei per 1 ora.", { ctype: "food", temp: "1d8" }),
+      rare: M("Rancio dell'Eroe", "Mangiato: 2d8 punti ferita temporanei e vantaggio ai TS contro la paura per 1 ora.", { ctype: "food", temp: "2d8" }),
+    }),
+    G(2, "uncommon", "grappa", "🥃", {
+      common: M("Birra della Casa", "Un boccale scaccia la stanchezza: vantaggio alla prossima prova di Costituzione per una marcia."),
+      uncommon: M("Grappa del Fuoco", "Un sorso: resistenza al freddo per 1 ora.", { ctype: "food", fx: ["res:cold"] }),
+      rare: M("Acquavite del Drago", "Un sorso: resistenza al fuoco per 1 ora e, una volta in quell'ora, sputi un cono di 4,5 m di fuoco (3d6, TS Destrezza CD 13 per dimezzare).", { ctype: "food", fx: ["res:fire"], dmg: ["3d6", "fire"], save: ["dex", 13] }),
+    }),
+    G(3, "uncommon", "brodo", "🍜", {
+      common: M("Tè Caldo", "Sveglia e scalda: niente svantaggio da freddo lieve per 1 ora."),
+      uncommon: M("Brodo Ristoratore", "Bevuto come azione: recupera 2d4+2 punti ferita.", { ctype: "food", heal: "2d4+2" }),
+      rare: M("Brodo della Nonna", "Bevuto: recupera 4d4+4 punti ferita e toglie la condizione avvelenato.", { ctype: "food", heal: "4d4+4" }),
+    }),
+    G(3, "rare", "gigante", "🍖", {
+      common: M("Spezie Rare", "Un sacchetto di spezie d'Oltremare: vale 25 mo al mercato."),
+      uncommon: M("Pepe del Drago", "Nel pasto: vantaggio ai TS su Costituzione per 1 ora."),
+      rare: M("Pasto del Gigante", "Mangiato: la tua Forza diventa 21 per 1 ora.", { ctype: "food", fx: ["str=21"] }),
+    }),
+    G(4, "rare", "banchetto", "🍗", {
+      common: M("Razioni da Viaggio", "Dieci giorni di cibo saporito e leggero (metà peso delle razioni normali)."),
+      uncommon: M("Pane del Pellegrino", "Una pagnotta = un giorno di cibo e 1d4 punti ferita temporanei fino al prossimo riposo."),
+      rare: M("Banchetto dei Camerati", "Per 6 persone: +2d10 punti ferita massimi, immunità alla paura e vantaggio ai TS su Saggezza per 12 ore."),
+      veryRare: M("Banchetto degli Eroi", "Per 12 persone, consumato in 1 ora: per 24 ore immuni alla paura e al veleno, vantaggio ai TS su Saggezza e +2d10 punti ferita massimi.", { ctype: "food", fx: ["imm:poison"] }),
+    }),
+    G(4, "rare", "idromele", "🍯", {
+      common: M("Vino della Casa", "Un buon rosso: +1 alle prove di Carisma a tavola per 1 ora."),
+      uncommon: M("Vino del Bardo", "+1d4 alle prove di Carisma per 1 ora."),
+      rare: M("Liquore del Potere", "Per 1 minuto aggiungi 1d4 ai tiri per colpire e ai TS (come Benedizione)."),
+      veryRare: M("Idromele degli Dèi", "Un corno: 20 punti ferita temporanei e l'effetto di Benedizione per 1 ora.", { ctype: "food", temp: "20" }),
+    }),
+    G(5, "rare", "ambrosia", "🍰", {
+      common: M("Dolce della Festa", "Scioglie la lingua: +1 a Persuasione per 1 ora."),
+      uncommon: M("Dolce del Bardo", "Chi lo mangia ottiene Ispirazione."),
+      rare: M("Torta della Fortuna", "Entro 8 ore puoi ritirare un tiro per colpire, una prova o un TS (una volta)."),
+      veryRare: M("Torta dei Fati", "Entro 24 ore puoi ritirare tre tiri a scelta (tiri per colpire, prove o TS).", { ctype: "food", uses: [3, "charges"] }),
+      legendary: M("Ambrosia", "Un boccone: recuperi tutti i punti ferita (10d10+50), guarisci da ogni malattia e veleno, e per 24 ore non invecchi né soffri la fame.", { ctype: "food", heal: "10d10+50" }),
+    }),
+    G(5, "rare", "calderone", "🍲", {
+      common: M("Stufato del Cacciatore", "Un pasto caldo: chi lo mangia nel riposo breve recupera 1d6 punti ferita in più."),
+      uncommon: M("Stufato del Cuore Forte", "Vantaggio ai TS su Costituzione per 1 ora."),
+      rare: M("Stufato del Drago", "Resistenza a un tipo di danno (fuoco, freddo, fulmine, acido o veleno, scelto alla creazione) per 1 ora."),
+      veryRare: M("Stufato del Titano", "Mangiato: per 1 ora la tua Forza diventa 25 e hai 20 punti ferita temporanei.", { ctype: "food", fx: ["str=25"], temp: "20" }),
+      legendary: M("Zuppa dell'Immortale", "Per 24 ore, la prima volta che scendi a 0 punti ferita resti invece a 1, e hai resistenza ai danni contundenti, perforanti e taglienti.", { ctype: "food", fx: ["res:bludgeoning", "res:piercing", "res:slashing"] }),
+    }),
+  ],
+
+  // ── INGEGNERE / ARTIGIANO ──────────────────────────────────
+  ingegnere: [
+    G(2, "common", "manobalestra", "🎯", {
+      common: M("Balestra a Mano", "Arma da guerra: 1d6 perforanti, gittata 9/36, leggera, ricarica."),
+      uncommon: M("Balestra a Mano +1", "+1 al colpire e ai danni. Conta come magica."),
+      rare: M("Balestra a Mano +2", "+2 al colpire e ai danni. Conta come magica."),
+    }),
+    G(2, "uncommon", "granate", "💣", {
+      common: M("Petardo", "Lanciato: un botto assordante, tutti entro 9 m si girano a guardare (distrazione).", { type: "consumable", ctype: "trinket" }),
+      uncommon: M("Granata a Schegge", "Lanciata a 9 m, esplode in 3 m: 3d6 perforanti, TS Destrezza CD 13 per dimezzare.", { type: "consumable", ctype: "trinket", dmg: ["3d6", "piercing"], save: ["dex", 13] }),
+      rare: M("Granata a Fulmine", "Lanciata a 9 m, esplode in 4,5 m: 5d6 fulmine, TS Destrezza CD 15 per dimezzare.", { type: "consumable", ctype: "trinket", dmg: ["5d6", "lightning"], save: ["dex", 15] }),
+    }),
+    G(3, "uncommon", "ripetizione", "⚙", {
+      common: M("Balestra Leggera", "Arma semplice: 1d8 perforanti, gittata 24/96, ricarica, due mani.", { base: "balestra" }),
+      uncommon: M("Balestra Leggera +1", "+1 al colpire e ai danni. Conta come magica.", { base: "balestra" }),
+      rare: M("Balestra di Ripetizione", "Balestra leggera +1 con caricatore: niente proprietà ricarica.", { base: "balestra", plus: 1 }),
+    }),
+    G(3, "uncommon", "tagliola", "🪤", {
+      common: M("Tagliola", "Piazzata in 1 minuto: chi la calpesta fa TS Destrezza CD 13 o subisce 1d4 perforanti ed è trattenuto.", { type: "consumable", ctype: "trinket", dmg: ["1d4", "piercing"], save: ["dex", 13] }),
+      uncommon: M("Tagliola Rinforzata", "Come la Tagliola, ma 2d6 perforanti e CD 15 (Forza CD 15 per liberarsi).", { type: "consumable", ctype: "trinket", dmg: ["2d6", "piercing"], save: ["dex", 15] }),
+      rare: M("Mina Runica", "Piazzata in 1 minuto: chi la calpesta fa esplodere una sfera di 3 m, 4d10 fuoco, TS Destrezza CD 15 per dimezzare.", { type: "consumable", ctype: "trinket", dmg: ["4d10", "fire"], save: ["dex", 15] }),
+    }),
+    G(4, "rare", "pesante", "🎯", {
+      common: M("Balestra Pesante", "Arma da guerra: 1d10 perforanti, gittata 30/120, pesante, ricarica, due mani."),
+      uncommon: M("Balestra Pesante +1", "+1 al colpire e ai danni. Conta come magica."),
+      rare: M("Balestra Pesante +2", "+2 al colpire e ai danni. Conta come magica."),
+      veryRare: M("Balestra Pesante +3", "+3 al colpire e ai danni. Conta come magica."),
+    }),
+    G(4, "rare", "segugio", "🐕", {
+      common: M("Mini Costrutto", "Giocattolo meccanico che cammina e fa rumore: distrazione (vantaggio a Inganno per creare un diversivo)."),
+      uncommon: M("Servo Meccanico", "1 ora al giorno agisce come un Servitore Inosservato."),
+      rare: M("Golem Custode in Miniatura", "Un famiglio costrutto (statistiche di un Famiglio, CA 15, 10 PF) che ti segue e avvisa dei pericoli."),
+      veryRare: M("Segugio d'Ottone", "Cane meccanico che combatte al tuo fianco: statistiche di un Lupo Crudele, CA 16, immune a veleno e paura. Si ripara in un riposo lungo.", { type: "loot" }),
+    }),
+    G(5, "rare", "tempesta", "🌩", {
+      common: M("Petardo", "Lanciato: un botto assordante, tutti entro 9 m si girano a guardare (distrazione)."),
+      uncommon: M("Granata a Schegge", "Lanciata a 9 m, esplode in 3 m: 3d6 perforanti, TS Destrezza CD 13 per dimezzare."),
+      rare: M("Granata a Fulmine", "Lanciata a 9 m, esplode in 4,5 m: 5d6 fulmine, TS Destrezza CD 15 per dimezzare."),
+      veryRare: M("Bomba Tonante", "Lanciata a 18 m, esplode in 6 m: 8d6 tuono, TS Costituzione CD 17 per dimezzare; chi fallisce è assordato e spinto via di 3 m.", { type: "consumable", ctype: "trinket", dmg: ["8d6", "thunder"], save: ["con", 17] }),
+      legendary: M("Cuore della Tempesta", "Lanciato a 30 m, esplode in 9 m: 12d6 fulmine, TS Destrezza CD 19 per dimezzare.", { type: "consumable", ctype: "trinket", dmg: ["12d6", "lightning"], save: ["dex", 19] }),
+    }),
+    G(5, "rare", "colosso", "🤖", {
+      common: M("Armatura Completa", "Armatura pesante: CA 18, richiede Forza 15, svantaggio a Furtività."),
+      uncommon: M("Armatura Completa +1", "CA 19. Conta come magica."),
+      rare: M("Armatura Completa +2", "CA 20. Conta come magica."),
+      veryRare: M("Armatura a Vapore", "Armatura completa a ingranaggi: CA 20 e la tua Forza diventa 21 mentre la indossi.", { base: "armatura completa", plus: 2, fx: ["str=21"] }),
+      legendary: M("Armatura del Colosso", "Armatura completa: CA 21, la tua Forza diventa 23 e 1 volta al giorno voli a 9 m per 1 minuto.", { base: "armatura completa", plus: 3, fx: ["str=23"], uses: [1, "day"] }),
+    }),
+  ],
+
+  // ── CARTOGRAFO / ARALDICO ──────────────────────────────────
+  cartografo: [
+    G(2, "uncommon", "passaggi", "🗺", {
+      common: M("Mappa di una Regione", "Strade, fiumi e città di una regione: niente prove per orientarsi lì."),
+      uncommon: M("Mappa dei Passaggi", "Segna guadi e sentieri dimenticati: nella regione viaggiate a passo veloce senza penalità a Percezione."),
+      rare: M("Mappa Profetica", "1 volta al giorno, toccando la mappa, lanci Localizza Oggetto o Localizza Creatura entro la regione.", { uses: [1, "day"] }),
+    }),
+    G(2, "uncommon", "salvacondotto", "📜", {
+      common: M("Lettera di Presentazione", "Vantaggio alla prima prova di Persuasione con un notabile della città indicata."),
+      uncommon: M("Lasciapassare", "Le guardie di una città scelta ti lasciano entrare e uscire senza domande."),
+      rare: M("Salvacondotto del Consiglio", "In una città scelta non puoi essere arrestato senza un ordine del suo signore; vale fino a che non la tradisci."),
+    }),
+    G(3, "uncommon", "stelle", "✨", {
+      common: M("Carta del Cielo", "Le costellazioni della stagione: di notte ti orienti senza prove."),
+      uncommon: M("Astrolabio", "Sai sempre in che giorno, a che ora e (sotto il cielo) in che punto della regione ti trovi.", { type: "tool" }),
+      rare: M("Atlante delle Stelle", "1 volta al giorno, leggendo le stelle, ottieni un Augurio.", { uses: [1, "day"] }),
+    }),
+    G(3, "uncommon", "stendardo", "🚩", {
+      common: M("Bandiera Riconoscibile", "Stendardo del gruppo: vantaggio a Persuasione con chi vi ha già sentito nominare."),
+      uncommon: M("Bandiera del Capitano", "Gli alleati entro 9 m hanno vantaggio ai TS contro la paura."),
+      rare: M("Stendardo della Carica", "1 volta al giorno, piantato a terra: per 1 minuto gli alleati entro 9 m hanno +3 m di velocità e vantaggio al primo attacco di ogni turno.", { uses: [1, "day"] }),
+    }),
+    G(4, "rare", "piani", "🌀", {
+      common: M("Mappa di una Regione", "Strade, fiumi e città di una regione: niente prove per orientarsi lì."),
+      uncommon: M("Mappa Precisa", "Segna anche sentieri e rifugi: vantaggio a Sopravvivenza nella regione."),
+      rare: M("Mappa Vivente", "Si aggiorna da sola e mostra sempre dove sei, entro la regione disegnata."),
+      veryRare: M("Mappa dei Piani", "1 volta a settimana, tracciando il sigillo di un piano, lanci Spostamento Planare per te e fino a 8 compagni.", { uses: [1, "charges"] }),
+    }),
+    G(4, "rare", "regale", "👑", {
+      common: M("Sigillo Nobile", "Timbro di un casato inventato ma credibile: +1 a Inganno con documenti."),
+      uncommon: M("Sigillo Convincente", "Copia fedele di un vero casato: +2 a Inganno con documenti."),
+      rare: M("Sigillo dell'Influenza", "1/giorno la lettera che sigilli porta Ammaliare Persone (CD 13) su chi la legge."),
+      veryRare: M("Sigillo Regale", "1 volta al giorno la lettera che sigilli porta Suggestione di Massa (CD 17) su chi la legge ad alta voce.", { uses: [1, "day"], save: ["wis", 17] }),
+    }),
+    G(5, "rare", "atlante", "🌍", {
+      common: M("Mappa di una Regione", "Strade, fiumi e città di una regione: niente prove per orientarsi lì."),
+      uncommon: M("Mappa Precisa", "Segna anche sentieri e rifugi: vantaggio a Sopravvivenza nella regione."),
+      rare: M("Mappa Vivente", "Si aggiorna da sola e mostra sempre dove sei, entro la regione disegnata."),
+      veryRare: M("Mappa dei Piani", "1 volta a settimana, tracciando il sigillo di un piano, lanci Spostamento Planare per te e fino a 8 compagni."),
+      legendary: M("Atlante di Exanthia", "1 volta a settimana ti teletrasporta, con 8 compagni, in qualunque luogo disegnato sull'atlante, senza errori (come Teletrasporto).", { uses: [1, "charges"] }),
+    }),
+    G(5, "rare", "nomi", "📕", {
+      common: M("Codice Cifrato", "Scrittura segreta: CD 15 di Intelligenza per decifrarla."),
+      uncommon: M("Codice Cifrato Avanzato", "CD 20 per decifrarlo."),
+      rare: M("Cifrario del Mistico", "Solo il destinatario indicato può leggere ciò che scrivi; per gli altri è carta bianca."),
+      veryRare: M("Codice del Silenzio", "Chi lo porta addosso non può essere localizzato né spiato con la divinazione (come Anti-individuazione, permanente)."),
+      legendary: M("Libro dei Nomi Segreti", "1 volta a settimana, scrivendo il vero nome di una creatura, le imponi un compito (come Costrizione, CD 19).", { uses: [1, "charges"], save: ["wis", 19] }),
+    }),
+  ],
+
+  // ── GIOIELLIERE ────────────────────────────────────────────
+  gioielliere: [
+    G(2, "uncommon", "calore", "🔥", {
+      common: M("Anello d'Oro", "Anello finemente lavorato, vale 25 mo."),
+      uncommon: M("Anello del Calore", "Resistenza al freddo; non soffri il freddo estremo.", { type: "equipment", fx: ["res:cold"] }),
+      rare: M("Anello di Resistenza", "Resistenza a un tipo di danno, scelto al ritiro.", { type: "equipment", res: "choice" }),
+    }),
+    G(2, "uncommon", "spilla", "🪙", {
+      common: M("Spilla d'Argento", "Spilla lavorata, vale 25 mo."),
+      uncommon: M("Spilla dello Scudo", "Resistenza ai danni da forza e immunità a Dardo Incantato.", { base: "spilla", type: "equipment", fx: ["res:force"] }),
+      rare: M("Medaglione dei Pensieri", "3 cariche: 1 carica = Individuazione dei Pensieri (CD 13). Recupera 1d3 cariche all'alba.", { type: "equipment", uses: [3, "day", "1d3"], save: ["wis", 13] }),
+    }),
+    G(3, "uncommon", "evasione", "💫", {
+      common: M("Anello d'Oro", "Anello finemente lavorato, vale 25 mo."),
+      uncommon: M("Anello del Salto", "A comando, salti tre volte più lontano (come Saltare).", { type: "equipment" }),
+      rare: M("Anello dell'Evasione", "3 cariche: quando fallisci un TS su Destrezza puoi spendere 1 carica per riuscirlo. Recupera 1d3 cariche all'alba.", { type: "equipment", uses: [3, "day", "1d3"] }),
+    }),
+    G(3, "uncommon", "periapto", "📿", {
+      common: M("Amuleto Inciso", "Pendente con un simbolo sacro: vale 25 mo e funziona da simbolo sacro."),
+      uncommon: M("Periapto della Salute", "Immune a ogni malattia mentre lo indossi.", { type: "equipment" }),
+      rare: M("Periapto delle Ferite Chiuse", "Ti stabilizzi da solo quando sei morente, e i Dadi Vita che spendi curano il doppio.", { type: "equipment" }),
+    }),
+    G(4, "rare", "rigenerazione", "💍", {
+      common: M("Anello d'Oro", "Anello finemente lavorato, vale 25 mo."),
+      uncommon: M("Anello di Nuotare", "Velocità di nuoto di 12 m mentre lo indossi."),
+      rare: M("Anello di Protezione", "+1 alla CA e a tutti i tiri salvezza."),
+      veryRare: M("Anello della Rigenerazione", "Recuperi 1d6 punti ferita ogni 10 minuti; una parte del corpo persa ricresce in 1d6+1 giorni.", { type: "equipment" }),
+    }),
+    G(4, "rare", "piani", "🔮", {
+      common: M("Collana d'Argento", "Collana lavorata, vale 25 mo."),
+      uncommon: M("Collana di Adattamento", "Respiri ovunque e sei immune ai gas e ai vapori nocivi."),
+      rare: M("Amuleto della Salute", "La tua Costituzione diventa 19 mentre lo indossi."),
+      veryRare: M("Amuleto dei Piani", "Azione: prova di Intelligenza CD 15 e lanci Spostamento Planare (con un fallimento, finisci in un piano a caso).", { type: "equipment" }),
+    }),
+    G(5, "rare", "invisibilita", "👁", {
+      common: M("Anello d'Oro", "Anello finemente lavorato, vale 25 mo."),
+      uncommon: M("Anello di Nuotare", "Velocità di nuoto di 12 m mentre lo indossi."),
+      rare: M("Anello di Protezione", "+1 alla CA e a tutti i tiri salvezza."),
+      veryRare: M("Anello della Rigenerazione", "Recuperi 1d6 punti ferita ogni 10 minuti; una parte del corpo persa ricresce in 1d6+1 giorni."),
+      legendary: M("Anello dell'Invisibilità", "A comando diventi invisibile finché non attacchi, lanci un incantesimo o lo togli.", { type: "equipment" }),
+    }),
+    G(5, "rare", "scarabeo", "🪲", {
+      common: M("Talismano Inciso", "Amuleto portafortuna: vantaggio alla prossima prova di Carisma con chi crede nei presagi."),
+      uncommon: M("Talismano della Salute", "Immune alle malattie mentre lo indossi."),
+      rare: M("Talismano Antiveleno", "Immune al veleno e alla condizione avvelenato."),
+      veryRare: M("Pietra della Fortuna Maggiore", "+1 a tutte le prove di caratteristica e ai tiri salvezza; 1 volta al giorno ritiri un tiro.", { type: "equipment", fx: ["save+1"], uses: [1, "day"] }),
+      legendary: M("Scarabeo della Protezione", "Vantaggio ai tiri salvezza contro gli incantesimi. 12 cariche: quando un effetto di necromanzia o un non morto ti colpirebbe, spendi 1 carica e lo annulli.", { type: "equipment", uses: [12, "charges"] }),
+    }),
+  ],
+
+  // ── INCANTATORE ────────────────────────────────────────────
+  incantatore: [
+    G(2, "uncommon", "guerra", "🔥", {
+      common: M("Pergamena di Dardo Incantato", "Tre dardi di forza: 1d4+1 ciascuno, colpiscono sempre.", { ctype: "scroll", dmg: ["3d4+3", "force"] }),
+      uncommon: M("Pergamena di Palla di Fuoco", "Sfera di 6 m a 45 m: 8d6 fuoco, TS Destrezza CD 15 per dimezzare.", { ctype: "scroll", dmg: ["8d6", "fire"], save: ["dex", 15] }),
+      rare: M("Pergamena di Cono di Freddo", "Cono di 18 m: 8d8 freddo, TS Costituzione CD 17 per dimezzare.", { ctype: "scroll", dmg: ["8d8", "cold"], save: ["con", 17] }),
+    }),
+    G(2, "uncommon", "cura", "✚", {
+      common: M("Pergamena di Cura Ferite", "Al tocco: recupera 1d8+3 punti ferita.", { ctype: "scroll", heal: "1d8+3" }),
+      uncommon: M("Pergamena di Parola Guaritrice di Massa", "Fino a 6 alleati entro 18 m recuperano 1d4+3 punti ferita ciascuno.", { ctype: "scroll", heal: "1d4+3" }),
+      rare: M("Pergamena di Cura Ferite di Massa", "Fino a 6 alleati in una sfera di 9 m recuperano 3d8+5 punti ferita ciascuno.", { ctype: "scroll", heal: "3d8+5" }),
+    }),
+    G(3, "uncommon", "scudo", "🛡", {
+      common: M("Runa di Protezione", "Portata addosso: +1 a un tiro salvezza, una volta, poi si consuma."),
+      uncommon: M("Runa dello Scudo", "3 cariche: come reazione lanci Scudo (+5 CA fino al tuo turno). Recupera 1d3 cariche all'alba.", { base: "runa", type: "equipment", uses: [3, "day", "1d3"] }),
+      rare: M("Runa della Resistenza", "Incisa su un monile: resistenza a un tipo di danno, scelto al ritiro.", { type: "equipment", res: "choice" }),
+    }),
+    G(3, "uncommon", "focus", "💠", {
+      common: M("Cristallo Inerte di Mana", "Focus arcano: +1 alle prove per mantenere la concentrazione."),
+      uncommon: M("Focus del Mago +1", "Focus arcano: +1 ai tiri per colpire con gli incantesimi.", { type: "equipment", fx: ["spell+1"] }),
+      rare: M("Focus del Mago +2", "Focus arcano: +2 ai tiri per colpire con gli incantesimi.", { type: "equipment", fx: ["spell+2"] }),
+    }),
+    G(4, "rare", "disintegrazione", "💥", {
+      common: M("Pergamena di Dardo Incantato", "Tre dardi di forza: 1d4+1 ciascuno, colpiscono sempre."),
+      uncommon: M("Pergamena di Palla di Fuoco", "Sfera di 6 m a 45 m: 8d6 fuoco, TS Destrezza CD 15 per dimezzare."),
+      rare: M("Pergamena di Cono di Freddo", "Cono di 18 m: 8d8 freddo, TS Costituzione CD 17 per dimezzare."),
+      veryRare: M("Pergamena di Disintegrazione", "Raggio a 18 m: 10d6+40 forza, TS Destrezza CD 18 per evitarlo del tutto; a 0 PF il bersaglio diventa polvere.", { ctype: "scroll", dmg: ["10d6+40", "force"], save: ["dex", 18] }),
+    }),
+    G(4, "rare", "focus3", "🔮", {
+      common: M("Cristallo Inerte di Mana", "Focus arcano: +1 alle prove per mantenere la concentrazione."),
+      uncommon: M("Focus del Mago +1", "Focus arcano: +1 ai tiri per colpire con gli incantesimi."),
+      rare: M("Focus del Mago +2", "Focus arcano: +2 ai tiri per colpire con gli incantesimi."),
+      veryRare: M("Focus del Mago +3", "Focus arcano: +3 ai tiri per colpire con gli incantesimi.", { type: "equipment", fx: ["spell+3"] }),
+    }),
+    G(5, "rare", "meteore", "☄", {
+      common: M("Pergamena di Dardo Incantato", "Tre dardi di forza: 1d4+1 ciascuno, colpiscono sempre."),
+      uncommon: M("Pergamena di Palla di Fuoco", "Sfera di 6 m a 45 m: 8d6 fuoco, TS Destrezza CD 15 per dimezzare."),
+      rare: M("Pergamena di Cono di Freddo", "Cono di 18 m: 8d8 freddo, TS Costituzione CD 17 per dimezzare."),
+      veryRare: M("Pergamena di Palla di Fuoco Ritardata", "Sfera di 6 m: 12d6 fuoco, TS Destrezza CD 18 per dimezzare (puoi ritardarla fino a 1 minuto, +1d6 per turno).", { ctype: "scroll", dmg: ["12d6", "fire"], save: ["dex", 18] }),
+      legendary: M("Pergamena di Pioggia di Meteore", "Quattro sfere di 12 m a 1,5 km: 20d6 fuoco + 20d6 contundenti, TS Destrezza CD 19 per dimezzare.", { ctype: "scroll", dmg: ["20d6", "fire"], dmg2: ["20d6", "bludgeoning"], save: ["dex", 19] }),
+    }),
+    G(5, "rare", "grimorio", "📖", {
+      common: M("Grimorio Vuoto", "Rilegato in pelle con fermagli: 100 pagine per incantesimi."),
+      uncommon: M("Grimorio del Novizio", "1 volta al giorno, studiandolo per 1 minuto, recuperi uno slot di 1° livello.", { uses: [1, "day"] }),
+      rare: M("Grimorio dell'Adepto", "1 volta al giorno, studiandolo per 1 minuto, recuperi uno slot fino al 3° livello.", { uses: [1, "day"] }),
+      veryRare: M("Grimorio del Maestro", "1 volta al giorno, studiandolo per 1 minuto, recuperi uno slot fino al 5° livello.", { uses: [1, "day"] }),
+      legendary: M("Grimorio dell'Arcimago", "1 volta al giorno recuperi uno slot fino al 7° livello e, finché lo porti, +1 alla CD dei tuoi incantesimi.", { fx: ["dc+1"], uses: [1, "day"] }),
+    }),
+  ],
+};
+
+/* Meccanica per Foundry degli oggetti GIÀ esistenti (catalogo dell'Apprendista
+   e tabelle d12), per nome: così anche loro arrivano su Foundry "usabili". */
+const MECH_EXISTING = {
+  "Pozione di Guarigione": { ctype: "potion", heal: "2d4+2" },
+  "Pozione di Guarigione Maggiore": { ctype: "potion", heal: "4d4+4" },
+  "Pozione di Guarigione Superiore": { ctype: "potion", heal: "8d4+8" },
+  "Fuoco dell'Alchimista": { ctype: "trinket", dmg: ["1d4", "fire"] },
+  "Fuoco dell'Alchimista Denso": { ctype: "trinket", dmg: ["2d4", "fire"] },
+  "Bomba Alchemica": { ctype: "trinket", dmg: ["3d6", "fire"], save: ["dex", 13] },
+  "Veleno Base": { ctype: "poison", dmg: ["1d4", "poison"] },
+  "Veleno del Serpente": { ctype: "poison", dmg: ["3d6", "poison"], save: ["con", 11] },
+  "Veleno Paralizzante": { ctype: "poison", save: ["con", 13] },
+  "Pozione di Resistenza": { ctype: "potion", res: "choice" },
+  "Pozione dell'Eroismo": { ctype: "potion", temp: "10" },
+  "Acido": { ctype: "trinket", dmg: ["2d6", "acid"] },
+  "Pozione della Forza di Gigante delle Colline": { ctype: "potion", fx: ["str=21"] },
+  "Pozione della Forza di Gigante del Fuoco": { ctype: "potion", fx: ["str=25"] },
+  "Pozione di Respirare Sott'acqua": { ctype: "potion" },
+  "Pozione di Scalata": { ctype: "potion", fx: ["climb=30"] },
+  "Bastone degli Sciami": { uses: [10, "day", "1d6+4"] },
+  "Bacchetta dei Dardi Incantati": { ctype: "wand", dmg: ["3d4+3", "force"], uses: [7, "day", "1d6+1"] },
+  "Bacchetta delle Palle di Fuoco": { ctype: "wand", dmg: ["8d6", "fire"], save: ["dex", 15], uses: [7, "day", "1d6+1"] },
+  "Mantello di Protezione": { type: "equipment", fx: ["ac+1", "save+1"] },
+  "Guanti della Forza dell'Ogre": { type: "equipment", fx: ["str=19"] },
+  "Stivali della Velocità": { type: "equipment", uses: [1, "day"] },
+  "Unguento Curativo": { ctype: "potion", heal: "1d4+1", uses: [3, "charges"] },
+  "Unguento di Keoghtom": { ctype: "potion", heal: "2d8+2", uses: [3, "charges"] },
+  "Unguento della Guarigione Profonda": { ctype: "potion", heal: "4d8+4", uses: [3, "charges"] },
+  "Veleno Naturale": { ctype: "poison", dmg: ["1d4", "poison"] },
+  "Veleno del Serpente Runico": { ctype: "poison", dmg: ["2d6", "poison"], save: ["con", 11] },
+  "Belladonna Nera": { ctype: "poison", dmg: ["4d6", "poison"], save: ["con", 14] },
+  "Foglia della Speranza": { ctype: "potion", temp: "10" },
+  "Pane del Pellegrino": { ctype: "food", temp: "1d4" },
+  "Birra del Nano": { ctype: "food", fx: ["res:poison"] },
+  "Birra dell'Eroe": { ctype: "food", temp: "10" },
+  "Stufato del Drago": { ctype: "food", res: "choice" },
+  "Proiettili Esplosivi (10)": { ctype: "ammo", extra: ["1d6", "fire"] },
+  "Anello di Nuotare": { type: "equipment", fx: ["swim=40"] },
+  "Anello di Protezione": { type: "equipment", fx: ["ac+1", "save+1"] },
+  "Amuleto della Salute": { type: "equipment", fx: ["con=19"] },
+  "Talismano Antiveleno": { type: "equipment", fx: ["imm:poison"] },
+  "Diadema dell'Intelletto": { type: "equipment", fx: ["int=19"] },
+  "Gemma della Luminosità": { uses: [50, "charges"], save: ["con", 15] },
+  "Gemma della Vista": { uses: [3, "day", "1d3"] },
+  "Runa del Baluardo": { type: "equipment", uses: [1, "day"] },
+  "Glifo di Esplosione Minore": { ctype: "scroll", dmg: ["3d8", "force"], save: ["dex", 13] },
+  "Glifo di Interdizione": { ctype: "scroll", dmg: ["5d8", "force"], save: ["dex", 15] },
+  "Cristallo di Mana": { uses: [1, "day"] },
+  "Cristallo del Mago": { uses: [1, "day"] },
+};
+
+// Indice nome → meccanica (oggetti esistenti + ricette di grado).
+const MECH_INDEX = (() => {
+  const idx = { ...MECH_EXISTING };
+  for (const lines of Object.values(RICETTE_GRADO)) {
+    for (const line of lines) {
+      for (const k of ["common", "uncommon", "rare", "veryRare", "legendary"]) {
+        const t = line[k];
+        if (!t || !t[2]) continue;
+        for (const n of String(t[0]).split(/\s*\/\s*/)) idx[n.trim()] = t[2];
+      }
+    }
+  }
+  return idx;
+})();
+
+// La meccanica Foundry di un oggetto, dal suo nome (anche dopo la scelta fra "A / B").
+export const itemMech = (name) => MECH_INDEX[String(name || "").trim()] || null;

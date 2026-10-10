@@ -129,8 +129,40 @@ function buildItemData(d) {
     system.type = { value: d.armorType };
   }
 
+  // ── Officina (2026-10-10): danni in più, consumabili, usi ed effetti attivi ──
+  // (pozioni che curano, veleni con TS, bacchette a cariche, anelli di resistenza…)
+  const extraDmg = Array.isArray(d.extraDamage) ? d.extraDamage : [];
+  if (extraDmg.length) {
+    system.damage = system.damage || { parts: [], versatile: "" };
+    for (const x of extraDmg) if (x && x.formula) system.damage.parts.push([x.formula, x.type || ""]);
+  }
+  if (d.foundryType === "consumable" && d.consumableType) {
+    if (DND_MAJOR >= 3) system.type = { value: d.consumableType };
+    else system.consumableType = d.consumableType;
+  }
+  if (d.uses && Number(d.uses.max) > 0) {
+    const max = Number(d.uses.max);
+    const per = d.uses.per || "charges";
+    const monouso = d.foundryType === "consumable" && per === "charges";
+    if (DND_MAJOR >= 4) {
+      const recovery = per === "charges" ? [] : [d.uses.recovery
+        ? { period: per === "day" ? "dawn" : per, type: "formula", formula: String(d.uses.recovery) }
+        : { period: per, type: "recoverAll" }];
+      system.uses = { spent: 0, max: String(max), recovery, autoDestroy: monouso };
+    } else {
+      system.uses = { value: max, max: String(max), per, recovery: d.uses.recovery || "", autoDestroy: monouso };
+    }
+  }
+
   const out = { name: d.name || "Oggetto", type: d.foundryType || "loot", system };
   if (d.img) out.img = d.img;
+  // Effetti attivi: addosso finché lo porti (transfer) o da applicare quando lo usi.
+  const effetti = Array.isArray(d.effects) ? d.effects : [];
+  if (effetti.length) out.effects = effetti.map((e) => ({
+    name: e.name || out.name, img: "icons/svg/aura.svg",
+    transfer: e.transfer !== false, disabled: false,
+    changes: (e.changes || []).map((c) => ({ key: c.key, mode: Number(c.mode) || 2, value: String(c.value) })),
+  }));
   return out;
 }
 

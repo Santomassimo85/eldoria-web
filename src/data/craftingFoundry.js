@@ -7,6 +7,7 @@
 
 import { PREGIATURE, normTier } from "./crafting";
 import { componentByKey, craftTimeLabel } from "./craftingTime";
+import { itemMech } from "./craftingCatalogo";
 
 // Rarità dnd5e e valore (mo) dell'oggetto su Foundry per pregiatura: sopra il
 // costo fisso dei materiali del manuale (50 · 500 · 3.000 · 10.000 mo).
@@ -59,6 +60,7 @@ const WEAPONS = [
 // ── Armature SRD ────────────────────────────────────────────────────────────
 // [chiavi, tipo, CA, peso]
 const ARMORS = [
+  [["mezza armatura"],               "medium", 15, 40],
   [["armatura completa", "armatura di piastre", "corazza di piastre", "armatura del", "armatura in"], "heavy", 18, 65],
   [["cotta di maglia", "corazza runica", "corazza"], "heavy", 16, 55],
   [["armatura pesante"],              "heavy",  16, 55],
@@ -160,23 +162,60 @@ export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = f
   return { ok: false, source: "", label: "non risulta né sulla scheda né al Mercato: chiedi al Master di assegnartelo" };
 }
 
+// ── Resistenze a scelta (Cotta della Resistenza, Pozione di Resistenza…) ──
+export const DAMAGE_TYPES_IT = [
+  ["fire", "Fuoco"], ["cold", "Freddo"], ["lightning", "Fulmine"], ["acid", "Acido"], ["poison", "Veleno"],
+  ["thunder", "Tuono"], ["necrotic", "Necrotico"], ["radiant", "Radioso"], ["force", "Forza"], ["psychic", "Psichico"],
+];
+const DMG_IT = Object.fromEntries(DAMAGE_TYPES_IT);
+
+// ── Effetti attivi per Foundry (dnd5e): "ac+1", "res:fire", "str=21"… ──
+// ADD = 2, UPGRADE = 4 (la caratteristica sale a N, mai scende).
+function fxChanges(fx = []) {
+  const out = [];
+  for (const f of fx) {
+    let m;
+    if ((m = /^ac\+(\d+)$/.exec(f))) out.push({ key: "system.attributes.ac.bonus", mode: 2, value: `+${m[1]}` });
+    else if ((m = /^save\+(\d+)$/.exec(f))) out.push({ key: "system.bonuses.abilities.save", mode: 2, value: `+${m[1]}` });
+    else if ((m = /^spell\+(\d+)$/.exec(f))) { out.push({ key: "system.bonuses.msak.attack", mode: 2, value: `+${m[1]}` }); out.push({ key: "system.bonuses.rsak.attack", mode: 2, value: `+${m[1]}` }); }
+    else if ((m = /^dc\+(\d+)$/.exec(f))) out.push({ key: "system.bonuses.spell.dc", mode: 2, value: `+${m[1]}` });
+    else if ((m = /^res:(\w+)$/.exec(f))) out.push({ key: "system.traits.dr.value", mode: 2, value: m[1] });
+    else if ((m = /^imm:(\w+)$/.exec(f))) out.push({ key: "system.traits.di.value", mode: 2, value: m[1] });
+    else if ((m = /^(str|dex|con|int|wis|cha)=(\d+)$/.exec(f))) out.push({ key: `system.abilities.${m[1]}.value`, mode: 4, value: m[2] });
+    else if ((m = /^(swim|fly|climb)=(\d+)$/.exec(f))) out.push({ key: `system.attributes.movement.${m[1]}`, mode: 4, value: m[2] });
+  }
+  return out;
+}
+
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
-export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [], upgraded = false }) {
+// `resType` = resistenza scelta al ritiro (oggetti con `res: "choice"`).
+// `crafter.level` ≥ 10 = Nome nel regno: firma nel nome e valore doppio.
+export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [], upgraded = false, resType = "" }) {
   const tier = normTier(rawTier);
-  const finalName = (choice || itemChoices(name)[0] || name).trim();
-  const cls = classifyCraftedItem(profession.key, finalName, desc);
+  const chosen = (choice || itemChoices(name)[0] || name).trim();
+  // La meccanica Foundry della ricetta (craftingCatalogo.js), se c'è.
+  const mech = itemMech(chosen) || itemMech(name) || null;
+  const cls0 = classifyCraftedItem(profession.key, mech?.base || chosen, desc);
+  const cls = mech?.type && mech.type !== cls0.foundryType
+    ? { ...cls0, foundryType: mech.type, ...(mech.type === "equipment" && !cls0.armorType ? { armorType: "", armorValue: 0 } : {}) }
+    : (mech?.ctype && cls0.foundryType !== "weapon" && cls0.foundryType !== "equipment" ? { ...cls0, foundryType: "consumable" } : cls0);
   const t = TIER_TO_FOUNDRY[tier] || TIER_TO_FOUNDRY.common;
   const tierMeta = PREGIATURE.find((p) => p.key === tier);
   const magic = ["uncommon", "rare", "veryRare", "legendary"].includes(tier);
-  const plus = plusBonus(finalName, desc);
+  const plus = mech?.plus != null ? mech.plus : plusBonus(chosen, desc);
+  const res = mech?.res === "choice" ? (DMG_IT[resType] ? resType : "") : "";
+  let finalName = res ? `${chosen} (${DMG_IT[res]})` : chosen;
 
   let rarity = t.rarity;
   let properties = [...(cls.properties || [])];
   if (cls.foundryType === "weapon" && magic && !properties.includes("mgc")) properties.push("mgc");
+  // +N delle armi: al colpire E ai danni (prima andava solo al colpire).
   let attackBonus = cls.foundryType === "weapon" ? plus : 0;
+  let damageBonus = cls.foundryType === "weapon" ? plus : 0;
   let armorValue = cls.foundryType === "equipment" ? (cls.armorValue || 0) + (cls.armorType ? plus : 0) : 0;
   let damage2Formula = "", damage2Type = "";
-  let damageBonus = 0;
+  const extraDamage = [];
+  if (mech?.extra && cls.foundryType === "weapon") extraDamage.push([mech.extra[0], mech.extra[1]]);
   const descParts = [desc || ""];
 
   if (enhancer && enhancer.applies.includes(cls.foundryType)) {
@@ -217,6 +256,35 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     if (c.effect.dm) descParts.push(`${c.icon} ${c.name}: ${c.effect.label}.`);
   }
 
+  // ── Meccanica dei consumabili e degli oggetti con usi/effetti ──
+  const isCons = cls.foundryType === "consumable";
+  let actionType = cls.foundryType === "weapon" ? (cls.actionType || "mwak") : "";
+  let damageFormula = cls.damageFormula ? (damageBonus ? `${cls.damageFormula} + ${damageBonus}` : cls.damageFormula) : "";
+  let damageType = cls.damageType || "slashing";
+  if (mech && cls.foundryType !== "weapon") {
+    if (mech.heal) { actionType = "heal"; damageFormula = mech.heal; damageType = "healing"; }
+    else if (mech.temp) { actionType = "heal"; damageFormula = mech.temp; damageType = "temphp"; }
+    else if (mech.dmg) { actionType = mech.save ? "save" : mech.ctype === "trinket" ? "rwak" : "other"; damageFormula = mech.dmg[0]; damageType = mech.dmg[1]; }
+    else if (mech.save) actionType = "save";
+    if (mech.dmg2) extraDamage.push([mech.dmg2[0], mech.dmg2[1]]);
+  }
+  const saveAbility = mech?.save ? mech.save[0] : "";
+  const saveDC = mech?.save ? Number(mech.save[1]) || 0 : 0;
+  const uses = mech?.uses
+    ? { max: Number(mech.uses[0]) || 1, per: mech.uses[1] || "charges", recovery: mech.uses[2] || "" }
+    : isCons ? { max: 1, per: "charges", recovery: "" } : null;
+  // Effetti attivi: addosso finché lo porti (equipaggiamento) o da applicare
+  // dalla scheda quando lo usi (consumabili).
+  const fx = [...(mech?.fx || []), ...(res ? [`res:${res}`] : [])];
+  const changes = fxChanges(fx);
+  const effects = changes.length ? [{ name: finalName, changes, transfer: !isCons }] : [];
+
+  // Nome nel regno (livello 10 della professione): la firma e il valore doppio.
+  if (Number(crafter?.level) >= 10 && crafter?.name) {
+    finalName = `${finalName} · firma di ${String(crafter.name).split(" ")[0]}`;
+    price = Math.round(price * 2);
+  }
+
   descParts.push(
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
     `Rarità ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}${roll.d12 ? `, d12 = ${roll.d12}` : ", oggetto scelto dal catalogo"}.` +
@@ -236,21 +304,28 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     target: "player",
     targetUid: crafter.uid,
     targetName: crafter.name,
-    actionType: cls.foundryType === "weapon" ? (cls.actionType || "mwak") : "",
-    damageFormula: cls.damageFormula ? (damageBonus ? `${cls.damageFormula} + ${damageBonus}` : cls.damageFormula) : "",
-    damageType: cls.damageType || "slashing",
+    actionType,
+    damageFormula,
+    damageType,
     damage2Formula,
     damage2Type,
-    versatileFormula: cls.versatileFormula || "",
+    extraDamage: extraDamage.map(([formula, type]) => ({ formula, type })),
+    versatileFormula: cls.versatileFormula ? (damageBonus ? `${cls.versatileFormula} + ${damageBonus}` : cls.versatileFormula) : "",
     attackBonus,
     proficient: true,
     properties: cls.foundryType === "weapon" ? properties : [],
     armorType: cls.foundryType === "equipment" ? (cls.armorType || "") : "",
     armorValue,
-    saveAbility: "",
-    saveDC: 0,
+    saveAbility,
+    saveDC,
+    consumableType: isCons ? (mech?.ctype || "trinket") : "",
+    uses,
+    effects,
   };
 }
+
+// La ricetta ha una resistenza da scegliere al ritiro?
+export const needsResChoice = (name, choice) => (itemMech((choice || itemChoices(name)[0] || name || "").trim()) || itemMech(name))?.res === "choice";
 
 // ── Spesa dei materiali → coda per Foundry (2026-09-22) ─────────────────────
 // Le monete dei materiali si pagano in gioco. Invece di ricordarselo a voce, la

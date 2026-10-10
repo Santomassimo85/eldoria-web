@@ -60,7 +60,8 @@ export const INVESTMENTS = [
 ];
 export const investmentByKey = (k) => INVESTMENTS.find((i) => i.key === (k || "")) || INVESTMENTS[0];
 // Costo dei materiali con l'investimento scelto, in monete d'oro.
-export const investCostMo = (mo, inv) => Math.round((Number(mo) || 0) * (1 + (investmentByKey(inv?.key ?? inv).costPct) / 100));
+// Accetta anche un investimento già ritoccato (Materiali docili: "pregio" a +25%).
+export const investCostMo = (mo, inv) => { const i = inv && typeof inv === "object" && "costPct" in inv ? inv : investmentByKey(inv?.key ?? inv); return Math.round((Number(mo) || 0) * (1 + i.costPct / 100)); };
 // "3.000 mo"
 export const fmtMo = (n) => `${new Intl.NumberFormat("it-IT").format(Math.round(Number(n) || 0))} mo`;
 // PE della prova con l'investimento (arrotondati per eccesso: +5% di 10 = 11).
@@ -138,18 +139,20 @@ export function fmtCountdown(ms) {
 
 // Calcolo del tempo: base della pregiatura, poi gli sconti, poi il ritmo.
 // Ritorna minuti totali e le voci (per mostrarle una per una nell'Officina).
-export function craftMinutes({ tier = "common", tools = true, components = [], pace = "normale", ritmoBottega = false } = {}) {
+export function craftMinutes({ tier = "common", tools = true, components = [], pace = "normale", ritmoBottega = false, manoFerma = false } = {}) {
   const base = CRAFT_BASE_MINUTES[normTier(tier)] || CRAFT_BASE_MINUTES.common;
   const parts = [{ key: "base", label: "Base", min: base }];
   let min = base;
   if (tools) { min -= TOOLS_MINUTES; parts.push({ key: "tools", label: "Strumenti", min: -TOOLS_MINUTES }); }
   const comps = [...new Set(components)].map(componentByKey).filter(Boolean).slice(0, MAX_COMPONENTS);
   for (const c of comps) { min -= c.minutes; parts.push({ key: `comp:${c.key}`, label: `${c.icon} ${c.name}`, min: -c.minutes }); }
+  // Mano ferma (livello 2): i Comuni si finiscono un'ora prima.
+  if (manoFerma && normTier(tier) === "common") { min -= 60; parts.push({ key: "manoFerma", label: "Mano ferma", min: -60 }); }
   if (ritmoBottega) { const cut = Math.round(Math.max(min, 0) * 0.25); min -= cut; parts.push({ key: "ritmo", label: "Ritmo di bottega (−¼)", min: -cut }); }
   const p = paceByKey(pace);
   if (p.mult !== 1) { const before = Math.max(min, CRAFT_MIN_MINUTES); min = Math.round(before * p.mult); parts.push({ key: "pace", label: p.label, min: min - before }); }
   min = Math.max(CRAFT_MIN_MINUTES, Math.round(min));
-  return { minutes: min, parts, base, tools: !!tools, components: comps.map((c) => c.key), pace: p.key, ritmoBottega: !!ritmoBottega };
+  return { minutes: min, parts, base, tools: !!tools, components: comps.map((c) => c.key), pace: p.key, ritmoBottega: !!ritmoBottega, manoFerma: !!manoFerma && normTier(tier) === "common" };
 }
 
 // Riassunto in una riga per la coda del Master e la descrizione su Foundry.
@@ -159,6 +162,7 @@ export function craftTimeLabel(work) {
   if (work.tools) bits.push("strumenti");
   for (const k of work.components || []) { const c = componentByKey(k); if (c) bits.push(c.name); }
   if (work.help) bits.push(LEGACY_HELP[work.help] || String(work.help)); // prove di prima del 2026-09-22
+  if (work.manoFerma) bits.push("mano ferma");
   if (work.ritmoBottega) bits.push("ritmo di bottega");
   const p = paceByKey(work.pace); if (p.mult !== 1) bits.push(p.label.toLowerCase());
   if (work.outcome && work.outcome !== "centro") bits.push(outcomeTimeBy(work.outcome).label.toLowerCase());

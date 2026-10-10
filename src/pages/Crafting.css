@@ -210,9 +210,9 @@
 
 /* ── catalogo dei 6 oggetti (scheda professione): 6 linee × 3 rarità ── */
 .cr-page .cr-cat { display: flex; flex-direction: column; gap: 6px; margin: 0 0 18px; }
-.cr-page .cr-cat-head { display: grid; grid-template-columns: 34px repeat(3, 1fr); gap: 8px; padding: 0 4px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; }
+.cr-page .cr-cat-head { display: grid; grid-template-columns: 34px repeat(var(--cols, 3), minmax(0, 1fr)); gap: 8px; padding: 0 4px; font-family: "Alegreya SC", "Alegreya", serif; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; }
 .cr-page .cr-cat-head span { color: color-mix(in srgb, var(--q, var(--el)) 55%, #fff); }
-.cr-page .cr-cat-row { display: grid; grid-template-columns: 34px repeat(3, 1fr); gap: 8px; align-items: stretch; }
+.cr-page .cr-cat-row { display: grid; grid-template-columns: 34px repeat(var(--cols, 3), minmax(0, 1fr)); gap: 8px; align-items: stretch; }
 .cr-page .cr-cat-ic { display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
 .cr-page .cr-cat-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border-radius: 3px; background: rgba(var(--ossidiana-rgb), .35); border: 1px solid var(--roccia-3); border-top: 2px solid color-mix(in srgb, var(--q, var(--el)) 70%, transparent); font-family: "Alegreya", Georgia, serif; }
 .cr-page .cr-cat-cell b { font-family: "Cinzel", Georgia, serif; font-size: .74rem; color: var(--osso); }
@@ -221,7 +221,7 @@
 @media (max-width: 760px) {
   .cr-page .cr-cat-head { display: none; }
   .cr-page .cr-cat-row { grid-template-columns: 34px 1fr; }
-  .cr-page .cr-cat-ic { grid-row: 1 / span 3; align-items: flex-start; padding-top: 8px; }
+  .cr-page .cr-cat-ic { grid-row: 1 / span 5; align-items: flex-start; padding-top: 8px; }
   .cr-page .cr-cat-cell::before { display: block; }
 }
 /* sotto-piega (es. la lista dei componenti) */
@@ -236,3 +236,8 @@
 .cr-page .cr-fumble strong { color: #f87171; }
 .cr-page .cr-nat20 { margin: 10px 0 0; padding: 8px 12px; border-radius: 3px; background: rgba(74, 222, 128, .08); border: 1px solid rgba(74, 222, 128, .3); font-size: .86rem; line-height: 1.5; }
 .cr-page .cr-nat20 strong { color: #4ade80; }
+
+/* Ricette di grado (2026-10-10): titolo del grado e rarità che escono solo col tiro basso */
+.cr-page .cr-cat-grade { font-family: "Alegreya SC", "Alegreya", serif; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso); padding: 6px 4px 0; border-top: 1px solid var(--roccia-3); }
+.cr-page .cr-cat-grade small { text-transform: none; letter-spacing: 0; color: var(--osso-body); margin-left: 6px; }
+.cr-page .cr-cat-cell.is-below { opacity: .55; border-top-style: dashed; }

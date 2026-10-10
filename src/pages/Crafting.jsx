@@ -24,12 +24,14 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png";
 const CARATTERISTICHE = ["all", "FOR", "DES", "INT", "SAG", "MAG"];
 const CARATTERISTICA_LABEL = { all: "Tutte", FOR: "Forza", DES: "Destrezza", INT: "Intelligenza", SAG: "Saggezza", MAG: "Magica" };
 const PICK_TIERS = PREGIATURE.filter((p) => p.pick);
+const ALL_TIERS = PREGIATURE.filter((p) => p.key !== "scarso");
+const TIER_ORDER = PREGIATURE.map((p) => p.key);
 const RANDOM_TIERS = PREGIATURE.filter((p) => !p.pick && p.key !== "scarso");
 
 // ── Come funziona: quattro mosse, in ordine ─────────────────────────────────
 const PASSI = [
   { ic: "🧑‍🏭", k: "Scegli la professione", t: "Una sola per personaggio, per sempre. Decide con quale caratteristica tiri e cosa sai fare." },
-  { ic: "🎯", k: "Scegli rarità e oggetto", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu uno dei 6 oggetti della tua professione. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: l'oggetto lo decide il d12.` },
+  { ic: "🎯", k: "Scegli rarità e ricetta", t: `${PICK_TIERS.map((p) => p.label).join(", ")}: scegli tu una ricetta della tua professione, e salendo di grado se ne aprono di nuove. ${RANDOM_TIERS.map((p) => p.label).join(" e ")}: una ricetta del Maestro o della Leggenda, oppure il d12 a sorpresa.` },
   { ic: "🧰", k: "Prepara il banco", t: "Strumenti, componenti trovati in sessione, quanto spendi nei materiali e il ritmo: accorciano il lavoro, alzano il tiro o migliorano l'oggetto." },
   { ic: "🎲", k: "Tira e aspetta", t: "d20 + bonus decide la rarità (mai sopra quella scelta); un 1 naturale butta tutto allo Scarso. Il tiro lo vede solo il Master: tu scopri cos'è uscito quando ritiri l'oggetto, finito il tempo di lavoro." },
 ];
@@ -143,8 +145,8 @@ export default function Crafting() {
             <summary className="gl-sezlabel">2 · Le rarità</summary>
             <p className="nx-nota cr-section-sub">
               Sono quelle di D&D. Scegli a quale punti: i materiali hanno un prezzo fisso e si pagano in gioco. Il totale del d20 dice cosa esce, <strong>mai sopra la rarità scelta</strong>.
-              Per {PICK_TIERS.map((p) => p.label).join(", ")} scegli tu l'oggetto fra i 6 della professione: con un tiro più basso esce <strong>lo stesso oggetto della rarità sotto</strong> (sotto 6 uno Scarso a caso).
-              {" "}{RANDOM_TIERS.map((p) => p.label).join(" e ")} escono a caso col d12.
+              Per {PICK_TIERS.map((p) => p.label).join(", ")} scegli tu la ricetta della professione: con un tiro più basso esce <strong>la stessa ricetta alla rarità sotto</strong> (sotto 6 uno Scarso a caso).
+              {" "}Per {RANDOM_TIERS.map((p) => p.label).join(" e ")} scegli una ricetta del Maestro o della Leggenda, oppure lasci decidere al d12.
             </p>
             <div className="cr-tier-table">
               <div className="cr-tier-head"><span>Rarità</span><span>Tiro</span><span>Oggetto</span><span>Tempo</span><span>Materiali · PE</span></div>
@@ -154,7 +156,7 @@ export default function Crafting() {
                   <div key={p.key} className="nx-pannello cr-tier-row" style={{ "--q": p.color }}>
                     <span className="cr-tier-name"><i aria-hidden="true">{p.icon}</i> {p.label}<small>{p.desc}</small></span>
                     <span className="cr-tier-cell" data-label="Tiro">{p.range}</span>
-                    <span className="cr-tier-cell" data-label="Oggetto">{p.key === "scarso" ? "d12 (solo esito)" : p.pick ? "lo scegli tu" : "d12"}</span>
+                    <span className="cr-tier-cell" data-label="Oggetto">{p.key === "scarso" ? "d12 (solo esito)" : p.pick ? "lo scegli tu" : "ricetta o d12"}</span>
                     <span className="cr-tier-cell" data-label="Tempo">{CRAFT_BASE_MINUTES[p.key] ? fmtMinutes(CRAFT_BASE_MINUTES[p.key]) : "—"}</span>
                     <span className="cr-tier-cell cr-tier-cost" data-label="Materiali · PE">{c.costo} · +{XP_PER_TIER[p.key]} PE<small>{c.note}</small></span>
                   </div>
@@ -296,7 +298,7 @@ export default function Crafting() {
                   <span className="cr-grado-ic" aria-hidden="true">{g.icon}</span>
                   <span className="nx-nome">{g.name}</span>
                   <span className="cr-grado-b">{GRADE_BONUS[g.grado] ? `+${GRADE_BONUS[g.grado]} al tiro` : "nessun bonus"}</span>
-                  <span className="nx-nota">dal livello {XP_LEVELS.find(l => l.grado === g.grado)?.lv}</span>
+                  <span className="nx-nota">dal livello {XP_LEVELS.find(l => l.grado === g.grado)?.lv} · {g.grado === 1 ? "6 ricette" : "+2 ricette per professione"}</span>
                 </div>
               ))}
             </div>
@@ -320,7 +322,8 @@ export default function Crafting() {
           <details id="cr-professioni" className="cr-section cr-fold" data-chapter="6">
             <summary className="gl-sezlabel">6 · Le 10 Professioni</summary>
             <p className="nx-nota cr-section-sub">
-              Una sola per personaggio. Ogni scheda ha il <strong>catalogo</strong> dei 6 oggetti a scelta (nelle tre rarità) e le tabelle d12 di ciò che esce a caso.
+              Una sola per personaggio. Ogni scheda ha le <strong>ricette</strong> divise per grado (6 dell'Apprendista, poi 2 nuove per ogni grado: dal Maestro arrivano al Molto raro, dalla Leggenda al Leggendario) e le tabelle d12 di ciò che esce a caso.
+              In gioco una professione dà solo <strong>abilità pratiche</strong>; l'unico bonus numerico è la specializzazione del livello 10, al massimo +1.
             </p>
             <div className="nx-pillole cr-filter-row">
               {CARATTERISTICHE.map(k => (
@@ -389,8 +392,8 @@ function ProfessionCard({ prof, isOpen, onToggle }) {
             <span className="nx-kicker">Scheda della professione</span>
             <p><strong>Caratteristica:</strong> {prof.caratteristica}</p>
             <p><strong>Postazione in gioco:</strong> {POSTAZIONI[prof.key] || "la postazione della tua arte"}</p>
-            <p><strong>Bonus iniziale (Lv.1):</strong> {prof.bonusIniziale}</p>
-            <p><strong>Potenziamento (Lv.5):</strong> {prof.potenziamento}</p>
+            <p><strong>Livello 1:</strong> {prof.bonusIniziale}</p>
+            <p><strong>Livello 5:</strong> {prof.potenziamento}</p>
             <div className="cr-scheda-spec">
               <p><strong>Specializzazioni (Lv.10, una a scelta)</strong></p>
               <ul className="cr-scheda-spec-list">
@@ -401,20 +404,29 @@ function ProfessionCard({ prof, isOpen, onToggle }) {
             </div>
           </div>
 
-          {/* catalogo: 6 linee × 3 rarità */}
-          <h4 className="cr-subtitle cr-creazioni-title">⚒ Catalogo — i 6 oggetti a scelta</h4>
-          <div className="cr-cat">
-            <div className="cr-cat-head"><span /> {PICK_TIERS.map(t => <span key={t.key} style={{ "--q": t.color }}>{t.icon} {t.label}</span>)}</div>
-            {(prof.catalogo || []).map(line => (
-              <div key={line.key} className="cr-cat-row">
-                <span className="cr-cat-ic" aria-hidden="true">{line.icon}</span>
-                {PICK_TIERS.map(t => {
-                  const [nm, ds] = line[t.key] || ["—", ""];
-                  return <span key={t.key} className="cr-cat-cell" style={{ "--q": t.color }} data-label={t.label}><b>{nm}</b><small>{ds}</small></span>;
-                })}
+          {/* ricette per grado (2026-10-10): 6 dell'Apprendista + 2 per ogni grado */}
+          <h4 className="cr-subtitle cr-creazioni-title">⚒ Ricette — si aprono salendo di grado</h4>
+          {SENTIERO_MAESTRO.map(g => {
+            const lines = (prof.catalogo || []).filter(l => (l.grado || 1) === g.grado);
+            if (!lines.length) return null;
+            const cols = ALL_TIERS.filter(t => lines.some(l => l[t.key]));
+            return (
+              <div key={g.grado} className="cr-cat" style={{ "--cols": cols.length }}>
+                <div className="cr-cat-grade">{g.icon} {g.name} <small>dal livello {XP_LEVELS.find(l => l.grado === g.grado)?.lv}</small></div>
+                <div className="cr-cat-head"><span /> {cols.map(t => <span key={t.key} style={{ "--q": t.color }}>{t.icon} {t.label}</span>)}</div>
+                {lines.map(line => (
+                  <div key={line.key} className="cr-cat-row">
+                    <span className="cr-cat-ic" aria-hidden="true">{line.icon}</span>
+                    {cols.map(t => {
+                      const [nm, ds] = line[t.key] || ["—", ""];
+                      const below = TIER_ORDER.indexOf(t.key) < TIER_ORDER.indexOf(line.min || "common");
+                      return <span key={t.key} className={`cr-cat-cell${below ? " is-below" : ""}`} style={{ "--q": t.color }} data-label={t.label} title={below ? "Esce solo con un tiro basso: la ricetta si sceglie dalla rarità dopo" : undefined}><b>{nm.split(" / ").join(" · ")}</b><small>{ds}</small></span>;
+                    })}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })}
 
           {/* tabelle d12 */}
           <h4 className="cr-subtitle cr-creazioni-title">🎲 Tabelle d12 — ciò che esce a caso</h4>

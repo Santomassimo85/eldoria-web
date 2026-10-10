@@ -8,7 +8,7 @@
    Items are stored as [name, description] tuples. Index 0 = d12=1.
    ============================================================ */
 
-import { CATALOGO, LEGGENDARI } from "./craftingCatalogo";
+import { CATALOGO, LEGGENDARI, RICETTE_GRADO } from "./craftingCatalogo";
 
 export const HERO_QUOTE =
   "In Exanthia, la magia non si trova solo negli incantesimi. Si forgia col martello, " +
@@ -24,8 +24,8 @@ export const PREGIATURE = [
   { key: "common",    label: "Comune",      range: "6–10",  color: "#8a7a4a", bg: "#f4ebd2", icon: "⚙",  pick: true,  desc: "Oggetto standard ben fatto, come nel manuale di D&D." },
   { key: "uncommon",  label: "Non comune",  range: "11–15", color: "#2e7aa8", bg: "#dce8f0", icon: "✦",  pick: true,  desc: "Oggetto magico minore: un +1 o un piccolo effetto sempre attivo." },
   { key: "rare",      label: "Raro",        range: "16–20", color: "#7d2929", bg: "#f1d8d8", icon: "🌟", pick: true,  desc: "Oggetto magico potente: un +2 o un effetto importante." },
-  { key: "veryRare",  label: "Molto raro",  range: "21–25", color: "#b08820", bg: "#f6ecc0", icon: "👑", pick: false, desc: "Oggetto straordinario, deciso dal d12. Solo dal grado Maestro." },
-  { key: "legendary", label: "Leggendario", range: "26+",   color: "#c2410c", bg: "#fde7d3", icon: "🔥", pick: false, desc: "Oggetto unico, deciso dal d12. Solo dal grado Leggenda." },
+  { key: "veryRare",  label: "Molto raro",  range: "21–25", color: "#b08820", bg: "#f6ecc0", icon: "👑", pick: false, desc: "Oggetto straordinario: dalle ricette del Maestro, o a sorpresa col d12. Solo dal grado Maestro." },
+  { key: "legendary", label: "Leggendario", range: "26+",   color: "#c2410c", bg: "#fde7d3", icon: "🔥", pick: false, desc: "Oggetto unico: dalle ricette della Leggenda, o a sorpresa col d12. Solo dal grado Leggenda." },
 ];
 
 // Chiavi delle rarità usate fino al 2026-09-20 → chiavi nuove.
@@ -54,20 +54,20 @@ export const SENTIERO_MAESTRO = [
   {
     grado: 3, name: "Artigiano", icon: "⚒",
     soglia: "10 oggetti Rari+ (di cui almeno 3 Magici)",
-    bonus: "Raddoppia il bonus di Competenza per UN tiro di Pregiatura per Riposo Lungo.",
+    bonus: "Raddoppio: 1 volta a settimana sommi due volte la competenza degli strumenti al tiro.",
     capacita: "Salvataggio: gli oggetti di qualità Scarso che crei contano come Comuni (niente malus).",
   },
   {
     grado: 4, name: "Maestro", icon: "🏆",
     soglia: "20 oggetti Rari+ (di cui almeno 5 Magici)",
     bonus: "+2 a tutti i tiri. Puoi puntare al Molto raro (21+).",
-    capacita: "Firma del Maestro: 1 volta per Riposo Lungo, dichiara un oggetto come tuo capolavoro: tira con vantaggio e somma il tuo livello al tiro.",
+    capacita: "Firma del Maestro: 1 volta a settimana dichiari un oggetto come tuo capolavoro: tiri con vantaggio e sommi il tuo livello di professione al tiro.",
   },
   {
     grado: 5, name: "Leggenda", icon: "👑",
     soglia: "5 oggetti Perfetti + 1 quest leggendaria",
     bonus: "+3 a tutti i tiri. Puoi puntare al Leggendario (26+).",
-    capacita: "Opera Definitiva: una volta per campagna, crei un artefatto unico con effetti definiti col DM. La tua firma diventa famosa nel regno.",
+    capacita: "Opera Definitiva: una volta per campagna il tiro non può scendere sotto la rarità mirata (nemmeno con un 1 naturale). La tua firma diventa famosa nel regno.",
   },
 ];
 
@@ -125,7 +125,8 @@ export const ESEMPI_INGREDIENTI = [
 /* ============================================================
    THE 10 PROFESSIONS
    Each has: caratteristica · bonusIniziale (Lv1) · potenziamento (Lv5)
-   · specializzazioni (Lv10, choose one) · creazioni table (5 tiers × 12).
+   · specializzazioni (Lv10, choose one). REGOLA (2026-10-10): i tratti di
+   Lv1 e Lv5 sono solo utilità, mai bonus numerici; al Lv10 al massimo +1 · creazioni table (5 tiers × 12).
    ============================================================ */
 
 const T = (name, desc) => [name, desc]; // tuple shorthand
@@ -136,12 +137,12 @@ export const PROFESSIONI = [
     key: "fabbro", name: "Fabbro", icon: "🔨", index: 1,
     quote: "«Il fuoco non sceglie. Sceglie il martello.» — Massima dei Forgiari di Pietra Nera",
     caratteristica: "Forza", carShort: "FOR", carColor: "#8b3a26",
-    bonusIniziale: "Vantaggio sulle prove di Forza (Atletica) per lavori fisici. +1 alla CA quando indossi armature pesanti da te create.",
-    potenziamento: "Il +1 alla CA diventa +2. Vantaggio sui TS Forza quando impugni un'arma da te creata.",
+    bonusIniziale: "Riconosci a vista metalli e leghe (ferro, acciaio, mithral, adamantio) e sai dire se un'arma o un'armatura è di buona fattura.",
+    potenziamento: "Ripari armi e armature danneggiate durante un riposo breve, senza materiali: un'arma scheggiata o un'armatura corrosa tornano come prima.",
     specializzazioni: [
-      { name: "Maestro d'Armi",       desc: "+2 ai tiri di Pregiatura per armi." },
-      { name: "Maestro d'Armature",   desc: "+2 ai tiri di Pregiatura per armature; ignori la velocità ridotta delle armature pesanti." },
-      { name: "Maestro Meccanismi",   desc: "+2 ai tiri per utensili, serrature, trappole; vantaggio per disattivare trappole meccaniche." },
+      { key: "maestro_d_armi", name: "Maestro d'Armi", desc: "+1 ai danni con le armi che hai creato tu." },
+      { key: "maestro_d_armature", name: "Maestro d'Armature", desc: "+1 alla CA mentre indossi un'armatura pesante che hai creato tu." },
+      { key: "maestro_meccanismi", name: "Maestro Meccanismi", desc: "+1 alle prove per scassinare serrature e disattivare trappole meccaniche." },
     ],
     creazioni: {
       scarso: [
@@ -222,12 +223,12 @@ export const PROFESSIONI = [
     key: "alchimista", name: "Alchimista", icon: "⚗", index: 2,
     quote: "«La differenza tra cura e veleno? La quantità. E il cliente.» — Maestra Vix di Aldon",
     caratteristica: "Intelligenza", carShort: "INT", carColor: "#3a5a8a",
-    bonusIniziale: "Puoi identificare Pozioni e Veleni con una prova di Intelligenza (Indagare) CD 10.",
-    potenziamento: "La CD scende a 8. Identifichi anche elisir e mutazioni Rare con CD 12.",
+    bonusIniziale: "Riconosci pozioni e veleni dall'odore e dal colore, con una prova di Intelligenza (Indagare) CD 10.",
+    potenziamento: "Riconosci anche elisir e preparati rari (CD 12) e in 10 minuti, con gli strumenti, prepari un antidoto per un veleno comune.",
     specializzazioni: [
-      { name: "Maestro Curatore",     desc: "Le tue pozioni curative aggiungono il tuo modificatore di Intelligenza ai PF curati." },
-      { name: "Maestro Velenologo",   desc: "+2 alla CD dei tuoi veleni; sei immune ai tuoi stessi veleni." },
-      { name: "Maestro Mutagenista",  desc: "Puoi creare elisir di mutazione che durano 24 ore invece che 8." },
+      { key: "maestro_curatore", name: "Maestro Curatore", desc: "Le pozioni curative che crei curano 1 punto ferita in più." },
+      { key: "maestro_velenologo", name: "Maestro Velenologo", desc: "+1 alla CD dei veleni che crei." },
+      { key: "maestro_mutagenista", name: "Maestro Mutagenista", desc: "Gli elisir che crei durano il doppio." },
     ],
     creazioni: {
       scarso: [
@@ -308,12 +309,12 @@ export const PROFESSIONI = [
     key: "intagliatore", name: "Intagliatore / Falegname", icon: "🪵", index: 3,
     quote: "«Il legno ricorda. Tu, intagliatore, gli scrivi sopra.» — Sylven, Maestra di Bosco Cantante",
     caratteristica: "Destrezza", carShort: "DES", carColor: "#3a7a4a",
-    bonusIniziale: "Vantaggio sui tiri per disarmare trappole.",
-    potenziamento: "Vantaggio anche per individuare trappole. Lavorando il legno, recuperi il 50% dei materiali se fallisci la creazione (anziché perderli).",
+    bonusIniziale: "Riconosci il legno e la sua età: sai dire se una porta, un mobile o un ponte di legno reggerà.",
+    potenziamento: "Nel legno trovi botole, pannelli e scomparti nascosti con una prova di Intelligenza (Indagare) CD 12, anche dove altri non li cercano.",
     specializzazioni: [
-      { name: "Maestro Trappolaio",   desc: "+2 al CD delle tue trappole; le tue trappole hanno il doppio dei trigger." },
-      { name: "Maestro Bacchettiere", desc: "I focus arcani che crei concedono +1 al CD degli incantesimi." },
-      { name: "Maestro Costruttore",  desc: "Mobili e strutture che costruisci sono praticamente indistruttibili (HP doppi, immunità a danni non magici comuni)." },
+      { key: "maestro_trappolaio", name: "Maestro Trappolaio", desc: "+1 alla CD delle trappole che crei." },
+      { key: "maestro_bacchettiere", name: "Maestro Bacchettiere", desc: "+1 ai tiri per colpire con gli incantesimi quando usi un focus che hai creato tu." },
+      { key: "maestro_costruttore", name: "Maestro Costruttore", desc: "Mobili, porte e strutture che costruisci hanno il doppio dei punti ferita." },
     ],
     creazioni: {
       scarso: [
@@ -394,12 +395,12 @@ export const PROFESSIONI = [
     key: "sarto", name: "Sarto / Tessitore", icon: "🧵", index: 4,
     quote: "«Una buona cucitura è invisibile. Una grande cucitura, immortale.» — Magistra Lirien di Velvath",
     caratteristica: "Destrezza", carShort: "DES", carColor: "#3a7a4a",
-    bonusIniziale: "Vantaggio sui tiri di Destrezza (Furtività) quando indossi indumenti da te creati.",
-    potenziamento: "Vantaggio anche a Destrezza (Acrobazia). Le armature leggere/medie da te create non hanno requisito di Forza.",
+    bonusIniziale: "In 1 ora cuci un abito credibile di qualunque ceto o mestiere (per ingannare qualcuno serve comunque il tiro).",
+    potenziamento: "Le armature leggere e medie che crei non hanno requisito di Forza né svantaggio a Furtività.",
     specializzazioni: [
-      { name: "Maestro Armaiolo Leggero", desc: "+1 CA aggiuntivo alle armature leggere/medie da te create." },
-      { name: "Maestro delle Vesti Arcane", desc: "Chi indossa una tua veste arcana ha +1 al CD degli incantesimi." },
-      { name: "Maestro delle Borse", desc: "Tutte le tue borse hanno spazio extra raddoppiato; immune a furti." },
+      { key: "maestro_armaiolo_leggero", name: "Maestro Armaiolo Leggero", desc: "+1 alla CA mentre indossi un'armatura leggera che hai creato tu." },
+      { key: "maestro_delle_vesti_arcane", name: "Maestro delle Vesti Arcane", desc: "+1 alla CD dei tuoi incantesimi mentre indossi una veste che hai creato tu." },
+      { key: "maestro_delle_borse", name: "Maestro delle Borse", desc: "Le borse e gli zaini che cuci contengono il doppio." },
     ],
     creazioni: {
       scarso: [
@@ -480,12 +481,12 @@ export const PROFESSIONI = [
     key: "erborista", name: "Erborista", icon: "🌿", index: 5,
     quote: "«La foresta non guarisce chi la prende: guarisce chi la chiede.» — Vecchio Brennan, Erborista del Bosco Vecchio",
     caratteristica: "Saggezza", carShort: "SAG", carColor: "#4a7a3a",
-    bonusIniziale: "Vantaggio sui tiri di Saggezza (Sopravvivenza) per trovare ingredienti naturali.",
-    potenziamento: "Trovi sempre il doppio degli ingredienti quando ne cerchi. Identifichi piante magiche con Saggezza (Natura) CD 10.",
+    bonusIniziale: "Riconosci piante, funghi e bacche: sai sempre se sono commestibili, velenosi o medicinali.",
+    potenziamento: "Quando cerchi ingredienti in natura ne trovi il doppio.",
     specializzazioni: [
-      { name: "Maestro Curatore Naturale", desc: "+Mod Sag ai PF curati dai tuoi unguenti." },
-      { name: "Maestro Velenologo Naturale", desc: "I tuoi veleni naturali infliggono +1d6 danni." },
-      { name: "Maestro dei Richiami", desc: "Le tue esche e attrattivi non scadono e funzionano sempre." },
+      { key: "maestro_curatore_naturale", name: "Maestro Curatore Naturale", desc: "Gli unguenti e gli infusi curativi che crei curano 1 punto ferita in più." },
+      { key: "maestro_velenologo_naturale", name: "Maestro Velenologo Naturale", desc: "+1 alla CD dei veleni naturali che crei." },
+      { key: "maestro_dei_richiami", name: "Maestro dei Richiami", desc: "Le esche e gli attrattivi che crei non scadono mai." },
     ],
     creazioni: {
       scarso: [
@@ -566,12 +567,12 @@ export const PROFESSIONI = [
     key: "cuoco", name: "Cuoco / Mastro Birraio", icon: "🍲", index: 6,
     quote: "«Un esercito marcia sullo stomaco. Un eroe vince con un buon vino.» — Mastra Helga di Coppa d'Ambra",
     caratteristica: "Saggezza", carShort: "SAG", carColor: "#4a7a3a",
-    bonusIniziale: "Il tuo cibo o bevanda di qualità Comune o superiore conta come Ristorarsi: beneficio extra durante Riposi Brevi/Lunghi.",
-    potenziamento: "Tutti gli alleati che condividono un tuo pasto ottengono +1 PF per Dado Vita speso a Riposo Breve.",
+    bonusIniziale: "Con gli strumenti cucini per tutto il gruppo con quello che si trova: durante un riposo lungo nessuno consuma razioni.",
+    potenziamento: "Riconosci cibi e bevande avvelenati dall'odore e dal sapore, senza bisogno di tirare.",
     specializzazioni: [
-      { name: "Maestro Cuoco di Battaglia", desc: "I tuoi cibi danno HP temporanei pari a 1d6 + Mod Sag." },
-      { name: "Maestro Birraio", desc: "Le tue birre/liquori non scadono mai e i loro effetti durano il doppio." },
-      { name: "Maestro del Banchetto", desc: "1/Riposo Lungo puoi creare un Banchetto che dà +2 a una caratteristica a tutti i commensali per 24 ore." },
+      { key: "maestro_cuoco_di_battaglia", name: "Maestro Cuoco di Battaglia", desc: "I cibi che crei danno 1 punto ferita temporaneo in più." },
+      { key: "maestro_birraio", name: "Maestro Birraio", desc: "Le birre e i liquori che crei non scadono mai." },
+      { key: "maestro_del_banchetto", name: "Maestro del Banchetto", desc: "Una volta a settimana un tuo pasto dà +1 ai TS su Saggezza a chi lo mangia, per 8 ore." },
     ],
     creazioni: {
       scarso: [
@@ -652,12 +653,12 @@ export const PROFESSIONI = [
     key: "ingegnere", name: "Ingegnere / Artigiano", icon: "⚙", index: 7,
     quote: "«La magia è imprevedibile. Gli ingranaggi, no.» — Telmar Cogwright, Maestro Ingegnere di Forgia Rossa",
     caratteristica: "Intelligenza", carShort: "INT", carColor: "#3a5a8a",
-    bonusIniziale: "Puoi riparare rapidamente oggetti danneggiati: come Azione Bonus, prova di Intelligenza (Strumenti) CD 12.",
-    potenziamento: "La CD scende a 10. Puoi anche modificare oggetti non magici per concedere +1 a un loro uso specifico (1 modifica per oggetto).",
+    bonusIniziale: "Capisci a colpo d'occhio come funziona un meccanismo (serratura, trappola, ingranaggio) e cosa lo blocca.",
+    potenziamento: "In 10 minuti ripari un oggetto meccanico o non magico danneggiato, come l'incantesimo Riparare.",
     specializzazioni: [
-      { name: "Maestro dei Costrutti", desc: "I tuoi golem hanno +2 a tutti i tiri e +10 PF; ne puoi avere fino a 2 attivi." },
-      { name: "Maestro dei Meccanismi", desc: "+2 al CD delle tue trappole e serrature; le ripari come azione gratuita." },
-      { name: "Maestro Strumentista", desc: "I tuoi strumenti di precisione concedono +2 (anziché +1) alle prove con essi." },
+      { key: "maestro_dei_costrutti", name: "Maestro dei Costrutti", desc: "I costrutti che crei hanno +1 alla CA." },
+      { key: "maestro_dei_meccanismi", name: "Maestro dei Meccanismi", desc: "+1 alla CD delle trappole e delle serrature che crei." },
+      { key: "maestro_strumentista", name: "Maestro Strumentista", desc: "+1 alle prove fatte con gli strumenti che hai creato tu." },
     ],
     creazioni: {
       scarso: [
@@ -738,12 +739,12 @@ export const PROFESSIONI = [
     key: "cartografo", name: "Cartografo / Araldico", icon: "🗺", index: 8,
     quote: "«Una mappa non descrive il mondo. Lo decide.» — Aetha la Cartografa, Casa di Indaco",
     caratteristica: "Intelligenza", carShort: "INT", carColor: "#3a5a8a",
-    bonusIniziale: "Vantaggio sui tiri per superare ostacoli naturali in un territorio già mappato da te.",
-    potenziamento: "Vantaggio anche a Sopravvivenza per orientarsi in territori già mappati. I tuoi documenti falsi sono identificati come falsi solo con CD 16+.",
+    bonusIniziale: "Non ti perdi mai in un territorio che hai mappato tu, e stimi a occhio distanze e tempi di viaggio.",
+    potenziamento: "Riconosci a vista se un sigillo, una firma o un documento è falso.",
     specializzazioni: [
-      { name: "Maestro Cartografo", desc: "Le tue mappe rivelano automaticamente trappole e creature ostili (entro 9m dalla zona mappata)." },
-      { name: "Maestro Araldico", desc: "+2 al CD per individuare i tuoi sigilli falsi; le tue araldiche concedono +1 alle prove sociali con la fazione." },
-      { name: "Maestro dei Codici", desc: "Creazioni cifrate solo da te decodificabili; +2 alle prove di decodifica." },
+      { key: "maestro_cartografo", name: "Maestro Cartografo", desc: "+1 alle prove di Sopravvivenza nei territori che hai mappato." },
+      { key: "maestro_araldico", name: "Maestro Araldico", desc: "+1 alle prove di Persuasione con la fazione di cui porti l'araldica." },
+      { key: "maestro_dei_codici", name: "Maestro dei Codici", desc: "+1 alle prove per decifrare codici e scritture segrete." },
     ],
     creazioni: {
       scarso: [
@@ -824,12 +825,12 @@ export const PROFESSIONI = [
     key: "gioielliere", name: "Gioielliere", icon: "💎", index: 9,
     quote: "«La gemma sceglie l'anima. Io la incastono e basta.» — Margyr, Maestro di Cuore di Quarzo",
     caratteristica: "Destrezza", carShort: "DES", carColor: "#3a7a4a",
-    bonusIniziale: "Vantaggio sui tiri di Carisma (Persuasione) per vendere oggetti di valore.",
-    potenziamento: "Vantaggio anche per stimare il valore di gemme e oggetti preziosi (Intelligenza). Le tue creazioni si vendono al 110% del prezzo standard.",
+    bonusIniziale: "Stimi a vista il valore di gemme, gioielli e oggetti preziosi.",
+    potenziamento: "Le tue creazioni, vendute al mercante giusto, valgono il 10% in più.",
     specializzazioni: [
-      { name: "Maestro Incastonatore", desc: "Le tue gemme magiche danno +1 al loro effetto (es. Gemma che Assorbe → 2d4 anziché 1d4)." },
-      { name: "Maestro Talismanista", desc: "I tuoi talismani protettivi non si rompono mai e le loro cariche raddoppiano." },
-      { name: "Maestro dei Monili Arcani", desc: "I monili che crei concedono +1 al CD degli incantesimi del portatore." },
+      { key: "maestro_incastonatore", name: "Maestro Incastonatore", desc: "Le gemme e i monili magici che crei hanno 1 carica in più." },
+      { key: "maestro_talismanista", name: "Maestro Talismanista", desc: "+1 ai TS contro veleni e malattie mentre indossi un talismano che hai creato tu." },
+      { key: "maestro_dei_monili_arcani", name: "Maestro dei Monili Arcani", desc: "+1 alla CD degli incantesimi di chi indossa un monile che hai creato tu." },
     ],
     creazioni: {
       scarso: [
@@ -910,12 +911,12 @@ export const PROFESSIONI = [
     key: "incantatore", name: "Incantatore", icon: "📜", index: 10,
     quote: "«Le parole sono incantesimi che dimentichiamo. Lo scriba non dimentica mai.» — Vesper, Maestro della Torre Inchiostrata",
     caratteristica: "Carisma o Intelligenza", carShort: "MAG", carColor: "#5a3a8a",
-    bonusIniziale: "Puoi tentare di memorizzare un incantesimo da uno scroll che hai creato, anche se non fa parte della tua lista (CD 12 + livello incantesimo).",
-    potenziamento: "La CD scende a 10 + livello. Puoi creare scroll di livello pari al tuo livello da incantatore −1 (anziché −2).",
+    bonusIniziale: "Riconosci a vista l'incantesimo di una pergamena, di una runa o di un glifo, senza bisogno di Identificare.",
+    potenziamento: "Puoi provare a imparare un incantesimo da una pergamena creata da te, anche se non è nella tua lista (CD 10 + livello dell'incantesimo).",
     specializzazioni: [
-      { name: "Maestro Scriba", desc: "I tuoi scroll costano la metà a creare e raddoppiano la durata se temporanei." },
-      { name: "Maestro Runico", desc: "+2 al CD delle tue rune; i tuoi glifi possono avere 2 trigger diversi." },
-      { name: "Maestro degli Oggetti Monouso", desc: "I tuoi oggetti monouso hanno il 25% di non consumarsi (1/giorno)." },
+      { key: "maestro_scriba", name: "Maestro Scriba", desc: "Le pergamene che crei con un incantesimo a durata durano il doppio." },
+      { key: "maestro_runico", name: "Maestro Runico", desc: "+1 alla CD delle rune e dei glifi che crei." },
+      { key: "maestro_degli_oggetti_monouso", name: "Maestro degli Oggetti Monouso", desc: "Una volta a settimana un oggetto monouso creato da te non si consuma." },
     ],
     creazioni: {
       scarso: [
@@ -998,10 +999,36 @@ export const PROFESSIONI = [
 
 // Catalogo dei 6 oggetti a scelta (Comune → Non comune → Raro, stessa "linea")
 // e tabella d12 dei Leggendari: vivono in craftingCatalogo.js.
+// Dal 2026-10-10 il catalogo ha anche le RICETTE DI GRADO: le 6 linee di base
+// sono dell'Apprendista (grado 1, si scelgono da Comune), le altre si aprono
+// salendo sul Sentiero e arrivano fino al Molto raro / Leggendario.
 for (const p of PROFESSIONI) {
-  p.catalogo = CATALOGO[p.key] || [];
+  p.catalogo = [
+    ...(CATALOGO[p.key] || []).map((l) => ({ grado: 1, min: "common", ...l })),
+    ...(RICETTE_GRADO[p.key] || []),
+  ];
   p.creazioni.legendary = LEGGENDARI[p.key] || [];
 }
+
+// ── Ricette ─────────────────────────────────────────────────────────────────
+// Una linea si sceglie alla rarità `tier` se la definisce e se `tier` non è
+// sotto il suo `min`. Le rarità sotto il min restano come ripiego del tiro basso.
+export const lineHas = (line, tier) => !!line?.[tier] && TIER_ORDER.indexOf(tier) >= TIER_ORDER.indexOf(line.min || "common");
+// Le linee per il banco: quelle che hanno la rarità mirata, con il lucchetto
+// sulle ricette di un grado non ancora raggiunto.
+export function recipesFor(prof, tier, grado = 1) {
+  return (prof?.catalogo || [])
+    .map((line, i) => ({ line, i, locked: (line.grado || 1) > grado }))
+    .filter((r) => lineHas(r.line, tier));
+}
+// L'oggetto che esce da una linea alla rarità `tier` (con un tiro basso: la
+// versione più semplice disponibile). Scarso = null: si tira il d12 sullo Scarso.
+export function lineItem(line, tier) {
+  if (!line || tier === "scarso") return null;
+  for (let i = TIER_ORDER.indexOf(tier); i >= 1; i--) if (line[TIER_ORDER[i]]) return line[TIER_ORDER[i]];
+  return null;
+}
+
 
 export const ESEMPI_GIOCO = [
   {
