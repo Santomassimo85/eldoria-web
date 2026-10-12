@@ -1,6 +1,11 @@
 ' Avvia il sorvegliante Obsidian SENZA finestra (nascosto).
-' Usato dal Task Scheduler al login di Windows.
+' Usato dall'operazione pianificata al login di Windows (installa-obsidian-watch.ps1).
+' Niente percorsi fissi: la cartella del progetto e' quella sopra a questo file.
 Set sh = CreateObject("WScript.Shell")
-sh.CurrentDirectory = "C:\Users\KalEl\Desktop\PortfolioOrpheus\eldoria-web"
+Set fso = CreateObject("Scripting.FileSystemObject")
+sh.CurrentDirectory = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
+' node: quello installato di sistema, altrimenti quello nel PATH
+nodeExe = sh.ExpandEnvironmentStrings("%ProgramFiles%") & "\nodejs\node.exe"
+If Not fso.FileExists(nodeExe) Then nodeExe = "node"
 ' 0 = finestra nascosta, False = non aspettare (parte e si stacca)
-sh.Run "node tools\obsidian-watch.mjs", 0, False
+sh.Run """" & nodeExe & """ tools\obsidian-watch.mjs", 0, False

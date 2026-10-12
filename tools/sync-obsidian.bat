@@ -2,6 +2,7 @@
 chcp 65001 >nul
 REM ── Sincronizza Obsidian con i dati del sito (Firestore). Doppio-click. ──
 cd /d "%~dp0\.."
+set "PATH=%PATH%;%ProgramFiles%\nodejs"
 echo Avvio sync Obsidian...
 node tools\obsidian-sync.mjs
 echo.

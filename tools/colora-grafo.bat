@@ -20,6 +20,7 @@ if not errorlevel 1 (
 )
 
 cd /d "%~dp0\.."
+set "PATH=%PATH%;%ProgramFiles%\nodejs"
 echo  Applico i gruppi di colore...
 node tools\obsidian-sync.mjs --graph --no-ai
 echo.

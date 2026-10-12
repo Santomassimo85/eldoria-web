@@ -41,8 +41,19 @@ const DRY = args.includes("--dry");
 const DUMP = args.includes("--dump"); // estrae i testi sessione in _sessions-dump.json
 const GRAPH = args.includes("--graph"); // (ri)scrive i gruppi di colore del grafo Obsidian
 const vaultArgIdx = args.indexOf("--vault");
-const DEFAULT_VAULT = "C:\\Users\\KalEl\\Documents\\Obsidian Vault";
-const VAULT = vaultArgIdx >= 0 ? args[vaultArgIdx + 1] : DEFAULT_VAULT;
+// La vault la dice Obsidian stesso (%APPDATA%\obsidian\obsidian.json): quella
+// aperta, altrimenti l'ultima usata. Così funziona su qualunque PC/utente.
+function findVault() {
+  try {
+    const cfg = path.join(process.env.APPDATA || "", "obsidian", "obsidian.json");
+    const vaults = Object.values(JSON.parse(fs.readFileSync(cfg, "utf8")).vaults || {})
+      .filter((v) => v.path && fs.existsSync(v.path))
+      .sort((a, b) => (b.open ? 1 : 0) - (a.open ? 1 : 0) || (b.ts || 0) - (a.ts || 0));
+    if (vaults.length) return vaults[0].path;
+  } catch { /* Obsidian mai aperto su questo PC */ }
+  return path.join(process.env.USERPROFILE || "", "Documents", "Obsidian Vault");
+}
+const VAULT = vaultArgIdx >= 0 ? args[vaultArgIdx + 1] : findVault();
 const AUTO_DIR = path.join(VAULT, "_Auto");
 
 // Party canonici (chiavi usate nel campo `party` dei riassunti).

@@ -111,4 +111,10 @@ function main() {
   process.on("SIGTERM", () => { log("⏹  Sorvegliante fermato."); process.exit(0); });
 }
 
-main();
+// Un solo sorvegliante alla volta: occupa una porta locale, se è già presa
+// c'è già un'altra copia in ascolto e questa esce.
+import("node:net").then(({ createServer }) => {
+  createServer()
+    .once("error", () => { log("ℹ  Sorvegliante già attivo: esco."); process.exit(0); })
+    .listen(47321, "127.0.0.1", main);
+});
