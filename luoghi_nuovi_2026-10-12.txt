@@ -1,0 +1,73 @@
+ATLANTE — 4 luoghi da inserire da /dm-admin/geo (2026-10-12)
+Per ognuno: Nome · Continente · Descrizione (incollare l'HTML nel campo) ·
+Suggerimento per il disegno (campo sotto l'immagine) → "✨ Genera immagine" → Salva.
+Toua ESISTE GIÀ: va aperta con ✎ dalla lista e la descrizione va sostituita.
+
+==================================================
+1) Foresta di Elarwyn
+==================================================
+Continente: Ohzkie
+
+Suggerimento per il disegno:
+piccolo villaggio nel cuore di una foresta luminosa ai piedi di montagne innevate, case sugli alberi degli elfi e tane rotonde degli halfling scavate tra le radici, lanterne e passerelle di corda, atmosfera calda e accogliente
+
+Descrizione:
+<p>A nord di Gossvill, dove i pini salgono verso le prime pendici innevate, la <strong>Foresta di Elarwyn</strong> custodisce uno dei villaggi più quieti di Ohzkie. Non è un luogo grande: poche decine di case, un pugno di sentieri e una radura centrale dove ci si ritrova la sera. Ma chi ci arriva difficilmente se ne dimentica.</p>
+<p>Qui elfi e halfling vivono insieme da tanto tempo che nessuno ricorda più chi sia arrivato per primo. Gli elfi abitano in alto, in case di legno chiaro intrecciate ai rami e collegate da passerelle di corda; gli halfling sotto, in tane rotonde scavate fra le radici, con porte dipinte e camini che fumano tutto l'anno. Le due comunità si dividono il lavoro senza bisogno di leggi scritte: gli elfi curano il bosco e la caccia, gli halfling i campi, le dispense e soprattutto la cucina.</p>
+<p>Elarwyn ha la fama di non chiudere la porta a nessuno. Viandanti umani, nani di passaggio, perfino qualche mezzorco stanco della strada hanno trovato qui un tetto e un posto a tavola, purché rispettassero l'unica regola del villaggio: <em>nel bosco non si alza la voce e non si alza la lama</em>. Chi la infrange viene accompagnato al limitare della foresta, con gentilezza, e non ritrova più il sentiero per rientrare.</p>
+<p><strong>Luoghi notevoli</strong></p>
+<p><strong>L'Albero del Consiglio</strong> — Un faggio enorme al centro della radura. Sotto i suoi rami un anziano elfo e la più vecchia matrona halfling decidono insieme le questioni del villaggio, di solito davanti a una teiera.</p>
+<p><strong>La Dispensa di Nonna Pervinca</strong> — Mezza locanda, mezza cucina comune: chi passa mangia, chi resta aiuta. Le sue torte di more selvatiche sono note fino a Gossvill.</p>
+<p><strong>Il Sentiero delle Lanterne</strong> — L'unica via sicura per entrare e uscire dalla foresta. Le lanterne si accendono da sole al tramonto, e si dice che si spengano davanti a chi porta cattive intenzioni.</p>
+
+==================================================
+2) Torre del Richiamo
+==================================================
+Continente: Vathriddon
+
+Suggerimento per il disegno:
+alta torre di pietra merlata su una costa erbosa a picco sul mare grigio, finestre che brillano di luce arcana, archi di portali luminosi dentro e attorno alla torre, maghi in tunica, cielo tempestoso
+
+Descrizione:
+<p>Sulla costa di Vathriddon, dove l'erba finisce di colpo contro il mare grigio, si alza la <strong>Torre del Richiamo</strong>: una torre di pietra merlata, massiccia e senza fronzoli, che da fuori sembra poco più di una vecchia fortezza di vedetta. Dentro, è uno dei luoghi più importanti di tutta Eldoria.</p>
+<p>La Torre appartiene agli Arcani, i maghi che hanno superato l'ordalia della Torre dell'Arcano. Ogni piano ospita decine di <strong>portali</strong>: archi di pietra incisi di rune, ciascuno legato a un luogo del mondo. Gli Arcani li usano per spostarsi in un battito di ciglia da un continente all'altro, per tenere d'occhio regni e frontiere, per arrivare dove serve prima che chiunque altro sappia che è successo qualcosa. Si dice che non esista angolo di Eldoria in cui un Arcano non possa comparire in meno di un'ora.</p>
+<p>Anche gli <strong>studenti dell'Arcano</strong> possono varcare quei portali, ma solo con il permesso scritto e sigillato di un Arcanus. Senza, i guardiani della Torre — costrutti di pietra immobili come statue fino al momento in cui servono — non lasciano passare nessuno. Le leggende raccontano di apprendisti che hanno provato a usare un portale di nascosto e non sono mai arrivati a destinazione: alcuni dicono che vaghino ancora, a metà strada fra un arco e l'altro.</p>
+<p><strong>Luoghi notevoli</strong></p>
+<p><strong>La Sala delle Mille Soglie</strong> — Il cuore della Torre: un salone circolare con i portali verso le capitali e le terre più lontane. Nessuno sa con certezza quanti siano; il numero cambia a seconda di chi li conta.</p>
+<p><strong>L'Osservatorio</strong> — In cima alla Torre, specchi d'acqua incantata mostrano agli Arcani ciò che accade nei luoghi collegati ai portali.</p>
+<p><strong>Il Registro dei Permessi</strong> — Un tomo incatenato all'ingresso dove ogni passaggio viene annotato con nome, destinazione e firma dell'Arcano garante. Chi ne strappa una pagina risponde direttamente all'Ordine.</p>
+
+==================================================
+3) Fucine Nere
+==================================================
+Continente: Ohzkie
+
+Suggerimento per il disegno:
+montagna rocciosa scura con l'ingresso di una miniera scavato nel fianco, bagliore rosso di forge dall'interno, fumo nero, schiavi in catene che trasportano minerale, cultisti incappucciati, atmosfera cupa e opprimente
+
+Descrizione:
+<p>Su una montagna spoglia e bruciata di Ohzkie si aprono le <strong>Fucine Nere</strong>: un dedalo di gallerie, pozzi e forge scavati nel ventre della roccia. Qui si estrae il <strong>ferro scuro</strong>, un metallo pesante e quasi nero che non arrugginisce, insieme a minerali rari che non si trovano in nessun'altra miniera conosciuta. Le armi forgiate in questo luogo valgono una fortuna, e nessuno chiede mai da dove vengano.</p>
+<p>Le Fucine sono governate per lo più da un culto che non porta nome né stemma: uomini e donne incappucciati, che parlano poco e comandano molto. La loro regola è semplice e crudele: <em>chi passa di qui, resta</em>. Mercanti sperduti, cacciatori, avventurieri troppo curiosi finiscono in catene e scendono nei pozzi a scavare, finché le forze reggono. Le carovane prudenti allungano il viaggio di giorni pur di non avvicinarsi alla montagna.</p>
+<p>Ma il segreto più oscuro delle Fucine è il loro <strong>fuoco</strong>. Le forge bruciano più calde di qualsiasi fornace, e il metallo esce impregnato di una magia che nessun fabbro saprebbe spiegare. Si mormora che i cultisti tengano prigionieri alcuni <strong>tiefling nati in circostanze strane</strong> — sotto lune sbagliate, da madri che non ricordano il padre, con occhi che brillano al buio fin dalla culla — e che ne sfruttino il sangue infernale per alimentare il calore e la magia delle loro forgiature. Nessuno di quelli che ne parlano li ha mai visti. Nessuno di quelli che li hanno visti è mai tornato a parlarne.</p>
+<p><strong>Luoghi notevoli</strong></p>
+<p><strong>La Bocca</strong> — L'ingresso principale della miniera, una spaccatura nel fianco della montagna da cui esce, giorno e notte, un bagliore rosso e un fumo nero che si vede per miglia.</p>
+<p><strong>I Pozzi</strong> — Le gallerie più profonde, dove lavorano gli schiavi. Il caldo è insopportabile e il buio quasi totale.</p>
+<p><strong>La Forgia Cuore</strong> — Nel punto più profondo della montagna, accessibile solo ai cultisti di rango. Lì, dicono, ardono i fuochi alimentati dai tiefling.</p>
+
+==================================================
+4) Antica Città di Toua  (GIÀ PRESENTE: ✎ Modifica e sostituire)
+==================================================
+Continente: Vathriddon
+
+Suggerimento per il disegno:
+rovine di un'antica città umana su una costa erbosa a picco sul mare, solo fondamenta di pietra e poche case rimaste in piedi a metà, colonne spezzate tra l'erba alta, nebbia e luce fredda, atmosfera malinconica e misteriosa
+
+Descrizione:
+<p>Di <strong>Toua</strong> oggi restano soltanto le fondamenta: lunghe file di pietre squadrate che disegnano nell'erba la pianta di strade, piazze e case, e qualche edificio rimasto in piedi per metà, con i muri spezzati e le finestre aperte sul cielo. Le rovine si stendono sulla costa di Vathriddon, affacciate su un braccio di mare grigio, e il vento che le attraversa è l'unico abitante rimasto.</p>
+<p>Qui vivevano gli <strong>antichi umani</strong>: i primi uomini, portati in questa terra dal dio <strong>Naavir</strong> quando il mondo era ancora giovane. Toua fu la loro prima città, e per secoli fu il centro di tutto ciò che gli uomini sapevano e costruivano. Poi, circa <strong>mille anni fa</strong>, i suoi abitanti scomparvero. Tutti, nello stesso tempo.</p>
+<p>Nessuno sa cosa sia accaduto. Le cronache più antiche parlano di una morte improvvisa e misteriosa: niente segni di guerra, niente incendi, niente fosse comuni — solo una città vuota, con il pane ancora sulle tavole. Altri, più a bassa voce, sostengono che gli antichi umani <strong>non siano morti affatto</strong>: che abbiano semplicemente lasciato Toua, di loro volontà, verso un luogo che nessuno ha mai trovato. Forse richiamati da Naavir stesso.</p>
+<p>Oggi le rovine sono meta di studiosi, cercatori di reliquie e avventurieri. Chi passa la notte tra le fondamenta racconta di sentire, a volte, passi e voci nella lingua antica, che si spengono all'alba.</p>
+<p><strong>Luoghi notevoli</strong></p>
+<p><strong>La Casa a Metà</strong> — L'edificio meglio conservato della città: due piani di pietra di cui ne resta uno e mezzo. Sulla parete interna è inciso un simbolo di Naavir che nessuna pioggia è riuscita a cancellare.</p>
+<p><strong>La Piazza delle Fondamenta</strong> — Il centro della città, un grande cerchio lastricato. Al centro, un piedistallo vuoto: qualunque cosa vi stesse sopra, è sparita con gli abitanti.</p>
+<p><strong>Le Scale del Mare</strong> — Gradini scavati nella scogliera che scendono fino all'acqua e proseguono sotto la superficie, verso il fondo.</p>

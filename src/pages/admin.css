@@ -2526,6 +2526,10 @@
 @media (max-width: 600px) { .geoadm-row2 { grid-template-columns: 1fr; } }
 
 .geoadm-url { font-size: 0.82rem; margin-top: 4px; }
+.geoadm-gen { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.geoadm-gen > input { width: 100%; font-size: 0.85rem; }
+.geoadm-gen .geoadm-btn { min-height: 38px; }
+.geoadm-gen-err { margin: 0; font-size: 0.82rem; color: var(--sangue, #d9463b); }
 
 .geoadm-actions {
   display: flex;
@@ -2751,6 +2755,10 @@
 }
 .geoadm-loc-desc.placeholder { color: var(--osso-2); font-style: italic; }
 .geoadm-loc-desc p { margin: 0 0 6px; }
+/* HTML della descrizione: style.css forza p/li a #272727 (nero su roccia), qui deve restare chiaro */
+.geoadm-loc-desc :is(p, li, span, div) { color: inherit; }
+.geoadm-loc-desc :is(em, i) { color: var(--el-soft); }
+.geoadm-loc-desc :is(strong, b) { color: var(--osso); }
 
 /* ── Map picker (NPC) ── */
 .geoadm-map {

@@ -11,12 +11,15 @@ import {
 import {
   ref as storageRef,
   uploadBytes,
+  uploadString,
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import HtmlToolbar from "../components/HtmlToolbar";
+import ImageTonePicker from "../components/ImageTonePicker";
+import { getImageTone } from "../data/imageTone";
 import { CITIES_HUB } from "../data/citiesHub";
 import "./admin.css";
 
@@ -133,6 +136,10 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
   const [tab, setTab] = useState("locations"); // 'locations' | 'npcs'
   const [searchLoc, setSearchLoc] = useState("");
   const [searchNpc, setSearchNpc] = useState("");
+  // Immagine del luogo disegnata dall'IA: suggerimento facoltativo + stato
+  const [imgHint, setImgHint] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genErr, setGenErr] = useState("");
   const descRef = useRef(null);
 
   useEffect(() => {
@@ -198,6 +205,40 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
     if (url) {
       if (npcData.image) cleanupStorageUrl(npcData.image);
       setNpcData((d) => ({ ...d, image: url }));
+    }
+  };
+
+  /* ── Immagine generata (Gemini via /api/genera-immagine) ──
+     Il prompt nasce da nome, continente, descrizione e dal suggerimento;
+     la data URL va su Storage come gli upload, poi in formData.image. */
+  const generaImmagineLuogo = async () => {
+    if (genBusy || !formData.name.trim()) return;
+    setGenBusy(true); setGenErr("");
+    try {
+      const desc = String(formData.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 900);
+      const prompt = [
+        `Fantasy illustration of a place called "${formData.name.trim()}", on the continent of ${formData.continent}, in a Dungeons & Dragons world.`,
+        desc && `Description (Italian): ${desc}`,
+        imgHint.trim() && `Art direction: ${imgHint.trim()}`,
+        "Wide scenic establishing shot, painterly fantasy concept art, rich atmosphere, detailed environment.",
+        "No text, no lettering, no map, no grid, no frame, no border.",
+      ].filter(Boolean).join(" ");
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt, aspectRatio: "16:9", tono: getImageTone() }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || `HTTP ${r.status}`);
+      const safe = formData.name.trim().replace(/[^a-z0-9._-]/gi, "_").slice(0, 36) || "luogo";
+      const sref = storageRef(storage, `geo-archive/${Date.now()}-${safe}.png`);
+      await uploadString(sref, data.immagine, "data_url");
+      const url = await getDownloadURL(sref);
+      if (formData.image) cleanupStorageUrl(formData.image);
+      setFormData((d) => ({ ...d, image: url }));
+    } catch (err) {
+      setGenErr("Generazione non riuscita: " + err.message);
+    } finally {
+      setGenBusy(false);
     }
   };
 
@@ -412,6 +453,25 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                   />
+                  <div className="geoadm-gen">
+                    <input
+                      className="admin-field-input"
+                      placeholder="Suggerimento per il disegno (facoltativo): es. torre sulla scogliera, mare in tempesta"
+                      value={imgHint}
+                      onChange={(e) => setImgHint(e.target.value)}
+                    />
+                    <ImageTonePicker compact disabled={genBusy} />
+                    <button
+                      type="button"
+                      className="geoadm-btn ghost"
+                      onClick={generaImmagineLuogo}
+                      disabled={genBusy || uploadState.loc || !formData.name.trim()}
+                      title={formData.name.trim() ? "Disegna il luogo da nome, continente e descrizione" : "Scrivi prima il nome del luogo"}
+                    >
+                      {genBusy ? "⏳ Disegno in corso…" : formData.image ? "✨ Rigenera immagine" : "✨ Genera immagine"}
+                    </button>
+                    {genErr && <p className="geoadm-gen-err">{genErr}</p>}
+                  </div>
                 </div>
 
                 <div className="geoadm-field">

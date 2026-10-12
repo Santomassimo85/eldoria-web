@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, addDoc, query as fsQuery, where, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import GlacierHero from "../components/glacier/GlacierHero";
+import { buildSetIndex, matchInventorySets } from "../utils/itemSets";
 
 /* ============================================================
    Scheda PG — vista in stile grimorio, legge characters/{uid}.
@@ -135,6 +136,35 @@ const CSS = `
 .spg-inv .in .mt{font-size:13px;color:var(--muted)}
 .spg-inv .eq{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--arc);border:1px solid var(--arc-dim);border-radius:3px;padding:2px 6px}
 .spg-bag{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.1em;color:var(--gold-dim);margin:18px 2px 9px;display:flex;align-items:center;gap:8px}
+/* Set del Mercato: tacche = pezzi del set, piene quelle possedute */
+.spg-inv.inset{flex-wrap:wrap}
+.spg-set{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:2px;padding:7px 0 0;border:0;border-top:1px dashed var(--line);
+  background:none;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;text-align:left;min-height:32px}
+.spg-set .sn{color:var(--gold);font-family:'Cinzel',serif;font-size:12px;letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spg-ticks{display:flex;gap:3px;flex:0 0 auto;margin-left:auto}
+.spg-ticks i{width:9px;height:14px;border:1px solid var(--gold-dim);border-radius:2px;transform:skewX(-12deg)}
+.spg-ticks i.on{background:var(--gold);border-color:var(--gold)}
+.spg-set .fr{font-family:'Cinzel',serif;font-size:12px;color:var(--ink);flex:0 0 auto}
+.spg-set.full .sn,.spg-set.full .fr{color:var(--key)}
+.spg-set.full .spg-ticks i.on{background:var(--key);border-color:var(--key)}
+.spg-set .spg-chev{color:var(--muted);font-size:11px;flex:0 0 auto}
+.spg-setd{flex-basis:100%;margin-top:6px}
+.spg-setd-h{font-size:14px;color:var(--ink)}
+.spg-setd-t{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);margin:10px 0 2px}
+.spg-setp{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px;color:var(--muted)}
+/* style.css forza p/li a #272727: qui i li devono ereditare il colore chiaro */
+.spg-setp li,.spg-setb li{color:inherit}
+.spg-setp li{display:flex;gap:8px;align-items:baseline}
+.spg-setp li .ck{width:14px;text-align:center;flex:0 0 auto}
+.spg-setp li .st{margin-left:auto;font-size:11px;letter-spacing:.06em;text-transform:uppercase;flex:0 0 auto}
+.spg-setp li.on{color:var(--ink)}
+.spg-setp li.on .ck,.spg-setp li.on .st{color:var(--key)}
+.spg-setp li.unk{font-style:italic}
+.spg-setb{flex-basis:100%;list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.spg-setb li{display:flex;gap:8px;align-items:baseline}
+.spg-setb li b{font-family:'Cinzel',serif;font-size:11px;font-weight:400;border:1px solid var(--line);border-radius:3px;padding:0 6px;flex:0 0 auto}
+.spg-setb li.on{color:var(--ink)}
+.spg-setb li.on b{border-color:var(--key-dim);color:var(--key)}
 .spg-hint{color:var(--muted);font-size:14px;text-align:center;padding:16px;border:1px dashed var(--line);border-radius:3px}
 /* ── DESKTOP: scheda larga, griglie a più colonne ─────────────── */
 @media (min-width:840px){
@@ -247,6 +277,8 @@ export default function SchedaPG() {
   const [tab, setTab] = useState("profilo");
   const [imgOk, setImgOk] = useState(true);
   const [query, setQuery] = useState("");
+  const [setIndex, setSetIndex] = useState(null);
+  const [openSet, setOpenSet] = useState(null);
 
   // Lettura UNA volta all'apertura
   useEffect(() => {
@@ -261,6 +293,23 @@ export default function SchedaPG() {
         setLoading(false);
       }
     })();
+  }, [currentUser]);
+
+  // Set del Mercato Nero: oggetti con setPayload (lettura aperta) + registro
+  // market_sets, che tiene anche i pezzi cancellati (se la lettura fallisce, solo items).
+  useEffect(() => {
+    if (!currentUser) return;
+    let alive = true;
+    (async () => {
+      const [itemsRes, regRes] = await Promise.allSettled([
+        getDocs(fsQuery(collection(db, "items"), where("setPayload.name", ">", ""))),
+        getDocs(collection(db, "market_sets")),
+      ]);
+      if (!alive) return;
+      const rows = (r) => (r.status === "fulfilled" ? r.value.docs.map(d => ({ id: d.id, ...d.data() })) : []);
+      setSetIndex(buildSetIndex(rows(itemsRes), rows(regRes)));
+    })();
+    return () => { alive = false; };
   }, [currentUser]);
 
   // Tiro di dado — stessa logica della tua scheda, scrive su "rolls"
@@ -322,6 +371,7 @@ export default function SchedaPG() {
   const craftPending = Math.max(0, Number(data.crafting?.goldPending) || 0);
   const coinOf = (k) => (k === "gp" && craftPending ? Math.max(0, (Number(cur.gp) || 0) - craftPending) : (cur[k] ?? 0));
   const inv = data.inventory || [];
+  const invSets = matchInventorySets(inv, setIndex);
   const initial = (data.name || "?").trim().charAt(0).toUpperCase();
   const keyStats = keyStatsFor(data.class);
 
@@ -369,16 +419,66 @@ export default function SchedaPG() {
     </>
   ));
 
-  const InvRow = (i, idx) => (
-    <div key={idx} className="spg-inv">
-      <span className="qty">×{i.quantity ?? 1}</span>
-      <div className="in">
-        <div className="nm">{i.name}</div>
-        <div className="mt">{[i.weight ? `${i.weight} kg` : null, i.type].filter(Boolean).join(" · ")}</div>
+  const InvRow = (i, idx) => {
+    const set = invSets.setOf(i);
+    const rowKey = `${i.container || ""}/${i.name}#${idx}`;
+    const open = !!set && openSet === rowKey;
+    return (
+      <div key={idx} className={"spg-inv" + (set ? " inset" : "")}>
+        <span className="qty">×{i.quantity ?? 1}</span>
+        <div className="in">
+          <div className="nm">{i.name}</div>
+          <div className="mt">{[i.weight ? `${i.weight} kg` : null, i.type].filter(Boolean).join(" · ")}</div>
+        </div>
+        {i.equipped && <span className="eq">Eq.</span>}
+        {set && (
+          <button type="button" className={"spg-set" + (set.have >= set.size ? " full" : "")}
+            aria-expanded={open} onClick={() => setOpenSet(open ? null : rowKey)}
+            title={`Set «${set.name}»: ${set.have} pezzi su ${set.size}`}>
+            <span className="sn">⛓ Set «{set.name}»</span>
+            <span className="spg-ticks" aria-hidden="true">
+              {Array.from({ length: set.size }).map((_, j) => <i key={j} className={j < set.have ? "on" : ""} />)}
+            </span>
+            <span className="fr">{set.have}/{set.size}</span>
+            <span className="spg-chev" aria-hidden="true">{open ? "▴" : "▾"}</span>
+          </button>
+        )}
+        {open && (
+          <div className="spg-setd">
+            <div className="spg-setd-h">
+              {set.have >= set.size
+                ? `Set completo: hai tutti i ${set.size} pezzi.`
+                : `Hai ${set.have} ${set.have === 1 ? "pezzo" : "pezzi"} su ${set.size}: te ne ${set.size - set.have === 1 ? "manca 1" : `mancano ${set.size - set.have}`}.`}
+            </div>
+            <div className="spg-setd-t">Pezzi del set</div>
+            <ul className="spg-setp">
+              {set.pieces.map((p, j) => (
+                <li key={j} className={p.owned ? "on" : ""}>
+                  <span className="ck" aria-hidden="true">{p.owned ? "✓" : "·"}</span>
+                  <span>{p.name}</span>
+                  <span className="st">{p.owned ? "ce l'hai" : "manca"}</span>
+                </li>
+              ))}
+              {set.unknown > 0 && (
+                <li className="unk">
+                  <span className="ck" aria-hidden="true">?</span>
+                  <span>{set.unknown === 1 ? "1 pezzo ancora sconosciuto" : `${set.unknown} pezzi ancora sconosciuti`}</span>
+                </li>
+              )}
+            </ul>
+            <div className="spg-setd-t">Bonus del set</div>
+            <ul className="spg-setb">
+              {set.bonuses.length ? set.bonuses.map((b, j) => (
+                <li key={j} className={set.have >= b.pieces ? "on" : ""}>
+                  <b>{b.pieces}/{set.size}</b><span>{b.effect}</span>
+                </li>
+              )) : <li>Nessun bonus scritto per questo set.</li>}
+            </ul>
+          </div>
+        )}
       </div>
-      {i.equipped && <span className="eq">Eq.</span>}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="spg-page">

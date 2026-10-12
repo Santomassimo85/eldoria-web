@@ -361,9 +361,11 @@ service cloud.firestore {
       allow update: if isLoggedIn();
     }
 
-    // Registro dei set del Mercato Nero: solo il Master (la Forgia lo tiene allineato agli items)
+    // Registro dei set del Mercato Nero: lo scrive solo il Master (la Forgia lo tiene
+    // allineato agli items); i giocatori lo leggono per i set nello zaino della Scheda PG.
     match /market_sets/{setId} {
-      allow read, write: if isMaster();
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
     }
 
     match /settings/market_config {
