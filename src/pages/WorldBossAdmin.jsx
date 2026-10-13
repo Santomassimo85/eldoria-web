@@ -319,14 +319,14 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
           <label className="wb-inline-label">🎲 Come colpisce</label>
           <select
             className="admin-field-input"
-            value={action.hitMode === "save" ? "save" : "hit"}
-            onChange={(e) => onChange({ hitMode: e.target.value })}
+            value={action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single") ? "save" : "hit"}
+            onChange={(e) => onChange(e.target.value === "hit" ? { hitMode: "hit", aoeShape: "single" } : { hitMode: "save" })}
             title="Tiro salvezza = gli eroi colpiti tirano da soli il TS contro la CD: superato, metà danni (o niente)."
           >
             <option value="hit">Tiro per colpire (vs CA)</option>
             <option value="save">Tiro salvezza degli eroi</option>
           </select>
-          {action.hitMode === "save" && (
+          {(action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single")) && (
             <>
               <select className="admin-field-input" value={action.saveAbility || "dex"} onChange={(e) => onChange({ saveAbility: e.target.value })} title="Caratteristica del TS">
                 {SAVES.map((s) => <option key={s.v} value={s.v}>TS {s.l}</option>)}

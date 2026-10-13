@@ -99,7 +99,7 @@ function enemySaveSpec(action, enemy) {
     };
   }
   const aoe = areaSpellFor(action);
-  return aoe ? { area: true, save: aoe.save, half: aoe.half, dc: parseInt(enemy?.spellDC) || 13 } : null;
+  return aoe ? { area: true, save: aoe.save, half: aoe.half, dc: parseInt(action.saveDC) || parseInt(enemy?.spellDC) || 13 } : null;
 }
 
 function masterActionMeta(a) {
