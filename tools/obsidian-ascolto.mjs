@@ -529,7 +529,7 @@ const GEM = {
   freeKey: ORECCHIO_ENV.GEMINI_FREE_KEY || "",
   paidKey: ORECCHIO_ENV.GEMINI_PAID_KEY || readEnvFile(path.join(TOOLS_DIR, "..", "functions", ".env.eldoria-web")).GEMINI_API_KEY || "",
   // 0 = mai a pagamento (anche se la chiave delle functions c'è)
-  paidCap: /^d+$/.test(ORECCHIO_ENV.GEMINI_PAID_CAP || "") ? Number(ORECCHIO_ENV.GEMINI_PAID_CAP) : 300,
+  paidCap: /^\d+$/.test(ORECCHIO_ENV.GEMINI_PAID_CAP || "") ? Number(ORECCHIO_ENV.GEMINI_PAID_CAP) : 300,
   model: ORECCHIO_ENV.GEMINI_MODEL || "gemini-2.5-flash-lite",
   freeUsed: 0, paidUsed: 0, freeBlockedUntil: 0, busy: 0, lastError: "",
 };
