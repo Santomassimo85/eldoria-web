@@ -328,6 +328,20 @@ function kindOf(rel) {
   return parts[0] === "_Auto" ? KIND_BY_DIR[parts[1]] || "Nota" : "Nota tua";
 }
 
+// Quale nota è "la pagina" di un nome: prima quella che si chiama così
+// (o comincia così: "Garroth Tel'Arion"), poi la tua nota su quella cosa,
+// poi luoghi/NPC/personaggi; incarichi e note che lo citano solo nel titolo per ultimi.
+const KIND_RANK = { "Luogo": 1, "NPC": 1, "Nota tua": 1, "Personaggio": 2, "Gruppo": 3, "Incarico": 4, "Nota": 5 };
+function rankNotes(notes, variant) {
+  const score = (n) => {
+    const l = norm(n.label);
+    // la tua nota su un PG ("Tanagar - clan dei dentati - AXEL") vince sulla scheda dal sito
+    const head = l.startsWith(variant) ? 0 : 20;
+    return head + (KIND_RANK[n.kind] || 5) + (l === variant ? 0 : 0.5);
+  };
+  return [...notes].sort((a, b) => score(a) - score(b));
+}
+
 /* ───────────── pronunce insegnate ("quando dico nolbo apri Nolborg") ─────────────
    Stanno nella cartella del plugin dentro la vault: viaggiano con la vault. */
 
@@ -411,7 +425,9 @@ function matchOne(text, idx, push) {
       }
       if (!ok) continue;
       for (let j = i; j < i + span; j++) used[j] = true;
-      for (const note of k.notes) push(note.rel, note.label, note.kind, { heardAs: words.slice(i, i + span).join(" ") });
+      // si apre UNA pagina, quella della cosa nominata; le altre note col nome restano come link
+      const [main, ...others] = rankNotes(k.notes, k.variant);
+      push(main.rel, main.label, main.kind, { heardAs: words.slice(i, i + span).join(" "), related: others.map((o) => o.rel) });
       break;
     }
   }
@@ -450,7 +466,7 @@ function openInObsidian(hit, { newTab = true, force = false, heard = "" } = {}) 
   if (!force && now - (lastOpened.get(rel) || 0) < COOLDOWN_MS) return "cooldown";
   lastOpened.set(rel, now);
   if (pluginAlive()) {
-    events.push({ id: ++eventSeq, path: rel.replace(/\\/g, "/"), label: hit.label, kind: hit.kind, list: !!hit.list, heard, newTab });
+    events.push({ id: ++eventSeq, path: rel.replace(/\\/g, "/"), label: hit.label, kind: hit.kind, list: !!hit.list, related: hit.related || [], heard, newTab });
     if (events.length > 50) events.shift();
     return "opened";
   }
@@ -464,6 +480,10 @@ function openInObsidian(hit, { newTab = true, force = false, heard = "" } = {}) 
 }
 
 /* ───────────── installazione del plugin nella vault ───────────── */
+
+const PLUGIN_SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), "obsidian-plugin", "eldoria-orecchio");
+let PLUGIN_VERSION = null;
+try { PLUGIN_VERSION = JSON.parse(fs.readFileSync(path.join(PLUGIN_SRC, "manifest.json"), "utf8")).version; } catch { /* niente plugin */ }
 
 function installPlugin() {
   const src = path.join(path.dirname(fileURLToPath(import.meta.url)), "obsidian-plugin", "eldoria-orecchio");
@@ -524,7 +544,7 @@ const server = http.createServer(async (req, res) => {
     pluginSeenAt = Date.now();
     const since = Number(url.searchParams.get("since")) || 0;
     // since più grande del contatore = il programma è stato riavviato
-    return json(res, 200, { reset: since > eventSeq, events: events.filter((e) => e.id > since) });
+    return json(res, 200, { reset: since > eventSeq, pluginVersion: PLUGIN_VERSION, events: events.filter((e) => e.id > since) });
   }
   if (req.method === "POST" && url.pathname === "/teach") {
     const { heard = "", rel = "" } = await readBody(req);
@@ -698,6 +718,7 @@ function addRow(text, hits, err) {
   li.innerHTML = '<span class="t">' + now() + '</span>' +
     hits.map((h) => '<span><a data-rel="' + esc(h.rel) + '">' + esc(h.label) + '</a> <span class="kind">' + esc(h.kind) + '</span>' +
       (h.heardAs && norm(h.heardAs) !== norm(h.label) ? ' <span class="t">(«' + esc(h.heardAs) + '»)</span>' : '') +
+      ((h.related || []).length ? ' <span class="t">· anche: ' + h.related.map((r) => '<a data-rel="' + esc(r) + '">' + esc(r.split("/").pop().slice(0, -3)) + '</a>').join(", ") + '</span>' : '') +
       (h.result === "cooldown" ? ' <span class="cool">già aperta da poco</span>' : h.result === "missing" ? ' <span class="err">nota mancante</span>' : '') + '</span>').join("") +
     (err ? '<span class="err">' + esc(err) + '</span>' : '') + '<span class="heard">“' + esc(text) + '”</span>';
   log.prepend(li);

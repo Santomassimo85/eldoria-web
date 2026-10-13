@@ -43,11 +43,16 @@ class OrecchioView extends ItemView {
       this.linkify(main, row.path);
       top.createSpan({ cls: "orecchio-kind", text: row.kind });
       if (row.heard) box.createDiv({ cls: "orecchio-heard", text: `“${row.heard}”` });
-      if (row.items?.length) {
-        const ul = box.createEl("ul", { cls: "orecchio-items" });
-        for (const it of row.items) this.linkify(ul.createEl("li").createEl("a", { cls: "internal-link", text: it.basename }), it.path);
-      }
+      this.group(box, row.list ? null : "Anche", row.items);
+      this.group(box, "Citata in", row.cited);
     }
+  }
+
+  group(box, title, files) {
+    if (!files?.length) return;
+    if (title) box.createDiv({ cls: "orecchio-sub", text: title });
+    const ul = box.createEl("ul", { cls: "orecchio-items" });
+    for (const f of files) this.linkify(ul.createEl("li").createEl("a", { cls: "internal-link", text: f.basename }), f.path);
   }
 
   linkify(a, path) {
@@ -81,6 +86,14 @@ module.exports = class OrecchioPlugin extends Plugin {
         const r = await requestUrl({ url: `http://127.0.0.1:${PORT}/events?since=${this.since}`, throw: false });
         if (r.status !== 200) throw new Error(String(r.status));
         const data = r.json;
+        // l'Orecchio ha installato una versione nuova del plugin: si ricarica da solo
+        if (data.pluginVersion && data.pluginVersion !== this.manifest.version && !this.reloading) {
+          this.reloading = true;
+          new Notice("Orecchio: plugin aggiornato, lo ricarico…");
+          const id = this.manifest.id, plugins = this.app.plugins;
+          setTimeout(async () => { await plugins.disablePlugin(id); await plugins.enablePlugin(id); }, 300);
+          return;
+        }
         if (data.reset) this.since = 0;
         for (const ev of data.events || []) { this.since = Math.max(this.since, ev.id); await this.handle(ev); }
         this.setConnected(true);
@@ -102,15 +115,27 @@ module.exports = class OrecchioPlugin extends Plugin {
   async handle(ev) {
     const file = this.app.vault.getAbstractFileByPath(ev.path);
     if (!file) { new Notice(`Orecchio: nota non trovata (${ev.path})`); return; }
-    let items = null;
+    let items = null, cited = null;
     if (ev.list) {
+      // categoria o gruppo: tutti i link della nota-indice
       const links = this.app.metadataCache.getFileCache(file)?.links || [];
       items = links
         .map((l) => this.app.metadataCache.getFirstLinkpathDest(l.link, file.path))
         .filter(Boolean);
+    } else {
+      // la pagina si apre; qui sotto le altre note col suo nome e chi la cita
+      items = (ev.related || []).map((p) => this.app.vault.getAbstractFileByPath(p)).filter(Boolean);
+      const shown = new Set([file.path, ...items.map((f) => f.path)]);
+      const resolved = this.app.metadataCache.resolvedLinks || {};
+      cited = Object.keys(resolved)
+        .filter((src) => resolved[src][file.path] && !shown.has(src) && !src.startsWith("_Auto/Indici/") && src !== "_Auto/_Indice.md")
+        .map((src) => this.app.vault.getAbstractFileByPath(src))
+        .filter(Boolean)
+        .sort((a, b) => b.basename.localeCompare(a.basename, "it", { numeric: true })) // sessioni più recenti in cima
+        .slice(0, 15);
     }
     const time = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-    this.rows.unshift({ time, label: ev.label, kind: ev.kind, heard: ev.heard, path: file.path, items });
+    this.rows.unshift({ time, label: ev.label, kind: ev.kind, heard: ev.heard, path: file.path, list: !!ev.list, items, cited });
     this.rows = this.rows.slice(0, MAX_ROWS);
     if (ev.open !== false) await this.openPath(file.path, ev.newTab !== false);
     this.refresh(true);

@@ -12,3 +12,4 @@
 .orecchio-heard { color: var(--text-faint); font-style: italic; margin-top: 2px; }
 .orecchio-items { margin: 6px 0 0; padding-left: 18px; columns: 2; column-gap: 14px; }
 .orecchio-items li { break-inside: avoid; }
+.orecchio-sub { margin-top: 6px; font-size: var(--font-ui-smaller); color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
