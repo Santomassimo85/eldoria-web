@@ -348,14 +348,15 @@ async function main() {
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   console.log("    leggo Firestore…");
-  const [summaries, npcs, locations, quests] = await Promise.all([
+  const [summaries, npcs, locations, quests, characters] = await Promise.all([
     fetchAll(db, "summaries"),
     fetchAll(db, "npcs"),
     fetchAll(db, "geo_archive"),
     fetchAll(db, "quests"),
+    fetchAll(db, "characters"),
   ]);
   console.log(
-    `    summaries:${summaries.length}  npcs:${npcs.length}  luoghi:${locations.length}  quests:${quests.length}`
+    `    summaries:${summaries.length}  npcs:${npcs.length}  luoghi:${locations.length}  quests:${quests.length}  personaggi:${characters.length}`
   );
 
   // ── Modalità --dump: estrae i testi delle sessioni per farli riassumere ──
@@ -442,6 +443,48 @@ async function main() {
     npcCreated++;
   }
 
+  /* ── PERSONAGGI DEI GIOCATORI (characters) ── */
+  // Sempre una nota _Auto (scheda breve); se hai già una tua nota sul PG la linka.
+  const catPg = [];
+  let pgCreated = 0;
+  const hidden = loadHiddenUids();
+  for (const pg of characters) {
+    const name = (pg.name || "").trim();
+    if (!name || name.toLowerCase() === "master") continue;
+    const title = safeFile(name);
+    const first = norm(primaryOf(name)).split(" ")[0];
+    const mine = existingLinkFor(name) ||
+      existing.find((n) => n.firstToken === first && first.length >= 4)?.title || null;
+    registerTarget(name, mine || title);
+    catPg.push(title);
+    const attivo = !hidden.has(pg.id);
+    const fm = [
+      "---",
+      "generato: auto",
+      "tipo: personaggio",
+      `source_id: ${pg.id}`,
+      `nome: ${yamlEscape(name)}`,
+      pg.race ? `razza: ${yamlEscape(pg.race)}` : null,
+      pg.class ? `classe: ${yamlEscape(pg.class)}` : null,
+      pg.level ? `livello: ${pg.level}` : null,
+      pg.party ? `gruppo: ${yamlEscape(pg.party)}` : null,
+      `attivo: ${attivo ? "sì" : "no"}`,
+      "---",
+    ].filter(Boolean).join("\n");
+    const body = [
+      `# ${name}`,
+      [pg.race, pg.class, pg.level ? `livello ${pg.level}` : "", pg.party ? `gruppo ${pg.party}` : "", attivo ? "" : "non attivo"].filter(Boolean).join(" · "),
+      mine ? `**La tua nota:** [[${mine}]]` : "",
+      "",
+      pg.background ? htmlToMd(pg.background) : "_Nessuna storia sul sito._",
+      "",
+      "---",
+      "> [!info] Nota generata automaticamente da Firestore (`characters`).",
+    ].filter((x) => x !== "").join("\n");
+    writeAuto(path.join("Personaggi", `${title}.md`), `${fm}\n\n${body}\n`);
+    pgCreated++;
+  }
+
   /* ── LUOGHI ── */
   let locCreated = 0;
   for (const loc of locations) {
@@ -516,6 +559,7 @@ async function main() {
   writeIndex("Indice NPC", "🧑 NPC", catNpc, "Nessun NPC.");
   writeIndex("Indice Luoghi", "🗺️ Luoghi", catLoc, "Nessun luogo.");
   writeIndex("Indice Incarichi", "📜 Incarichi", catQuest, "Nessun incarico.");
+  writeIndex("Indice Personaggi", "🛡️ Personaggi dei giocatori", catPg, "Nessun personaggio.");
   writeIndex("Indice Taverne", "🍺 Taverne, locande e osti", catTaverne, "Nessuna taverna trovata nei testi.");
 
   // Helper: trasforma un nome in [[wikilink]] (alla tua nota se esiste).
@@ -721,6 +765,7 @@ async function main() {
     groups.push(grp('path:"_Auto/Luoghi"', "d99a3c"));    // Luoghi — arancio
     groups.push(grp('path:"_Auto/Party"', "c0432b"));     // Gruppi — rosso
     groups.push(grp('path:"_Auto/Incarichi"', "d4b13a")); // Incarichi — oro
+    groups.push(grp('path:"_Auto/Personaggi"', "9b6bd1")); // Personaggi — viola
     groups.push(grp('file:"_Indice"', "8a8a8a"));         // Indice — grigio
 
     const graphPath = path.join(VAULT, ".obsidian", "graph.json");
@@ -752,6 +797,7 @@ async function main() {
   console.log(`    NPC creati: ${npcCreated}   (linkati alle tue note: ${npcLinkedToYours})`);
   console.log(`    Luoghi    : ${locCreated}`);
   console.log(`    Incarichi : ${questCreated}`);
+  console.log(`    Personaggi: ${pgCreated}`);
   console.log(`    File scritti in _Auto/: ${written}`);
   if (DRY) console.log("    (DRY RUN: nessun file scritto davvero)");
   process.exit(0);
@@ -759,6 +805,15 @@ async function main() {
 
 // Luoghi e NPC che parlano di taverne/locande/osterie (e di chi le gestisce).
 const TAVERNA_RE = /\b(tavern\w*|locand\w*|oster\w*|bettol\w*|oste|ostessa|tavernier\w*|inn)\b/i;
+
+// UID dei giocatori nascosti (src/data/hiddenPlayers.js): le loro note dicono "non attivo".
+function loadHiddenUids() {
+  try {
+    const src = fs.readFileSync(path.join(PROJECT_ROOT, "src", "data", "hiddenPlayers.js"), "utf8");
+    const block = src.split("HIDDEN_PLAYER_UIDS")[1]?.split("]);")[0] || "";
+    return new Set([...block.matchAll(/"([A-Za-z0-9]{20,40})"/g)].map((m) => m[1]));
+  } catch { return new Set(); }
+}
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

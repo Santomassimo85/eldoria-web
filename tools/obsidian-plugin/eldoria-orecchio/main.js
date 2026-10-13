@@ -103,7 +103,7 @@ module.exports = class OrecchioPlugin extends Plugin {
     const file = this.app.vault.getAbstractFileByPath(ev.path);
     if (!file) { new Notice(`Orecchio: nota non trovata (${ev.path})`); return; }
     let items = null;
-    if (ev.kind === "Categoria") {
+    if (ev.list) {
       const links = this.app.metadataCache.getFileCache(file)?.links || [];
       items = links
         .map((l) => this.app.metadataCache.getFirstLinkpathDest(l.link, file.path))
