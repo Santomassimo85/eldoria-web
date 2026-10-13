@@ -967,3 +967,55 @@
 .rpg-ca-badge.rpg-ca-badge--dis { color: #ff9a8f; background: rgba(230, 70, 60, .16); border-color: rgba(230, 70, 60, .55); }
 .rpg-condition-badge--advantage { color: #8ef0ae; background: rgba(60, 200, 110, .12); border-color: rgba(60, 200, 110, .5); }
 .rpg-condition-badge--disadvantage { color: #ff9a8f; background: rgba(230, 70, 60, .16); border-color: rgba(230, 70, 60, .5); }
+
+/* ── AZIONI DEL TURNO (2026-10-13): 2 azioni dal livello 5 / Attacco Extra ── */
+.rpg-turn-actions {
+  margin: 8px 0 10px; padding: 10px 12px;
+  background: var(--rpg-panel2);
+  border: 1px solid var(--rpg-border); border-left: 3px solid var(--el); border-radius: var(--rpg-r);
+}
+.rpg-turn-actions.done { border-left-color: var(--rpg-faint); }
+.rpg-turn-actions-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rpg-turn-actions-lbl { font-family: var(--rpg-font-sc); letter-spacing: .12em; font-size: .82rem; color: var(--rpg-dim); }
+.rpg-turn-actions-hint { margin: 6px 0 8px; font-size: .92rem; color: var(--rpg-body); }
+.rpg-turn-actions .rpg-btn--endturn { width: 100%; margin: 0; }
+.rpg-turn-pips { display: inline-flex; align-items: center; gap: 5px; }
+.rpg-turn-pips i {
+  width: 14px; height: 14px; transform: rotate(45deg);
+  background: var(--rpg-lama); border: 1px solid var(--el-2);
+  box-shadow: 0 0 8px -2px var(--el);
+}
+.rpg-turn-pips i.used { background: transparent; border-color: var(--rpg-faint); box-shadow: none; }
+.rpg-turn-pips b { margin-left: 6px; font-family: var(--rpg-font-num); font-size: .9rem; color: var(--osso); }
+
+/* contatore sul campo, in alto a destra */
+.rpg-scene-actions {
+  position: absolute; top: 10px; right: 10px; z-index: 6;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  font-family: var(--rpg-font-num); font-size: .78rem; letter-spacing: .06em; color: var(--osso);
+  background: rgba(var(--ossidiana-rgb), .82);
+  border: 1px solid rgba(var(--el-rgb), .6); border-radius: var(--rpg-r);
+  pointer-events: none;
+}
+.rpg-scene-actions.done { border-color: var(--rpg-border); color: var(--rpg-dim); }
+.rpg-scene-actions .rpg-turn-pips i { width: 10px; height: 10px; }
+
+/* ── PALCO FERMO SUL TELEFONO (2026-10-13): testata + campo restano in alto,
+   sotto scorrono azioni/status/log in metà schermo. Sul desktop il wrapper
+   non esiste per il layout (display: contents) e la testata resta sticky da sola. ── */
+.rpg-stage { display: contents; }
+@media (max-width: 639px) {
+  .rpg-stage {
+    display: block;
+    position: sticky; top: var(--navbar-h, 80px); z-index: 50;
+    background: var(--ossidiana);
+  }
+  .rpg-stage .rpg-action-banner { position: relative; top: 0; padding: 6px 12px; }
+  .rpg-stage .rpg-banner-text { font-size: .95rem; white-space: nowrap; }
+  .rpg-stage .rpg-battle-scene { height: 40svh; min-height: 200px; max-height: 400px; }
+  .rpg-battle-interface--mobile .rpg-log-scroll { height: 40svh; max-height: 40svh; }
+  .rpg-boss-sprite { height: clamp(120px, 30svh, 240px); }
+  .rpg-boss-zone.has-minions .rpg-boss-sprite { height: clamp(90px, 22svh, 190px); }
+  .rpg-scene-actions { top: 6px; right: 6px; font-size: .7rem; padding: 4px 8px; }
+}

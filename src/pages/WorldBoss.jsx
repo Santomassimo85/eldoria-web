@@ -180,6 +180,24 @@ function selfBuffAcBonus(action) {
   return 2;
 }
 
+// Azioni per turno: 2 dal livello 5 o con un tratto che fa attaccare più volte
+// (Extra Attack / Attacco Extra / Multiattacco…), altrimenti 1.
+const EXTRA_ATTACK_RE = /extra attack|attacco extra|attacchi extra|multiattack|multiattacco|thirsting blade|lama assetata/i;
+function maxActionsFor(char) {
+  if (!char) return 1;
+  if ((parseInt(char.level) || 1) >= 5) return 2;
+  const list = [...(char.actions || []), ...(char.features || [])];
+  return list.some((a) => EXTRA_ATTACK_RE.test(`${a?.name || ""}`)) ? 2 : 1;
+}
+// Azioni già usate nel turno (`turnActions[uid] = {t: turnNumber, n}`): il numero
+// del turno le fa scadere da sole, senza doverle azzerare a ogni cambio di fase.
+function actionsUsedIn(turn, uid) {
+  const ta = turn?.turnActions?.[uid];
+  return ta && ta.t === turn.turnNumber ? (ta.n || 0) : 0;
+}
+// "Ha agito" = turno chiuso oppure almeno un'azione usata (scena e quorum).
+const hasActedIn = (turn, uid) => (turn?.actedPlayers || []).includes(uid) || actionsUsedIn(turn, uid) > 0;
+
 // Quanti alleati cura una magia: 1 di base; le cure di gruppo (Cura Ferite di Massa,
 // Parola Guaritrice di Massa, Preghiera di Guarigione…) o "fino a N creature" → N;
 // "ogni creatura / each creature" nell'area → tutti.
@@ -577,7 +595,7 @@ export default function WorldBoss() {
           [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
         });
       }
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore durante l'applicazione del danno:", err);
     }
@@ -782,7 +800,7 @@ export default function WorldBoss() {
         effect: "heal", effectEl: "radiant", effectTargets: targetIds.map((id) => `player-${id}`),
       });
       await markSkillUsed(action, skill);
-      await endMyTurn();
+      await afterAction();
     } catch (err) { console.error("Errore cura (abilità):", err); }
   };
 
@@ -806,7 +824,7 @@ export default function WorldBoss() {
         effect: "shield", effectEl: elementFor(action), effectTargets: [`player-${myUid}`],
       });
       await markSkillUsed(action, skill);
-      await endMyTurn();
+      await afterAction();
     } catch (err) { console.error("Errore scudo (abilità):", err); }
   };
 
@@ -816,15 +834,23 @@ export default function WorldBoss() {
   // un eroe attaccava 2-3 volte nello stesso turno (Lael, 2026-10-04).
   // `turnClaimRef` blocca i clic ravvicinati sullo stesso client prima ancora
   // che la transazione risponda; la transazione blocca le altre schede/dispositivi.
+  // Con 2 azioni per turno (livello 5 / Attacco Extra) il ref si libera a fine
+  // azione (`afterAction`), non quando cambia lo snapshot: così un doppio clic
+  // durante il dado animato non parte due volte. Rete: si libera da solo dopo 20 s.
   const turnClaimRef = useRef(false);
-  useEffect(() => {
-    if (!(turnState.actedPlayers || []).includes(myUid)) turnClaimRef.current = false;
-  }, [turnState.actedPlayers, turnState.turnNumber, myUid]);
+  const claimTimerRef = useRef(null);
+  const releaseClaim = () => { clearTimeout(claimTimerRef.current); turnClaimRef.current = false; };
+  useEffect(() => { releaseClaim(); }, [turnState.turnNumber, turnState.phase, myUid]);
+  const myActionsMax = maxActionsFor(charData);
+  const myActionsUsed = actionsUsedIn(turnState, myUid);
 
   const claimTurn = async () => {
     if (isMaster) return true;
     if (turnClaimRef.current) return false;
     turnClaimRef.current = true;
+    clearTimeout(claimTimerRef.current);
+    claimTimerRef.current = setTimeout(() => { turnClaimRef.current = false; }, 20000);
+    const max = myActionsMax;
     try {
       await runTransaction(db, async (tx) => {
         const ref = doc(db, "battle_meta", "turn_tracker");
@@ -832,20 +858,31 @@ export default function WorldBoss() {
         const d = snap.data() || {};
         if ((d.actedPlayers || []).includes(myUid)) throw new Error("already-acted");
         if (d.phase === "boss") throw new Error("boss-phase");
-        tx.update(ref, { actedPlayers: arrayUnion(myUid) });
+        const used = actionsUsedIn(d, myUid);
+        if (used >= max) throw new Error("already-acted");
+        const upd = { [`turnActions.${myUid}`]: { t: d.turnNumber ?? 1, n: used + 1 } };
+        if (used + 1 >= max) upd.actedPlayers = arrayUnion(myUid); // ultima azione = turno chiuso
+        tx.update(ref, upd);
       });
       return true;
     } catch (e) {
-      if (e.message === "already-acted") window.alert("Hai già agito in questo turno.");
+      releaseClaim();
+      if (e.message === "already-acted") window.alert("Hai già usato tutte le azioni di questo turno.");
       else if (e.message === "boss-phase") window.alert("È il turno del boss: aspetta il prossimo turno degli eroi.");
-      else { turnClaimRef.current = false; console.error("Prenotazione turno:", e); }
+      else console.error("Prenotazione turno:", e);
       return false;
     }
   };
 
+  // Fine di un'azione: libera i bottoni (se resta un'azione) e controlla il quorum.
+  const afterAction = async () => {
+    releaseClaim();
+    try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
+  };
+
+  // "Fine Turno": chiude il turno anche se resta un'azione (o senza agire).
   const endMyTurn = async () => {
-    // Il turno è già prenotato da claimTurn: arrayUnion è idempotente e serve
-    // solo per "Fine Turno" senza azione. Il quorum si controlla sempre.
+    releaseClaim();
     await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(myUid) });
     try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
   };
@@ -866,8 +903,8 @@ export default function WorldBoss() {
   const inactiveHeroes = useMemo(() => players.filter((p) => !activePlayers.includes(p)), [players, activePlayers]);
   const shownHeroes = showInactive ? players : activePlayers;
   const actedAlive = useMemo(
-    () => (turnState.actedPlayers || []).filter((id) => alivePlayerIds.includes(id)).length,
-    [turnState.actedPlayers, alivePlayerIds],
+    () => alivePlayerIds.filter((id) => hasActedIn(turnState, id)).length,
+    [turnState, alivePlayerIds],
   );
   const quorumNeeded = quorumTarget(alivePlayerIds.length);
   const quorumReached = fightStarted && turnState.phase === "players" && turnState.quorumTurn === turnState.turnNumber;
@@ -885,7 +922,7 @@ export default function WorldBoss() {
       const d = snap.exists() ? snap.data() : null;
       if (!d || !d.fightStarted || d.phase !== "players") return;
       if (d.quorumTurn === d.turnNumber) return;
-      const acted = (d.actedPlayers || []).filter((id) => alive.includes(id)).length;
+      const acted = alive.filter((id) => hasActedIn(d, id)).length;
       if (acted < target) return;
       const expiry = d.expiryDate?.toMillis ? d.expiryDate.toMillis() : new Date(d.expiryDate).getTime();
       const newExpiry = Date.now() + QUORUM_WINDOW_MS;
@@ -933,7 +970,7 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
         effect: "heal", effectTargets: targets.map((t) => `player-${t.id}`),
       });
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore cura:", err);
     }
@@ -962,7 +999,7 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
         effect: "shield", effectEl: "arcane", effectTargets: [`player-${currentUser.uid}`],
       });
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore self-buff:", err);
     }
@@ -991,7 +1028,7 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
         effect: "buff", effectTargets: targetIds.map((id) => `player-${id}`),
       });
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore buff:", err);
     }
@@ -1016,7 +1053,7 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
         effect: "debuff", effectEl: "darkness", effectTargets: [boss.vfxKey], effectFrom: `player-${myUid}`,
       });
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore debuff:", err);
     }
@@ -1077,7 +1114,7 @@ export default function WorldBoss() {
         });
       }
       await markSkillUsed(action, skill);
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore magia ad area:", err);
     }
@@ -1119,7 +1156,7 @@ export default function WorldBoss() {
           [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
         });
       }
-      await endMyTurn();
+      await afterAction();
     } catch (err) {
       console.error("Errore magia a colpo sicuro:", err);
     }
@@ -1324,10 +1361,11 @@ export default function WorldBoss() {
           [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
         });
       }
-      await endMyTurn();
+      await afterAction();
     } else {
       Object.assign(actionData, fxFields(action, [`player-${myUid}`], { kind: "buff" }));
       await addDoc(collection(db, "world_boss_chat"), actionData);
+      await afterAction();
     }
   };
 
@@ -1622,7 +1660,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
       await updateDoc(turnRef, {
         fightStarted: true, phase: "players", expiryDate: newExpiry,
         actedPlayers: [], turnNumber: 1, lastSwitchedAt: serverTimestamp(),
-        attackCounts: {},
+        attackCounts: {}, turnActions: {},
       });
       // I minion segnati ⚡ in Caserma scendono in campo col boss (se non ce
       // n'è già nessuno evocato a mano).
@@ -1704,6 +1742,9 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
     <div className="rpg-screen">
       <VfxLayer messages={messages} />
 
+      {/* ── PALCO: testata + campo di battaglia. Sul telefono resta fermo in alto
+           (sticky) e sotto scorrono azioni, status e log: l'effetto dell'attacco si vede. ── */}
+      <div className="rpg-stage">
       {/* ── ACTION BANNER ── */}
       <div className="rpg-action-banner">
         <span className="rpg-banner-text">
@@ -1797,10 +1838,10 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
         {/* Party — right: scattered absolute positions, N rows of 4 */}
         <div className="rpg-party-zone" ref={partyZoneRef}>
           {partyForDisplay
-            .filter(p => turnState.actedPlayers?.includes(p.id))
+            .filter(p => hasActedIn(turnState, p.id))
             .map((p, i) => {
               const COLS       = isMobile ? 3 : 4;
-              const ROW_STEP   = partyZoneHeight > 0 ? Math.min(140, (partyZoneHeight - 80) / Math.max(1, Math.ceil(partyForDisplay.filter(x => turnState.actedPlayers?.includes(x.id)).length / COLS) - 0.5)) : 120;
+              const ROW_STEP   = partyZoneHeight > 0 ? Math.min(140, (partyZoneHeight - 80) / Math.max(1, Math.ceil(partyForDisplay.filter(x => hasActedIn(turnState, x.id)).length / COLS) - 0.5)) : 120;
               const col        = i % COLS;
               const row        = Math.floor(i / COLS);
               const jX         = ((i * 47 + 13) % 28) - 14;
@@ -1847,6 +1888,20 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
           <div className="rpg-scene-banner rpg-scene-banner--defeat">💀 GLI EROI SONO CADUTI 💀</div>
         )}
 
+        {/* Contatore delle azioni del giocatore, visibile sul campo */}
+        {!isMaster && fightStarted && turnState.phase === "players" && !isPlayerDead && !isGameOver && (() => {
+          const done = turnState.actedPlayers?.includes(myUid);
+          const left = done ? 0 : Math.max(0, myActionsMax - myActionsUsed);
+          return (
+            <div className={`rpg-scene-actions${left === 0 ? " done" : ""}`} aria-live="polite">
+              <span className="rpg-turn-pips">
+                {Array.from({ length: myActionsMax }, (_, i) => <i key={i} className={i < myActionsMax - left ? "used" : ""} />)}
+              </span>
+              {left === 0 ? "Turno concluso" : `${left} ${left === 1 ? "azione" : "azioni"}`}
+            </div>
+          );
+        })()}
+
         {/* Pre-fight */}
         {!fightStarted && !isGameOver && boss && (
           <div className="rpg-prefight-overlay">
@@ -1861,6 +1916,8 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
           </div>
         )}
       </div>
+
+      </div>{/* /rpg-stage */}
 
       {/* ── TAB BAR ── */}
       {(isMaster || fightStarted) && (
@@ -2229,6 +2286,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                           <span className="rpg-hero-row-name">
                             {(p.name || "?").split(" ")[0]}
                             {acted && <span className="rpg-check-mark" title="Ha già agito">✓</span>}
+                            {!acted && actionsUsedIn(turnState, p.id) > 0 && <span className="rpg-check-mark" title="Ha usato 1 azione su 2">½</span>}
                             {isDead && <span className="rpg-dead-mark" title="A terra">💀</span>}
                             {(p.stats?.shield ?? 0) > 0 && <span className="rpg-ca-badge">🛡 {p.stats.shield}</span>}
                             {(p.selfAcBonus ?? 0) > 0 && <span className="rpg-ca-badge" title={p.selfAcSource || "Buff CA attivo"}>+{p.selfAcBonus} CA</span>}
@@ -2318,7 +2376,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                       : isPlayerDead ? "☠ Sei a terra: non puoi agire finché non vieni curato."
                       : !fightStarted ? "⏳ In attesa che il Master dia inizio alla battaglia."
                       : turnState.phase === "boss" ? "🔥 Turno del Boss: le tue azioni tornano al turno degli Eroi."
-                      : "✓ Hai già agito in questo turno: attendi il prossimo."}
+                      : "✓ Hai usato le tue azioni in questo turno: attendi il prossimo."}
                   </div>
                 )}
                 {charData?.nextTurnCondition && (
@@ -2326,12 +2384,32 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     {charData.nextTurnCondition === "advantage" ? "⬆ Prossimo tiro: VANTAGGIO" : "⬇ Prossimo tiro: SVANTAGGIO"}
                   </div>
                 )}
-                {fightStarted && turnState.phase === "players" && (
-                  <button className={`rpg-btn rpg-btn--endturn ${turnState.actedPlayers?.includes(currentUser.uid) ? "done" : ""}`}
-                    onClick={endMyTurn} disabled={turnState.actedPlayers?.includes(currentUser.uid)}>
-                    {turnState.actedPlayers?.includes(currentUser.uid) ? "✓ Azione Eseguita" : "⏩ Fine Turno"}
-                  </button>
-                )}
+                {fightStarted && turnState.phase === "players" && !isPlayerDead && !isFightOver && (() => {
+                  const done = turnState.actedPlayers?.includes(myUid);
+                  const left = done ? 0 : Math.max(0, myActionsMax - myActionsUsed);
+                  return (
+                    <div className={`rpg-turn-actions${done ? " done" : ""}`}>
+                      <div className="rpg-turn-actions-head">
+                        <span className="rpg-turn-actions-lbl">Azioni del turno</span>
+                        <span className="rpg-turn-pips" aria-label={`${left} azioni rimaste su ${myActionsMax}`}>
+                          {Array.from({ length: myActionsMax }, (_, i) => (
+                            <i key={i} className={i < myActionsMax - left ? "used" : ""} />
+                          ))}
+                          <b>{left}/{myActionsMax}</b>
+                        </span>
+                      </div>
+                      <p className="rpg-turn-actions-hint">
+                        {done ? "✓ Turno concluso: attendi il prossimo."
+                          : myActionsMax > 1 && myActionsUsed > 0 ? "Ti resta un'azione: usala oppure premi Fine Turno."
+                          : myActionsMax > 1 ? "Hai 2 azioni in questo turno (livello 5 / Attacco Extra)."
+                          : "Hai 1 azione in questo turno."}
+                      </p>
+                      <button className={`rpg-btn rpg-btn--endturn ${done ? "done" : ""}`} onClick={endMyTurn} disabled={done}>
+                        {done ? "✓ Turno concluso" : myActionsUsed > 0 ? "⏩ Fine Turno (salta l'azione rimasta)" : "⏩ Fine Turno"}
+                      </button>
+                    </div>
+                  );
+                })()}
                 {/* ── Bersaglio: chi colpire, quando in scena c'è più di un nemico ── */}
                 {livingEnemies.length > 1 && (
                   <>

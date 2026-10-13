@@ -32,7 +32,7 @@ export async function resetWorldBossFight({ boss = null, clearChat = true } = {}
 
   await setDoc(doc(db, "battle_meta", "turn_tracker"), {
     fightStarted: false, phase: "players", actedPlayers: [], turnNumber: 1,
-    attackCounts: {}, quorumTurn: deleteField(), lastSwitchedAt: serverTimestamp(),
+    attackCounts: {}, turnActions: deleteField(), quorumTurn: deleteField(), lastSwitchedAt: serverTimestamp(),
   }, { merge: true });
 
   // Gli eroi perdono gli strascichi della battaglia vecchia: scudo, vantaggio/
