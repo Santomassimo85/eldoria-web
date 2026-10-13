@@ -260,8 +260,6 @@ export default function WorldBoss() {
   const [text, setText] = useState("");
   const [openSections, setOpenSections] = useState({ Armi: true });
   const [selectedTargets, setSelectedTargets] = useState([]);
-  const [dmgDiceCount, setDmgDiceCount] = useState(1);
-  const [dmgSelectedStat, setDmgSelectedStat] = useState(null);
   const [battleBg, setBattleBg] = useState(null);
   const [partyZoneHeight, setPartyZoneHeight] = useState(0);
   const partyZoneRef = useRef(null);
@@ -275,7 +273,6 @@ export default function WorldBoss() {
   const [heroAmount, setHeroAmount] = useState("5");       // quantità "a piacere"
   const [heroShield, setHeroShield] = useState("5");       // HP di scudo da dare
   const [showInactive, setShowInactive] = useState(false); // mostra anche chi ha lasciato la campagna
-  const [playerActionMode, setPlayerActionMode] = useState("saves");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
   const [turnState, setTurnState] = useState({
@@ -534,72 +531,6 @@ export default function WorldBoss() {
     notify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTimeExpired]);
-
-  const handleManualDamageToBoss = async (die) => {
-    const boss = currentTarget; // boss o minion scelto dal giocatore
-    if (!boss || isUserLocked) return;
-    if (!(await claimTurn())) return;
-    const sides = parseInt(die.replace("d", ""));
-    let totalRoll = 0;
-    let rollsDetail = [];
-    for (let i = 0; i < dmgDiceCount; i++) {
-      const roll = Math.floor(Math.random() * sides) + 1;
-      totalRoll += roll;
-      rollsDetail.push(roll);
-    }
-    const abilityBonus = dmgSelectedStat ? readStat(charData, dmgSelectedStat).mod : 0;
-    let sneakDamage = 0;
-    const characterClass = charData?.class?.toLowerCase() || "";
-    const isRogue = characterClass === "ladro" || characterClass === "rogue";
-    const sneakDiceCount = (charData?.level ?? 1) >= 3 ? 2 : 1;
-    const sneakRolls = [];
-    if (isRogue) {
-      for (let i = 0; i < sneakDiceCount; i++) {
-        const r = Math.floor(Math.random() * 6) + 1;
-        sneakRolls.push(r);
-        sneakDamage += r;
-      }
-    }
-    const finalDamage = totalRoll + abilityBonus + sneakDamage;
-    const currentShield = boss.shield || 0;
-    const currentHp = boss.hp || 0;
-    let remainingDamage = finalDamage;
-    let newShield = currentShield;
-    let newHp = currentHp;
-    if (currentShield > 0) {
-      if (currentShield >= remainingDamage) { newShield = currentShield - remainingDamage; remainingDamage = 0; }
-      else { remainingDamage -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - remainingDamage); }
-    } else {
-      newHp = Math.max(0, currentHp - remainingDamage);
-    }
-    try {
-      await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
-      let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
-      if (abilityBonus !== 0) detailString += ` ${abilityBonus > 0 ? "+ " + abilityBonus : abilityBonus}`;
-      if (isRogue) detailString += ` + ${sneakDiceCount}d6 Ladro (${sneakRolls.join("+")})`;
-      let shieldNote = currentShield > 0 ? ` (Scudo colpito! Rimanente: ${newShield})` : "";
-      if (newHp <= 0) shieldNote += ` ☠ ${boss.name} cade!`;
-      await addDoc(collection(db, "world_boss_chat"), {
-        type: "action", senderName: charData?.name || "Eroe",
-        actionName: `Danno Arma${isRogue ? " (Furtivo)" : ""} → ${boss.name}`,
-        damageRoll: `💥 INFLITTI ${finalDamage} DANNI!${shieldNote}`,
-        description: `Tiro: ${detailString}`, uid: currentUser.uid,
-        category: "Danno", timestamp: serverTimestamp(),
-        effect: "slash", effectEl: "physical", effectTargets: [boss.vfxKey], effectFrom: `player-${myUid}`,
-        ...(newHp <= 0 ? { effectKill: [boss.vfxKey] } : {}),
-      });
-      setDmgDiceCount(1);
-      setDmgSelectedStat(null);
-      if (activeBosses[0]?.id) {
-        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
-        });
-      }
-      await afterAction();
-    } catch (err) {
-      console.error("Errore durante l'applicazione del danno:", err);
-    }
-  };
 
   const handleSavingThrow = async (statKey) => {
     if (isUserLocked || !charData || !charData.stats) return;
@@ -2429,46 +2360,18 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     </div>
                   </>
                 )}
-                <div className="rpg-mode-toggle">
-                  <button
-                    className={`rpg-mode-btn${playerActionMode === "saves" ? " active" : ""}`}
-                    onClick={() => setPlayerActionMode("saves")}
-                  >🛡 Tiri Salvezza</button>
-                  <button
-                    className={`rpg-mode-btn${playerActionMode === "damage" ? " active" : ""}`}
-                    onClick={() => setPlayerActionMode("damage")}
-                  >💥 Danno Manuale</button>
+                <div className="rpg-section-label">🛡 Tiri Salvezza</div>
+                <div className="rpg-saves-grid">
+                  {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
+                    const save = statSave(charData, s);
+                    return (
+                      <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
+                        <span className="rpg-save-key">{s.toUpperCase()}</span>
+                        <span className="rpg-save-mod">{save >= 0 ? "+" : ""}{save}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {playerActionMode === "saves" ? (
-                  <div className="rpg-saves-grid">
-                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
-                      const save = statSave(charData, s);
-                      return (
-                        <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
-                          <span className="rpg-save-key">{s.toUpperCase()}</span>
-                          <span className="rpg-save-mod">{save >= 0 ? "+" : ""}{save}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <>
-                    <div className="rpg-manual-dmg-row">
-                      <select className="rpg-select" value={dmgDiceCount} onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}>
-                        {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}d</option>)}
-                      </select>
-                      <select className="rpg-select" value={dmgSelectedStat || ""} onChange={(e) => setDmgSelectedStat(e.target.value || null)}>
-                        <option value="">No Bonus</option>
-                        {["str", "dex", "cos", "int", "wis", "cha"].map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                      </select>
-                    </div>
-                    <div className="rpg-dice-row">
-                      {["d4", "d6", "d8", "d10", "d12"].map((die) => (
-                        <button key={die} className="rpg-die-btn" onClick={() => handleManualDamageToBoss(die)} disabled={isUserLocked}>{die}</button>
-                      ))}
-                    </div>
-                  </>
-                )}
                 <div className="rpg-section-label">Azioni</div>
                 <div className="rpg-accordion">
                   {sortedCategories.map((cat) => {
