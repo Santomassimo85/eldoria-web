@@ -530,14 +530,50 @@ const GEM = {
   paidKey: ORECCHIO_ENV.GEMINI_PAID_KEY || readEnvFile(path.join(TOOLS_DIR, "..", "functions", ".env.eldoria-web")).GEMINI_API_KEY || "",
   // 0 = mai a pagamento (anche se la chiave delle functions c'è)
   paidCap: /^\d+$/.test(ORECCHIO_ENV.GEMINI_PAID_CAP || "") ? Number(ORECCHIO_ENV.GEMINI_PAID_CAP) : 300,
-  model: ORECCHIO_ENV.GEMINI_MODEL || "gemini-2.5-flash-lite",
+  // i modelli 2.5 non si aprono più ai progetti nuovi (come quello della chiave gratuita).
+  // Gratis: 500 richieste al giorno PER MODELLO (letto dalle quote del progetto, ottobre 2026):
+  // prima il 3.5 (risponde in ~1,3 s), finito quello il 3.1 (~4 s) → 1000 al giorno.
+  models: (ORECCHIO_ENV.GEMINI_MODELS || "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",").map((m) => m.trim()).filter(Boolean),
+  freePerModel: Number(ORECCHIO_ENV.GEMINI_FREE_PER_MODEL) || 500,
   freeUsed: 0, paidUsed: 0, freeBlockedUntil: 0, busy: 0, lastError: "",
 };
+// Il limite gratuito riparte a mezzanotte in California (le 9 da noi, le 8 d'inverno):
+// i conteggi del giorno stanno in tools/.orecchio-usage.json, così sopravvivono ai riavvii.
+const USAGE_FILE = path.join(TOOLS_DIR, ".orecchio-usage.json");
+const ptDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+function usageToday() {
+  let u = {};
+  try { u = JSON.parse(fs.readFileSync(USAGE_FILE, "utf8")); } catch { /* primo giorno */ }
+  if (u.day !== ptDay()) u = { day: ptDay(), used: {}, blocked: {} };
+  return u;
+}
+function saveUsage(u) { try { fs.writeFileSync(USAGE_FILE, JSON.stringify(u, null, 2)); } catch { /* pazienza */ } }
+function freeModel() {
+  const u = usageToday();
+  return GEM.models.find((m) => !u.blocked[m] && (u.used[m] || 0) < GEM.freePerModel) || null;
+}
+function freeLeft() {
+  const u = usageToday();
+  return GEM.models.reduce((n, m) => n + (u.blocked[m] ? 0 : Math.max(0, GEM.freePerModel - (u.used[m] || 0))), 0);
+}
+function resetLabel() {
+  // prossima mezzanotte in California, detta all'ora italiana
+  const now = Date.now();
+  for (let h = 1; h <= 25; h++) {
+    const t = new Date(now + h * 3600_000);
+    if (t.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", hour12: false }).startsWith("00")) {
+      return t.toLocaleString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", hour12: false }) + ":00";
+    }
+  }
+  return "domani";
+}
+
 const geminiReady = () => !!(GEM.freeKey || (GEM.paidKey && GEM.paidCap > 0));
 
 function geminiKey() {
-  if (GEM.freeKey && Date.now() > GEM.freeBlockedUntil) return { key: GEM.freeKey, paid: false };
-  if (GEM.paidKey && GEM.paidUsed < GEM.paidCap) return { key: GEM.paidKey, paid: true };
+  const m = GEM.freeKey ? freeModel() : null;
+  if (m) return { key: GEM.freeKey, paid: false, model: m };
+  if (GEM.paidKey && GEM.paidUsed < GEM.paidCap) return { key: GEM.paidKey, paid: true, model: GEM.models[0] };
   return null;
 }
 
@@ -552,35 +588,53 @@ function vocabulary() {
   return [...names].sort((a, b) => a.localeCompare(b, "it"));
 }
 
+// Una sola richiesta, due trascrizioni: "suona" = i nomi scritti come si sentono
+// (li abbina poi il riconoscimento tollerante dell'Orecchio, che sbaglia poco),
+// "corretto" = i nomi già corretti con la lista (più bravo coi nomi storpiati,
+// ma ogni tanto ne inventa uno): si usa solo se "suona" non porta a niente.
 async function geminiTranscribe(wavBase64) {
   const prompt =
-    "Trascrivi in italiano quello che dice il Master in questo audio di una sessione di Dungeons & Dragons. " +
-    "Chi parla ha la R moscia e pronuncia i nomi fantasy a modo suo (anche all'inglese o accorciati). " +
-    "Se senti una parola che somiglia a uno di questi nomi propri, scrivila ESATTAMENTE come nella lista: " +
-    vocabulary().join(", ") + ". " +
-    "Rispondi solo con la trascrizione, senza commenti. Se non si capisce niente rispondi con una riga vuota.";
-  for (let attempt = 0; attempt < 2; attempt++) {
+    "Audio di un Master che conduce una sessione di Dungeons & Dragons in italiano. " +
+    "Chi parla ha la R moscia e pronuncia i nomi fantasy a modo suo (all'inglese, accorciati, senza R). " +
+    "Restituisci due trascrizioni. 'suona': parola per parola, con i nomi propri scritti come suonano, senza correggerli. " +
+    "'corretto': la stessa frase, ma quando una parola SUONA come uno di questi nomi scrivi il nome esattamente come nella lista; " +
+    "se non somiglia a nessuno lasciala com'è, non inventare nomi: " + vocabulary().join(", ") + ". " +
+    "Se non si capisce niente, due stringhe vuote.";
+  for (let attempt = 0; attempt < 3; attempt++) {
     const k = geminiKey();
-    if (!k) { GEM.lastError = "limite gratuito finito e tetto a pagamento raggiunto"; return null; }
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEM.model}:generateContent`, {
+    if (!k) { GEM.lastError = GEM.freeKey ? `gratis di oggi finito: riparte alle ${resetLabel()} (intanto solo Chrome)` : "nessuna chiave gratuita"; return null; }
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${k.model}:generateContent`, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: { "content-type": "application/json", "x-goog-api-key": k.key },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "audio/wav", data: wavBase64 } }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: {
+          temperature: 0, maxOutputTokens: 400,
+          ...(k.model.startsWith("gemini-2") ? { thinkingConfig: { thinkingBudget: 0 } } : { thinkingConfig: { thinkingLevel: "minimal" } }),
+          responseMimeType: "application/json",
+          responseSchema: { type: "OBJECT", properties: { suona: { type: "STRING" }, corretto: { type: "STRING" } }, required: ["suona", "corretto"] },
+        },
       }),
     }).catch((e) => ({ ok: false, status: 0, text: async () => String(e) }));
     if (r.status === 429 && !k.paid) {
-      // limite della chiave gratuita: si passa a quella a pagamento fino a domani
-      GEM.freeBlockedUntil = Date.now() + 6 * 3600_000;
-      console.log("🎯 chiave gratuita al limite: passo a quella a pagamento");
+      const body = await r.text();
+      if (/per ?day|PerDay/i.test(body)) {
+        // finito il gratis di oggi su questo modello: si passa al prossimo
+        const u = usageToday(); u.blocked[k.model] = true; saveUsage(u);
+        console.log(`🎯 ${k.model}: limite gratuito di oggi finito`);
+      } else await new Promise((res) => setTimeout(res, 4000)); // troppe al minuto: si aspetta un attimo
       continue;
     }
-    if (k.paid) GEM.paidUsed++; else GEM.freeUsed++;
+    if (r.status === 503 && attempt < 2) { await new Promise((res) => setTimeout(res, 800)); continue; } // Google sovraccarico
+    if (k.paid) GEM.paidUsed++;
+    else { GEM.freeUsed++; const u = usageToday(); u.used[k.model] = (u.used[k.model] || 0) + 1; saveUsage(u); }
     if (!r.ok) { GEM.lastError = `Gemini ${r.status}: ${(await r.text()).slice(0, 160)}`; return null; }
     GEM.lastError = "";
     const data = await r.json();
-    return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(" ").trim();
+    const txt = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("").trim();
+    try { const o = JSON.parse(txt); return { raw: String(o.suona || "").trim(), fixed: String(o.corretto || "").trim() }; }
+    catch { return { raw: txt, fixed: "" }; }
   }
   return null;
 }
@@ -643,7 +697,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       plugin: pluginAlive(),
       gemini: { ready: geminiReady(), free: !!GEM.freeKey, freeUsed: GEM.freeUsed, paidUsed: GEM.paidUsed, paidCap: GEM.paidCap,
-        onPaid: !!GEM.freeKey && Date.now() < GEM.freeBlockedUntil || (!GEM.freeKey && !!GEM.paidKey), error: GEM.lastError },
+        freeLeft: GEM.freeKey ? freeLeft() : 0, freeTotal: GEM.models.length * GEM.freePerModel, model: geminiKey()?.model || "",
+        reset: resetLabel(), onPaid: !!GEM.freeKey && !freeModel() || (!GEM.freeKey && !!GEM.paidKey), error: GEM.lastError },
     });
   }
   if (req.method === "POST" && url.pathname === "/gemini") {
@@ -652,10 +707,12 @@ const server = http.createServer(async (req, res) => {
     if (GEM.busy >= 3) return json(res, 200, { skipped: true }); // troppe frasi in coda: meglio saltarne una
     GEM.busy++;
     try {
-      const text = await geminiTranscribe(audio);
-      if (!text) return json(res, 200, { text: "", hits: [], error: GEM.lastError });
+      const tr = await geminiTranscribe(audio);
+      if (!tr || !(tr.raw || tr.fixed)) return json(res, 200, { text: "", hits: [], error: GEM.lastError });
+      let text = tr.raw, found = matchText(tr.raw);
+      if (!found.length && tr.fixed && tr.fixed !== tr.raw) { found = matchText(tr.fixed); text = tr.fixed; }
       const heard = "🎯 " + text;
-      const hits = matchText(text).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
+      const hits = found.map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
       for (const h of hits) if (h.result === "opened") console.log(`🎯 "${text}" → ${h.label}`);
       return json(res, 200, { text, hits });
     } finally { GEM.busy--; }
@@ -833,8 +890,8 @@ async function checkPlugin() {
   const r = await fetch("/status").then((x) => x.json()).catch(() => null);
   const g = r && r.gemini;
   gemInfo.innerHTML = !g ? "" : !g.ready ? '🎯 Gemini spento: nessuna chiave.'
-    : '🎯 Gemini · ' + (g.free ? 'gratuita: ' + g.freeUsed + ' richieste' : 'chiave gratuita non impostata') +
-      ' · a pagamento: ' + g.paidUsed + '/' + g.paidCap + (g.onPaid ? ' (in uso)' : '') +
+    : '🎯 Gemini · ' + (g.free ? 'gratis oggi: ne restano <b>' + g.freeLeft + '</b> su ' + g.freeTotal + ' (ripartono alle ' + g.reset + ')' : 'chiave gratuita non impostata') +
+      (g.paidCap > 0 ? ' · a pagamento: ' + g.paidUsed + '/' + g.paidCap + (g.onPaid ? ' (in uso)' : '') : ' · mai a pagamento') +
       (g.error ? ' · <span class="err">' + esc(g.error) + '</span>' : '') +
       (audioError ? ' · <span class="err">' + esc(audioError) + '</span>' : '');
   plug.innerHTML = !r ? '<span class="err">Il programma sul PC è spento.</span>'

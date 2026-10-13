@@ -48,3 +48,5 @@ android/local.properties
 
 # Chiavi dell'Orecchio del Master (Gemini) — mai versionare
 tools/.orecchio.env
+
+tools/.orecchio-usage.json
