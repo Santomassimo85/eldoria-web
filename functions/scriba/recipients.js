@@ -20,6 +20,7 @@ const DM_EMAIL = "santomassimo85@gmail.com"; // "master"
 const EXTRA_EMAILS = [
     "vbuonanova@gmail.com",
     "russo.marialessandra@gmail.com",
+    "ema.genoni@gmail.com", // nuovo player (2026-10-13)
 ];
 
 const norm = (s) => String(s || "").trim().toLowerCase();
