@@ -87,15 +87,31 @@ function BossHpBar({ imgRef, url, mirrored, boss }) {
 // Etichetta di un'azione di boss/minion nel pannello Master: icona, tipo e se
 // richiede un bersaglio (attacco singolo / svantaggio) — le AREE colpiscono tutti,
 // cura/+CA/vantaggio agiscono sul nemico stesso.
+// Azione del nemico che chiede un TIRO SALVEZZA agli eroi (lo tirano da soli, in automatico):
+// "Tiro salvezza" scelto nell'editor (bersagli del passo 2) oppure area riconosciuta dal nome.
+// null = attacco normale col tiro per colpire contro la CA.
+function enemySaveSpec(action, enemy) {
+  if ((action?.type || "attack") !== "attack") return null;
+  if (action.hitMode === "save") {
+    return {
+      area: false, save: action.saveAbility || "dex", half: action.halfOnSave !== false,
+      dc: parseInt(action.saveDC) || parseInt(enemy?.spellDC) || 13,
+    };
+  }
+  const aoe = areaSpellFor(action);
+  return aoe ? { area: true, save: aoe.save, half: aoe.half, dc: parseInt(enemy?.spellDC) || 13 } : null;
+}
+
 function masterActionMeta(a) {
   const t = a.type || "attack";
   if (t === "heal") return { kind: "self", ico: "💚", tag: `si cura ${parseInt(a.diceNum) || 1}${a.diceType || "d6"}${parseInt(a.bonus) ? "+" + parseInt(a.bonus) : ""}` };
   if (t === "buff_ca") return { kind: "self", ico: "🛡", tag: `+${parseInt(a.acBonus) || 0} CA a sé` };
   if (t === "buff_adv") return { kind: "self", ico: "⬆", tag: "vantaggio a sé" };
   if (t === "debuff_dis") return { kind: "debuff", ico: "🌑", tag: "svantaggio ai bersagli", needs: true };
-  const aoe = areaSpellFor(a);
+  const sv = enemySaveSpec(a, null);
   const dmg = a.damage || `${parseInt(a.diceNum) || 1}${a.diceType || "d6"}`;
-  if (aoe) return { kind: "aoe", ico: "🌀", tag: `AREA · ${dmg} · TS ${SAVE_LABEL_IT[aoe.save] || aoe.save}` };
+  if (sv?.area) return { kind: "aoe", ico: "🌀", tag: `AREA · ${dmg} · TS ${SAVE_LABEL_IT[sv.save] || sv.save}` };
+  if (sv) return { kind: "atk", ico: "🎲", tag: `${dmg} · TS ${SAVE_LABEL_IT[sv.save] || sv.save} CD ${sv.dc}${sv.half ? " (metà)" : ""}`, needs: true };
   return { kind: "atk", ico: "⚔", tag: `${dmg}${parseInt(a.bonus) ? ` · +${parseInt(a.bonus)} al tiro` : ""}`, needs: true };
 }
 
@@ -531,29 +547,6 @@ export default function WorldBoss() {
     notify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTimeExpired]);
-
-  const handleSavingThrow = async (statKey) => {
-    if (isUserLocked || !charData || !charData.stats) return;
-    const condition = charData.nextTurnCondition;
-    let d20, rollLabel;
-    if (condition === "advantage" || condition === "disadvantage") {
-      const r1 = Math.floor(Math.random() * 20) + 1;
-      const r2 = Math.floor(Math.random() * 20) + 1;
-      d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
-      rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"} [${r1},${r2}]→${d20}`;
-      await updateDoc(doc(db, "characters", currentUser.uid), { nextTurnCondition: null });
-    } else {
-      d20 = Math.floor(Math.random() * 20) + 1;
-      rollLabel = `d20(${d20})`;
-    }
-    const mod = statSave(charData, statKey);
-    await addDoc(collection(db, "world_boss_chat"), {
-      type: "action", senderName: charData.name || "Eroe",
-      actionName: `Tiro Salvezza ${statKey.toUpperCase()}`,
-      hitRoll: `🎲 ${rollLabel} + mod(${mod}) = ${d20 + mod}`,
-      uid: currentUser.uid, category: "Tiro Salvezza", timestamp: serverTimestamp(),
-    });
-  };
 
   const handleSetCondition = async (playerId, condition) => {
     await updateDoc(doc(db, "characters", playerId), { nextTurnCondition: condition });
@@ -1383,20 +1376,25 @@ export default function WorldBoss() {
       return;
     }
 
-    // ── ATTACCO AD AREA (forma scelta nell'editor): colpisce TUTTI gli eroi vivi
-    // (o solo i selezionati, se il Master ne ha scelti); ognuno tira il TS contro
-    // la CD del nemico (spellDC del doc, default 13). Superato = metà (o niente).
-    const bossAoe = areaSpellFor(action);
+    // ── TIRO SALVEZZA AUTOMATICO: area (riconosciuta dal nome) o "Tiro salvezza"
+    // scelto nell'editor. Ogni eroe colpito tira DA SOLO il suo TS contro la CD
+    // (dell'azione, o spellDC del nemico, default 13), col vantaggio/svantaggio
+    // che ha addosso (poi consumato). Superato = metà (o niente).
+    const bossAoe = enemySaveSpec(action, boss);
     if (bossAoe) {
       const alive = players.filter((p) => (p.stats?.hp ?? 0) > 0);
-      const pool = targets.length ? alive.filter((p) => targets.includes(p.id)) : alive;
-      if (!pool.length) return alert("Nessun eroe in piedi da colpire.");
-      const dc = parseInt(boss.spellDC) || 13;
+      const pool = targets.length ? alive.filter((p) => targets.includes(p.id)) : (bossAoe.area ? alive : []);
+      if (!pool.length) return alert(bossAoe.area ? "Nessun eroe in piedi da colpire." : "DM, seleziona almeno un bersaglio!");
+      const dc = bossAoe.dc;
       const formula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
       const total = rollDice(formula);
       const results = [];
       for (const p of pool) {
-        const roll = rollD20();
+        const cond = p.nextTurnCondition;
+        const r1 = rollD20(), r2 = rollD20();
+        const roll = cond === "advantage" ? Math.max(r1, r2) : cond === "disadvantage" ? Math.min(r1, r2) : r1;
+        const condTxt = cond === "advantage" ? `⬆[${r1},${r2}]` : cond === "disadvantage" ? `⬇[${r1},${r2}]` : "";
+        if (cond === "advantage" || cond === "disadvantage") await updateDoc(doc(db, "characters", p.id), { nextTurnCondition: null });
         const mod = statSave(p, bossAoe.save);
         const saved = roll + mod >= dc;
         const dmg = saved ? (bossAoe.half ? Math.floor(total / 2) : 0) : total;
@@ -1406,16 +1404,16 @@ export default function WorldBoss() {
         if (shield > 0) { if (shield >= rem) { shield -= rem; rem = 0; } else { rem -= shield; shield = 0; } }
         const newHp = Math.max(0, hp - rem);
         if (dmg > 0) await updateDoc(doc(db, "characters", p.id), { "stats.hp": newHp, "stats.shield": shield });
-        results.push({ id: p.id, name: (p.name || "Eroe").split(" ")[0], hit: dmg > 0, roll: `TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} d20(${roll})${mod ? (mod > 0 ? "+" : "") + mod : ""}=${roll + mod} vs CD ${dc}${saved ? " ✅" : " ❌"}`, dmg, killed: newHp <= 0 && hp > 0 });
+        results.push({ id: p.id, name: (p.name || "Eroe").split(" ")[0], hit: dmg > 0, roll: `TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} ${condTxt}d20(${roll})${mod ? (mod > 0 ? "+" : "") + mod : ""}=${roll + mod} vs CD ${dc}${saved ? " ✅" : " ❌"}`, dmg, killed: newHp <= 0 && hp > 0 });
       }
       const line = results.map((r) => `${r.name} −${r.dmg}${r.dmg === 0 ? " (evitato)" : r.dmg < total ? " (metà)" : ""}${r.killed ? " ☠" : ""}`).join(", ");
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
-        actionName: `${action.name} (AREA)`,
-        description: `${who} scatena ${action.name} su tutta la zona · CD ${dc}, TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · Danni ${formula} = ${total} → ${line}`,
+        actionName: `${action.name} (${bossAoe.area ? "AREA" : "TS"})`,
+        description: `${who} scatena ${action.name}${bossAoe.area ? " su tutta la zona" : ""} · CD ${dc}, TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · Danni ${formula} = ${total} → ${line}`,
         masterDetails: results, timestamp: serverTimestamp(),
         ...fxFields(action, results.map((r) => `player-${r.id}`), {
-          kind: "aoe", from: boss.vfxKey,
+          kind: bossAoe.area ? "aoe" : null, from: boss.vfxKey,
           miss: results.filter((r) => r.dmg === 0).map((r) => `player-${r.id}`),
           kill: results.filter((r) => r.killed).map((r) => `player-${r.id}`),
         }),
@@ -2360,18 +2358,6 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     </div>
                   </>
                 )}
-                <div className="rpg-section-label">🛡 Tiri Salvezza</div>
-                <div className="rpg-saves-grid">
-                  {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
-                    const save = statSave(charData, s);
-                    return (
-                      <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
-                        <span className="rpg-save-key">{s.toUpperCase()}</span>
-                        <span className="rpg-save-mod">{save >= 0 ? "+" : ""}{save}</span>
-                      </button>
-                    );
-                  })}
-                </div>
                 <div className="rpg-section-label">Azioni</div>
                 <div className="rpg-accordion">
                   {sortedCategories.map((cat) => {

@@ -459,3 +459,9 @@
   background: var(--roccia-2); color: var(--osso); border: 1px solid var(--roccia-4);
 }
 .wb-deadstyle button.is-on { background: var(--roccia-4); border-color: var(--el); box-shadow: inset 0 -2px 0 var(--el); }
+
+/* Come colpisce: tiro per colpire o tiro salvezza degli eroi (2026-10-13) */
+.wb-save-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wb-save-row .admin-field-input { flex: 1 1 120px; min-width: 0; }
+.wb-save-row input[type="number"] { flex: 0 0 72px; }
+.wb-half-label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }

@@ -65,7 +65,9 @@ const blankAction = (i = 0) => ({
   aoeShape: "single",  // single | sphere | square | line | cone
   aoeSize: 1,          // raggio (cerchio/quadrato) o lunghezza (linea/cono)
   dmgType: "",         // tipo di danno → effetto/tinta a schermo (vedi DMG_TYPE_OPTIONS); "" = auto dal nome
-  saveAbility: "dex",  // TS che i bersagli tirano contro le aree
+  hitMode: "hit",     // "hit" = tiro per colpire vs CA · "save" = gli eroi tirano un TS (in automatico)
+  saveAbility: "dex",  // TS che i bersagli tirano (modalità "save" e aree)
+  saveDC: 13,          // CD del TS (modalità "save")
   halfOnSave: true,    // metà danni se superano il TS
 });
 
@@ -146,6 +148,8 @@ const sanitizeAction = (a = {}, i = 0) => {
     dmgType: VALID_DMG.includes(a.dmgType) ? a.dmgType : "",
     saveAbility: VALID_SAVE.includes(a.saveAbility) ? a.saveAbility : "dex",
     halfOnSave: a.halfOnSave !== false,
+    hitMode: a.hitMode === "save" ? "save" : "hit",
+    saveDC: clamp(parseInt(a.saveDC) || 13, 5, 30),
   };
 };
 
@@ -307,6 +311,32 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
           >
             {DMG_TYPE_OPTIONS.map((el) => <option key={el.value} value={el.value}>{el.label}</option>)}
           </select>
+        </div>
+      )}
+
+      {type === "attack" && (
+        <div className="wb-dice-row wb-dice-row--single wb-save-row">
+          <label className="wb-inline-label">🎲 Come colpisce</label>
+          <select
+            className="admin-field-input"
+            value={action.hitMode === "save" ? "save" : "hit"}
+            onChange={(e) => onChange({ hitMode: e.target.value })}
+            title="Tiro salvezza = gli eroi colpiti tirano da soli il TS contro la CD: superato, metà danni (o niente)."
+          >
+            <option value="hit">Tiro per colpire (vs CA)</option>
+            <option value="save">Tiro salvezza degli eroi</option>
+          </select>
+          {action.hitMode === "save" && (
+            <>
+              <select className="admin-field-input" value={action.saveAbility || "dex"} onChange={(e) => onChange({ saveAbility: e.target.value })} title="Caratteristica del TS">
+                {SAVES.map((s) => <option key={s.v} value={s.v}>TS {s.l}</option>)}
+              </select>
+              <input className="admin-field-input" type="number" min="5" max="30" placeholder="CD" value={action.saveDC ?? 13} onChange={(e) => onChange({ saveDC: e.target.value })} title="CD del tiro salvezza" />
+              <label className="wb-inline-label wb-half-label">
+                <input type="checkbox" checked={action.halfOnSave !== false} onChange={(e) => onChange({ halfOnSave: e.target.checked })} /> metà se lo superano
+              </label>
+            </>
+          )}
         </div>
       )}
 
