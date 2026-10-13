@@ -508,12 +508,88 @@ function installPlugin() {
   return changed ? "updated" : "ok";
 }
 
+/* ───────────── Gemini: riascolta le frasi in cui Chrome non ha preso nessun nome ─────────────
+   Chiavi: prima la GRATUITA (tools/.orecchio.env → GEMINI_FREE_KEY), finito il limite
+   del giorno la A PAGAMENTO (GEMINI_PAID_KEY, o quella delle functions) fino a
+   GEMINI_PAID_CAP richieste per volta che l'Orecchio è acceso (default 300). */
+
+function readEnvFile(file) {
+  const out = {};
+  try {
+    for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch { /* file assente */ }
+  return out;
+}
+const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ORECCHIO_ENV = readEnvFile(path.join(TOOLS_DIR, ".orecchio.env"));
+const GEM = {
+  freeKey: ORECCHIO_ENV.GEMINI_FREE_KEY || "",
+  paidKey: ORECCHIO_ENV.GEMINI_PAID_KEY || readEnvFile(path.join(TOOLS_DIR, "..", "functions", ".env.eldoria-web")).GEMINI_API_KEY || "",
+  paidCap: Number(ORECCHIO_ENV.GEMINI_PAID_CAP) || 300,
+  model: ORECCHIO_ENV.GEMINI_MODEL || "gemini-2.5-flash-lite",
+  freeUsed: 0, paidUsed: 0, freeBlockedUntil: 0, busy: 0, lastError: "",
+};
+const geminiReady = () => !!(GEM.freeKey || GEM.paidKey);
+
+function geminiKey() {
+  if (GEM.freeKey && Date.now() > GEM.freeBlockedUntil) return { key: GEM.freeKey, paid: false };
+  if (GEM.paidKey && GEM.paidUsed < GEM.paidCap) return { key: GEM.paidKey, paid: true };
+  return null;
+}
+
+// I nomi che Gemini deve aspettarsi: le pagine della vault (senza "- GIOCATORE").
+function vocabulary() {
+  const idx = buildIndex();
+  const names = new Set();
+  for (const k of idx.keys) for (const n of k.notes) {
+    if (n.kind === "Incarico") continue;
+    names.add(n.label.split(/\s+[-–—]\s+/)[0].replace(/[´’]/g, "'").trim());
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "it"));
+}
+
+async function geminiTranscribe(wavBase64) {
+  const prompt =
+    "Trascrivi in italiano quello che dice il Master in questo audio di una sessione di Dungeons & Dragons. " +
+    "Chi parla ha la R moscia e pronuncia i nomi fantasy a modo suo (anche all'inglese o accorciati). " +
+    "Se senti una parola che somiglia a uno di questi nomi propri, scrivila ESATTAMENTE come nella lista: " +
+    vocabulary().join(", ") + ". " +
+    "Rispondi solo con la trascrizione, senza commenti. Se non si capisce niente rispondi con una riga vuota.";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const k = geminiKey();
+    if (!k) { GEM.lastError = "limite gratuito finito e tetto a pagamento raggiunto"; return null; }
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEM.model}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": k.key },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "audio/wav", data: wavBase64 } }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
+      }),
+    }).catch((e) => ({ ok: false, status: 0, text: async () => String(e) }));
+    if (r.status === 429 && !k.paid) {
+      // limite della chiave gratuita: si passa a quella a pagamento fino a domani
+      GEM.freeBlockedUntil = Date.now() + 6 * 3600_000;
+      console.log("🎯 chiave gratuita al limite: passo a quella a pagamento");
+      continue;
+    }
+    if (k.paid) GEM.paidUsed++; else GEM.freeUsed++;
+    if (!r.ok) { GEM.lastError = `Gemini ${r.status}: ${(await r.text()).slice(0, 160)}`; return null; }
+    GEM.lastError = "";
+    const data = await r.json();
+    return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join(" ").trim();
+  }
+  return null;
+}
+
 /* ───────────── server ───────────── */
 
 function readBody(req) {
   return new Promise((resolve) => {
     let b = "";
-    req.on("data", (c) => { b += c; if (b.length > 20_000) req.destroy(); });
+    req.on("data", (c) => { b += c; if (b.length > 3_000_000) req.destroy(); });
     req.on("end", () => { try { resolve(JSON.parse(b || "{}")); } catch { resolve({}); } });
   });
 }
@@ -563,7 +639,25 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { notes: [...notes].map(([rel, label]) => ({ rel, label })).sort((a, b) => a.label.localeCompare(b.label, "it")), taught: loadTaught() });
   }
   if (req.method === "GET" && url.pathname === "/status") {
-    return json(res, 200, { plugin: pluginAlive() });
+    return json(res, 200, {
+      plugin: pluginAlive(),
+      gemini: { ready: geminiReady(), free: !!GEM.freeKey, freeUsed: GEM.freeUsed, paidUsed: GEM.paidUsed, paidCap: GEM.paidCap,
+        onPaid: !!GEM.freeKey && Date.now() < GEM.freeBlockedUntil || (!GEM.freeKey && !!GEM.paidKey), error: GEM.lastError },
+    });
+  }
+  if (req.method === "POST" && url.pathname === "/gemini") {
+    const { audio = "", newTab = true, dry = false } = await readBody(req);
+    if (!geminiReady()) return json(res, 200, { error: "nessuna chiave Gemini" });
+    if (GEM.busy >= 3) return json(res, 200, { skipped: true }); // troppe frasi in coda: meglio saltarne una
+    GEM.busy++;
+    try {
+      const text = await geminiTranscribe(audio);
+      if (!text) return json(res, 200, { text: "", hits: [], error: GEM.lastError });
+      const heard = "🎯 " + text;
+      const hits = matchText(text).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
+      for (const h of hits) if (h.result === "opened") console.log(`🎯 "${text}" → ${h.label}`);
+      return json(res, 200, { text, hits });
+    } finally { GEM.busy--; }
   }
   json(res, 404, { error: "non trovato" });
 });
@@ -590,6 +684,7 @@ server.listen(PORT, "127.0.0.1", () => {
   console.log(`    vault : ${VAULT}`);
   console.log(`    note riconoscibili per nome: ${new Set(idx.keys.flatMap((k) => k.notes.map((n) => n.rel))).size} · sessioni: ${idx.sessions.size}`);
   console.log(`    pagina: http://localhost:${PORT}   (Chrome o Edge; Ctrl+C per spegnere)`);
+  console.log(GEM.freeKey ? `    🎯 Gemini: chiave gratuita${GEM.paidKey ? `, poi a pagamento (max ${GEM.paidCap})` : ""}` : GEM.paidKey ? `    🎯 Gemini: solo chiave a pagamento (max ${GEM.paidCap}) — manca GEMINI_FREE_KEY in tools/.orecchio.env` : "    🎯 Gemini spento: nessuna chiave");
   if (!fs.existsSync(path.join(AUTO, "Indici"))) console.log("    ⚠ mancano le note-indice: lancia una volta tools/sync-obsidian.bat");
   if (!args.includes("--no-browser")) openBrowser();
 });
@@ -633,7 +728,8 @@ h2{font-size:1rem;margin:0 0 8px;color:var(--muted);font-weight:600}
   <button id="btn" title="Ascolta / pausa (barra spaziatrice)">🎙</button>
   <div><div id="state">In pausa</div><div id="live"></div>
   <label><input type="checkbox" id="newtab" checked> apri in una nuova scheda di Obsidian</label>
-  <div id="plug" class="t"></div></div>
+  <label><input type="checkbox" id="gemon" checked> 🎯 Gemini: riascolta le frasi in cui non ha preso nomi</label>
+  <div id="plug" class="t"></div><div id="gem" class="t"></div></div>
 </div>
 <div class="box"><h2>Apri subito</h2><div class="chips">
   <button data-say="npc">🧑 NPC</button><button data-say="personaggi">🛡️ Personaggi</button><button data-say="taverna">🍺 Taverne</button>
@@ -664,6 +760,7 @@ async function hear(text, manual, alts) {
   if (!r) { addRow(text, [], "Il programma sul PC non risponde: è ancora acceso?"); return; }
   if (r.hits.length || manual) addRow(text, r.hits, r.hits.length ? "" : "Nessuna nota corrisponde.");
   if (!r.hits.length) addMiss(text, alts || []);
+  else if (!manual) lastChromeHitAt = Date.now();
 }
 
 /* ── sentito ma non riconosciuto → insegna ── */
@@ -733,11 +830,92 @@ document.getElementById("f").onsubmit = (e) => { e.preventDefault(); const q = d
 const plug = document.getElementById("plug");
 async function checkPlugin() {
   const r = await fetch("/status").then((x) => x.json()).catch(() => null);
+  const g = r && r.gemini;
+  gemInfo.innerHTML = !g ? "" : !g.ready ? '🎯 Gemini spento: nessuna chiave.'
+    : '🎯 Gemini · ' + (g.free ? 'gratuita: ' + g.freeUsed + ' richieste' : 'chiave gratuita non impostata') +
+      ' · a pagamento: ' + g.paidUsed + '/' + g.paidCap + (g.onPaid ? ' (in uso)' : '') +
+      (g.error ? ' · <span class="err">' + esc(g.error) + '</span>' : '') +
+      (audioError ? ' · <span class="err">' + esc(audioError) + '</span>' : '');
   plug.innerHTML = !r ? '<span class="err">Il programma sul PC è spento.</span>'
     : r.plugin ? '🟢 Obsidian collegato: le note si aprono e finiscono nel pannello «Orecchio».'
     : '🟡 Obsidian non collegato: apro col link (riavvia Obsidian una volta per attivare il plugin).';
 }
 checkPlugin(); setInterval(checkPlugin, 5000);
+/* ── 🎯 Gemini: registra ogni frase e la riascolta se Chrome non ha preso nessun nome ── */
+const gemBox = document.getElementById("gemon"), gemInfo = document.getElementById("gem");
+try { gemBox.checked = localStorage.getItem("orecchio_gemini") !== "0"; } catch {}
+gemBox.onchange = () => { try { localStorage.setItem("orecchio_gemini", gemBox.checked ? "1" : "0"); } catch {} if (on) { gemBox.checked ? audioStart() : audioStop(); } };
+let lastChromeHitAt = 0, audio = null, audioError = "";
+const SR_HZ = 16000;
+
+async function audioStart() {
+  if (audio) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    // il microfono va alla sua frequenza; a 16 kHz (quella che serve a Gemini) ci si scende qui
+    const ctx = new AudioContext();
+    const src = ctx.createMediaStreamSource(stream);
+    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    const st = { stream, ctx, proc, pre: [], seg: null, noise: 0.01 };
+    const ratio = ctx.sampleRate / SR_HZ;
+    proc.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      const buf = new Float32Array(Math.floor(input.length / ratio));
+      for (let i = 0; i < buf.length; i++) {
+        const a = Math.floor(i * ratio), b = Math.min(input.length, Math.floor((i + 1) * ratio));
+        let acc = 0; for (let j = a; j < b; j++) acc += input[j];
+        buf[i] = acc / Math.max(1, b - a);
+      }
+      let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      const rms = Math.sqrt(sum / buf.length), now = performance.now();
+      const thr = Math.max(0.012, st.noise * 3);
+      if (rms > thr) {
+        if (!st.seg) st.seg = { chunks: st.pre.slice(), start: Date.now() - 400, voiced: 0 };
+        st.seg.lastVoice = now; st.seg.voiced += buf.length / SR_HZ;
+      } else if (!st.seg) st.noise = st.noise * 0.98 + rms * 0.02;
+      if (st.seg) {
+        st.seg.chunks.push(buf);
+        const dur = st.seg.chunks.reduce((n, c) => n + c.length, 0) / SR_HZ;
+        if (now - st.seg.lastVoice > 800 || dur > 12) { endSegment(st.seg); st.seg = null; }
+      }
+      st.pre.push(buf); if (st.pre.length > 3) st.pre.shift();
+    };
+    src.connect(proc); proc.connect(ctx.destination);
+    if (ctx.state !== "running") await ctx.resume();
+    audio = st;
+  } catch (err) { audioError = "🎯 Microfono non disponibile per Gemini: " + err.message; checkPlugin(); }
+}
+function audioStop() {
+  if (!audio) return;
+  try { audio.proc.disconnect(); audio.stream.getTracks().forEach((t) => t.stop()); audio.ctx.close(); } catch {}
+  audio = null;
+}
+function endSegment(seg) {
+  if (seg.voiced < 0.5) return; // colpi di tosse, dadi sul tavolo
+  // aspetta che Chrome dica la sua: se ha già trovato un nome in questa frase, Gemini non serve
+  setTimeout(() => { if (lastChromeHitAt < seg.start) sendToGemini(seg); }, 1500);
+}
+function wavBase64(chunks) {
+  const len = chunks.reduce((n, c) => n + c.length, 0);
+  const buf = new ArrayBuffer(44 + len * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + len * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, SR_HZ, true); v.setUint32(28, SR_HZ * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, len * 2, true);
+  let o = 44;
+  for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) v.setInt16(o, Math.max(-1, Math.min(1, c[i])) * 0x7fff, true);
+  let bin = ""; const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function sendToGemini(seg) {
+  const r = await fetch("/gemini", { method: "POST", body: JSON.stringify({ audio: wavBase64(seg.chunks), newTab: newtab.checked }) }).then((x) => x.json()).catch(() => null);
+  if (!r || r.skipped) return;
+  if (r.hits && r.hits.length) addRow("🎯 " + r.text, r.hits, "");
+  else if (r.text) addMiss("🎯 " + r.text, []);
+  checkPlugin();
+}
+
 
 function start() {
   if (!SR) { state.textContent = "Questo browser non sa ascoltare: usa Chrome o Edge."; return; }
@@ -755,9 +933,10 @@ function start() {
   };
   rec.onend = () => { if (on) { try { rec.start(); } catch {} } };
   on = true; btn.classList.add("on"); state.textContent = "In ascolto…";
+  if (gemBox.checked) audioStart();
   try { rec.start(); } catch {}
 }
-function stop() { on = false; btn.classList.remove("on"); state.textContent = "In pausa"; live.textContent = ""; try { rec && rec.stop(); } catch {} }
+function stop() { audioStop(); on = false; btn.classList.remove("on"); state.textContent = "In pausa"; live.textContent = ""; try { rec && rec.stop(); } catch {} }
 btn.onclick = () => on ? stop() : start();
 document.addEventListener("keydown", (e) => { if (e.code === "Space" && e.target.tagName !== "INPUT") { e.preventDefault(); btn.click(); } });
 </script></body></html>`;

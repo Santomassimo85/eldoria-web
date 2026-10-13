@@ -45,3 +45,6 @@ android/keystore/
 android/keystore.properties
 android/app/google-services.json
 android/local.properties
+
+# Chiavi dell'Orecchio del Master (Gemini) — mai versionare
+tools/.orecchio.env
