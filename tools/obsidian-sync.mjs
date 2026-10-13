@@ -400,10 +400,16 @@ async function main() {
 
   /* ── NPC ── */
   let npcCreated = 0, npcLinkedToYours = 0;
+  // Per le note-indice delle categorie (le apre anche l'Orecchio del Master).
+  const catNpc = [], catLoc = [], catQuest = [], catTaverne = [];
+  const isTaverna = (...txt) => TAVERNA_RE.test(txt.filter(Boolean).join(" "));
   for (const npc of npcs) {
     const name = (npc.name || "").trim();
     if (!name) continue;
     const mine = existingLinkFor(name);
+    const npcTitle = mine || safeFile(name);
+    catNpc.push(npcTitle);
+    if (isTaverna(npc.location, npc.description)) catTaverne.push(npcTitle);
     if (mine) {
       registerTarget(name, mine);
       npcLinkedToYours++;
@@ -442,6 +448,8 @@ async function main() {
     const name = (loc.name || "").trim();
     if (!name) continue;
     const mine = existingLinkFor(name);
+    catLoc.push(mine || safeFile(name));
+    if (isTaverna(name, loc.description)) catTaverne.push(mine || safeFile(name));
     if (mine) { registerTarget(name, mine); continue; }
     const title = safeFile(name);
     registerTarget(name, title);
@@ -473,6 +481,7 @@ async function main() {
     const title0 = (q.title || "").trim();
     if (!title0) continue;
     const title = safeFile(title0);
+    catQuest.push(title);
     const fm = [
       "---",
       "generato: auto",
@@ -494,6 +503,20 @@ async function main() {
     writeAuto(path.join("Incarichi", `${title}.md`), `${fm}\n\n${body}\n`);
     questCreated++;
   }
+
+  /* ── INDICI DI CATEGORIA (_Auto/Indici) ── */
+  const writeIndex = (file, heading, titles, empty) => {
+    const list = [...new Set(titles)].sort((a, b) => a.localeCompare(b, "it"));
+    writeAuto(path.join("Indici", `${file}.md`), [
+      "---", "generato: auto", "tipo: indice-categoria", "---", "",
+      `# ${heading} (${list.length})`, "",
+      list.map((t) => `- [[${t}]]`).join("\n") || `_${empty}_`, "",
+    ].join("\n"));
+  };
+  writeIndex("Indice NPC", "🧑 NPC", catNpc, "Nessun NPC.");
+  writeIndex("Indice Luoghi", "🗺️ Luoghi", catLoc, "Nessun luogo.");
+  writeIndex("Indice Incarichi", "📜 Incarichi", catQuest, "Nessun incarico.");
+  writeIndex("Indice Taverne", "🍺 Taverne, locande e osti", catTaverne, "Nessuna taverna trovata nei testi.");
 
   // Helper: trasforma un nome in [[wikilink]] (alla tua nota se esiste).
   function linkOrText(name) {
@@ -733,6 +756,9 @@ async function main() {
   if (DRY) console.log("    (DRY RUN: nessun file scritto davvero)");
   process.exit(0);
 }
+
+// Luoghi e NPC che parlano di taverne/locande/osterie (e di chi le gestisce).
+const TAVERNA_RE = /\b(tavern\w*|locand\w*|oster\w*|bettol\w*|oste|ostessa|tavernier\w*|inn)\b/i;
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
