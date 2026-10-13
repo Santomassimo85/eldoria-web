@@ -72,6 +72,34 @@ function phon(w) {
     .replace(/(.)\1+/g, "$1");
 }
 
+// "Scheletro" ancora più largo, per la R moscia e le pronunce diverse:
+// niente R (la moscia il riconoscimento la perde o la cambia), finali
+// all'inglese ("-dale" detto "del"), vocali doppie, vocale finale troncata.
+//   Tirrendale ≈ tirrendel ≈ tiendel · Nolborg ≈ nolbog ≈ nolbo
+function skel(w) {
+  return phon(w)
+    .replace(/ale$/, "el").replace(/ae|ai|ei/g, "e").replace(/ou|oo/g, "u").replace(/ee|ea/g, "i")
+    .replace(/r/g, "")
+    .replace(/(.)\1+/g, "$1")
+    .replace(/[aeiou]+$/, "");
+}
+
+// Quanto somiglia una parola detta a una parola del nome (0 = per niente).
+function wordScore(spoken, keyWord) {
+  const a = phon(spoken), b = phon(keyWord);
+  if (a === b) return 1;
+  const tolP = tolerance(Math.min(a.length, b.length));
+  if (tolP > 0 && lev(a, b, tolP) <= tolP) return 0.9;
+  const sa = skel(spoken), sb = skel(keyWord);
+  if (sa.length < 3 || sb.length < 3) return 0;
+  if (sa === sb) return 0.85;
+  const tolS = tolerance(Math.min(sa.length, sb.length)); // "tivendel" ≈ "tiendel", ma "velen" ≠ "telen"
+  if (tolS > 0 && lev(sa, sb, tolS) <= tolS) return 0.75;
+  // nome troncato a voce: "nolbo" → Nolborg (almeno 4 lettere e due terzi del nome)
+  if (sa.length >= 4 && sb.length >= 6 && sb.startsWith(sa) && sa.length / sb.length >= 0.65) return 0.7;
+  return 0;
+}
+
 function lev(a, b, max) {
   if (Math.abs(a.length - b.length) > max) return max + 1;
   let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -115,6 +143,33 @@ const COMMON = new Set((
   "giocatori giocatore personaggio personaggi npc png luogo luoghi taverna taverne locanda incarico " +
   "incarichi missione missioni sessione sessioni gruppo party compagnia indice ultima ultimo scorsa"
 ).split(" "));
+
+// Il resto dell'italiano lo impara dalla vault: una parola che nelle tue
+// cronache compare scritta minuscola in mezzo alla frase è una parola comune
+// ("senza", "veleno", "campo"); i nomi propri compaiono con la maiuscola.
+let DICT = new Set();
+const isCommon = (w) => COMMON.has(w) || DICT.has(w);
+function learnDict(texts) {
+  const low = new Map(), cap = new Map();
+  for (const txt of texts) {
+    const body = txt
+      .replace(/^---[\s\S]*?\n---/, " ")   // proprietà
+      .replace(/\[\[[^\]]*\]\]/g, " ")      // [[link]]: sono nomi di note
+      .replace(/\]\([^)]*\)/g, "] ");       // indirizzi dei link
+    for (const sentence of body.split(/[.!?:;\n"«»#>*_()[\]|-]+/)) {
+      const ws = sentence.match(/[A-Za-zÀ-ÿ]{3,}/g) || [];
+      for (let i = 1; i < ws.length; i++) { // la prima parola della frase ha la maiuscola comunque
+        const w = ws[i];
+        const n = norm(w);
+        if (w[0] === w[0].toLowerCase()) low.set(n, (low.get(n) || 0) + 1);
+        else cap.set(n, (cap.get(n) || 0) + 1);
+      }
+    }
+  }
+  const d = new Set();
+  for (const [w, c] of low) if (c >= 2 && c >= (cap.get(w) || 0)) d.add(w);
+  return d;
+}
 
 /* ───────────── numeri a voce ("sessione dodici") ───────────── */
 
@@ -186,22 +241,22 @@ function walkVault(dir, out) {
 const PERSONE = new Set(["NPC", "Personaggio", "Nota tua"]);
 function nameVariants(name, kind) {
   const v = new Set();
-  const add = (s) => { const n = norm(s); if (n.length >= 3 && !COMMON.has(n)) v.add(n); };
+  const add = (s) => { const n = norm(s); if (n.length >= 3 && !isCommon(n)) v.add(n); };
   add(name);
   add(name.split(",")[0]);
   add(name.split(/\s+[-–—]\s+/)[0]);
   add(name.replace(/\([^)]*\)/g, ""));
   const toks = norm(name.split(/\s+[-–—]\s+|,/)[0]).split(" ");
-  const proper = toks.filter((t) => t.length >= 4 && !COMMON.has(t));
+  const proper = toks.filter((t) => t.length >= 4 && !isCommon(t));
   // il primo nome ("Garroth"), o l'ultimo se il primo è un titolo ("Foresta di Elarwyn" → elarwyn)
   // gli incarichi solo per la prima parola che conta ("il mulino che macina al buio" → mulino, mai "buio")
-  if (proper.length) { add(proper[0]); if (COMMON.has(toks[0]) && kind !== "Incarico") add(proper[proper.length - 1]); }
+  if (proper.length) { add(proper[0]); if (isCommon(toks[0]) && kind !== "Incarico") add(proper[proper.length - 1]); }
   // per le persone anche il cognome: "Rojas", "Nightwhisper", "Tel'Arion"
   if (PERSONE.has(kind) && toks.length >= 2 && toks.length <= 4) {
     const last = toks[toks.length - 1];
-    if (last.length >= 4 && !COMMON.has(last)) add(last);
+    if (last.length >= 4 && !isCommon(last)) add(last);
     const two = toks.slice(-2);
-    if (toks.length >= 3 && two.join("").length >= 6 && !two.some((t) => COMMON.has(t))) add(two.join(" "));
+    if (toks.length >= 3 && two.join("").length >= 6 && !two.some((t) => isCommon(t))) add(two.join(" "));
   }
   return [...v];
 }
@@ -210,6 +265,9 @@ function buildIndex() {
   if (Date.now() - cache.at < 30_000) return cache;
   const files = [];
   walkVault(VAULT, files);
+  const texts = [];
+  for (const f of files) { try { texts.push(fs.readFileSync(f, "utf8")); } catch { /* file sparito */ } }
+  DICT = learnDict(texts);
   const raw = []; // { variant, rel, label, kind }
   const sessions = new Map();
   const parties = new Map();
@@ -239,35 +297,77 @@ function buildIndex() {
     byVariant.get(r.variant).push(r);
   }
   const keys = [];
-  for (const [variant, notes] of byVariant) {
+  for (const [variant, all] of byVariant) {
+    // "Emberwood" apre Emberwood, non anche "Le candele di Emberwood";
+    // "Lael" apre Lael e la scheda "Lael Alliata" (stesso nome all'inizio)
+    const exact = all.some((n) => norm(n.label) === variant);
+    const notes = exact ? all.filter((n) => norm(n.label).startsWith(variant)) : all;
     if (notes.length > 3) continue;
-    const toks = variant.split(" ");
-    keys.push({ variant, toks, ph: toks.map(phon), joined: phon(toks.join("")), notes });
+    keys.push(makeKey(variant, notes));
   }
   keys.sort((a, b) => b.toks.length - a.toks.length || b.variant.length - a.variant.length);
+  // le pronunce insegnate a mano vincono su tutto
+  const taught = [];
+  for (const [heard, rels] of Object.entries(loadTaught())) {
+    const notes = rels.filter((r) => fs.existsSync(path.join(VAULT, r)))
+      .map((r) => ({ rel: r, label: path.basename(r, ".md"), kind: kindOf(r) }));
+    if (notes.length) taught.push({ ...makeKey(heard, notes), taught: true });
+  }
   const nums = [...sessions.keys()].sort((a, b) => a - b);
-  cache = { at: Date.now(), keys, sessions, parties, lastSession: nums.length ? sessions.get(nums[nums.length - 1]) : null };
+  cache = { at: Date.now(), keys: [...taught, ...keys], sessions, parties, lastSession: nums.length ? sessions.get(nums[nums.length - 1]) : null };
   return cache;
+}
+
+function makeKey(variant, notes) {
+  const toks = variant.split(" ");
+  return { variant, toks, joined: toks.join(""), notes };
+}
+
+function kindOf(rel) {
+  const parts = rel.split("/");
+  return parts[0] === "_Auto" ? KIND_BY_DIR[parts[1]] || "Nota" : "Nota tua";
+}
+
+/* ───────────── pronunce insegnate ("quando dico nolbo apri Nolborg") ─────────────
+   Stanno nella cartella del plugin dentro la vault: viaggiano con la vault. */
+
+const TAUGHT_FILE = path.join(VAULT, ".obsidian", "plugins", "eldoria-orecchio", "pronunce.json");
+function loadTaught() {
+  try { return JSON.parse(fs.readFileSync(TAUGHT_FILE, "utf8")); } catch { return {}; }
+}
+function teach(heard, rel) {
+  const h = norm(heard);
+  if (!h || !fs.existsSync(path.join(VAULT, rel))) return false;
+  const all = loadTaught();
+  all[h] = [...new Set([...(all[h] || []), rel])];
+  fs.mkdirSync(path.dirname(TAUGHT_FILE), { recursive: true });
+  fs.writeFileSync(TAUGHT_FILE, JSON.stringify(all, null, 2), "utf8");
+  cache.at = 0;
+  return true;
+}
+function unteach(heard) {
+  const all = loadTaught();
+  delete all[norm(heard)];
+  fs.writeFileSync(TAUGHT_FILE, JSON.stringify(all, null, 2), "utf8");
+  cache.at = 0;
 }
 
 /* ───────────── cosa aprire: solo le parole giuste ───────────── */
 
-function wordMatches(spoken, keyPh) {
-  if (COMMON.has(spoken)) return false; // "danno" non diventa mai "Ganno"
-  const p = phon(spoken);
-  if (p === keyPh) return true;
-  const tol = tolerance(Math.min(p.length, keyPh.length));
-  return tol > 0 && lev(p, keyPh, tol) <= tol;
+// Una parola detta somiglia a una parola del nome? Le parole comuni mai
+// ("danno" non diventa Ganno); lo scheletro largo solo sui nomi lunghi.
+let LOOSE = false; // seconda passata: anche R persa, finali troncate, pronunce diverse
+function wordOk(spoken, keyWord, taught) {
+  if (isCommon(spoken)) return false;
+  if (taught) return phon(spoken) === phon(keyWord);
+  const sc = wordScore(spoken, keyWord);
+  if (sc >= 0.9) return true;
+  return LOOSE && sc > 0 && skel(keyWord).length >= 5;
 }
 
-function matchText(text) {
+function matchOne(text, idx, push) {
   const words = norm(text).split(" ").filter(Boolean);
   const t = ` ${words.join(" ")} `;
-  const idx = buildIndex();
-  const hits = [];
-  const push = (rel, label, kind, extra = {}) => {
-    if (rel && !hits.some((h) => h.rel === rel)) hits.push({ rel, label, kind, ...extra });
-  };
 
   for (const c of CATEGORIES) {
     if (!c.re.test(t)) continue;
@@ -275,36 +375,38 @@ function matchText(text) {
     else push(c.file, c.label, "Categoria", { list: true });
   }
   // "sessione 12", "sessione numero dodici"
-  for (const m of t.matchAll(/\bsession[ei] (?:numero |n )?(\w+)/g)) {
+  for (const m of t.matchAll(/session[ei] (?:numero |n )?(w+)/g)) {
     const n = numOf(m[1]);
     if (n && idx.sessions.has(n)) push(idx.sessions.get(n), `Sessione ${n}`, "Sessione");
   }
   // "gruppo AMEA", "party enox", "compagnia leaf"
-  for (const m of t.matchAll(/\b(?:gruppo|party|compagnia) (\w+)/g)) {
+  for (const m of t.matchAll(/(?:gruppo|party|compagnia) (w+)/g)) {
     const rel = idx.parties.get(m[1]);
     if (rel) push(rel, path.basename(rel, ".md"), "Gruppo", { list: true });
   }
 
-  // nomi: prima i più lunghi; le parole usate da un nome non servono a un altro
+  // nomi: prima le pronunce insegnate, poi i nomi più lunghi; le parole usate
+  // da un nome non servono a un altro
   const used = new Array(words.length).fill(false);
+  const free = (i, m) => i + m <= words.length && !used.slice(i, i + m).some(Boolean);
+  for (const pass of [false, true]) {
+  LOOSE = pass;
   for (const k of idx.keys) {
     const n = k.toks.length;
     for (let i = 0; i < words.length; i++) {
-      if (used[i]) continue;
       let ok = false, span = n;
-      // parola per parola ("thelen dhir")
-      if (i + n <= words.length && !used.slice(i, i + n).some(Boolean)) {
-        ok = k.ph.every((kp, j) => (n > 1 && COMMON.has(k.toks[j]) ? phon(words[i + j]) === kp : wordMatches(words[i + j], kp)));
+      // parola per parola ("thelen dhir"); le parole comuni dentro un nome vanno dette uguali
+      if (free(i, n)) {
+        ok = k.toks.every((kw, j) => (n > 1 && isCommon(kw) ? phon(words[i + j]) === phon(kw) : wordOk(words[i + j], kw, k.taught)));
       }
-      // nome spezzato o attaccato dal riconoscimento ("tel arion" ↔ "telarion")
+      // nome spezzato o attaccato dal riconoscimento ("tel arion" ↔ "telarion", "tirren del")
       if (!ok) {
-        for (const m of [n - 1, n + 1]) {
-          if (m < 1 || i + m > words.length || used.slice(i, i + m).some(Boolean)) continue;
+        for (const m of [n - 1, n + 1, n + 2]) {
+          if (m < 1 || m === n || !free(i, m)) continue;
           const chunk = words.slice(i, i + m);
-          if (chunk.every((w) => COMMON.has(w))) continue;
-          const p = phon(chunk.join(""));
-          const tol = tolerance(Math.min(p.length, k.joined.length));
-          if (p === k.joined || (tol > 0 && lev(p, k.joined, tol) <= tol)) { ok = true; span = m; break; }
+          // "tel arion" sì, "volta sola" no: al più una parolina comune, mai in testa
+          if (!k.taught && (isCommon(chunk[0]) || chunk.filter(isCommon).length > 1)) continue;
+          if (wordOk(chunk.join(""), k.joined, k.taught)) { ok = true; span = m; break; }
         }
       }
       if (!ok) continue;
@@ -313,6 +415,18 @@ function matchText(text) {
       break;
     }
   }
+  }
+  LOOSE = false;
+}
+
+// Il riconoscimento propone più trascrizioni della stessa frase: si guardano tutte.
+function matchText(text, alts = []) {
+  const idx = buildIndex();
+  const hits = [];
+  const push = (rel, label, kind, extra = {}) => {
+    if (rel && !hits.some((h) => h.rel === rel)) hits.push({ rel, label, kind, ...extra });
+  };
+  for (const t of [text, ...alts].filter(Boolean).slice(0, 5)) matchOne(t, idx, push);
   return hits;
 }
 
@@ -396,9 +510,9 @@ const server = http.createServer(async (req, res) => {
     return res.end(PAGE);
   }
   if (req.method === "POST" && url.pathname === "/hear") {
-    const { text = "", newTab = true, dry = false } = await readBody(req);
+    const { text = "", alts = [], newTab = true, dry = false } = await readBody(req);
     const heard = String(text).trim();
-    const hits = matchText(text).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
+    const hits = matchText(text, Array.isArray(alts) ? alts : []).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
     for (const h of hits) if (h.result === "opened") console.log(`🔊 "${heard}" → ${h.label}`);
     return json(res, 200, { hits, plugin: pluginAlive() });
   }
@@ -411,6 +525,22 @@ const server = http.createServer(async (req, res) => {
     const since = Number(url.searchParams.get("since")) || 0;
     // since più grande del contatore = il programma è stato riavviato
     return json(res, 200, { reset: since > eventSeq, events: events.filter((e) => e.id > since) });
+  }
+  if (req.method === "POST" && url.pathname === "/teach") {
+    const { heard = "", rel = "" } = await readBody(req);
+    return json(res, 200, { ok: teach(heard, rel), taught: loadTaught() });
+  }
+  if (req.method === "POST" && url.pathname === "/unteach") {
+    const { heard = "" } = await readBody(req);
+    unteach(heard);
+    return json(res, 200, { taught: loadTaught() });
+  }
+  if (req.method === "GET" && url.pathname === "/notes") {
+    const idx = buildIndex();
+    const notes = new Map();
+    for (const k of idx.keys) for (const n of k.notes) notes.set(n.rel, n.label);
+    for (const [num, rel] of idx.sessions) notes.set(rel, `Sessione ${num}`);
+    return json(res, 200, { notes: [...notes].map(([rel, label]) => ({ rel, label })).sort((a, b) => a.label.localeCompare(b.label, "it")), taught: loadTaught() });
   }
   if (req.method === "GET" && url.pathname === "/status") {
     return json(res, 200, { plugin: pluginAlive() });
@@ -471,6 +601,11 @@ li:first-child{border-top:0}.t{color:var(--muted);font-size:.85rem;min-width:3.5
 li a{color:var(--el);cursor:pointer;text-decoration:underline}.kind{font-size:.75rem;color:var(--muted);border:1px solid var(--line);padding:0 5px;border-radius:3px}
 .cool{color:var(--warn);font-size:.8rem}.err{color:#e06060}
 h2{font-size:1rem;margin:0 0 8px;color:var(--muted);font-weight:600}
+.hint{color:var(--muted);font-size:.88rem;margin:0 0 10px}
+.w{display:inline-block;background:#241d20;border:1px solid var(--line);border-radius:3px;padding:1px 7px;margin:2px 3px 2px 0;cursor:pointer}
+.w:hover{border-color:var(--el)}.w.sel{background:var(--el);border-color:var(--el);color:#120e0f}
+#tf{flex-wrap:wrap}#tf input{min-width:140px}
+.tg{display:flex;gap:8px;align-items:center;padding:4px 0}.tg button{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem}
 </style></head><body><main>
 <h1>👂 Orecchio del Master</h1>
 <p class="sub">Parla normalmente: non bada alle frasi, pesca solo le parole giuste. Categorie (<b>npc</b>, <b>personaggi</b>, <b>luoghi</b>, <b>taverna</b>, <b>incarichi</b>, <b>sessioni</b>, <b>ultima sessione</b>, <b>sessione 12</b>, <b>gruppo AMEA</b>) e qualunque nome della vault, anche storpiato: NPC, luoghi, incarichi, personaggi dei giocatori e le tue note.</p>
@@ -487,6 +622,14 @@ h2{font-size:1rem;margin:0 0 8px;color:var(--muted);font-weight:600}
   <form id="f" style="margin-top:10px"><input id="q" placeholder="oppure scrivi un nome…"><button>Apri</button></form>
 </div>
 <div class="box"><h2>Aperte finora</h2><ul id="log"><li class="t">Ancora niente.</li></ul></div>
+<div class="box"><h2>Sentito ma non riconosciuto</h2>
+  <p class="hint">Se avevi detto un nome e non si è aperto niente, tocca le parole com'è state scritte qui sotto: finiscono in «Insegna».</p>
+  <ul id="miss"><li class="t">Niente per ora.</li></ul></div>
+<div class="box"><h2>Insegna una pronuncia</h2>
+  <p class="hint">Per la tua R, i nomi detti all'inglese o accorciati: «quando dico <i>nolbo</i> apri <i>Nolborg</i>». Se lo ricorda per sempre (sta nella vault).</p>
+  <form id="tf"><input id="th" placeholder="quando dico… (es. nolbo)"><input id="tn" list="notes" placeholder="apri la nota… (scrivi e scegli)"><button>Insegna</button></form>
+  <datalist id="notes"></datalist>
+  <div id="taught" style="margin-top:10px"></div></div>
 </main><script>
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const btn = document.getElementById("btn"), state = document.getElementById("state"), live = document.getElementById("live");
@@ -496,11 +639,59 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const now = () => new Date().toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
 
-async function hear(text, manual) {
-  const r = await fetch("/hear", {method:"POST", body: JSON.stringify({text, newTab: newtab.checked})}).then((x) => x.json()).catch(() => null);
+async function hear(text, manual, alts) {
+  const r = await fetch("/hear", {method:"POST", body: JSON.stringify({text, alts: alts || [], newTab: newtab.checked})}).then((x) => x.json()).catch(() => null);
   if (!r) { addRow(text, [], "Il programma sul PC non risponde: è ancora acceso?"); return; }
   if (r.hits.length || manual) addRow(text, r.hits, r.hits.length ? "" : "Nessuna nota corrisponde.");
+  if (!r.hits.length) addMiss(text, alts || []);
 }
+
+/* ── sentito ma non riconosciuto → insegna ── */
+const miss = document.getElementById("miss"), th = document.getElementById("th"), tn = document.getElementById("tn");
+let missEmpty = true, noteByLabel = new Map();
+function addMiss(text, alts) {
+  if (missEmpty) { miss.innerHTML = ""; missEmpty = false; }
+  const li = document.createElement("li");
+  const variants = [...new Set([text, ...alts].map((x) => x.trim()).filter(Boolean))];
+  li.innerHTML = '<span class="t">' + now() + '</span><span>' + variants.map((v) =>
+    v.split(/s+/).map((w) => '<span class="w">' + esc(w) + '</span>').join("")).join('<span class="t"> · </span>') + '</span>';
+  miss.prepend(li);
+  while (miss.children.length > 12) miss.lastChild.remove();
+}
+miss.addEventListener("click", (e) => {
+  const w = e.target.closest(".w"); if (!w) return;
+  w.classList.toggle("sel");
+  const sel = [...w.parentElement.querySelectorAll(".w.sel")].map((x) => x.textContent);
+  th.value = sel.join(" ");
+  tn.focus();
+});
+async function loadNotes() {
+  const r = await fetch("/notes").then((x) => x.json()).catch(() => null);
+  if (!r) return;
+  noteByLabel = new Map(r.notes.map((n) => [n.label, n.rel]));
+  document.getElementById("notes").innerHTML = r.notes.map((n) => '<option value="' + esc(n.label) + '">').join("");
+  showTaught(r.taught);
+}
+function showTaught(t) {
+  const box = document.getElementById("taught");
+  const rows = Object.entries(t || {});
+  box.innerHTML = rows.length ? rows.map(([h, rels]) => '<div class="tg">«' + esc(h) + '» → ' +
+    rels.map((r) => esc(r.split("/").pop().replace(/.md$/, ""))).join(", ") +
+    ' <button title="Dimentica" data-un="' + esc(h) + '">✕</button></div>').join("") : '<span class="t">Nessuna pronuncia insegnata.</span>';
+}
+document.getElementById("taught").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-un]"); if (!b) return;
+  const r = await fetch("/unteach", {method:"POST", body: JSON.stringify({heard: b.dataset.un})}).then((x) => x.json());
+  showTaught(r.taught);
+});
+document.getElementById("tf").onsubmit = async (e) => {
+  e.preventDefault();
+  const rel = noteByLabel.get(tn.value.trim());
+  if (!th.value.trim() || !rel) { tn.setCustomValidity(rel ? "" : "Scegli una nota dall'elenco"); tn.reportValidity(); tn.setCustomValidity(""); return; }
+  const r = await fetch("/teach", {method:"POST", body: JSON.stringify({heard: th.value, rel})}).then((x) => x.json());
+  showTaught(r.taught); th.value = ""; tn.value = "";
+};
+loadNotes(); setInterval(loadNotes, 60000);
 function addRow(text, hits, err) {
   if (empty) { log.innerHTML = ""; empty = false; }
   const li = document.createElement("li");
@@ -529,12 +720,12 @@ checkPlugin(); setInterval(checkPlugin, 5000);
 
 function start() {
   if (!SR) { state.textContent = "Questo browser non sa ascoltare: usa Chrome o Edge."; return; }
-  rec = new SR(); rec.lang = "it-IT"; rec.continuous = true; rec.interimResults = true;
+  rec = new SR(); rec.lang = "it-IT"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
   rec.onresult = (ev) => {
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const res = ev.results[i];
-      if (res.isFinal) hear(res[0].transcript, false); else interim += res[0].transcript;
+      if (res.isFinal) hear(res[0].transcript, false, [...res].slice(1).map((a) => a.transcript)); else interim += res[0].transcript;
     }
     live.textContent = interim;
   };
