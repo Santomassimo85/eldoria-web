@@ -2,6 +2,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useLayoutEffect,
   useMemo,
   useCallback,
 } from "react";
@@ -30,6 +31,57 @@ import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { resetWorldBossFight } from "../data/worldBossReset";
+import { useSpriteBox, spriteVars } from "./spriteBox";
+
+// Barra dei PF in scena (verde → oro sotto metà → sangue sotto un quarto, scudo sopra).
+function SceneHp({ hp, max, shield, variant, title, label, style }) {
+  const m = Math.max(1, max ?? hp ?? 1);
+  const pct = Math.max(0, Math.min(100, ((hp ?? 0) / m) * 100));
+  return (
+    <span className={`rpg-scene-hp rpg-scene-hp--${variant}`} title={title} aria-label={label} aria-hidden={label ? undefined : true} style={style}>
+      <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
+      {(shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (shield / m) * 100)}%` }} />}
+    </span>
+  );
+}
+
+// Contenitore di uno sprite quadrato (eroi, servi) che conosce dove stanno i piedi e il
+// centro della figura (--feet, --cx): il CSS ci aggancia nome e barra dei PF.
+function SpriteFrame({ url, mirrored, style, children, ...rest }) {
+  const box = useSpriteBox(url, mirrored);
+  return <div {...rest} style={{ ...style, ...spriteVars(box) }}>{children}</div>;
+}
+
+// Barra del boss: lo sprite del boss non è quadrato e cambia misura con lo schermo,
+// quindi la barra si piazza misurando l'immagine disegnata (contain) e la figura dentro.
+function BossHpBar({ imgRef, url, mirrored, boss }) {
+  const box = useSpriteBox(url, mirrored);
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    if (!img) return undefined;
+    const place = () => {
+      const W = img.clientWidth, H = img.clientHeight, nw = img.naturalWidth, nh = img.naturalHeight;
+      if (!W || !H || !nw || !nh) return;
+      const k = Math.min(W / nw, H / nh); // object-fit: contain
+      const dw = nw * k, dh = nh * k;
+      const ox = img.offsetLeft + (W - dw) / 2, oy = img.offsetTop + (H - dh) / 2;
+      setPos({ left: ox + box.rawCx * dw, top: oy + box.rawFeet * dh, width: Math.max(90, Math.min(240, dw * 0.6)) });
+    };
+    place();
+    img.addEventListener("load", place);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(place) : null;
+    ro?.observe(img);
+    return () => { img.removeEventListener("load", place); ro?.disconnect(); };
+  }, [imgRef, url, box.rawCx, box.rawFeet]);
+  return (
+    <SceneHp
+      variant="boss" hp={boss.hp} max={boss.maxHp ?? boss.hp} shield={boss.shield}
+      label={`PF di ${boss.name}`}
+      style={pos ? { left: `${pos.left}px`, top: `${pos.top + 4}px`, bottom: "auto", width: `${pos.width}px` } : undefined}
+    />
+  );
+}
 
 // Campi effetto da scrivere sul messaggio di chat (li legge VfxLayer su ogni client).
 // Etichetta di un'azione di boss/minion nel pannello Master: icona, tipo e se
@@ -195,6 +247,7 @@ export default function WorldBoss() {
   const [battleBg, setBattleBg] = useState(null);
   const [partyZoneHeight, setPartyZoneHeight] = useState(0);
   const partyZoneRef = useRef(null);
+  const bossImgRef = useRef(null);
   const [mobileTab, setMobileTab] = useState("status");
   // Pannello Master (2026-09-15): attacco in 3 passi + eroi espandibili
   const [attackerId, setAttackerId] = useState(null);      // chi attacca (boss o minion)
@@ -1692,21 +1745,18 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             >
               {canPickTarget && currentTarget?.id === boss.id && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
               <img
+                ref={bossImgRef}
                 className={`rpg-boss-sprite${boss.facing === "right" ? " faces-right" : ""}`}
                 src={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
                 alt={boss.name}
               />
               {isBossDefeated && <div className="rpg-torn-overlay" />}
-              {(() => {
-                const max = Math.max(1, boss.maxHp ?? boss.hp ?? 1);
-                const pct = Math.max(0, Math.min(100, ((boss.hp ?? 0) / max) * 100));
-                return (
-                  <span className="rpg-scene-hp rpg-scene-hp--boss" aria-label={`PF di ${boss.name}: ${Math.round(pct)}%`}>
-                    <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
-                    {(boss.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (boss.shield / max) * 100)}%` }} />}
-                  </span>
-                );
-              })()}
+              <BossHpBar
+                imgRef={bossImgRef}
+                url={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
+                mirrored={boss.facing !== "right"}
+                boss={boss}
+              />
             </div>
           )}
 
@@ -1715,13 +1765,14 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             <div className="rpg-minion-row">
               {minionInstances.map((m) => {
                 const dead = (m.hp ?? 0) <= 0;
-                const pct = Math.max(0, Math.min(100, ((m.hp ?? 0) / Math.max(1, m.maxHp ?? 1)) * 100));
                 const isTgt = canPickTarget && currentTarget?.id === m.id;
                 const pickable = canPickTarget && !dead;
                 const sprite = dead ? (m.deadImageUrl || m.imageUrl) : m.imageUrl;
                 return (
-                  <div
+                  <SpriteFrame
                     key={m.id}
+                    url={sprite || null}
+                    mirrored={m.facing !== "right"}
                     data-vfx-target={`minion-${m.id}`}
                     className={`rpg-minion-wrap ${dead ? "dead" : ""} ${isTgt ? "is-target" : ""} ${pickable ? "pickable" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver && !dead ? "boss-turn" : ""}`}
                     onClick={() => { if (pickable) setTargetId(m.id); }}
@@ -1732,12 +1783,11 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     {sprite
                       ? <img className={`rpg-minion-sprite${m.facing === "right" ? " faces-right" : ""}`} src={sprite} alt={m.name} />
                       : <div className="rpg-minion-placeholder">{dead ? "☠" : "🪓"}</div>}
-                    <span className="rpg-minion-tag">{m.name}</span>
-                    <span className="rpg-scene-hp rpg-scene-hp--minion" aria-hidden="true">
-                      <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
-                      {(m.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (m.shield / Math.max(1, m.maxHp ?? 1)) * 100)}%` }} />}
-                    </span>
-                  </div>
+                    <div className="rpg-sprite-label">
+                      <span className="rpg-minion-tag">{m.name}</span>
+                      <SceneHp variant="minion" hp={m.hp} max={m.maxHp} shield={m.shield} />
+                    </div>
+                  </SpriteFrame>
                 );
               })}
             </div>
@@ -1763,8 +1813,9 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                 : (p.spriteUrl || p.image);
               const breathDelay = `${(i * 0.37).toFixed(2)}s`;
               return (
-                <div
+                <SpriteFrame
                   key={p.id || i}
+                  url={isDead && !p.deadSpriteUrl ? null : (sprite || null)}
                   data-vfx-target={`player-${p.id}`}
                   className={`rpg-char-wrap ${isDead ? "char-dead" : "char-alive"}`}
                   data-has-dead-sprite={isDead && p.deadSpriteUrl ? "1" : undefined}
@@ -1775,19 +1826,11 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                         style={!isDead ? { animationDelay: breathDelay } : undefined} />
                     : <div className="rpg-char-placeholder">{(p.name || "?")[0].toUpperCase()}</div>
                   }
-                  <span className="rpg-char-name-tag">{(p.name || "Eroe").split(" ")[0]}</span>
-                  {(() => {
-                    const hp = p.stats?.hp ?? 0;
-                    const max = Math.max(1, p.stats?.maxHp ?? hp ?? 1);
-                    const pct = Math.max(0, Math.min(100, (hp / max) * 100));
-                    return (
-                      <span className="rpg-scene-hp rpg-scene-hp--hero" title={`${p.name || "Eroe"}: ${hp}/${max} PF`}>
-                        <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
-                        {(p.stats?.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (p.stats.shield / max) * 100)}%` }} />}
-                      </span>
-                    );
-                  })()}
-                </div>
+                  <div className="rpg-sprite-label">
+                    <span className="rpg-char-name-tag">{(p.name || "Eroe").split(" ")[0]}</span>
+                    <SceneHp variant="hero" hp={p.stats?.hp ?? 0} max={p.stats?.maxHp} shield={p.stats?.shield} title={`${p.name || "Eroe"}: ${p.stats?.hp ?? 0}/${p.stats?.maxHp ?? "?"} PF`} />
+                  </div>
+                </SpriteFrame>
               );
             })
           }

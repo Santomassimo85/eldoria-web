@@ -204,6 +204,7 @@
   gap: 4px 10px; max-width: 60%; flex: 0 1 auto; padding-bottom: 2px;
 }
 .rpg-minion-wrap {
+  --spr: clamp(56px, 7vw, 110px);
   position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   transition: opacity .3s;
@@ -216,8 +217,9 @@
 }
 .rpg-minion-sprite {
   transform: scaleX(-1); /* come il boss: guarda verso gli eroi */
-  width: clamp(56px, 7vw, 110px); height: clamp(56px, 7vw, 110px);
-  object-fit: contain;
+  width: var(--spr); height: var(--spr);
+  object-fit: contain; object-position: center bottom;
+  margin-bottom: calc((var(--feet, 1) - 1) * var(--spr));
   image-rendering: pixelated; image-rendering: crisp-edges;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .8));
   animation: rpgMinionBreathe 3.4s ease-in-out infinite;
@@ -231,7 +233,7 @@
 }
 @keyframes rpgMinionBobR { from { transform: translateY(0); } to { transform: translateY(-6px); } }
 .rpg-minion-placeholder {
-  width: clamp(56px, 7vw, 110px); height: clamp(56px, 7vw, 110px);
+  width: var(--spr); height: var(--spr);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.8rem;
   background: rgba(var(--ossidiana-rgb), .6);
@@ -272,8 +274,8 @@
   position: absolute; left: 0; top: 0; height: 2px;
   background: rgba(var(--osso-rgb), .9);
 }
-.rpg-scene-hp--minion { max-width: 110px; height: 5px; }
-.rpg-scene-hp--hero { width: clamp(56px, 7vw, 100px); }
+.rpg-scene-hp--minion { width: clamp(40px, calc(var(--spr) * .7), 90px); height: 5px; }
+.rpg-scene-hp--hero { width: clamp(44px, calc(var(--spr) * .6), 96px); }
 .rpg-scene-hp--boss {
   position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%);
   width: min(70%, 240px); height: 8px; z-index: 2;
@@ -287,7 +289,7 @@
   width: 52%; height: 100%;
   position: relative; z-index: 3; overflow: hidden; flex-shrink: 0;
 }
-.rpg-char-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; transition: opacity .3s; }
+.rpg-char-wrap { --spr: clamp(80px, 10vw, 150px); display: flex; flex-direction: column; align-items: center; gap: 2px; transition: opacity .3s; }
 @keyframes rpgBreathe {
   0%, 100% { transform: translateY(0)   scale(1); }
   45%, 55% { transform: translateY(-4px) scale(1.012); }
@@ -297,8 +299,9 @@
   50%      { transform: translateY(-6px) scale(-1.015, 1.015); }
 }
 .rpg-char-sprite {
-  width: clamp(80px, 10vw, 150px); height: clamp(80px, 10vw, 150px);
-  object-fit: contain;
+  width: var(--spr); height: var(--spr);
+  object-fit: contain; object-position: center bottom;
+  margin-bottom: calc((var(--feet, 1) - 1) * var(--spr));
   image-rendering: pixelated; image-rendering: crisp-edges;
   background: transparent;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .8));
@@ -310,7 +313,7 @@
   transform: rotate(-80deg) translateX(30%); transform-origin: bottom left; opacity: .6;
 }
 .rpg-char-placeholder {
-  width: clamp(80px, 10vw, 150px); height: clamp(80px, 10vw, 150px);
+  width: var(--spr); height: var(--spr);
   display: flex; align-items: center; justify-content: center;
   background: rgba(var(--ossidiana-rgb), .6);
   border: 1px solid rgba(var(--el-rgb), .5); border-radius: var(--rpg-r);
@@ -320,6 +323,13 @@
   font-family: var(--rpg-font-sc); font-size: .74rem; letter-spacing: .06em;
   color: var(--osso); background: rgba(var(--ossidiana-rgb), .75);
   padding: 1px 6px; border-radius: var(--rpg-r);
+}
+/* Nome + barra: appena sotto i PIEDI della figura e centrati su di lei (--feet/--cx
+   misurati dallo sprite in spriteBox.js), non sotto il riquadro trasparente. */
+.rpg-sprite-label {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  transform: translateX(calc((var(--cx, .5) - .5) * var(--spr)));
 }
 .char-dead .rpg-char-name-tag { background: rgba(var(--sangue-rgb), .7); color: #ffb4a0; }
 
@@ -924,13 +934,13 @@
   .rpg-boss-zone { width: 48%; }
   .rpg-boss-sprite { height: clamp(150px, 40vw, 280px); }
   .rpg-boss-zone.has-minions .rpg-boss-sprite { height: clamp(110px, 30vw, 220px); }
-  .rpg-minion-sprite, .rpg-minion-placeholder { width: clamp(40px, 11vw, 64px); height: clamp(40px, 11vw, 64px); }
+  .rpg-minion-wrap { --spr: clamp(40px, 11vw, 64px); }
   .rpg-minion-tag { font-size: .62rem; max-width: 70px; }
   .rpg-boss-zone { flex-wrap: nowrap; gap: 4px; padding: 0 4px 8px; }
   .rpg-boss-sprite-wrap { min-width: 0; flex: 1 1 auto; }
   .rpg-minion-row { gap: 2px 4px; max-width: 46%; flex: 0 0 auto; }
   .rpg-party-zone { width: 52%; }
-  .rpg-char-sprite, .rpg-char-placeholder { width: clamp(50px, 14vw, 90px); height: clamp(50px, 14vw, 90px); }
+  .rpg-char-wrap { --spr: clamp(50px, 14vw, 90px); }
   .rpg-char-name-tag { font-size: .62rem; max-width: clamp(44px, 13vw, 84px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rpg-scene-banner { font-size: 1.2rem; white-space: normal; max-width: 90%; }
   .rpg-mob-tabs { padding: 8px 12px 0; }
