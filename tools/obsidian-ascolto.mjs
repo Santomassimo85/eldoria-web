@@ -528,11 +528,12 @@ const ORECCHIO_ENV = readEnvFile(path.join(TOOLS_DIR, ".orecchio.env"));
 const GEM = {
   freeKey: ORECCHIO_ENV.GEMINI_FREE_KEY || "",
   paidKey: ORECCHIO_ENV.GEMINI_PAID_KEY || readEnvFile(path.join(TOOLS_DIR, "..", "functions", ".env.eldoria-web")).GEMINI_API_KEY || "",
-  paidCap: Number(ORECCHIO_ENV.GEMINI_PAID_CAP) || 300,
+  // 0 = mai a pagamento (anche se la chiave delle functions c'è)
+  paidCap: /^d+$/.test(ORECCHIO_ENV.GEMINI_PAID_CAP || "") ? Number(ORECCHIO_ENV.GEMINI_PAID_CAP) : 300,
   model: ORECCHIO_ENV.GEMINI_MODEL || "gemini-2.5-flash-lite",
   freeUsed: 0, paidUsed: 0, freeBlockedUntil: 0, busy: 0, lastError: "",
 };
-const geminiReady = () => !!(GEM.freeKey || GEM.paidKey);
+const geminiReady = () => !!(GEM.freeKey || (GEM.paidKey && GEM.paidCap > 0));
 
 function geminiKey() {
   if (GEM.freeKey && Date.now() > GEM.freeBlockedUntil) return { key: GEM.freeKey, paid: false };
@@ -684,7 +685,7 @@ server.listen(PORT, "127.0.0.1", () => {
   console.log(`    vault : ${VAULT}`);
   console.log(`    note riconoscibili per nome: ${new Set(idx.keys.flatMap((k) => k.notes.map((n) => n.rel))).size} · sessioni: ${idx.sessions.size}`);
   console.log(`    pagina: http://localhost:${PORT}   (Chrome o Edge; Ctrl+C per spegnere)`);
-  console.log(GEM.freeKey ? `    🎯 Gemini: chiave gratuita${GEM.paidKey ? `, poi a pagamento (max ${GEM.paidCap})` : ""}` : GEM.paidKey ? `    🎯 Gemini: solo chiave a pagamento (max ${GEM.paidCap}) — manca GEMINI_FREE_KEY in tools/.orecchio.env` : "    🎯 Gemini spento: nessuna chiave");
+  console.log(GEM.freeKey ? `    🎯 Gemini: chiave gratuita${GEM.paidKey && GEM.paidCap > 0 ? `, poi a pagamento (max ${GEM.paidCap})` : " (mai a pagamento)"}` : GEM.paidKey && GEM.paidCap > 0 ? `    🎯 Gemini: solo chiave a pagamento (max ${GEM.paidCap}) — manca GEMINI_FREE_KEY in tools/.orecchio.env` : "    🎯 Gemini spento: manca la chiave gratuita (GEMINI_FREE_KEY in tools/.orecchio.env) e il pagamento è disattivato");
   if (!fs.existsSync(path.join(AUTO, "Indici"))) console.log("    ⚠ mancano le note-indice: lancia una volta tools/sync-obsidian.bat");
   if (!args.includes("--no-browser")) openBrowser();
 });
