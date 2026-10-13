@@ -1,0 +1,9 @@
+{
+  "id": "eldoria-orecchio",
+  "name": "Eldoria · Orecchio del Master",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Apre le note che l'Orecchio del Master sente durante la sessione e le raccoglie in un pannello laterale.",
+  "author": "Eldoria",
+  "isDesktopOnly": true
+}

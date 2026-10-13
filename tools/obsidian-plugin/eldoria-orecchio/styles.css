@@ -1,0 +1,14 @@
+.orecchio-view { padding: 8px 10px; font-size: var(--font-ui-small); }
+.orecchio-head { display: flex; align-items: center; gap: 8px; color: var(--text-muted); margin-bottom: 10px; }
+.orecchio-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.orecchio-dot.is-on { background: var(--color-green); box-shadow: 0 0 6px var(--color-green); }
+.orecchio-clear { margin-left: auto; font-size: var(--font-ui-smaller); }
+.orecchio-empty { color: var(--text-faint); }
+.orecchio-row { border-top: 1px solid var(--background-modifier-border); padding: 8px 0; }
+.orecchio-top { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.orecchio-time { color: var(--text-faint); font-size: var(--font-ui-smaller); }
+.orecchio-title { font-weight: 600; }
+.orecchio-kind { font-size: var(--font-ui-smaller); color: var(--text-muted); border: 1px solid var(--background-modifier-border); border-radius: 3px; padding: 0 4px; }
+.orecchio-heard { color: var(--text-faint); font-style: italic; margin-top: 2px; }
+.orecchio-items { margin: 6px 0 0; padding-left: 18px; columns: 2; column-gap: 14px; }
+.orecchio-items li { break-inside: avoid; }

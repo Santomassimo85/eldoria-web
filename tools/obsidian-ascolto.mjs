@@ -27,6 +27,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const argOf = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
@@ -87,9 +88,12 @@ function readFrontName(full) {
   } catch { return null; }
 }
 
+// Le tue note scritte a mano (fuori da _Auto/) che non hanno un nome utile a voce.
+const SKIP_OWN = /^(untitled|link|calendario|crafting|\d)/i;
+
 function buildIndex() {
   if (Date.now() - cache.at < 30_000) return cache;
-  const entries = []; // { key, rel, label, kind }
+  const entries = []; // { name, rel (dalla radice della vault), label, kind }
   for (const [dir, kind] of [["NPC", "NPC"], ["Luoghi", "Luogo"], ["Incarichi", "Incarico"]]) {
     const abs = path.join(AUTO, dir);
     if (!fs.existsSync(abs)) continue;
@@ -97,8 +101,14 @@ function buildIndex() {
       if (!f.endsWith(".md")) continue;
       const title = f.slice(0, -3);
       const name = readFrontName(path.join(abs, f)) || title;
-      entries.push({ name, rel: `${dir}/${f}`, label: title, kind });
+      entries.push({ name, rel: `_Auto/${dir}/${f}`, label: title, kind });
     }
+  }
+  // le tue note nella radice della vault ("Khorvash", "Tanagar - clan dei dentati - AXEL"…)
+  for (const f of fs.existsSync(VAULT) ? fs.readdirSync(VAULT) : []) {
+    if (!f.endsWith(".md") || SKIP_OWN.test(f)) continue;
+    const title = f.slice(0, -3);
+    entries.push({ name: title, rel: f, label: title, kind: "Nota tua" });
   }
   // chiavi: nome intero, parte prima della virgola, primo nome (se lungo, non comune e unico)
   const keys = [];
@@ -120,7 +130,7 @@ function buildIndex() {
   const ses = path.join(AUTO, "Sessioni");
   if (fs.existsSync(ses)) {
     const files = fs.readdirSync(ses).filter((f) => /^\d+ - .*\.md$/.test(f)).sort();
-    if (files.length) lastSession = `Sessioni/${files[files.length - 1]}`;
+    if (files.length) lastSession = `_Auto/Sessioni/${files[files.length - 1]}`;
   }
   cache = { at: Date.now(), names: keys, lastSession };
   return cache;
@@ -134,7 +144,7 @@ function matchText(text) {
   const hits = [];
   for (const c of CATEGORIES) {
     if (!c.re.test(t)) continue;
-    const rel = c.file || idx.lastSession;
+    const rel = c.file ? `_Auto/${c.file}` : idx.lastSession;
     if (rel) hits.push({ rel, label: c.label, kind: "Categoria" });
   }
   let rest = t;
@@ -149,22 +159,60 @@ function matchText(text) {
 
 /* ───────────── apertura in Obsidian ───────────── */
 
+// Le note le apre il plugin "Eldoria · Orecchio" dentro Obsidian (API vere,
+// pannello coi link): chiede /events ogni secondo. Se il plugin non si fa
+// sentire da 5 s si ripiega sul link obsidian:// (che apre, ma senza pannello).
 const lastOpened = new Map(); // rel -> ms
+const events = [];
+let eventSeq = 0;
+let pluginSeenAt = 0;
+const pluginAlive = () => Date.now() - pluginSeenAt < 5000;
 
-function openInObsidian(rel, { newTab = true, force = false } = {}) {
-  const abs = path.join(AUTO, rel);
-  const relCheck = path.relative(AUTO, abs);
+function openInObsidian(hit, { newTab = true, force = false, heard = "" } = {}) {
+  const rel = hit.rel;
+  const abs = path.join(VAULT, rel);
+  const relCheck = path.relative(VAULT, abs);
   if (relCheck.startsWith("..") || path.isAbsolute(relCheck) || !fs.existsSync(abs)) return "missing";
   const now = Date.now();
   if (!force && now - (lastOpened.get(rel) || 0) < COOLDOWN_MS) return "cooldown";
   lastOpened.set(rel, now);
-  const uri = `obsidian://open?path=${encodeURIComponent(abs)}${newTab ? "&paneType=tab" : ""}`;
+  if (pluginAlive()) {
+    events.push({ id: ++eventSeq, path: rel.replace(/\\/g, "/"), label: hit.label, kind: hit.kind, heard, newTab });
+    if (events.length > 50) events.shift();
+    return "opened";
+  }
+  const uri = `obsidian://open?path=${encodeURIComponent(abs)}`;
   if (process.platform === "win32") {
     spawn("rundll32", ["url.dll,FileProtocolHandler", uri], { detached: true, stdio: "ignore" }).unref();
   } else {
     spawn(process.platform === "darwin" ? "open" : "xdg-open", [uri], { detached: true, stdio: "ignore" }).unref();
   }
   return "opened";
+}
+
+/* ───────────── installazione del plugin nella vault ───────────── */
+
+function installPlugin() {
+  const src = path.join(path.dirname(fileURLToPath(import.meta.url)), "obsidian-plugin", "eldoria-orecchio");
+  const cfgDir = path.join(VAULT, ".obsidian");
+  if (!fs.existsSync(src) || !fs.existsSync(cfgDir)) return "skip";
+  const dst = path.join(cfgDir, "plugins", "eldoria-orecchio");
+  fs.mkdirSync(dst, { recursive: true });
+  let changed = false;
+  for (const f of ["manifest.json", "main.js", "styles.css"]) {
+    const a = fs.readFileSync(path.join(src, f), "utf8");
+    const target = path.join(dst, f);
+    if (!fs.existsSync(target) || fs.readFileSync(target, "utf8") !== a) { fs.writeFileSync(target, a, "utf8"); changed = true; }
+  }
+  const listFile = path.join(cfgDir, "community-plugins.json");
+  let list = [];
+  try { list = JSON.parse(fs.readFileSync(listFile, "utf8")); } catch { /* nessun plugin ancora */ }
+  if (!list.includes("eldoria-orecchio")) {
+    list.push("eldoria-orecchio");
+    fs.writeFileSync(listFile, JSON.stringify(list, null, 2), "utf8");
+    changed = true;
+  }
+  return changed ? "updated" : "ok";
 }
 
 /* ───────────── server ───────────── */
@@ -190,13 +238,23 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "POST" && url.pathname === "/hear") {
     const { text = "", newTab = true, dry = false } = await readBody(req);
-    const hits = matchText(text).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h.rel, { newTab }) }));
-    for (const h of hits) if (h.result === "opened") console.log(`🔊 "${text.trim()}" → ${h.label}`);
-    return json(res, 200, { hits });
+    const heard = String(text).trim();
+    const hits = matchText(text).map((h) => ({ ...h, result: dry ? "dry" : openInObsidian(h, { newTab, heard }) }));
+    for (const h of hits) if (h.result === "opened") console.log(`🔊 "${heard}" → ${h.label}`);
+    return json(res, 200, { hits, plugin: pluginAlive() });
   }
   if (req.method === "POST" && url.pathname === "/open") {
-    const { rel = "", newTab = true } = await readBody(req);
-    return json(res, 200, { result: openInObsidian(rel, { newTab, force: true }) });
+    const { rel = "", label = "", kind = "", newTab = true } = await readBody(req);
+    return json(res, 200, { result: openInObsidian({ rel, label: label || path.basename(rel, ".md"), kind }, { newTab, force: true }) });
+  }
+  if (req.method === "GET" && url.pathname === "/events") {
+    pluginSeenAt = Date.now();
+    const since = Number(url.searchParams.get("since")) || 0;
+    // since più grande del contatore = il programma è stato riavviato
+    return json(res, 200, { reset: since > eventSeq, events: events.filter((e) => e.id > since) });
+  }
+  if (req.method === "GET" && url.pathname === "/status") {
+    return json(res, 200, { plugin: pluginAlive() });
   }
   json(res, 404, { error: "non trovato" });
 });
@@ -217,7 +275,9 @@ function openBrowser() {
 
 server.listen(PORT, "127.0.0.1", () => {
   const idx = buildIndex();
+  const inst = installPlugin();
   console.log("👂  Orecchio del Master");
+  if (inst === "updated") console.log("    🔌 plugin \"Eldoria · Orecchio\" installato/aggiornato nella vault: riavvia Obsidian una volta (o Ctrl+P → \"Reload app without saving\").");
   console.log(`    vault : ${VAULT}`);
   console.log(`    nomi riconoscibili: ${new Set(idx.names.map((n) => n.rel)).size}`);
   console.log(`    pagina: http://localhost:${PORT}   (Chrome o Edge; Ctrl+C per spegnere)`);
@@ -258,7 +318,8 @@ h2{font-size:1rem;margin:0 0 8px;color:var(--muted);font-weight:600}
 <div class="mic">
   <button id="btn" title="Ascolta / pausa (barra spaziatrice)">🎙</button>
   <div><div id="state">In pausa</div><div id="live"></div>
-  <label><input type="checkbox" id="newtab" checked> apri in una nuova scheda di Obsidian</label></div>
+  <label><input type="checkbox" id="newtab" checked> apri in una nuova scheda di Obsidian</label>
+  <div id="plug" class="t"></div></div>
 </div>
 <div class="box"><h2>Apri subito</h2><div class="chips">
   <button data-say="npc">🧑 NPC</button><button data-say="taverna">🍺 Taverne</button>
@@ -291,10 +352,19 @@ function addRow(text, hits, err) {
 }
 log.addEventListener("click", (e) => {
   const a = e.target.closest("a[data-rel]"); if (!a) return;
-  fetch("/open", {method:"POST", body: JSON.stringify({rel: a.dataset.rel, newTab: newtab.checked})});
+  fetch("/open", {method:"POST", body: JSON.stringify({rel: a.dataset.rel, label: a.textContent, newTab: newtab.checked})});
 });
 document.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => hear(b.dataset.say, true));
 document.getElementById("f").onsubmit = (e) => { e.preventDefault(); const q = document.getElementById("q"); if (q.value.trim()) hear(q.value, true); q.value = ""; };
+
+const plug = document.getElementById("plug");
+async function checkPlugin() {
+  const r = await fetch("/status").then((x) => x.json()).catch(() => null);
+  plug.innerHTML = !r ? '<span class="err">Il programma sul PC è spento.</span>'
+    : r.plugin ? '🟢 Obsidian collegato: le note si aprono e finiscono nel pannello «Orecchio».'
+    : '🟡 Obsidian non collegato: apro col link (riavvia Obsidian una volta per attivare il plugin).';
+}
+checkPlugin(); setInterval(checkPlugin, 5000);
 
 function start() {
   if (!SR) { state.textContent = "Questo browser non sa ascoltare: usa Chrome o Edge."; return; }
