@@ -28,16 +28,58 @@ async function avatarToDataUrl(url) {
   return cv.toDataURL("image/jpeg", 0.85);
 }
 
+// ── Arma dello sprite ──
+// Le armi vengono dalla scheda sincronizzata da Foundry (`actions`, categoria armi).
+// Scelta automatica: niente pugni/torce, poi vince il dado più grosso, con un premio
+// alle armi magiche (+N) o con un nome proprio (Gungnir, Falce Kal-Durr…), che sono
+// quelle "di firma" del PG; giavellotti e pugnali solo se non c'è altro.
+const BASIC_WEAPONS = /^(club|dagger|greatclub|handaxe|javelin|light hammer|mace|quarterstaff|sickle|spear|light crossbow|dart|shortbow|sling|battleaxe|flail|glaive|greataxe|greatsword|halberd|lance|longsword|maul|morningstar|pike|rapier|scimitar|shortsword|trident|war pick|warhammer|whip|blowgun|hand crossbow|heavy crossbow|longbow|net|staff|wooden staff|pugnale|bastone|arco corto|arco lungo|balestra leggera|spada corta|spada lunga|ascia|mazza|lancia)(\s*\([^)]*\))?$/i;
+const stripHtml = (s) => String(s || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/@\w+\[[^\]]*\](\{[^}]*\})?/g, "").replace(/\s+/g, " ").trim();
+function heroWeapons(char) {
+  const seen = new Set();
+  return (char?.actions || [])
+    .filter((a) => /armi|arma|weapon/i.test(a.category || ""))
+    .filter((a) => a.name && !/unarmed|senz'?armi|colpo senza|torch|torcia/i.test(a.name))
+    .filter((a) => { const k = a.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .map((a) => {
+      const m = String(a.damage || "").match(/(\d+)\s*d\s*(\d+)/i);
+      let score = m ? (+m[1] * (+m[2] + 1)) / 2 : 1;
+      if (/\+\s*\d/.test(a.name)) score += 3;
+      if (!BASIC_WEAPONS.test(a.name.trim())) score += 3;
+      if (/javelin|giavellott|dagger|pugnal|dart|dardo/i.test(a.name)) score -= 2;
+      return { name: a.name, damage: a.damage || "", description: stripHtml(a.description).slice(0, 220), score };
+    })
+    .sort((x, y) => y.score - x.score);
+}
+
+// Come si impugna: a distanza / a due mani / una mano.
+const weaponGrip = (w) => {
+  const n = `${w.name} ${w.description}`.toLowerCase();
+  if (/bow|arco|crossbow|balestr/.test(n)) return "bow or crossbow drawn and aimed toward the LEFT";
+  if (/revolver|pistol|musket|\bguns?\b|rifle|moschett|fucile|pistola/.test(n)) return "firearm raised and aimed toward the LEFT";
+  if (/maul|great|halberd|glaive|pike|two-handed|due mani|quarterstaff|staff|bastone|falce|scythe/.test(n)) return "gripped firmly with BOTH hands, raised and ready to strike toward the LEFT";
+  return "held in the leading hand, raised and ready to strike toward the LEFT";
+};
+
 // Prompt dello sprite pixel-art dell'eroe (stesso stile di boss e minion in
 // WorldBossAdmin): soggetto SOLO su fondo magenta uniforme, che poi togliamo lato
 // client con il chroma key. L'avatar allegato dice all'IA com'è fatto il PG.
-const heroSpritePrompt = (char, dead) => {
+// Nel fight gli eroi stanno a DESTRA e il boss a sinistra: lo sprite vivo è in posa
+// di combattimento rivolto a sinistra, con l'arma scelta in mano.
+const heroSpritePrompt = (char, dead, weapon) => {
   const who = [char.name, char.race, char.class].filter(Boolean).join(", ");
-  return `Pixel art sprite of a single fantasy RPG hero for a tactical RPG game, drawn from the attached reference portrait.
+  const wDesc = weapon
+    ? `"${weapon.name}"${weapon.description ? ` (${weapon.description})` : ""}`
+    : null;
+  const alive = weapon
+    ? `Pose: dynamic BATTLE STANCE, full body from head to feet, side / three-quarter view with body, face and gaze turned toward the LEFT edge of the image (the enemy is on the left). Knees bent, weight forward, ready to fight — NOT standing idle, NOT facing the viewer.
+Weapon: the hero wields ${wDesc}, ${weaponGrip(weapon)}. The weapon must be clearly visible, well readable at small size, correctly proportioned and held properly. Only this one weapon in hand.`
+    : `Pose: dynamic SPELLCASTING BATTLE STANCE, full body from head to feet, side / three-quarter view with body, face and gaze turned toward the LEFT edge of the image (the enemy is on the left), one hand thrust toward the left with a small glow of magic. NOT standing idle, NOT facing the viewer.`;
+  return `Pixel art sprite of a single fantasy RPG hero for a turn-based RPG battle screen, drawn from the attached reference portrait.
 Subject: ${who || "fantasy hero"}. Reproduce faithfully the appearance in the reference: face, hair, skin, colours, clothing/armour style and any distinctive detail. Same character, same outfit.
 ${dead
-    ? "Pose: DEFEATED — the hero lies collapsed on the ground beside a small stone gravestone (tomb), eyes closed, weapon dropped. Muted, sombre colours."
-    : "Pose: a SINGLE idle standing pose, full body from head to feet, three-quarter view facing the viewer, relaxed and ready."}
+    ? `Pose: DEFEATED — the hero lies collapsed on the ground beside a small stone gravestone (tomb), eyes closed${wDesc ? `, the ${weapon.name} dropped on the ground next to them` : ", weapon dropped"}. Muted, sombre colours.`
+    : alive}
 Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.
 CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
 };
@@ -211,6 +253,15 @@ export default function PlayerSpritesAdmin() {
   // Una richiesta per volta per slot (`genBusy["<id>:vivo"]`). Il PNG trasparente
   // finisce nel doc del PG come un caricamento a mano (data URL ≤ 256px).
   const [genBusy, setGenBusy] = useState({});
+  // Arma scelta a mano per lo sprite (id PG → nome arma; "" = senza arma, posa da incantatore).
+  // Non salvata: se non si tocca vale la scelta automatica (heroWeapons()[0]).
+  const [weaponPick, setWeaponPick] = useState({});
+  const weaponFor = (char) => {
+    const list = heroWeapons(char);
+    const pick = weaponPick[char.id];
+    if (pick === "") return null;
+    return list.find((w) => w.name === pick) || list[0] || null;
+  };
   const generateHeroSprite = async (char, dead) => {
     const key = `${char.id}:${dead ? "morto" : "vivo"}`;
     if (genBusy[key]) return;
@@ -224,7 +275,7 @@ export default function PlayerSpritesAdmin() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          prompt: heroSpritePrompt(char, dead),
+          prompt: heroSpritePrompt(char, dead, weaponFor(char)),
           refs: [ref],
           characters: [{ name: char.name, race: char.race, class: char.class }],
           tono: getImageTone(),
@@ -459,7 +510,7 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
       <div className="adm-panel">
         <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
         <ImageTonePicker compact />
-        <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion). Serve un avatar sulla scheda. <strong>⇆ Gira</strong> = specchia lo sprite: nel fight gli eroi stanno a destra, quindi devono guardare a <strong>sinistra</strong>, verso il boss (l'anteprima qui è identica alla battaglia).</small>
+        <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion), <strong>in posa di combattimento rivolto a sinistra</strong> con l'arma scelta sotto il nome (in automatico la più forte o quella con un nome proprio, presa dalle armi della scheda). Serve un avatar sulla scheda. <strong>⇆ Gira</strong> = specchia lo sprite: nel fight gli eroi stanno a destra, quindi devono guardare a <strong>sinistra</strong>, verso il boss (l'anteprima qui è identica alla battaglia).</small>
         <div className="wbs-grid">
           {characters.map((char) => (
             <div key={char.id} className="wbs-card">
@@ -470,6 +521,21 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
                 <h3 className="wbs-card-name">{char.name}</h3>
                 <span className="wbs-card-tag">{char.class || "—"}</span>
               </div>
+              {(() => {
+                const list = heroWeapons(char);
+                const cur = weaponPick[char.id] ?? (list[0]?.name || "");
+                return (
+                  <label className="wbs-weapon" title="L'arma che il PG impugna nello sprite generato (✨ Genera)">
+                    <span>⚔ Arma nello sprite</span>
+                    <select className="wbs-in" value={cur} onChange={(e) => setWeaponPick((s) => ({ ...s, [char.id]: e.target.value }))}>
+                      {list.map((w, i) => (
+                        <option key={w.name} value={w.name}>{w.name}{w.damage ? ` · ${w.damage}` : ""}{i === 0 ? " (auto)" : ""}</option>
+                      ))}
+                      <option value="">Nessuna · posa da incantatore</option>
+                    </select>
+                  </label>
+                );
+              })()}
               <div className="wbs-slots">
                 {/* Vivo */}
                 <div className="wbs-slot">

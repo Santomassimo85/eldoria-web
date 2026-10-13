@@ -5069,6 +5069,12 @@
 .adm .wbs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .adm .wbs-card-name { margin: 0; font-family: var(--font-head, "Cinzel"), serif; font-size: 1rem; color: var(--cine-accent); }
 .adm .wbs-card-tag { font-size: .66rem; color: var(--osso-2); font-family: var(--font-head, "Cinzel"), serif; letter-spacing: .06em; }
+/* Arma impugnata nello sprite generato (Sprite Personaggi) */
+.adm .wbs-weapon {
+  display: flex; flex-direction: column; gap: 3px; margin: 0 0 8px;
+  font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; color: var(--el-soft); font-family: var(--font-head, "Cinzel"), serif;
+}
+.adm .wbs-weapon .wbs-in { padding: 5px 7px; font-size: .78rem; text-transform: none; letter-spacing: 0; }
 .adm .wbs-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .adm .wbs-fields2 { display: grid; grid-template-columns: 2fr 1fr; gap: 7px; margin-top: 7px; }
 .adm .wbs-fields label, .adm .wbs-fields2 label {
