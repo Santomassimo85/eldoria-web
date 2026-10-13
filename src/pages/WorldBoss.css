@@ -255,6 +255,33 @@
 }
 .rpg-minion-hpbar i { display: block; height: 100%; background: var(--rpg-sangue); transition: width .4s; }
 
+/* Barre PF in scena (boss, servi, eroi): visibili a tutti, senza numeri sui nemici.
+   Verde → oro sotto metà → sangue sotto un quarto; lo scudo è una striscia chiara sopra. */
+.rpg-scene-hp {
+  position: relative; display: block; width: 100%; height: 6px;
+  background: rgba(var(--ossidiana-rgb), .85); border: 1px solid rgba(var(--osso-rgb), .25); border-radius: 2px;
+  overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+}
+.rpg-scene-hp i {
+  display: block; height: 100%; transition: width .4s;
+  background: linear-gradient(90deg, #3f8f57, var(--rpg-green));
+}
+.rpg-scene-hp i.low  { background: linear-gradient(90deg, #b8933f, var(--oro)); }
+.rpg-scene-hp i.crit { background: var(--rpg-sangue); }
+.rpg-scene-hp b {
+  position: absolute; left: 0; top: 0; height: 2px;
+  background: rgba(var(--osso-rgb), .9);
+}
+.rpg-scene-hp--minion { max-width: 110px; height: 5px; }
+.rpg-scene-hp--hero { width: clamp(56px, 7vw, 100px); }
+.rpg-scene-hp--boss {
+  position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%);
+  width: min(70%, 240px); height: 8px; z-index: 2;
+}
+.rpg-boss-sprite-wrap.dead .rpg-scene-hp--boss,
+.rpg-minion-wrap.dead .rpg-scene-hp--minion,
+.char-dead .rpg-scene-hp--hero { opacity: .5; }
+
 /* Party — metà destra: posizioni assolute sparse (dal JSX) */
 .rpg-party-zone {
   width: 52%; height: 100%;
@@ -846,6 +873,12 @@
 .rpg-spell-picker-mark { width: 16px; color: var(--el-2); font-family: var(--rpg-font-num); }
 .rpg-spell-picker-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(var(--el-rgb), .5); }
 .rpg-spell-picker-avatar.placeholder { display: inline-flex; align-items: center; justify-content: center; background: var(--rpg-panel3); font-family: var(--rpg-font-px); }
+.rpg-spell-picker-row:disabled { opacity: .45; cursor: not-allowed; }
+.rpg-spell-picker-row.down .rpg-spell-picker-hp { color: #ffb4a0; }
+.rpg-spell-picker-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rpg-spell-picker-bar { display: block; width: 100%; max-width: 220px; }
+.rpg-spell-picker-bar .rpg-bar-hp { display: block; }
+.rpg-spell-picker-count { margin: 0 0 6px; font-size: .78rem; color: var(--rpg-dim); text-align: center; }
 .rpg-spell-picker-name { flex: 1; font-family: var(--rpg-font-sc); letter-spacing: .04em; }
 .rpg-spell-picker-hp { font-family: var(--rpg-font-num); font-size: .74rem; color: var(--rpg-dim); }
 .rpg-spell-picker-foot { display: flex; gap: 8px; justify-content: flex-end; }

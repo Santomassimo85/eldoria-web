@@ -128,6 +128,20 @@ function selfBuffAcBonus(action) {
   return 2;
 }
 
+// Quanti alleati cura una magia: 1 di base; le cure di gruppo (Cura Ferite di Massa,
+// Parola Guaritrice di Massa, Preghiera di Guarigione…) o "fino a N creature" → N;
+// "ogni creatura / each creature" nell'area → tutti.
+const NUM_WORDS = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, dieci: 10,
+  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, ten: 10 };
+function healMaxTargets(action) {
+  const text = `${action.name || ""} ${action.description || ""}`.toLowerCase();
+  const m = text.match(/(?:fino a|up to)\s+(\d+|due|tre|quattro|cinque|sei|sette|otto|dieci|two|three|four|five|six|seven|eight|ten)\s+(?:creature|alleat|bersagl|compagn|creatures|allies|targets)/);
+  if (m) return Math.max(1, parseInt(m[1], 10) || NUM_WORDS[m[1]] || 1);
+  if (/\bmass\b|di massa|preghiera di guarigione|prayer of healing/.test(text)) return 6;
+  if (/ogni creatura|each creature|tutti gli alleati|all allies|ciascun alleato/.test(text)) return Infinity;
+  return 1;
+}
+
 // Caratteristiche del PG: formato nuovo {score, mod, save} (sync Foundry) oppure vecchio
 // (numero = modificatore). In pagina la costituzione è "cos", nel documento può essere "con".
 // Mai passare il valore grezzo al JSX: un oggetto renderizzato come figlio manda React in crash
@@ -835,31 +849,36 @@ export default function WorldBoss() {
     }
   };
 
-  // ── HEAL SPELL: roll heal dice + spell mod, apply to a single ally (capped at maxHp) ──
-  const castHealOnTarget = async (action, targetId) => {
-    if (isUserLocked) return;
-    const target = players.find((p) => p.id === targetId);
-    if (!target) return;
+  // ── HEAL SPELL: un tiro di cura (dadi + mod magia), applicato a uno o più alleati
+  // (le cure di gruppo, vedi healMaxTargets), ognuno fermo al suo massimo ──
+  const castHealOnTargets = async (action, targetIds) => {
+    if (isUserLocked || !targetIds?.length) return;
+    const targets = targetIds.map((id) => players.find((p) => p.id === id)).filter(Boolean);
+    if (!targets.length) return;
     if (!(await claimTurn())) return;
     const formula = action.damage && action.damage !== "0" ? action.damage : "1d8";
     const spellMod = getSpellMod(charData);
     const cleanFormula = String(formula).replace(/@mod/g, spellMod);
     const healRoll = rollDice(cleanFormula);
-    const totalHeal = healRoll;
-    const currentHp = target.stats?.hp ?? 0;
-    const maxHp = target.stats?.maxHp ?? currentHp + totalHeal;
-    const newHp = Math.min(maxHp, currentHp + totalHeal);
-    const actualHealed = newHp - currentHp;
+    const rows = [];
     try {
-      await updateDoc(doc(db, "characters", targetId), { "stats.hp": newHp });
+      const batch = writeBatch(db);
+      for (const t of targets) {
+        const cur = t.stats?.hp ?? 0;
+        const max = t.stats?.maxHp ?? cur + healRoll;
+        const nh = Math.min(max, cur + healRoll);
+        batch.update(doc(db, "characters", t.id), { "stats.hp": nh });
+        rows.push(`${(t.name || "alleato").split(" ")[0]} +${nh - cur} (${cur}→${nh})`);
+      }
+      await batch.commit();
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
         actionName: `${action.name} (Cura)`,
-        damageRoll: `💚 Cura ${target.name?.split(" ")[0] || "alleato"}: +${actualHealed} HP (${currentHp}→${newHp})`,
+        damageRoll: `💚 ${rows.join(" · ")}`,
         description: `Tiro cura: ${cleanFormula} = ${healRoll}${spellMod !== 0 ? ` (incl. mod magia +${spellMod})` : ""}`,
         uid: currentUser.uid, category: action.category || "Incantesimo",
         timestamp: serverTimestamp(),
-        effect: "heal", effectTargets: [`player-${targetId}`],
+        effect: "heal", effectTargets: targets.map((t) => `player-${t.id}`),
       });
       await endMyTurn();
     } catch (err) {
@@ -1678,6 +1697,16 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                 alt={boss.name}
               />
               {isBossDefeated && <div className="rpg-torn-overlay" />}
+              {(() => {
+                const max = Math.max(1, boss.maxHp ?? boss.hp ?? 1);
+                const pct = Math.max(0, Math.min(100, ((boss.hp ?? 0) / max) * 100));
+                return (
+                  <span className="rpg-scene-hp rpg-scene-hp--boss" aria-label={`PF di ${boss.name}: ${Math.round(pct)}%`}>
+                    <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
+                    {(boss.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (boss.shield / max) * 100)}%` }} />}
+                  </span>
+                );
+              })()}
             </div>
           )}
 
@@ -1704,7 +1733,10 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                       ? <img className={`rpg-minion-sprite${m.facing === "right" ? " faces-right" : ""}`} src={sprite} alt={m.name} />
                       : <div className="rpg-minion-placeholder">{dead ? "☠" : "🪓"}</div>}
                     <span className="rpg-minion-tag">{m.name}</span>
-                    <span className="rpg-minion-hpbar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
+                    <span className="rpg-scene-hp rpg-scene-hp--minion" aria-hidden="true">
+                      <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
+                      {(m.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (m.shield / Math.max(1, m.maxHp ?? 1)) * 100)}%` }} />}
+                    </span>
                   </div>
                 );
               })}
@@ -1744,6 +1776,17 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     : <div className="rpg-char-placeholder">{(p.name || "?")[0].toUpperCase()}</div>
                   }
                   <span className="rpg-char-name-tag">{(p.name || "Eroe").split(" ")[0]}</span>
+                  {(() => {
+                    const hp = p.stats?.hp ?? 0;
+                    const max = Math.max(1, p.stats?.maxHp ?? hp ?? 1);
+                    const pct = Math.max(0, Math.min(100, (hp / max) * 100));
+                    return (
+                      <span className="rpg-scene-hp rpg-scene-hp--hero" title={`${p.name || "Eroe"}: ${hp}/${max} PF`}>
+                        <i className={pct < 25 ? "crit" : pct < 50 ? "low" : ""} style={{ width: `${pct}%` }} />
+                        {(p.stats?.shield ?? 0) > 0 && <b style={{ width: `${Math.min(100, (p.stats.shield / max) * 100)}%` }} />}
+                      </span>
+                    );
+                  })()}
                 </div>
               );
             })
@@ -2384,33 +2427,40 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
       {/* ── SPELL TARGET PICKER MODAL ───────────────────────────────────── */}
       {spellPicker && (() => {
         const { action, intent, selected } = spellPicker;
-        const eligible = players.filter((p) => (p.stats?.hp ?? 0) > 0);
         const isHeal = intent === "heal";
-        const allSelected = !isHeal && selected.length === eligible.length && eligible.length > 0;
+        // Cura: anche chi è a terra (0 PF) si può rialzare; solo eroi attivi (+ chi lancia).
+        // Buff: solo i vivi, come prima.
+        const eligible = isHeal
+          ? activePlayers.concat(activePlayers.some((p) => p.id === myUid) ? [] : players.filter((p) => p.id === myUid))
+          : players.filter((p) => (p.stats?.hp ?? 0) > 0);
+        const maxPick = isHeal ? Math.min(healMaxTargets(action), eligible.length || 1) : eligible.length;
+        const multi = maxPick > 1;
+        const allSelected = multi && eligible.length > 0 && selected.length === Math.min(maxPick, eligible.length);
         const toggleOne = (uid) => {
-          if (isHeal) {
-            setSpellPicker((s) => ({ ...s, selected: [uid] }));
-          } else {
-            setSpellPicker((s) => ({
-              ...s,
-              selected: s.selected.includes(uid)
-                ? s.selected.filter((x) => x !== uid)
-                : [...s.selected, uid],
-            }));
-          }
+          setSpellPicker((s) => {
+            if (!multi) return { ...s, selected: [uid] };
+            if (s.selected.includes(uid)) return { ...s, selected: s.selected.filter((x) => x !== uid) };
+            if (s.selected.length >= maxPick) return s;
+            return { ...s, selected: [...s.selected, uid] };
+          });
         };
+        // Cura: "i più feriti" = chi ha la percentuale di PF più bassa, fino al massimo.
+        const mostHurt = () => eligible
+          .filter((p) => (p.stats?.hp ?? 0) < (p.stats?.maxHp ?? 0))
+          .sort((x, y) => (x.stats?.hp ?? 0) / Math.max(1, x.stats?.maxHp ?? 1) - (y.stats?.hp ?? 0) / Math.max(1, y.stats?.maxHp ?? 1))
+          .slice(0, maxPick).map((p) => p.id);
         const toggleAll = () => {
           setSpellPicker((s) => ({
             ...s,
-            selected: allSelected ? [] : eligible.map((p) => p.id),
+            selected: allSelected ? [] : (isHeal ? mostHurt() : eligible.map((p) => p.id)),
           }));
         };
         const confirm = async () => {
           if (selected.length === 0) return;
           if (isHeal && spellPicker.skill) {
-            await castSkillHeal(action, spellPicker.skill, [selected[0]]);
+            await castSkillHeal(action, spellPicker.skill, selected);
           } else if (isHeal) {
-            await castHealOnTarget(action, selected[0]);
+            await castHealOnTargets(action, selected);
           } else {
             await castBuffOnTargets(action, selected);
           }
@@ -2422,17 +2472,24 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
               <div className="rpg-spell-picker-head">
                 <div>
                   <div className="rpg-spell-picker-icon">{isHeal ? "💚" : "🌟"}</div>
-                  <h3>{isHeal ? "Cura un alleato" : "Buff agli alleati"}</h3>
+                  <h3>{isHeal ? (multi ? `Cura ad area · fino a ${maxPick === eligible.length ? "tutti gli" : maxPick} alleati` : "Cura un alleato") : "Buff agli alleati"}</h3>
                   <p className="rpg-spell-picker-spell">{action.name}</p>
                   {action.description && <p className="rpg-spell-picker-desc">{action.description}</p>}
                 </div>
                 <button className="rpg-spell-picker-close" onClick={() => setSpellPicker(null)} aria-label="Chiudi">✕</button>
               </div>
 
-              {!isHeal && eligible.length > 1 && (
+              {multi && (
                 <button className="rpg-spell-picker-all" onClick={toggleAll}>
-                  {allSelected ? "✓ Tutti selezionati · clic per deselezionare" : "👥 Seleziona TUTTI gli alleati"}
+                  {allSelected
+                    ? "✓ Selezionati · clic per deselezionare"
+                    : isHeal
+                      ? `🩹 Seleziona i più feriti${maxPick < eligible.length ? ` (fino a ${maxPick})` : ""}`
+                      : "👥 Seleziona TUTTI gli alleati"}
                 </button>
+              )}
+              {multi && isHeal && (
+                <p className="rpg-spell-picker-count">Scelti {selected.length} su {maxPick} · un solo tiro di cura per tutti</p>
               )}
 
               <div className="rpg-spell-picker-list">
@@ -2442,21 +2499,32 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                   const isOn = selected.includes(p.id);
                   const hp = p.stats?.hp ?? 0;
                   const maxHp = p.stats?.maxHp ?? hp;
-                  const pct = maxHp > 0 ? Math.round((hp / maxHp) * 100) : 0;
+                  const pct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100))) : 0;
+                  const down = hp <= 0;
+                  const full = hp >= maxHp && maxHp > 0;
+                  const capped = multi && !isOn && selected.length >= maxPick;
                   return (
                     <button
                       key={p.id}
-                      className={`rpg-spell-picker-row ${isOn ? "on" : ""}`}
+                      className={`rpg-spell-picker-row ${isOn ? "on" : ""} ${down ? "down" : ""}`}
                       onClick={() => toggleOne(p.id)}
+                      disabled={capped}
                     >
                       <span className="rpg-spell-picker-mark">
-                        {isHeal ? (isOn ? "●" : "○") : (isOn ? "✓" : "")}
+                        {multi ? (isOn ? "✓" : "") : (isOn ? "●" : "○")}
                       </span>
                       {p.image
                         ? <img src={p.image} alt="" className="rpg-spell-picker-avatar" />
                         : <span className="rpg-spell-picker-avatar placeholder">{(p.name || "?").charAt(0)}</span>}
-                      <span className="rpg-spell-picker-name">{p.name || "?"}</span>
-                      <span className="rpg-spell-picker-hp">{hp}/{maxHp} HP ({pct}%)</span>
+                      <span className="rpg-spell-picker-who">
+                        <span className="rpg-spell-picker-name">{p.name || "?"}{p.id === myUid ? " (tu)" : ""}</span>
+                        <span className="rpg-bar-track rpg-bar-track--sm rpg-spell-picker-bar">
+                          <span className={`rpg-bar-hp ${pct < 25 ? "crit" : pct < 50 ? "low" : ""}`} style={{ width: `${pct}%` }} />
+                        </span>
+                      </span>
+                      <span className="rpg-spell-picker-hp">
+                        {down ? "☠ a terra" : full && isHeal ? "PF pieni" : `${hp}/${maxHp}`}
+                      </span>
                     </button>
                   );
                 })}
@@ -2469,7 +2537,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                   disabled={selected.length === 0}
                   onClick={confirm}
                 >
-                  {isHeal ? "💚 Cura" : `🌟 Lancia su ${selected.length || 0} ${selected.length === 1 ? "alleato" : "alleati"}`}
+                  {isHeal ? `💚 Cura${multi ? ` ${selected.length || 0} ${selected.length === 1 ? "alleato" : "alleati"}` : ""}` : `🌟 Lancia su ${selected.length || 0} ${selected.length === 1 ? "alleato" : "alleati"}`}
                 </button>
               </div>
             </div>
