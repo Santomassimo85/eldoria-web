@@ -279,7 +279,8 @@ const ATTIVI_DI_RISERVA = [
   "8kRI5YVJ9GcpoYCxlW0a6Gfk1p33", // Makenna
   "4U4aXNSiBfS4p5kBTegN72HiKYz2", // Temistocle
   "V2vkQqUoFqSmQ374nZTQnaiAwPB3", // Lael
-  "0IViBp4oX4YYCuSjgfK8NxORp202"  // Palar
+  "0IViBp4oX4YYCuSjgfK8NxORp202", // Palar
+  "4L7TRng3G8Yt8I2clOcwruXbg9k2"  // Karlberth (Ema, 2026-10-13)
 ];
 
 const firstName = (s) => normName(s).split(/[\s"']+/)[0] || "";

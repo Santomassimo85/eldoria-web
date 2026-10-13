@@ -6,7 +6,8 @@
 // il suo UID (e/o il nome) da queste liste. Nessun dato viene perso.
 //
 // ROSTER ATTIVO (2026-09-18): master, Makenna (ripperti96), Lael, Temistocle,
-// Palar, Soran, Dago, Zethir, Garroth, Tanagar, Caius. Tutti gli altri qui sotto.
+// Palar, Soran, Dago, Zethir, Garroth, Tanagar, Caius, Karlberth (Ema, 2026-10-13).
+// Tutti gli altri qui sotto.
 //
 // NB: le pagine di gioco (TCG / Arena / World Boss) NON applicano questo
 // filtro per scelta progettuale (non vanno toccate).
