@@ -160,6 +160,38 @@ exports.cleanupExpiredSessions = onSchedule(
     },
 );
 
+// Bacheca (2026-10-14): le missive NON prese (senza acceptedBy) si cancellano
+// una settimana dopo `createdAt` (stringa ISO scritta da QuestAdmin). Quelle
+// senza data ricevono `createdAt` = adesso: il loro countdown parte da qui.
+// Stessa durata di src/data/questExpiry.js (QUEST_TTL_MS).
+const QUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+exports.cleanupExpiredQuests = onSchedule(
+    { schedule: "every 60 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        const dbAdmin = admin.firestore();
+        const nowMs = Date.now();
+        try {
+            const snap = await dbAdmin.collection("quests").get();
+            const expired = [];
+            const undated = [];
+            snap.docs.forEach((d) => {
+                const q = d.data();
+                if (q.acceptedBy) return;
+                const t = q.createdAt ? new Date(q.createdAt).getTime() : NaN;
+                if (Number.isNaN(t)) undated.push(d);
+                else if (t + QUEST_TTL_MS <= nowMs) expired.push(d);
+            });
+            await Promise.all([
+                ...expired.map((d) => d.ref.delete()),
+                ...undated.map((d) => d.ref.update({ createdAt: new Date(nowMs).toISOString() })),
+            ]);
+            console.log(`🧹 cleanupExpiredQuests: ${expired.length} missive scadute cancellate${expired.length ? ` (${expired.map((d) => d.data().title || d.id).join(", ")})` : ""}, ${undated.length} senza data datate adesso.`);
+        } catch (err) {
+            console.error("❌ cleanupExpiredQuests fallita:", err);
+        }
+    },
+);
+
 // ── ARENA · chiusura della settimana: DOMENICA ALLE 23:00 (2026-10-09) ───────
 // Prima era lunedì 00:01 e toccava solo le monete. Ora, domenica 23:00
 // (Europe/Rome), reset TOTALE della settimana dell'Arena:

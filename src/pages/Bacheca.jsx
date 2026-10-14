@@ -16,6 +16,7 @@ import {
   PARTY_ROSTER, NO_PARTY, getPartyByCharName, questSlotOf, questLockRef,
   questMonthKey, nextMonthLabel, acceptQuest, releaseQuest,
 } from "../data/questLimits";
+import { questTimeLeft, fmtTimeLeft, QUEST_TTL_MS } from "../data/questExpiry";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"]; // master + co-master
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
@@ -33,6 +34,13 @@ export default function Bacheca() {
   const { currentUser } = useAuth();
   const isMaster = MASTER_EMAILS.includes(currentUser?.email);
   useParallaxScroll();
+
+  // countdown delle missive non prese (si aggiorna ogni 30 s)
+  const [nowMs, setNowMs] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -113,7 +121,10 @@ export default function Bacheca() {
   };
 
   // ── Visibilità e permessi ──────────────────────────────────
-  const questEntries = quests.map((quest) => {
+  const questEntries = quests
+    // scadute (non prese da più di una settimana): la function le cancella, qui spariscono subito
+    .filter((quest) => { const left = questTimeLeft(quest, nowMs); return left == null || left > 0; })
+    .map((quest) => {
     const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
     const isCharQuest  = quest.targetCharacter && quest.targetCharacter !== "All";
 
@@ -184,6 +195,7 @@ export default function Bacheca() {
       <div id="bacheca-albo" className="gl-sezlabel">Incarichi · Le Missive</div>
       <p className="nx-nota bch-sezsub">
         Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+        {" "}Le missive che nessuno prende si strappano dall’albo <strong>una settimana dopo essere state appese</strong>.
         {" "}Ogni gruppo può prendere <strong>una missione ogni due settimane</strong> (dall’1 al 15 e dal 16 a fine mese).
       </p>
 
@@ -230,6 +242,7 @@ export default function Bacheca() {
             const isPartyQuest        = quest.targetParty && quest.targetParty !== "All";
             const isPrivate           = quest.targetCharacter && quest.targetCharacter !== "All";
             const isHovered           = hoveredId === quest.id;
+            const timeLeft            = quest._sealed ? null : questTimeLeft(quest, nowMs);
             const isOpenVisual        = !quest._sealed && (isAccepted || (quest._canOpen && isHovered));
             const badgeIcon           = quest._sealed ? "🔒" : isPrivate ? "🔒" : isPartyQuest ? "🛡️" : "🌐";
             const tag = quest._sealed ? "Sigillata"
@@ -295,6 +308,15 @@ export default function Bacheca() {
                     {isPartyQuest && !isAccepted && (
                       <p className="nx-meta quest-card-meta party">
                         Riservata a {quest.targetParty}
+                      </p>
+                    )}
+
+                    {timeLeft != null && timeLeft > 0 && (
+                      <p
+                        className={`nx-meta quest-card-meta quest-card-expiry${timeLeft < 24 * 3600000 ? " is-urgent" : ""}`}
+                        title={`Se nessuno la prende, si cancella ${Math.round(QUEST_TTL_MS / 86400000)} giorni dopo essere stata appesa`}
+                      >
+                        ⏳ Si strappa tra {fmtTimeLeft(timeLeft)}
                       </p>
                     )}
 

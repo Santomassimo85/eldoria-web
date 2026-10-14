@@ -1,0 +1,122 @@
+// =============================================================
+// DAI MONETE AI PG (D&D 5e) — macro del GM (2026-10-14)
+// Scegli il TIPO di moneta, la QUANTITÀ e a chi darla (tutti selezionati di
+// default). Le monete vanno ADDOSSO al PG (system.currency dell'attore), come
+// fa "Fetch admin" con le monete in più. Quantità negativa = togli monete
+// (mai sotto lo 0). Riepilogo in chat.
+// Il sito vede le monete nuove al prossimo "Fetch admin" / "fetch".
+// =============================================================
+
+(async () => {
+  if (!game.user.isGM) { ui.notifications.error("Questa macro la lancia il GM."); return; }
+
+  const MONETE = [
+    { key: "gp", label: "🟡 Oro (mo)" },
+    { key: "sp", label: "⚪ Argento (ma)" },
+    { key: "cp", label: "🟤 Rame (mr)" },
+    { key: "ep", label: "🔵 Electrum (me)" },
+    { key: "pp", label: "💎 Platino (mp)" }
+  ];
+  const nomeMoneta = (k) => MONETE.find((m) => m.key === k)?.label || k;
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const borsa = (pg) => {
+    const c = pg.system?.currency || {};
+    return `${c.gp ?? 0} mo · ${c.sp ?? 0} ma · ${c.cp ?? 0} mr`
+      + ((c.pp ?? 0) ? ` · ${c.pp} mp` : "") + ((c.ep ?? 0) ? ` · ${c.ep} me` : "");
+  };
+
+  const pgs = game.actors.filter((a) => a.type === "character" && a.hasPlayerOwner)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (!pgs.length) { ui.notifications.warn("Nessun PG trovato."); return; }
+
+  const lista = pgs.map((pg) => `
+    <label style="display:block;margin:4px 0;cursor:pointer;">
+      <input type="checkbox" name="pg" value="${pg.id}" checked/>
+      ${esc(pg.name)} <span style="color:#888;font-size:.85em;">(${borsa(pg)})</span>
+    </label>`).join("");
+
+  const content = `
+    <form style="padding:4px;">
+      <div style="display:flex;gap:8px;margin:6px 0;">
+        <div style="flex:1;">
+          <label><b>Tipo di moneta</b></label>
+          <select name="coin" style="width:100%;margin-top:4px;">
+            ${MONETE.map((m) => `<option value="${m.key}">${m.label}</option>`).join("")}
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label><b>Quante a testa</b></label>
+          <input type="number" name="amount" value="0" step="1" style="width:100%;margin-top:4px;"/>
+        </div>
+      </div>
+      <p style="color:#888;font-size:.85em;margin:0 0 6px;">Numero negativo = togli monete (mai sotto lo 0).</p>
+      <hr>
+      <b>A chi:</b>
+      <div style="margin:6px 0;">
+        <button type="button" data-azione="tutti" style="width:auto;margin-right:4px;">Seleziona tutti</button>
+        <button type="button" data-azione="nessuno" style="width:auto;">Deseleziona tutti</button>
+      </div>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid #ccc;padding:8px;border-radius:4px;">${lista}</div>
+    </form>`;
+
+  // html può essere jQuery (Foundry ≤ v12) o un elemento (v13): prendo sempre il DOM
+  const domDi = (html) => (html?.[0] ?? html);
+
+  const scelta = await new Promise((resolve) => {
+    new Dialog({
+      title: "💰 Dai monete",
+      content,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-coins"></i>',
+          label: "Assegna",
+          callback: (html) => {
+            const root = domDi(html);
+            resolve({
+              coin: root.querySelector('[name="coin"]').value,
+              amount: parseInt(root.querySelector('[name="amount"]').value, 10),
+              ids: [...root.querySelectorAll('input[name="pg"]:checked')].map((i) => i.value)
+            });
+          }
+        },
+        no: { icon: '<i class="fas fa-times"></i>', label: "Annulla", callback: () => resolve(null) }
+      },
+      default: "ok",
+      render: (html) => {
+        const root = domDi(html);
+        root.querySelectorAll("[data-azione]").forEach((b) => b.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          const on = b.dataset.azione === "tutti";
+          root.querySelectorAll('input[name="pg"]').forEach((c) => { c.checked = on; });
+        }));
+      },
+      close: () => resolve(null)
+    }).render(true);
+  });
+
+  if (!scelta) return;
+  const { coin, amount, ids } = scelta;
+  if (!Number.isFinite(amount) || amount === 0) { ui.notifications.warn("Inserisci una quantità diversa da 0."); return; }
+  if (!ids.length) { ui.notifications.warn("Nessun PG selezionato."); return; }
+
+  const righe = [];
+  for (const id of ids) {
+    const pg = game.actors.get(id);
+    if (!pg) continue;
+    const prima = Number(foundry.utils.getProperty(pg, `system.currency.${coin}`)) || 0;
+    const dopo = Math.max(0, prima + amount);
+    try {
+      await pg.update({ [`system.currency.${coin}`]: dopo });
+      righe.push(`<li><b>${esc(pg.name)}</b>: ${prima} → ${dopo}${prima + amount < 0 ? " ⚠ non bastavano" : ""}</li>`);
+    } catch (e) {
+      console.error(e);
+      righe.push(`<li><b>${esc(pg.name)}</b>: ❌ errore (F12)</li>`);
+    }
+  }
+
+  const segno = amount > 0 ? "+" : "";
+  ChatMessage.create({
+    content: `<p><b>💰 ${segno}${amount} ${nomeMoneta(coin)} a ${righe.length} PG</b></p><ul>${righe.join("")}</ul>`
+  });
+  ui.notifications.info(`Monete assegnate a ${righe.length} PG.`);
+})();

@@ -159,6 +159,8 @@
 .bacheca-page .quest-card-meta.private { color: var(--oro); }
 .bacheca-page .quest-card-meta.party   { color: var(--el-2); }
 .bacheca-page .quest-card-meta.sealed  { color: var(--osso-2); text-transform: none; }
+.bacheca-page .quest-card-meta.quest-card-expiry { color: var(--osso-2); font-family: var(--font-num); }
+.bacheca-page .quest-card-meta.quest-card-expiry.is-urgent { color: var(--sangue); font-weight: 700; }
 .bacheca-page .quest-card-accepted { margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .bacheca-page .quest-card-accepted p { margin: 0; }
 .bacheca-page .quest-card-accepted strong { font-family: "Cinzel", Georgia, serif; letter-spacing: .04em; }
