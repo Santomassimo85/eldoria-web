@@ -1724,7 +1724,7 @@
   flex-direction: column;
   gap: 3px;
   font-size: 0.82rem;
-  color: var(--osso-body);
+  color: var(--osso);
 }
 .mkadm-preview-set-list li {
   display: grid;
@@ -1732,6 +1732,10 @@
   gap: 8px;
   align-items: baseline;
 }
+/* style.css forza i <li> a #272727: qui il testo deve restare chiaro */
+.mkadm-preview-set-list li { color: var(--osso); }
+.mkadm-preview-set-list li > span:not(.mkadm-preview-set-frac) { color: var(--osso); line-height: 1.4; }
+.mkadm-preview-set-head strong { color: var(--osso); }
 .mkadm-preview-set-frac {
   font-weight: 700;
   color: var(--el-soft);
