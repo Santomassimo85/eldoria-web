@@ -1,0 +1,32 @@
+/* "Equipaggiarla subito?" — domanda dopo l'acquisto di una sottoclasse (Covo, a token) */
+.aso-velo{
+  position:fixed; inset:0; z-index:1200; display:flex; align-items:center; justify-content:center;
+  padding:16px; background:rgba(var(--ossidiana-rgb),.78); backdrop-filter:blur(3px);
+}
+.aso-box{
+  width:min(460px,100%); max-height:calc(100svh - 32px); overflow:auto;
+  background:var(--roccia-2); color:var(--osso);
+  border:1px solid rgba(var(--osso-rgb),.14); border-top:3px solid var(--el);
+  border-radius:3px; padding:18px 18px 14px; box-shadow:0 18px 50px rgba(0,0,0,.55);
+  font-family:var(--font-text,inherit);
+}
+.aso-kicker{ font-family:var(--font-sc,inherit); font-size:.72rem; letter-spacing:.12em; color:var(--el); text-transform:uppercase; }
+.aso-titolo{ margin:4px 0 6px; font-family:var(--font-title,inherit); font-size:1.5rem; color:var(--osso); }
+.aso-desc{ margin:0 0 10px; color:var(--osso-2); font-size:.92rem; line-height:1.45; }
+.aso-lista{ list-style:none; margin:0 0 10px; padding:0; display:grid; gap:6px; }
+.aso-lista li{ background:var(--roccia-3); border-left:2px solid rgba(var(--el-rgb),.6); padding:6px 9px; font-size:.84rem; line-height:1.4; color:var(--osso-2); }
+.aso-lista b{ color:var(--osso); }
+.aso-ca{ margin:0 0 10px; font-family:var(--font-num,inherit); font-size:.95rem; color:var(--osso-2); }
+.aso-ca b{ color:var(--el); }
+.aso-domanda{ margin:4px 0 12px; font-weight:700; color:var(--osso); }
+.aso-err{ margin:0 0 10px; color:var(--sangue); font-size:.85rem; }
+.aso-azioni{ display:flex; flex-wrap:wrap; gap:8px; }
+.aso-azioni button{
+  min-height:42px; padding:8px 14px; border-radius:3px; cursor:pointer;
+  font-family:var(--font-num,inherit); font-size:.82rem; letter-spacing:.04em;
+}
+.aso-azioni button:disabled{ opacity:.6; cursor:wait; }
+.aso-si{ flex:1 1 100%; background:linear-gradient(135deg,var(--el),var(--el-2)); color:var(--ossidiana); border:none; font-weight:700; }
+.aso-no{ flex:1 1 auto; background:var(--roccia-3); color:var(--osso); border:1px solid rgba(var(--osso-rgb),.2); }
+.aso-dopo{ flex:0 0 auto; background:transparent; color:var(--osso-3); border:1px solid transparent; }
+.aso-nota{ margin:10px 0 0; font-size:.76rem; color:var(--osso-3); line-height:1.4; }

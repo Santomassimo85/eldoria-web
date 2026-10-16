@@ -12,7 +12,8 @@ import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
-import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey, snapshotWithSubclass, subclassToMount } from "../data/arenaSubclasses";
+import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey } from "../data/arenaSubclasses";
+import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
@@ -3728,43 +3729,6 @@ export default function Arena() {
     });
   }, [currentUser]);
 
-  // ── Sottoclasse comprata = sottoclasse montata (2026-10-16) ───────────────
-  // Prima la sottoclasse comprata in Bottega entrava nel torneo SOLO se il
-  // giocatore premeva "Aggiorna il mio assetto" durante la Pausa Bottega: chi
-  // non lo faceva l'aveva pagata per niente (Lael, Tanagar, Makenna: niente +1 CA
-  // né passive). Ora si monta da sola nello snapshot del torneo appena il
-  // giocatore non sta combattendo: dal suo client e, per tutti, dal Master.
-  const subMountSigRef = useRef("");
-  useEffect(() => {
-    if (!arenaMeta || !currentUser) return;
-    const parts = arenaMeta.participants || [];
-    const uids = isMaster ? parts : (parts.includes(currentUser.uid) ? [currentUser.uid] : []);
-    if (!uids.length || !["registration", "combat", "shopping"].includes(arenaMeta.phase)) return;
-    const wk = currentWeekKey();
-    // il giocatore sa già se gli serve; il Master rilegge le schede a ogni cambio di stato dei match
-    if (!isMaster && !subclassToMount(arenaMeta, currentUser.uid, myArenaWeekly, wk)) return;
-    const sig = `${arenaMeta.phase}|${arenaMeta.currentRound}|${(arenaMeta.matches || []).map(m => `${m.matchId}:${m.status}`).join(",")}|${JSON.stringify(myArenaWeekly?.subclasses || {})}`;
-    if (subMountSigRef.current === sig) return;
-    subMountSigRef.current = sig;
-    const ref = doc(db, "arena_meta", "global");
-    runTransaction(db, async (tx) => {
-      const ms = await tx.get(ref);
-      if (!ms.exists()) return [];
-      const meta = ms.data();
-      const chars = await Promise.all(uids.map(u => tx.get(doc(db, "characters", u))));
-      const updates = {}; const mounted = [];
-      uids.forEach((u, i) => {
-        const aw = chars[i].exists() ? chars[i].data().arenaWeekly : null;
-        const key = subclassToMount(meta, u, aw, wk);
-        const next = key && snapshotWithSubclass(meta.characterSnapshots[u], key);
-        if (next) { updates[`characterSnapshots.${u}`] = next; mounted.push(`${next.name}: ${next.subclassIcon} ${next.subclassName}`); }
-      });
-      if (mounted.length) tx.update(ref, updates);
-      return mounted;
-    }).then(mounted => {
-      if (mounted?.length) console.info("[arena] sottoclassi montate:", mounted.join(" · "));
-    }).catch(e => { subMountSigRef.current = ""; console.warn("[arena] montaggio sottoclasse:", e); });
-  }, [arenaMeta, currentUser, isMaster, myArenaWeekly]);
 
   // ── Monete Arena ──────────────────────────────────────────────────────────
   const awardArenaCoins = async (uid, amount) => {
@@ -4800,8 +4764,8 @@ export default function Arena() {
       subclassIcon:    subclassDef?.icon || null,
       // CA che la sottoclasse ha sommato davvero (anche sopra l'armatura della Bottega)
       subclassAc:      subclassCa,
-      // Sottoclasse posseduta ma spenta di proposito al loadout: il montaggio
-      // automatico (subclassToMount) non la rimette.
+      // Sottoclasse posseduta ma spenta di proposito al loadout: ArenaSubclassOffer
+      // non chiede più di equipaggiarla (resta sceglibile nelle pause Bottega).
       subclassDeclined: (!subclassKey && ownedSubclassKey(charPreview.arenaWeekly, charPreview.class)) || null,
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
@@ -10134,6 +10098,9 @@ export default function Arena() {
           </button>
         );
       })()}
+
+      {/* Sottoclasse comprata e non ancora montata: "equipaggiarla subito?" */}
+      {currentUser && <ArenaSubclassOffer arenaMeta={arenaMeta} uid={currentUser.uid} arenaWeekly={myArenaWeekly} />}
 
       {/* ── Richiamo FLOTTANTE Pausa Bottega — sempre visibile per i partecipanti,
             in qualunque vista dell'Arena, finché la finestra di shopping è aperta.

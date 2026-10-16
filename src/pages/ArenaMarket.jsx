@@ -12,7 +12,8 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../components/ArenaMarketCatalog";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
-import { ARENA_SUBCLASSES, SUBCLASS_PRICE, snapshotWithSubclass, subclassToMount } from "../data/arenaSubclasses";
+import { ARENA_SUBCLASSES, SUBCLASS_PRICE } from "../data/arenaSubclasses";
+import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -152,29 +153,9 @@ export default function ArenaMarket() {
           arenaWeekly: { ...cur, subclasses: { ...subs, [classKey]: opt.key } },
         });
       });
-      // Se è già iscritto al torneo con questa classe, la sottoclasse entra SUBITO
-      // nel suo assetto (se sta combattendo, a fine match: lo fa l'Arena da sola).
-      let mounted = false;
-      try {
-        mounted = await runTransaction(db, async (tx) => {
-          const mref = doc(db, "arena_meta", "global");
-          const ms = await tx.get(mref);
-          const cs = await tx.get(doc(db, "characters", currentUser.uid));
-          if (!ms.exists() || !cs.exists()) return false;
-          const meta = ms.data();
-          const key = subclassToMount(meta, currentUser.uid, cs.data().arenaWeekly, currentWeekKey());
-          const next = key && snapshotWithSubclass(meta.characterSnapshots[currentUser.uid], key);
-          if (!next) return false;
-          tx.update(mref, { [`characterSnapshots.${currentUser.uid}`]: next });
-          return true;
-        });
-      } catch (e) { console.warn("[bottega] montaggio sottoclasse:", e); }
-      const inTourney = (arenaMeta?.participants || []).includes(currentUser.uid);
-      showMsg(mounted
-        ? `Sottoclasse sbloccata: ${opt.name}! È già attiva nel tuo assetto del torneo · valida fino a ${weekEndLabel(weekKey)}.`
-        : inTourney && inLiveMatch
-        ? `Sottoclasse sbloccata: ${opt.name}! Si attiva da sola appena finisce il tuo match · valida fino a ${weekEndLabel(weekKey)}.`
-        : `Sottoclasse sbloccata: ${opt.name}! Si attiva da sola nel torneo con questa classe · valida fino a ${weekEndLabel(weekKey)}.`);
+      // Se è già iscritto al torneo con questa classe, ArenaSubclassOffer (sotto)
+      // gli chiede se equipaggiarla subito.
+      showMsg(`Sottoclasse sbloccata: ${opt.name}! Valida fino a ${weekEndLabel(weekKey)}.`);
     } catch (e) {
       showMsg(e?.message === "già" ? "Hai già scelto la sottoclasse di questa classe per la settimana."
         : e?.message === "monete" ? "Monete insufficienti." : "Acquisto non riuscito, riprova.", "err");
@@ -246,6 +227,9 @@ export default function ArenaMarket() {
         <span className="am-hub-fab-arrow" aria-hidden="true">‹</span>
         <span className="am-hub-fab-label">Hub</span>
       </Link>
+
+      {/* Sottoclasse appena comprata: "equipaggiarla subito?" (solo se iscritto al torneo) */}
+      <ArenaSubclassOffer arenaMeta={arenaMeta} uid={currentUser.uid} arenaWeekly={charData?.arenaWeekly} />
 
       {/* ── TESTATA ── */}
       <header className="bt-testata" aria-label="Bottega dell'Arena">
