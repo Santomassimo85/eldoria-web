@@ -27,6 +27,7 @@ import "./ArenaPalcoFight.css";   // scontro INLINE nel palco dell'hub + palette
 import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura, pelle del covo
 import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi con icona, righe compatte, mobile
 import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
+import "./ArenaScontro.css";       // scontro leggibile: cronaca a paragrafi, su PC sotto il campo (per ULTIMO)
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
 // Disegna VfxLayer (WorldBossVfx.jsx/.css, gli stessi pixel del World Boss). Nessuna

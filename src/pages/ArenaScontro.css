@@ -1,0 +1,90 @@
+/* src/pages/ArenaScontro.css — LO SCONTRO LEGGIBILE (2026-10-16). Importato PER ULTIMO.
+   Solo presentazione, stesso markup.
+   1) Righe della Cronaca: prima erano `display:flex`, quindi ogni pezzo di testo
+      (frase, dado, chip PF) diventava una colonna stretta e la riga si leggeva
+      in verticale. Ora sono un paragrafo normale: ora in testa, testo che scorre,
+      chip dei PF sotto.
+   2) PC: la Cronaca non sta più in una colonna stretta a destra (lasciava metà
+      scontro vuota quando non è il tuo turno): sotto il campo, a tutta larghezza.
+   3) Campo: combattenti centrati e più grandi su PC, chi aspetta il turno non è
+      più quasi invisibile. */
+
+/* ═══════════ 1) CRONACA: righe a paragrafo (tutti i dispositivi) ═══════════ */
+.arena-combat-dialog .match-log .log-entry.log-entry{
+  display:block!important;
+  font-size:.84rem; line-height:1.5; padding:7px 11px!important;
+  overflow-wrap:anywhere; word-break:normal;
+}
+.arena-combat-dialog .match-log .log-entry .log-ts{
+  display:inline-block; vertical-align:baseline; margin:0 8px 0 0!important;
+  padding:0 6px; border-radius:3px; background:rgba(var(--osso-rgb),.07);
+  font-family:var(--font-num,inherit); font-size:.66rem!important; color:var(--osso-3)!important;
+}
+.arena-combat-dialog .match-log .log-entry svg,
+.arena-combat-dialog .match-log .log-entry img{ display:inline-block; vertical-align:-3px; }
+.arena-combat-dialog .match-log .log-entry .achr-hp{ display:flex; flex-wrap:wrap; gap:4px 6px; margin:5px 0 0!important; }
+.arena-combat-dialog .match-log-scroll{ gap:6px!important; padding:10px 12px!important; }
+
+/* ═══════════ 2) PC: tutto in colonna, Cronaca sotto ═══════════ */
+@media (min-width:900px){
+  /* scontro nel palco: via la griglia a due colonne di ArenaPalcoFight */
+  .arena-page .arena-combat-inline .match-card.match-card{
+    display:flex!important; flex-direction:column!important; align-items:stretch!important;
+  }
+  .arena-page .arena-combat-inline .match-card.match-card > *{ align-self:stretch; }
+  .arena-page .arena-combat-inline .match-card.match-card > .match-log{
+    grid-column:auto; grid-row:auto; align-self:stretch; height:auto;
+    flex:0 0 auto; min-height:0; max-height:none;
+    border-left:none!important; border-top:2px solid rgba(var(--el-rgb),.45)!important;
+  }
+  .arena-page .arena-combat-inline .match-card.match-card > .match-log .match-log-scroll{
+    max-height:340px!important; min-height:160px;
+  }
+  .arena-page .arena-combat-inline .match-card.match-card.cv-logmode > .match-log .match-log-scroll{ max-height:70vh!important; }
+  /* modale (fuori dal palco): la cronaca prende lo spazio che resta */
+  .arena-combat-dialog:not(.arena-combat-inline) .match-log{ min-height:220px; }
+
+  /* campo: i due combattenti vicini al VS, non schiacciati ai bordi */
+  .arena-combat-dialog .fighters-row{
+    justify-content:center!important; gap:clamp(16px,4vw,56px)!important; padding:18px 16px 14px!important;
+  }
+  .arena-combat-dialog .fighter-card{ flex:0 1 300px!important; max-width:300px!important; padding:12px 10px!important; gap:6px!important; }
+  .arena-combat-dialog .cv-avatar-wrap,
+  .arena-combat-dialog .cv-noavatar{ width:112px!important; }
+  .arena-combat-dialog .cv-noavatar{ font-size:2.3rem; }
+  .arena-combat-dialog .fighter-card .fighter-name{ font-size:1.12rem!important; letter-spacing:.04em; }
+  .arena-combat-dialog .fighter-card .fighter-class{ font-size:.72rem!important; }
+  .arena-combat-dialog .cv-hp-text{ font-size:1.05rem; }
+  .arena-combat-dialog .ministat{ font-size:.74rem; padding:3px 9px; }
+  .arena-combat-dialog .fighter-card .hp-bar-wrap{ max-width:180px; }
+
+  /* azioni: righe in griglia invece di una colonna lunghissima */
+  .arena-combat-dialog .action-buttons,
+  .arena-combat-dialog .items-row{
+    display:grid!important; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px!important;
+  }
+  .arena-page .arena-combat-inline .match-card.match-card > .action-panel{ max-height:none; }
+
+  /* statistiche e reazioni: una riga sottile, centrata */
+  .arena-combat-dialog .cv-stats-pills{ justify-content:center; }
+  .arena-combat-dialog .arena-react-bar{ display:flex; padding:6px 8px!important; }
+}
+
+/* barra PF di chi non ha ritratto: l'etichetta sotto la barra, non sopra */
+.arena-combat-dialog .fighter-card .hp-bar-wrap{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.arena-combat-dialog .fighter-card .hp-bar-wrap .hp-bar-bg{ width:100%; align-self:stretch; }
+.arena-combat-dialog .fighter-card .hp-bar-wrap .hp-label{ position:static!important; transform:none!important; display:block; }
+/* scheda attiva del dock: testo scuro sul gradiente acceso */
+.arena-combat-dialog .cdt-tab.active,
+.arena-combat-dialog .cdt-tab.active .cdt-lab{ color:var(--ossidiana)!important; text-shadow:none!important; }
+
+/* ═══════════ 3) chi aspetta il turno resta leggibile ═══════════ */
+.arena-combat-dialog .fighter-card.waiting{ opacity:.78!important; filter:grayscale(.25)!important; }
+.arena-combat-dialog .fighter-card.defeated{ opacity:.45!important; }
+
+/* ═══════════ telefono: cronaca più alta e righe compatte ═══════════ */
+@media (max-width:640px){
+  .arena-combat-dialog .match-log .log-entry.log-entry{ font-size:.8rem; line-height:1.42; padding:6px 9px!important; }
+  .arena-combat-dialog .match-log .log-entry .log-ts{ font-size:.6rem!important; }
+  .arena-combat-dialog .achr-hp-chip{ font-size:.66rem; }
+}
