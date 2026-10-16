@@ -678,7 +678,11 @@ export default function MarketAdmin() {
   };
 
   const handleUpdateCountdown = async () => {
-    await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown }, { merge: true });
+    // nextOpeningAt (ISO, fuso incluso) = l'ora a cui la function marketAutoOpen apre il mercato da sola
+    await setDoc(doc(db, "settings", "market_config"), {
+      nextOpening: globalCountdown,
+      nextOpeningAt: globalCountdown ? new Date(globalCountdown).toISOString() : null,
+    }, { merge: true });
     const open = globalCountdown ? new Date(globalCountdown) : null;
     const close = marketClosing ? new Date(marketClosing) : null;
     alert(open && (!close || close <= open)
@@ -1172,6 +1176,9 @@ export default function MarketAdmin() {
             />
             <button onClick={handleUpdateCountdown} className="mkadm-btn-save">Salva</button>
           </div>
+          <p className="mkadm-config-hint" style={{ margin: "6px 2px 0", fontSize: "0.8rem", color: "var(--osso-2)", lineHeight: 1.4 }}>
+            A quest'ora il mercato <strong>si apre da solo</strong> (con la notifica a tutti). Se poi lo chiudi a mano non si riapre; puoi sempre aprirlo prima col bottone qui sotto.
+          </p>
 
           <label className="mkadm-config-label" style={{ marginTop: 16 }}>Chiusura del mercato (scadenza di tutte le aste)</label>
           <div className="mkadm-config-row">

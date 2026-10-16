@@ -727,6 +727,43 @@ exports.pushOnMarketOpenChange = onDocumentUpdated('settings/market_config', asy
   await broadcastMarketState(nowOpen);
 });
 
+// Apertura AUTOMATICA all'ora stabilita (settings/market_config.nextOpening).
+// Il pannello salva l'ora come "YYYY-MM-DDTHH:mm" senza fuso (ora italiana) e,
+// dal 2026-10-16, anche nextOpeningAt in ISO: si usa quello, altrimenti si legge
+// la stringa come ora di Roma. Apre UNA volta per data (autoOpenedFor): se il
+// Master poi chiude a mano, non si riapre. Date vecchie di oltre 6 ore = ignorate
+// (niente aperture a sorpresa con una data dimenticata). La push parte da
+// pushOnMarketOpenChange, come col bottone.
+function romeLocalToDate(str) {
+  const m = String(str || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Rome", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
+  const asRome = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+  return new Date(guess - (asRome - guess));
+}
+
+exports.marketAutoOpen = onSchedule(
+  { schedule: "every 1 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+  async () => {
+    const ref = admin.firestore().doc("settings/market_config");
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const d = snap.data() || {};
+    if (d.isOpen || !d.nextOpening) return;
+    const key = d.nextOpeningAt || d.nextOpening;
+    if (d.autoOpenedFor === key) return;
+    const at = d.nextOpeningAt ? new Date(d.nextOpeningAt) : romeLocalToDate(d.nextOpening);
+    if (!at || isNaN(at)) return;
+    const late = Date.now() - at.getTime();
+    if (late < 0 || late > 6 * 3600 * 1000) return;
+    await ref.update({ isOpen: true, autoOpenedFor: key, autoOpenedAt: FieldValue.serverTimestamp() });
+    console.log("[mercato] aperto da solo, ora stabilita:", at.toISOString());
+  }
+);
+
 exports.pushOnMarketConfigCreated = onDocumentCreated('settings/market_config', async (event) => {
   const data = event.data?.data() || {};
   if (!data.isOpen) return;
