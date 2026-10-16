@@ -159,6 +159,15 @@ const initialFormData = {
   foundry: { ...EMPTY_FOUNDRY },
 };
 
+// ISO → "YYYY-MM-DDTHH:mm" nell'ora LOCALE (quella che leggono gli input data/ora).
+// Con toISOString().slice(0,16) usciva l'ora UTC: a ogni salvataggio la chiusura
+// scivolava indietro di 1-2 ore.
+const toLocalInput = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
 const formatEndDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -608,7 +617,7 @@ export default function MarketAdmin() {
       if (snap.exists()) {
         const d = snap.data();
         setGlobalCountdown(d.nextOpening || "");
-        setMarketClosing(d.closingDate ? new Date(d.closingDate).toISOString().slice(0, 16) : "");
+        setMarketClosing(d.closingDate ? toLocalInput(d.closingDate) : "");
         setMarketIsOpen(!!d.isOpen);
       }
     });
@@ -670,7 +679,13 @@ export default function MarketAdmin() {
 
   const handleUpdateCountdown = async () => {
     await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown }, { merge: true });
-    alert("✅ Programmazione salvata!");
+    const open = globalCountdown ? new Date(globalCountdown) : null;
+    const close = marketClosing ? new Date(marketClosing) : null;
+    alert(open && (!close || close <= open)
+      ? "✅ Apertura salvata.
+
+⚠ La CHIUSURA del mercato " + (close ? "(" + formatEndDate(close.toISOString()) + ") viene prima dell'apertura" : "non è impostata") + ": le aste risulteranno scadute. Imposta la chiusura qui sotto e premi «Salva chiusura»."
+      : "✅ Programmazione salvata!");
   };
 
   // Chiusura UNICA del mercato: la salva nel config E la applica come scadenza a
@@ -710,7 +725,7 @@ export default function MarketAdmin() {
       ...initialFormData,
       ...item,
       saleType: "auction",
-      endDate: item.endDate ? new Date(item.endDate).toISOString().slice(0, 16) : "",
+      endDate: item.endDate ? toLocalInput(item.endDate) : "",
       // Surface the pet-payload into the form-level selectors so the
       // admin sees the right sub-option when editing a pet listing.
       petRarity: item.petPayload?.kind === "egg" ? item.petPayload.rarity : "common",
@@ -1172,6 +1187,11 @@ export default function MarketAdmin() {
               {savingClosing ? "…" : "Salva chiusura"}
             </button>
           </div>
+          {marketClosing && new Date(marketClosing) <= new Date() && (
+            <p className="mkadm-config-warn">
+              ⚠ La chiusura impostata ({formatEndDate(new Date(marketClosing).toISOString())}) è già passata: per questo gli oggetti in magazzino risultano <strong>scaduti</strong>. L'apertura non la sposta: scegli una nuova chiusura e premi <strong>Salva chiusura</strong>, vale per tutti gli oggetti in vendita.
+            </p>
+          )}
           <p className="mkadm-config-hint" style={{ margin: "6px 2px 0", fontSize: "0.8rem", color: "var(--osso-2)", lineHeight: 1.4 }}>
             Impostala <strong>una sola volta</strong>: vale come scadenza per <strong>tutti</strong> gli oggetti (esistenti in vendita e nuovi). Non serve più metterla per singolo oggetto.
           </p>

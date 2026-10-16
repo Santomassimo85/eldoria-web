@@ -5486,3 +5486,4 @@
 .mkadm-field-row.mkadm-ai-setrow > .mkadm-field { flex: 1 1 220px; }
 .mkadm-field-row.mkadm-ai-setrow > .mkadm-ai-setsize { flex: 0 1 140px; }
 .mkadm-set-note { margin: 0 0 8px; font-size: 0.78rem; line-height: 1.4; color: var(--osso-2); }
+.mkadm-config-warn { margin: 8px 2px 0; padding: 8px 10px; font-size: 0.82rem; line-height: 1.45; color: var(--osso); background: rgba(var(--sangue-rgb), 0.14); border-left: 3px solid var(--sangue); border-radius: 3px; }
