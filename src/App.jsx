@@ -61,6 +61,7 @@ import Tcg from "./pages/Tcg";
 import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
 import Officina from "./pages/Officina";
+import RuotaExanthia from "./pages/RuotaExanthia";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
@@ -271,6 +272,7 @@ const NESSO_GROUPS = {
     { to: "/officina", label: "Officina" },
     { to: "/mercato", label: "Mercato Nero" },
     { to: "/bacheca", label: "Bacheca" },
+    { to: "/ruota", label: "Ruota di Exanthia" },
     { to: "/cinema", label: "Cinema" },
     { to: "/feedback", label: "Feedback" },
   ]},
@@ -285,7 +287,7 @@ const NESSO_GROUP_OF = (p) =>
   : ["/world-map", "/Geo"].includes(p) ? "mondo"
   : ["/scriba", "/riassunti", "/diario", "/almanacco", "/crafting", "/ratti-lore", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
   : ["/party", "/scheda-pg", "/my-pg", "/npc"].some((x) => p.startsWith(x)) ? "eroi"
-  : ["/officina", "/mercato", "/bacheca", "/cinema", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
+  : ["/officina", "/mercato", "/bacheca", "/ruota", "/cinema", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
   : ["/arena", "/arena-bottega", "/world-boss", "/tcg"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
@@ -709,6 +711,7 @@ export default function App() {
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
+            <NavLink to="/ruota">🎡 Ruota di Exanthia</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>
             <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
@@ -763,6 +766,7 @@ export default function App() {
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
           <Route path="/officina" element={<Officina />} />
+          <Route path="/ruota" element={<RuotaExanthia />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/feedback" element={<Feedback />} />

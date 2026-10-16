@@ -1,0 +1,81 @@
+/* ── La Ruota di Exanthia (Covo, a token) ── */
+.rex-wrap {
+  max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px;
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 36px; align-items: start;
+}
+@media (max-width: 860px) { .rex-wrap { grid-template-columns: minmax(0, 1fr); gap: 22px; padding-top: 20px; } }
+
+/* ruota */
+.rex-stage { position: relative; width: min(100%, 520px); margin: 0 auto; aspect-ratio: 1; padding-top: 14px; }
+.rex-pointer {
+  position: absolute; top: 0; left: 50%; z-index: 2; transform: translateX(-50%);
+  width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
+  border-top: 30px solid var(--oro); filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .6));
+}
+.rex-wheel {
+  width: 100%; height: 100%; display: block; overflow: visible;
+  transition: transform 5.6s cubic-bezier(.12, .72, .08, 1);
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, .55));
+}
+@media (prefers-reduced-motion: reduce) { .rex-wheel { transition-duration: .8s; } }
+.rex-rim { fill: var(--roccia-1); stroke: var(--oro); stroke-width: 3; }
+.rex-seg path { stroke: rgba(var(--ossidiana-rgb), .9); stroke-width: 1.2; transition: filter .3s; }
+.rex-seg text { font-family: var(--font-sc, inherit); font-size: 11px; letter-spacing: .02em; pointer-events: none; }
+.rex-seg--t0 path { fill: var(--roccia-2); }
+.rex-seg--t0.is-alt path { fill: var(--roccia-3); }
+.rex-seg--t0 text { fill: var(--osso-3); }
+.rex-seg--t1 path { fill: rgba(var(--el-rgb), .45); }
+.rex-seg--t1 text { fill: var(--osso); font-weight: 700; }
+.rex-seg--t2 path { fill: var(--el); }
+.rex-seg--t2 text { fill: var(--ossidiana); font-weight: 700; }
+.rex-seg--t3 path { fill: var(--oro); }
+.rex-seg--t3 text { fill: var(--ossidiana); font-weight: 700; }
+.rex-seg.is-hit path { filter: brightness(1.35) drop-shadow(0 0 6px rgba(var(--oro-rgb), .9)); stroke: var(--oro-soft); stroke-width: 2.4; }
+.rex-peg { fill: var(--oro-soft); }
+.rex-hub { fill: var(--roccia-1); stroke: var(--oro); stroke-width: 3; }
+.rex-hub-txt { fill: var(--oro); font-family: var(--font-title, inherit); font-size: 26px; }
+
+/* pannello */
+.rex-panel { display: flex; flex-direction: column; gap: 14px; }
+.rex-go {
+  min-height: 56px; padding: 12px 20px; border: none; border-radius: 3px; cursor: pointer;
+  background: linear-gradient(135deg, var(--oro), var(--el)); color: var(--ossidiana);
+  font-family: var(--font-num, inherit); font-size: 1.05rem; font-weight: 700; letter-spacing: .06em;
+  box-shadow: 0 10px 26px -12px rgba(var(--oro-rgb), .8);
+}
+.rex-go:hover:not(:disabled) { filter: brightness(1.08); }
+.rex-go:disabled { background: var(--roccia-3); color: var(--osso-3); box-shadow: none; cursor: default; }
+.rex-panel p.rex-note { margin: 0; font-size: .86rem; line-height: 1.45; color: var(--osso-2); }
+.rex-panel p.rex-note strong { color: var(--osso); }
+.rex-panel p.rex-err { margin: 0; font-size: .88rem; color: var(--sangue); }
+
+.rex-result {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 3px;
+  background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .14); border-top: 3px solid var(--osso-3);
+  animation: rex-pop .45s ease-out;
+}
+.rex-result--t1, .rex-result--t2 { border-top-color: var(--el); }
+.rex-result--t3 { border-top-color: var(--oro); box-shadow: 0 0 0 1px rgba(var(--oro-rgb), .35), 0 14px 34px -14px rgba(var(--oro-rgb), .7); }
+.rex-result-kicker { font-family: var(--font-sc, inherit); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-3); }
+.rex-result-main { font-family: var(--font-title, inherit); font-size: 1.9rem; line-height: 1.1; color: var(--osso); }
+.rex-result--t3 .rex-result-main { color: var(--oro); }
+.rex-result-dice { font-family: var(--font-num, inherit); font-size: .86rem; color: var(--el-soft); }
+.rex-result p { margin: 4px 0 0; font-size: .92rem; line-height: 1.45; color: var(--osso-2); }
+@keyframes rex-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+
+.rex-panel p.rex-purse { margin: 0; font-size: .88rem; color: var(--osso-2); }
+.rex-panel p.rex-purse strong { color: var(--oro); font-family: var(--font-num, inherit); }
+
+.rex-odds, .rex-log { background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-radius: 3px; padding: 12px 14px; }
+.rex-odds h3, .rex-log h3 { margin: 0 0 8px; font-family: var(--font-sc, inherit); font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso-2); }
+.rex-odds ul, .rex-log ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.rex-log ul { margin: 0; }
+.rex-odds li, .rex-log li {
+  display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 6px 9px; background: var(--roccia-3); border-left: 3px solid var(--osso-3);
+  font-size: .85rem; color: var(--osso);
+}
+.rex-odds li span:last-child, .rex-log li span:first-child { color: var(--osso-2); font-family: var(--font-num, inherit); font-size: .78rem; }
+.rex-odd--t1, .rex-odd--t2 { border-left-color: var(--el) !important; }
+.rex-odd--t3 { border-left-color: var(--oro) !important; }
+.rex-log li span.is-win { color: var(--oro); }
