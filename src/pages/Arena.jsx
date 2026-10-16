@@ -3227,7 +3227,11 @@ export default function Arena() {
     participant: { crowns: "", coins: "", perks: "" },
   });
   const [selectedTargets, setSelectedTargets] = useState({});
-  const [tournamentHistory, setTournamentHistory] = useState([]);
+  const [tournamentHistoryRaw, setTournamentHistory] = useState([]);
+  // Nomi ATTUALI dei personaggi (uid → nome). Lo storico salva il nome che il PG
+  // aveva il giorno del torneo: chi poi ha cambiato nome (es. "Recluta" → Caius)
+  // restava col nome vecchio in classifica e albo. Si legge una volta sola.
+  const [liveNames, setLiveNames] = useState({});
   const [profileLookup, setProfileLookup]     = useState({});
 
   // Loadout — "idle" | "class-select" | "stat-assign" | "rolling" | "selecting"
@@ -3991,6 +3995,29 @@ export default function Arena() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    getDocs(collection(db, "characters")).then(snap => {
+      if (!alive) return;
+      const map = {};
+      snap.docs.forEach(d => { const n = d.data()?.name; if (n) map[d.id] = n; });
+      setLiveNames(map);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Storico con i nomi riallineati al personaggio di oggi (per uid); se il PG non
+  // esiste più resta il nome archiviato.
+  const tournamentHistory = useMemo(() => {
+    const nameOf = (uid, fallback) => (uid && liveNames[uid]) || fallback || null;
+    return tournamentHistoryRaw.map(t => ({
+      ...t,
+      winnerName:   nameOf(t.winnerId, t.winnerName),
+      runnerUpName: nameOf(t.runnerUpId, t.runnerUpName),
+      participants: (t.participants || []).map(p => p?.uid ? { ...p, name: nameOf(p.uid, p.name) } : p),
+    }));
+  }, [tournamentHistoryRaw, liveNames]);
+
   const championsRaw = useMemo(() => {
     const map = {};
     for (const t of tournamentHistory) {
@@ -4085,7 +4112,7 @@ export default function Arena() {
   const mostRecentChampion = useMemo(() => {
     const enrich = (champ) => champ ? {
       ...champ,
-      name:  champ.name  || profileLookup[champ.uid]?.name  || null,
+      name:  liveNames[champ.uid] || champ.name || profileLookup[champ.uid]?.name || null,
       image: champ.image || profileLookup[champ.uid]?.image || null,
     } : null;
     if (arenaMeta?.lastChampion?.uid) return enrich(arenaMeta.lastChampion);
@@ -4105,7 +4132,7 @@ export default function Arena() {
       prizes: "",
       wonAt:  latest.ts?.toDate?.()?.toISOString?.() || null,
     });
-  }, [arenaMeta?.lastChampion, tournamentHistory, profileLookup]);
+  }, [arenaMeta?.lastChampion, tournamentHistory, profileLookup, liveNames]);
 
   // ── Auto-registra i match finiti in matchHistory (transazione idempotente) ──
   const syncMatchHistory = useCallback(async () => {
