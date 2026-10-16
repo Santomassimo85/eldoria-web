@@ -594,3 +594,27 @@
   .bt-page .bt-sotto-classi::-webkit-scrollbar { display: none; }
   .bt-page .bt-sotto-chip { flex: 0 0 auto; }
 }
+
+/* ══ MERCE ESPANDIBILE (2026-10-16): sul telefono la descrizione è tagliata a 2 righe;
+   un tocco sulla scheda la apre e mostra anche la meccanica (marketItemSummary). ══ */
+.bt-page .bt-merce { cursor: pointer; }
+.bt-page .bt-merce-mecc {
+  margin: 0 0 12px; font-size: .82rem; line-height: 1.4; color: var(--el-soft);
+  padding: 6px 9px; background: rgba(var(--ossidiana-rgb), .45); border-left: 2px solid var(--el);
+}
+.bt-page .bt-merce-espandi { display: none; }
+@media (max-width: 640px) {
+  .bt-page .bt-merce { grid-template-areas: "ico nome" "ico desc" "ico espandi" "foot foot"; }
+  .bt-page .bt-merce-espandi {
+    grid-area: espandi; display: block; margin-top: 4px;
+    font-family: var(--bt-font-sc); font-size: .62rem; letter-spacing: .08em; color: var(--el-2);
+  }
+  /* aperta: la descrizione prende tutta la larghezza e non si taglia più */
+  .bt-page .bt-merce--aperta {
+    grid-template-areas: "ico nome" "desc desc" "mecc mecc" "espandi espandi" "foot foot";
+    border-top-color: var(--el);
+  }
+  .bt-page .bt-merce--aperta .bt-merce-desc { display: block; -webkit-line-clamp: unset; overflow: visible; margin-top: 8px; }
+  .bt-page .bt-merce-mecc { grid-area: mecc; margin: 6px 0 0; font-size: .8rem; }
+  .bt-page .bt-merce--aperta.bt-merce--cara { opacity: 1; }
+}

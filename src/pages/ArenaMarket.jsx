@@ -52,6 +52,7 @@ export default function ArenaMarket() {
   const [activeCat, setActiveCat] = useState(null); // null | "classes" | "items"
   const [masterTab, setMasterTab] = useState("vetrina"); // master: "vetrina" | "crea" | "soldi"
   const [subClass, setSubClass] = useState(null);           // classe aperta fra le sottoclassi
+  const [openItem, setOpenItem] = useState(null);           // merce espansa (telefono: tocco = si legge tutto)
   const [subBusy, setSubBusy] = useState(false);
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -465,17 +466,27 @@ export default function ArenaMarket() {
                       const canAfford = coins >= item.price;
                       const cat = CAT_META[item.category];
                       const col = CAT_COLORS[item.category] || "#22d3ee";
+                      const isOpen = openItem === item.id;
+                      const summary = marketItemSummary(item);
+                      const toggle = () => setOpenItem(isOpen ? null : item.id);
                       return (
                         <article
                           key={item.id}
-                          className={`bt-merce${maxed ? " bt-merce--mia" : canAfford ? " bt-merce--ok" : " bt-merce--cara"}`}
+                          className={`bt-merce${maxed ? " bt-merce--mia" : canAfford ? " bt-merce--ok" : " bt-merce--cara"}${isOpen ? " bt-merce--aperta" : ""}`}
                           style={{ "--c": col }}
+                          role="button" tabIndex={0} aria-expanded={isOpen}
+                          onClick={(e) => { if (!e.target.closest("button")) toggle(); }}
+                          onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); toggle(); } }}
                         >
                           <span className="bt-merce-cat">{cat?.icon} {cat?.label}</span>
                           {owned > 0 && <span className="bt-merce-mia">{maxed ? `✔ Tuo ${owned}/${maxPerWeek}` : `Hai ${owned}/${maxPerWeek}`}</span>}
                           <div className="bt-anello" aria-hidden="true"><span>{item.icon || cat?.icon || "🎁"}</span></div>
                           <h3 className="bt-merce-nome">{item.name}</h3>
-                          <p className="bt-merce-desc">{item.description || marketItemSummary(item)}</p>
+                          <p className="bt-merce-desc">{item.description || summary}</p>
+                          {isOpen && item.description && summary && summary !== item.description && (
+                            <p className="bt-merce-mecc">{summary}</p>
+                          )}
+                          <span className="bt-merce-espandi" aria-hidden="true">{isOpen ? "▴ Chiudi" : "▾ Tocca per leggere tutto"}</span>
                           <div className="bt-merce-foot">
                             <span className="bt-prezzo">🪙 {item.price} <small>MA</small>{maxPerWeek > 1 && <em>· max {maxPerWeek}/sett.</em>}</span>
                             <button
