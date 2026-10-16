@@ -682,9 +682,7 @@ export default function MarketAdmin() {
     const open = globalCountdown ? new Date(globalCountdown) : null;
     const close = marketClosing ? new Date(marketClosing) : null;
     alert(open && (!close || close <= open)
-      ? "✅ Apertura salvata.
-
-⚠ La CHIUSURA del mercato " + (close ? "(" + formatEndDate(close.toISOString()) + ") viene prima dell'apertura" : "non è impostata") + ": le aste risulteranno scadute. Imposta la chiusura qui sotto e premi «Salva chiusura»."
+      ? `✅ Apertura salvata.\n\n⚠ La CHIUSURA del mercato ${close ? `(${formatEndDate(close.toISOString())}) viene prima dell'apertura` : "non è impostata"}: le aste risulteranno scadute. Imposta la chiusura qui sotto e premi «Salva chiusura».`
       : "✅ Programmazione salvata!");
   };
 
