@@ -89,6 +89,27 @@ function withHpTrace(before, players, logs, fromIdx) {
 }
 
 // Druido in forma selvatica a 0 PF: torna umano col 60% dei PF (come nel client).
+// CA da battere adesso, come targetAcNow/getDisplayAc in Arena.jsx: la CA della
+// scheda (con la sottoclasse) + scudo da +1 (la scheda ne conta 2), scudo inutilizzabile
+// con l'arma a due mani, Scudo/Barriera attivi, Forgia, difesa del turno. Prima il
+// motore automatico usava solo stats.ac e ignorava ogni buff di CA.
+const WILD_SHAPE_AC = { wolf: 14, bear: 16, spider: 12 }; // = WILD_SHAPES di Arena.jsx
+function currentAc(p, snap) {
+  if (p && p.wildShape && WILD_SHAPE_AC[p.wildShape] != null) {
+    let w = WILD_SHAPE_AC[p.wildShape];
+    if ((p.shieldSkillTurns || 0) > 0) w += (p.shieldSkillBonus != null ? p.shieldSkillBonus : 3);
+    if ((p.armorForgeTurns || 0) > 0) w += 2;
+    if (p.defensiveBonus) w += p.defensiveBonus;
+    return w;
+  }
+  let ac = (snap && snap.stats && snap.stats.ac) || 12;
+  if (snap && snap.hasShield) ac -= p && p.shieldSuppressed ? 2 : 1;
+  if (p && (p.shieldSkillTurns || 0) > 0) ac += (p.shieldSkillBonus != null ? p.shieldSkillBonus : 3);
+  if (p && (p.armorForgeTurns || 0) > 0) ac += 2;
+  if (p && p.defensiveBonus) ac += p.defensiveBonus;
+  return ac;
+}
+
 function wildShapeKnockout(p, logs) {
   if (!p.wildShape || (p.hp || 0) > 0) return;
   const mx = p.preWildShapeMaxHp || p.maxHp || 1;
@@ -192,7 +213,7 @@ async function runArenaBotTurns(admin) {
       const armorPenalty = (aiSnap.selectedArmor && aiSnap.selectedArmor.hitPenalty) || 0;
       const isFighter = cls.includes("fighter") || cls.includes("guerr");
       const critThresh = isFighter ? 19 : 20;
-      const targetAc = (targetSnap.stats && targetSnap.stats.ac) || 12;
+      const targetAc = currentAc(target, targetSnap);
 
       if (off.length === 0) {
         logs.push(`⏭ ${aiSnap.name} non ha azioni offensive e passa il turno${autoTag}.`);

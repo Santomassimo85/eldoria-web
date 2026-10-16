@@ -12,7 +12,7 @@ import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
-import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef } from "../data/arenaSubclasses";
+import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey, snapshotWithSubclass, subclassToMount } from "../data/arenaSubclasses";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
@@ -653,6 +653,12 @@ function resolveWeaponRider(raw, weaponAction, attackerSnap, attackerMP, defende
 
 // Chip di stato: queste famiglie sono BONUS (verde), tutte le altre MALUS (rosso).
 const GOOD_STATUS_CLS = new Set(["is-shield", "is-buff", "is-rage", "is-energy", "is-wild"]);
+// CA da battere per un attacco, ADESSO: un'unica somma per tutti i tiri per colpire
+// (giocatore, IA, Smite, Furtivo, scroll, pet, colpi multipli). Prima ogni punto la
+// ricalcolava a mano e alcuni dimenticavano Forgia/scudo inutilizzabile o tutti i buff.
+function targetAcNow(matchPlayer, snap) {
+  return getDisplayAc(matchPlayer, snap).ac;
+}
 function getDisplayAc(matchPlayer, snap) {
   // "riposo" = CA della classe base, senza il bonus della sottoclasse (che conta come buff)
   const subAc = snap?.subclassAc || 0;
@@ -1337,7 +1343,11 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
       case "armor": {
         // Armatura della Bottega = CA FISSA (sostituisce l'armatura base, non
         // si somma nulla). Solo una può essere equipaggiata (esclusività in UI).
-        const fx = p.acFixed ?? p.acBonus ?? 0;
+        // Vecchie armature con solo acBonus: sotto 10 è un BONUS (+N), non una CA
+        // fissa (prima "+2" diventava CA 2).
+        const legacyBonus = p.acFixed == null && (p.acBonus ?? 0) > 0 && p.acBonus < 10;
+        if (legacyBonus) { gear.acBonus += p.acBonus; if (p.resist) mergeResistMaps(gear.resist, p.resist); break; }
+        const fx = p.acFixed ?? p.acBonus ?? 12;
         gear.fixedAc = gear.fixedAc == null ? fx : Math.max(gear.fixedAc, fx);
         if (p.resist) mergeResistMaps(gear.resist, p.resist);
         break;
@@ -2562,21 +2572,7 @@ function getArmorConfig(cls) {
 }
 
 function getClassKey(charClass) {
-  const cls = (charClass || "").toLowerCase();
-  if (["barbarian","barbaro"].some(c => cls.includes(c)))                           return "barbarian";
-  if (["fighter","guerriero","warrior"].some(c => cls.includes(c)))                 return "fighter";
-  if (["paladin","paladino"].some(c => cls.includes(c)))                            return "paladin";
-  if (["ranger","cacciatore"].some(c => cls.includes(c)))                           return "ranger";
-  if (["bard","bardo"].some(c => cls.includes(c)))                                  return "bard";
-  if (["cleric","chierico"].some(c => cls.includes(c)))                             return "cleric";
-  if (["druid","druido"].some(c => cls.includes(c)))                                return "druid";
-  if (["monk","monaco"].some(c => cls.includes(c)))                                 return "monk";
-  if (["rogue","ladro"].some(c => cls.includes(c)))                                 return "rogue";
-  if (["warlock"].some(c => cls.includes(c)))                                       return "warlock";
-  if (["wizard","mago"].some(c => cls.includes(c)))                                 return "wizard";
-  if (["sorcerer","stregone"].some(c => cls.includes(c)))                           return "sorcerer";
-  if (["artificer","artefice"].some(c => cls.includes(c)))                          return "artificer";
-  return "fighter";
+  return arenaClassKey(charClass);
 }
 
 function getHpDice(charClass, classLevels) {
@@ -3718,6 +3714,7 @@ export default function Arena() {
 
   // ── My arena buffs (sblocchi acquistati in Bottega) — usato per gating classi/buff anche prima della loadout. ──
   const [myArenaBuffs, setMyArenaBuffs] = useState({});
+  const [myArenaWeekly, setMyArenaWeekly] = useState(null);
   useEffect(() => {
     if (!currentUser) return;
     return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
@@ -3727,8 +3724,47 @@ export default function Arena() {
       // PG salvati sempre aggiornati: servono già all'ingresso (prima del loadout).
       setSavedArenaChars(Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => (Array.isArray(d.arenaSavedChars) ? (d.arenaSavedChars[i] ?? null) : null)));
       setActiveSavedSlot(Number.isInteger(d.arenaSavedActive) ? d.arenaSavedActive : null);
+      setMyArenaWeekly(d.arenaWeekly || null);
     });
   }, [currentUser]);
+
+  // ── Sottoclasse comprata = sottoclasse montata (2026-10-16) ───────────────
+  // Prima la sottoclasse comprata in Bottega entrava nel torneo SOLO se il
+  // giocatore premeva "Aggiorna il mio assetto" durante la Pausa Bottega: chi
+  // non lo faceva l'aveva pagata per niente (Lael, Tanagar, Makenna: niente +1 CA
+  // né passive). Ora si monta da sola nello snapshot del torneo appena il
+  // giocatore non sta combattendo: dal suo client e, per tutti, dal Master.
+  const subMountSigRef = useRef("");
+  useEffect(() => {
+    if (!arenaMeta || !currentUser) return;
+    const parts = arenaMeta.participants || [];
+    const uids = isMaster ? parts : (parts.includes(currentUser.uid) ? [currentUser.uid] : []);
+    if (!uids.length || !["registration", "combat", "shopping"].includes(arenaMeta.phase)) return;
+    const wk = currentWeekKey();
+    // il giocatore sa già se gli serve; il Master rilegge le schede a ogni cambio di stato dei match
+    if (!isMaster && !subclassToMount(arenaMeta, currentUser.uid, myArenaWeekly, wk)) return;
+    const sig = `${arenaMeta.phase}|${arenaMeta.currentRound}|${(arenaMeta.matches || []).map(m => `${m.matchId}:${m.status}`).join(",")}|${JSON.stringify(myArenaWeekly?.subclasses || {})}`;
+    if (subMountSigRef.current === sig) return;
+    subMountSigRef.current = sig;
+    const ref = doc(db, "arena_meta", "global");
+    runTransaction(db, async (tx) => {
+      const ms = await tx.get(ref);
+      if (!ms.exists()) return [];
+      const meta = ms.data();
+      const chars = await Promise.all(uids.map(u => tx.get(doc(db, "characters", u))));
+      const updates = {}; const mounted = [];
+      uids.forEach((u, i) => {
+        const aw = chars[i].exists() ? chars[i].data().arenaWeekly : null;
+        const key = subclassToMount(meta, u, aw, wk);
+        const next = key && snapshotWithSubclass(meta.characterSnapshots[u], key);
+        if (next) { updates[`characterSnapshots.${u}`] = next; mounted.push(`${next.name}: ${next.subclassIcon} ${next.subclassName}`); }
+      });
+      if (mounted.length) tx.update(ref, updates);
+      return mounted;
+    }).then(mounted => {
+      if (mounted?.length) console.info("[arena] sottoclassi montate:", mounted.join(" · "));
+    }).catch(e => { subMountSigRef.current = ""; console.warn("[arena] montaggio sottoclasse:", e); });
+  }, [arenaMeta, currentUser, isMaster, myArenaWeekly]);
 
   // ── Monete Arena ──────────────────────────────────────────────────────────
   const awardArenaCoins = async (uid, amount) => {
@@ -4711,15 +4747,17 @@ export default function Arena() {
       .some(o => o.key === pendingSubclass)) ? pendingSubclass : null;
     const subclassDef = subclassKey ? getSubclassDef(getClassKey(charPreview.class), subclassKey) : null;
     const subclassCa  = subclassDef?.effect?.ca || 0;
-    // Armatura della Bottega: CA FISSA (non si somma nulla: né DES, né scudo, né buff).
+    // Armatura della Bottega: CA FISSA al posto dell'armatura base (niente DES,
+    // scudo o buff di armatura). La sottoclasse invece è una passiva del PG e si
+    // somma SEMPRE (prima con l'armatura della Bottega il suo +1 spariva).
     const unarmoredBonus = pendingArmor?.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
-    const finalAc   = marketFixedAc != null
+    const finalAc   = subclassCa + (marketGear?.acBonus || 0) + (marketFixedAc != null
       ? marketFixedAc
-      : subclassCa + (pendingArmor.unarmoredDefense
+      : (pendingArmor.unarmoredDefense
         ? pendingArmor.unarmoredMaxStat
           ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
           : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus
-        : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus);
+        : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus));
 
     const chaScore = charPreview.stats.cha ?? 0;
     const cls = (charPreview.class || "").toLowerCase();
@@ -4760,8 +4798,11 @@ export default function Arena() {
       subclass:        subclassKey,
       subclassName:    subclassDef?.name || null,
       subclassIcon:    subclassDef?.icon || null,
-      // CA che la sottoclasse ha sommato davvero (0 con l'armatura fissa della Bottega)
-      subclassAc:      marketFixedAc != null ? 0 : subclassCa,
+      // CA che la sottoclasse ha sommato davvero (anche sopra l'armatura della Bottega)
+      subclassAc:      subclassCa,
+      // Sottoclasse posseduta ma spenta di proposito al loadout: il montaggio
+      // automatico (subclassToMount) non la rimette.
+      subclassDeclined: (!subclassKey && ownedSubclassKey(charPreview.arenaWeekly, charPreview.class)) || null,
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
       hasWildShape:    config.hasWildShape,
@@ -6292,8 +6333,7 @@ export default function Arena() {
             connected = true; outLog = "colpisce automaticamente";
           } else if (castMode === "attack") {
             const spellHit = getSpellAttackBonus(aiSnap);
-            const shieldDef = (_tgtMP?.shieldSkillTurns ?? 0) > 0 ? (_tgtMP?.shieldSkillBonus ?? 3) : 0;
-            const targetAc = getEffectiveAc(_tgtMP, targetSnap) + shieldDef + (_tgtMP?.defensiveBonus ?? 0);
+            const targetAc = targetAcNow(_tgtMP, targetSnap);
             // Armatura pesante vs fulmine/tuono → l'attaccante tira a vantaggio.
             const _advAI = heavyElemAttackAdv(sp, targetSnap);
             const _r1 = Math.floor(Math.random() * 20) + 1;
@@ -6550,10 +6590,7 @@ export default function Arena() {
     const d20 = aiHasAdvantage && !aiHasDisadvantage ? Math.max(d20a, d20b)
               : aiHasDisadvantage && !aiHasAdvantage ? Math.min(d20a, d20b)
               : d20a;
-    const shieldSkillBonus = (tgtMatchPlayer?.shieldSkillTurns ?? 0) > 0
-      ? (tgtMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-    const defensiveBonus   = tgtMatchPlayer?.defensiveBonus ?? 0;
-    const targetAc = getEffectiveAc(tgtMatchPlayer, targetSnap) + shieldSkillBonus + defensiveBonus;
+    const targetAc = targetAcNow(tgtMatchPlayer, targetSnap);
 
     const aiJackBonus = isBardClass(cls) && getSnapLevel(aiSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare (Lv2): +1 al colpire
     const aiRangedHitBonus = subclassRangedHit(aiSnap, chosen, false); // Sottoclasse "tiratore"/"arco" (IA)
@@ -6901,8 +6938,7 @@ export default function Arena() {
       if (!weaponAction) { alert("⚡ Smite Divino richiede un'arma equipaggiata: equipaggia un'arma e riprova."); return; }
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const targetAc = targetAcNow(defMatchPlayer, defenderSnap);
       const smiteStrMod = attackerSnap?.stats?.str ?? 0;
       const smiteMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
       const smiteAidBonus = smiteMdAtk > 0
@@ -6973,8 +7009,7 @@ export default function Arena() {
       if (!weaponAction) return;
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const targetAc = targetAcNow(defMatchPlayer, defenderSnap);
       const dexMod = attackerSnap?.stats?.dex ?? 0;
       const sneakMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
       const aidBonus = sneakMdAtk > 0
@@ -7368,11 +7403,7 @@ export default function Arena() {
       const arrows = action.multiHit;
       const perDie = action.perHitDamage || "1d8";
       const aidDmgBonus2      = readAidDmgBonus(attackerMatchPlayer);
-      const shieldLost2       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
-      const shieldSkillBonus2 = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const armorForgeBonus2  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
-      const defensiveAcBonus2 = defMatchPlayer?.defensiveBonus ?? 0;
-      const defAC2 = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost2 ? 1 : 0) + shieldSkillBonus2 + armorForgeBonus2 + defensiveAcBonus2;
+      const defAC2 = targetAcNow(defMatchPlayer, defenderSnap);
       const critTh2 = subclassCritThreshold(attackerSnap, isFighter ? 19 : 20);
       let total = 0; let anyHit = false; const tags = [];
       for (let i = 0; i < arrows; i++) {
@@ -7424,11 +7455,7 @@ export default function Arena() {
                    : d20a;
     await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : _willKite ? " — a SVANTAGGIO (spari arretrando)" : ""}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus + passiveHitBonus;
-    const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
-    const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-    const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
-    const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
-    const defAC    = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost ? 1 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
+    const defAC    = targetAcNow(defMatchPlayer, defenderSnap);
     const critThreshold = subclassCritThreshold(attackerSnap, isFighter ? 19 : 20); // Critico Migliorato: 19-20 per il guerriero (18 per il Campione)
     // Ladro · Assassinare: un colpo a segno contro un bersaglio a PF pieni è un critico.
     const landsAssassinate = _firstStrike.crit && hitTotal >= defAC;
@@ -8193,7 +8220,7 @@ export default function Arena() {
     let missed = false, d20 = 0;
     if (!action.autoHit) {
       d20 = Math.floor(Math.random() * 20) + 1;
-      const targetAc = getEffectiveAc(targetPlayer, targetSnap);
+      const targetAc = targetAcNow(targetPlayer, targetSnap);
       missed = (d20 + (action.hitBonus || 0)) < targetAc;
     }
     const { total: rawDmg, rolls } = rollDmg(action.damage || "2d6");
@@ -9117,8 +9144,7 @@ export default function Arena() {
       const spellHit = getProficiencyBonus(attackerSnap) + casterMod; // = getSpellAttackBonus, ma con la caratteristica dello scroll
       const mdAtk = attackerMatchPlayer?.magicDetectAttacks ?? 0;
       const aidHit = mdAtk > 0 ? readActiveBonus(attackerMatchPlayer?.magicDetectActive, 0) : readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
-      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const targetAc = targetAcNow(defMatchPlayer, defenderSnap);
       const d20 = Math.floor(Math.random() * 20) + 1;
       await showD20Roll(d20, { label: `${attName} tira per colpire · ${action.name}` });
       const totalHit = d20 + spellHit + aidHit + jackOfAllTradesBonus;
@@ -9850,11 +9876,7 @@ export default function Arena() {
             const statMod      = attackerSnap.stats?.[statKey] ?? 0;
             const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
 
-            const shieldLost       = targetSnap?.hasShield && targetMatchPlayer?.shieldSuppressed;
-            const shieldSkillBonus = (targetMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (targetMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-            const armorForgeBonus  = (targetMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
-            const defensiveAcBonus = targetMatchPlayer?.defensiveBonus ?? 0;
-            const defAC = getEffectiveAc(targetMatchPlayer, targetSnap) - (shieldLost ? 1 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
+            const defAC = targetAcNow(targetMatchPlayer, targetSnap);
 
             const d20      = Math.floor(Math.random() * 20) + 1;
             const isCrit   = d20 === 20;
@@ -11524,7 +11546,7 @@ export default function Arena() {
                     ? 10 + Math.max(dexMod, conMod) + (pendingShield ? 1 : 0)
                     : 10 + dexMod + (pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod) + (pendingShield ? 1 : 0)
                   : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + (pendingShield ? 1 : 0)
-                : charPreview.stats.ac) + (hasMarketArmor || !pendingArmor ? 0 : (activeSubDef?.effect?.ca || 0));
+                : charPreview.stats.ac) + (hasMarketArmor || pendingArmor ? (activeSubDef?.effect?.ca || 0) : 0);
 
             // Scudo disabilitato se c'è un'arma a 2 mani selezionata (di classe o comprata)
             const has2HWeapon  = hasAny2H_all;
@@ -11585,7 +11607,7 @@ export default function Arena() {
                     <div className="loadout-char-name">{charPreview.name}</div>
                     <div className="loadout-char-class">{charPreview.class}{activeSubDef ? ` · ${activeSubDef.icon} ${activeSubDef.name}` : ""}</div>
                     <div className="loadout-char-stats">
-                      ❤ <strong>{charPreview.rolledHp}</strong> HP · 🛡 CA <strong className={activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? "stat-buff" : undefined} title={activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? `+${activeSubDef.effect.ca} da ${activeSubDef.name}` : undefined}>{previewAc}{activeSubDef?.effect?.ca && !hasMarketArmor && pendingArmor ? ` (+${activeSubDef.effect.ca})` : ""}</strong>
+                      ❤ <strong>{charPreview.rolledHp}</strong> HP · 🛡 CA <strong className={activeSubDef?.effect?.ca && (hasMarketArmor || pendingArmor) ? "stat-buff" : undefined} title={activeSubDef?.effect?.ca && (hasMarketArmor || pendingArmor) ? `+${activeSubDef.effect.ca} da ${activeSubDef.name}` : undefined}>{previewAc}{activeSubDef?.effect?.ca && (hasMarketArmor || pendingArmor) ? ` (+${activeSubDef.effect.ca})` : ""}</strong>
                       {[["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]].map(([k,lbl]) => {
                         const v = charPreview.stats[k] ?? 0;
                         return <span key={k}> · {lbl} {v >= 0 ? "+" : ""}{v}</span>;

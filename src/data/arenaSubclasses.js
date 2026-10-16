@@ -368,3 +368,70 @@ export function getSubclassDef(classKey, subclassKey) {
 export function getSubclassEffectFor(classKey, subclassKey) {
   return getSubclassDef(classKey, subclassKey)?.effect || {};
 }
+
+// Chiave di classe del motore Arena da un nome di classe (EN/IT). Unica fonte:
+// Arena.jsx (getClassKey) e il montaggio automatico delle sottoclassi la usano.
+export function arenaClassKey(charClass) {
+  const cls = (charClass || "").toLowerCase();
+  if (["barbarian","barbaro"].some(c => cls.includes(c)))           return "barbarian";
+  if (["fighter","guerriero","warrior"].some(c => cls.includes(c))) return "fighter";
+  if (["paladin","paladino"].some(c => cls.includes(c)))            return "paladin";
+  if (["ranger","cacciatore"].some(c => cls.includes(c)))           return "ranger";
+  if (["bard","bardo"].some(c => cls.includes(c)))                  return "bard";
+  if (["cleric","chierico"].some(c => cls.includes(c)))             return "cleric";
+  if (["druid","druido"].some(c => cls.includes(c)))                return "druid";
+  if (["monk","monaco"].some(c => cls.includes(c)))                 return "monk";
+  if (["rogue","ladro"].some(c => cls.includes(c)))                 return "rogue";
+  if (["warlock"].some(c => cls.includes(c)))                       return "warlock";
+  if (["wizard","mago"].some(c => cls.includes(c)))                 return "wizard";
+  if (["sorcerer","stregone"].some(c => cls.includes(c)))           return "sorcerer";
+  if (["artificer","artefice"].some(c => cls.includes(c)))          return "artificer";
+  return "fighter";
+}
+
+// Snapshot del torneo con la sottoclasse `subKey` montata (o null se non serve /
+// non esiste). Toglie le abilità della sottoclasse precedente, aggiunge quelle
+// nuove e riallinea la CA: stats.ac = CA senza sottoclasse + effect.ca.
+// subclassAc = quanta CA la sottoclasse ha sommato davvero (getDisplayAc la
+// mostra come bonus verde).
+export function snapshotWithSubclass(snap, subKey) {
+  if (!snap) return null;
+  const ck = arenaClassKey(snap.class);
+  const def = getSubclassDef(ck, subKey);
+  if (!def || snap.subclass === def.key) return null;
+  const prevDef = snap.subclass ? getSubclassDef(ck, snap.subclass) : null;
+  const prevNames = new Set((prevDef?.actions || []).map(a => a.name));
+  const actions = (snap.selectedActions || []).filter(a => !(a.fromSubclass && prevNames.has(a.name)));
+  (def.actions || []).forEach(a => {
+    if (!actions.some(b => b.name === a.name)) actions.push({ ...a, fromSubclass: true });
+  });
+  const newCa = def.effect?.ca || 0;
+  const baseAc = (snap.stats?.ac ?? 10) - (snap.subclassAc || 0);
+  return {
+    ...snap,
+    subclass: def.key, subclassName: def.name, subclassIcon: def.icon,
+    subclassAc: newCa, subclassDeclined: null,
+    stats: { ...(snap.stats || {}), ac: baseAc + newCa },
+    selectedActions: actions,
+  };
+}
+
+// Sottoclasse comprata in Bottega che va montata nello snapshot del torneo di
+// `uid`: chiave da montare, oppure null. Mai durante un match di torneo non
+// finito (si monta a fine match), mai se il giocatore l'ha spenta di proposito
+// al loadout (snap.subclassDeclined), mai negli snapshot delle Sfide Libere.
+export function subclassToMount(meta, uid, arenaWeekly, weekKey) {
+  if (!meta || !uid) return null;
+  if (!["registration", "combat", "shopping"].includes(meta.phase)) return null;
+  if (!(meta.participants || []).includes(uid)) return null;
+  const snap = meta.characterSnapshots?.[uid];
+  if (!snap) return null;
+  if (!arenaWeekly || arenaWeekly.weekKey !== weekKey) return null;
+  const own = arenaWeekly.subclasses?.[arenaClassKey(snap.class)];
+  if (!own || own === snap.subclass || own === snap.subclassDeclined) return null;
+  if (!getSubclassDef(arenaClassKey(snap.class), own)) return null;
+  const fighting = (meta.matches || []).some(
+    m => m.kind !== "fun" && m.status !== "finished" && (m.players || []).some(p => p.id === uid)
+  );
+  return fighting ? null : own;
+}
