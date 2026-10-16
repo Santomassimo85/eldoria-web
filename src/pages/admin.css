@@ -5473,3 +5473,12 @@
   border: 1px solid rgba(var(--oro-rgb), .4); color: var(--osso-body);
 }
 .qstadm-gen-chip.new { border-color: rgba(var(--el-rgb), .7); color: var(--el-2); }
+
+/* ── Set nella generazione AI + bonus del set (2026-10-16) ── */
+.mkadm-ai-setmodes { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 620px) { .mkadm-ai-setmodes { grid-template-columns: 1fr; } }
+.mkadm-ai-setrow { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.mkadm-field-row.mkadm-ai-setrow { flex-direction: row; flex-wrap: wrap; }
+.mkadm-field-row.mkadm-ai-setrow > .mkadm-field { flex: 1 1 220px; }
+.mkadm-field-row.mkadm-ai-setrow > .mkadm-ai-setsize { flex: 0 1 140px; }
+.mkadm-set-note { margin: 0 0 8px; font-size: 0.78rem; line-height: 1.4; color: var(--osso-2); }

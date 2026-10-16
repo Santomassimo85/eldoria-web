@@ -120,7 +120,135 @@ const TOOL = {
   },
 };
 
-const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode, nomeRegole, vietate }) => {
+// ── SET ──────────────────────────────────────────────────────────────
+// I bonus di un set valgono per QUANTI pezzi diversi del set si portano, e sono
+// gli stessi per tutti i pezzi: si scrivono una volta per il set intero.
+const BONUS_RULES = [
+  "REGOLE DEI BONUS DEL SET:",
+  "- Si attivano portando QUEL NUMERO di pezzi diversi del set; sono gli stessi per ogni pezzo (contano solo quanti pezzi hai).",
+  "- Una soglia da 2 pezzi in su, fino al set completo (es. set da 3: 2 e 3; da 4: 2, 3, 4; da 5: 2, 3, 5 oppure 2, 4, 5). Mai una soglia da 1.",
+  "- Crescono con le soglie: quella del set completo è la più forte e la più caratteristica.",
+  "- Effetti D&D 5e brevi e concreti, in italiano, al massimo ~90 caratteri ciascuno. Esempi di forma: \"CA +1\", \"Resistenza ai danni da freddo\", \"+1 ai TS su Saggezza\", \"+1d4 danni necrotici con le armi\", \"1 volta per riposo lungo: Passo Nebbioso\".",
+  "- Calibrati sulla rarità dei pezzi; niente bonus che rompono il gioco (niente CA +3, immunità a tutto, PF infiniti).",
+  "- Coerenti col tema e col nome del set.",
+].join("\n");
+
+const SET_PROP = {
+  type: "object",
+  description: "Il SET inventato di cui questo oggetto è il primo pezzo.",
+  properties: {
+    name: { type: "string", description: "Nome del set in italiano, es. \"Set del Pellegrino Cinereo\" o \"Paramenti della Marea Spenta\"." },
+    size: { type: "integer", description: "Pezzi totali del set (da 3 a 5, salvo indicazioni del master)." },
+    bonuses: {
+      type: "array",
+      description: "Bonus per soglia di pezzi posseduti.",
+      items: {
+        type: "object",
+        properties: {
+          pieces: { type: "integer", description: "Pezzi diversi del set necessari (≥ 2)." },
+          effect: { type: "string", description: "Effetto breve, in italiano." },
+        },
+        required: ["pieces", "effect"],
+      },
+    },
+  },
+  required: ["name", "size", "bonuses"],
+};
+
+const BONUS_TOOL = {
+  name: "bonus_set",
+  description: "Registra i bonus per soglia di un set di oggetti.",
+  input_schema: {
+    type: "object",
+    properties: { bonuses: SET_PROP.properties.bonuses },
+    required: ["bonuses"],
+  },
+};
+
+// Ripulisce i bonus: soglie intere fra 2 e il totale, una per soglia, in ordine.
+const cleanBonuses = (list, size) => {
+  const bySoglia = new Map();
+  for (const b of Array.isArray(list) ? list : []) {
+    const pieces = Math.max(2, Math.min(size, Math.round(Number(b?.pieces) || 0)));
+    const effect = String(b?.effect || "").replace(/\s+/g, " ").trim().slice(0, 160);
+    if (!effect) continue;
+    bySoglia.set(pieces, bySoglia.has(pieces) ? `${bySoglia.get(pieces)} · ${effect}` : effect);
+  }
+  return [...bySoglia.entries()].sort((a, b) => a[0] - b[0]).map(([pieces, effect]) => ({ pieces, effect }));
+};
+
+const clampSize = (n, dflt = 4) => Math.max(2, Math.min(12, Math.round(Number(n) || dflt)));
+
+const pezziTesto = (pieces) => (Array.isArray(pieces) ? pieces : [])
+  .slice(0, 20)
+  .map((p) => `- ${String(p?.name || "").trim()}${p?.type ? ` (${p.type}${p.class ? `, ${p.class}` : ""})` : ""}`)
+  .filter((r) => r.length > 3)
+  .join("\n");
+
+const bonusTesto = (bonuses, size) => (Array.isArray(bonuses) ? bonuses : [])
+  .filter((b) => String(b?.effect || "").trim())
+  .map((b) => `- ${b.pieces}/${size}: ${String(b.effect).trim()}`)
+  .join("\n");
+
+// Pezzo di un set esistente o primo pezzo di un set nuovo: righe da aggiungere al prompt.
+const setText = (set, setEsistenti) => {
+  if (!set || !set.mode) return [];
+  if (set.mode === "esistente") {
+    const size = clampSize(set.size, 5);
+    const pz = pezziTesto(set.pieces);
+    const bn = bonusTesto(set.bonuses, size);
+    return [
+      `QUESTO OGGETTO È UN NUOVO PEZZO del set «${String(set.name || "").trim()}» (${size} pezzi in tutto).`,
+      pz ? `Pezzi già forgiati:\n${pz}` : "È il primo pezzo forgiato di questo set.",
+      bn ? `Bonus del set (già decisi, NON cambiarli e NON ripeterli nella descrizione):\n${bn}` : "",
+      "Deve essere un pezzo DIVERSO da quelli già forgiati (un altro slot: elmo, guanti, stivali, mantello, anello, amuleto, arma, scudo…) e riconoscibile come parte dello stesso set: stessi materiali, stesso motivo, stessa origine. Il nome può richiamare il set.",
+      "Le Proprietà Speciali nella descrizione sono SOLO dell'oggetto; i bonus del set stanno a parte.",
+      "",
+    ].filter(Boolean);
+  }
+  const esist = (Array.isArray(setEsistenti) ? setEsistenti : []).map((n) => String(n || "").trim()).filter(Boolean).slice(0, 60);
+  return [
+    "INVENTA ANCHE UN SET: questo oggetto è il PRIMO PEZZO di un set nuovo. Compila il campo \"set\" dello strumento con nome, pezzi totali e bonus per soglia.",
+    set.size ? `Pezzi totali del set: ${clampSize(set.size)} (deciso dal master).` : "Pezzi totali: scegli tu fra 3 e 5.",
+    set.idea ? `Idea del master per il set: "${String(set.idea).trim().slice(0, 400)}".` : "",
+    esist.length ? `Set che esistono già (il nome deve essere DIVERSO): ${esist.join(", ")}.` : "",
+    BONUS_RULES,
+    "Le Proprietà Speciali nella descrizione sono SOLO dell'oggetto; i bonus del set stanno nel campo \"set\", non ripeterli nella descrizione.",
+    "",
+  ].filter(Boolean);
+};
+
+// Solo i bonus di un set (bottone "✨ Genera bonus" nella scheda Crea a mano).
+async function generaBonusSet(apiKey, { set }) {
+  const size = clampSize(set?.size, 5);
+  const name = String(set?.name || "").trim();
+  const pz = pezziTesto(set?.pieces);
+  const testo = [
+    `Scrivi i BONUS DI SET per il set «${name || "senza nome"}» della campagna dark fantasy "Eldoria" (D&D 5e), ${size} pezzi in tutto.`,
+    pz ? `Pezzi del set (fra cui quello che il master sta creando):\n${pz}` : "",
+    set?.description ? `Il pezzo che il master sta creando: ${String(set.description).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 700)}` : "",
+    set?.idea ? `Indicazioni del master: "${String(set.idea).trim().slice(0, 400)}".` : "",
+    set?.current?.length ? `Bonus attuali (rifalli diversi, a meno che il master non dica altro):\n${bonusTesto(set.current, size)}` : "",
+    "",
+    BONUS_RULES,
+    "Rispondi SOLO usando lo strumento bonus_set.",
+  ].filter(Boolean).join("\n");
+  const data = await callClaude(apiKey, {
+    model: "claude-sonnet-4-6",
+    max_tokens: 700,
+    temperature: 1,
+    tools: [BONUS_TOOL],
+    tool_choice: { type: "tool", name: "bonus_set" },
+    messages: [{ role: "user", content: testo }],
+  });
+  if (data.error) throw new Error(data.error.message);
+  const tb = (data.content || []).find((b) => b.type === "tool_use" && b.name === "bonus_set");
+  const bonuses = cleanBonuses(tb?.input?.bonuses, size);
+  if (!bonuses.length) throw new Error("Nessun bonus generato.");
+  return bonuses;
+}
+
+const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode, nomeRegole, vietate, set, setEsistenti }) => {
   const richiesta = [
     `Progetta UN oggetto per il Mercato Nero della campagna dark fantasy "Eldoria" (D&D 5e) a partire da questa richiesta del master:`,
     `"${String(prompt || "").trim()}"`,
@@ -129,6 +257,7 @@ const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode, nomeRegole, vie
     nomeRegole,
     `Anche nella DESCRIZIONE evita le parole vietate (${vietate.radici.map((r) => r.label).join(", ")}) e i cliché: niente draghi, rune o abissi se il master non li chiede.`,
     "",
+    ...setText(set, setEsistenti),
   ];
 
   if (mode === "gdr") {
@@ -167,12 +296,23 @@ const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode, nomeRegole, vie
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { prompt, img, rarita, tipoOggetto, mode } = req.body || {};
+  const { prompt, img, rarita, tipoOggetto, mode, azione, setEsistenti } = req.body || {};
+  const set = req.body?.set && ["nuovo", "esistente"].includes(req.body.set.mode) ? req.body.set : null;
   const nomiEsistenti = (Array.isArray(req.body?.nomiEsistenti) ? req.body.nomiEsistenti : [])
     .map((n) => String(n || "").trim()).filter(Boolean).slice(-150);
   const isGdr = mode === "gdr";
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Chiave Anthropic mancante." });
+
+  // Solo i bonus di un set (stesso endpoint: niente funzioni Vercel in più).
+  if (azione === "bonusSet") {
+    try {
+      return res.status(200).json({ bonuses: await generaBonusSet(apiKey, req.body || {}) });
+    } catch (e) {
+      return res.status(500).json({ error: "Bonus non generati: " + e.message });
+    }
+  }
+
   if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: "Serve un prompt che descriva l'oggetto." });
 
   try {
@@ -181,13 +321,18 @@ export default async function handler(req, res) {
     if (imageBlock) content.push(imageBlock);
     const vietate = paroleVietate(nomiEsistenti, prompt);
     const nomeRegole = istruzioniNome({ dadi: tiraDadiNome(), vietate, nomiEsistenti });
-    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto, mode, nomeRegole, vietate }) });
+    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto, mode, nomeRegole, vietate, set, setEsistenti }) });
+
+    // Set nuovo = lo strumento chiede anche il campo "set" (obbligatorio).
+    const tool = set?.mode === "nuovo"
+      ? { ...TOOL, input_schema: { ...TOOL.input_schema, properties: { ...TOOL.input_schema.properties, set: SET_PROP }, required: [...TOOL.input_schema.required, "set"] } }
+      : TOOL;
 
     const data = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 1500,
+      max_tokens: set?.mode === "nuovo" ? 2200 : 1500,
       temperature: 1,
-      tools: [TOOL],
+      tools: [tool],
       tool_choice: { type: "tool", name: "crea_oggetto" },
       messages: [{ role: "user", content }],
     });
@@ -246,6 +391,13 @@ export default async function handler(req, res) {
     try {
       oggetto.name = await rinominaSeServe(apiKey, oggetto, { vietate, nomiEsistenti, prompt });
     } catch { /* il nome originale resta */ }
+
+    // Set inventato: nome, pezzi totali e bonus ripuliti.
+    if (set?.mode === "nuovo" && o.set) {
+      const size = set.size ? clampSize(set.size) : clampSize(o.set.size, 4);
+      const nomeSet = String(o.set.name || "").replace(/^["'«»]+|["'«».]+$/g, "").trim();
+      if (nomeSet) oggetto.set = { name: nomeSet, size, bonuses: cleanBonuses(o.set.bonuses, size) };
+    }
 
     return res.status(200).json({ oggetto });
   } catch (e) {

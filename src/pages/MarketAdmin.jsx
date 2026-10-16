@@ -348,6 +348,13 @@ export default function MarketAdmin() {
   const [aiError, setAiError] = useState("");
   // Rarità tirata dal 🎲 insieme al prompt (vale solo finché il prompt è quello del dado)
   const [aiDice, setAiDice] = useState(null); // { prompt, rarita }
+  // Set: "" nessuno · "nuovo" lo inventa l'AI · "esistente" nuovo pezzo di un set del registro
+  const [aiSetMode, setAiSetMode] = useState("");
+  const [aiSetId, setAiSetId] = useState("");     // slug del registro
+  const [aiSetSize, setAiSetSize] = useState(""); // "" = decide l'AI (set nuovo)
+  const [aiSetIdea, setAiSetIdea] = useState("");
+  const [genBonus, setGenBonus] = useState(false); // IA: bonus del set in corso
+  const [bonusError, setBonusError] = useState("");
 
   // 🎲 Idea a caso: compone un prompt da raccolte ampie (oggetto, materiale,
   // origine, motivi, stranezza, tono). Rispetta il Tipo scelto, se c'è.
@@ -383,6 +390,13 @@ export default function MarketAdmin() {
     let p = aiPrompt.trim();
     let dice = aiDice && aiDice.prompt === p ? aiDice : null;
     if (!p) { const idea = tiraIdeaCasuale(); p = idea.prompt; dice = idea; }
+    const knownSet = aiSetMode === "esistente" ? setRegistry.find(s => s.id === aiSetId) : null;
+    if (aiSetMode === "esistente" && !knownSet) { setAiError("Scegli il set a cui aggiungere il pezzo."); return; }
+    const knownPieces = knownSet ? Object.values(knownSet.pieces || {}).map(x => ({ name: x.name, type: x.type, class: x.class })) : [];
+    const setReq = aiSetMode === "nuovo"
+      ? { mode: "nuovo", size: aiSetSize ? Number(aiSetSize) : undefined, idea: aiSetIdea.trim() || undefined }
+      : knownSet ? { mode: "esistente", name: knownSet.name, size: knownSet.size || 5, bonuses: knownSet.bonuses || [], pieces: knownPieces }
+      : undefined;
     setAiError("");
     // 1) Immagine dal prompt.
     setAiBusy("img");
@@ -391,10 +405,13 @@ export default function MarketAdmin() {
       const artPrompt = aiMode === "gdr"
         ? `Oggetto curioso e simpatico da gioco di ruolo (non un'arma seria), isolato al centro su fondale semplice, resa da inventario/scheda oggetto, tono lieve e bizzarro: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`
         : `Oggetto fantasy per gioco di ruolo, isolato al centro su fondale semplice e scuro, resa da inventario/scheda oggetto: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`;
+      const setArt = knownSet
+        ? ` È un pezzo del set «${knownSet.name}»${knownPieces.length ? `, coordinato per materiali e motivi con: ${knownPieces.map(x => x.name).slice(0, 6).join(", ")}` : ""}.`
+        : aiSetMode === "nuovo" && aiSetIdea.trim() ? ` Primo pezzo di un set: ${aiSetIdea.trim()}.` : "";
       const rImg = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: artPrompt, stile: aiStyle, tono: getImageTone() }),
+        body: JSON.stringify({ prompt: artPrompt + setArt, stile: aiStyle, tono: getImageTone() }),
       });
       const dImg = await rImg.json();
       if (!rImg.ok || dImg.error) throw new Error(dImg.error || "immagine non generata");
@@ -419,11 +436,19 @@ export default function MarketAdmin() {
           tipoOggetto: aiType || undefined,
           mode: aiMode,
           nomiEsistenti,
+          set: setReq,
+          setEsistenti: setRegistry.map(s => s.name),
         }),
       });
       const dInfo = await rInfo.json();
       if (!rInfo.ok || dInfo.error) throw new Error(dInfo.error || "info non generate");
       const o = dInfo.oggetto || {};
+      // Set: quello del registro resta com'è (bonus uguali per tutti i pezzi), quello nuovo lo inventa l'AI
+      const setFields = knownSet
+        ? { inSet: true, setName: knownSet.name, setSize: knownSet.size || 5, setBonuses: (knownSet.bonuses || []).map(b => ({ pieces: Number(b.pieces) || 2, effect: String(b.effect || "") })) }
+        : aiSetMode === "nuovo" && o.set?.name
+          ? { inSet: true, setName: o.set.name, setSize: o.set.size || 4, setBonuses: (o.set.bonuses || []).map(b => ({ pieces: Number(b.pieces) || 2, effect: String(b.effect || "") })) }
+          : {};
       setEditId(null);
       setFormData({
         ...initialFormData,
@@ -434,6 +459,7 @@ export default function MarketAdmin() {
         startingBid: o.startingBid != null ? String(o.startingBid) : "",
         img: imgUrl,
         foundry: { ...EMPTY_FOUNDRY, ...(o.foundry || {}) },
+        ...setFields,
       });
       setActiveTab("manual");     // rivedi e salva con il flusso normale
       setAiError("");
@@ -863,6 +889,43 @@ export default function MarketAdmin() {
     }));
   };
 
+  // ✨ Bonus del set scritti dall'AI (nome, pezzi totali e pezzi già forgiati come contesto).
+  // Valgono per tutto il set: al salvataggio si riscrivono su tutti i pezzi.
+  const generaBonusSet = async () => {
+    if (genBonus) return;
+    setBonusError("");
+    setGenBonus(true);
+    try {
+      const known = setRegistry.find(s => s.id === setSlug(formData.setName));
+      const pieces = Object.entries(known?.pieces || {})
+        .filter(([k]) => k !== editId)
+        .map(([, p]) => ({ name: p.name, type: p.type, class: p.class }));
+      if (formData.name.trim()) pieces.push({ name: formData.name.trim(), type: formData.type, class: formData.class });
+      const r = await fetch("/api/genera-oggetto-completo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          azione: "bonusSet",
+          set: {
+            name: formData.setName.trim(),
+            size: Number(formData.setSize) || 5,
+            pieces,
+            description: formData.description,
+            current: formData.setBonuses.filter(b => String(b.effect || "").trim()),
+          },
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "offline");
+      if (!Array.isArray(data.bonuses) || !data.bonuses.length) throw new Error("Risposta IA vuota.");
+      setFormData(prev => ({ ...prev, setBonuses: data.bonuses.map(b => ({ pieces: Number(b.pieces) || 2, effect: String(b.effect || "") })) }));
+    } catch (err) {
+      setBonusError(`Bonus del set non generati (l'IA è attiva solo online). ${err?.message && err.message !== "offline" ? err.message : "Riprova o scrivili a mano."}`);
+    } finally {
+      setGenBonus(false);
+    }
+  };
+
   // ── Helpers per i dati Foundry ──
   const setFoundry = (k, v) => setFormData(prev => ({ ...prev, foundry: { ...prev.foundry, [k]: v } }));
   const toggleFoundryProp = (p) => setFormData(prev => {
@@ -948,11 +1011,28 @@ export default function MarketAdmin() {
     delete dataToSubmit.setSize;
     delete dataToSubmit.setBonuses;
 
+    // I bonus del set sono UGUALI per tutti i pezzi: gli altri pezzi con regole
+    // diverse (nome, pezzi totali, bonus) si riallineano a queste.
+    const sp = dataToSubmit.setPayload;
+    const siblings = sp
+      ? items.filter(i => i.id !== editId && i.setPayload?.name && setSlug(i.setPayload.name) === setSlug(sp.name)
+          && JSON.stringify({ name: i.setPayload.name, size: Number(i.setPayload.size), bonuses: i.setPayload.bonuses || [] })
+            !== JSON.stringify({ name: sp.name, size: sp.size, bonuses: sp.bonuses }))
+      : [];
+    if (siblings.length && !window.confirm(
+      `Il set «${sp.name}» cambia per tutti i pezzi: ${siblings.length} ${siblings.length === 1 ? "altro oggetto verrà aggiornato" : "altri oggetti verranno aggiornati"} con gli stessi pezzi totali e bonus.\n\n` +
+      `(${siblings.map(i => i.name).join(", ")})\n\nContinuare?`
+    )) { setLoading(false); return; }
+
     if (editId) {
       await updateDoc(doc(db, "items", editId), dataToSubmit);
       setEditId(null);
     } else {
       await setDoc(doc(collection(db, "items")), createMarketItem(dataToSubmit));
+    }
+    for (const sib of siblings) {
+      try { await updateDoc(doc(db, "items", sib.id), { setPayload: { ...sp } }); }
+      catch (err) { console.error("set → pezzo", sib.id, err); }
     }
     setFormData(initialFormData);
     setLoading(false);
@@ -1206,6 +1286,71 @@ export default function MarketAdmin() {
                   {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+            </div>
+
+            <div className="mkadm-field">
+              <label>Set</label>
+              <div className="mkadm-ai-modes mkadm-ai-setmodes">
+                {[
+                  { key: "", label: "Nessun set", sub: "Oggetto singolo" },
+                  { key: "nuovo", label: "⛓ Set nuovo", sub: "L'AI inventa nome, pezzi e bonus" },
+                  { key: "esistente", label: "⛓ Set esistente", sub: setRegistry.length ? "Nuovo pezzo, stessi bonus" : "Nessun set nel registro", off: !setRegistry.length },
+                ].map(m => (
+                  <button
+                    key={m.key || "none"}
+                    type="button"
+                    className={`mkadm-mode-chip ${aiSetMode === m.key ? "on" : ""}`}
+                    onClick={() => setAiSetMode(m.key)}
+                    disabled={!!aiBusy || m.off}
+                  >
+                    {m.label}
+                    <small>{m.sub}</small>
+                  </button>
+                ))}
+              </div>
+              {aiSetMode === "nuovo" && (
+                <div className="mkadm-field-row mkadm-ai-setrow">
+                  <div className="mkadm-field">
+                    <label>Idea per il set (facolt.)</label>
+                    <input className="admin-field-input" value={aiSetIdea} disabled={!!aiBusy}
+                      placeholder="Es. paramenti di un ordine di becchini, legati al freddo"
+                      onChange={(e) => setAiSetIdea(e.target.value)} />
+                  </div>
+                  <div className="mkadm-field mkadm-ai-setsize">
+                    <label>Pezzi totali</label>
+                    <select className="admin-field-select" value={aiSetSize} disabled={!!aiBusy} onChange={(e) => setAiSetSize(e.target.value)}>
+                      <option value="">Decide l'AI</option>
+                      {[2, 3, 4, 5, 6, 7, 8].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {aiSetMode === "esistente" && (() => {
+                const sorted = [...setRegistry].sort((a, b) => String(a.name).localeCompare(String(b.name), "it"));
+                const sel = sorted.find(s => s.id === aiSetId);
+                const made = sel ? Object.keys(sel.pieces || {}).length : 0;
+                return (
+                  <div className="mkadm-ai-setrow">
+                    <select className="admin-field-select" value={aiSetId} disabled={!!aiBusy} onChange={(e) => setAiSetId(e.target.value)}>
+                      <option value="">Scegli il set…</option>
+                      {sorted.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} · {Object.keys(s.pieces || {}).length}/{s.size} pezzi
+                        </option>
+                      ))}
+                    </select>
+                    {sel && (
+                      <div className="mkadm-set-known">
+                        <p>⛓ <strong>{sel.name}</strong>: {made}/{sel.size} pezzi{made >= sel.size ? " — è già completo, il nuovo andrebbe oltre il totale" : ""}.</p>
+                        {made > 0 && <p className="mkadm-set-known-list">{Object.values(sel.pieces || {}).map(p => p.name).join(" · ")}</p>}
+                        {(sel.bonuses || []).length > 0 && (
+                          <p className="mkadm-set-known-list">{sel.bonuses.map(b => `${b.pieces}/${sel.size} ${b.effect}`).join(" · ")}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="mkadm-field">
@@ -1470,7 +1615,20 @@ export default function MarketAdmin() {
                 </div>
 
                 <div className="mkadm-field">
-                  <label>Bonus per soglia</label>
+                  <div className="mkadm-label-row">
+                    <label>Bonus per soglia</label>
+                    <button
+                      type="button"
+                      className="mkadm-gen-btn"
+                      onClick={generaBonusSet}
+                      disabled={genBonus || !formData.setName.trim()}
+                      title={formData.setName.trim() ? "L'AI scrive i bonus del set (uguali per tutti i pezzi)" : "Scrivi prima il nome del set"}
+                    >
+                      {genBonus ? "✦ Genero…" : "✦ Genera bonus"}
+                    </button>
+                  </div>
+                  <p className="mkadm-set-note">Uguali per tutti i pezzi del set: conta solo quanti pezzi diversi si possiedono. Se li cambi, al salvataggio si aggiornano su tutti i pezzi.</p>
+                  {bonusError && <p className="mkadm-gen-error">{bonusError}</p>}
                   {formData.setBonuses.length === 0 && (
                     <p className="mkadm-set-empty">Nessun bonus. Aggiungine uno con il pulsante qui sotto.</p>
                   )}
