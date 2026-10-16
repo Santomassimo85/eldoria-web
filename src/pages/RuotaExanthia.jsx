@@ -13,8 +13,8 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { serverNow } from "../data/serverClock";
 import { craftDayKey } from "../data/craftingWeek";
 import {
-  SEGMENTS, SEG_DEG, EMPTY_LINES, WIN_LINES,
-  prizeOdds, randInt, rollDice, msToRomeMidnight,
+  SEGMENTS, SEG_GEOM, EMPTY_LINES, WIN_LINES,
+  prizeOdds, pickSegment, randInt, rollDice, msToRomeMidnight,
 } from "../data/ruotaExanthia";
 import "../styles/cinematic.css";
 import "./RuotaExanthia.css";
@@ -30,11 +30,11 @@ const pt = (deg, r) => {
 };
 
 function wedgePath(i) {
-  const c = i * SEG_DEG;
-  const [x0, y0] = pt(c - SEG_DEG / 2, R_OUT);
-  const [x1, y1] = pt(c + SEG_DEG / 2, R_OUT);
-  const [x2, y2] = pt(c + SEG_DEG / 2, R_IN);
-  const [x3, y3] = pt(c - SEG_DEG / 2, R_IN);
+  const { start, end } = SEG_GEOM[i];
+  const [x0, y0] = pt(start, R_OUT);
+  const [x1, y1] = pt(end, R_OUT);
+  const [x2, y2] = pt(end, R_IN);
+  const [x3, y3] = pt(start, R_IN);
   return `M${x0} ${y0} A${R_OUT} ${R_OUT} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${R_IN} ${R_IN} 0 0 0 ${x3} ${y3} Z`;
 }
 
@@ -83,8 +83,8 @@ export default function RuotaExanthia() {
   const result = spinning ? null : (shown || last);
 
   const spinTo = (idx, after) => {
-    const c = idx * SEG_DEG;
-    const jitter = (randInt(1000) / 1000 - 0.5) * (SEG_DEG * 0.7);
+    const { center: c, span } = SEG_GEOM[idx];
+    const jitter = (randInt(1000) / 1000 - 0.5) * (span * 0.7);
     const cur = ((rotation % 360) + 360) % 360;
     const target = ((-c - cur) % 360 + 360) % 360;
     setRotation(rotation + 360 * 6 + target + jitter);
@@ -94,18 +94,19 @@ export default function RuotaExanthia() {
   };
 
   const pick = () => {
-    const idx = randInt(SEGMENTS.length);
+    const idx = pickSegment();
     const seg = SEGMENTS[idx];
     const roll = seg.dice ? rollDice(seg.dice) : { rolls: [], total: 0 };
     return {
       idx,
       key: seg.key,
       dice: seg.dice ? seg.label.replace(" Corone", "") : null,
-      label: seg.dice ? seg.label : seg.short,
+      label: seg.label || seg.short,
+      special: !!seg.special,
       rolls: roll.rolls,
       amount: roll.total,
       tier: seg.tier,
-      line: seg.dice ? WIN_LINES[seg.tier] : EMPTY_LINES[randInt(EMPTY_LINES.length)],
+      line: seg.dice || seg.special ? WIN_LINES[seg.tier] : EMPTY_LINES[randInt(EMPTY_LINES.length)],
     };
   };
 
@@ -127,7 +128,7 @@ export default function RuotaExanthia() {
         const cur = s.data().ruota || {};
         if (cur.lastDay === day) throw new Error("used");
         const res = pick();
-        const entry = { day, at: t.toISOString(), label: res.label, dice: res.dice, rolls: res.rolls, amount: res.amount };
+        const entry = { day, at: t.toISOString(), label: res.label, dice: res.dice, rolls: res.rolls, amount: res.amount, special: res.special };
         tx.update(ref, {
           ruota: {
             lastDay: day,
@@ -135,6 +136,7 @@ export default function RuotaExanthia() {
             last: { ...res, day },
             spins: (cur.spins || 0) + 1,
             won: (cur.won || 0) + res.amount,
+            foto: (cur.foto || 0) + (res.key === "foto" ? 1 : 0),
             log: [entry, ...(cur.log || [])].slice(0, 10),
           },
           ...(res.amount ? { platinum: increment(res.amount) } : {}),
@@ -179,16 +181,16 @@ export default function RuotaExanthia() {
           >
             <circle r="198" className="rex-rim" />
             {SEGMENTS.map((s, i) => (
-              <g key={i} className={`rex-seg rex-seg--t${s.tier}${!s.dice && i % 2 ? " is-alt" : ""}${result && !spinning && result.idx === i ? " is-hit" : ""}`}>
+              <g key={i} className={`rex-seg rex-seg--t${s.tier}${!s.dice && !s.special && i % 2 ? " is-alt" : ""}${result && !spinning && result.idx === i ? " is-hit" : ""}`}>
                 <path d={wedgePath(i)} />
-                {i * SEG_DEG > 180
+                {SEG_GEOM[i].center > 180
                   // metà sinistra: scritta girata, così non si legge a testa in giù
-                  ? <text transform={`rotate(${i * SEG_DEG + 90})`} x={-(R_OUT - 8)} y="4" textAnchor="start">{s.short}</text>
-                  : <text transform={`rotate(${i * SEG_DEG - 90})`} x={R_OUT - 8} y="4" textAnchor="end">{s.short}</text>}
+                  ? <text transform={`rotate(${SEG_GEOM[i].center + 90})`} x={-(R_OUT - 8)} y="4" textAnchor="start">{s.short}</text>
+                  : <text transform={`rotate(${SEG_GEOM[i].center - 90})`} x={R_OUT - 8} y="4" textAnchor="end">{s.short}</text>}
               </g>
             ))}
-            {SEGMENTS.map((_, i) => {
-              const [x, y] = pt(i * SEG_DEG + SEG_DEG / 2, 192);
+            {SEG_GEOM.map((g, i) => {
+              const [x, y] = pt(g.end, 192);
               return <circle key={`p${i}`} cx={x} cy={y} r="3.2" className="rex-peg" />;
             })}
             <circle r={R_IN} className="rex-hub" />
@@ -236,12 +238,12 @@ export default function RuotaExanthia() {
               {odds.rows.map((p) => (
                 <li key={p.key} className={`rex-odd rex-odd--t${p.tier}`}>
                   <span>{p.label}</span>
-                  <span>{p.slots} {p.slots === 1 ? "spicchio" : "spicchi"} su {odds.n} · {Math.round((p.slots / odds.n) * 100)}%</span>
+                  <span>{p.special ? "uno spicchio sottile" : `${p.slots} ${p.slots === 1 ? "spicchio" : "spicchi"}`} · {p.pct < 2 ? p.pct.toFixed(1).replace(".", ",") : Math.round(p.pct)}%</span>
                 </li>
               ))}
               <li className="rex-odd rex-odd--t0">
                 <span>Niente (Riprova domani)</span>
-                <span>{odds.empty} spicchi su {odds.n} · {Math.round((odds.empty / odds.n) * 100)}%</span>
+                <span>{odds.emptySlots} spicchi · {Math.round(odds.emptyPct)}%</span>
               </li>
             </ul>
             <p className="rex-note">Un giro al giorno, si azzera a mezzanotte (ora italiana). Le Corone vanno subito nella borsa del Mercato Nero.</p>
@@ -254,7 +256,7 @@ export default function RuotaExanthia() {
                 {ruota.log.slice(0, 7).map((e, i) => (
                   <li key={i}>
                     <span>{new Date(e.day + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
-                    <span className={e.amount ? "is-win" : ""}>{e.amount ? `+${e.amount} Corone (${e.dice}: ${e.rolls.join("+")})` : e.label}</span>
+                    <span className={e.amount || e.special ? "is-win" : ""}>{e.amount ? `+${e.amount} Corone (${e.dice}: ${e.rolls.join("+")})` : e.label}</span>
                   </li>
                 ))}
               </ul>
