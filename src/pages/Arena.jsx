@@ -2772,6 +2772,8 @@ function displayLog(log, viewerUid) {
   if (log.defId === viewerUid && log.def) return log.def;
   return log.pub || log.att || log.def || '';
 }
+// Pausa fra il colpo mortale e il popup Hai vinto / Hai perso.
+const FIGHT_RESULT_DELAY_MS = 2600;
 function logPubText(log) {
   if (!log) return '';
   if (typeof log === 'string') return log;
@@ -3293,6 +3295,7 @@ export default function Arena() {
   // Popup di fine combattimento (vittoria/sconfitta). null = nessun popup.
   const [fightResult, setFightResult] = useState(null);
   const fightResultSeenRef = useRef(null);
+  const fightResultTimerRef = useRef(null);
   /* FIX: P5b/P5c/P5d — modal/drawer state */
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
@@ -4258,13 +4261,30 @@ export default function Arena() {
     fightResultSeenRef.current.add(fresh.matchId);
     const winnerP    = fresh.players.find(p => p.id === fresh.winner);
     const winnerSnap = (arenaMeta.characterSnapshots || {})[fresh.winner] || {};
-    setFightResult({
+    // Il colpo decisivo: l'ultima voce che porta qualcuno a 0 PF (traccia `hp`),
+    // altrimenti l'ultima voce vera (niente "🏆 … È IL VINCITORE!" né righe d'audit).
+    const logs = fresh.logs || [];
+    const isTrophy = (l) => typeof l === "string" && l.startsWith("🏆");
+    const isAudit  = (l) => l && typeof l === "object" && l.audit;
+    let finalLog = null;
+    for (let i = logs.length - 1; i >= 0 && !finalLog; i--) {
+      const hp = logs[i] && typeof logs[i] === "object" ? logs[i].hp : null;
+      if (hp && Object.values(hp).some(v => Array.isArray(v) && v[1] <= 0 && v[0] > 0)) finalLog = logs[i];
+    }
+    if (!finalLog) finalLog = [...logs].reverse().find(l => l && !isTrophy(l) && !isAudit(l)) || null;
+    const result = {
       won:         fresh.winner === currentUser.uid,
       winnerName:  winnerP?.name || winnerSnap.name || "Sfidante",
       winnerImage: winnerSnap.image || null,
       winnerClass: winnerP?.class || winnerSnap.class || "",
-    });
+      finalLog,
+      players:     fresh.players,
+    };
+    // Prima si vede il colpo (dado, effetto, PF a zero), POI il popup.
+    clearTimeout(fightResultTimerRef.current);
+    fightResultTimerRef.current = setTimeout(() => setFightResult(result), FIGHT_RESULT_DELAY_MS);
   }, [arenaMeta?.matches, arenaMeta?.characterSnapshots, currentUser]);
+  useEffect(() => () => clearTimeout(fightResultTimerRef.current), []);
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
@@ -12663,6 +12683,15 @@ export default function Arena() {
                   </div>
                 </div>
               </>
+            )}
+            {fightResult.finalLog && (
+              <div className="fight-result-blow">
+                <span className="fight-result-blow-label">⚔ Il colpo decisivo</span>
+                <p className="fight-result-blow-text">
+                  {renderLogWithDice(displayLog(fightResult.finalLog, currentUser?.uid))}
+                </p>
+                <HpTrace entry={fightResult.finalLog} players={fightResult.players} />
+              </div>
             )}
             <button className="fight-result-close" onClick={() => setFightResult(null)}>
               Continua
