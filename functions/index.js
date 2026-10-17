@@ -1529,7 +1529,7 @@ exports.ruotaSpin = onCall(
           spins: (cur.spins || 0) + 1,
           won: (cur.won || 0) + res.amount,
           foto: (cur.foto || 0) + (res.key === "foto" ? 1 : 0),
-          log: [entry, ...(cur.log || [])].slice(0, 10),
+          log: [entry, ...(cur.log || [])].slice(0, 62), // ~2 mesi: storico mensile del giocatore
         },
         ...(res.amount ? { platinum: FieldValue.increment(res.amount) } : {}),
       });

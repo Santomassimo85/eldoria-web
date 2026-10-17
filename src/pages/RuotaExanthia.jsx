@@ -63,7 +63,75 @@ const resultText = (r) => r.amount
   ? `🎲 ${r.dice}: ${r.rolls.join(" + ")}${r.rolls.length > 1 ? ` = ${r.amount}` : ""} → +${r.amount} Corone`
   : r.label;
 
+const monthName = (key) => new Date(key + "-15T12:00:00").toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+
+// Storico mensile del giocatore (da characters.ruota.log, tenuto dal server
+// per ~2 mesi): mese corrente aperto, i precedenti chiusi.
+function StoricoMese({ log, today }) {
+  if (!log.length) return null;
+  const months = [];
+  log.forEach((e) => {
+    const m = String(e.day || "").slice(0, 7);
+    let g = months.find((x) => x.m === m);
+    if (!g) months.push(g = { m, rows: [] });
+    g.rows.push(e);
+  });
+  const cur = String(today).slice(0, 7);
+  return (
+    <div className="rex-log">
+      <h3>Il tuo storico</h3>
+      {months.map((g) => {
+        const wins = g.rows.filter((e) => e.amount || e.special);
+        const coins = g.rows.reduce((t, e) => t + (e.amount || 0), 0);
+        return (
+          <details key={g.m} className="rex-month" open={g.m === cur}>
+            <summary>
+              <span>{monthName(g.m)}</span>
+              <span>{g.rows.length} giri · {wins.length} vinti · <strong>{coins} 👑</strong></span>
+            </summary>
+            <ul>
+              {g.rows.map((e, i) => (
+                <li key={i}>
+                  <span>{new Date(e.day + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
+                  <span className={e.amount || e.special ? "is-win" : ""}>{e.amount ? `+${e.amount} Corone (${e.dice}: ${(e.rolls || []).join("+")})` : e.label}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function RuotaExanthia() {
+  const { currentUser } = useAuth();
+  const isMaster = isMainMaster(currentUser?.email);
+  return (
+    <section className="cine-page rex-page" style={{ "--cine-accent": "var(--oro)", "--cine-accent-2": "var(--el)" }}>
+      <GlacierHero
+        id="rex-top"
+        ariaLabel="La Ruota di Exanthia"
+        image={HERO_IMAGE}
+        eyebrow="Gilda · il gioco del destino"
+        title={<>La Ruota di Exanthia</>}
+        seal="🎡 Un giro al giorno"
+        tagline="Si dice che la ruota sia stata vinta a dadi da un mercante che non ha mai più perso. Si dice anche che quel mercante sia morto povero."
+        actions={<>
+          <a href="#rex-ruota" className="gl-cta">🎡 Alla ruota</a>
+          <Link to="/mercato" className="gl-cta gl-cta--ghost">👑 Spendi al Mercato Nero</Link>
+        </>}
+      />
+      <RuotaGioco />
+      {isMaster && <RuotaCorone masterUid={currentUser?.uid} />}
+      {isMaster && <RuotaRegistro masterUid={currentUser?.uid} />}
+    </section>
+  );
+}
+
+// La ruota vera e propria: nella pagina e nel popup dell'apertura (`popup`:
+// niente tabella dei premi, niente storico, ruota più piccola).
+export function RuotaGioco({ popup = false, onClose }) {
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
   const isMaster = isMainMaster(currentUser?.email);
@@ -132,22 +200,7 @@ export default function RuotaExanthia() {
   const left = msToRomeMidnight(srvNow);
 
   return (
-    <section className="cine-page rex-page" style={{ "--cine-accent": "var(--oro)", "--cine-accent-2": "var(--el)" }}>
-      <GlacierHero
-        id="rex-top"
-        ariaLabel="La Ruota di Exanthia"
-        image={HERO_IMAGE}
-        eyebrow="Gilda · il gioco del destino"
-        title={<>La Ruota di Exanthia</>}
-        seal="🎡 Un giro al giorno"
-        tagline="Si dice che la ruota sia stata vinta a dadi da un mercante che non ha mai più perso. Si dice anche che quel mercante sia morto povero."
-        actions={<>
-          <a href="#rex-ruota" className="gl-cta">🎡 Alla ruota</a>
-          <Link to="/mercato" className="gl-cta gl-cta--ghost">👑 Spendi al Mercato Nero</Link>
-        </>}
-      />
-
-      <div className="rex-wrap" id="rex-ruota">
+      <div className={`rex-wrap${popup ? " rex-wrap--popup" : ""}`} id={popup ? undefined : "rex-ruota"}>
         <div className="rex-stage">
           <div className="rex-pointer" aria-hidden="true" />
           <svg
@@ -210,6 +263,12 @@ export default function RuotaExanthia() {
             </>
           )}
 
+          {popup ? (
+            <div className="rex-popup-foot">
+              <Link to="/ruota" className="rex-mini" onClick={onClose}>Premi e storico del mese</Link>
+              <button type="button" className="rex-mini" onClick={onClose} disabled={spinning}>{usedToday ? "Chiudi" : "Più tardi"}</button>
+            </div>
+          ) : <>
           <div className="rex-odds">
             <h3>I premi della ruota</h3>
             <ul>
@@ -227,23 +286,9 @@ export default function RuotaExanthia() {
             <p className="rex-note">Un giro al giorno, si azzera a mezzanotte (ora italiana). Le Corone vanno subito nella borsa del Mercato Nero.</p>
           </div>
 
-          {ruota.log?.length > 0 && (
-            <div className="rex-log">
-              <h3>I tuoi ultimi giri</h3>
-              <ul>
-                {ruota.log.slice(0, 7).map((e, i) => (
-                  <li key={i}>
-                    <span>{new Date(e.day + "T12:00:00").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
-                    <span className={e.amount || e.special ? "is-win" : ""}>{e.amount ? `+${e.amount} Corone (${e.dice}: ${e.rolls.join("+")})` : e.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <StoricoMese log={ruota.log || []} today={today} />
+          </>}
         </div>
       </div>
-      {isMaster && <RuotaCorone masterUid={uid} />}
-      {isMaster && <RuotaRegistro masterUid={uid} />}
-    </section>
   );
 }

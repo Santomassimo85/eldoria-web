@@ -71,6 +71,7 @@ import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
+import RuotaPopup from "./components/RuotaPopup";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
@@ -626,6 +627,7 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationOptIn />
+      <RuotaPopup />
       {hideChrome && !forceShowNav && (
         <button className="battle-nav-reopen" onClick={() => setForceShowNav(true)} aria-label="Apri menu">
           ☰
