@@ -164,6 +164,17 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // ── Ruota di Exanthia: un doc per giro, lo scrive SOLO la function
+    // ruotaSpin (admin). Nessun client crea/modifica/cancella: è il registro
+    // che garantisce un giro al giorno. Lo legge solo il Master principale.
+    match /ruota_spins/{spinId} {
+      allow read: if isLoggedIn() && (
+        request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+        request.auth.token.email == "santomassimo85@gmail.com"
+      );
+      allow write: if false;
+    }
+
     match /pg_sheets/{userId} {
       allow read, write: if isMaster() || (isLoggedIn() && request.auth.uid == userId);
     }

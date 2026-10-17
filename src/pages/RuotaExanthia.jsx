@@ -1,20 +1,24 @@
 // ── /ruota: La Ruota di Exanthia (2026-10-16) ─────────────────────────────────
 // Un giro al giorno, premi in Corone del Mercato Nero (`characters.platinum`).
 // Il giorno lo decide l'ora del SERVER (serverClock), non il telefono, e il giro
-// si scrive in una transazione PRIMA dell'animazione: ricaricare la pagina a
-// ruota in movimento non fa rigirare. Il Master gira "a vuoto" (prova, non conta).
+// lo fa la function ruotaSpin PRIMA dell'animazione (ora, giorno, spicchio e
+// dadi del server; un doc in ruota_spins per giorno e account): né l'orologio
+// del telefono, né il logout, né due schede fanno rigirare. Il Master principale
+// gira senza limiti (le Corone le prende anche lui) e qui vede il registro di tutti.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { doc, increment, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
 import GlacierHero from "../components/glacier/GlacierHero";
 import { serverNow } from "../data/serverClock";
 import { craftDayKey } from "../data/craftingWeek";
+import RuotaRegistro from "./RuotaRegistro";
 import {
   SEGMENTS, SEG_GEOM, EMPTY_LINES, WIN_LINES,
-  prizeOdds, pickSegment, randInt, rollDice, msToRomeMidnight,
+  prizeOdds, randInt, msToRomeMidnight,
 } from "../data/ruotaExanthia";
 import "../styles/cinematic.css";
 import "./RuotaExanthia.css";
@@ -44,6 +48,16 @@ const fmtLeft = (ms) => {
   return h > 0 ? `${h} h ${m % 60} min` : `${m} min`;
 };
 
+// Tier e frase non li scrive il server: si ricavano dallo spicchio
+// (la frase dei giri vuoti è fissa per giorno, così non cambia a ogni ricarica).
+function decorate(r) {
+  const seg = SEGMENTS[r.idx];
+  const tier = r.tier ?? seg?.tier ?? 0;
+  const win = r.amount > 0 || r.special;
+  const h = [...String(r.day || "")].reduce((t, ch) => t + ch.charCodeAt(0), 0);
+  return { ...r, tier, line: r.line || (win ? WIN_LINES[tier] : EMPTY_LINES[h % EMPTY_LINES.length]) };
+}
+
 const resultText = (r) => r.amount
   ? `🎲 ${r.dice}: ${r.rolls.join(" + ")}${r.rolls.length > 1 ? ` = ${r.amount}` : ""} → +${r.amount} Corone`
   : r.label;
@@ -60,6 +74,7 @@ export default function RuotaExanthia() {
   const [now, setNow] = useState(() => Date.now());
   const [offset, setOffset] = useState(0);       // server − dispositivo
   const timerRef = useRef(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -78,7 +93,7 @@ export default function RuotaExanthia() {
   const usedToday = !isMaster && ruota.lastDay === today;
   const hasChar = charData && Object.keys(charData).length > 0;
   const odds = useMemo(() => prizeOdds(), []);
-  const last = ruota.last && ruota.lastDay === today ? ruota.last : null;
+  const last = ruota.last && ruota.lastDay === today ? decorate(ruota.last) : null;
   // Mentre gira non si svela l'esito già scritto su Firestore.
   const result = spinning ? null : (shown || last);
 
@@ -93,57 +108,23 @@ export default function RuotaExanthia() {
     timerRef.current = setTimeout(() => { setSpinning(false); after(); }, reduce ? 900 : SPIN_MS + 150);
   };
 
-  const pick = () => {
-    const idx = pickSegment();
-    const seg = SEGMENTS[idx];
-    const roll = seg.dice ? rollDice(seg.dice) : { rolls: [], total: 0 };
-    return {
-      idx,
-      key: seg.key,
-      dice: seg.dice ? seg.label.replace(" Corone", "") : null,
-      label: seg.label || seg.short,
-      special: !!seg.special,
-      rolls: roll.rolls,
-      amount: roll.total,
-      tier: seg.tier,
-      line: seg.dice || seg.special ? WIN_LINES[seg.tier] : EMPTY_LINES[randInt(EMPTY_LINES.length)],
-    };
-  };
-
   const spin = async () => {
-    if (spinning || !uid) return;
+    if (spinning || busyRef.current || !uid) return;
+    busyRef.current = true;
     setErr(""); setShown(null);
     try {
-      const t = await serverNow();                // fail-closed: niente ora vera, niente giro
-      const day = craftDayKey(t);
-      const r = await runTransaction(db, async (tx) => {
-        const ref = doc(db, "characters", uid);
-        const s = await tx.get(ref);
-        if (!s.exists()) throw new Error("nochar");
-        const cur = s.data().ruota || {};
-        // Il Master gira senza limiti, ma le Corone le prende anche lui (per provare).
-        if (!isMaster && cur.lastDay === day) throw new Error("used");
-        const res = pick();
-        const entry = { day, at: t.toISOString(), label: res.label, dice: res.dice, rolls: res.rolls, amount: res.amount, special: res.special };
-        tx.update(ref, {
-          ruota: {
-            lastDay: day,
-            lastAt: serverTimestamp(),
-            last: { ...res, day },
-            spins: (cur.spins || 0) + 1,
-            won: (cur.won || 0) + res.amount,
-            foto: (cur.foto || 0) + (res.key === "foto" ? 1 : 0),
-            log: [entry, ...(cur.log || [])].slice(0, 10),
-          },
-          ...(res.amount ? { platinum: increment(res.amount) } : {}),
-        });
-        return res;
-      });
+      // Il giro lo fa il SERVER (functions/ruota.js): ora, giorno, spicchio e dadi.
+      // Un giro al giorno per account, scritto in ruota_spins che nessun client può toccare.
+      const { data } = await httpsCallable(functions, "ruotaSpin")();
+      const r = decorate(data);
       spinTo(r.idx, () => setShown(isMaster ? { ...r, prova: true } : r));
     } catch (e) {
-      setErr(e.message === "used" ? "Hai già girato la ruota oggi. Riprova domani."
-        : e.message === "nochar" ? "Ti serve un personaggio per girare la ruota."
+      const m = String(e?.message || "");
+      setErr(m === "used" || e?.code === "functions/already-exists" ? "Hai già girato la ruota oggi. Riprova domani."
+        : m === "nochar" ? "Ti serve un personaggio per girare la ruota."
         : "La ruota si è inceppata (connessione?). Riprova tra poco.");
+    } finally {
+      busyRef.current = false;
     }
   };
 
@@ -260,6 +241,7 @@ export default function RuotaExanthia() {
           )}
         </div>
       </div>
+      {isMaster && <RuotaRegistro masterUid={uid} />}
     </section>
   );
 }

@@ -1481,3 +1481,65 @@ exports.scribaKickoff = onRequest(
     }
   },
 );
+
+// ── La Ruota di Exanthia: il giro lo fa il server (2026-10-17) ───────────────
+// Vedi functions/ruota.js. Un giro al giorno per account (doc ruota_spins
+// `{giorno}_{uid}` creato in transazione), solo il Master principale senza limiti.
+const ruota = require("./ruota");
+exports.ruotaSpin = onCall(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Accedi per girare la ruota.");
+    const email = String(request.auth.token?.email || "").trim().toLowerCase();
+    const isMaster = email === ruota.MAIN_MASTER_EMAIL;
+    const db = admin.firestore();
+    const now = new Date();
+    const day = ruota.romeDayKey(now);
+    const charRef = db.collection("characters").doc(uid);
+    const spinRef = isMaster
+      ? db.collection("ruota_spins").doc(`${day}_${uid}_${now.getTime()}`)
+      : db.collection("ruota_spins").doc(`${day}_${uid}`);
+
+    return db.runTransaction(async (tx) => {
+      const [cs, ss] = await Promise.all([tx.get(charRef), tx.get(spinRef)]);
+      if (!cs.exists) throw new HttpsError("failed-precondition", "nochar");
+      if (ss.exists) throw new HttpsError("already-exists", "used");
+      const c = cs.data();
+      const cur = c.ruota || {};
+      // giri fatti prima del server (senza doc in ruota_spins)
+      if (!isMaster && cur.lastDay === day) throw new HttpsError("already-exists", "used");
+      const res = ruota.spinResult();
+      const at = now.toISOString();
+      tx.create(spinRef, {
+        uid,
+        name: c.name || c.charName || email || uid,
+        day,
+        at,
+        ts: FieldValue.serverTimestamp(),
+        master: isMaster,
+        ...res,
+      });
+      const entry = { day, at, label: res.label, dice: res.dice, rolls: res.rolls, amount: res.amount, special: res.special };
+      tx.update(charRef, {
+        ruota: {
+          lastDay: day,
+          lastAt: FieldValue.serverTimestamp(),
+          last: { ...res, day },
+          spins: (cur.spins || 0) + 1,
+          won: (cur.won || 0) + res.amount,
+          foto: (cur.foto || 0) + (res.key === "foto" ? 1 : 0),
+          log: [entry, ...(cur.log || [])].slice(0, 10),
+        },
+        ...(res.amount ? { platinum: FieldValue.increment(res.amount) } : {}),
+      });
+      return { ...res, day, master: isMaster };
+    }).catch((e) => {
+      if (e instanceof HttpsError) throw e;
+      // due giri nello stesso istante: il secondo trova il doc già creato
+      if (e?.code === 6 || /already exists/i.test(String(e?.message))) throw new HttpsError("already-exists", "used");
+      console.error("[ruota] spin:", e);
+      throw new HttpsError("internal", "La ruota si è inceppata.");
+    });
+  },
+);

@@ -86,3 +86,23 @@
 .rex-odd--t3 { border-left-color: var(--oro) !important; }
 .rex-odd--t4 { border-left-color: #d42a1f !important; color: #ff6a5a; font-weight: 700; }
 .rex-log li span.is-win { color: var(--oro); }
+
+/* registro dei giri (solo Master) */
+.rex-reg { max-width: 1120px; margin: -32px auto 64px; padding: 16px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-top: 3px solid var(--el); border-radius: 3px; }
+.rex-reg h3 { margin: 0 0 6px; font-family: var(--font-sc, inherit); font-size: .9rem; letter-spacing: .1em; text-transform: uppercase; color: var(--osso); }
+.rex-reg-sum { margin: 0 0 10px; color: var(--osso-2); font-size: .9rem; }
+.rex-reg-sum strong { color: var(--osso); font-family: var(--font-num, inherit); }
+.rex-reg-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; font-size: .88rem; color: var(--osso-2); }
+.rex-reg-tools select { min-height: 36px; padding: 4px 8px; background: var(--roccia-1); color: var(--osso); border: 1px solid rgba(var(--osso-rgb), .2); border-radius: 3px; }
+.rex-reg-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .rex-reg-cols { grid-template-columns: minmax(0, 1fr); } .rex-reg { margin: 0 16px 48px; } }
+.rex-reg-col h4 { margin: 0 0 6px; display: flex; justify-content: space-between; font-family: var(--font-sc, inherit); font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; }
+.rex-reg-col.is-win h4 { color: var(--oro); }
+.rex-reg-col.is-fail h4 { color: var(--osso-3); }
+.rex-reg-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 460px; overflow-y: auto; }
+.rex-reg-col li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 6px 9px; background: var(--roccia-3); border-left: 3px solid var(--osso-3); font-size: .85rem; color: var(--osso); }
+.rex-reg-col.is-win li { border-left-color: var(--oro); }
+.rex-reg-who { font-weight: 700; }
+.rex-reg-what { grid-column: 1; color: var(--osso-2); }
+.rex-reg-col.is-win .rex-reg-what { color: var(--oro); }
+.rex-reg-when { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--osso-3); font-family: var(--font-num, inherit); font-size: .75rem; }
