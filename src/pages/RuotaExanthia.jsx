@@ -16,6 +16,7 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { serverNow } from "../data/serverClock";
 import { craftDayKey } from "../data/craftingWeek";
 import RuotaRegistro from "./RuotaRegistro";
+import RuotaCorone from "./RuotaCorone";
 import {
   SEGMENTS, SEG_GEOM, EMPTY_LINES, WIN_LINES,
   prizeOdds, randInt, msToRomeMidnight,
@@ -241,6 +242,7 @@ export default function RuotaExanthia() {
           )}
         </div>
       </div>
+      {isMaster && <RuotaCorone masterUid={uid} />}
       {isMaster && <RuotaRegistro masterUid={uid} />}
     </section>
   );

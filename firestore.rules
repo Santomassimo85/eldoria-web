@@ -175,6 +175,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Registro delle Corone: lo scrive solo la function logPlatinumChange.
+    match /platinum_log/{logId} {
+      allow read: if isLoggedIn() && (
+        request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+        request.auth.token.email == "santomassimo85@gmail.com"
+      );
+      allow write: if false;
+    }
+
     match /pg_sheets/{userId} {
       allow read, write: if isMaster() || (isLoggedIn() && request.auth.uid == userId);
     }

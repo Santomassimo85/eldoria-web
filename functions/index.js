@@ -1543,3 +1543,73 @@ exports.ruotaSpin = onCall(
     });
   },
 );
+
+// ── Registro delle Corone (2026-10-17) ──────────────────────────────────────
+// Ogni variazione di `characters.platinum`, da qualunque parte arrivi (sito,
+// console del browser, REST senza login, server), finisce in `platinum_log`
+// con chi l'ha fatta (auth context di Firestore). Nessun client scrive lì:
+// il Master lo legge nella pagina della Ruota.
+const { onDocumentWrittenWithAuthContext } = require("firebase-functions/v2/firestore");
+const ADMIN_LOG_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
+const authEmailCache = new Map();
+async function authEmail(uid) {
+  if (!uid) return "";
+  if (authEmailCache.has(uid)) return authEmailCache.get(uid);
+  let e = "";
+  try { e = String((await admin.auth().getUser(uid)).email || "").toLowerCase(); } catch { /* utente sparito */ }
+  authEmailCache.set(uid, e);
+  return e;
+}
+exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
+  { document: "characters/{uid}", region: "us-central1" },
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+    const pb = Number(before?.platinum || 0);
+    const pa = Number(after?.platinum || 0);
+    if (pb === pa) return;
+    const uid = event.params.uid;
+    const authType = event.authType || "unknown";
+    const authId = event.authId || "";
+    const byEmail = authType === "app_user" ? await authEmail(authId) : "";
+    // Altri campi toccati nella stessa scrittura: aiutano a capire da dove viene.
+    const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])]
+      .filter((k) => k !== "platinum" && JSON.stringify(before?.[k]) !== JSON.stringify(after?.[k]))
+      .slice(0, 12);
+    let source;
+    if (authType === "service_account" || authType === "system") {
+      source = keys.includes("ruota") ? "ruota" : "server";
+    } else if (authType === "app_user") {
+      // il Master principale sempre; la co-master solo sui doc degli altri (sul suo è una giocatrice)
+      source = byEmail === ADMIN_LOG_EMAILS[0] || (ADMIN_LOG_EMAILS.includes(byEmail) && authId !== uid) ? "master"
+        : authId === uid ? "self" : "other";
+    } else {
+      source = "nologin";
+    }
+    // Sospetto = Corone in più che non arrivano da server o Master.
+    const suspicious = pa > pb && !["ruota", "server", "master"].includes(source);
+    let byName = "";
+    if (authType === "app_user" && authId) {
+      if (authId === uid) byName = after?.name || before?.name || "";
+      else {
+        try { byName = (await admin.firestore().collection("characters").doc(authId).get()).data()?.name || ""; } catch { /* niente */ }
+      }
+    }
+    await admin.firestore().collection("platinum_log").add({
+      uid,
+      name: after?.name || before?.name || uid,
+      before: pb,
+      after: pa,
+      delta: pa - pb,
+      source,
+      suspicious,
+      authType,
+      byUid: authId || null,
+      byEmail: byEmail || null,
+      byName: byName || null,
+      keys,
+      at: new Date().toISOString(),
+      ts: FieldValue.serverTimestamp(),
+    });
+  },
+);
