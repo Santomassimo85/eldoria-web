@@ -998,3 +998,73 @@ body:not(.theme-dark) .online-popup-row { border-bottom: 1px solid var(--roccia-
 body:not(.theme-dark) .online-popup-name { color: var(--osso); font-family: var(--font-ui); }
 body:not(.theme-dark) .online-popup-time { color: #8cff8c; font-family: var(--font-sc); letter-spacing: .06em; }
 @media (prefers-reduced-motion: reduce) { body .online-fab-dot { animation: none; } }
+
+/* ══════════════════════════════════════════════════════════════════
+   DRAWER "ALTRO" — UNA colonna sola + gruppi a fisarmonica (2026-10-17)
+   style.css dà a <nav> flex-wrap: wrap: nel drawer (colonna ad altezza
+   fissa) aprendo un gruppo lungo le voci di troppo andavano a capo in
+   una SECONDA colonna, fuori a destra. Ora la colonna non va mai a capo
+   e scorre in verticale; i sottomenu si aprono/chiudono animando
+   l'altezza (grid 0fr → 1fr), senza salti.
+   ══════════════════════════════════════════════════════════════════ */
+body .app-nav > nav, body .burger.open + nav {
+  flex-wrap: nowrap !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+body .app-nav > nav > * { flex-shrink: 0 !important; min-width: 0; }
+body .app-nav > nav .nav-dd-trigger { white-space: normal; }
+body .app-nav > nav .nav-dd-arrow { margin-left: auto; transition: transform .3s var(--ease-out, ease); }
+
+body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd-menu {
+  display: grid !important;
+  grid-template-rows: 0fr;
+  width: auto !important;
+  margin: 0 0 0 8px !important;
+  border-width: 0 0 0 3px !important;
+  box-shadow: none !important;
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+  transition:
+    grid-template-rows .3s var(--ease-out, ease),
+    margin .3s var(--ease-out, ease),
+    opacity .22s ease,
+    visibility 0s linear .3s;
+}
+body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd--open .nav-dd-menu {
+  grid-template-rows: 1fr;
+  margin: 4px 0 6px 8px !important;
+  border-width: 1px 1px 1px 3px !important;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-rows .3s var(--ease-out, ease),
+    margin .3s var(--ease-out, ease),
+    opacity .22s ease .05s,
+    visibility 0s;
+}
+nav .nav-dd-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd-menu a { white-space: normal; }
+
+/* touch: niente "hover appiccicoso" che sposta la voce toccata a destra */
+@media (hover: none) {
+  body .app-nav > nav a:hover, body .app-nav > nav .nav-dd-trigger:hover { padding-left: 14px !important; }
+  body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd-menu a:hover { padding-left: 16px !important; }
+  body .app-nav > nav a:hover::before, body .app-nav > nav .nav-dd-trigger:hover::before { transform: scaleY(0); }
+}
+
+/* telefono: voci un po' più compatte, ci stanno tutte senza scorrere troppo */
+@media (max-width: 699px) {
+  body .app-nav > nav, body .burger.open + nav { gap: 2px !important; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
+  body .app-nav > nav a, body .app-nav > nav .nav-dd-trigger { padding-top: 8px !important; padding-bottom: 8px !important; font-size: 1.02rem !important; }
+  body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd-menu a { padding-top: 9px !important; padding-bottom: 9px !important; font-size: .96rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd-menu,
+  body:is(.theme-dark,:not(.theme-dark)) .app-nav > nav .nav-dd--open .nav-dd-menu { transition: none !important; }
+}

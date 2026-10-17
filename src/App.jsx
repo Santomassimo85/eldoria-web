@@ -122,21 +122,34 @@ function NavDropdown({ label, children, closeAll, id, openId, setOpenId }) {
     closeAll();
   };
 
+  // Nel drawer: aperto il gruppo, a fisarmonica finita lo porta in vista
+  // (se sta in fondo, le sue voci non restano sotto il bordo dello schermo).
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    }, 320);
+    return () => clearTimeout(t);
+  }, [open]);
+
   return (
     <div className={`nav-dd${open ? " nav-dd--open" : ""}`} ref={ref}>
       <button
         className="nav-dd-trigger"
         data-dd={id}
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         {label} <span className="nav-dd-arrow">▾</span>
       </button>
-      <div className="nav-dd-menu">
-        {React.Children.map(children, (child) =>
-          child
-            ? React.cloneElement(child, { onClick: handleChildClick })
-            : null
-        )}
+      <div className="nav-dd-menu" aria-hidden={!open}>
+        <div className="nav-dd-inner">
+          {React.Children.map(children, (child) =>
+            child
+              ? React.cloneElement(child, { onClick: handleChildClick, tabIndex: open ? undefined : -1 })
+              : null
+          )}
+        </div>
       </div>
     </div>
   );
