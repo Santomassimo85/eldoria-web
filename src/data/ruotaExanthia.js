@@ -14,7 +14,7 @@ export const PRIZES = {
   d2x4: { key: "d2x4", dice: [2, 4], label: "2d4 Corone", short: "2d4 👑", tier: 3 },
   d8:   { key: "d8",   dice: [1, 8], label: "1d8 Corone", short: "1d8 👑", tier: 3 },
   // Niente Corone: si riscuote al tavolo, dal Master.
-  foto: { key: "foto", label: "Foto con il Master", short: "📸", tier: 4, w: 1, special: true },
+  foto: { key: "foto", label: "Foto con il Master", short: "📸 FOTO", tier: 4, w: 1, special: true },
 };
 
 const W = 4; // peso di uno spicchio normale

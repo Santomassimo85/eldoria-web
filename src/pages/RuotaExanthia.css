@@ -31,8 +31,9 @@
 .rex-seg--t3 path { fill: var(--oro); }
 .rex-seg--t3 text { fill: var(--ossidiana); font-weight: 700; }
 /* 📸 Foto con il Master: lo spicchio sottile, il premio più raro */
-.rex-seg--t4 path { fill: var(--osso); stroke: var(--oro); stroke-width: 1.6; }
-.rex-seg--t4 text { fill: var(--ossidiana); font-size: 9px; }
+.rex-seg--t4 path { fill: #d42a1f; stroke: #ffd9a8; stroke-width: 1.4; filter: drop-shadow(0 0 4px rgba(255, 60, 40, .85)); }
+/* spicchio sottilissimo: la scritta sborda un filo, quindi ha un contorno scuro per leggersi anche sui vicini */
+.rex-seg--t4 text { fill: #fff4e6; font-family: var(--font-num, inherit); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; stroke: #3a0705; stroke-width: 2.6px; paint-order: stroke; stroke-linejoin: round; }
 .rex-seg.is-hit path { filter: brightness(1.35) drop-shadow(0 0 6px rgba(var(--oro-rgb), .9)); stroke: var(--oro-soft); stroke-width: 2.4; }
 .rex-peg { fill: var(--oro-soft); }
 .rex-hub { fill: var(--roccia-1); stroke: var(--oro); stroke-width: 3; }
@@ -62,8 +63,8 @@
 .rex-result-kicker { font-family: var(--font-sc, inherit); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--osso-3); }
 .rex-result-main { font-family: var(--font-title, inherit); font-size: 1.9rem; line-height: 1.1; color: var(--osso); }
 .rex-result--t3 .rex-result-main { color: var(--oro); }
-.rex-result--t4 { border-top-color: var(--osso); box-shadow: 0 0 0 1px rgba(var(--oro-rgb), .6), 0 0 40px -6px rgba(var(--oro-rgb), .8); }
-.rex-result--t4 .rex-result-main { color: var(--oro); }
+.rex-result--t4 { border-top-color: #d42a1f; box-shadow: 0 0 0 1px rgba(212, 42, 31, .7), 0 0 40px -6px rgba(212, 42, 31, .85); }
+.rex-result--t4 .rex-result-main { color: #ff5a4a; }
 .rex-result-dice { font-family: var(--font-num, inherit); font-size: .86rem; color: var(--el-soft); }
 .rex-result p { margin: 4px 0 0; font-size: .92rem; line-height: 1.45; color: var(--osso-2); }
 @keyframes rex-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -83,5 +84,5 @@
 .rex-odds li span:last-child, .rex-log li span:first-child { color: var(--osso-2); font-family: var(--font-num, inherit); font-size: .78rem; }
 .rex-odd--t1, .rex-odd--t2 { border-left-color: var(--el) !important; }
 .rex-odd--t3 { border-left-color: var(--oro) !important; }
-.rex-odd--t4 { border-left-color: var(--osso) !important; font-weight: 700; }
+.rex-odd--t4 { border-left-color: #d42a1f !important; color: #ff6a5a; font-weight: 700; }
 .rex-log li span.is-win { color: var(--oro); }

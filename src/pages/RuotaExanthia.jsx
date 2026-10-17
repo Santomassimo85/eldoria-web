@@ -113,11 +113,6 @@ export default function RuotaExanthia() {
   const spin = async () => {
     if (spinning || !uid) return;
     setErr(""); setShown(null);
-    if (isMaster) {
-      const r = pick();
-      spinTo(r.idx, () => setShown({ ...r, prova: true }));
-      return;
-    }
     try {
       const t = await serverNow();                // fail-closed: niente ora vera, niente giro
       const day = craftDayKey(t);
@@ -126,7 +121,8 @@ export default function RuotaExanthia() {
         const s = await tx.get(ref);
         if (!s.exists()) throw new Error("nochar");
         const cur = s.data().ruota || {};
-        if (cur.lastDay === day) throw new Error("used");
+        // Il Master gira senza limiti, ma le Corone le prende anche lui (per provare).
+        if (!isMaster && cur.lastDay === day) throw new Error("used");
         const res = pick();
         const entry = { day, at: t.toISOString(), label: res.label, dice: res.dice, rolls: res.rolls, amount: res.amount, special: res.special };
         tx.update(ref, {
@@ -143,7 +139,7 @@ export default function RuotaExanthia() {
         });
         return res;
       });
-      spinTo(r.idx, () => setShown(r));
+      spinTo(r.idx, () => setShown(isMaster ? { ...r, prova: true } : r));
     } catch (e) {
       setErr(e.message === "used" ? "Hai già girato la ruota oggi. Riprova domani."
         : e.message === "nochar" ? "Ti serve un personaggio per girare la ruota."
@@ -211,7 +207,7 @@ export default function RuotaExanthia() {
               >
                 {spinning ? "La ruota gira…" : usedToday ? "Hai già girato oggi" : isMaster ? "🎡 Gira (prova del Master)" : "🎡 Gira la ruota"}
               </button>
-              {isMaster && <p className="rex-note">Da Master giri a vuoto: nessuna Corona e nessun limite.</p>}
+              {isMaster && <p className="rex-note">Da Master giri senza limiti, e le Corone vinte finiscono nella tua borsa (per provare).</p>}
               {usedToday && !spinning && <p className="rex-note">⏳ Nuovo giro tra <strong>{fmtLeft(left)}</strong>, a mezzanotte.</p>}
               {err && <p className="rex-err">{err}</p>}
 
