@@ -25,6 +25,11 @@ export default function RuotaPopup() {
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState("");
 
+  // DEV: ?ruotaPopup=1 apre il popup comunque (per provarne l'aspetto).
+  useEffect(() => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("ruotaPopup")) setOpen(true);
+  }, []);
+
   useEffect(() => {
     if (!uid || isMainMaster(currentUser?.email)) return;
     let alive = true;
