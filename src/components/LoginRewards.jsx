@@ -2,7 +2,10 @@
 // All'apertura dell'app (e al ritorno in primo piano in un giorno nuovo) chiede
 // al server di contare il login di oggi (callable loginDaily). Se è il primo
 // login del giorno compare il popup con il conto del mese e il premio; i login
-// già contati non mostrano niente. Mai al Master principale, mai agli inattivi.
+// già contati non mostrano niente. Mai agli inattivi. Il Master principale lo
+// vede a OGNI apertura dell'app (una volta per sessione del browser), anche se
+// il login di oggi è già contato, per vedere com'è: il conto e il premio sono
+// quelli veri del suo personaggio.
 // `LoginTrack` = la fila delle tappe, usata anche nel pannello dell'avatar.
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -19,6 +22,7 @@ import { loginState, milestones, monthLabel, romeMonthKey } from "../data/loginR
 import "./LoginRewards.css";
 
 const doneKey = (uid, day) => `login_daily_${uid}_${day}`;
+const masterSeenKey = (uid) => `login_popup_master_${uid}`;
 
 export function LoginTrack({ count, month, compact = false, fresh = 0 }) {
   const { steps, next, won } = loginState({ month, count }, month);
@@ -62,23 +66,37 @@ export default function LoginRewardPopup() {
   }, []);
 
   useEffect(() => {
-    if (!uid || isMainMaster(currentUser?.email)) return;
+    if (!uid) return;
+    const master = isMainMaster(currentUser?.email);
     let alive = true;
     const release = () => { releaseRef.current?.(); releaseRef.current = null; };
     const check = async () => {
       if (releaseRef.current) return; // già in corso
       releaseRef.current = holdGate();
       try {
+        if (master) {
+          try { if (sessionStorage.getItem(masterSeenKey(uid))) { release(); return; } } catch { /* storage bloccato */ }
+        }
         const d = craftDayKey(await serverNow());
-        try { if (localStorage.getItem(doneKey(uid, d))) { release(); return; } } catch { /* storage bloccato */ }
+        if (!master) {
+          try { if (localStorage.getItem(doneKey(uid, d))) { release(); return; } } catch { /* storage bloccato */ }
+        }
         const s = await getDoc(doc(db, "characters", uid));
         if (!alive || !s.exists()) { release(); return; }
         const c = s.data();
-        if (!c.name || isHiddenChar({ ...c, id: uid })) { release(); return; }
-        if (c.loginRewards?.lastDay === d) { try { localStorage.setItem(doneKey(uid, d), "1"); } catch { /* niente */ } release(); return; }
+        if (!master && (!c.name || isHiddenChar({ ...c, id: uid }))) { release(); return; }
+        if (!master && c.loginRewards?.lastDay === d) { try { localStorage.setItem(doneKey(uid, d), "1"); } catch { /* niente */ } release(); return; }
         const { data } = await httpsCallable(functions, "loginDaily")();
         try { localStorage.setItem(doneKey(uid, data.day), "1"); } catch { /* niente */ }
-        if (!alive || data.already) { release(); return; }
+        if (master) try { sessionStorage.setItem(masterSeenKey(uid), "1"); } catch { /* niente */ }
+        if (!alive) { release(); return; }
+        if (data.already) {
+          if (!master) { release(); return; }
+          // Master: login già contato oggi, mostra il popup col conto attuale (premio già preso)
+          const step = milestones(data.month).find((m) => m.n === data.count);
+          setRes({ ...data, amount: 0, big: false, nice: false, already: true, stepAmount: step?.amount || 0 });
+          return;
+        }
         setRes(data); // il cancello si apre alla chiusura del popup
       } catch {
         release(); // niente rete o niente server: si riprova alla prossima apertura
@@ -102,7 +120,7 @@ export default function LoginRewardPopup() {
   }, [res]);
 
   if (!res) return null;
-  const { count, month, amount, big, nice } = res;
+  const { count, month, amount, big, nice, already, stepAmount } = res;
   const { next } = loginState({ month, count }, month);
 
   return createPortal(
@@ -110,7 +128,12 @@ export default function LoginRewardPopup() {
       <div className={`lrw-card${big ? " is-big" : nice ? " is-nice" : ""}`}>
         <span className="lrw-kicker">Bentornato a Eldoria</span>
         <h2 id="lrw-title">{big ? "👑 Gran premio del mese!" : `🗓 ${count}° login di ${monthLabel(month)}`}</h2>
-        {amount > 0 ? (
+        {already ? (
+          <p className="lrw-noprize">
+            Il login di oggi è già contato{stepAmount ? <> (premio di <b>{stepAmount}</b> Corone già riscosso)</> : ""}.
+            {next && <> Al {next.n}° login ne arrivano <b>{next.amount}</b>.</>}
+          </p>
+        ) : amount > 0 ? (
           <p className="lrw-prize">
             <span className="lrw-prize-n">+{amount}</span>
             <span className="lrw-prize-l">Corone del Mercato Nero</span>
