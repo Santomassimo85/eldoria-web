@@ -3,12 +3,16 @@
 // tenerle allineate. Qui servono solo per mostrare cosa si è vinto e cosa manca.
 const STEPS = [
   { n: 1, amount: 2 },
-  { n: 5, amount: 2 },
-  { n: 10, amount: 3, nice: true },
-  { n: 15, amount: 2 },
-  { n: 20, amount: 3 },
+  { n: 3, amount: 2 },
+  { n: 5, amount: 3 },
+  { n: 7, amount: 3 },
+  { n: 10, amount: 6, nice: true },
+  { n: 14, amount: 3 },
+  { n: 18, amount: 4 },
+  { n: 22, amount: 4 },
+  { n: 25, amount: 5 },
 ];
-const BIG_AMOUNT = 5;
+const BIG_AMOUNT = 15;
 const BIG_SLACK = 2;
 
 export const MONTHS_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
