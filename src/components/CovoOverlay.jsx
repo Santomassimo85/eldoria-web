@@ -58,6 +58,18 @@ export default function CovoOverlay() {
     if (!pelle || !soff) return;
     const pc = pelle.getContext("2d"), sc = soff.getContext("2d");
     let W = 0, H = 0, dpr = 1, squame = [], fase = 0, raf = 0, running = true;
+    // Batteria: sul telefono il soffio gira a 30 fps, senza bagliori e a risoluzione 1×;
+    // dopo qualche secondo senza tocchi/scroll si addormenta (resta l'ultimo fotogramma)
+    // e si risveglia al primo gesto. Con "riduci animazioni" dorme quasi subito.
+    const leggero = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900;
+    const PASSO_MS = leggero ? 1000 / 30 : 1000 / 60;
+    const SONNO_MS = reduced ? 1500 : leggero ? 6000 : 20000;
+    const BLUR = leggero ? 0 : 1;
+    let dprS = 1, ultimoFrame = 0, ultimaAttivita = performance.now(), dorme = false;
+    const sveglia = () => {
+      ultimaAttivita = performance.now();
+      if (dorme && running) { dorme = false; ultimoFrame = 0; raf = requestAnimationFrame(frame); }
+    };
     const mouse = { x: -9999, y: -9999, vivo: false };
     const particelle = [];
     const scia = []; // la SCIA: fiamme (Fuoco) o schegge di ghiaccio (Gelo) che seguono mouse e dito
@@ -69,7 +81,7 @@ export default function CovoOverlay() {
     const tocca = (x, y) => {
       const dx = x - ultimo.x, dy = y - ultimo.y;
       const vel = ultimo.x < -1000 ? 0 : Math.min(40, Math.hypot(dx, dy));
-      mouse.x = x; mouse.y = y; mouse.vivo = true;
+      mouse.x = x; mouse.y = y; mouse.vivo = true; sveglia();
       if (!reduced) { const n = 1 + Math.floor(vel / 6); for (let i = 0; i < n && scia.length < 160; i++) scia.push(nasceScia(x - dx * (i / n), y - dy * (i / n), dx, dy)); }
       ultimo = { x, y };
     };
@@ -104,9 +116,10 @@ export default function CovoOverlay() {
     const misura = () => {
       W = window.innerWidth; H = window.innerHeight;
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      pelle.width = soff.width = Math.round(W * dpr);
-      pelle.height = soff.height = Math.round(H * dpr);
-      sc.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dprS = leggero ? 1 : dpr;
+      pelle.width = Math.round(W * dpr); pelle.height = Math.round(H * dpr);
+      soff.width = Math.round(W * dprS); soff.height = Math.round(H * dprS);
+      sc.setTransform(dprS, 0, 0, dprS, 0, 0);
       squame = [];
       const r = 26, dy = r * .78;
       for (let row = -1, y = 0; y < H + r; row++, y += dy)
@@ -124,9 +137,13 @@ export default function CovoOverlay() {
         default:          return { ...base, y: H + 10, vx: (Math.random() - .5) * .35, vy: -(.4 + Math.random() * .9), r: 1 + Math.random() * 2.2 };
       }
     };
-    const frame = () => {
+    const frame = (now = performance.now()) => {
       if (!running) return;
-      fase += .012;
+      if (ultimoFrame && now - ultimoFrame < PASSO_MS - 2) { raf = requestAnimationFrame(frame); return; }
+      // k = quanti "fotogrammi da 60 fps" sono passati: la velocità resta la stessa a 30 fps
+      const k = ultimoFrame ? Math.min(3, (now - ultimoFrame) / (1000 / 60)) : 1;
+      ultimoFrame = now;
+      fase += .012 * k;
       sc.clearRect(0, 0, W, H);
       const [R, G, B] = rgb;
       const alone = sc.createRadialGradient(W * .5, H * .25, 0, W * .5, H * .25, Math.max(W, H) * .55);
@@ -152,7 +169,7 @@ export default function CovoOverlay() {
         const gelo = cristalli();
         for (let i = scia.length - 1; i >= 0; i--) {
           const f = scia[i];
-          f.x += f.vx + Math.sin(fase * 6 + f.y * .05) * .4; f.y += f.vy; f.vy -= gelo ? -.01 : .04; f.vita -= .028; f.rot += f.spin;
+          f.x += (f.vx + Math.sin(fase * 6 + f.y * .05) * .4) * k; f.y += f.vy * k; f.vy -= (gelo ? -.01 : .04) * k; f.vita -= .028 * k; f.rot += f.spin * k;
           if (f.vita <= 0) { scia.splice(i, 1); continue; }
           sc.globalAlpha = Math.max(0, f.vita);
           if (!gelo) {
@@ -160,7 +177,7 @@ export default function CovoOverlay() {
             g.addColorStop(0, `rgba(255,240,200,${(.9 * f.vita).toFixed(2)})`); g.addColorStop(.35, `rgba(${R},${G},${B},.85)`); g.addColorStop(1, "rgba(0,0,0,0)");
             sc.fillStyle = g; sc.beginPath(); sc.arc(f.x, f.y, f.r * (1 + (1 - f.vita)), 0, Math.PI * 2); sc.fill();
           } else {
-            sc.strokeStyle = `rgba(${R},${G},${B},.95)`; sc.lineWidth = 1.2; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 8;
+            sc.strokeStyle = `rgba(${R},${G},${B},.95)`; sc.lineWidth = 1.2; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = BLUR * 8;
             sc.save(); sc.translate(f.x, f.y); sc.rotate(f.rot);
             for (let k = 0; k < 3; k++) { sc.beginPath(); sc.moveTo(-f.r * 1.6, 0); sc.lineTo(f.r * 1.6, 0); sc.stroke(); sc.rotate(Math.PI / 3); }
             sc.restore(); sc.shadowBlur = 0;
@@ -169,18 +186,18 @@ export default function CovoOverlay() {
         }
       }
       if (!reduced) {
-        const max = W < 600 ? 40 : 90;
-        if (particelle.length < max && Math.random() < .5) particelle.push(nasce());
+        const max = leggero ? 24 : 90;
+        if (particelle.length < max && Math.random() < Math.min(1, .5 * k)) particelle.push(nasce());
         for (let i = particelle.length - 1; i >= 0; i--) {
           const p = particelle[i];
           const st = p.st || "braci";
           const ondeggio = st === "spore" ? .6 : st === "neve" ? .45 : .25;
-          p.x += p.vx + Math.sin(fase * 3 + p.y * .01 + (p.seme || 0)) * ondeggio; p.y += p.vy; p.vita -= st === "rune" ? .0022 : .0035; p.rot += p.spin;
+          p.x += (p.vx + Math.sin(fase * 3 + p.y * .01 + (p.seme || 0)) * ondeggio) * k; p.y += p.vy * k; p.vita -= (st === "rune" ? .0022 : .0035) * k; p.rot += p.spin * k;
           if (p.vita <= 0 || p.y < -20 || p.y > H + 20) { particelle.splice(i, 1); continue; }
           sc.globalAlpha = Math.min(1, p.vita * 1.4);
           if (st === "cristalli") {
             // scheggia di ghiaccio: asterisco a sei raggi
-            sc.strokeStyle = `rgba(${R},${G},${B},.9)`; sc.lineWidth = 1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 6;
+            sc.strokeStyle = `rgba(${R},${G},${B},.9)`; sc.lineWidth = 1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = BLUR * 6;
             sc.save(); sc.translate(p.x, p.y); sc.rotate(p.rot);
             for (let k = 0; k < 3; k++) { sc.beginPath(); sc.moveTo(-p.r * 2, 0); sc.lineTo(p.r * 2, 0); sc.stroke(); sc.rotate(Math.PI / 3); }
             sc.restore();
@@ -192,33 +209,34 @@ export default function CovoOverlay() {
           } else if (st === "rune") {
             // runa fluttuante: rombo che pulsa, con un punto d'ambra al centro
             const pulsa = .55 + .45 * Math.sin(fase * 4 + (p.seme || 0));
-            sc.strokeStyle = `rgba(${R},${G},${B},${(.5 + .5 * pulsa).toFixed(2)})`; sc.lineWidth = 1.1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 6 + 8 * pulsa;
+            sc.strokeStyle = `rgba(${R},${G},${B},${(.5 + .5 * pulsa).toFixed(2)})`; sc.lineWidth = 1.1; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = BLUR * (6 + 8 * pulsa);
             sc.save(); sc.translate(p.x, p.y); sc.rotate(p.rot);
             sc.beginPath(); sc.moveTo(0, -p.r * 1.5); sc.lineTo(p.r, 0); sc.lineTo(0, p.r * 1.5); sc.lineTo(-p.r, 0); sc.closePath(); sc.stroke();
             sc.fillStyle = `rgba(255,236,190,${(.35 + .45 * pulsa).toFixed(2)})`; sc.beginPath(); sc.arc(0, 0, Math.max(.8, p.r * .3), 0, Math.PI * 2); sc.fill();
             sc.restore();
           } else if (st === "spore") {
             // spora: bolla velenosa con riflesso, sale ondeggiando
-            sc.strokeStyle = `rgba(${R},${G},${B},.75)`; sc.lineWidth = 1; sc.fillStyle = `rgba(${R},${G},${B},.14)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 5;
+            sc.strokeStyle = `rgba(${R},${G},${B},.75)`; sc.lineWidth = 1; sc.fillStyle = `rgba(${R},${G},${B},.14)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = BLUR * 5;
             sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI * 2); sc.fill(); sc.stroke();
             sc.fillStyle = "rgba(255,255,255,.55)"; sc.beginPath(); sc.arc(p.x - p.r * .35, p.y - p.r * .35, Math.max(.6, p.r * .22), 0, Math.PI * 2); sc.fill();
           } else {
             // brace
-            sc.fillStyle = `rgba(${R},${G},${B},1)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = 8;
+            sc.fillStyle = `rgba(${R},${G},${B},1)`; sc.shadowColor = `rgb(${R},${G},${B})`; sc.shadowBlur = BLUR * 8;
             sc.beginPath(); sc.arc(p.x, p.y, p.r, 0, Math.PI * 2); sc.fill();
           }
           sc.shadowBlur = 0; sc.globalAlpha = 1;
         }
       }
+      if (!scia.length && now - ultimaAttivita > SONNO_MS) { dorme = true; return; }
       raf = requestAnimationFrame(frame);
     };
     const onMove = (e) => tocca(e.clientX, e.clientY);
     const onTouch = (e) => { const t = e.touches[0]; if (t) tocca(t.clientX, t.clientY); };
     let spegni = 0;
     const onTouchEnd = () => { mouse.vivo = false; ultimo = { x: -9999, y: -9999 }; clearTimeout(spegni); spegni = setTimeout(() => { mouse.x = -9999; mouse.y = -9999; }, 1200); };
-    const onVisibility = () => { running = !document.hidden; if (running) raf = requestAnimationFrame(frame); else cancelAnimationFrame(raf); };
+    const onVisibility = () => { running = !document.hidden; cancelAnimationFrame(raf); if (running) { dorme = true; sveglia(); } };
     // cambio respiro (Fuoco/Gelo/Arcano): rileggi il colore, svuota le particelle, ridipingi
-    const ricolora = () => { rgb = elRgb(); particelle.length = 0; dipingiPelle(); };
+    const ricolora = () => { rgb = elRgb(); particelle.length = 0; dipingiPelle(); sveglia(); };
     const moHtml = new MutationObserver(ricolora);
     moHtml.observe(document.documentElement, { attributes: true, attributeFilter: ["data-soffio"] });
     const moBody = new MutationObserver(ricolora);
@@ -231,6 +249,8 @@ export default function CovoOverlay() {
     window.addEventListener("touchmove", onTouch, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    window.addEventListener("scroll", sveglia, { passive: true });
+    window.addEventListener("keydown", sveglia);
     document.addEventListener("visibilitychange", onVisibility);
     raf = requestAnimationFrame(frame);
     return () => {
@@ -241,6 +261,8 @@ export default function CovoOverlay() {
       window.removeEventListener("touchmove", onTouch);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
+      window.removeEventListener("scroll", sveglia);
+      window.removeEventListener("keydown", sveglia);
       document.removeEventListener("visibilitychange", onVisibility);
       moHtml.disconnect(); moBody.disconnect();
     };
