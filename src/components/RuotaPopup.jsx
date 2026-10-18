@@ -15,6 +15,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { serverNow } from "../data/serverClock";
 import { craftDayKey } from "../data/craftingWeek";
 import { RuotaGioco } from "../pages/RuotaExanthia";
+import { waitGate } from "../utils/popupGate";
 
 const seenKey = (uid, day) => `ruota_popup_${uid}_${day}`;
 
@@ -43,6 +44,8 @@ export default function RuotaPopup() {
         const c = s.data();
         if (!c.name || isHiddenChar({ ...c, id: uid })) return;
         if (c.ruota?.lastDay === d) return;
+        await waitGate(); // prima il popup dei premi di login, se c'è
+        if (!alive) return;
         setDay(d);
         setOpen(true);
       } catch { /* niente rete o niente ora del server: niente popup */ }

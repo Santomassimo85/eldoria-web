@@ -267,3 +267,8 @@
     transform-origin: top right;
   }
 }
+
+/* premi del login quotidiano */
+.ld-login { border-bottom: 1px solid rgba(var(--el-rgb), 0.22); }
+.ld-login-count { font-family: var(--font-num, inherit); font-size: .78rem; color: var(--osso-3); white-space: nowrap; }
+.ld-login-body { padding: 2px 12px 12px; max-width: 300px; }

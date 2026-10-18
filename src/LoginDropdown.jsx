@@ -11,6 +11,8 @@ import {
   doc,
 } from "firebase/firestore";
 import { classColor, MASTER_COLOR } from "./utils/classColor";
+import { LoginTrack } from "./components/LoginRewards";
+import { loginState, monthLabel, romeMonthKey } from "./data/loginRewards";
 import "./LoginDropdown.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -43,6 +45,7 @@ export default function LoginDropdown() {
   const [error, setError] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [charData, setCharData] = useState(null);
+  const [loginOpen, setLoginOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -106,6 +109,8 @@ export default function LoginDropdown() {
     }
   };
 
+  const loginMonth = romeMonthKey();
+  const loginInfo = loginState(charData?.loginRewards, loginMonth);
   const rattoRank = getRattoRank(charData?.rattoPoints ?? 0);
   // colore di classe del PG (solo presentazione); il Master veste l'oro chiaro
   const cls = isMaster ? MASTER_COLOR : classColor(charData?.class);
@@ -190,6 +195,28 @@ export default function LoginDropdown() {
               <span className="ld-stat-value ld-stat-value--ratto">{rattoRank}</span>
             </div>
           </div>
+
+          {/* Premi del login quotidiano: quanti login nel mese, premi vinti e mancanti */}
+          {!isMaster && (
+            <div className="ld-login">
+              <button
+                type="button"
+                className="ld-menu-item ld-login-toggle"
+                aria-expanded={loginOpen}
+                onClick={() => setLoginOpen((v) => !v)}
+              >
+                <span>🗓 Login di {monthLabel(loginMonth)}</span>
+                <span className="ld-login-count">
+                  {loginInfo.count}{loginInfo.next ? ` · prossimo al ${loginInfo.next.n}°` : " · completo"} {loginOpen ? "▴" : "▾"}
+                </span>
+              </button>
+              {loginOpen && (
+                <div className="ld-login-body">
+                  <LoginTrack compact count={loginInfo.count} month={loginMonth} />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="ld-divider" />
 

@@ -1544,6 +1544,61 @@ exports.ruotaSpin = onCall(
   },
 );
 
+// ── Premi del login quotidiano (2026-10-18) ─────────────────────────────────
+// Il client la chiama all'apertura dell'app: il giorno lo decide il server,
+// il conto del mese sta in login_days/{mese}_{uid} (solo server). Un giorno già
+// contato restituisce { already: true } senza pagare niente.
+const loginRewards = require("./loginRewards");
+exports.loginDaily = onCall(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const db = admin.firestore();
+    const now = new Date();
+    const day = ruota.romeDayKey(now);
+    const month = day.slice(0, 7);
+    const charRef = db.collection("characters").doc(uid);
+    const dayRef = db.collection("login_days").doc(`${month}_${uid}`);
+    return db.runTransaction(async (tx) => {
+      const [cs, ds] = await Promise.all([tx.get(charRef), tx.get(dayRef)]);
+      if (!cs.exists) throw new HttpsError("failed-precondition", "nochar");
+      const c = cs.data();
+      const prev = ds.exists ? ds.data() : { days: [], paid: [] };
+      const days = prev.days || [];
+      if (days.includes(day)) return { already: true, day, month, count: days.length };
+      const count = days.length + 1;
+      const step = loginRewards.milestones(month).find((m) => m.n === count && !(prev.paid || []).includes(m.n));
+      const amount = step ? step.amount : 0;
+      tx.set(dayRef, {
+        uid, month, name: c.name || uid,
+        days: [...days, day],
+        count,
+        paid: step ? [...(prev.paid || []), step.n] : (prev.paid || []),
+        won: (prev.won || 0) + amount,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      const cur = c.loginRewards || {};
+      tx.update(charRef, {
+        loginRewards: {
+          month,
+          count,
+          lastDay: day,
+          wonMonth: (cur.month === month ? (cur.wonMonth || 0) : 0) + amount,
+          wonTotal: (cur.wonTotal || 0) + amount,
+          logins: (cur.logins || 0) + 1,
+        },
+        ...(amount ? { platinum: FieldValue.increment(amount) } : {}),
+      });
+      return { already: false, day, month, count, amount, big: !!step?.big, nice: !!step?.nice };
+    }).catch((e) => {
+      if (e instanceof HttpsError) throw e;
+      console.error("[login] daily:", e);
+      throw new HttpsError("internal", "Login non registrato.");
+    });
+  },
+);
+
 // ── Registro delle Corone (2026-10-17) ──────────────────────────────────────
 // Ogni variazione di `characters.platinum`, da qualunque parte arrivi (sito,
 // console del browser, REST senza login, server), finisce in `platinum_log`
@@ -1578,7 +1633,7 @@ exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
       .slice(0, 12);
     let source;
     if (authType === "service_account" || authType === "system") {
-      source = keys.includes("ruota") ? "ruota" : "server";
+      source = keys.includes("ruota") ? "ruota" : keys.includes("loginRewards") ? "login" : "server";
     } else if (authType === "app_user") {
       // il Master principale sempre; la co-master solo sui doc degli altri (sul suo è una giocatrice)
       source = byEmail === ADMIN_LOG_EMAILS[0] || (ADMIN_LOG_EMAILS.includes(byEmail) && authId !== uid) ? "master"
@@ -1587,7 +1642,7 @@ exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
       source = "nologin";
     }
     // Sospetto = Corone in più che non arrivano da server o Master.
-    const suspicious = pa > pb && !["ruota", "server", "master"].includes(source);
+    const suspicious = pa > pb && !["ruota", "login", "server", "master"].includes(source);
     let byName = "";
     if (authType === "app_user" && authId) {
       if (authId === uid) byName = after?.name || before?.name || "";

@@ -9,6 +9,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 
 const SOURCE = {
   ruota: "🎡 Ruota",
+  login: "🗓 Premio login",
   server: "⚙ Server",
   master: "🎯 Master",
   self: "🙋 dal giocatore stesso",

@@ -175,6 +175,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Premi del login quotidiano: conto del mese, lo scrive SOLO loginDaily.
+    match /login_days/{dayId} {
+      allow read: if isLoggedIn() && (
+        request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+        request.auth.token.email == "santomassimo85@gmail.com"
+      );
+      allow write: if false;
+    }
+
     // Registro delle Corone: lo scrive solo la function logPlatinumChange.
     match /platinum_log/{logId} {
       allow read: if isLoggedIn() && (
