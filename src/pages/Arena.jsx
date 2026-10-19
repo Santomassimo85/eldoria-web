@@ -3303,6 +3303,9 @@ export default function Arena() {
   // Personaggi d'Arena salvati dal giocatore (4 slot): build completo pronto da
   // ripescare all'iscrizione al torneo. Caricati dalla scheda in openLoadoutPicker.
   const [savedArenaChars, setSavedArenaChars] = useState(() => Array(SAVED_ARENA_SLOTS).fill(null));
+  // Ultimo assetto confermato (iscrizione, cambio d'assetto, sfida): resta sulla
+  // scheda anche dopo il reset settimanale, pronto da riusare con un tocco.
+  const [lastArenaLoadout, setLastArenaLoadout] = useState(null);
   // PG salvato SELEZIONATO (uno solo): `characters.arenaSavedActive` = indice dello slot.
   // Si sceglie con un tocco sulla carta e si usa per torneo e Sfide Libere.
   const [activeSavedSlot, setActiveSavedSlot] = useState(null);
@@ -3793,6 +3796,7 @@ export default function Arena() {
       // PG salvati sempre aggiornati: servono già all'ingresso (prima del loadout).
       setSavedArenaChars(Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => (Array.isArray(d.arenaSavedChars) ? (d.arenaSavedChars[i] ?? null) : null)));
       setActiveSavedSlot(Number.isInteger(d.arenaSavedActive) ? d.arenaSavedActive : null);
+      setLastArenaLoadout(d.arenaLastLoadout?.class ? d.arenaLastLoadout : null);
       setMyArenaWeekly(d.arenaWeekly || null);
     });
   }, [currentUser]);
@@ -4416,6 +4420,21 @@ export default function Arena() {
     title:     pendingTitle || null,
   }));
 
+  // Memorizza l'assetto appena confermato come "ultimo assetto" (con la Bottega
+  // della settimana e la sottoclasse: valgono finché la settimana è la stessa).
+  const rememberLastLoadout = (marketSel, subclassKey) => {
+    if (!currentUser || !charPreview?.class || loadoutContext === "reserve") return;
+    const last = {
+      ...buildSavedCharPayload(),
+      label: `${charPreview.name || "PG"} · ${charPreview.class}`,
+      marketSel: loadoutContext === "tournament" ? [...(marketSel || [])] : [],
+      subclass: subclassKey || null,
+      weekKey: currentWeekKey(),
+    };
+    updateDoc(doc(db, "characters", currentUser.uid), { arenaLastLoadout: last })
+      .catch((e) => console.error("rememberLastLoadout", e));
+  };
+
   const saveArenaCharToSlot = async (slot) => {
     if (!charPreview?.class || !charPreview?.rolledHp) { alert("Completa prima il personaggio (classe, caratteristiche e HP)."); return; }
     const missing = savedCharMissing(buildSavedCharPayload());
@@ -4460,6 +4479,32 @@ export default function Arena() {
     setMasterJoinSetup(false);
     await openLoadoutPicker();
     await loadSavedArenaChar(slot, sc);
+  };
+
+  const joinWithLastLoadout = async () => {
+    if (!lastArenaLoadout) return;
+    setMasterJoinSetup(false);
+    await openLoadoutPicker();
+    await loadSavedArenaChar(null, lastArenaLoadout);
+  };
+  // Riquadro "ultimo assetto usato": sempre disponibile, sopra i PG salvati.
+  const renderLastLoadout = ({ useLabel, onUse }) => {
+    const ll = lastArenaLoadout;
+    if (!ll) return null;
+    const miss = savedCharMissing(ll);
+    const nMk = (ll.marketSel || []).length;
+    return (
+      <div className="saved-chars-block saved-last">
+        <div className="hp-roll-title">↺ Ultimo assetto usato</div>
+        <div className="saved-char-card saved-char-pick is-selected" style={{ "--cls": classColor(ll.class) }}>
+          <div className="saved-char-slot">{ll.savedAt ? new Date(ll.savedAt).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) : "Ultimo"}</div>
+          <div className="saved-char-name">{ll.label}</div>
+          <div className="saved-char-meta">❤ {ll.rolledHp} HP{nMk && ll.weekKey === currentWeekKey() ? ` · 🛒 ${nMk} della Bottega` : ""}</div>
+          {miss.length > 0 && <div className="saved-char-warn">⚠ Da completare: {miss.map((m) => m.label).join(", ")}</div>}
+        </div>
+        <button className="btn-join saved-char-use" onClick={onUse}>{useLabel}</button>
+      </div>
+    );
   };
 
   // Elenco dei PG salvati a selezione singola + CTA "usa questo".
@@ -4537,7 +4582,15 @@ export default function Arena() {
     setPendingDemon(sc.demon || null);
     setPendingConstruct(sc.construct || null);
     setPendingTitle((sc.title && ownedTitles.includes(sc.title)) ? sc.title : null);
-    setPendingMarketSel({});   // Bottega: si riseleziona (catalogo settimanale)
+    // Bottega e sottoclasse: si rimettono solo se l'assetto è di QUESTA settimana
+    // e gli acquisti ci sono ancora (i PG salvati a mano non li hanno: si riscelgono).
+    const sameWeek = sc.weekKey && sc.weekKey === currentWeekKey()
+      && base.arenaWeekly?.weekKey === currentWeekKey();
+    const ownedIds = new Set(sameWeek ? (base.arenaWeekly.purchases || []).map((pu) => pu.itemId) : []);
+    const selInit = {};
+    (sc.marketSel || []).forEach((id) => { if (ownedIds.has(id)) selInit[id] = true; });
+    setPendingMarketSel(selInit);
+    setPendingSubclass(sameWeek && sc.subclass ? sc.subclass : null);
     // Il contesto resta quello da cui si è partiti: caricare un PG salvato dentro
     // una Sfida Libera (anche accettandola) non deve iscrivere al torneo.
     setLoadoutContext((c) => (c === "fun" ? "fun" : "tournament"));
@@ -4739,7 +4792,13 @@ export default function Arena() {
     const owned = (arenaWeekly && arenaWeekly.weekKey === currentWeekKey()) ? (arenaWeekly.purchases || []) : [];
     const savedSel = Array.isArray(snap.loadoutMarketSel)
       ? new Set(snap.loadoutMarketSel)
-      : new Set(owned.filter(pu => actNames.has(pu.name)).map(pu => pu.itemId)); // snapshot di prima
+      : new Set(owned.filter(pu => {   // snapshot di prima: si ricava da quello che aveva addosso
+          if (actNames.has(pu.name)) return true;
+          if ((snap.marketConsumables || []).some(c => c.key === `mk_${pu.itemId}`)) return true;
+          if (pu.category === "armor") return !snap.selectedArmor;
+          const res = Object.keys(pu.payload?.resist || {});
+          return pu.category === "item" && res.length > 0 && res.every(t => snap.marketResist?.[t]);
+        }).map(pu => pu.itemId));
     const marketSelInit = {};
     owned.forEach(pu => { if (savedSel.has(pu.itemId)) marketSelInit[pu.itemId] = true; });
     setPendingStats({ ...(snap.stats || {}) });
@@ -4935,6 +4994,7 @@ export default function Arena() {
         else { console.error("Errore ri-equipaggiamento:", e); alert("⚠ Non sono riuscito a salvare l'assetto. Riprova."); }
         return;
       }
+      rememberLastLoadout(marketSel, subclassKey);
       cancelLoadout();
       return;
     }
@@ -5087,6 +5147,7 @@ export default function Arena() {
       cancelLoadout();
       return;
     }
+    rememberLastLoadout(marketSel, subclassKey);
     cancelLoadout();
   };
 
@@ -11291,6 +11352,10 @@ export default function Arena() {
                   🎭 Stai creando un <strong>PG di Riserva</strong> (Slot {(reserveSlotTarget ?? 0) + 1}) — un bot che entrerà automaticamente quando gli iscritti sono in numero dispari.
                 </div>
               )}
+              {loadoutContext !== "reserve" && renderLastLoadout({
+                useLabel: "↺ Usa l'ultimo assetto",
+                onUse: () => loadSavedArenaChar(null, lastArenaLoadout),
+              })}
               {loadoutContext !== "reserve" && savedArenaChars.some(Boolean) && renderSavedPicker({
                 useLabel: "⚔ Usa",
                 onUse: (i) => loadSavedArenaChar(i),
@@ -12341,6 +12406,10 @@ export default function Arena() {
                           : "sei un Campione: puoi iscriverti"}
                       </div>
                     )}
+                    {!lockedOut && renderLastLoadout({
+                      useLabel: "↺ Iscriviti con l'ultimo assetto",
+                      onUse: joinWithLastLoadout,
+                    })}
                     {!lockedOut && savedArenaChars.some(Boolean) && renderSavedPicker({
                       useLabel: "⚔ Iscriviti con",
                       onUse: joinWithSavedChar,
