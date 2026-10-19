@@ -44,6 +44,7 @@ export default function LoginCounts() {
         const count = ld?.count ?? list.length ?? 0;
         return {
           id: c.id,
+          named: !!c.name,
           name: c.name || ld?.name || c.id,
           hidden: isHiddenChar(c),
           count: ld ? count : mirror ? (lr.count || 0) : 0,
@@ -54,6 +55,8 @@ export default function LoginCounts() {
           wonTotal: lr.wonTotal || 0,
         };
       })
+      // doc senza nome = account senza personaggio (lo crea la presenza o il reset Arena)
+      .filter((r) => r.named || r.count > 0)
       .filter((r) => showHidden || !r.hidden || r.count > 0)
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [chars, days, month, showHidden]);
