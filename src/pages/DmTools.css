@@ -247,3 +247,28 @@ textarea.npcgen-input.dmt-prompt {
 }
 .dmt-preview-k { margin-top: 22px; }
 .dmt-ria-preview { margin-top: 8px; }
+
+/* Login di tutti (2026-10-19) */
+.lgc-bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin: 6px 0 14px; }
+.lgc-month { display: flex; flex-direction: column; gap: 4px; font: .85rem var(--font-sc, inherit); color: var(--osso-2, var(--osso)); }
+.lgc-month .npcgen-input { margin: 0; min-width: 180px; }
+.lgc-check { display: inline-flex; gap: 8px; align-items: center; min-height: 40px; color: var(--osso-2, var(--osso)); cursor: pointer; }
+.lgc-note { margin: 0 0 12px; padding: 8px 12px; border-left: 2px solid var(--el); background: var(--roccia-1); font-size: .9rem; }
+.lgc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.lgc-tile { padding: 10px 12px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .12); border-top: 2px solid var(--el); border-radius: 3px; }
+.lgc-tile b { display: block; font: 700 1.6rem var(--font-num, inherit); color: var(--osso); }
+.lgc-tile span { font-size: .85rem; color: var(--osso-2, var(--osso)); }
+.lgc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lgc-row { padding: 10px 12px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .12); border-radius: 3px; }
+.lgc-row.is-zero { opacity: .62; }
+.lgc-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.lgc-name { font-weight: 700; color: var(--osso); display: inline-flex; align-items: center; gap: 6px; }
+.lgc-name em { font-weight: 400; font-style: normal; font-size: .82rem; color: var(--osso-2, var(--osso)); }
+.lgc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--el); box-shadow: 0 0 6px var(--el); }
+.lgc-count { font: .95rem var(--font-num, inherit); color: var(--osso-2, var(--osso)); white-space: nowrap; }
+.lgc-count b { font-size: 1.3rem; color: var(--el); }
+.lgc-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; font-size: .85rem; color: var(--osso-2, var(--osso)); }
+.lgc-days { display: grid; gap: 2px; margin-top: 8px; }
+.lgc-d { height: 10px; border-radius: 1px; background: var(--roccia-1); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .1); }
+.lgc-d.on { background: var(--el); border-color: var(--el); }
+.lgc-d.future { opacity: .35; }

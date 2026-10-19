@@ -15,6 +15,7 @@ import "./Riassunti.css";
 import "./RiassuntoSingolo.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
+import LoginCounts from "../components/LoginCounts";
 
 // Gruppi di gioco (chiavi come lo Scriptorium/SummaryAdmin) con i membri e i
 // loro avatar (stessi asset di Party.jsx), usati come riferimento per le immagini.
@@ -632,7 +633,9 @@ export default function DmTools() {
           </button>
         </>)}
 
-        {tab !== "cronaca" && (<>
+        {tab === "login" && <LoginCounts />}
+
+        {tab !== "cronaca" && tab !== "login" && (<>
           <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generate} disabled={busy}>
             {busy ? "Sto generando…" : "⚒ Genera"}
           </button>
