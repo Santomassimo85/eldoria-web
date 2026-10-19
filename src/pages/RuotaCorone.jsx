@@ -12,8 +12,8 @@ const SOURCE = {
   login: "🗓 Premio login",
   server: "⚙ Server",
   master: "🎯 Master",
-  self: "🙋 dal giocatore stesso",
-  other: "👤 da un altro giocatore",
+  self: "🙋 dal giocatore (sito)",
+  other: "👤 dal sito di un altro giocatore",
   nologin: "🕳 senza login (macro/console)",
 };
 
@@ -24,12 +24,14 @@ const fmtAt = (iso) => {
 
 export default function RuotaCorone({ masterUid }) {
   const [chars, setChars] = useState([]);
+  const [names, setNames] = useState({});
   const [log, setLog] = useState([]);
   const [who, setWho] = useState("");
   const [onlySus, setOnlySus] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => onSnapshot(collection(db, "characters"), (s) => {
+    setNames(Object.fromEntries(s.docs.map((d) => [d.id, d.data().name || ""])));
     setChars(s.docs.map((d) => ({ uid: d.id, ...d.data() }))
       .filter((c) => c.uid !== masterUid && c.name));
   }), [masterUid]);
@@ -39,6 +41,10 @@ export default function RuotaCorone({ masterUid }) {
     (s) => setLog(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
     () => setErr("Registro delle Corone non leggibile (regole non ancora pubblicate?)."),
   ), []);
+
+  // Nome leggibile: le voci vecchie avevano il codice (uid) al posto del nome.
+  const nameOf = (uid, fallback) => names[uid] || (fallback && fallback !== uid ? fallback : "")
+    || (uid ? `account senza personaggio (${uid.slice(0, 6)}…)` : "");
 
   const dayAgo = Date.now() - 86400000;
   // Gli inattivi (hiddenPlayers) compaiono solo se le loro Corone si sono mosse.
@@ -91,15 +97,16 @@ export default function RuotaCorone({ masterUid }) {
         <ul className="rex-moves">
           {feed.map((e) => (
             <li key={e.id} className={e.suspicious ? "is-sus" : ""}>
-              <span className="rex-move-who">{e.name}</span>
+              <span className="rex-move-who">{nameOf(e.uid, e.name)}</span>
               <strong className={e.delta > 0 ? "up" : "down"}>{e.delta > 0 ? "+" : ""}{e.delta}</strong>
               <span className="rex-move-bal">{e.before} → {e.after}</span>
               <span className="rex-move-src">
                 {e.suspicious ? "⚠ " : ""}{SOURCE[e.source] || e.source}
-                {e.byName && e.source !== "self" ? ` (${e.byName})` : ""}
+                {e.byUid && !["self", "ruota", "login", "server"].includes(e.source) ? ` (${nameOf(e.byUid, e.byName)})` : ""}
                 {e.keys?.length ? ` · insieme a: ${e.keys.join(", ")}` : ""}
               </span>
               <span className="rex-move-at">{fmtAt(e.at)}</span>
+              {e.reason && <span className="rex-move-why">📜 {e.reason}</span>}
             </li>
           ))}
         </ul>

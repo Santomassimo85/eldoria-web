@@ -1626,30 +1626,54 @@ exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
     const uid = event.params.uid;
     const authType = event.authType || "unknown";
     const authId = event.authId || "";
-    const byEmail = authType === "app_user" ? await authEmail(authId) : "";
+    // Firestore NON dice "app_user": chi scrive dal sito arriva come "api_key"
+    // con authId = uid; le functions come "unknown"/"service_account" con
+    // authId = email del service account. Senza login = "unauthenticated".
+    const isServer = authType === "service_account" || authType === "system" || /gserviceaccount.com$/.test(authId);
+    const isUser = !isServer && authType !== "unauthenticated" && !!authId && !authId.includes("@");
+    const byEmail = isUser ? await authEmail(authId) : "";
     // Altri campi toccati nella stessa scrittura: aiutano a capire da dove viene.
     const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])]
       .filter((k) => k !== "platinum" && JSON.stringify(before?.[k]) !== JSON.stringify(after?.[k]))
       .slice(0, 12);
     let source;
-    if (authType === "service_account" || authType === "system") {
+    if (isServer) {
       source = keys.includes("ruota") ? "ruota" : keys.includes("loginRewards") ? "login" : "server";
-    } else if (authType === "app_user") {
+    } else if (isUser) {
       // il Master principale sempre; la co-master solo sui doc degli altri (sul suo è una giocatrice)
       source = byEmail === ADMIN_LOG_EMAILS[0] || (ADMIN_LOG_EMAILS.includes(byEmail) && authId !== uid) ? "master"
         : authId === uid ? "self" : "other";
     } else {
       source = "nologin";
     }
-    // Sospetto = Corone in più che non arrivano da server o Master.
-    const suspicious = pa > pb && !["ruota", "login", "server", "master"].includes(source);
     let byName = "";
-    if (authType === "app_user" && authId) {
+    if (isUser) {
       if (authId === uid) byName = after?.name || before?.name || "";
       else {
         try { byName = (await admin.firestore().collection("characters").doc(authId).get()).data()?.name || ""; } catch { /* niente */ }
       }
     }
+    // Il motivo: quasi ogni movimento dal sito (premi Arena, aste, rimborsi)
+    // manda una notifica al giocatore negli stessi secondi. La si aspetta un
+    // attimo e si copia: così nel registro si legge "Ricompensa Arena…".
+    let reason = "";
+    if (!isServer) {
+      try {
+        await new Promise((r) => setTimeout(r, 6000));
+        const t0 = Date.now() - 6000;
+        const ns = await admin.firestore().collection("notifications")
+          .where("timestamp", ">=", new Date(t0 - 20000))
+          .where("timestamp", "<=", new Date(t0 + 20000))
+          .limit(200).get();
+        const best = ns.docs.map((d) => d.data())
+          .filter((n) => n.userId === uid)
+          .sort((x, y) => Math.abs(x.timestamp.toMillis() - t0) - Math.abs(y.timestamp.toMillis() - t0))[0];
+        if (best) reason = String(best.message || best.title || "").slice(0, 200);
+      } catch (e) { console.warn("[platinum_log] motivo:", e.message); }
+    }
+    // Sospetto = Corone in più senza spiegazione: senza login, oppure dal sito
+    // (giocatore stesso o altro) senza una notifica che lo giustifichi.
+    const suspicious = pa > pb && (source === "nologin" || ((source === "self" || source === "other") && !reason));
     await admin.firestore().collection("platinum_log").add({
       uid,
       name: after?.name || before?.name || uid,
@@ -1662,6 +1686,7 @@ exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
       byUid: authId || null,
       byEmail: byEmail || null,
       byName: byName || null,
+      reason: reason || null,
       keys,
       at: new Date().toISOString(),
       ts: FieldValue.serverTimestamp(),
