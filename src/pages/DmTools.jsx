@@ -132,6 +132,9 @@ const API = "/api/dm-tools";
 export default function DmTools() {
   const [searchParams] = useSearchParams();
   const [tab, setTab]   = useState(() => { const t = searchParams.get("tab"); return ["login", "cronaca", "loot", "citta"].includes(t) ? t : "incontro"; });
+  // link del menu (?tab=…) anche quando la pagina è già aperta
+  const tabParam = searchParams.get("tab");
+  useEffect(() => { if (["login", "cronaca", "loot", "citta", "incontro"].includes(tabParam)) setTab(tabParam); }, [tabParam]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg]   = useState("");
   const [out, setOut]   = useState(null);

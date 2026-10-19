@@ -189,9 +189,11 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
   if (!isDmUser(currentUser?.email)) return null;
   return (
     <NavDropdown label="DM Tools" closeAll={closeMenu} id="dmtools" openId={openId} setOpenId={setOpenId}>
-      <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
-      <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
-      <NavLink to="/dm/generate-session">Genera Sessione</NavLink>
+      <NavLink to="/dm-admin/strumenti" end>Strumenti DM</NavLink>
+      <NavLink to="/dm-admin/strumenti?tab=cronaca">📜 Scrivi la cronaca (AI)</NavLink>
+      <NavLink to="/dm/generate-session">🔮 Genera Sessione (AI)</NavLink>
+      <NavLink to="/dm-admin/genera-npc">🧙 Genera NPC (AI)</NavLink>
+      <NavLink to="/dm-admin/strumenti?tab=login">🗓 Login dei giocatori</NavLink>
       <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
       <NavLink to="/dm-admin/foundry-npc">NPC → Foundry</NavLink>
     </NavDropdown>

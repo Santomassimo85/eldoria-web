@@ -30,8 +30,6 @@ export default function AdminPanel() {
         { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",                 path: "/dm-admin/market" },
         { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà dei player alla Gilda di Obia.",       path: "/dm-admin/reputation" },
         { icon: "🪙", label: "Corone",           desc: "Saldo Corone dei personaggi.",                        path: "/dm-admin/platinum" },
-        { icon: "📜", label: "Scrivi la cronaca (AI)", desc: "Il riassunto della sessione scritto dall'AI dalle tue linee guida.", path: "/dm-admin/strumenti?tab=cronaca" },
-        { icon: "🗓", label: "Login dei giocatori", desc: "Quanti giorni è entrato ognuno, mese per mese.", path: "/dm-admin/strumenti?tab=login" },
       ],
     },
     {
@@ -39,7 +37,6 @@ export default function AdminPanel() {
       items: [
         { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",                 path: "/dm-admin/geo" },
         { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",                   path: "/dm-admin/quests" },
-        { icon: "🧙", label: "Genera NPC",       desc: "Nuovi volti per le strade di Exanthia.",              path: "/dm-admin/genera-npc" },
       ],
     },
     {
@@ -54,7 +51,6 @@ export default function AdminPanel() {
       label: "Sessioni & Comunicazioni", color: "var(--el-2)", glyph: "📅",
       items: [
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
-        { icon: "🔮", label: "Genera Sessione",  desc: "Prep-sessione dei party con Claude.",                 path: "/dm/generate-session" },
         { icon: "🔔", label: "Invia Notifica",   desc: "Messaggio diretto a un giocatore.",                   path: "/dm-admin/send-notif", dashed: true },
       ],
     },
@@ -69,6 +65,10 @@ export default function AdminPanel() {
       label: "Officina del DM", color: "var(--oro)", glyph: "🛠",
       items: [
         { icon: "🛠", label: "Strumenti DM",     desc: "Cronaca, generatori e utilità del Master.",           path: "/dm-admin/strumenti" },
+        { icon: "📜", label: "Scrivi la cronaca (AI)", desc: "Il riassunto della sessione scritto dall'AI dalle tue linee guida.", path: "/dm-admin/strumenti?tab=cronaca" },
+        { icon: "🔮", label: "Genera Sessione (AI)", desc: "Prep-sessione dei party con Claude.",          path: "/dm/generate-session" },
+        { icon: "🧙", label: "Genera NPC (AI)",  desc: "Nuovi volti per le strade di Exanthia.",              path: "/dm-admin/genera-npc" },
+        { icon: "🗓", label: "Login dei giocatori", desc: "Quanti giorni è entrato ognuno, mese per mese.", path: "/dm-admin/strumenti?tab=login" },
         { icon: "📦", label: "Oggetto → Foundry",desc: "Esporta un oggetto in formato Foundry.",              path: "/dm-admin/foundry-item" },
         { icon: "🧾", label: "NPC → Foundry",    desc: "Esporta un NPC in formato Foundry.",                  path: "/dm-admin/foundry-npc" },
       ],
