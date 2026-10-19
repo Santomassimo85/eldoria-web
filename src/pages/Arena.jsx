@@ -12,7 +12,7 @@ import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
 import { awardPetPoints } from "../utils/pet";
-import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey } from "../data/arenaSubclasses";
+import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey, subclassToMount } from "../data/arenaSubclasses";
 import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
@@ -1556,6 +1556,18 @@ const withReadyCheck = (match) => {
   };
 };
 const isAwaitingReady = (m) => m?.readyCheck === true && m.status === "initiative";
+
+// Ri-equipaggiamento del torneo: si può cambiare assetto in pausa Bottega e
+// durante il combattimento quando NON si sta combattendo (match finito, o il
+// prossimo non ancora partito). null = consentito, altrimenti il motivo.
+const reloadoutBlockReason = (meta, uid) => {
+  if (!meta || !uid) return "no";
+  if (!["combat", "shopping"].includes(meta.phase) || meta.tournamentWinner) return "phase";
+  if (!(meta.participants || []).includes(uid) || !meta.characterSnapshots?.[uid]) return "notIn";
+  const live = (meta.matches || []).some(m =>
+    m.kind !== "fun" && m.status !== "finished" && !isAwaitingReady(m) && (m.players || []).some(p => p.id === uid));
+  return live ? "fighting" : null;
+};
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -3707,6 +3719,8 @@ export default function Arena() {
   // reloadoutMode: il partecipante sta ri-equipaggiando durante la finestra di
   // shopping (classe/caratteristiche/HP bloccati; cambia solo equip + acquisti).
   const [reloadoutMode, setReloadoutMode] = useState(false);
+  // Popup "puoi aggiornare l'assetto": chiavi già chiuse in questa visita.
+  const [reloadNudgeOff, setReloadNudgeOff] = useState({});
   const [funAcceptMatchId, setFunAcceptMatchId] = useState(null);
   const [aiMatchPending, setAiMatchPending] = useState(false);
 
@@ -4661,6 +4675,8 @@ export default function Arena() {
   const openReloadout = async () => {
     const snap = arenaMeta?.characterSnapshots?.[currentUser.uid];
     if (!snap) { alert("Non risulti iscritto al torneo in corso."); return; }
+    if (reloadoutBlockReason(arenaMeta, currentUser.uid) === "fighting") { alert("Il tuo match è in corso: potrai cambiare assetto a fine fight."); return; }
+    setCombatModalOpen(false);
     let arenaWeekly = null, ownedTitles = [];
     try {
       const cs = await getDoc(doc(db, "characters", currentUser.uid));
@@ -4678,16 +4694,36 @@ export default function Arena() {
       rolledHp: snap.stats?.maxHp ?? null,   // HP bloccato dal torneo
       hpRerollCount: 99,
     });
+    // L'assetto SALVATO si riapre già compilato (armi, magie, armatura, oggetti,
+    // compagno, Bottega): si cambia solo quello che si vuole. Le opzioni si
+    // ripescano per nome dalle azioni dello snapshot, come per le riserve.
+    const cfg = getLoadoutConfig(snap.class, snap.classLevels?.[getClassKey(snap.class)]);
+    const actNames = new Set((snap.selectedActions || []).map(a => a.name));
+    const pickFrom = (opts) => (opts || []).filter(o => actNames.has(o.name));
+    const itemCounts = { pozione_cura: 0, bomba: 0, pozione_veleno: 0 };
+    (snap.selectedItemKeys || []).forEach(k => { itemCounts[k] = (itemCounts[k] || 0) + 1; });
+    const owned = (arenaWeekly && arenaWeekly.weekKey === currentWeekKey()) ? (arenaWeekly.purchases || []) : [];
+    const savedSel = Array.isArray(snap.loadoutMarketSel)
+      ? new Set(snap.loadoutMarketSel)
+      : new Set(owned.filter(pu => actNames.has(pu.name)).map(pu => pu.itemId)); // snapshot di prima
+    const marketSelInit = {};
+    owned.forEach(pu => { if (savedSel.has(pu.itemId)) marketSelInit[pu.itemId] = true; });
     setPendingStats({ ...(snap.stats || {}) });
-    setPendingWeapons([]); setPendingSpells([]); setPendingSkills([]);
-    setPendingArmor(null); setPendingShield(null);
-    setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
-    setPendingMarketSel({});
+    setPendingWeapons(pickFrom(cfg?.weaponOptions));
+    setPendingSpells(pickFrom(cfg?.spellOptions));
+    setPendingSkills(pickFrom(cfg?.skillOptions));
+    setPendingArmor(snap.selectedArmor || null);
+    setPendingShield(snap.hasShield || null);
+    setPendingItemCounts(itemCounts);
+    setPendingMarketSel(marketSelInit);
     setPendingTitle((snap.titles && snap.titles[0]) || null);
-    setPendingPet(null); setPendingDemon(null); setPendingConstruct(null);
-    // Sottoclasse: se la possiede per la classe del torneo gliela proponiamo già
-    // accesa (anche se l'ha comprata adesso, dopo il primo fight). Può spegnerla.
-    setPendingSubclass(ownedSubclassKey(arenaWeekly, snap.class));
+    setPendingPet(snap.selectedPet || null);
+    setPendingDemon(snap.selectedDemon || null);
+    setPendingConstruct(snap.selectedConstruct || null);
+    // Sottoclasse: resta quella dell'assetto; se l'ha comprata dopo e non l'ha
+    // rifiutata gliela proponiamo già accesa. Può spegnerla.
+    setPendingSubclass(snap.subclass || (snap.subclassDeclined ? null : ownedSubclassKey(arenaWeekly, snap.class)));
+    setLoadoutTab("weapons");
     setLoadoutContext("tournament");
     setReloadoutMode(true);
     setLoadoutPhase("selecting");
@@ -4823,23 +4859,46 @@ export default function Arena() {
       // Resistenze per tipo di danno (armature/oggetti della Bottega, solo torneo):
       // { [tipoDanno]: "resist" | "immune" | "vuln" }. Lette in applyTypedDamage.
       marketResist: marketGear?.resist || {},
+      // Acquisti della Bottega scelti (solo torneo): il ri-equipaggiamento li
+      // ripropone già accesi, così l'assetto resta quello dell'ultima volta.
+      loadoutMarketSel: loadoutContext === "tournament" ? [...marketSel] : [],
+      // Acquisti già visti al momento del salvataggio: il popup avvisa solo dei NUOVI.
+      loadoutSeenIds: loadoutContext === "tournament" && charPreview.arenaWeekly?.weekKey === currentWeekKey()
+        ? (charPreview.arenaWeekly.purchases || []).map(pu => pu.itemId) : [],
     };
 
-    // ── Branch: ri-equipaggiamento durante lo shopping (torneo in corso) ───
-    // Aggiorna lo snapshot del partecipante e ricostruisce il suo posto nel
-    // round in coda, così gli acquisti fatti ora valgono dal prossimo round.
+    // ── Branch: ri-equipaggiamento tra i round (torneo in corso) ───────────
+    // Aggiorna lo snapshot del partecipante: i round successivi si costruiscono
+    // da lì, quindi il nuovo assetto vale da solo per tutti i prossimi match.
+    // Ricostruisce anche il suo posto nel round in coda e nel match del round
+    // già uscito ma non ancora partito (in attesa di «Iniziamo»).
     if (reloadoutMode) {
-      const mergedSnaps = { ...(arenaMeta?.characterSnapshots || {}), [currentUser.uid]: snapshot };
-      const updates = { [`characterSnapshots.${currentUser.uid}`]: snapshot };
-      const pend = arenaMeta?.pendingNextMatches;
-      if (Array.isArray(pend) && pend.length) {
-        updates.pendingNextMatches = pend.map(m =>
-          (m.players || []).some(p => p.id === currentUser.uid)
-            ? { ...m, players: m.players.map(p => p.id === currentUser.uid ? buildPlayerForMatch(currentUser.uid, mergedSnaps) : p) }
-            : m
-        );
+      try {
+        await runTransaction(db, async (tx) => {
+          const ref = doc(db, "arena_meta", "global");
+          const s = await tx.get(ref);
+          if (!s.exists()) return;
+          const d = s.data();
+          const uid = currentUser.uid;
+          if (reloadoutBlockReason(d, uid)) throw new Error("arena-reloadout-locked");
+          const mergedSnaps = { ...(d.characterSnapshots || {}), [uid]: snapshot };
+          const swapMe = (m) => ({ ...m, players: m.players.map(p => p.id === uid ? buildPlayerForMatch(uid, mergedSnaps) : p) });
+          const isMine = (m) => (m.players || []).some(p => p.id === uid);
+          const updates = { [`characterSnapshots.${uid}`]: snapshot };
+          if (Array.isArray(d.pendingNextMatches) && d.pendingNextMatches.length) {
+            updates.pendingNextMatches = d.pendingNextMatches.map(m => isMine(m) ? swapMe(m) : m);
+          }
+          const ms = d.matches || [];
+          if (ms.some(m => m.kind !== "fun" && isMine(m) && isAwaitingReady(m))) {
+            updates.matches = ms.map(m => (m.kind !== "fun" && isMine(m) && isAwaitingReady(m)) ? swapMe(m) : m);
+          }
+          tx.update(ref, updates);
+        });
+      } catch (e) {
+        if (e?.message === "arena-reloadout-locked") alert("⚠ Il tuo match è già iniziato: il nuovo assetto si potrà montare dopo il fight.");
+        else { console.error("Errore ri-equipaggiamento:", e); alert("⚠ Non sono riuscito a salvare l'assetto. Riprova."); }
+        return;
       }
-      await updateDoc(doc(db, "arena_meta", "global"), updates);
       cancelLoadout();
       return;
     }
@@ -10118,11 +10177,63 @@ export default function Arena() {
       {/* Sottoclasse comprata e non ancora montata: "equipaggiarla subito?" */}
       {currentUser && <ArenaSubclassOffer arenaMeta={arenaMeta} uid={currentUser.uid} arenaWeekly={myArenaWeekly} />}
 
+      {/* Popup "aggiorna l'assetto": nuovi acquisti della Bottega non ancora
+          equipaggiati, o pausa Bottega appena aperta. Solo a chi può cambiarlo. */}
+      {currentUser && arenaView !== "join" && !reloadoutBlockReason(arenaMeta, currentUser.uid)
+        && !subclassToMount(arenaMeta, currentUser.uid, myArenaWeekly, currentWeekKey()) && (() => {
+        const snap = arenaMeta.characterSnapshots[currentUser.uid];
+        // In pausa Bottega solo a chi gioca il prossimo round (non agli esclusi dalla finale).
+        if (arenaMeta.phase === "shopping" && Array.isArray(arenaMeta.pendingNextMatches)
+          && !arenaMeta.pendingNextMatches.some(m => (m.players || []).some(p => p.id === currentUser.uid))) return null;
+        const owned = myArenaWeekly?.weekKey === currentWeekKey() ? (myArenaWeekly.purchases || []) : [];
+        const actNames = new Set((snap.selectedActions || []).map(a => a.name));
+        const seen = new Set(Array.isArray(snap.loadoutSeenIds) ? snap.loadoutSeenIds
+          : Array.isArray(snap.loadoutMarketSel) ? snap.loadoutMarketSel
+          : owned.filter(pu => actNames.has(pu.name)).map(pu => pu.itemId));
+        const fresh = owned.filter(pu => !seen.has(pu.itemId));
+        const key = fresh.length
+          ? `buy:${fresh.map(pu => pu.itemId).sort().join(",")}`
+          : arenaMeta.phase === "shopping" ? `shop:${arenaMeta.shopEndsAt || ""}` : null;
+        if (!key || reloadNudgeOff[key]) return null;
+        try { if (sessionStorage.getItem(`arena_reload_nudge_${key}`)) return null; } catch { /* storage bloccato */ }
+        const close = () => {
+          try { sessionStorage.setItem(`arena_reload_nudge_${key}`, "1"); } catch { /* ignora */ }
+          setReloadNudgeOff(prev => ({ ...prev, [key]: true }));
+        };
+        return (
+          <div className="aso-velo" role="dialog" aria-modal="true" aria-labelledby="reload-nudge-titolo">
+            <div className="aso-box">
+              <span className="aso-kicker">{arenaMeta.phase === "shopping" ? "Pausa Bottega" : "Tra un round e l'altro"}</span>
+              <h3 id="reload-nudge-titolo" className="aso-titolo">⚙ Puoi aggiornare il tuo assetto</h3>
+              {fresh.length > 0 ? (
+                <>
+                  <p className="aso-desc">Hai comprato in Bottega {fresh.length === 1 ? "un oggetto che non hai" : `${fresh.length} oggetti che non hai`} ancora equipaggiato:</p>
+                  <ul className="aso-lista">
+                    {fresh.map(pu => (
+                      <li key={pu.itemId}><span aria-hidden="true">{pu.icon || "🎁"}</span> <b>{pu.name}</b> — {describeMarketPurchase(pu)}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="aso-desc">Il round è finito: prima del prossimo puoi cambiare armi, incantesimi, armatura, compagno, oggetti e montare gli acquisti della Bottega.</p>
+              )}
+              <p className="aso-domanda">L'assetto che salvi resta per tutti i prossimi round del torneo.</p>
+              <div className="aso-azioni">
+                <button type="button" className="aso-si" onClick={() => { close(); openReloadout(); }}>⚙ Aggiorna l'assetto</button>
+                {arenaMeta.phase === "shopping" && <a className="aso-no" href="/arena-bottega" onClick={close} style={{ textAlign: "center", textDecoration: "none" }}>🛍 Prima vado in Bottega</a>}
+                <button type="button" className="aso-dopo" onClick={close}>Più tardi</button>
+              </div>
+              <p className="aso-nota">Classe, caratteristiche e PF restano quelli dell'iscrizione. Il pulsante "⚙ Assetto" resta in basso finché non combatti.</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Richiamo FLOTTANTE Pausa Bottega — sempre visibile per i partecipanti,
             in qualunque vista dell'Arena, finché la finestra di shopping è aperta.
             Apre direttamente il ri-equipaggiamento (classe/stat/HP bloccati). ── */}
-      {arenaMeta.phase === "shopping" && !myActiveMatchId
-        && (arenaMeta.participants || []).includes(currentUser?.uid) && (
+      {!myActiveMatchId && currentUser && arenaView !== "join"
+        && !reloadoutBlockReason(arenaMeta, currentUser.uid) && (
         <button
           type="button"
           className="arena-shop-fab"
@@ -10132,8 +10243,10 @@ export default function Arena() {
         >
           <span className="arena-shop-fab-ico" aria-hidden="true">⚙</span>
           <span className="arena-shop-fab-body">
-            <span className="arena-shop-fab-title">Pausa Bottega</span>
-            <span className="arena-shop-fab-sub">Aggiorna assetto · <TimerDisplay expiryDate={arenaMeta.shopEndsAt} /></span>
+            <span className="arena-shop-fab-title">{arenaMeta.phase === "shopping" ? "Pausa Bottega" : "⚙ Assetto"}</span>
+            {arenaMeta.phase === "shopping"
+              ? <span className="arena-shop-fab-sub">Aggiorna assetto · <TimerDisplay expiryDate={arenaMeta.shopEndsAt} /></span>
+              : <span className="arena-shop-fab-sub">Cambia equip per il prossimo match</span>}
           </span>
         </button>
       )}
@@ -11576,6 +11689,8 @@ export default function Arena() {
                     <p className="reloadout-banner-txt">
                       Prepara l'assetto per il <strong>prossimo round</strong>. Cambia pure
                       {" "}<strong>armi, incantesimi, armatura, compagno e oggetti</strong> — e attiva i nuovi acquisti della Bottega.
+                      Trovi già selezionato il tuo assetto attuale: cambia solo quello che vuoi. Quello che confermi
+                      {" "}<strong>resta per tutti i prossimi round</strong>.
                     </p>
                     <p className="reloadout-banner-lock">
                       🔒 Restano bloccati dal torneo: <strong>classe</strong>, <strong>caratteristiche</strong> e <strong>HP</strong>. Non puoi cambiare classe a torneo iniziato.
@@ -13054,9 +13169,17 @@ export default function Arena() {
 
                           {isAwaitingReady(m) && (
                             p.id === currentUser?.uid && isMyMatch && !m.ready?.[p.id] ? (
-                              <button className="btn-init" onClick={() => confirmReady(m.matchId)}>
-                                ✋ Iniziamo
-                              </button>
+                              <>
+                                <button className="btn-init" onClick={() => confirmReady(m.matchId)}>
+                                  ✋ Iniziamo
+                                </button>
+                                {m.kind !== "fun" && (
+                                  <button type="button" className="btn-init" style={{ marginTop: "0.35rem", background: "var(--roccia-3)", color: "var(--osso)", border: "1px solid rgba(var(--el-rgb),.6)" }}
+                                    onClick={openReloadout}>
+                                    ⚙ Cambia equipaggiamento
+                                  </button>
+                                )}
+                              </>
                             ) : (
                               <div className="arena-ready-chip" style={{ fontSize: "0.72rem", fontWeight: 700, marginTop: "0.3rem", color: m.ready?.[p.id] ? "var(--el-2)" : "var(--osso-2)", opacity: m.ready?.[p.id] ? 1 : 0.75 }}>
                                 {m.ready?.[p.id] ? "✓ Pronto" : "⏳ Deve ancora premere «Iniziamo»"}
