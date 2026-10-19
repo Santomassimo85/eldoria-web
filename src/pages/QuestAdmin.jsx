@@ -818,7 +818,11 @@ export default function QuestAdmin() {
                     <span className="qstadm-quest-diff" style={{ background: dm.color }}>
                       {dm.icon} {q.diff}
                     </span>
-                    {q.acceptedBy && <div className="qstadm-quest-accepted">⚔ {q.acceptedBy}</div>}
+                    {q.acceptedBy && (
+                      <div className="qstadm-quest-accepted">
+                        ⚔ {q.acceptedBy}{q.acceptedParty && q.acceptedParty !== "Senza Gruppo" ? ` · ${q.acceptedParty}` : " · senza gruppo"}
+                      </div>
+                    )}
                   </div>
 
                   <div className="qstadm-quest-body">
@@ -832,6 +836,9 @@ export default function QuestAdmin() {
                     >
                       {targetLabel}
                     </span>
+                    {q.acceptedBy && (
+                      <p className="qstadm-quest-zone">🛡 In carico al gruppo <strong>{q.acceptedParty && q.acceptedParty !== "Senza Gruppo" ? q.acceptedParty : "— nessuno (usa 🔧)"}</strong></p>
+                    )}
 
                     {(q.rewardGold > 0 || q.rewardItem) && (
                       <div className="qstadm-quest-rewards">
