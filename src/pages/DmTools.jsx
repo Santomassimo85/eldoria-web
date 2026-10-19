@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
@@ -130,7 +130,8 @@ const styleSuffix = (list, key) => (list.find((s) => s.key === key) || list[0]).
 const API = "/api/dm-tools";
 
 export default function DmTools() {
-  const [tab, setTab]   = useState("incontro");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab]   = useState(searchParams.get("tab") === "login" ? "login" : "incontro");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg]   = useState("");
   const [out, setOut]   = useState(null);
