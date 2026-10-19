@@ -131,7 +131,7 @@ const API = "/api/dm-tools";
 
 export default function DmTools() {
   const [searchParams] = useSearchParams();
-  const [tab, setTab]   = useState(searchParams.get("tab") === "login" ? "login" : "incontro");
+  const [tab, setTab]   = useState(() => { const t = searchParams.get("tab"); return ["login", "cronaca", "loot", "citta"].includes(t) ? t : "incontro"; });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg]   = useState("");
   const [out, setOut]   = useState(null);
@@ -504,7 +504,7 @@ export default function DmTools() {
 
         {/* TAB */}
         <div className="dmt-tabs">
-          {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"], ["cronaca", "📜 Cronaca"]].map(([id, label]) => (
+          {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"], ["cronaca", "📜 Cronaca"], ["login", "🗓 Login"]].map(([id, label]) => (
             <div key={id} className={"dmt-tab" + (tab === id ? " on" : "")}
               onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); setCoverImg(null); setCitySaved(false); setCityMsg(""); }}>
               {label}

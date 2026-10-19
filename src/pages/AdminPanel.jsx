@@ -30,6 +30,7 @@ export default function AdminPanel() {
         { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",                 path: "/dm-admin/market" },
         { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà dei player alla Gilda di Obia.",       path: "/dm-admin/reputation" },
         { icon: "🪙", label: "Corone",           desc: "Saldo Corone dei personaggi.",                        path: "/dm-admin/platinum" },
+        { icon: "📜", label: "Scrivi la cronaca (AI)", desc: "Il riassunto della sessione scritto dall'AI dalle tue linee guida.", path: "/dm-admin/strumenti?tab=cronaca" },
         { icon: "🗓", label: "Login dei giocatori", desc: "Quanti giorni è entrato ognuno, mese per mese.", path: "/dm-admin/strumenti?tab=login" },
       ],
     },
