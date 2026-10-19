@@ -6,7 +6,7 @@ import {
   CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS, RANGER_SPELLS, ARTIFICER_SPELLS,
 } from "../pages/Arena";
 import { weekEndLabel } from "../data/arenaWeek";
-import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS, MALUS_TYPES, MALUS_TYPE_MAP } from "../data/arenaDamageTypes";
+import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS, MALUS_TYPES, MALUS_TYPE_MAP, EFFECT_KINDS, EFFECT_KIND_KEYS } from "../data/arenaDamageTypes";
 
 // ── Catalogo del Master (collection `arena_market_items`) ────────────────────
 // Ogni creazione resta salvata per sempre e può essere rimessa in vetrina in
@@ -54,7 +54,9 @@ const BUFF_TYPES = [
   { key: "dmg", label: "+ Danni" },
   { key: "ac",  label: "+ Classe Armatura" },
   { key: "ts",  label: "+ Tiri Salvezza" },
+  { key: "adv", label: "Vantaggio ai prossimi N attacchi", noAmount: true },
 ];
+const BUFF_NO_AMOUNT = new Set(BUFF_TYPES.filter(b => b.noAmount).map(b => b.key));
 
 const DICE_RE = /^\d{1,2}d\d{1,3}([+-]\d{1,3})?$/;
 
@@ -77,6 +79,7 @@ const EMPTY_FORM = {
   // armatura / oggetto — resistenze per tipo: { [tipo]: "resist"|"immune"|"vuln" }
   acFixed: "12",
   resist: {},
+  retaliate: "",    // armatura: Spine, dadi a chi ti colpisce in mischia (vuoto = niente)
   // pet
   autoHit: false, petHitBonus: "3",
 };
@@ -89,14 +92,17 @@ export function resistSummary(resist) {
     .join(" · ");
 }
 
-const BUFF_SHORT = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS" };
+const BUFF_SHORT = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS", adv: "vantaggio" };
 // Riassunto leggibile di una lista di effetti componibili (extra / all'impatto).
 export function effectsSummary(list) {
   return (list || []).map(e => {
     if (e.kind === "heal")   return `cura ${e.dice}`;
     if (e.kind === "damage") return `${e.dice} danni`;
-    if (e.kind === "buff")   return `+${e.buffAmount} ${BUFF_SHORT[e.buffType] || "bonus"} ${e.buffTurns}t`;
-    if (e.kind === "malus")  { const m = MALUS_TYPE_MAP[e.malusType]; return `${m?.icon || ""}${m?.label || e.malusType}${e.chance != null && +e.chance < 100 ? ` ${e.chance}%` : ""}`; }
+    const pc = e.chance != null && +e.chance < 100 ? ` ${e.chance}%` : "";
+    if (e.kind === "buff")   return e.buffType === "adv" ? `vantaggio ${e.buffTurns} attacchi` : `+${e.buffAmount} ${BUFF_SHORT[e.buffType] || "bonus"} ${e.buffTurns}t`;
+    if (e.kind === "malus")  { const m = MALUS_TYPE_MAP[e.malusType]; return `${m?.icon || ""}${m?.label || e.malusType}${e.malusDice && m?.needsDice ? ` ${e.malusDice}` : ""}${m?.needsTurns ? ` ${e.malusTurns}t` : ""}${pc}`; }
+    if (e.kind === "lifesteal") return `🩸 risucchio ${e.pct || 50}%${pc}`;
+    if (e.kind === "cleanse")   return `✨ purifica${pc}`;
     return "";
   }).filter(Boolean).join(" + ");
 }
@@ -115,13 +121,15 @@ function normalizeFormEffects(list, withChance) {
       base.malusType = m.key;
       if (m.needsDice) base.malusDice = (e.malusDice || "1d4").trim();
       base.malusTurns = m.needsTurns ? Math.max(1, parseInt(e.malusTurns, 10) || 2) : 1;
+    } else if (e.kind === "lifesteal") {
+      base.pct = Math.min(100, Math.max(1, parseInt(e.pct, 10) || 50));
     }
     if (withChance) base.chance = Math.min(100, Math.max(1, parseInt(e.chance, 10) || 100));
     return base;
   }).filter(e => {
     if (e.kind === "damage" || e.kind === "heal") return DICE_RE.test(e.dice || "");
     if (e.kind === "malus" && e.malusDice != null) return DICE_RE.test(e.malusDice);
-    return e.kind === "buff" || e.kind === "malus";
+    return EFFECT_KIND_KEYS.includes(e.kind);
   });
 }
 
@@ -139,7 +147,9 @@ export function marketItemSummary(it) {
         const mt = MALUS_TYPE_MAP[p.malusType] || MALUS_TYPE_MAP.disadvantage;
         base = `${mt.icon} ${mt.label}${mt.needsDice ? ` ${p.malusDice || "1d6"}/turno` : ""}${mt.needsTurns ? ` per ${p.malusTurns || 2} turni` : ""} al bersaglio`;
       } else {
-        base = `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"}`;
+        base = p.buffType === "adv"
+          ? `Vantaggio ai prossimi ${p.buffTurns || 3} attacchi`
+          : `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"}`;
       }
       return `${base}${extrasPart}${usesPart}`;
     }
@@ -161,7 +171,7 @@ export function marketItemSummary(it) {
     }
     case "armor": {
       const r = resistSummary(p.resist);
-      return `CA fissa ${p.acFixed ?? p.acBonus ?? 0}${r ? ` · Resist: ${r}` : ""}`;
+      return `CA fissa ${p.acFixed ?? p.acBonus ?? 0}${r ? ` · Resist: ${r}` : ""}${p.retaliate ? ` · 🌵 Spine ${p.retaliate} a chi ti colpisce in mischia` : ""}`;
     }
     case "pet": {
       const petOnHitPart = p.onHit?.length ? ` · impatto: ${effectsSummary(p.onHit)}` : "";
@@ -183,6 +193,7 @@ function aiVocab() {
     damageTypes: DAMAGE_TYPES.map(t => t.key),
     malusTypes: MALUS_TYPES.map(m => ({ key: m.key, label: m.label, needsDice: !!m.needsDice, needsTurns: !!m.needsTurns })),
     buffTypes: BUFF_TYPES.map(b => ({ key: b.key, label: b.label })),
+    effectKinds: EFFECT_KINDS.map(k => ({ key: k.key, label: k.label })),
     castStats: CAST_STATS.map(s => s.key),
     spells: Object.fromEntries(Object.entries(SPELL_SOURCES).map(([k, src]) => [k, src.spells.map(s => `${s.name} — ${s.info || ""}`)])),
   };
@@ -196,7 +207,7 @@ function aiResist(r) {
 }
 function aiEffects(list, withChance) {
   return (Array.isArray(list) ? list : []).slice(0, 3).map(e => {
-    const kind = ["damage", "heal", "buff", "malus"].includes(e?.kind) ? e.kind : null;
+    const kind = EFFECT_KIND_KEYS.includes(e?.kind) ? e.kind : null;
     if (!kind) return null;
     const out = { kind };
     if (kind === "damage" || kind === "heal") out.dice = okDice(e.dice, "1d6");
@@ -205,6 +216,7 @@ function aiEffects(list, withChance) {
       out.buffAmount = clampInt(e.buffAmount, 1, 5, 1);
       out.buffTurns = clampInt(e.buffTurns, 1, 10, 3);
     }
+    if (kind === "lifesteal") out.pct = clampInt(e.pct, 10, 100, 50);
     if (kind === "malus") {
       // Malus inventato (es. "acid"): si scarta, non lo si traveste da svantaggio.
       if (!MALUS_TYPE_MAP[e.malusType]) return null;
@@ -263,7 +275,7 @@ export function sanitizeAiItem(raw, forcedCat) {
       onHit: aiEffects(p.onHit, true),
     };
   } else if (category === "armor") {
-    payload = { acFixed: clampInt(p.acFixed, 10, 20, 13), resist: aiResist(p.resist) };
+    payload = { acFixed: clampInt(p.acFixed, 10, 20, 13), resist: aiResist(p.resist), ...(okDice(p.retaliate, null) ? { retaliate: okDice(p.retaliate, null) } : {}) };
   } else if (category === "pet") {
     const effect = p.effect === "heal" ? "heal" : "damage";
     payload = {
@@ -359,7 +371,7 @@ export default function ArenaMarketCatalog() {
   const blankEffect = (withChance) => ({
     kind: "malus", dice: "1d6",
     buffType: "hit", buffAmount: "1", buffTurns: "3",
-    malusType: "bleed", malusDice: "1d4", malusTurns: "2",
+    malusType: "bleed", malusDice: "1d4", malusTurns: "2", pct: "50",
     ...(withChance ? { chance: "100" } : {}),
   });
   const addEffect = (field, withChance) => setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), blankEffect(withChance)] }));
@@ -367,12 +379,6 @@ export default function ArenaMarketCatalog() {
   const setEffect = (field, i, key, val) => setForm(prev => ({
     ...prev, [field]: prev[field].map((e, idx) => idx === i ? { ...e, [key]: val } : e),
   }));
-  const EFFECT_KINDS = [
-    { key: "damage", label: "Danno (al nemico)" },
-    { key: "heal",   label: "Cura (a te)" },
-    { key: "buff",   label: "Bonus (a te)" },
-    { key: "malus",  label: "Malus (al nemico)" },
-  ];
   const renderEffectsEditor = (field, { withChance = false, title, hint }) => (
     <div className="am-cat-field am-cat-field--full">
       <span>{title}</span>
@@ -390,9 +396,16 @@ export default function ArenaMarketCatalog() {
               <select className="am-coin-input am-cat-eff-fld" value={e.buffType} onChange={ev => setEffect(field, i, "buffType", ev.target.value)}>
                 {BUFF_TYPES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
               </select>
-              <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Entità (+N)" value={e.buffAmount} onChange={ev => setEffect(field, i, "buffAmount", ev.target.value)} />
-              <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Turni" value={e.buffTurns} onChange={ev => setEffect(field, i, "buffTurns", ev.target.value)} />
+              {!BUFF_NO_AMOUNT.has(e.buffType) && (
+                <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Entità (+N)" value={e.buffAmount} onChange={ev => setEffect(field, i, "buffAmount", ev.target.value)} />
+              )}
+              <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title={e.buffType === "adv" ? "Attacchi" : "Turni"} value={e.buffTurns} onChange={ev => setEffect(field, i, "buffTurns", ev.target.value)} />
             </>)}
+            {e.kind === "lifesteal" && (
+              <span className="am-cat-eff-chance" title="Percentuale del danno inflitto che torna in HP">
+                <input className="am-coin-input am-cat-eff-sm" type="number" min={1} max={100} value={e.pct ?? "50"} onChange={ev => setEffect(field, i, "pct", ev.target.value)} />% del danno
+              </span>
+            )}
             {e.kind === "malus" && (<>
               <select className="am-coin-input am-cat-eff-fld" value={e.malusType} onChange={ev => setEffect(field, i, "malusType", ev.target.value)}>
                 {MALUS_TYPES.map(m => <option key={m.key} value={m.key}>{m.icon} {m.label}</option>)}
@@ -496,6 +509,7 @@ export default function ArenaMarketCatalog() {
         return {
           acFixed: Math.max(1, parseInt(form.acFixed, 10) || 12),
           ...(Object.keys(form.resist || {}).length ? { resist: form.resist } : {}),
+          ...(DICE_RE.test((form.retaliate || "").trim()) ? { retaliate: form.retaliate.trim() } : {}),
         };
       case "pet": {
         if (!DICE_RE.test(form.dice)) return null;
@@ -580,12 +594,12 @@ export default function ArenaMarketCatalog() {
       itemExtras: (p.extras || []).map(e => ({
         kind: e.kind, dice: e.dice || "1d6",
         buffType: e.buffType || "hit", buffAmount: String(e.buffAmount ?? 1), buffTurns: String(e.buffTurns ?? 3),
-        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2),
+        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2), pct: String(e.pct ?? 50),
       })),
       weaponOnHit: (p.onHit || []).map(e => ({
         kind: e.kind, dice: e.dice || "1d6",
         buffType: e.buffType || "hit", buffAmount: String(e.buffAmount ?? 1), buffTurns: String(e.buffTurns ?? 3),
-        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2),
+        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2), pct: String(e.pct ?? 50),
         chance: String(e.chance ?? 100),
       })),
       weaponComponents: (Array.isArray(p.components) && p.components.length)
@@ -593,6 +607,7 @@ export default function ArenaMarketCatalog() {
         : [{ dice: p.dice || "1d8", type: p.ranged ? "perforante" : "tagliente" }],
       acFixed: String(p.acFixed ?? p.acBonus ?? 12),
       resist: p.resist || {},
+      retaliate: p.retaliate || "",
       autoHit: !!p.autoHit,
       petHitBonus: String(p.hitBonus ?? 3),
     };
@@ -924,6 +939,10 @@ export default function ArenaMarketCatalog() {
               <label className="am-cat-field am-cat-field--sm">
                 <span>Classe Armatura totale (CA fissa)</span>
                 <input className="am-coin-input" type="number" min={1} value={form.acFixed} onChange={set("acFixed")} />
+              </label>
+              <label className="am-cat-field am-cat-field--sm">
+                <span>🌵 Spine: danno a chi ti colpisce in mischia (es. 1d6, vuoto = niente)</span>
+                <input className="am-coin-input" type="text" placeholder="1d6" value={form.retaliate} onChange={set("retaliate")} />
               </label>
               <div className="am-cat-field am-cat-field--full">
                 <p className="am-master-note am-cat-note" style={{ marginTop: 0 }}>

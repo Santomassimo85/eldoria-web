@@ -19,7 +19,7 @@ import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
 import { saveChronicle } from "../utils/arenaChronicle";
 import ArenaChronicles, { HpTrace } from "./ArenaChronicles";
-import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, malusTypeLabel } from "../data/arenaDamageTypes";
+import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, malusTypeLabel, EFFECT_KIND_KEYS } from "../data/arenaDamageTypes";
 import "./Arena.css";
 import "./ArenaHero.css";
 import "./ArenaBill.css";
@@ -642,7 +642,7 @@ function resolveWeaponRider(raw, weaponAction, attackerSnap, attackerMP, defende
   const typed = applyTypedDamage(raw + subFlat, weaponAction, critMult, defenderSnap, false);
   const damage = applyDefenderDamageMods(typed.total + subDice.bonus, defenderSnap, defenderMP, false);
   const onHit = (damage > 0 && Array.isArray(weaponAction?.onHit) && weaponAction.onHit.length)
-    ? applyMarketEffects(weaponAction.onHit, attackerMP, defenderMP, true)
+    ? applyMarketEffects(weaponAction.onHit, attackerMP, defenderMP, true, damage)
     : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
   const bits = [];
   if (subFlat) bits.push(`🎓+${subFlat}`);
@@ -1336,7 +1336,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
   let purchases = arenaWeekly.purchases || [];
   if (selectedIds) purchases = purchases.filter(p => selectedIds.has(p.itemId));
   if (!purchases.length) return null;
-  const gear = { acBonus: 0, fixedAc: null, actions: [], consumables: [], resist: {} };
+  const gear = { acBonus: 0, fixedAc: null, actions: [], consumables: [], resist: {}, retaliate: null };
   purchases.forEach(pu => {
     const p = pu.payload || {};
     const qty = Math.max(1, pu.qty || 1);
@@ -1351,6 +1351,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         const fx = p.acFixed ?? p.acBonus ?? 12;
         gear.fixedAc = gear.fixedAc == null ? fx : Math.max(gear.fixedAc, fx);
         if (p.resist) mergeResistMaps(gear.resist, p.resist);
+        if (p.retaliate) gear.retaliate = p.retaliate; // Spine: danno a chi ti colpisce in mischia
         break;
       }
       case "weapon": {
@@ -1395,7 +1396,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         const uses = Math.max(1, p.uses || 1) * qty;
         const extras = normalizeMarketEffects(p.extras);
         // BONUS puro senza extra → resta un'abilità attivabile (comportamento storico).
-        if (p.effect === "buff" && extras.length === 0) {
+        if (p.effect === "buff" && extras.length === 0 && p.buffType !== "adv") {
           const amt = p.buffAmount || 1;
           const turns = (p.buffTurns | 0) > 0 ? (p.buffTurns | 0) : 99; // 0 = tutto il fight
           const base = {
@@ -1449,7 +1450,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         break;
     }
   });
-  return (gear.acBonus || gear.fixedAc != null || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
+  return (gear.acBonus || gear.fixedAc != null || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length || gear.retaliate) ? gear : null;
 }
 
 // ── SPELL SCROLL (Bottega) ────────────────────────────────────────────────
@@ -1726,7 +1727,7 @@ function disadvTag(label, icon = "🌫", cls = "is-debuff") {
 // ── EFFETTI COMPONIBILI (Bottega) ──────────────────────────────────────────
 // Oggetti e armi possono portare PIÙ effetti insieme (danno, cura, bonus, malus).
 // Routing automatico: cura/bonus → chi lo usa/impugna (self); danno/malus → nemico.
-const MARKET_BUFF_LABEL = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS" };
+const MARKET_BUFF_LABEL = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS", adv: "vantaggio" };
 // Patch di un bonus a sé stessi (instantaneo), per tipo.
 function buffPatchFor(buffType, amount, turns) {
   const amt = Math.max(1, parseInt(amount, 10) || 1);
@@ -1736,6 +1737,7 @@ function buffPatchFor(buffType, amount, turns) {
     case "ts":  return { saveFaithTurns: tn, saveFaithBonus: amt };
     case "dmg": return { aidDmgTurns: tn, aidDmgBonus: amt };
     case "hit": return { magicDetectActive: amt, magicDetectAttacks: tn };
+    case "adv": return { selfAdvTurns: tn }; // vantaggio ai prossimi N attacchi
     default:    return {};
   }
 }
@@ -1749,20 +1751,36 @@ function malusPatchFor(mt, dice, turns, p) {
     case "bleed":        return { bleedDoT: true, bleedDoTTurns: Math.max(p?.bleedDoTTurns ?? 0, tn), bleedDoTDice: dc, bleedDoTSourceLabel: "sanguinamento", bleedDoTNoun: "sanguinante", bleedDoTIcon: "🩸" };
     case "poison":       return { poisonDoT: true, poisonDoTTurns: Math.max(p?.poisonDoTTurns ?? 0, tn), poisonDoTDice: dc, poisonDoTSourceLabel: "veleno", poisonDoTNoun: "avvelenato", poisonDoTIcon: "☠" };
     case "burn":         return { poisonDoT: true, poisonDoTTurns: Math.max(p?.poisonDoTTurns ?? 0, tn), poisonDoTDice: dc, poisonDoTSourceLabel: "bruciatura", poisonDoTNoun: "in fiamme", poisonDoTIcon: "🔥" };
+    // Stordito = stesso meccanismo del controllo (salta i suoi turni).
+    case "stun":         return { controlLostTurns: Math.max(p?.controlLostTurns ?? 0, tn) };
+    // Disarmato = arma arroventata: bloccate le armi impugnate adesso (può cambiare arma).
+    case "disarm":       return { weaponLockTurns: Math.max(p?.weaponLockTurns ?? 0, tn), weaponLockNames: p?.equippedWeaponNames || [] };
+    // Accecato = cecità dell'aquila del Ranger (−3 al colpire, scala a fine turno).
+    case "blind":        return { blindDebuff: true, eagleDebuffTurns: Math.max(p?.eagleDebuffTurns ?? 0, tn) };
     default:             return {};
   }
 }
 // Un effetto colpisce il nemico? (danno/malus). Cura/bonus vanno su di sé.
 function effectHitsEnemy(e) { return e && (e.kind === "damage" || e.kind === "malus"); }
+// Risucchio vitale: % del danno inflitto (arma/pet: il colpo; oggetto: il suo danno).
+function lifestealPct(e) { return Math.min(100, Math.max(1, parseInt(e?.pct, 10) || 50)); }
 function effectsHaveEnemyTarget(effects) { return (effects || []).some(effectHitsEnemy); }
 // Applica una lista di effetti. Ritorna { selfPatch, enemyPatch, selfHeal, enemyDmg, logs }.
 // useChance=true (armi): ogni effetto con `chance`<100 tira per attivarsi.
-function applyMarketEffects(effects, selfP, enemyP, useChance) {
+// dealt = danno già inflitto dal colpo che porta gli effetti (per il risucchio).
+function applyMarketEffects(effects, selfP, enemyP, useChance, dealt = 0) {
   let selfPatch = {}, enemyPatch = {}, selfHeal = 0, enemyDmg = 0;
   const logs = [];
+  const steals = [];
   for (const e of (effects || [])) {
     if (!e || !e.kind) continue;
     if (useChance && e.chance != null && e.chance < 100 && (Math.random() * 100) >= e.chance) continue;
+    if (e.kind === "lifesteal") { steals.push(lifestealPct(e)); continue; }
+    if (e.kind === "cleanse") {
+      selfPatch = { ...selfPatch, ...clearDebuffs(selfP) };
+      logs.push("✨ malus rimossi");
+      continue;
+    }
     if (e.kind === "heal") {
       const { total } = rollDmg(e.dice || "2d8"); selfHeal += total; logs.push(`💚 +${total} HP`);
     } else if (e.kind === "damage") {
@@ -1772,8 +1790,14 @@ function applyMarketEffects(effects, selfP, enemyP, useChance) {
       logs.push(`✨ +${e.buffAmount} ${MARKET_BUFF_LABEL[e.buffType] || "bonus"} ${Math.max(1, e.buffTurns || 1)}t`);
     } else if (e.kind === "malus") {
       enemyPatch = { ...enemyPatch, ...malusPatchFor(e.malusType, e.malusDice, e.malusTurns, { ...enemyP, ...enemyPatch }) };
-      logs.push(`☠ ${malusTypeLabel(e.malusType)}`);
+      logs.push(`${MALUS_TYPE_MAP[e.malusType]?.icon || "☠"} ${malusTypeLabel(e.malusType)}`);
     }
+  }
+  // Il risucchio si calcola alla fine, sul danno del colpo + quello degli effetti.
+  for (const pct of steals) {
+    const base = Math.max(0, (dealt || 0) + enemyDmg);
+    const heal = Math.floor(base * pct / 100);
+    if (heal > 0) { selfHeal += heal; logs.push(`🩸 risucchia ${heal} HP`); }
   }
   return { selfPatch, enemyPatch, selfHeal, enemyDmg, logs };
 }
@@ -1788,7 +1812,7 @@ function primaryToEffect(p) {
   }
 }
 function normalizeMarketEffects(arr) {
-  return (Array.isArray(arr) ? arr : []).filter(e => e && ["heal", "damage", "buff", "malus"].includes(e.kind));
+  return (Array.isArray(arr) ? arr : []).filter(e => e && EFFECT_KIND_KEYS.includes(e.kind));
 }
 function marketEffectsInfo(effects) {
   return (effects || []).map(e => {
@@ -1796,6 +1820,8 @@ function marketEffectsInfo(effects) {
     if (e.kind === "damage") return `${e.dice || "2d6"} danni`;
     if (e.kind === "buff")   return `+${e.buffAmount || 1} ${MARKET_BUFF_LABEL[e.buffType] || "bonus"} ${Math.max(1, e.buffTurns || 1)}t`;
     if (e.kind === "malus")  return `${malusTypeLabel(e.malusType)}${e.chance != null && e.chance < 100 ? ` ${e.chance}%` : ""}`;
+    if (e.kind === "lifesteal") return `risucchio ${lifestealPct(e)}%${e.chance != null && e.chance < 100 ? ` ${e.chance}%` : ""}`;
+    if (e.kind === "cleanse") return "purifica";
     return "";
   }).filter(Boolean).join(" · ");
 }
@@ -2065,6 +2091,13 @@ function classInBracket(cls, classLevels, bracketKey) {
 // Effetto della sottoclasse scelta, letto dallo snapshot (snap.subclass = chiave opzione).
 function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
+}
+// Ritorsione del difensore: quella della sottoclasse, altrimenti le Spine
+// dell'armatura della Bottega (stesse regole: mischia, primo colpo del turno).
+function defenderRetaliate(snap) {
+  const eff = getSubclassEffect(snap);
+  if (eff.retaliate) return eff;
+  return snap?.marketRetaliate ? { retaliate: snap.marketRetaliate, retaliateLabel: "🌵 Spine" } : eff;
 }
 // Sottoclasse comprata in Bottega QUESTA settimana per la classe (chiave o null).
 // Vive in characters.arenaWeekly.subclasses = { [classKey]: subclassKey }.
@@ -2463,7 +2496,7 @@ function readSpellSlots(matchPlayer, lvl) {
 }
 // Usi visibili in UI per un'azione: null = illimitato / nessun contatore.
 function readSpellUsesLeft(matchPlayer, snap, action) {
-  if (action?.type === "spell" && usesSharedSpellSlots(snap)) {
+  if (action?.type === "spell" && !action.isScroll && usesSharedSpellSlots(snap)) {
     const lvl = action.level ?? 0;
     if (lvl === 0) return null;
     return readSpellSlots(matchPlayer, lvl);
@@ -2475,7 +2508,8 @@ function readSpellUsesLeft(matchPlayer, snap, action) {
 // Patch immutabile del consumo: {spellSlots} per lo Stregone (spell con
 // livello), {actionUsesLeft} per tutto il resto, {} se illimitato.
 function spendSpellUse(matchPlayer, snap, action) {
-  if (action?.type === "spell" && usesSharedSpellSlots(snap)) {
+  // Le pergamene della Bottega usano le LORO cariche anche per lo Stregone.
+  if (action?.type === "spell" && !action.isScroll && usesSharedSpellSlots(snap)) {
     const lvl = action.level ?? 0;
     if (lvl === 0) return {};
     const cur = readSpellSlots(matchPlayer, lvl);
@@ -4859,6 +4893,8 @@ export default function Arena() {
       // Resistenze per tipo di danno (armature/oggetti della Bottega, solo torneo):
       // { [tipoDanno]: "resist" | "immune" | "vuln" }. Lette in applyTypedDamage.
       marketResist: marketGear?.resist || {},
+      // Spine dell'armatura della Bottega (dadi di ritorno a chi colpisce in mischia).
+      marketRetaliate: marketGear?.retaliate || null,
       // Acquisti della Bottega scelti (solo torneo): il ri-equipaggiamento li
       // ripropone già accesi, così l'assetto resta quello dell'ultima volta.
       loadoutMarketSel: loadoutContext === "tournament" ? [...marketSel] : [],
@@ -6776,7 +6812,7 @@ export default function Arena() {
 
     // Sottoclasse (Fase 2) · Ritorsione: se l'IA colpisce in MISCHIA un giocatore con una
     //   sottoclasse difensiva (Tempesta/Battaglia) e il giocatore sopravvive, l'IA subisce danni.
-    const _aiDefRetaliate = getSubclassEffect(targetSnap);
+    const _aiDefRetaliate = defenderRetaliate(targetSnap);
     // Bilanciamento: la ritorsione scatta solo sul PRIMO attacco del turno (max 1/turno).
     const aiRetaliateDmg = (isHit && !aiWpnRanged && chosen.type === "weapon" && isFirstAttackThisTurn && _aiDefRetaliate.retaliate && ((tgtMatchPlayer?.hp ?? 0) - damage) > 0)
       ? rollDmg(_aiDefRetaliate.retaliate).total : 0;
@@ -6788,7 +6824,7 @@ export default function Arena() {
     const aiStaggerLog = aiStaggerApplies ? `✊ ${aiSnap.name} sbilancia ${target.name}: il suo prossimo attacco è a svantaggio!` : null;
     // Arma della Bottega dell'IA con effetti all'impatto (malus al giocatore / bonus a sé).
     const _aiOnHit = (isHit && damage > 0 && Array.isArray(chosen.onHit) && chosen.onHit.length)
-      ? applyMarketEffects(chosen.onHit, aiPlayer, tgtMatchPlayer, true)
+      ? applyMarketEffects(chosen.onHit, aiPlayer, tgtMatchPlayer, true, damage)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const aiOnHitLog = _aiOnHit.logs.length ? `⚔️ ${chosen.name} all'impatto → ${_aiOnHit.logs.join(" · ")}` : null;
 
@@ -7675,7 +7711,7 @@ export default function Arena() {
     // Sottoclasse (Fase 2) · Ritorsione (Chierico Tempesta 2d8, Artefice Battaglia 1d4):
     //   chi colpisce in MISCHIA un difensore con questo effetto subisce danni di ritorno,
     //   ma solo se il difensore SOPRAVVIVE al colpo (così si evita il KO reciproco/stallo).
-    const _defRetaliate = getSubclassEffect(defenderSnap);
+    const _defRetaliate = defenderRetaliate(defenderSnap);
     // Bilanciamento: la ritorsione scatta solo sul PRIMO attacco del turno (max 1/turno).
     const _isFirstHitOfTurn = (attackerMatchPlayer?.multiActionsUsed ?? 0) === 0;
     const retaliateDmg = (isHit && isMeleeWeaponAtk && _isFirstHitOfTurn && _defRetaliate.retaliate && ((defMatchPlayer?.hp ?? 0) - damage) > 0)
@@ -7691,7 +7727,7 @@ export default function Arena() {
     const elementalLog = _elemStatus.note ? `${defName} — ${_elemStatus.note}` : null;
     // Arma della Bottega con effetti all'impatto (malus al nemico / bonus a te, con % propria).
     const _onHit = (isHit && damage > 0 && !isSpellAction && Array.isArray(action.onHit) && action.onHit.length)
-      ? applyMarketEffects(action.onHit, attackerMatchPlayer, defMatchPlayer, true)
+      ? applyMarketEffects(action.onHit, attackerMatchPlayer, defMatchPlayer, true, damage)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const onHitLog = _onHit.logs.length ? `⚔️ ${action.name} all'impatto → ${_onHit.logs.join(" · ")}` : null;
 
@@ -8330,7 +8366,7 @@ export default function Arena() {
     const dmg = missed ? 0 : applyDefenderDamageMods(rawDmg, targetSnap, targetPlayer, false);
     // Effetti all'impatto del pet della Bottega (malus al nemico / bonus al padrone, con %).
     const _petOnHit = (!missed && dmg > 0 && Array.isArray(action.onHit) && action.onHit.length)
-      ? applyMarketEffects(action.onHit, me, targetPlayer, true)
+      ? applyMarketEffects(action.onHit, me, targetPlayer, true, dmg)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const petOnHitLog = _petOnHit.logs.length ? `${action.icon} ${action.name} all'impatto → ${_petOnHit.logs.join(" · ")}` : null;
     const updatedMatches = arenaMeta.matches.map(m => {

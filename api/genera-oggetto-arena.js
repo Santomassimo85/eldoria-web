@@ -30,6 +30,9 @@ EFFETTO COMPONIBILE (usato in "extras" e "onHit"), uno di:
   {"kind":"buff","buffType":<BUFF>,"buffAmount":1-3,"buffTurns":1-5}  → bonus a sé
   {"kind":"malus","malusType":<MALUS>,"malusDice":"1d4","malusTurns":1-4} → malus al nemico
      (malusDice solo se il malus lo richiede, malusTurns solo se li richiede)
+  {"kind":"lifesteal","pct":10-100}                    → risucchio vitale: cura la % del danno inflitto (armi/pet: il colpo)
+  {"kind":"cleanse"}                                   → purifica: toglie i malus a chi lo usa
+  Con buffType "adv" (vantaggio) buffTurns = numero di attacchi e buffAmount non conta.
   In "onHit" ogni effetto ha anche "chance": 1-100 (probabilità all'impatto).
 
 PAYLOAD PER CATEGORIA:
@@ -43,7 +46,7 @@ PAYLOAD PER CATEGORIA:
 - spell (pergamena): {"spellClass":<CLASSE>,"spellName":<NOME ESATTO dalla lista>,"charges":1-3,"castStat":<STAT>,"castStatMin":0-16,"slotCost":{"1":0-2,"2":0-2,"3":0-2}}
     La spell DEVE essere copiata identica dalla lista della sua classe. slotCost facoltativo.
 - weapon: {"components":[{"dice":"1d8","type":<TIPO_DANNO>}, ...1-3 componenti],"hitBonus":0-2,"ranged":bool,"twoHanded":bool,"onHit":[...0-2 effetti con chance]}
-- armor: {"acFixed":11-19,"resist":{<TIPO_DANNO>:"resist"|"immune"|"vuln"}}  (resist facoltativo, CA FISSA che sostituisce quella base)
+- armor: {"acFixed":11-19,"resist":{<TIPO_DANNO>:"resist"|"immune"|"vuln"},"retaliate":"1d6"}  (resist e retaliate facoltativi, CA FISSA che sostituisce quella base; retaliate = Spine, danno a chi colpisce in mischia)
 - pet (azione bonus): {"effect":"damage"|"heal","dice":"2d6","autoHit":bool,"hitBonus":0-5,"uses":1-4,"onHit":[...solo se effect damage]}`;
 
 async function callGemini(geminiKey, prompt) {

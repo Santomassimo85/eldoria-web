@@ -40,7 +40,23 @@ export const MALUS_TYPES = [
   { key: "poison",       label: "Veleno",                            icon: "☠",  needsDice: true,  needsTurns: true },
   { key: "burn",         label: "Bruciatura (in fiamme)",            icon: "🔥", needsDice: true,  needsTurns: true },
   { key: "freeze",       label: "Congelato (svantaggio 1 attacco)",  icon: "🧊", needsDice: false, needsTurns: false },
+  // 2026-10-19: stati che il motore aveva già (controllo, arma arroventata, cecità dell'aquila).
+  { key: "stun",         label: "Stordito (salta il turno)",         icon: "💫", needsDice: false, needsTurns: true },
+  { key: "disarm",       label: "Disarmato (armi impugnate bloccate)", icon: "🔩", needsDice: false, needsTurns: true },
+  { key: "blind",        label: "Accecato (−3 ai tiri per colpire)", icon: "🙈", needsDice: false, needsTurns: true },
 ];
+
+// Tipi di effetto componibili (extra degli oggetti, impatto di armi e pet).
+// cura/bonus/risucchio/purifica → su chi lo usa; danno/malus → sul nemico.
+export const EFFECT_KINDS = [
+  { key: "damage",    label: "Danno (al nemico)" },
+  { key: "heal",      label: "Cura (a te)" },
+  { key: "buff",      label: "Bonus (a te)" },
+  { key: "malus",     label: "Malus (al nemico)" },
+  { key: "lifesteal", label: "Risucchio vitale (cura % del danno)" },
+  { key: "cleanse",   label: "Purifica (toglie i tuoi malus)" },
+];
+export const EFFECT_KIND_KEYS = EFFECT_KINDS.map((k) => k.key);
 export const MALUS_TYPE_MAP = Object.fromEntries(MALUS_TYPES.map((m) => [m.key, m]));
 export function malusTypeLabel(key) { return MALUS_TYPE_MAP[key]?.label || key || ""; }
 
