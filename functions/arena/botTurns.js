@@ -13,14 +13,14 @@
 // chiuso, telefono in tasca — il bot agisce lato server con questo motore semplice.
 // Non dipendono dalla fase del torneo né dalla pausa del Master.
 
-const ARENA_TURN_DURATION = 60 * 60 * 1000; // 1h (allineato al client)
-const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000; // 10 min (allineato al client)
+const ARENA_TURN_DURATION = 5 * 60 * 1000; // 5 min (allineato al client)
+const ARENA_INITIATIVE_DURATION = 5 * 60 * 1000; // 5 min (allineato al client)
 const FUN_IDLE_MS = 90 * 1000;
 // Da quanto è fermo il turno: turnExpiry è "inizio turno + durata", quindi
 // inizio = turnExpiry − durata (per l'iniziativa vale createdAt se c'è).
 function idleMs(m, now) {
   if (m.status === "initiative") {
-    const t0 = m.createdAt ? Date.parse(m.createdAt) : (m.turnExpiry ? Date.parse(m.turnExpiry) - ARENA_INITIATIVE_DURATION : NaN);
+    const t0 = (m.readyAt || m.createdAt) ? Date.parse(m.readyAt || m.createdAt) : (m.turnExpiry ? Date.parse(m.turnExpiry) - ARENA_INITIATIVE_DURATION : NaN);
     return Number.isFinite(t0) ? now - t0 : 0;
   }
   const t0 = m.turnExpiry ? Date.parse(m.turnExpiry) - ARENA_TURN_DURATION : NaN;
@@ -141,6 +141,7 @@ async function runArenaBotTurns(admin) {
     const newMatches = matches.map((m) => {
       if (!m || m.ai !== true || !m.aiId) return m;
       if (m.status !== "initiative" && m.status !== "active") return m; // niente da fare
+      if (m.readyCheck === true) return m; // aspetta che gli umani premano "Iniziamo"
       if (m.kind === "fun") {
         // Sfida all'IA: interviene solo se il client dello sfidante non ha agito da FUN_IDLE_MS.
         if (idleMs(m, now) < FUN_IDLE_MS) return m;

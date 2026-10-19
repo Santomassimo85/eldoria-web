@@ -1525,8 +1525,9 @@ function formatPrizeConfig(cfg) {
   return [line("🥇", cfg.first), line("🥈", cfg.second), line("🎟", cfg.participant)].filter(Boolean).join("   ");
 }
 
-const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
-const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
+// Il timer parte solo dopo che entrambi hanno premuto "Iniziamo" (sono live): 5 minuti a testa.
+const ARENA_INITIATIVE_DURATION = 5 * 60 * 1000;       // 5 minuti per tirare iniziativa
+const ARENA_TURN_DURATION       = 5 * 60 * 1000;       // 5 minuti per fare la propria azione
 const ARENA_SHOP_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora di acquisti tra un round e l'altro
 const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
 
@@ -1539,6 +1540,22 @@ let _arenaClockOffset = 0;
 const arenaNow = () => Date.now() + _arenaClockOffset;
 // Margine prima di considerare scaduto un turno (piccoli scarti residui fra dispositivi).
 const ARENA_EXPIRY_GRACE_MS = 20 * 1000;
+
+// ── CONFERMA "INIZIAMO" (2026-10-19) ──────────────────────────────────────────
+// Ogni match nasce con readyCheck: niente timer e niente iniziativa finché ogni
+// giocatore umano non ha premuto "Iniziamo" (i bot sono pronti da sé). Quando
+// l'ultimo conferma parte l'iniziativa, col suo timer.
+const isArenaBotId = (id) => typeof id === "string" && id.startsWith(AI_BOT_PREFIX);
+const withReadyCheck = (match) => {
+  const ready = {};
+  (match.players || []).forEach(p => { if (isArenaBotId(p.id)) ready[p.id] = true; });
+  if ((match.players || []).every(p => ready[p.id])) return match; // solo bot: parte subito
+  return {
+    ...match, readyCheck: true, ready, turnExpiry: null,
+    logs: [...(match.logs || []), "✋ Il timer parte quando entrambi premono «Iniziamo»."],
+  };
+};
+const isAwaitingReady = (m) => m?.readyCheck === true && m.status === "initiative";
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -4863,7 +4880,7 @@ export default function Arena() {
         // ── SFIDA L'IA: crea un match già pronto al lancio (initiative).
         const matchId = `FUN_AI_${Date.now()}_${currentUser.uid}`;
         const { aiUid, snapshot: aiSnap, playerObj: aiPlayerObj, archetype } = makeAiSnapshotAndPlayer(matchId);
-        const newMatch = {
+        const newMatch = withReadyCheck({
           matchId,
           kind: "fun",
           ai: true,
@@ -4884,7 +4901,7 @@ export default function Arena() {
           participantsAwarded: [],
           isFFA: false,
           createdAt: new Date().toISOString(),
-        };
+        });
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: [...(arenaMeta.matches || []), newMatch],
           [`characterSnapshots.${currentUser.uid}`]: snapshot,
@@ -4904,15 +4921,15 @@ export default function Arena() {
         }
         const updatedMatches = (arenaMeta.matches || []).map(m => {
           if (m.matchId !== funAcceptMatchId) return m;
-          return {
+          return withReadyCheck({
             ...m,
             opponentId: currentUser.uid,
             players: [...(m.players || []), playerObj],
             status: "initiative",
             turn: null,
-            turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
-            logs: [...(m.logs || []), `⚔ ${snapshot.name || "?"} accetta la sfida! Tirate iniziativa.`],
-          };
+            turnExpiry: null,
+            logs: [...(m.logs || []), `⚔ ${snapshot.name || "?"} accetta la sfida!`],
+          });
         });
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: updatedMatches,
@@ -5415,7 +5432,7 @@ export default function Arena() {
     const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
     const schedule = roundRobinSchedule(ids);
     const pairs = schedule[round - 1] || [];
-    return pairs.map((pair, idx) => withAiFlags({
+    return pairs.map((pair, idx) => withReadyCheck(withAiFlags({
       matchId: `G${group}_R${round}_M${idx}`,
       kind: "group",
       group,
@@ -5423,10 +5440,10 @@ export default function Arena() {
       status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
       logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
       isFFA:  false,
-    }, snapshots));
+    }, snapshots)));
   };
 
-  const buildFinalMatch = (winnerA, winnerB, snapshots) => withAiFlags({
+  const buildFinalMatch = (winnerA, winnerB, snapshots) => withReadyCheck(withAiFlags({
     matchId: "FINAL_M0",
     kind: "final",
     group: null,
@@ -5434,7 +5451,7 @@ export default function Arena() {
     status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
     logs:   ["🏆 La Finale ha inizio!"], winner: null, participantsAwarded: [],
     isFFA:  false,
-  }, snapshots);
+  }, snapshots));
 
   const computeGroupStandings = (group, matches) => {
     const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
@@ -5618,20 +5635,20 @@ export default function Arena() {
     const scheduleB = roundRobinSchedule(groupB);
     const r1Matches = [];
     (scheduleA[0] || []).forEach((pair, idx) => {
-      r1Matches.push(withAiFlags({
+      r1Matches.push(withReadyCheck(withAiFlags({
         matchId: `GA_R1_M${idx}`, kind: "group", group: "A",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
         status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
-      }, snapshots));
+      }, snapshots)));
     });
     (scheduleB[0] || []).forEach((pair, idx) => {
-      r1Matches.push(withAiFlags({
+      r1Matches.push(withReadyCheck(withAiFlags({
         matchId: `GB_R1_M${idx}`, kind: "group", group: "B",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
         status: "initiative", turn: null, turnExpiry: new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
-      }, snapshots));
+      }, snapshots)));
     });
     // Edge case: a group with a single player has no matches in round 1; if both groups generated nothing,
     // jump straight to the final between the two lone players.
@@ -5796,7 +5813,49 @@ export default function Arena() {
     return players[nextIndex].id;
   };
 
+  // "Iniziamo": transazione sul match fresco, così le due conferme quasi
+  // simultanee si sommano invece di sovrascriversi. `force` = il Master avvia
+  // il match anche se qualcuno non ha confermato.
+  const confirmReady = async (matchId, { force = false } = {}) => {
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, "arena_meta", "global");
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const matches = snap.data().matches || [];
+        const m = matches.find(x => x.matchId === matchId);
+        if (!m || !isAwaitingReady(m)) return;
+        const isPlayer = (m.players || []).some(p => p.id === currentUser.uid);
+        if (!force && !isPlayer) return;
+        const ready = { ...(m.ready || {}) };
+        const logs = [...(m.logs || [])];
+        if (force) {
+          m.players.forEach(p => { ready[p.id] = true; });
+          logs.push("▶ Il Master avvia il match.");
+        } else {
+          if (ready[currentUser.uid]) return;
+          ready[currentUser.uid] = true;
+          const me = m.players.find(p => p.id === currentUser.uid);
+          logs.push(`✋ ${me?.name || "?"} è pronto.`);
+        }
+        const allReady = m.players.every(p => ready[p.id]);
+        if (allReady) logs.push("⚔ Si comincia! Tirate iniziativa.");
+        const next = {
+          ...m, ready, logs,
+          readyCheck: !allReady,
+          turnExpiry: allReady ? new Date(arenaNow() + ARENA_INITIATIVE_DURATION).toISOString() : null,
+          ...(allReady ? { readyAt: new Date(arenaNow()).toISOString() } : {}),
+        };
+        tx.update(ref, { matches: matches.map(x => x.matchId === matchId ? next : x) });
+      });
+    } catch (e) {
+      console.error("Errore conferma Iniziamo:", e);
+      alert("⚠ Non sono riuscito a confermare. Riprova.");
+    }
+  };
+
   const rollInit = async (matchId) => {
+    if (isAwaitingReady(arenaMeta.matches?.find(m => m.matchId === matchId))) return;
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const dex    = mySnap?.stats?.dex ?? 0;
     const _initCls = (mySnap?.class || "").toLowerCase();
@@ -6800,6 +6859,7 @@ export default function Arena() {
       for (const m of meta.matches) {
         if (m?.ai !== true || m.kind !== "fun" || m.aiOwnerId !== uid) continue;
         if (m.status !== "initiative" && m.status !== "active") continue;
+        if (isAwaitingReady(m)) continue; // l'umano non ha ancora premuto "Iniziamo"
         const aiId = m.aiId;
         const aiPlayer = m.players?.find(p => p.id === aiId);
         if (!aiPlayer) continue;
@@ -9707,7 +9767,7 @@ export default function Arena() {
           return;
         }
 
-        // ── Turno attivo scaduto → posizione difensiva ───────────────────────
+        // ── Turno attivo scaduto → si passa il turno ─────────────────────────
         const match = data.matches?.find(m => m.matchId === expiredActiveMatch.matchId);
         if (!match || match.status !== "active" || !match.turn || !match.turnExpiry) return;
         if (arenaNow() - ARENA_EXPIRY_GRACE_MS < new Date(match.turnExpiry).getTime()) return;
@@ -9831,76 +9891,10 @@ export default function Arena() {
           }
           return up;
         });
-        // ── AUTO-ATTACCO su timeout ──────────────────────────────────────
-        // Se il giocatore non ha agito (e non era sotto controllo o impegnato
-        // a tirare salvataggi automatici), invece di stare fermo prova a
-        // colpire UNA VOLTA il primo avversario vivo con l'arma equipaggiata.
-        // Un colpo solo anche per i multi-attaccanti; nessuna feature di
-        // classe (smite, furia, ispirazione…) per tenerlo prevedibile.
-        const updatedCurrentP = updatedPlayers.find(p => p.id === currentTurnId);
-        const wasControlled = (currentPlayerObj.controlLostTurns ?? 0) > 0;
-        const isWildShaped  = !!currentPlayerObj.wildShape;
-        let didAutoAttack = false;
-
-        if (!autoRolledSave && !wasControlled && !isWildShaped) {
-          const attackerSnap   = data.characterSnapshots?.[currentTurnId] || {};
-          const equippedNames  = updatedCurrentP?.equippedWeaponNames || currentPlayerObj.equippedWeaponNames || [];
-          const allWeapons     = (attackerSnap.selectedActions || []).filter(a => a.type === "weapon");
-          const weapon         = allWeapons.find(a => equippedNames.includes(a.name)) || allWeapons[0];
-          const aliveOpponents = alivePlayers.filter(p => p.id !== currentTurnId);
-          const target         = aliveOpponents[0];
-
-          if (weapon && target) {
-            const targetSnap         = data.characterSnapshots?.[target.id] || {};
-            const targetMatchPlayer  = updatedPlayers.find(p => p.id === target.id) || target;
-            const attName            = attackerSnap.name || currentPlayerObj.name || "?";
-            const defName            = targetSnap.name   || target.name           || "?";
-
-            const statKey      = weapon.statKey || "str";
-            const statMod      = attackerSnap.stats?.[statKey] ?? 0;
-            const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
-
-            const defAC = targetAcNow(targetMatchPlayer, targetSnap);
-
-            const d20      = Math.floor(Math.random() * 20) + 1;
-            const isCrit   = d20 === 20;
-            const hitTotal = d20 + (weapon.hitBonus || 0) + statMod + armorPenalty;
-            const isHit    = hitTotal >= defAC || isCrit;
-
-            let damageDealt = 0;
-            let diceInfo    = "";
-            if (isHit) {
-              const { total: baseDmg, rolls: diceRolls } = rollDmg(weapon.damage);
-              const critMult = isCrit ? 2 : 1;
-              const rawDmg   = (baseDmg + statMod) * critMult;
-              damageDealt    = applyDefenderDamageMods(rawDmg, targetSnap, targetMatchPlayer, false);
-              const sign     = statMod >= 0 ? "+" : "";
-              diceInfo       = ` 🎲${diceRolls}${statMod !== 0 ? `${sign}${statMod}` : ""}${isCrit ? "×2" : ""} = ${damageDealt}`;
-            }
-
-            const critTag  = isCrit ? " ★CRITICO★" : "";
-            const hitBd    = `d20(${d20})+${weapon.hitBonus ?? 0}${statMod !== 0 ? (statMod >= 0 ? `+${statMod}` : `${statMod}`) : ""}${armorPenalty !== 0 ? ` ${armorPenalty}arm.` : ""} = ${hitTotal} vs CA ${defAC}`;
-            newLogs2.push(
-              isHit
-                ? `⏰ ${attName} non ha agito — attacco automatico con ${weapon.name}: COLPISCE ${defName}${critTag} [${hitBd}]${diceInfo ? ` →${diceInfo} danni` : ""}`
-                : `⏰ ${attName} non ha agito — attacco automatico con ${weapon.name}: MANCA ${defName} [${hitBd}]`
-            );
-
-            if (isHit && damageDealt > 0) {
-              for (let i = 0; i < updatedPlayers.length; i++) {
-                if (updatedPlayers[i].id === target.id) {
-                  updatedPlayers[i] = { ...updatedPlayers[i], hp: Math.max(0, (updatedPlayers[i].hp ?? 0) - damageDealt) };
-                  break;
-                }
-              }
-            }
-            didAutoAttack = true;
-          }
-        }
-
-        if (!autoRolledSave && !didAutoAttack) {
-          newLogs2.push(`🛡 ${currentPlayerObj.name} non ha agito — Posizione Difensiva`);
-        }
+        // ── Tempo scaduto: si passa SOLO il turno (2026-10-19) ─────────────
+        // Prima partiva un attacco automatico con l'arma: ora chi non agisce
+        // non colpisce nessuno, il turno va semplicemente all'avversario.
+        newLogs2.push(`⏰ ${currentPlayerObj.name} non ha agito in tempo — turno passato.`);
 
         const newExpiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
         // Traccia dei PF in cronaca + chiusura se qualcuno è andato a 0 (prima il
@@ -10103,6 +10097,8 @@ export default function Arena() {
         const oppFirst = (opp?.name || "").split(" ")[0] || "avversario";
         const subLabel = isMyTurnInActive
           ? "Tocca per agire"
+          : isAwaitingReady(m)
+            ? (m.ready?.[currentUser.uid] ? `Aspetti ${oppFirst}` : "Premi «Iniziamo»")
           : m.status === "initiative"
             ? "Tira iniziativa"
             : `Turno di ${oppFirst}`;
@@ -10396,8 +10392,9 @@ export default function Arena() {
 
             <h3 className="arena-info-title">⏱ Timer e turni</h3>
             <div className="arena-info-example">
-              <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>10 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio, chi combatte <strong>senza armatura</strong> ottiene <strong>+1</strong>). Allo scadere il sistema tira automaticamente al posto tuo.</p>
-              <p><strong>Turno di azione:</strong> ogni giocatore ha <strong>1 ora</strong> per agire nel proprio turno. Se non agisci, parte un <strong>attacco automatico</strong> con l'arma equipaggiata sul primo bersaglio vivo (oppure posizione difensiva se non hai armi).</p>
+              <p><strong>Iniziamo:</strong> prima di ogni fight entrambi i giocatori devono premere <strong>✋ Iniziamo</strong>. Finché non l'hanno fatto tutti e due il match non parte e non corre nessun timer.</p>
+              <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>5 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio, chi combatte <strong>senza armatura</strong> ottiene <strong>+1</strong>). Allo scadere il sistema tira automaticamente al posto tuo.</p>
+              <p><strong>Turno di azione:</strong> ogni giocatore ha <strong>5 minuti</strong> per agire nel proprio turno. Se il tempo scade, il turno <strong>passa all'avversario</strong> senza nessun attacco automatico.</p>
               <p><strong>Pausa:</strong> solo il Master può sospendere i timer con il pulsante "⏸ Pausa Timer". Alla ripresa i turn-expiry vengono shiftati in avanti del tempo trascorso, così nessuno viene penalizzato.</p>
             </div>
 
@@ -12289,7 +12286,7 @@ export default function Arena() {
                           {pa?.name || "?"}{aSnap.class ? ` (${aSnap.class})` : ""} <span className="fun-challenge-vs">VS</span> {pb?.name || "?"}{bSnap.class ? ` (${bSnap.class})` : ""}
                         </span>
                         <span className="fun-challenge-hp">
-                          {m.status === "initiative" ? "⚡ Iniziativa" : `⚔ Turno di ${turnName || "?"}`}
+                          {isAwaitingReady(m) ? "✋ In attesa di «Iniziamo»" : m.status === "initiative" ? "⚡ Iniziativa" : `⚔ Turno di ${turnName || "?"}`}
                           {" · "}HP {pa?.hp ?? "?"} / {pb?.hp ?? "?"}
                         </span>
                       </div>
@@ -12385,7 +12382,13 @@ export default function Arena() {
           return (
             <div key={m.matchId} className={`tb-live ${m.status}${isMyMatch ? " mine" : ""}`}>
               <div className="tb-live-status">
-                {m.status === "initiative" ? "⚡ Iniziativa" : m.status === "active" ? "⚔ In corso" : "🕓 In attesa"}
+                {isAwaitingReady(m) ? "✋ In attesa di «Iniziamo»" : m.status === "initiative" ? "⚡ Iniziativa" : m.status === "active" ? "⚔ In corso" : "🕓 In attesa"}
+                {isAwaitingReady(m) && isMaster && (
+                  <button type="button" className="btn-init" style={{ marginLeft: "0.5rem", padding: "0.15rem 0.6rem", fontSize: "0.72rem" }}
+                    onClick={() => confirmReady(m.matchId, { force: true })} title="Avvia il match anche se non hanno confermato">
+                    ▶ Avvia
+                  </button>
+                )}
               </div>
               {m.players.map((p) => {
                 const char = snapshots[p.id] || { stats: { maxHp: 70 } };
@@ -12925,7 +12928,8 @@ export default function Arena() {
                       return <span className={`cv-timer${urgent ? " urgent" : ""}`}>{fmt}</span>;
                     })() : <span className="cv-timer">--:--</span>}
                     <span className="cv-timer-label">
-                      {m.status === "initiative" ? "⚡ Iniziativa"
+                      {isAwaitingReady(m) ? "✋ In attesa di «Iniziamo»"
+                        : m.status === "initiative" ? "⚡ Iniziativa"
                         : m.status === "finished" ? "Concluso"
                         : `Turno di ${(m.players.find(p => p.id === m.turn)?.name || "—").split(" ")[0]}`}
                     </span>
@@ -13048,7 +13052,19 @@ export default function Arena() {
                             );
                           })()}
 
-                          {isMyMatch && m.status === "initiative" && p.id === currentUser?.uid && p.init === 0 && (
+                          {isAwaitingReady(m) && (
+                            p.id === currentUser?.uid && isMyMatch && !m.ready?.[p.id] ? (
+                              <button className="btn-init" onClick={() => confirmReady(m.matchId)}>
+                                ✋ Iniziamo
+                              </button>
+                            ) : (
+                              <div className="arena-ready-chip" style={{ fontSize: "0.72rem", fontWeight: 700, marginTop: "0.3rem", color: m.ready?.[p.id] ? "var(--el-2)" : "var(--osso-2)", opacity: m.ready?.[p.id] ? 1 : 0.75 }}>
+                                {m.ready?.[p.id] ? "✓ Pronto" : "⏳ Deve ancora premere «Iniziamo»"}
+                              </div>
+                            )
+                          )}
+
+                          {isMyMatch && m.status === "initiative" && !isAwaitingReady(m) && p.id === currentUser?.uid && p.init === 0 && (
                             <button className="btn-init" onClick={() => rollInit(m.matchId)}>
                               🎲 Tira Iniziativa
                             </button>
