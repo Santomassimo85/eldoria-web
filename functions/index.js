@@ -589,6 +589,8 @@ exports.pushOnCharacterDeath = onDocumentUpdated('characters/{uid}', async (even
 });
 
 // 5) Arena tournament events (registration open, fight start, your turn, fight winners, tournament winner)
+// PG in più del Master nel torneo ("<uid>__ALT2"…): le notifiche vanno al suo account.
+const arenaRealUids = (ids) => [...new Set((ids || []).filter(Boolean).map((id) => String(id).split("__ALT")[0]))];
 exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event) => {
   const before = event.data?.before?.data();
   const after  = event.data?.after?.data();
@@ -630,7 +632,7 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
   // reali (i bot ai_* non hanno token). Push affidabile lato server: arriva a
   // tutti indipendentemente da quale client ha chiuso l'ultimo match del round.
   if (before.phase !== "shopping" && after.phase === "shopping") {
-    const uids = (after.participants || []).filter(id => id && !String(id).startsWith("ai_"));
+    const uids = arenaRealUids((after.participants || []).filter(id => id && !String(id).startsWith("ai_")));
     await sendPush({
       uids,
       title: "🛒 Bottega Arena aperta!",
@@ -652,7 +654,7 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
       const fighters = (a.players || []).map(p => p.id);
       const matchup  = (a.players || []).map(p => p.name).join(" vs ");
       await sendPush({
-        uids: fighters,
+        uids: arenaRealUids(fighters),
         title: "⚔️ Il match è iniziato!",
         body: matchup || "Combattimento in corso",
         url: "/arena",
@@ -663,7 +665,7 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
     // Whose turn changed
     if (a.status === "active" && a.turn && a.turn !== b.turn) {
       await sendPush({
-        uids: [a.turn],
+        uids: arenaRealUids([a.turn]),
         title: "⚡ Tocca a te nell'arena!",
         body: "Compi la tua azione.",
         url: "/arena",
@@ -677,7 +679,7 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
       const losers   = (a.players || []).filter(p => p.id !== winnerId).map(p => p.id);
       const winnerName = (a.players || []).find(p => p.id === winnerId)?.name || "Sfidante";
       await sendPush({
-        uids: [winnerId],
+        uids: arenaRealUids([winnerId]),
         title: "🏆 Hai vinto il match!",
         body: "Avanzi nel torneo. Ben fatto!",
         url: "/arena",
@@ -685,7 +687,7 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
       });
       if (losers.length > 0) {
         await sendPush({
-          uids: losers,
+          uids: arenaRealUids(losers),
           title: "💀 Sei stato sconfitto",
           body: `${winnerName} ti ha battuto.`,
           url: "/arena",

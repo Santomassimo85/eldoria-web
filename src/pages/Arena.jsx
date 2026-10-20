@@ -1547,6 +1547,12 @@ const ARENA_EXPIRY_GRACE_MS = 20 * 1000;
 // giocatore umano non ha premuto "Iniziamo" (i bot sono pronti da sé). Quando
 // l'ultimo conferma parte l'iniziativa, col suo timer.
 const isArenaBotId = (id) => typeof id === "string" && id.startsWith(AI_BOT_PREFIX);
+// Personaggi in più del Master nel torneo (2026-10-20): id = "<uid del Master>__ALT2", "__ALT3"…
+// Li gioca il Master a mano (non sono bot), ma come i bot non prendono premi né classifica.
+const MASTER_ALT_SEP = "__ALT";
+const MASTER_ALT_MAX = 8;
+const isMasterAltId = (id) => typeof id === "string" && id.includes(MASTER_ALT_SEP);
+const masterEntryIds = (uid) => [uid, ...Array.from({ length: MASTER_ALT_MAX - 1 }, (_, i) => `${uid}${MASTER_ALT_SEP}${i + 2}`)];
 const withReadyCheck = (match) => {
   const ready = {};
   (match.players || []).forEach(p => { if (isArenaBotId(p.id)) ready[p.id] = true; });
@@ -3279,7 +3285,16 @@ const ARENA_ARCHETYPE_BY_CLASS = {
 const matchSig = (m) => `${m?.status}|${m?.turn}|${(m?.logs || []).length}|${m?.winner || ""}`;
 
 export default function Arena() {
-  const { currentUser } = useAuth();
+  const { currentUser: authUser } = useAuth();
+  // Il Master può avere più PG nel torneo: `actAs` = quale sta giocando adesso.
+  // Tutto il combattimento ragiona su currentUser.uid, quindi qui lo si "veste"
+  // col PG scelto; le schede (characters/…) usano sempre authUser.uid.
+  const [actAs, setActAs] = useState(null);
+  const canActAs = authUser?.email === "santomassimo85@gmail.com";
+  const currentUser = useMemo(
+    () => (authUser && canActAs && actAs && actAs !== authUser.uid ? { ...authUser, uid: actAs } : authUser),
+    [authUser, canActAs, actAs],
+  );
   const [arenaMeta, setArenaMeta]             = useState(null);
   const [prizeText, setPrizeText]             = useState("");
   // Premi strutturati: Corone (mercato nero = platinum), Monete Arena, e
@@ -3498,6 +3513,36 @@ export default function Arena() {
     );
     return m?.matchId || null;
   }, [arenaMeta, currentUser]);
+
+  // PG del Master con un fight vivo (iniziativa, «Iniziamo» o turni): servono al
+  // selettore in cima al combattimento. Per i giocatori resta vuoto.
+  const masterFights = useMemo(() => {
+    if (!canActAs || !authUser || !arenaMeta?.matches?.length) return [];
+    const phaseInCombat = arenaMeta.phase === "combat";
+    const live = arenaMeta.matches.filter(mm =>
+      ((mm.kind === "fun") || phaseInCombat) && mm.status !== "open" && mm.status !== "finished");
+    return masterEntryIds(authUser.uid).flatMap((id) => {
+      const m = live.find(mm => mm.players?.some(p => p.id === id));
+      if (!m) return [];
+      const me = m.players.find(p => p.id === id);
+      const opp = m.players.find(p => p.id !== id);
+      const state = m.turn === id && m.status !== "initiative" ? "turn"
+        : isAwaitingReady(m) ? (m.ready?.[id] ? "wait" : "ready")
+        : m.status === "initiative" ? (me?.init ? "wait" : "init")
+        : "wait";
+      return [{ id, matchId: m.matchId, name: me?.name || arenaMeta.characterSnapshots?.[id]?.name || "PG", opp: opp?.name || "?", state }];
+    });
+  }, [canActAs, authUser, arenaMeta]);
+
+  // Se il PG che il Master sta giocando non ha più un fight vivo, passa da solo a
+  // uno che ce l'ha (prima a quello di cui è il turno).
+  useEffect(() => {
+    if (!canActAs || !authUser) return;
+    const curId = actAs || authUser.uid;
+    if (!masterFights.length || masterFights.some(f => f.id === curId)) return;
+    const next = masterFights.find(f => f.state === "turn") || masterFights[0];
+    setActAs(next.id === authUser.uid ? null : next.id);
+  }, [masterFights, actAs, canActAs, authUser]);
 
   const isMyTurnInActive = useMemo(() => {
     if (!myActiveMatchId || !currentUser) return false;
@@ -3788,8 +3833,8 @@ export default function Arena() {
   const [myArenaBuffs, setMyArenaBuffs] = useState({});
   const [myArenaWeekly, setMyArenaWeekly] = useState(null);
   useEffect(() => {
-    if (!currentUser) return;
-    return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
+    if (!authUser) return;
+    return onSnapshot(doc(db, "characters", authUser.uid), snap => {
       if (!snap.exists()) return;
       const d = snap.data();
       setMyArenaBuffs(d.arenaBuffs || {});
@@ -3799,7 +3844,7 @@ export default function Arena() {
       setLastArenaLoadout(d.arenaLastLoadout?.class ? d.arenaLastLoadout : null);
       setMyArenaWeekly(d.arenaWeekly || null);
     });
-  }, [currentUser]);
+  }, [authUser]);
 
 
   // ── Monete Arena ──────────────────────────────────────────────────────────
@@ -3832,7 +3877,7 @@ export default function Arena() {
     const bucketOf = (uid) => uid === winnerId ? "first" : uid === runnerUpId ? "second" : "participant";
     const placeLabel = { first: "1° posto", second: "2° posto", participant: "partecipazione" };
     for (const uid of targets) {
-      if (isAiId(uid)) continue;   // i PG-bot di riserva non ricevono premi
+      if (isAiId(uid) || isMasterAltId(uid)) continue;   // i PG-bot di riserva non ricevono premi
       const tier = cfg[bucketOf(uid)] || {};
       const crowns = Math.max(0, parseInt(tier.crowns, 10) || 0);
       const coins  = Math.max(0, parseInt(tier.coins, 10) || 0);
@@ -3882,7 +3927,7 @@ export default function Arena() {
       const winnerAttacks = winner?.attacksMade ?? 0;
 
       for (const p of players) {
-        if (isAiId(p.id)) continue;             // i PG-bot di riserva non guadagnano Monete Arena
+        if (isAiId(p.id) || isMasterAltId(p.id)) continue;             // i PG-bot di riserva non guadagnano Monete Arena
         const isWinner = p.id === m.winner;
         let coins = 5;                          // fight concluso (anche se perde)
         const bits = ["+5 fight concluso"];
@@ -3901,7 +3946,7 @@ export default function Arena() {
         });
       }
       // 🐣 pet system: +3 points to the winner of a tournament round (mai ai bot)
-      if (!isAiId(m.winner)) awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
+      if (!isAiId(m.winner) && !isMasterAltId(m.winner)) awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
     }
   };
 
@@ -4167,15 +4212,15 @@ export default function Arena() {
       const winner = t.winnerId, runnerUp = t.runnerUpId;
       (t.participants || []).forEach(p => {
         if (!p?.uid) return;
-        if (p.uid.startsWith(AI_BOT_PREFIX)) return;   // i PG-bot di riserva non entrano in classifica
+        if (p.uid.startsWith(AI_BOT_PREFIX) || isMasterAltId(p.uid)) return;   // i PG-bot di riserva non entrano in classifica
         if (p.uid === winner)        { bump(p.uid, p.name, 3); map[p.uid].wins++; }
         else if (p.uid === runnerUp) { bump(p.uid, p.name, 2); map[p.uid].seconds++; }
         else                         { bump(p.uid, p.name, 1); }
         map[p.uid].plays++;
       });
       // Vincitore/2° non sempre presenti in participants (safety); mai i bot.
-      if (winner && !winner.startsWith(AI_BOT_PREFIX) && !(t.participants || []).some(p => p.uid === winner)) { bump(winner, t.winnerName, 3); map[winner].wins++; map[winner].plays++; }
-      if (runnerUp && !runnerUp.startsWith(AI_BOT_PREFIX) && !(t.participants || []).some(p => p.uid === runnerUp)) { bump(runnerUp, t.runnerUpName, 2); map[runnerUp].seconds++; map[runnerUp].plays++; }
+      if (winner && !winner.startsWith(AI_BOT_PREFIX) && !isMasterAltId(winner) && !(t.participants || []).some(p => p.uid === winner)) { bump(winner, t.winnerName, 3); map[winner].wins++; map[winner].plays++; }
+      if (runnerUp && !runnerUp.startsWith(AI_BOT_PREFIX) && !isMasterAltId(runnerUp) && !(t.participants || []).some(p => p.uid === runnerUp)) { bump(runnerUp, t.runnerUpName, 2); map[runnerUp].seconds++; map[runnerUp].plays++; }
     }
     return Object.values(map)
       .map(e => ({ ...e, name: e.name || profileLookup[e.uid]?.name || null }))
@@ -4357,7 +4402,7 @@ export default function Arena() {
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
-    const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
+    const charSnap = await getDoc(doc(db, "characters", authUser.uid));
     if (!charSnap.exists()) {
       alert("Non hai ancora una scheda personaggio! Creala nella sezione 'Scheda Personaggio'.");
       return;
@@ -4431,7 +4476,7 @@ export default function Arena() {
       subclass: subclassKey || null,
       weekKey: currentWeekKey(),
     };
-    updateDoc(doc(db, "characters", currentUser.uid), { arenaLastLoadout: last })
+    updateDoc(doc(db, "characters", authUser.uid), { arenaLastLoadout: last })
       .catch((e) => console.error("rememberLastLoadout", e));
   };
 
@@ -4443,7 +4488,7 @@ export default function Arena() {
     if (next[slot] && !window.confirm(`Sovrascrivere lo slot ${slot + 1} (${next[slot].label})?`)) return;
     next[slot] = buildSavedCharPayload();
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next, arenaSavedActive: slot });
+      await updateDoc(doc(db, "characters", authUser.uid), { arenaSavedChars: next, arenaSavedActive: slot });
       setSavedArenaChars(next);
       setActiveSavedSlot(slot);
       alert(`✅ Personaggio salvato nello slot ${slot + 1} e selezionato.`);
@@ -4457,7 +4502,7 @@ export default function Arena() {
     next[slot] = null;
     const wasActive = activeSavedSlot === slot;
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), wasActive ? { arenaSavedChars: next, arenaSavedActive: null } : { arenaSavedChars: next });
+      await updateDoc(doc(db, "characters", authUser.uid), wasActive ? { arenaSavedChars: next, arenaSavedActive: null } : { arenaSavedChars: next });
       setSavedArenaChars(next);
       if (wasActive) setActiveSavedSlot(null);
     } catch (e) { console.error("deleteSavedArenaChar", e); }
@@ -4468,7 +4513,7 @@ export default function Arena() {
   const selectSavedArenaChar = (slot) => {
     if (!savedArenaChars[slot]) return;
     setActiveSavedSlot(slot);
-    updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedActive: slot }).catch((e) => console.error("selectSavedArenaChar", e));
+    updateDoc(doc(db, "characters", authUser.uid), { arenaSavedActive: slot }).catch((e) => console.error("selectSavedArenaChar", e));
   };
 
   // Dall'ingresso del torneo: apre il loadout e ci carica dentro il PG selezionato
@@ -4553,7 +4598,7 @@ export default function Arena() {
     const sc = scArg || savedArenaChars[slot];
     if (!sc) return;
     let base = {};
-    try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
+    try { const cs = await getDoc(doc(db, "characters", authUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
     const ownedTitles = getCharTitles(base);
     // Il Master entra coi nomi dei suoi PG (non con quello della sua scheda);
     // i salvataggi senza `name` lo ricavano dall'etichetta "Nome · Classe".
@@ -4704,7 +4749,7 @@ export default function Arena() {
     setMasterJoinSetup(false);
     await openLoadoutPicker();
     let base = {};
-    try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
+    try { const cs = await getDoc(doc(db, "characters", authUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
     const config = getLoadoutConfig(r.class, undefined);
     const acts = r.selectedActions || [];
     const pickFrom = (opts) => {
@@ -4766,7 +4811,7 @@ export default function Arena() {
     setCombatModalOpen(false);
     let arenaWeekly = null, ownedTitles = [];
     try {
-      const cs = await getDoc(doc(db, "characters", currentUser.uid));
+      const cs = await getDoc(doc(db, "characters", authUser.uid));
       if (cs.exists()) { const d = cs.data(); arenaWeekly = d.arenaWeekly || null; ownedTitles = getCharTitles(d); }
     } catch { /* ignore */ }
     setCharPreview({
@@ -5129,19 +5174,27 @@ export default function Arena() {
     // form aperto (altra scheda, o approvazione del Master arrivata durante il
     // loadout) per finire sia fra gli iscritti sia di nuovo in lista d'attesa,
     // riscrivendo anche lo snapshot già approvato (Lael, 2026-10-04).
+    // Il Master può iscrivere più PG (per riempire il torneo quando manca gente):
+    // ognuno prende il primo posto libero fra "<uid>", "<uid>__ALT2", "<uid>__ALT3"…
+    let entryId = currentUser.uid;
     try {
       await runTransaction(db, async (tx) => {
         const ref = doc(db, "arena_meta", "global");
         const cur = (await tx.get(ref)).data() || {};
-        if ((cur.participants || []).includes(currentUser.uid)) throw new Error("already-registered");
         if (cur.phase && cur.phase !== "registration") throw new Error("registration-closed");
+        if (isMaster) {
+          const taken = new Set([...(cur.participants || []), ...(cur.waitingList || [])]);
+          entryId = masterEntryIds(authUser.uid).find((id) => !taken.has(id));
+          if (!entryId) throw new Error("master-full");
+        } else if ((cur.participants || []).includes(currentUser.uid)) throw new Error("already-registered");
         tx.update(ref, {
-          waitingList: arrayUnion(currentUser.uid),
-          [`characterSnapshots.${currentUser.uid}`]: snapshot,
+          waitingList: arrayUnion(entryId),
+          [`characterSnapshots.${entryId}`]: snapshot,
         });
       });
     } catch (e) {
-      if (e.message === "already-registered") alert("⚠ Sei già iscritto a questo torneo: non puoi iscriverti una seconda volta.");
+      if (e.message === "master-full") alert(`⚠ Hai già ${MASTER_ALT_MAX} PG iscritti: è il massimo.`);
+      else if (e.message === "already-registered") alert("⚠ Sei già iscritto a questo torneo: non puoi iscriverti una seconda volta.");
       else if (e.message === "registration-closed") alert("⚠ Le iscrizioni al torneo sono chiuse.");
       else alert("⚠ Iscrizione non riuscita: " + e.message);
       cancelLoadout();
@@ -5423,7 +5476,7 @@ export default function Arena() {
     // Riforma Bottega settimanale: livelli non più acquistabili → tutti Lv.3.
     const classLevels = {};
     try {
-      const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
+      const charSnap = await getDoc(doc(db, "characters", authUser.uid));
       if (charSnap.exists()) {
         const d = charSnap.data();
         arenaBuffs = d.arenaBuffs || {};
@@ -10144,6 +10197,10 @@ export default function Arena() {
     ? new Date(arenaMeta.pausedAt).getTime()
     : Date.now();
   const isRegistered     = arenaMeta.participants?.includes(currentUser?.uid);
+  // PG del Master iscritti (in gara o in attesa): uno per id "<uid>", "<uid>__ALT2"…
+  const myEntryIds = isMaster && authUser
+    ? masterEntryIds(authUser.uid).filter((id) => (arenaMeta.participants || []).includes(id) || (arenaMeta.waitingList || []).includes(id))
+    : [];
   const isPending        = arenaMeta.waitingList?.includes(currentUser?.uid);
   const tournamentMatches = (arenaMeta.matches || []).filter(m => m.kind !== "fun");
   const funMatches        = (arenaMeta.matches || []).filter(m => m.kind === "fun");
@@ -10261,7 +10318,7 @@ export default function Arena() {
         return (
           <button
             type="button"
-            className={`arena-fight-icon${isMyTurnInActive ? " arena-fight-icon--your-turn" : ""}`}
+            className={`arena-fight-icon${isMyTurnInActive || masterFights.some(f => f.state === "turn") ? " arena-fight-icon--your-turn" : ""}`}
             onClick={() => setCombatModalOpen(true)}
             aria-label={isMyTurnInActive ? "È il tuo turno — apri il combat" : "Sfida in corso — apri il combat"}
             title={isMyTurnInActive ? `È il tuo turno · ${subLabel}` : `Sfida in corso · ${subLabel}`}
@@ -10935,14 +10992,18 @@ export default function Arena() {
           <div className="master-action-group">
             <span className="master-group-label">⚔ Flusso del torneo</span>
             <div className="master-actions">
-            {arenaMeta.phase === "registration" && !isRegistered && !isPending && (
+            {arenaMeta.phase === "registration" && myEntryIds.length < MASTER_ALT_MAX && (
               <button className="btn-master-join" onClick={() => { setMasterJoinSetup(v => !v); setMasterJoinName(""); setMasterJoinClass(""); }}>
-                🗡 Entra nell'Arena
+                {myEntryIds.length ? "＋ Iscrivi un altro PG" : "🗡 Entra nell'Arena"}
               </button>
             )}
-            {(isRegistered || isPending) && arenaMeta.phase === "registration" && (
+            {myEntryIds.length > 0 && arenaMeta.phase === "registration" && (
               <div className="master-join-status">
-                {isPending ? "⏳ In attesa di auto-approvazione…" : "✔ Iscritto come personaggio master"}
+                {(() => {
+                  const inPlay = myEntryIds.filter((id) => (arenaMeta.participants || []).includes(id)).length;
+                  const waiting = myEntryIds.length - inPlay;
+                  return `✔ ${myEntryIds.length} PG del Master${inPlay ? ` · ${inPlay} ammessi` : ""}${waiting ? ` · ${waiting} da ammettere (lista d'attesa)` : ""}`;
+                })()}
               </div>
             )}
             {arenaMeta.phase === "registration" && (
@@ -12819,7 +12880,7 @@ export default function Arena() {
             <BettingPanel
               arenaMeta={arenaMeta}
               snapshots={snapshots}
-              currentUser={currentUser}
+              currentUser={authUser}
               isMaster={isMaster}
             />
           </ArenaModal>
@@ -12958,6 +13019,28 @@ export default function Arena() {
             </div>
             <span className="my-arena-banner-deco">⚔</span>
           </div>
+
+          {/* Master con più PG in gara: sceglie quale fight giocare adesso. */}
+          {masterFights.length > 1 && (
+            <div className="master-fight-switch" role="group" aria-label="I tuoi fight">
+              <span className="master-fight-switch-label">I tuoi fight</span>
+              <div className="master-fight-switch-row">
+                {masterFights.map((f) => {
+                  const on = f.id === (actAs || authUser?.uid);
+                  const tag = { turn: "⚔ tocca a te", ready: "✋ premi Iniziamo", init: "🎲 tira iniziativa", wait: "⏳ aspetti" }[f.state];
+                  return (
+                    <button key={f.id} type="button" aria-pressed={on}
+                      className={`master-fight-chip${on ? " is-on" : ""}${f.state === "turn" || f.state === "ready" || f.state === "init" ? " is-hot" : ""}`}
+                      onClick={() => setActAs(f.id === authUser?.uid ? null : f.id)}>
+                      <span className="master-fight-chip-name">{f.name}</span>
+                      <span className="master-fight-chip-vs">vs {f.opp}</span>
+                      <span className="master-fight-chip-tag">{tag}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Tab: in corso ↔ storico */}
           <div className="combat-tabs" role="tablist">
