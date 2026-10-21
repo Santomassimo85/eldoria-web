@@ -619,10 +619,10 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
   }
   // Scudi: ora +1 CA (prima +2). La CA salvata nel personaggio include già +2
   // dello scudo (sia umani che IA), quindi correggiamo di -1 per chi ha scudo.
-  // Armatura della Bottega a CA FISSA (niente selectedArmor): la CA è quella e
-  // basta, lo scudo non conta (regola scritta in Bottega). Prima il −1 dello scudo
-  // la abbassava sotto la CA fissa: Soran con Pelle di gnoll 14 risultava 13 (2026-10-21).
-  const shieldAdj = charSnapshot?.hasShield && !hasMarketFixedArmor(charSnapshot) ? -1 : 0;
+  // Armatura della Bottega a CA FISSA (niente selectedArmor): lo scudo NON è dentro
+  // la CA salvata, quindi si aggiunge +1. Lo scudo dà SEMPRE CA, mai la toglie
+  // (scelta dell'utente 2026-10-21: prima Soran con Pelle di gnoll 14 + scudo era 13).
+  const shieldAdj = charSnapshot?.hasShield ? (hasMarketFixedArmor(charSnapshot) ? 1 : -1) : 0;
   // Monaco · Movimento Senza Armatura (Lv2): +1 CA se combatte senz'armatura.
   const cls = (charSnapshot?.class || "").toLowerCase();
   const monkAcBonus = (isMonkClass(cls) && getSnapLevel(charSnapshot) >= 2 && charSnapshot?.selectedArmor?.unarmoredDefense) ? 1 : 0;
@@ -671,7 +671,7 @@ function getDisplayAc(matchPlayer, snap) {
   let ac = getEffectiveAc(matchPlayer, snap);
   if (matchPlayer?.wildShape && WILD_SHAPES[matchPlayer.wildShape]?.ac != null) parts.push(`forma selvatica ${ac}`);
   else if (ac < base + subAc) parts.push(`furia irruenta ${ac - base - subAc}`);
-  if (snap?.hasShield && !hasMarketFixedArmor(snap) && matchPlayer?.shieldSuppressed) { ac -= 1; parts.push("scudo inutilizzabile −1"); }
+  if (snap?.hasShield && matchPlayer?.shieldSuppressed) { ac -= 1; parts.push("scudo inutilizzabile −1"); }
   const shieldSkill = (matchPlayer?.shieldSkillTurns ?? 0) > 0 ? (matchPlayer?.shieldSkillBonus ?? 3) : 0;
   if (shieldSkill) { ac += shieldSkill; parts.push(`scudo +${shieldSkill} (${matchPlayer.shieldSkillTurns}t)`); }
   const forge = (matchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
@@ -11828,12 +11828,12 @@ export default function Arena() {
             // Calcolo CA anteprima
             const dexMod   = charPreview.stats.dex ?? 0;
             const conMod   = charPreview.stats.con ?? 0;
-            // Armatura market = CA fissa (ignora DES/scudo); altrimenti calcolo normale.
+            // Armatura market = CA fissa (ignora DES) + 1 dello scudo; altrimenti calcolo normale.
             // Sottoclasse posseduta per questa classe (solo torneo) e quella accesa ora.
             const subOptions   = selectableSubclasses(loadoutContext, charPreview.arenaWeekly, charPreview.class);
             const activeSubDef = subOptions.find(o => o.key === pendingSubclass) || null;
             const previewAc = hasMarketArmor
-              ? marketFixedAc
+              ? marketFixedAc + (pendingShield ? 1 : 0)
               : (pendingArmor
                 ? pendingArmor.unarmoredDefense
                   ? pendingArmor.unarmoredMaxStat

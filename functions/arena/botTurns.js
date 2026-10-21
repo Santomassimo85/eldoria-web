@@ -103,10 +103,10 @@ function currentAc(p, snap) {
     return w;
   }
   let ac = (snap && snap.stats && snap.stats.ac) || 12;
-  // Armatura della Bottega a CA fissa (niente selectedArmor): la CA è quella,
-  // lo scudo non conta (come getEffectiveAc in Arena.jsx).
+  // Armatura della Bottega a CA fissa (niente selectedArmor): lo scudo non è dentro
+  // la CA salvata e aggiunge +1 (come getEffectiveAc in Arena.jsx). Mai la toglie.
   const fixedArmor = snap && !snap.selectedArmor && !snap.isAi;
-  if (snap && snap.hasShield && !fixedArmor) ac -= p && p.shieldSuppressed ? 2 : 1;
+  if (snap && snap.hasShield) ac += fixedArmor ? (p && p.shieldSuppressed ? 0 : 1) : (p && p.shieldSuppressed ? -2 : -1);
   if (p && (p.shieldSkillTurns || 0) > 0) ac += (p.shieldSkillBonus != null ? p.shieldSkillBonus : 3);
   if (p && (p.armorForgeTurns || 0) > 0) ac += 2;
   if (p && p.defensiveBonus) ac += p.defensiveBonus;
