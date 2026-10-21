@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./DiceRoll.css";
 
@@ -51,6 +51,13 @@ let trigger = null;
 // la aspettava (es. il turno dell'IA) resterebbe appeso per sempre.
 let pendingResolve = null;
 
+// ── Dado 3D (2026-10-21): un d20 vero che rotola sul tavolo (three.js, caricato
+// solo al primo tiro). Resta il dado disegnato in CSS per i tiri segreti
+// dell'Officina, per chi ha "riduci animazioni" e dove WebGL non c'è.
+let dice3dMod = null;
+const load3D = () => (dice3dMod ||= import("./dice3d").then((m) => (m.canUse3D() ? m : null)).catch(() => null));
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 export function showD20Roll(value, opts = {}) {
   if (!trigger) return Promise.resolve();
   return trigger(value, opts);
@@ -86,9 +93,38 @@ export default function DiceRollHost() {
   const SETTLE_MS = 450;   // settle / reveal
   const HOLD_MS   = 550;   // pause showing the result
   const FADE_MS   = 280;   // fade out
+  const ROLL3D_MS = 1350;  // lancio 3D: dalla mano al dado fermo
+  const HOLD3D_MS = 900;   // il dado 3D resta fermo un po' di più: si legge la faccia
 
+  // Lancio 3D: si decide se usarlo PRIMA di montare l'overlay (mode "3d" | "css").
+  const host3d = useRef(null);
+  // La modalità vale solo per il tiro per cui è stata decisa: un tiro nuovo
+  // (magari segreto) non deve partire in 3D col valore del precedente.
+  const [modeFor, setModeFor] = useState({ id: null, mode: null });
+  const mode = roll && modeFor.id === roll.id ? modeFor.mode : null;
   useEffect(() => {
     if (!roll) return;
+    if (roll.hidden || reducedMotion()) { setModeFor({ id: roll.id, mode: "css" }); return; }
+    let alive = true;
+    load3D().then((m) => { if (alive) setModeFor({ id: roll.id, mode: m ? "3d" : "css" }); });
+    return () => { alive = false; };
+  }, [roll]);
+
+  useEffect(() => {
+    if (!roll || mode !== "3d" || !host3d.current) return;
+    let alive = true;
+    const accent = roll.value === 20 ? 0xffc23a : roll.value === 1 ? 0xff2a2a : null;
+    load3D().then((m) => {
+      if (!alive || !m) return;
+      m.roll3D(host3d.current, { value: roll.value, skin: roll.skin, durationMs: ROLL3D_MS, accent })
+        .then(() => roll.resolve());
+    });
+    const tEnd = setTimeout(() => setRoll(null), ROLL3D_MS + HOLD3D_MS + FADE_MS);
+    return () => { alive = false; clearTimeout(tEnd); dice3dMod?.then((m) => m?.stop3D()); roll.resolve(); };
+  }, [roll, mode]);
+
+  useEffect(() => {
+    if (!roll || mode !== "css") return;
     // Sblocco la logica (risultato + effetti pixel) appena il dado si FERMA sul
     // numero (tumble+settle), così il colpo è sincronizzato con la rivelazione.
     // L'overlay del dado resta visibile per hold+fade e si smonta da solo dopo.
@@ -97,15 +133,30 @@ export default function DiceRollHost() {
     const tReveal = setTimeout(() => roll.resolve(), revealAt);
     const tEnd    = setTimeout(() => setRoll(null), total);
     return () => { clearTimeout(tReveal); clearTimeout(tEnd); };
-  }, [roll]);
+  }, [roll, mode]);
 
-  if (!roll) return null;
+  if (!roll || !mode) return null;
 
   // Col tiro segreto niente numero e niente CRITICO/FALLIMENTO: il dado non
   // deve tradire l'esito nemmeno col colore.
   const isCrit = !roll.hidden && roll.value === 20;
   const isFumble = !roll.hidden && roll.value === 1;
   const variant = isCrit ? "crit" : isFumble ? "fumble" : "normal";
+
+  if (mode === "3d") {
+    return createPortal(
+      <div className={`dice-overlay dice-overlay--3d ${variant}`} key={roll.id} aria-hidden="true"
+        style={{ "--tumble-ms": `${ROLL3D_MS}ms`, "--settle-ms": "0ms", "--hold-ms": `${HOLD3D_MS}ms`, "--fade-ms": `${FADE_MS}ms` }}>
+        <div className="dice3d-host" ref={host3d} />
+        <div className="dice3d-caption">
+          {roll.label && <div className="dice-label">{roll.label}</div>}
+          {isCrit  && <div className="dice-tag crit">CRITICO!</div>}
+          {isFumble && <div className="dice-tag fumble">FALLIMENTO</div>}
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className={`dice-overlay ${variant} skin-${roll.skin}${roll.hidden ? " hidden-roll" : ""}`} key={roll.id} aria-hidden="true">

@@ -27,6 +27,7 @@ import {
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
+import { showD20Roll } from "../components/DiceRoll";
 import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
@@ -1186,6 +1187,7 @@ export default function WorldBoss() {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
     }
+    await showD20Roll(d20, { label: action.name }); // d20 3D: il colpo parte quando il dado si ferma
     const parsedBonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
     // Spell hit-roll fallback: when the action is a cantrip or "Livello X"
     // spell, prefer the proper spell attack bonus (spellMod + prof) if it
@@ -1438,6 +1440,7 @@ export default function WorldBoss() {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
     }
+    await showD20Roll(d20, { label: `${boss.name} · ${action.name}` });
     const bossBonus = parseInt(action.bonus) || 0;
     const hitTotal = d20 + bossBonus;
     const damageFormula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
