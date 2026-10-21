@@ -1155,6 +1155,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
             <section className="wb-sec wb-sec--loot">
               <h2 className="wb-sec-title">🏆 Premi della vittoria</h2>
               <BossRewardsEditor value={form.rewardsData}
+                boss={{ name: form.name, description: form.description, gradoSfida: form.gradoSfida }}
                 onChange={(rewardsData) => setForm((b) => ({ ...b, rewardsData }))}
                 onUploadImg={(file) => uploadSprite(file, "reward")} />
             </section>

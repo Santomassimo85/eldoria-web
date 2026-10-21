@@ -273,9 +273,37 @@ const RewardItemCard = ({ item, open, onToggle, onChange, onRemove, onUploadImg 
 };
 
 /* ── Editor completo dei premi ── */
-export default function BossRewardsEditor({ value, onChange, onUploadImg }) {
+export default function BossRewardsEditor({ value, onChange, onUploadImg, boss = {} }) {
   const r = value || blankRewards();
   const [openIdx, setOpenIdx] = useState(-1);
+  const [bonusBusy, setBonusBusy] = useState(false);
+  const [bonusErr, setBonusErr] = useState("");
+  const [bonusIdea, setBonusIdea] = useState("");
+  const live = useRef({ r, onChange });
+  live.current = { r, onChange };
+
+  // Bonus proposti dall'AI (endpoint dei boss, tipo "bonus"): si AGGIUNGONO a quelli che ci sono.
+  const proponiBonus = async () => {
+    setBonusBusy(true); setBonusErr("");
+    try {
+      const res = await fetch("/api/genera-boss", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tipo: "bonus", boss: boss.name || "", descrizione: boss.description || "", gradoSfida: boss.gradoSfida || "",
+          contesto: bonusIdea.trim(), esistenti: r.bonuses.filter(Boolean), n: 3,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok || d.error) throw new Error(d.error || "Generazione fallita.");
+      const cur = live.current.r;
+      live.current.onChange({ ...cur, bonuses: [...cur.bonuses.filter((b) => String(b).trim()), ...(d.bonuses || [])] });
+    } catch (e) {
+      setBonusErr(`L'AI non ha risposto (funziona solo online): ${e.message || e}`);
+    } finally {
+      setBonusBusy(false);
+    }
+  };
   const set = (patch) => onChange({ ...r, ...patch });
   const setItem = (i, patch) => set({ items: r.items.map((it, k) => (k === i ? { ...it, ...patch } : it)) });
   const setBonus = (i, v) => set({ bonuses: r.bonuses.map((b, k) => (k === i ? v : b)) });
@@ -319,8 +347,17 @@ export default function BossRewardsEditor({ value, onChange, onUploadImg }) {
       <div className="wbr-block">
         <div className="wbr-block-head">
           <span className="wbr-sub">✦ Bonus <small>({r.bonuses.length})</small></span>
-          <button type="button" className="wb-add-action-btn" onClick={() => set({ bonuses: [...r.bonuses, ""] })}>+ Bonus</button>
+          <span className="wbr-head-btns">
+            <button type="button" className="wb-ai-btn" onClick={proponiBonus} disabled={bonusBusy}
+              title="L'AI propone 3 bonus legati al boss e li aggiunge alla lista: poi li cambi come vuoi">
+              {bonusBusy ? "✨ Penso…" : "✨ Proponi con l'AI"}
+            </button>
+            <button type="button" className="wb-add-action-btn" onClick={() => set({ bonuses: [...r.bonuses, ""] })}>+ Bonus</button>
+          </span>
         </div>
+        <input className="admin-field-input" value={bonusIdea} onChange={(e) => setBonusIdea(e.target.value)} disabled={bonusBusy}
+          placeholder="Idea per i bonus (facoltativa): es. un favore della Gilda dei Ratti, qualcosa contro il fulmine" />
+        {bonusErr && <p className="wbr-err">{bonusErr}</p>}
         {r.bonuses.length === 0
           ? <p className="wbr-empty">Benedizioni, titoli, vantaggi… (es. «Vantaggio ai TS contro paura per una settimana»).</p>
           : r.bonuses.map((b, i) => (

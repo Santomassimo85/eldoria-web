@@ -452,3 +452,5 @@
 .wbr-styles .mkadm-foundry-chip { padding: 4px 10px; font-size: .78rem; }
 .wbr-img { flex-wrap: wrap; }
 @media (max-width: 520px) { .wbr-imgbox { flex-direction: column; } .wbr-imgprev { flex-basis: auto; width: 100%; height: 180px; } }
+.wbr-head-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.wbr-head-btns .wb-ai-btn { min-height: 36px; padding: 6px 12px; }

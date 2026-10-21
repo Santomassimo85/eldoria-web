@@ -15,6 +15,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
   const { tipo = "boss", contesto = "", evita } = req.body || {};
+  if (tipo === "bonus") return generaBonus(req.body || {}, res);
   const isMinion = tipo === "minion";
   const seme = Math.floor(Math.random() * 1e9);
 
@@ -93,5 +94,54 @@ ${contesto ? `\nSpunto del master (rispettalo): ${contesto}` : ""}`;
     return res.status(200).json(out);
   } catch (e) {
     return res.status(500).json({ error: "Generazione fallita: " + e.message });
+  }
+}
+
+// Bonus della vittoria (2026-10-21): 2-4 righe brevi per i premi del boss, in
+// italiano. Niente oro/PE/oggetti (hanno i loro campi): benedizioni, titoli,
+// vantaggi a tempo, favori di PNG… Restituisce { bonuses: [string] }.
+async function generaBonus(body, res) {
+  const { boss = "", descrizione = "", gradoSfida = "", contesto = "", esistenti = [], n = 3 } = body;
+  const quanti = Math.min(4, Math.max(1, parseInt(n, 10) || 3));
+  const gia = Array.isArray(esistenti) && esistenti.length
+    ? `\nBonus GIA' presenti (non ripeterli, proponine di diversi): ${esistenti.slice(0, 8).join(" | ")}`
+    : "";
+  const PROMPT = `Sei il Master di una campagna dark fantasy D&D 5e ("Eldoria"). Gli eroi hanno sconfitto il World Boss "${boss || "senza nome"}"${gradoSfida ? ` (GS ${gradoSfida})` : ""}.
+${descrizione ? `Il boss: ${String(descrizione).replace(/<[^>]+>/g, " ").slice(0, 600)}` : ""}
+
+Proponi ${quanti} BONUS della vittoria da dare a TUTTI i partecipanti. NON oro, PE, Corone o oggetti (hanno campi a parte).
+Tipi buoni: titolo onorifico, benedizione o marchio legato al boss, vantaggio/resistenza a tempo, favore di una fazione o PNG, sconto o accesso, ispirazione.
+Regole: ogni bonus = UNA riga in italiano, massimo 140 caratteri, con effetto in regole D&D 5e chiaro e DURATA precisa (es. "fino alla prossima sessione", "per 7 giorni", "1 volta").
+Equilibrio: piccolo ma sentito, MAI permanente e mai piu' di +1 a un numero.
+Tematici sul boss, niente cliche' (niente "Ammazzadraghi").${gia}
+${contesto ? `\nIndicazione del master (rispettala): ${contesto}` : ""}
+
+Rispondi SOLO con JSON: {"bonuses":["...","..."]}`;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 800,
+        temperature: 1,
+        messages: [{ role: "user", content: PROMPT }],
+      }),
+    });
+    const data = await r.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    const testo = (data.content || []).map((b) => b.text || "").join("");
+    const s = testo.indexOf("{"), e = testo.lastIndexOf("}");
+    const out = JSON.parse(s !== -1 && e > s ? testo.slice(s, e + 1) : testo);
+    const bonuses = (Array.isArray(out.bonuses) ? out.bonuses : [])
+      .map((b) => String(b || "").trim().slice(0, 200)).filter(Boolean).slice(0, quanti);
+    if (!bonuses.length) throw new Error("nessun bonus nella risposta");
+    return res.status(200).json({ bonuses });
+  } catch (e) {
+    return res.status(500).json({ error: "Bonus non generati: " + e.message });
   }
 }
