@@ -436,3 +436,19 @@
 .wb-card-paid-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .wb-card-paid-list small { color: var(--osso-2); }
 .wb-paid-item { padding: 1px 8px; border-radius: 999px; background: var(--roccia-4); color: var(--osso); font-size: .8rem; }
+
+/* Note e bonus che crescono col testo; immagine dell'oggetto con l'AI (2026-10-21) */
+.wbr-grow { min-height: 42px; resize: vertical; overflow: hidden; line-height: 1.45; field-sizing: content; max-height: 60vh; }
+.wbr-grow:focus { overflow: auto; }
+.wbr-bonus { align-items: flex-start; }
+.wbr-bonus .wbr-x { min-height: 42px; }
+.wbr-hint { font-family: var(--font-ui); letter-spacing: 0; color: var(--osso-3, var(--osso-2)); font-size: .78rem; }
+.wbr-imgbox { display: flex; gap: 12px; align-items: flex-start; }
+.wbr-imgprev { flex: 0 0 120px; height: 120px; display: grid; place-items: center; border-radius: 3px; overflow: hidden; background: var(--ossidiana); border: 1px solid var(--wb-line); font-size: 2.4rem; }
+.wbr-imgprev img { width: 100%; height: 100%; object-fit: cover; }
+.wbr-imgprev.is-busy { border-color: var(--el); }
+.wbr-imgctl { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.wbr-styles { display: flex; flex-wrap: wrap; gap: 5px; }
+.wbr-styles .mkadm-foundry-chip { padding: 4px 10px; font-size: .78rem; }
+.wbr-img { flex-wrap: wrap; }
+@media (max-width: 520px) { .wbr-imgbox { flex-direction: column; } .wbr-imgprev { flex-basis: auto; width: 100%; height: 180px; } }
