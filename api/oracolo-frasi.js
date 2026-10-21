@@ -1,3 +1,4 @@
+import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // api/oracolo-frasi.js
 //
 // Genera al volo 3 frasi pronte per l'Oracolo (Alaric, l'oracolo bendato),
@@ -5,21 +6,14 @@
 // rovescio). Usato dal banco di lettura: l'oracolo clicca "Genera" e sceglie
 // una frase, oppure ne scrive una a mano.
 //
-// Powered by Gemini (stessa chiave dell'assistente: GEMINI_API_KEY).
+// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
 
-async function callGemini(geminiKey, prompt) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1.0, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } },
-      }),
-    }
-  );
-  return r.json();
+async function callGemini(_key, prompt) {
+  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  return geminiCall({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 1.0, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } },
+  });
 }
 
 function extractText(data) {
@@ -31,7 +25,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
   const { carta, orientamento, significato, domanda, richiedente } = req.body || {};
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = geminiKey_();
   if (!geminiKey) return res.status(500).json({ error: "Chiave Gemini mancante." });
   if (!carta) return res.status(400).json({ error: "Carta mancante." });
 

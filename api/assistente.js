@@ -1,3 +1,4 @@
+import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // api/assistente.js
 // Assistente player di Eldoria — powered by Gemini (gratuito).
 // Legge da Firestore, propone azioni con conferma obbligatoria prima di scrivere.
@@ -646,15 +647,8 @@ async function callGemini(geminiKey, systemPrompt, contents, { useTools = true }
     },
   };
   if (useTools) body.tools = [TOOLS_DEF];
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
-  return r.json();
+  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  return geminiCall(body);
 }
 
 // Estrae il testo dalle parti, ignorando le parti di "thinking".
@@ -670,7 +664,7 @@ export default async function handler(req, res) {
   // Master o co-master (stesse email di src/utils/roles.js).
   const isMaster = [MASTER_EMAIL, "ripperti96@gmail.com"].includes((email || "").toLowerCase());
   const apiKey = process.env.FIREBASE_API_KEY || "AIzaSyBGv3dT_2-ztsAwx0B4s42YtPL-Q1UBMcM";
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = geminiKey_();
 
   if (!geminiKey) return res.status(500).json({ error: "Chiave Gemini mancante." });
   if (!uid) return res.status(400).json({ error: "UID utente mancante." });

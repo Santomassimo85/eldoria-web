@@ -1,3 +1,4 @@
+import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // api/crafting-maledizione.js
 //
 // L'1 naturale all'Officina non distrugge più il lavoro: l'oggetto esce lo
@@ -11,21 +12,14 @@
 // Master e nella coda "Crea Oggetto → Foundry". Se Gemini non risponde,
 // craftingCurse.js pesca da una tabella locale: il tiro non fallisce mai.
 //
-// Powered by Gemini (stessa chiave dell'assistente: GEMINI_API_KEY).
+// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
 
-async function callGemini(geminiKey, prompt) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1.15, maxOutputTokens: 700, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
-      }),
-    }
-  );
-  return r.json();
+async function callGemini(_key, prompt) {
+  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  return geminiCall({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 1.15, maxOutputTokens: 700, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+  });
 }
 
 function extractText(data) {
@@ -55,7 +49,7 @@ export default async function handler(req, res) {
     oggetto, tipo, professione, rarita, rarritaMirata, gravita,
     investimento, componenti, ritmo, artigiano, descrizione,
   } = req.body || {};
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = geminiKey_();
   if (!geminiKey) return res.status(500).json({ error: "Chiave Gemini mancante." });
   if (!oggetto) return res.status(400).json({ error: "Oggetto mancante." });
 

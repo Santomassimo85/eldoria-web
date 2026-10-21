@@ -1,3 +1,4 @@
+import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // api/genera-oggetto-arena.js
 //
 // "Crea con Gemini" della Bottega dell'Arena (2026-10-09): dall'idea del Master
@@ -8,7 +9,7 @@
 // così resta una sola fonte; il client poi ripulisce la risposta
 // (`sanitizeAiItem`) e la mette nel form: il Master rivede e salva.
 //
-// Powered by Gemini (GEMINI_API_KEY, come oracolo-frasi e crafting-maledizione).
+// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
 
 export const config = { maxDuration: 60 };
 
@@ -50,18 +51,11 @@ PAYLOAD PER CATEGORIA:
 - pet (azione bonus): {"effect":"damage"|"heal","dice":"2d6","autoHit":bool,"hitBonus":0-5,"uses":1-4,"onHit":[...solo se effect damage]}`;
 
 async function callGemini(geminiKey, prompt) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1, maxOutputTokens: 2000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 512 } },
-      }),
-    },
-  );
-  const data = await r.json();
+  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  const data = await geminiCall({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 1, maxOutputTokens: 2000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 512 } },
+  });
   if (data.error) throw new Error(data.error.message);
   const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("").trim();
   if (!text) throw new Error("Risposta vuota da Gemini.");
@@ -71,7 +65,7 @@ async function callGemini(geminiKey, prompt) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = geminiKey_();
   if (!geminiKey) return res.status(500).json({ error: "Chiave Gemini mancante." });
 
   const { idea = "", category = "", vocab = {}, catalog = [] } = req.body || {};

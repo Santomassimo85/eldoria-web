@@ -1,3 +1,4 @@
+import { geminiCall, IMAGE_MODELS } from "./_gemini.js";
 // api/genera-immagine.js
 // "Immagini": genera un'immagine con Gemini (Nano Banana). Tier gratuito.
 // Accetta DUE modi:
@@ -142,23 +143,18 @@ ${castBlock}ISTRUZIONI SUI RIFERIMENTI (IMPORTANTISSIMO):
     // Le immagini di riferimento vanno PRIMA del testo nelle parts.
     const reqParts = [...refParts, { text: finalPrompt }];
 
-    const r = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY
-        },
-        body: JSON.stringify({
-          contents: [{ parts: reqParts }],
-          generationConfig: { temperature: 1, ...(ratio ? { imageConfig: { aspectRatio: ratio } } : {}) }
-        })
-      }
-    );
-
-    const data = await r.json();
-    if (data.error) return res.status(500).json({ error: data.error.message });
+    // Gemini gratuito (vedi api/_gemini.js): nel piano gratuito le immagini hanno
+    // quota zero, quindi di solito Google rifiuta: lo si dice chiaro.
+    const data = await geminiCall({
+      contents: [{ parts: reqParts }],
+      generationConfig: { temperature: 1, ...(ratio ? { imageConfig: { aspectRatio: ratio } } : {}) }
+    }, { models: IMAGE_MODELS });
+    if (data.error) {
+      const quota = data.error.httpStatus === 429 || data.error.httpStatus === 402;
+      return res.status(quota ? 429 : 500).json({ error: quota
+        ? "Le immagini non sono comprese nel piano gratuito di Gemini: Google non ne genera gratis."
+        : data.error.message });
+    }
 
     const respParts = data?.candidates?.[0]?.content?.parts || [];
     const part = respParts.find(p => p.inlineData || p.inline_data);
