@@ -6,10 +6,10 @@ import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // rovescio). Usato dal banco di lettura: l'oracolo clicca "Genera" e sceglie
 // una frase, oppure ne scrive una a mano.
 //
-// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
+// Powered by Gemini (api/_gemini.js, chiave GEMINI_API_KEY).
 
 async function callGemini(_key, prompt) {
-  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  // Gemini con modello di riserva (vedi api/_gemini.js)
   return geminiCall({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { temperature: 1.0, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } },

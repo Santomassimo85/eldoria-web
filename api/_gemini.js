@@ -1,18 +1,18 @@
-// api/_gemini.js — chiamate a Gemini GRATUITO (2026-10-21).
+// api/_gemini.js — tutte le chiamate a Gemini del sito (2026-10-21).
 // Il file comincia con "_": Vercel non lo pubblica come funzione, è solo un aiuto.
 //
-// La chiave è quella del piano gratuito (progetto "Eldoria Project"): in Vercel
-// sta in GEMINI_FREE_KEY; GEMINI_API_KEY resta come riserva. Il vecchio progetto
-// a credito prepagato ha finito il credito e NON va riattivato senza chiederlo.
-// I modelli 2.5 non sono più dati ai progetti nuovi: si usano i 3.x, con un
-// modello di riserva se il primo è pieno (429) o non c'è (404).
-// Le IMMAGINI nel piano gratuito hanno quota zero: si prova lo stesso, e se
-// Google rifiuta si risponde con un messaggio chiaro invece dell'errore inglese.
+// Chiave = GEMINI_API_KEY di Vercel, il progetto "Eldoria" a CREDITO PREPAGATO
+// (…1EHk): scelta dell'utente, che ricarica lui il credito. Il 2026-10-21 il
+// credito era finito (402): finché non ricarica tutto risponde "credito finito".
+// Testi: come prima gemini-2.5-flash, con riserva sui 3.x se non risponde.
+// Immagini: gemini-2.5-flash-image è stato SPENTO da Google il 2026-10-02, quindi
+// si usa per primo il più economico (3.1-flash-lite-image, ~0,034 $/immagine) e
+// come riserva 3.1-flash-image (~0,067 $).
 
-export const TEXT_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
-export const IMAGE_MODELS = ["gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"];
+export const TEXT_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+export const IMAGE_MODELS = ["gemini-3.1-flash-lite-image", "gemini-3.1-flash-image"];
 
-export const geminiKey = () => process.env.GEMINI_FREE_KEY || process.env.GEMINI_API_KEY || "";
+export const geminiKey = () => process.env.GEMINI_API_KEY || "";
 
 const NEXT_MODEL = new Set([404, 429, 500, 503]);
 
@@ -52,10 +52,10 @@ export async function geminiCall(body, { models = TEXT_MODELS, key = geminiKey()
 export function friendlyGeminiError(err = {}) {
   const msg = String(err.message || "");
   if (err.httpStatus === 402 || /prepayment|credits are depleted|billing/i.test(msg)) {
-    return "Gemini: il credito del progetto a pagamento è finito. Il sito usa il piano gratuito: controlla che in Vercel ci sia GEMINI_FREE_KEY.";
+    return "Gemini: il credito prepagato è finito. Ricaricalo su AI Studio (ai.studio/projects → progetto Eldoria → Billing) e riprova.";
   }
   if (err.httpStatus === 429 || /quota/i.test(msg)) {
-    return "Gemini gratuito: limite di richieste raggiunto per ora (si azzera da solo, a mezzanotte ora del Pacifico per il limite del giorno). Riprova più tardi.";
+    return "Gemini: troppe richieste in questo momento. Riprova fra qualche minuto.";
   }
   return msg || "Errore di Gemini.";
 }

@@ -12,10 +12,10 @@ import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // Master e nella coda "Crea Oggetto → Foundry". Se Gemini non risponde,
 // craftingCurse.js pesca da una tabella locale: il tiro non fallisce mai.
 //
-// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
+// Powered by Gemini (api/_gemini.js, chiave GEMINI_API_KEY).
 
 async function callGemini(_key, prompt) {
-  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  // Gemini con modello di riserva (vedi api/_gemini.js)
   return geminiCall({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { temperature: 1.15, maxOutputTokens: 700, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },

@@ -1,6 +1,6 @@
 import { geminiCall, IMAGE_MODELS } from "./_gemini.js";
 // api/genera-immagine.js
-// "Immagini": genera un'immagine con Gemini (Nano Banana). Tier gratuito.
+// "Immagini": genera un'immagine con Gemini (Nano Banana). Credito prepagato (api/_gemini.js).
 // Accetta DUE modi:
 //   { prompt: "..." }  -> usa il prompt cosi' com'e' (es. mappe citta')
 //   { npc: {...} }     -> costruisce il prompt di un ritratto dall'NPC
@@ -143,18 +143,12 @@ ${castBlock}ISTRUZIONI SUI RIFERIMENTI (IMPORTANTISSIMO):
     // Le immagini di riferimento vanno PRIMA del testo nelle parts.
     const reqParts = [...refParts, { text: finalPrompt }];
 
-    // Gemini gratuito (vedi api/_gemini.js): nel piano gratuito le immagini hanno
-    // quota zero, quindi di solito Google rifiuta: lo si dice chiaro.
+    // Gemini a credito prepagato, modello più economico per primo (vedi api/_gemini.js).
     const data = await geminiCall({
       contents: [{ parts: reqParts }],
       generationConfig: { temperature: 1, ...(ratio ? { imageConfig: { aspectRatio: ratio } } : {}) }
     }, { models: IMAGE_MODELS });
-    if (data.error) {
-      const quota = data.error.httpStatus === 429 || data.error.httpStatus === 402;
-      return res.status(quota ? 429 : 500).json({ error: quota
-        ? "Le immagini non sono comprese nel piano gratuito di Gemini: Google non ne genera gratis."
-        : data.error.message });
-    }
+    if (data.error) return res.status(data.error.httpStatus === 402 || data.error.httpStatus === 429 ? 429 : 500).json({ error: data.error.message });
 
     const respParts = data?.candidates?.[0]?.content?.parts || [];
     const part = respParts.find(p => p.inlineData || p.inline_data);

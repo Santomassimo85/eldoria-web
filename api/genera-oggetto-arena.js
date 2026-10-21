@@ -9,7 +9,7 @@ import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // così resta una sola fonte; il client poi ripulisce la risposta
 // (`sanitizeAiItem`) e la mette nel form: il Master rivede e salva.
 //
-// Powered by Gemini GRATUITO (api/_gemini.js: GEMINI_FREE_KEY, riserva GEMINI_API_KEY).
+// Powered by Gemini (api/_gemini.js, chiave GEMINI_API_KEY).
 
 export const config = { maxDuration: 60 };
 
@@ -51,7 +51,7 @@ PAYLOAD PER CATEGORIA:
 - pet (azione bonus): {"effect":"damage"|"heal","dice":"2d6","autoHit":bool,"hitBonus":0-5,"uses":1-4,"onHit":[...solo se effect damage]}`;
 
 async function callGemini(geminiKey, prompt) {
-  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  // Gemini con modello di riserva (vedi api/_gemini.js)
   const data = await geminiCall({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature: 1, maxOutputTokens: 2000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 512 } },

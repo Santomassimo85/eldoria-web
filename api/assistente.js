@@ -1,6 +1,6 @@
 import { geminiCall, geminiKey as geminiKey_ } from "./_gemini.js";
 // api/assistente.js
-// Assistente player di Eldoria — powered by Gemini (gratuito).
+// Assistente player di Eldoria — powered by Gemini (api/_gemini.js, credito prepagato).
 // Legge da Firestore, propone azioni con conferma obbligatoria prima di scrivere.
 //
 // STRUMENTI disponibili:
@@ -647,7 +647,7 @@ async function callGemini(geminiKey, systemPrompt, contents, { useTools = true }
     },
   };
   if (useTools) body.tools = [TOOLS_DEF];
-  // Gemini gratuito con modello di riserva (vedi api/_gemini.js)
+  // Gemini con modello di riserva (vedi api/_gemini.js)
   return geminiCall(body);
 }
 
