@@ -53,7 +53,7 @@ let pendingResolve = null;
 
 // ── Dado 3D (2026-10-21): un d20 vero che rotola sul tavolo (three.js, caricato
 // solo al primo tiro). Resta il dado disegnato in CSS per i tiri segreti
-// dell'Officina, per chi ha "riduci animazioni" e dove WebGL non c'è.
+// dell'Officina e dove WebGL non c'è.
 let dice3dMod = null;
 const load3D = () => (dice3dMod ||= import("./dice3d").then((m) => (m.canUse3D() ? m : null)).catch(() => null));
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -93,7 +93,9 @@ export default function DiceRollHost() {
   const SETTLE_MS = 450;   // settle / reveal
   const HOLD_MS   = 550;   // pause showing the result
   const FADE_MS   = 280;   // fade out
-  const ROLL3D_MS = 1350;  // lancio 3D: dalla mano al dado fermo
+  // Lancio 3D: dalla mano al dado fermo. Con "riduci animazioni" (su molti Android
+  // si accende anche col risparmio energetico) il dado resta 3D ma rotola meno.
+  const ROLL3D_MS = reducedMotion() ? 700 : 1350;
   const HOLD3D_MS = 900;   // il dado 3D resta fermo un po' di più: si legge la faccia
 
   // Lancio 3D: si decide se usarlo PRIMA di montare l'overlay (mode "3d" | "css").
@@ -104,7 +106,7 @@ export default function DiceRollHost() {
   const mode = roll && modeFor.id === roll.id ? modeFor.mode : null;
   useEffect(() => {
     if (!roll) return;
-    if (roll.hidden || reducedMotion()) { setModeFor({ id: roll.id, mode: "css" }); return; }
+    if (roll.hidden) { setModeFor({ id: roll.id, mode: "css" }); return; }
     let alive = true;
     load3D().then((m) => { if (alive) setModeFor({ id: roll.id, mode: m ? "3d" : "css" }); });
     return () => { alive = false; };

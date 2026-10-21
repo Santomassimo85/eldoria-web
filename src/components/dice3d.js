@@ -239,6 +239,42 @@ export function roll3D(host, { value, skin = "classic", durationMs = 1350, accen
   });
 }
 
+// Anteprime del menu "I Tuoi Dadi": un d20 fermo (faccia 20, un po' inclinato)
+// per ogni colore, disegnato una volta in un'immagine. Renderer e scena a parte,
+// così un'anteprima non disturba un lancio in corso.
+const previewCache = new Map();
+let pv = null;
+export function previewDie(skin = "classic", size = 160) {
+  const key = `${skin}:${size}`;
+  if (previewCache.has(key)) return previewCache.get(key);
+  if (!renderer) setup();
+  if (!pv) {
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    r.setClearColor(0x000000, 0);
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    const sc = new THREE.Scene();
+    sc.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(-3, -4, 10); sc.add(key);
+    const rim = new THREE.DirectionalLight(0xffe2b0, 0.8); rim.position.set(5, 6, 4); sc.add(rim);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+    cam.position.set(0, -0.6, 4.4); cam.lookAt(0, 0, 0);
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0.18, flatShading: true });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.quaternion.copy(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.32, 0.28, 0.1)).multiply(faceFrames[19].clone()));
+    sc.add(mesh);
+    pv = { r, sc, cam, mat };
+  }
+  pv.r.setPixelRatio(1);
+  pv.r.setSize(size, size, false);
+  pv.mat.map?.dispose();
+  pv.mat.map = makeAtlas(skin);
+  pv.mat.needsUpdate = true;
+  pv.r.render(pv.sc, pv.cam);
+  const url = pv.r.domElement.toDataURL("image/png"); // subito dopo il render: niente preserveDrawingBuffer
+  previewCache.set(key, url);
+  return url;
+}
+
 /** Ferma l'animazione in corso (il canvas resta dov'è, lo toglie il chiamante). */
 export function stop3D() {
   token++;

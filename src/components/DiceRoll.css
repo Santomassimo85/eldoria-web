@@ -511,3 +511,6 @@
   animation: dice3d-caption 260ms ease-out var(--tumble-ms, 1350ms) forwards; }
 @keyframes dice3d-caption { to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .dice3d-caption { animation: none; opacity: 1; } }
+
+/* Anteprima 3D del colore nel menu "I Tuoi Dadi" (2026-10-21) */
+.dice-swatch-3d { width: 64px; height: 64px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }

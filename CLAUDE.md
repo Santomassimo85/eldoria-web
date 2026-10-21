@@ -108,7 +108,7 @@
 
 ## DADI 3D IN ARENA E WORLD BOSS (2026-10-21)
 - `showD20Roll(value, {label, hidden})` (DiceRoll.jsx, host in App.jsx) ora lancia un **d20 3D vero** (`src/components/dice3d.js`, three.js r170 caricato con import dinamico al primo tiro, ~120 kB gzip): lancio simulato (rimbalzi + rotazione smorzata) e poi TUTTA la traiettoria ruotata di una rotazione fissa, così si ferma sulla faccia decisa dal gioco senza scatti; numero dritto (`faceFrames`), colori per le 10 skin di "I Tuoi Dadi" (`SKIN_COLORS`), bagliore oro/rosso su 20/1. La promessa si risolve quando il dado è fermo (1350 ms), l'overlay resta 900 ms.
-- **Resta il dado CSS** per i tiri segreti dell'Officina (`hidden`), con "riduci animazioni" e senza WebGL (la modalità vale per il singolo tiro: `modeFor.id === roll.id`).
+- **Resta il dado CSS** solo per i tiri segreti dell'Officina (`hidden`) e senza WebGL (la modalità vale per il singolo tiro: `modeFor.id === roll.id`). Con "riduci animazioni" il dado resta 3D ma il lancio dura 700 ms (molti Android la accendono col risparmio energetico e l'utente vedeva il vecchio dado). Il menu "I Tuoi Dadi" (Arena.jsx) mostra per ogni colore un d20 3D fermo: `previewDie(skin)` in dice3d.js (renderer a parte, immagine in cache).
 - World Boss: `await showD20Roll` sul tiro per colpire del giocatore e sull'attacco del Master (prima non c'era nessun dado). Test visivo: Chrome headless + swiftshader non fa girare rAF né fotografa il canvas WebGL: in una pagina di prova sostituire rAF con setTimeout e copiare il canvas in un'<img> (`preserveDrawingBuffer`).
 
 ## ARENA: IL MASTER ISCRIVE PIÙ PG E SCEGLIE QUALE FIGHT GIOCARE (2026-10-20)

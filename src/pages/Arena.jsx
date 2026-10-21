@@ -3399,6 +3399,20 @@ export default function Arena() {
 
   // Cambia skin: persiste, attiva e mostra un tiro di anteprima (valore neutro così
   // si vede la skin e non il colore di critico/fallimento).
+  // Anteprime 3D dei colori nel menu "I Tuoi Dadi" (si disegnano all'apertura).
+  const [diceSkinPics, setDiceSkinPics] = useState({});
+  useEffect(() => {
+    if (!dicePickerOpen || Object.keys(diceSkinPics).length) return;
+    let alive = true;
+    import("../components/dice3d").then((m) => {
+      if (!alive || !m.canUse3D()) return;
+      const pics = {};
+      DICE_SKINS.forEach((s) => { try { pics[s.id] = m.previewDie(s.id, 160); } catch { /* resta l'esagono */ } });
+      setDiceSkinPics(pics);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [dicePickerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleChangeDiceSkin = (id) => {
     setDiceSkin(id);
     setDiceSkinId(id);
@@ -12907,7 +12921,9 @@ export default function Arena() {
               className={`dice-skin-card${diceSkinId === s.id ? " is-active" : ""}`}
               onClick={() => handleChangeDiceSkin(s.id)}
             >
-              <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />
+              {diceSkinPics[s.id]
+                ? <img className="dice-swatch-3d" src={diceSkinPics[s.id]} alt="" aria-hidden="true" />
+                : <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />}
               <span className="dice-skin-name">{s.label}</span>
               {diceSkinId === s.id && <span className="dice-skin-check" aria-hidden="true">✓</span>}
             </button>
@@ -12922,7 +12938,9 @@ export default function Arena() {
               className={`dice-skin-card is-special${diceSkinId === s.id ? " is-active" : ""}`}
               onClick={() => handleChangeDiceSkin(s.id)}
             >
-              <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />
+              {diceSkinPics[s.id]
+                ? <img className="dice-swatch-3d" src={diceSkinPics[s.id]} alt="" aria-hidden="true" />
+                : <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />}
               <span className="dice-skin-name">{s.label}</span>
               {s.desc && <span className="dice-skin-desc">{s.desc}</span>}
               {diceSkinId === s.id && <span className="dice-skin-check" aria-hidden="true">✓</span>}
