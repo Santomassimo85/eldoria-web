@@ -25,6 +25,7 @@ import "./admin.css";
 import "./WorldBossAdmin.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
+import BossRewardsEditor, { blankRewards, normalizeRewards, cleanRewards, rewardsSummary } from "./WorldBossRewards";
 
 import { isAdminEmail } from "../utils/roles";
 
@@ -51,8 +52,6 @@ const SAVES = [
   { v: "dex", l: "DES" }, { v: "con", l: "COS" }, { v: "wis", l: "SAG" },
   { v: "str", l: "FOR" }, { v: "int", l: "INT" }, { v: "cha", l: "CAR" },
 ];
-// Boss action types that target tiles/units (so they get a range + preview).
-const TARGETED_TYPES = ["attack", "heal", "debuff_dis"];
 
 const blankAction = (i = 0) => ({
   type: "attack",
@@ -78,27 +77,18 @@ const initialBossState = {
   name: "",
   maxHp: "",
   ac: "",
-  rewards: "",
+  rewardsData: blankRewards(),
   penalties: "",
   imageUrl: "",
   deadImageUrl: "",
   facing: "left", // verso del disegno: "left" = lo sprite guarda a sinistra → in battaglia viene specchiato
   description: "",
   gradoSfida: "",
-  size: 1,
   expiryDate: "",
   actions: [blankAction(0), blankAction(1)],
 };
 
 const DICE = ["d4", "d6", "d8", "d10", "d12", "d20"];
-
-// Taglia del boss: quante caselle occupa visivamente sulla griglia (NxN).
-const BOSS_SIZES = [
-  { v: 1, label: "Normale (1×1)" },
-  { v: 2, label: "Grande (2×2)" },
-  { v: 3, label: "Enorme (3×3)" },
-  { v: 4, label: "Gargantuesco (4×4)" },
-];
 
 const ACTION_PLACEHOLDERS = [
   "Artiglio del Vuoto",
@@ -235,124 +225,108 @@ const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
 });
 
 /* ──────────────────────────────────────────────────────────────
-   ActionEditor — single boss action card with type-specific fields
+   ActionEditor — un'azione in una scheda compatta (2026-10-21):
+   tipo + nome in testa, dadi e tipo di danno su una riga, il TS
+   solo se serve. La spiegazione del tipo sta nel title del select.
    ────────────────────────────────────────────────────────────── */
 const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
   const type = action.type || "attack";
   const meta = ACTION_TYPES.find((t) => t.value === type) || ACTION_TYPES[0];
+  const isSave = action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single");
   return (
     <div className={`wb-action-block wb-action-block--${type}`}>
-      <div className="wb-action-block-head">
-        <label>{meta.label} · Azione {idx + 1}</label>
-        <button
-          type="button"
-          className="wb-remove-action-btn"
-          onClick={onRemove}
-          disabled={!canRemove}
-          title={canRemove ? "Rimuovi" : `Minimo ${MIN_ACTIONS} azioni`}
-        >
-          ✕
-        </button>
+      <div className="wb-act-head">
+        <span className="wb-act-n">{idx + 1}</span>
+        <select className="admin-field-input wb-act-type" value={type} title={meta.hint}
+          onChange={(e) => onChange({ type: e.target.value })}>
+          {ACTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+        <input className="admin-field-input wb-act-name"
+          placeholder={ACTION_PLACEHOLDERS[idx] || `Azione ${idx + 1}`}
+          value={action.name || ""} onChange={(e) => onChange({ name: e.target.value })} />
+        <button type="button" className="wb-remove-action-btn" onClick={onRemove} disabled={!canRemove}
+          title={canRemove ? "Rimuovi" : `Minimo ${MIN_ACTIONS} azioni`}>✕</button>
       </div>
 
-      <select
-        className="admin-field-input wb-action-type-select"
-        value={type}
-        onChange={(e) => onChange({ type: e.target.value })}
-      >
-        {ACTION_TYPES.map((t) => (
-          <option key={t.value} value={t.value}>{t.label}</option>
-        ))}
-      </select>
-
-      <input
-        className="admin-field-input"
-        placeholder={ACTION_PLACEHOLDERS[idx] || `Azione ${idx + 1}`}
-        value={action.name || ""}
-        onChange={(e) => onChange({ name: e.target.value })}
-      />
-
-      <small className="wb-action-help">{meta.hint}</small>
-
       {(type === "attack" || type === "heal") && (
-        <div className="wb-dice-row">
-          <input
-            className="admin-field-input"
-            type="number"
-            placeholder="N°"
-            value={action.diceNum ?? 1}
-            onChange={(e) => onChange({ diceNum: e.target.value })}
-          />
-          <select
-            className="admin-field-input"
-            value={action.diceType || "d6"}
-            onChange={(e) => onChange({ diceType: e.target.value })}
-          >
-            {DICE.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <input
-            className="admin-field-input"
-            type="number"
-            placeholder={type === "attack" ? "+ Hit" : "+ Bonus"}
-            value={action.bonus ?? 0}
-            onChange={(e) => onChange({ bonus: e.target.value })}
-          />
-        </div>
-      )}
-
-      {type === "attack" && (
-        <div className="wb-dice-row wb-dice-row--single wb-dmgtype-row">
-          <label className="wb-inline-label">🩸 Tipo di danno</label>
-          <select
-            className="admin-field-input wb-dmgtype-select"
-            value={action.dmgType || ""}
-            onChange={(e) => onChange({ dmgType: e.target.value })}
-            title="Decide l'effetto/tinta a schermo. Auto = rilevato dal nome dell'azione."
-          >
-            {DMG_TYPE_OPTIONS.map((el) => <option key={el.value} value={el.value}>{el.label}</option>)}
-          </select>
-        </div>
-      )}
-
-      {type === "attack" && (
-        <div className="wb-dice-row wb-dice-row--single wb-save-row">
-          <label className="wb-inline-label">🎲 Come colpisce</label>
-          <select
-            className="admin-field-input"
-            value={action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single") ? "save" : "hit"}
-            onChange={(e) => onChange(e.target.value === "hit" ? { hitMode: "hit", aoeShape: "single" } : { hitMode: "save" })}
-            title="Tiro salvezza = gli eroi colpiti tirano da soli il TS contro la CD: superato, metà danni (o niente)."
-          >
-            <option value="hit">Tiro per colpire (vs CA)</option>
-            <option value="save">Tiro salvezza degli eroi</option>
-          </select>
-          {(action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single")) && (
-            <>
-              <select className="admin-field-input" value={action.saveAbility || "dex"} onChange={(e) => onChange({ saveAbility: e.target.value })} title="Caratteristica del TS">
-                {SAVES.map((s) => <option key={s.v} value={s.v}>TS {s.l}</option>)}
+        <div className="wb-act-row">
+          <label className="wb-mini"><span>Dadi</span>
+            <input className="admin-field-input" type="number" min="1" value={action.diceNum ?? 1} onChange={(e) => onChange({ diceNum: e.target.value })} />
+          </label>
+          <label className="wb-mini"><span>Dado</span>
+            <select className="admin-field-input" value={action.diceType || "d6"} onChange={(e) => onChange({ diceType: e.target.value })}>
+              {DICE.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </label>
+          <label className="wb-mini"><span>{type === "attack" ? "Al colpire" : "Bonus"}</span>
+            <input className="admin-field-input" type="number" value={action.bonus ?? 0} onChange={(e) => onChange({ bonus: e.target.value })} />
+          </label>
+          {type === "attack" && (
+            <label className="wb-mini wb-mini--wide"><span>Tipo di danno</span>
+              <select className="admin-field-input" value={action.dmgType || ""} onChange={(e) => onChange({ dmgType: e.target.value })}
+                title="Decide l'effetto a schermo. Auto = dal nome dell'azione.">
+                {DMG_TYPE_OPTIONS.map((el) => <option key={el.value} value={el.value}>{el.label}</option>)}
               </select>
-              <input className="admin-field-input" type="number" min="5" max="30" placeholder="CD" value={action.saveDC ?? 13} onChange={(e) => onChange({ saveDC: e.target.value })} title="CD del tiro salvezza" />
-              <label className="wb-inline-label wb-half-label">
-                <input type="checkbox" checked={action.halfOnSave !== false} onChange={(e) => onChange({ halfOnSave: e.target.checked })} /> metà se lo superano
-              </label>
-            </>
+            </label>
           )}
         </div>
       )}
 
-      {type === "buff_ca" && (
-        <div className="wb-dice-row wb-dice-row--single">
-          <label className="wb-inline-label">+CA</label>
-          <input
-            className="admin-field-input"
-            type="number"
-            placeholder="2"
-            value={action.acBonus ?? 2}
-            onChange={(e) => onChange({ acBonus: e.target.value })}
-          />
+      {type === "attack" && (
+        <div className="wb-act-row">
+          <label className="wb-mini wb-mini--wide"><span>Come colpisce</span>
+            <select className="admin-field-input" value={isSave ? "save" : "hit"}
+              onChange={(e) => onChange(e.target.value === "hit" ? { hitMode: "hit", aoeShape: "single" } : { hitMode: "save" })}
+              title="Tiro salvezza = gli eroi colpiti tirano da soli il TS contro la CD.">
+              <option value="hit">Tiro per colpire (vs CA)</option>
+              <option value="save">Tiro salvezza degli eroi</option>
+            </select>
+          </label>
+          {isSave && (<>
+            <label className="wb-mini"><span>TS</span>
+              <select className="admin-field-input" value={action.saveAbility || "dex"} onChange={(e) => onChange({ saveAbility: e.target.value })}>
+                {SAVES.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+              </select>
+            </label>
+            <label className="wb-mini"><span>CD</span>
+              <input className="admin-field-input" type="number" min="5" max="30" value={action.saveDC ?? 13} onChange={(e) => onChange({ saveDC: e.target.value })} />
+            </label>
+            <label className="wb-half">
+              <input type="checkbox" checked={action.halfOnSave !== false} onChange={(e) => onChange({ halfOnSave: e.target.checked })} /> metà se superato
+            </label>
+          </>)}
         </div>
       )}
 
+      {type === "buff_ca" && (
+        <div className="wb-act-row">
+          <label className="wb-mini"><span>+CA</span>
+            <input className="admin-field-input" type="number" value={action.acBonus ?? 2} onChange={(e) => onChange({ acBonus: e.target.value })} />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* Lista di azioni con "+ Aggiungi" (boss e minion). */
+const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) => {
+  const update = (i, patch) => onChange(actions.map((a, k) => (k === i ? { ...a, ...patch } : a)));
+  return (
+    <div className="wb-actions-section">
+      <div className="wb-actions-head">
+        <label>{title} <small>{actions.length}/{MAX_ACTIONS}</small></label>
+        <button type="button" className="wb-add-action-btn" disabled={actions.length >= MAX_ACTIONS}
+          onClick={() => onChange([...actions, blankAction(actions.length)])}>+ Aggiungi</button>
+      </div>
+      <div className="wb-actions-grid">
+        {actions.map((a, idx) => (
+          <ActionEditor key={idx} action={a} idx={idx}
+            onChange={(patch) => update(idx, patch)}
+            onRemove={() => actions.length > min && onChange(actions.filter((_, k) => k !== idx))}
+            canRemove={actions.length > min} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -496,14 +470,22 @@ const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGene
   );
 };
 
+/* ──────────────────────────────────────────────────────────────
+   Pagina (2026-10-21): tre pieghe — Bestiario · Forgia · Minion —
+   invece di un muro unico. Creare e modificare un boss usano la
+   STESSA forgia a tutta larghezza (prima la modifica si apriva dentro
+   la carta stretta del bestiario).
+   ────────────────────────────────────────────────────────────── */
 export default function WorldBossAdmin() {
   const { currentUser } = useAuth();
   const [bosses, setBosses] = useState([]);
+  const [tab, setTab] = useState("bestiario");
   const [showHidden, setShowHidden] = useState(false); // mostra anche i boss disattivati
-  const [newBoss, setNewBoss] = useState(initialBossState);
+  const [mapOpenId, setMapOpenId] = useState(null);    // carta del bestiario con la mappa aperta
+  const [form, setForm] = useState(initialBossState);
   const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [uploadState, setUploadState] = useState({}); // { newAlive: bool, newDead: bool, editAlive: bool, editDead: bool }
+  const [saving, setSaving] = useState(false);
+  const [uploadState, setUploadState] = useState({}); // { alive, dead, minionAlive, minionDead, reward }
 
   // ── Minion builder (reusable mooks: name, HP, CA, attacks) ──
   const [minions, setMinions] = useState([]);                 // saved minion templates
@@ -511,7 +493,7 @@ export default function WorldBossAdmin() {
   const [editingMinionId, setEditingMinionId] = useState(null);
 
   // ── Generazione IA (testo + sprite) ──
-  const [genState, setGenState] = useState({}); // spinner per slot: { boss, minion, genNewAlive, ... }
+  const [genState, setGenState] = useState({}); // spinner per slot: { boss, minion, genAlive, ... }
   // Forma dello sprite "morto" generato dall'IA: la creatura stesa o la sua tomba.
   const [deadStyle, setDeadStyle] = useState("corpse");
   const [bossSpunto, setBossSpunto] = useState("");     // spunto facoltativo per il boss IA
@@ -624,25 +606,26 @@ export default function WorldBossAdmin() {
     }
   };
 
-  // Genera un BOSS completo e riempie il form della Forgia (tutto editabile).
+  // Genera un BOSS completo e riempie la Forgia (tutto editabile).
   const generaBoss = async () => {
     setGenState((s) => ({ ...s, boss: true }));
     try {
       const r = await fetch("/api/genera-boss", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tipo: "boss", contesto: bossSpunto || newBoss.name || "", evita: bosses.map((b) => b.name).filter(Boolean) }),
+        body: JSON.stringify({ tipo: "boss", contesto: bossSpunto || form.name || "", evita: bosses.map((b) => b.name).filter(Boolean) }),
       });
       const data = await r.json();
       if (!r.ok || data.error) throw new Error(data.error || "Generazione fallita.");
-      setNewBoss((b) => ({
+      setForm((b) => ({
         ...b,
         name: data.name || b.name,
         maxHp: data.maxHp != null ? String(data.maxHp) : b.maxHp,
         ac: data.ac != null ? String(data.ac) : b.ac,
         gradoSfida: data.gradoSfida != null ? String(data.gradoSfida) : b.gradoSfida,
         description: data.description || b.description,
-        rewards: data.rewards || b.rewards,
+        // L'IA scrive il bottino a parole: finisce nelle note, i premi veri li decide il Master.
+        rewardsData: data.rewards ? { ...b.rewardsData, note: data.rewards } : b.rewardsData,
         penalties: data.penalties || b.penalties,
         actions: sanitizeActions(data.actions, MIN_ACTIONS),
       }));
@@ -650,12 +633,12 @@ export default function WorldBossAdmin() {
       // In fila: il morto parte dal vivo appena disegnato.
       (async () => {
         const alive = await generateSprite({
-          name: data.name, desc: data.description, dead: false, slotKey: "genNewAlive",
-          apply: (url) => setNewBoss((b) => ({ ...b, imageUrl: url })),
+          name: data.name, desc: data.description, dead: false, slotKey: "genAlive",
+          apply: (url) => setForm((b) => ({ ...b, imageUrl: url })),
         });
         await generateSprite({
-          name: data.name, desc: data.description, dead: true, slotKey: "genNewDead", ref: alive?.ref || "",
-          apply: (url) => setNewBoss((b) => ({ ...b, deadImageUrl: url })),
+          name: data.name, desc: data.description, dead: true, slotKey: "genDead", ref: alive?.ref || "",
+          apply: (url) => setForm((b) => ({ ...b, deadImageUrl: url })),
         });
       })();
     } catch (e) {
@@ -702,84 +685,16 @@ export default function WorldBossAdmin() {
     }
   };
 
-  /* ── New boss handlers ── */
-  const onNewAlive = async (file) => {
-    const url = await uploadSprite(file, "newAlive");
+  /* ── Sprite della Forgia (nuovo o in modifica, stesso form) ── */
+  const onFormSprite = (key, slot) => async (file) => {
+    const url = await uploadSprite(file, slot);
     if (url) {
-      if (newBoss.imageUrl) cleanupStorageUrl(newBoss.imageUrl);
-      setNewBoss((b) => ({ ...b, imageUrl: url }));
+      if (form[key]) cleanupStorageUrl(form[key]);
+      setForm((b) => ({ ...b, [key]: url }));
     }
   };
-  const onNewDead = async (file) => {
-    const url = await uploadSprite(file, "newDead");
-    if (url) {
-      if (newBoss.deadImageUrl) cleanupStorageUrl(newBoss.deadImageUrl);
-      setNewBoss((b) => ({ ...b, deadImageUrl: url }));
-    }
-  };
-
-  /* ── Edit boss handlers ── */
-  const onEditAlive = async (file) => {
-    const url = await uploadSprite(file, "editAlive");
-    if (url) {
-      if (editData.imageUrl) cleanupStorageUrl(editData.imageUrl);
-      setEditData((d) => ({ ...d, imageUrl: url }));
-    }
-  };
-  const onEditDead = async (file) => {
-    const url = await uploadSprite(file, "editDead");
-    if (url) {
-      if (editData.deadImageUrl) cleanupStorageUrl(editData.deadImageUrl);
-      setEditData((d) => ({ ...d, deadImageUrl: url }));
-    }
-  };
-
-  /* ── Dynamic actions: new boss ── */
-  const updateNewAction = (idx, patch) =>
-    setNewBoss((b) => ({
-      ...b,
-      actions: b.actions.map((a, i) => (i === idx ? { ...a, ...patch } : a)),
-    }));
-  const addNewAction = () =>
-    setNewBoss((b) =>
-      b.actions.length >= MAX_ACTIONS
-        ? b
-        : { ...b, actions: [...b.actions, blankAction(b.actions.length)] }
-    );
-  const removeNewAction = (idx) =>
-    setNewBoss((b) =>
-      b.actions.length <= MIN_ACTIONS
-        ? b
-        : { ...b, actions: b.actions.filter((_, i) => i !== idx) }
-    );
-
-  /* ── Dynamic actions: edit boss ── */
-  const updateEditAction = (idx, patch) =>
-    setEditData((d) => ({
-      ...d,
-      actions: (d.actions || []).map((a, i) => (i === idx ? { ...a, ...patch } : a)),
-    }));
-  const addEditAction = () =>
-    setEditData((d) => {
-      const cur = d.actions || [];
-      if (cur.length >= MAX_ACTIONS) return d;
-      return { ...d, actions: [...cur, blankAction(cur.length)] };
-    });
-  const removeEditAction = (idx) =>
-    setEditData((d) => {
-      const cur = d.actions || [];
-      if (cur.length <= MIN_ACTIONS) return d;
-      return { ...d, actions: cur.filter((_, i) => i !== idx) };
-    });
 
   /* ── Minion builder handlers ── */
-  const updateMinionAction = (idx, patch) =>
-    setMinionForm((m) => ({ ...m, actions: m.actions.map((a, i) => (i === idx ? { ...a, ...patch } : a)) }));
-  const addMinionAction = () =>
-    setMinionForm((m) => (m.actions.length >= MAX_ACTIONS ? m : { ...m, actions: [...m.actions, blankAction(m.actions.length)] }));
-  const removeMinionAction = (idx) =>
-    setMinionForm((m) => (m.actions.length <= 1 ? m : { ...m, actions: m.actions.filter((_, i) => i !== idx) }));
-
   const onMinionAlive = async (file) => {
     const url = await uploadSprite(file, "minionAlive");
     if (url) {
@@ -802,7 +717,7 @@ export default function WorldBossAdmin() {
       facing: m.facing === "right" ? "right" : "left",
       actions: m.actions?.length ? m.actions.map((a) => ({ ...blankAction(0), ...a })) : [blankAction(0)],
     });
-    window.scrollTo({ top: document.querySelector(".wb-minions")?.offsetTop || 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const cancelMinionEdit = () => { setEditingMinionId(null); setMinionForm(blankMinion()); };
   const saveMinion = async (e) => {
@@ -844,58 +759,69 @@ export default function WorldBossAdmin() {
     });
   };
 
-  const handleCreateBoss = async (e) => {
-    e.preventDefault();
-    if (uploadState.newAlive || uploadState.newDead) return;
-    try {
-      await addDoc(collection(db, "bosses"), {
-        ...newBoss,
-        ac: parseInt(newBoss.ac) || 10,
-        hp: parseInt(newBoss.maxHp),
-        maxHp: parseInt(newBoss.maxHp),
-        size: parseInt(newBoss.size) || 1,
-        isActive: false,
-        mapX: 50,
-        mapY: 50,
-        createdAt: serverTimestamp(),
-      });
-      alert("✅ Boss evocato!");
-      setNewBoss(initialBossState);
-    } catch (err) {
-      console.error(err);
-      alert("Errore creazione: " + err.message);
-    }
-  };
-
+  /* ── Forgia: nuovo boss o modifica di uno esistente ── */
+  const newForge = () => { setEditingId(null); setForm(initialBossState); setTab("forgia"); };
   const startEdit = (boss) => {
     setEditingId(boss.id);
-    setEditData({ ...boss, actions: normalizeBossActions(boss) });
+    setForm({
+      ...initialBossState,
+      ...boss,
+      maxHp: boss.maxHp ?? "",
+      ac: boss.ac ?? "",
+      hp: boss.hp ?? "",
+      actions: normalizeBossActions(boss),
+      rewardsData: normalizeRewards(boss),
+    });
+    setTab("forgia");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const cancelEdit = () => { setEditingId(null); setForm(initialBossState); setTab("bestiario"); };
 
-  const saveEdit = async (id) => {
-    if (uploadState.editAlive || uploadState.editDead) return;
+  const saveBoss = async (e) => {
+    e.preventDefault();
+    if (uploadState.alive || uploadState.dead || saving) return;
+    const maxHp = parseInt(form.maxHp) || 100;
+    const base = {
+      name: form.name.trim(),
+      maxHp,
+      ac: parseInt(form.ac) || 10,
+      gradoSfida: form.gradoSfida || "",
+      description: form.description || "",
+      penalties: form.penalties || "",
+      imageUrl: form.imageUrl || "",
+      deadImageUrl: form.deadImageUrl || "",
+      facing: form.facing === "right" ? "right" : "left",
+      expiryDate: form.expiryDate || "",
+      actions: form.actions,
+      rewardsData: cleanRewards(form.rewardsData),
+      rewards: rewardsSummary(form.rewardsData),
+    };
+    setSaving(true);
     try {
-      await updateDoc(doc(db, "bosses", id), {
-        ...editData,
-        ac: parseInt(editData.ac) || 10,
-        maxHp: parseInt(editData.maxHp) || 100,
-        size: parseInt(editData.size) || 1,
-        hp:
-          parseInt(editData.hp) > parseInt(editData.maxHp)
-            ? parseInt(editData.maxHp)
-            : parseInt(editData.hp),
-        // Drop legacy per-slot action fields now that we use the actions array.
-        action1: deleteField(),
-        action2: deleteField(),
-        action3: deleteField(),
-        action4: deleteField(),
-        action5: deleteField(),
-      });
+      if (editingId) {
+        const hp = parseInt(form.hp);
+        await updateDoc(doc(db, "bosses", editingId), {
+          ...base,
+          hp: Number.isFinite(hp) ? Math.min(hp, maxHp) : maxHp,
+          // Campi che il form non usa più: le vecchie azioni a slot e la taglia (mappa tattica dismessa).
+          action1: deleteField(), action2: deleteField(), action3: deleteField(),
+          action4: deleteField(), action5: deleteField(), size: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "bosses"), {
+          ...base, hp: maxHp, isActive: false, mapX: 50, mapY: 50, createdAt: serverTimestamp(),
+        });
+        setShowHidden(true); // il nuovo nasce nascosto: fallo vedere nel bestiario
+      }
       setEditingId(null);
-      alert("Boss aggiornato!");
+      setForm(initialBossState);
+      setTab("bestiario");
     } catch (err) {
       console.error(err);
-      alert("Errore: " + err.message);
+      alert("Errore salvataggio: " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -928,6 +854,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
       ]);
       await deleteDoc(doc(db, "bosses", boss.id));
       if (boss.isActive) await resetWorldBossFight();
+      if (editingId === boss.id) cancelEdit();
     } catch (err) {
       alert("Errore eliminazione: " + err.message);
     }
@@ -939,619 +866,381 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
     defeated: bosses.filter((b) => (b.hp ?? 0) <= 0).length,
   }), [bosses]);
 
+  // Attivi per primi, poi i più recenti.
+  const visibleBosses = useMemo(() => bosses
+    .filter((b) => showHidden || b.isActive)
+    .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0)
+      || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)), [bosses, showHidden]);
+
   if (!currentUser || !isAdminEmail(currentUser.email)) {
     return <div className="denied">Accesso Negato.</div>;
   }
+
+  const busySprites = uploadState.alive || uploadState.dead;
+  const TABS = [
+    { key: "bestiario", label: "🦴 Bestiario", count: bosses.length },
+    { key: "forgia", label: editingId ? `✎ ${form.name || "Modifica"}` : "⚒ Nuovo boss" },
+    { key: "minion", label: "🪓 Minion", count: minions.length },
+  ];
 
   return (
     <div className="wb-admin-page wb-redesign">
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
-      {/* ── HERO ── */}
+      {/* ── TESTATA ── */}
       <header className="wb-hero">
         <div className="wb-hero-titles">
           <span className="adm-eyebrow">🩸 Bestiario delle Calamità</span>
           <h1 className="wb-hero-title">Sala delle Minacce</h1>
-          <p className="wb-hero-sub">Forgia, evoca e governa le calamità di Exanthia</p>
         </div>
         <div className="wb-hero-stats">
-          <div className="wb-hero-stat"><span>Bestiario</span><strong>{stats.total}</strong></div>
-          <div className="wb-hero-stat active"><span>Attivi</span><strong>{stats.active}</strong></div>
-          <div className="wb-hero-stat defeated"><span>Sconfitti</span><strong>{stats.defeated}</strong></div>
+          <span className="wb-hero-stat"><strong>{stats.total}</strong> nel bestiario</span>
+          <span className="wb-hero-stat active"><strong>{stats.active}</strong> attivi</span>
+          <span className="wb-hero-stat defeated"><strong>{stats.defeated}</strong> sconfitti</span>
         </div>
       </header>
 
-      {/* ── WORKSHOP: FORGIA + ALTARE ── */}
-      <div className="wb-workshop">
-        <section className="wb-forge">
-          <div className="wb-section-head">
-            <h2>⚒ Forgia della Minaccia</h2>
-            <small>Definisci nome, statistiche e azioni — o lascia fare all'IA</small>
-          </div>
-
-          <div className="wb-ai-bar">
-            <input
-              className="admin-field-input"
-              placeholder="Spunto facoltativo (es. drago di ghiaccio dei picchi di Ehkia)"
-              value={bossSpunto}
-              onChange={(e) => setBossSpunto(e.target.value)}
-              disabled={genState.boss}
-            />
-            <button type="button" className="wb-ai-btn" onClick={generaBoss} disabled={genState.boss}>
-              {genState.boss ? "✨ L'IA forgia…" : "✨ Genera boss con l'IA"}
-            </button>
-          </div>
-          <small className="wb-ai-hint">Riempie nome, statistiche, azioni/spell <strong>e genera gli sprite pixel-art</strong> (vivo + tomba, senza sfondo). Puoi modificare tutto prima di evocare.</small>
-
-          <form onSubmit={handleCreateBoss} className="wb-form">
-            <div className="wb-field">
-              <label>Nome Boss</label>
-              <input
-                className="admin-field-input"
-                placeholder="es. Il Divoratore delle Anime"
-                value={newBoss.name}
-                onChange={(e) => setNewBoss({ ...newBoss, name: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="wb-field-row3">
-              <div className="wb-field">
-                <label>HP Massimi</label>
-                <input
-                  className="admin-field-input"
-                  type="number"
-                  placeholder="500"
-                  value={newBoss.maxHp}
-                  onChange={(e) => setNewBoss({ ...newBoss, maxHp: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="wb-field">
-                <label>CA</label>
-                <input
-                  className="admin-field-input"
-                  type="number"
-                  placeholder="18"
-                  value={newBoss.ac}
-                  onChange={(e) => setNewBoss({ ...newBoss, ac: e.target.value })}
-                />
-              </div>
-              <div className="wb-field">
-                <label>Grado Sfida</label>
-                <input
-                  className="admin-field-input"
-                  placeholder="es. 12"
-                  value={newBoss.gradoSfida}
-                  onChange={(e) => setNewBoss({ ...newBoss, gradoSfida: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="wb-field">
-              <label>📐 Taglia (caselle occupate)</label>
-              <select
-                className="admin-field-input"
-                value={newBoss.size || 1}
-                onChange={(e) => setNewBoss({ ...newBoss, size: parseInt(e.target.value) || 1 })}
-              >
-                {BOSS_SIZES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-              </select>
-            </div>
-
-            <div className="wb-actions-section">
-              <div className="wb-actions-head">
-                <label>
-                  ⚔ Azioni del Boss
-                  <small>{newBoss.actions.length}/{MAX_ACTIONS}</small>
-                </label>
-                <button
-                  type="button"
-                  className="wb-add-action-btn"
-                  onClick={addNewAction}
-                  disabled={newBoss.actions.length >= MAX_ACTIONS}
-                  title={
-                    newBoss.actions.length >= MAX_ACTIONS
-                      ? `Massimo ${MAX_ACTIONS} azioni`
-                      : "Aggiungi un'azione"
-                  }
-                >
-                  + Aggiungi
-                </button>
-              </div>
-              <div className="wb-actions-grid">
-                {newBoss.actions.map((a, idx) => (
-                  <ActionEditor
-                    key={idx}
-                    action={a}
-                    idx={idx}
-                    onChange={(patch) => updateNewAction(idx, patch)}
-                    onRemove={() => removeNewAction(idx)}
-                    canRemove={newBoss.actions.length > MIN_ACTIONS}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="wb-field">
-              <label>Descrizione narrativa</label>
-              <textarea
-                className="admin-field-textarea"
-                placeholder="Una creatura nata dal silenzio degli abissi…"
-                value={newBoss.description}
-                onChange={(e) => setNewBoss({ ...newBoss, description: e.target.value })}
-                rows="3"
-              />
-            </div>
-
-            <div className="wb-field-row2">
-              <div className="wb-field">
-                <label>🏆 Ricompense</label>
-                <textarea
-                  className="admin-field-textarea"
-                  placeholder="Oro, oggetti, XP…"
-                  value={newBoss.rewards}
-                  onChange={(e) => setNewBoss({ ...newBoss, rewards: e.target.value })}
-                  rows="2"
-                />
-              </div>
-              <div className="wb-field">
-                <label>💀 Penalità</label>
-                <textarea
-                  className="admin-field-textarea"
-                  placeholder="Conseguenze per i player…"
-                  value={newBoss.penalties}
-                  onChange={(e) => setNewBoss({ ...newBoss, penalties: e.target.value })}
-                  rows="2"
-                />
-              </div>
-            </div>
-
-            <div className="wb-field">
-              <label>⏳ Scadenza Evento</label>
-              <DateTimePicker
-                value={newBoss.expiryDate}
-                onChange={(v) => setNewBoss({ ...newBoss, expiryDate: v })}
-                presets="auction"
-                placeholder="Quando finisce l'evento?"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="wb-evoke-btn"
-              disabled={uploadState.newAlive || uploadState.newDead}
-            >
-              {(uploadState.newAlive || uploadState.newDead) ? "⏳ Forgia in corso…" : "⚡ Evoca Minaccia"}
-            </button>
-          </form>
-        </section>
-
-        <aside className="wb-altar">
-          <div className="wb-section-head">
-            <h2>🜲 Altare degli Sprite</h2>
-            <small>Trascina qui le forme della minaccia</small>
-          </div>
-
-          <ImageTonePicker compact />
-          <div className="wb-sprite-slots">
-            <div className="wb-sprite-slot">
-              <span className="wb-slot-tag">Forma viva</span>
-              <SpriteDropzone
-                label="Sprite Vivo"
-                icon="🩸"
-                value={newBoss.imageUrl}
-                uploading={uploadState.newAlive}
-                generating={genState.genNewAlive}
-                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: false, slotKey: "genNewAlive", apply: (url) => { cleanupStorageUrl(newBoss.imageUrl); setNewBoss((b) => ({ ...b, imageUrl: url })); } })}
-                onFile={onNewAlive}
-                onClear={() => {
-                  cleanupStorageUrl(newBoss.imageUrl);
-                  setNewBoss((b) => ({ ...b, imageUrl: "" }));
-                }}
-                accent="var(--oro)"
-              />
-            </div>
-            <div className="wb-sprite-slot">
-              <span className="wb-slot-tag">Forma sconfitta</span>
-              <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
-              <SpriteDropzone
-                label="Sprite Morto"
-                icon="💀"
-                value={newBoss.deadImageUrl}
-                uploading={uploadState.newDead}
-                generating={genState.genNewDead}
-                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: true, slotKey: "genNewDead", ref: newBoss.imageUrl || "", apply: (url) => { cleanupStorageUrl(newBoss.deadImageUrl); setNewBoss((b) => ({ ...b, deadImageUrl: url })); } })}
-                onFile={onNewDead}
-                onClear={() => {
-                  cleanupStorageUrl(newBoss.deadImageUrl);
-                  setNewBoss((b) => ({ ...b, deadImageUrl: "" }));
-                }}
-                accent="#7a0808"
-              />
-            </div>
-          </div>
-
-          <FacingPicker value={newBoss.facing} imageUrl={newBoss.imageUrl} name={newBoss.name}
-            onChange={(f) => setNewBoss((b) => ({ ...b, facing: f }))} />
-
-          <div className="wb-summary">
-            <div className="wb-summary-name">{newBoss.name || "Nome ignoto"}</div>
-            <div className="wb-summary-stats">
-              <span>HP <strong>{newBoss.maxHp || "—"}</strong></span>
-              <span>CA <strong>{newBoss.ac || "—"}</strong></span>
-              <span>GS <strong>{newBoss.gradoSfida || "—"}</strong></span>
-            </div>
-            <div className="wb-summary-sprites">
-              {newBoss.imageUrl && <span className="wb-summary-tag ok">🩸 Vivo</span>}
-              {newBoss.deadImageUrl && <span className="wb-summary-tag ok dead">💀 Morto</span>}
-              {!newBoss.imageUrl && !newBoss.deadImageUrl && <span className="wb-summary-tag empty">Nessuno sprite</span>}
-            </div>
-          </div>
-        </aside>
+      <div className="wb-tabs" role="tablist" aria-label="Sezioni">
+        {TABS.map((t) => (
+          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key}
+            className={`wb-tab${tab === t.key ? " on" : ""}`}
+            onClick={() => (t.key === "forgia" && tab !== "forgia" && !editingId ? newForge() : setTab(t.key))}>
+            {t.label}{t.count != null && <small>{t.count}</small>}
+          </button>
+        ))}
       </div>
 
-      {/* ── CASERMA DEI MINION ── */}
-      <section className="wb-minions">
-        <div className="wb-section-head">
-          <h2>🪓 Caserma dei Minion</h2>
-          <small>Sgherri riutilizzabili — nome, HP, CA e attacchi. Attivali (⚡) per poterli schierare in battaglia.</small>
-        </div>
-
-        <div className="wb-ai-bar">
-          <input
-            className="admin-field-input"
-            placeholder="Spunto facoltativo (es. sciame di non-morti striscianti)"
-            value={minionSpunto}
-            onChange={(e) => setMinionSpunto(e.target.value)}
-            disabled={genState.minion}
-          />
-          <button type="button" className="wb-ai-btn" onClick={generaMinion} disabled={genState.minion}>
-            {genState.minion ? "✨ L'IA crea…" : "✨ Genera minion con l'IA"}
-          </button>
-        </div>
-        <small className="wb-ai-hint">Riempie il form qui sotto (nome, HP, CA, attacchi) <strong>e genera gli sprite pixel-art</strong> (vivo + tomba): modifica e salva come al solito.</small>
-
-        <div className="wb-minion-workshop">
-          <form className="wb-minion-form" onSubmit={saveMinion}>
-            <div className="wb-field-row3">
-              <div className="wb-field">
-                <label>Nome Minion</label>
-                <input className="admin-field-input" placeholder="es. Scheletro guerriero"
-                  value={minionForm.name} onChange={(e) => setMinionForm({ ...minionForm, name: e.target.value })} required />
-              </div>
-              <div className="wb-field">
-                <label>HP</label>
-                <input className="admin-field-input" type="number" placeholder="12"
-                  value={minionForm.hp} onChange={(e) => setMinionForm({ ...minionForm, hp: e.target.value })} required />
-              </div>
-              <div className="wb-field">
-                <label>CA</label>
-                <input className="admin-field-input" type="number" placeholder="11"
-                  value={minionForm.ac} onChange={(e) => setMinionForm({ ...minionForm, ac: e.target.value })} />
-              </div>
-            </div>
-
-            <ImageTonePicker compact />
-            <div className="wb-minion-sprites">
-              <div className="wb-sprite-slot">
-                <span className="wb-slot-tag">Sprite vivo</span>
-                <SpriteDropzone
-                  label="Sprite Vivo" icon="🩸"
-                  value={minionForm.imageUrl}
-                  uploading={uploadState.minionAlive}
-                  generating={genState.genMinionAlive}
-                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: false, slotKey: "genMinionAlive", apply: (url) => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: url })); } })}
-                  onFile={onMinionAlive}
-                  onClear={() => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: "" })); }}
-                  accent="var(--oro)"
-                />
-              </div>
-              <div className="wb-sprite-slot">
-                <span className="wb-slot-tag">Sprite morto</span>
-                <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
-                <SpriteDropzone
-                  label="Sprite Morto" icon="🪦"
-                  value={minionForm.deadImageUrl}
-                  uploading={uploadState.minionDead}
-                  generating={genState.genMinionDead}
-                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: true, slotKey: "genMinionDead", ref: minionForm.imageUrl || "", apply: (url) => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: url })); } })}
-                  onFile={onMinionDead}
-                  onClear={() => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: "" })); }}
-                  accent="#7a0808"
-                />
-              </div>
-            </div>
-            <FacingPicker value={minionForm.facing} imageUrl={minionForm.imageUrl} name={minionForm.name}
-              onChange={(f) => setMinionForm((m) => ({ ...m, facing: f }))} />
-
-            <div className="wb-actions-section">
-              <div className="wb-actions-head">
-                <label>⚔ Attacchi <small>{minionForm.actions.length}/{MAX_ACTIONS}</small></label>
-                <button type="button" className="wb-add-action-btn" onClick={addMinionAction}
-                  disabled={minionForm.actions.length >= MAX_ACTIONS}
-                  title={minionForm.actions.length >= MAX_ACTIONS ? `Massimo ${MAX_ACTIONS}` : "Aggiungi un attacco"}>
-                  + Aggiungi
-                </button>
-              </div>
-              <div className="wb-actions-grid">
-                {minionForm.actions.map((a, idx) => (
-                  <ActionEditor
-                    key={idx}
-                    action={a}
-                    idx={idx}
-                    onChange={(patch) => updateMinionAction(idx, patch)}
-                    onRemove={() => removeMinionAction(idx)}
-                    canRemove={minionForm.actions.length > 1}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="wb-minion-form-actions">
-              <button type="submit" className="wb-btn primary" disabled={uploadState.minionAlive || uploadState.minionDead}>
-                {(uploadState.minionAlive || uploadState.minionDead)
-                  ? "⏳ Upload…"
-                  : editingMinionId ? "💾 Aggiorna minion" : "➕ Salva minion"}
+      {/* ══ BESTIARIO ══ */}
+      {tab === "bestiario" && (
+        <section className="wb-bestiary">
+          <div className="wb-toolbar">
+            <button type="button" className="wb-btn primary" onClick={newForge}>⚒ Nuovo boss</button>
+            {bosses.some((b) => !b.isActive) && (
+              <button type="button" className="wb-btn ghost" onClick={() => setShowHidden((v) => !v)}>
+                {showHidden ? "🙈 Solo gli attivi" : `👁 Anche i nascosti (${bosses.filter((b) => !b.isActive).length})`}
               </button>
-              {editingMinionId && (
-                <button type="button" className="wb-btn ghost" onClick={cancelMinionEdit}>Annulla</button>
-              )}
-            </div>
-          </form>
-
-          <aside className="wb-minion-roster">
-            <h3>Minion salvati ({minions.length})</h3>
-            {minions.length === 0 ? (
-              <p className="wb-empty">Nessun minion. Creane uno qui a fianco.</p>
-            ) : (
-              <div className="wb-minion-chips">
-                {minions.map((m) => (
-                  <div key={m.id} className={`wb-minion-chip ${m.isActive ? "on" : ""} ${editingMinionId === m.id ? "editing" : ""}`}>
-                    <button type="button" className="wb-minion-chip-main" onClick={() => editMinion(m)} title="Modifica">
-                      {m.imageUrl
-                        ? <img className="wb-minion-thumb" src={m.imageUrl} alt="" />
-                        : <span className="wb-minion-thumb placeholder">{(m.name || "?")[0].toUpperCase()}</span>}
-                      <span className="wb-minion-chip-txt">
-                        <strong>{m.name || "Minion"}</strong>
-                        <span>❤ {m.hp ?? "—"} · 🛡 {m.ac ?? "—"} · {(m.actions || []).length} att.</span>
-                      </span>
-                    </button>
-                    <button type="button" className={`wb-minion-toggle ${m.isActive ? "active" : ""}`} onClick={() => toggleMinion(m)}
-                      title={m.isActive ? "⚡ Scende in campo da solo quando il Master preme Inizia battaglia — clicca per toglierlo" : "Clicca per farlo scendere in campo da solo all'inizio della battaglia (altrimenti si evoca a mano dal fight)"}>
-                      {m.isActive ? "⚡" : "○"}
-                    </button>
-                    <button type="button" className="wb-minion-del" onClick={() => deleteMinion(m)} title="Elimina">🗑</button>
-                  </div>
-                ))}
-              </div>
             )}
-          </aside>
-        </div>
-      </section>
+          </div>
 
-      {/* ── BESTIARIO ── */}
-      <section className="wb-bestiary">
-        <div className="wb-section-head">
-          <h2>🦴 Bestiario ({bosses.filter((b) => b.isActive).length} attivi)</h2>
-          <small>Clicca sulla mappa per riposizionare il ping</small>
-          {bosses.some((b) => !b.isActive) && (
-            <button
-              type="button"
-              className="wb-btn ghost"
-              style={{ marginLeft: "auto" }}
-              onClick={() => setShowHidden((v) => !v)}
-            >
-              {showHidden
-                ? "🙈 Nascondi disattivati"
-                : `👁 Mostra disattivati (${bosses.filter((b) => !b.isActive).length})`}
-            </button>
-          )}
-        </div>
-
-        {(() => { const visibleBosses = bosses.filter((b) => showHidden || b.isActive); return (
-          visibleBosses.length === 0 ? (
+          {visibleBosses.length === 0 ? (
             <p className="wb-empty">
               {bosses.length === 0
                 ? "Nessuna minaccia evocata. La sala attende il tuo richiamo."
-                : "Nessun boss attivo. Premi «Mostra disattivati» per vederli."}
+                : "Nessun boss attivo. Premi «Anche i nascosti» per vederli."}
             </p>
           ) : (
-          <div className="wb-bestiary-grid">
-            {visibleBosses.map((boss) => {
-              const isEditing = editingId === boss.id;
-              const isDefeated = (boss.hp ?? 0) <= 0;
-              const hpPct = boss.maxHp ? Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100)) : 0;
-              const sprite = isDefeated && boss.deadImageUrl ? boss.deadImageUrl : boss.imageUrl;
-
-              return (
-                <article
-                  key={boss.id}
-                  className={`wb-card ${boss.isActive ? "active" : ""} ${isDefeated ? "defeated" : ""}`}
-                >
-                  {!isEditing ? (
-                    <>
+            <div className="wb-bestiary-grid">
+              {visibleBosses.map((boss) => {
+                const isDefeated = (boss.hp ?? 0) <= 0;
+                const hpPct = boss.maxHp ? Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100)) : 0;
+                const sprite = isDefeated && boss.deadImageUrl ? boss.deadImageUrl : boss.imageUrl;
+                const rd = boss.rewardsData;
+                return (
+                  <article key={boss.id} className={`wb-card ${boss.isActive ? "active" : ""} ${isDefeated ? "defeated" : ""}`}>
+                    <div className="wb-card-top">
                       <div className="wb-card-sprite">
-                        {sprite ? (
-                          <img src={sprite} alt={boss.name} className={isDefeated ? "dead" : ""} />
-                        ) : (
-                          <div className="wb-card-noimg">⚆<small>nessuno sprite</small></div>
-                        )}
-                        <span className={`wb-card-status ${boss.isActive ? "on" : "off"}`}>
-                          {boss.isActive ? "● ATTIVO" : "○ NASCOSTO"}
-                        </span>
-                        {isDefeated && <div className="wb-card-defeated-stamp">SCONFITTO</div>}
+                        {sprite
+                          ? <img src={sprite} alt={boss.name} className={`${isDefeated ? "dead" : ""} ${boss.facing === "right" ? "" : "mirror"}`} />
+                          : <span className="wb-card-noimg">⚆</span>}
                       </div>
-
                       <div className="wb-card-body">
-                        <h3 className="wb-card-name">{boss.name}</h3>
+                        <div className="wb-card-namerow">
+                          <h3 className="wb-card-name">{boss.name}</h3>
+                          <span className={`wb-card-status ${boss.isActive ? "on" : "off"}`}>
+                            {isDefeated ? "✝ sconfitto" : boss.isActive ? "● attivo" : "○ nascosto"}
+                          </span>
+                        </div>
                         <div className="wb-card-stats">
                           <span>CA <strong>{boss.ac}</strong></span>
                           {boss.gradoSfida && <span>GS <strong>{boss.gradoSfida}</strong></span>}
+                          <span><strong>{normalizeBossActions(boss).length}</strong> azioni</span>
                         </div>
-
                         <div className="wb-hp">
-                          <div className="wb-hp-track">
-                            <div className="wb-hp-fill" style={{ width: `${hpPct}%` }} />
-                          </div>
-                          <span className="wb-hp-text">{boss.hp ?? 0} / {boss.maxHp ?? 0} HP</span>
+                          <div className="wb-hp-track"><div className="wb-hp-fill" style={{ width: `${hpPct}%` }} /></div>
+                          <span className="wb-hp-text">{boss.hp ?? 0} / {boss.maxHp ?? 0} PV</span>
                         </div>
-
-                        <div className="wb-card-map">
-                          <div className="map-click-area" onClick={(e) => updateBossLocation(e, boss.id)}>
-                            <img src="/assets/Exanthia.jpg" alt="Map" />
-                            <div className="boss-ping" style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }} />
-                          </div>
-                        </div>
-
-                        <div className="wb-card-actions">
-                          <button
-                            onClick={() => toggleBoss(boss)}
-                            className={`wb-btn ${boss.isActive ? "warn" : "primary"}`}
-                          >
-                            {boss.isActive ? "🌑 Nascondi" : "🌕 Risveglia"}
-                          </button>
-                          <button onClick={() => startEdit(boss)} className="wb-btn ghost">✎</button>
-                          <button onClick={() => handleDeleteBoss(boss)} className="wb-btn danger">🗑</button>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="wb-edit">
-                      <div className="wb-section-head"><h2>✎ {editData.name || "Modifica"}</h2></div>
-
-                      <ImageTonePicker compact />
-                      <div className="wb-edit-sprites">
-                        <SpriteDropzone
-                          label="Sprite Vivo"
-                          icon="🩸"
-                          value={editData.imageUrl}
-                          uploading={uploadState.editAlive}
-                          generating={genState.genEditAlive}
-                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: false, slotKey: "genEditAlive", apply: (url) => { cleanupStorageUrl(editData.imageUrl); setEditData((d) => ({ ...d, imageUrl: url })); } })}
-                          onFile={onEditAlive}
-                          onClear={() => {
-                            cleanupStorageUrl(editData.imageUrl);
-                            setEditData((d) => ({ ...d, imageUrl: "" }));
-                          }}
-                          accent="var(--oro)"
-                        />
-                        <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
-                        <SpriteDropzone
-                          label="Sprite Morto"
-                          icon="💀"
-                          value={editData.deadImageUrl}
-                          uploading={uploadState.editDead}
-                          generating={genState.genEditDead}
-                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: true, slotKey: "genEditDead", ref: editData.imageUrl || "", apply: (url) => { cleanupStorageUrl(editData.deadImageUrl); setEditData((d) => ({ ...d, deadImageUrl: url })); } })}
-                          onFile={onEditDead}
-                          onClear={() => {
-                            cleanupStorageUrl(editData.deadImageUrl);
-                            setEditData((d) => ({ ...d, deadImageUrl: "" }));
-                          }}
-                          accent="#7a0808"
-                        />
-                      </div>
-                      <FacingPicker value={editData.facing} imageUrl={editData.imageUrl} name={editData.name}
-                        onChange={(f) => setEditData((d) => ({ ...d, facing: f }))} />
-
-                      <div className="wb-edit-grid">
-                        <div className="wb-field">
-                          <label>Nome</label>
-                          <input className="admin-field-input" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
-                        </div>
-                        <div className="wb-field">
-                          <label>CA</label>
-                          <input className="admin-field-input" type="number" value={editData.ac || ""} onChange={(e) => setEditData({ ...editData, ac: e.target.value })} />
-                        </div>
-                        <div className="wb-field">
-                          <label>Max HP</label>
-                          <input className="admin-field-input" type="number" value={editData.maxHp || ""} onChange={(e) => setEditData({ ...editData, maxHp: e.target.value })} />
-                        </div>
-                        <div className="wb-field">
-                          <label>HP correnti</label>
-                          <input className="admin-field-input" type="number" value={editData.hp ?? ""} onChange={(e) => setEditData({ ...editData, hp: e.target.value })} />
-                        </div>
-                        <div className="wb-field">
-                          <label>📐 Taglia</label>
-                          <select className="admin-field-input" value={editData.size || 1}
-                            onChange={(e) => setEditData({ ...editData, size: parseInt(e.target.value) || 1 })}>
-                            {BOSS_SIZES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="wb-field">
-                        <label>Scadenza</label>
-                        <DateTimePicker
-                          value={editData.expiryDate || ""}
-                          onChange={(v) => setEditData({ ...editData, expiryDate: v })}
-                          presets="auction"
-                          placeholder="Nuova scadenza"
-                        />
-                      </div>
-                      <div className="wb-field">
-                        <label>Descrizione</label>
-                        <textarea className="admin-field-textarea" value={editData.description || ""} onChange={(e) => setEditData({ ...editData, description: e.target.value })} rows="2" />
-                      </div>
-                      <div className="wb-field-row2">
-                        <div className="wb-field">
-                          <label>Ricompense</label>
-                          <textarea className="admin-field-textarea" value={editData.rewards || ""} onChange={(e) => setEditData({ ...editData, rewards: e.target.value })} rows="2" />
-                        </div>
-                        <div className="wb-field">
-                          <label>Penalità</label>
-                          <textarea className="admin-field-textarea" value={editData.penalties || ""} onChange={(e) => setEditData({ ...editData, penalties: e.target.value })} rows="2" />
-                        </div>
-                      </div>
-
-                      <div className="wb-actions-section">
-                        <div className="wb-actions-head">
-                          <label>
-                            ⚔ Azioni del Boss
-                            <small>{(editData.actions || []).length}/{MAX_ACTIONS}</small>
-                          </label>
-                          <button
-                            type="button"
-                            className="wb-add-action-btn"
-                            onClick={addEditAction}
-                            disabled={(editData.actions || []).length >= MAX_ACTIONS}
-                            title={
-                              (editData.actions || []).length >= MAX_ACTIONS
-                                ? `Massimo ${MAX_ACTIONS} azioni`
-                                : "Aggiungi un'azione"
-                            }
-                          >
-                            + Aggiungi
-                          </button>
-                        </div>
-                        <div className="wb-actions-grid">
-                          {(editData.actions || []).map((a, idx) => (
-                            <ActionEditor
-                              key={idx}
-                              action={a}
-                              idx={idx}
-                              onChange={(patch) => updateEditAction(idx, patch)}
-                              onRemove={() => removeEditAction(idx)}
-                              canRemove={(editData.actions || []).length > MIN_ACTIONS}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="wb-edit-actions">
-                        <button onClick={() => saveEdit(boss.id)} className="wb-btn primary">💾 Salva</button>
-                        <button onClick={() => setEditingId(null)} className="wb-btn ghost">Annulla</button>
                       </div>
                     </div>
-                  )}
-                </article>
-              );
-            })}
+
+                    {(rd || boss.rewards) && (
+                      <div className="wb-card-loot" title={boss.rewards || ""}>
+                        🏆 {rd
+                          ? [rd.xp && `${rd.xp} PE`, rd.corone && `${rd.corone} 👑`, rd.gp && `${rd.gp} mo`,
+                            rd.items?.length && `${rd.items.length} oggett${rd.items.length === 1 ? "o" : "i"}`,
+                            rd.bonuses?.length && `${rd.bonuses.length} bonus`].filter(Boolean).join(" · ") || "—"
+                          : boss.rewards}
+                      </div>
+                    )}
+
+                    {mapOpenId === boss.id && (
+                      <div className="wb-card-map">
+                        <div className="map-click-area" onClick={(e) => updateBossLocation(e, boss.id)}>
+                          <img src="/assets/Exanthia.jpg" alt="Mappa" />
+                          <div className="boss-ping" style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }} />
+                        </div>
+                        <small>Tocca la mappa per spostare il boss</small>
+                      </div>
+                    )}
+
+                    <div className="wb-card-actions">
+                      <button onClick={() => toggleBoss(boss)} className={`wb-btn ${boss.isActive ? "warn" : "primary"}`}>
+                        {boss.isActive ? "🌑 Nascondi" : "🌕 Risveglia"}
+                      </button>
+                      <button onClick={() => startEdit(boss)} className="wb-btn ghost">✎ Modifica</button>
+                      <button onClick={() => setMapOpenId(mapOpenId === boss.id ? null : boss.id)}
+                        className={`wb-btn ghost${mapOpenId === boss.id ? " on" : ""}`} title="Posizione sulla mappa">📍</button>
+                      <button onClick={() => handleDeleteBoss(boss)} className="wb-btn danger" title="Elimina">🗑</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ══ FORGIA (nuovo + modifica) ══ */}
+      {tab === "forgia" && (
+        <form onSubmit={saveBoss} className="wb-forge">
+          {editingId ? (
+            <div className="wb-editing">
+              <span>✎ Stai modificando <strong>{form.name || "questo boss"}</strong></span>
+              <button type="button" className="wb-btn ghost" onClick={newForge}>＋ Nuovo invece</button>
+            </div>
+          ) : (
+            <div className="wb-ai-bar">
+              <input className="admin-field-input" value={bossSpunto} onChange={(e) => setBossSpunto(e.target.value)} disabled={genState.boss}
+                placeholder="Spunto per l'IA (facoltativo): es. drago di ghiaccio dei picchi di Ehkia" />
+              <button type="button" className="wb-ai-btn" onClick={generaBoss} disabled={genState.boss}
+                title="Riempie nome, statistiche e azioni e disegna gli sprite (vivo + morto). Poi puoi cambiare tutto.">
+                {genState.boss ? "✨ L'IA forgia…" : "✨ Genera con l'IA"}
+              </button>
+            </div>
+          )}
+
+          <div className="wb-forge-top">
+            <section className="wb-sec">
+              <h2 className="wb-sec-title">Identità</h2>
+              <div className="wb-field">
+                <label>Nome</label>
+                <input className="admin-field-input" placeholder="es. Il Divoratore delle Anime" required
+                  value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="wb-stats-row">
+                <div className="wb-field">
+                  <label>PV max</label>
+                  <input className="admin-field-input" type="number" placeholder="500" required
+                    value={form.maxHp} onChange={(e) => setForm({ ...form, maxHp: e.target.value })} />
+                </div>
+                {editingId && (
+                  <div className="wb-field">
+                    <label>PV attuali</label>
+                    <input className="admin-field-input" type="number"
+                      value={form.hp ?? ""} onChange={(e) => setForm({ ...form, hp: e.target.value })} />
+                  </div>
+                )}
+                <div className="wb-field">
+                  <label>CA</label>
+                  <input className="admin-field-input" type="number" placeholder="18"
+                    value={form.ac} onChange={(e) => setForm({ ...form, ac: e.target.value })} />
+                </div>
+                <div className="wb-field">
+                  <label>Grado sfida</label>
+                  <input className="admin-field-input" placeholder="12"
+                    value={form.gradoSfida} onChange={(e) => setForm({ ...form, gradoSfida: e.target.value })} />
+                </div>
+              </div>
+              <div className="wb-field">
+                <label>Descrizione</label>
+                <textarea className="admin-field-textarea" rows="3" placeholder="Una creatura nata dal silenzio degli abissi…"
+                  value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </div>
+              <div className="wb-field">
+                <label>⏳ Fine dell'evento</label>
+                <DateTimePicker value={form.expiryDate || ""} onChange={(v) => setForm({ ...form, expiryDate: v })}
+                  presets="auction" placeholder="Quando finisce l'evento?" />
+              </div>
+            </section>
+
+            <section className="wb-sec wb-sec--sprites">
+              <div className="wb-sec-titlerow">
+                <h2 className="wb-sec-title">Sprite</h2>
+                <ImageTonePicker compact />
+              </div>
+              <div className="wb-sprite-slots">
+                <div className="wb-sprite-slot">
+                  <span className="wb-slot-tag">Vivo</span>
+                  <SpriteDropzone label="Sprite vivo" icon="🩸" value={form.imageUrl}
+                    uploading={uploadState.alive} generating={genState.genAlive}
+                    onGenerate={() => generateSprite({ name: form.name, desc: form.description, dead: false, slotKey: "genAlive", apply: (url) => { cleanupStorageUrl(form.imageUrl); setForm((b) => ({ ...b, imageUrl: url })); } })}
+                    onFile={onFormSprite("imageUrl", "alive")}
+                    onClear={() => { cleanupStorageUrl(form.imageUrl); setForm((b) => ({ ...b, imageUrl: "" })); }}
+                    accent="var(--oro)" />
+                </div>
+                <div className="wb-sprite-slot">
+                  <span className="wb-slot-tag">Sconfitto</span>
+                  <SpriteDropzone label="Sprite morto" icon="💀" value={form.deadImageUrl}
+                    uploading={uploadState.dead} generating={genState.genDead}
+                    onGenerate={() => generateSprite({ name: form.name, desc: form.description, dead: true, slotKey: "genDead", ref: form.imageUrl || "", apply: (url) => { cleanupStorageUrl(form.deadImageUrl); setForm((b) => ({ ...b, deadImageUrl: url })); } })}
+                    onFile={onFormSprite("deadImageUrl", "dead")}
+                    onClear={() => { cleanupStorageUrl(form.deadImageUrl); setForm((b) => ({ ...b, deadImageUrl: "" })); }}
+                    accent="#7a0808" />
+                  <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
+                </div>
+              </div>
+              <FacingPicker value={form.facing} imageUrl={form.imageUrl} name={form.name}
+                onChange={(f) => setForm((b) => ({ ...b, facing: f }))} />
+            </section>
           </div>
-          )
-        ); })()}
-      </section>
+
+          <section className="wb-sec">
+            <ActionsList title="⚔ Azioni del boss" actions={form.actions} min={MIN_ACTIONS}
+              onChange={(actions) => setForm((b) => ({ ...b, actions }))} />
+          </section>
+
+          <div className="wb-forge-stakes">
+            <section className="wb-sec wb-sec--loot">
+              <h2 className="wb-sec-title">🏆 Premi della vittoria</h2>
+              <BossRewardsEditor value={form.rewardsData}
+                onChange={(rewardsData) => setForm((b) => ({ ...b, rewardsData }))}
+                onUploadImg={(file) => uploadSprite(file, "reward")} />
+            </section>
+            <section className="wb-sec wb-sec--penalty">
+              <h2 className="wb-sec-title">💀 Se gli eroi perdono</h2>
+              <textarea className="admin-field-textarea" rows="5" placeholder="Conseguenze per i giocatori…"
+                value={form.penalties} onChange={(e) => setForm({ ...form, penalties: e.target.value })} />
+            </section>
+          </div>
+
+          <div className="wb-savebar">
+            <span className="wb-savebar-sum">
+              <strong>{form.name || "Senza nome"}</strong>
+              <small>{form.maxHp || "—"} PV · CA {form.ac || "—"} · {form.actions.length} azioni{rewardsSummary(form.rewardsData) ? ` · 🏆 ${rewardsSummary(form.rewardsData)}` : ""}</small>
+            </span>
+            {editingId && <button type="button" className="wb-btn ghost" onClick={cancelEdit}>Annulla</button>}
+            <button type="submit" className="wb-evoke-btn" disabled={busySprites || saving || uploadState.reward}>
+              {busySprites || uploadState.reward ? "⏳ Carico l'immagine…" : saving ? "⏳ Salvo…" : editingId ? "💾 Salva modifiche" : "⚡ Evoca minaccia"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ══ CASERMA DEI MINION ══ */}
+      {tab === "minion" && (
+        <section className="wb-minions">
+          <div className="wb-minion-workshop">
+            <form className="wb-minion-form wb-sec" onSubmit={saveMinion}>
+              {editingMinionId ? (
+                <div className="wb-editing">
+                  <span>✎ Stai modificando <strong>{minionForm.name || "questo minion"}</strong></span>
+                  <button type="button" className="wb-btn ghost" onClick={cancelMinionEdit}>＋ Nuovo invece</button>
+                </div>
+              ) : (
+                <div className="wb-ai-bar">
+                  <input className="admin-field-input" value={minionSpunto} onChange={(e) => setMinionSpunto(e.target.value)} disabled={genState.minion}
+                    placeholder="Spunto per l'IA (es. sciame di non-morti striscianti)" />
+                  <button type="button" className="wb-ai-btn" onClick={generaMinion} disabled={genState.minion}
+                    title="Riempie nome, PV, CA e attacchi e disegna gli sprite.">
+                    {genState.minion ? "✨ L'IA crea…" : "✨ Genera con l'IA"}
+                  </button>
+                </div>
+              )}
+
+              <div className="wb-minion-grid">
+                <div className="wb-minion-fields">
+                  <div className="wb-field">
+                    <label>Nome</label>
+                    <input className="admin-field-input" placeholder="es. Scheletro guerriero" required
+                      value={minionForm.name} onChange={(e) => setMinionForm({ ...minionForm, name: e.target.value })} />
+                  </div>
+                  <div className="wb-stats-row">
+                    <div className="wb-field">
+                      <label>PV</label>
+                      <input className="admin-field-input" type="number" placeholder="12" required
+                        value={minionForm.hp} onChange={(e) => setMinionForm({ ...minionForm, hp: e.target.value })} />
+                    </div>
+                    <div className="wb-field">
+                      <label>CA</label>
+                      <input className="admin-field-input" type="number" placeholder="11"
+                        value={minionForm.ac} onChange={(e) => setMinionForm({ ...minionForm, ac: e.target.value })} />
+                    </div>
+                  </div>
+                  <FacingPicker value={minionForm.facing} imageUrl={minionForm.imageUrl} name={minionForm.name}
+                    onChange={(f) => setMinionForm((m) => ({ ...m, facing: f }))} />
+                </div>
+                <div className="wb-sec--sprites">
+                  <div className="wb-sec-titlerow">
+                    <span className="wb-slot-tag">Sprite</span>
+                    <ImageTonePicker compact />
+                  </div>
+                  <div className="wb-sprite-slots">
+                    <div className="wb-sprite-slot">
+                      <SpriteDropzone label="Vivo" icon="🩸" value={minionForm.imageUrl}
+                        uploading={uploadState.minionAlive} generating={genState.genMinionAlive}
+                        onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: false, slotKey: "genMinionAlive", apply: (url) => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: url })); } })}
+                        onFile={onMinionAlive}
+                        onClear={() => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: "" })); }}
+                        accent="var(--oro)" />
+                    </div>
+                    <div className="wb-sprite-slot">
+                      <SpriteDropzone label="Morto" icon="🪦" value={minionForm.deadImageUrl}
+                        uploading={uploadState.minionDead} generating={genState.genMinionDead}
+                        onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: true, slotKey: "genMinionDead", ref: minionForm.imageUrl || "", apply: (url) => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: url })); } })}
+                        onFile={onMinionDead}
+                        onClear={() => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: "" })); }}
+                        accent="#7a0808" />
+                      <DeadStylePicker value={deadStyle} onChange={setDeadStyle} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <ActionsList title="⚔ Attacchi" actions={minionForm.actions} min={1}
+                onChange={(actions) => setMinionForm((m) => ({ ...m, actions }))} />
+
+              <div className="wb-minion-form-actions">
+                <button type="submit" className="wb-btn primary" disabled={uploadState.minionAlive || uploadState.minionDead}>
+                  {(uploadState.minionAlive || uploadState.minionDead)
+                    ? "⏳ Upload…"
+                    : editingMinionId ? "💾 Aggiorna minion" : "➕ Salva minion"}
+                </button>
+                {editingMinionId && (
+                  <button type="button" className="wb-btn ghost" onClick={cancelMinionEdit}>Annulla</button>
+                )}
+              </div>
+            </form>
+
+            <aside className="wb-minion-roster wb-sec">
+              <h3>Minion salvati ({minions.length})</h3>
+              <small className="wb-roster-hint">⚡ = scende in campo da solo a inizio battaglia; gli altri si evocano dal fight.</small>
+              {minions.length === 0 ? (
+                <p className="wb-empty">Nessun minion. Creane uno qui a fianco.</p>
+              ) : (
+                <div className="wb-minion-chips">
+                  {minions.map((m) => (
+                    <div key={m.id} className={`wb-minion-chip ${m.isActive ? "on" : ""} ${editingMinionId === m.id ? "editing" : ""}`}>
+                      <button type="button" className="wb-minion-chip-main" onClick={() => editMinion(m)} title="Modifica">
+                        {m.imageUrl
+                          ? <img className="wb-minion-thumb" src={m.imageUrl} alt="" />
+                          : <span className="wb-minion-thumb placeholder">{(m.name || "?")[0].toUpperCase()}</span>}
+                        <span className="wb-minion-chip-txt">
+                          <strong>{m.name || "Minion"}</strong>
+                          <span>❤ {m.hp ?? "—"} · 🛡 {m.ac ?? "—"} · {(m.actions || []).length} att.</span>
+                        </span>
+                      </button>
+                      <button type="button" className={`wb-minion-toggle ${m.isActive ? "active" : ""}`} onClick={() => toggleMinion(m)}
+                        title={m.isActive ? "⚡ Scende in campo da solo quando il Master preme Inizia battaglia — clicca per toglierlo" : "Clicca per farlo scendere in campo da solo all'inizio della battaglia (altrimenti si evoca a mano dal fight)"}>
+                        {m.isActive ? "⚡" : "○"}
+                      </button>
+                      <button type="button" className="wb-minion-del" onClick={() => deleteMinion(m)} title="Elimina">🗑</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
