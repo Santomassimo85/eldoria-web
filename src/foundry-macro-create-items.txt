@@ -300,6 +300,8 @@ async function importaDalSito(silenziosa = false) {
   for (const d of pending) {
     try {
       // ── SPESA DI MONETE (Officina): non è un oggetto ──
+      // PE dei premi del World Boss: li porta solo "Fetch admin", qui restano in coda
+      if (d.kind === "xp") { skipped++; continue; }
       if (d.kind === "gold") {
         const actor = await trovaAttore(d.targetUid);
         if (!actor) {

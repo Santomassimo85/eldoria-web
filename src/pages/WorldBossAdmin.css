@@ -426,3 +426,13 @@
 .fif-f > span:first-child { font-family: var(--font-sc); font-size: .76rem; letter-spacing: .04em; color: var(--osso-2); }
 .fif .admin-field-input, .wbr .admin-field-input { min-height: 38px; font-size: .9rem; }
 .fif-props { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* Consegna premi (2026-10-21) */
+.wb-card-pay { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.wb-card-pay small { color: var(--osso-2); }
+.wb-card-paid { border: 1px solid rgba(var(--el-rgb), .4); border-radius: 3px; background: rgba(var(--el-rgb), .08); }
+.wb-card-paid-head { width: 100%; text-align: left; min-height: 36px; padding: 6px 10px; background: none; border: none; color: var(--osso); font-family: var(--font-sc); cursor: pointer; }
+.wb-card-paid-list { list-style: none; margin: 0; padding: 0 10px 8px; display: flex; flex-direction: column; gap: 4px; font-size: .86rem; }
+.wb-card-paid-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.wb-card-paid-list small { color: var(--osso-2); }
+.wb-paid-item { padding: 1px 8px; border-radius: 999px; background: var(--roccia-4); color: var(--osso); font-size: .8rem; }

@@ -484,10 +484,13 @@ export default function FoundryItemForm() {
             <div className="dmt-li" key={p.id}>
               <div className="n">
                 {p.name}
-                {p.kind === "gold"
+                {p.kind === "xp"
+                  ? <span className="npcgen-chip dmt-pill fdy-craft" title="Premio del World Boss: Fetch admin li somma ai PE della scheda">⭐ PE</span>
+                  : p.kind === "gold"
                   ? <span className="npcgen-chip dmt-pill fdy-craft" title="Spesa dei materiali dell'Officina: la macro la scala dall'oro">💰 {p.op === "add" ? "monete in più" : "monete da scalare"}</span>
                   : <span className="npcgen-chip dmt-pill">{(FOUNDRY_TYPES.find(x => x.v === p.foundryType) || {}).label || p.foundryType}</span>}
                 <span className="npcgen-chip dmt-pill">{p.status === "imported" ? "✅ importato" : "⏳ in attesa"}</span>
+                {p.origin === "worldboss" && <span className="npcgen-chip dmt-pill" title={`Premio della vittoria su ${p.bossName || "un World Boss"}`}>🐉 World Boss{p.party && p.party !== "ALTRI" ? ` · ${p.party}` : ""}</span>}
                 {p.origin === "crafting" && <span className="npcgen-chip dmt-pill fdy-craft" title="Creato dal giocatore nell'Officina del Crafting">⚒ Officina{p.crafterName ? ` · ${p.crafterName}` : ""}</span>}
                 {/* ☠ 1 naturale: l'oggetto è maledetto e il giocatore non lo sa.
                     La maledizione NON sta nella descrizione che va su Foundry:
@@ -496,7 +499,7 @@ export default function FoundryItemForm() {
               </div>
               <div className="d">
                 {p.target === "player" ? `→ ${p.targetName || "giocatore"}` : "→ mondo"}
-                {p.kind === "gold" ? ` · ${p.reason || ""}` : ""}
+                {p.kind === "gold" || p.kind === "xp" ? ` · ${p.reason || ""}` : ""}
                 {p.damageFormula ? ` · ${p.damageFormula} ${p.damageType}` : ""}
                 {p.origin === "crafting" && p.craft && (
                   <span className="fdy-craft-note"> · {PROFESSIONI.find(x => x.key === p.craft.profession)?.name || p.craft.profession} · rarità {tierByKey(p.craft.tier).label} (mirava {tierByKey(p.craft.targetTier).label}) · d20 {p.craft.d20} → {p.craft.total}{p.craft.d12 ? ` · d12 ${p.craft.d12}` : " · oggetto scelto dal catalogo"}{p.craft.cost ? ` · materiali ${p.craft.cost}` : ""}{p.craft.work ? ` · ⏱ lavoro ${p.craft.work}` : ""}{p.craft.componentBonus ? ` · componenti +${p.craft.componentBonus} al tiro` : ""}{p.craft.componentProofs?.length ? ` · possesso: ${p.craft.componentProofs.join("; ")}` : ""}{p.craft.toolsProof ? ` · strumenti ${p.craft.toolsProof}` : ""}{p.craft.componentEffects?.length ? ` · ⚠ DA DECIDERE: ${p.craft.componentEffects.join("; ")}` : ""}{p.craft.enhancer ? ` · potenziatore ${ENHANCERS.find(e => e.key === p.craft.enhancer)?.name || p.craft.enhancer}${p.craft.enhancerProof ? ` (${p.craft.enhancerProof})` : p.craft.enhancerOwned ? " (dichiarato, non verificato)" : ""}` : ""}{p.craft.mods?.length ? ` · condizioni: ${p.craft.mods.join(", ")}` : ""}{p.craft.note ? ` · nota: "${p.craft.note}"` : ""}{p.craft.curse?.nome ? ` · ☠ MALEDIZIONE (${p.craft.curse.gravita || "seria"}) "${p.craft.curse.nome}": ${p.craft.curse.meccanica}${p.craft.curse.rivelazione ? ` — se ne accorge: ${p.craft.curse.rivelazione}` : ""}${p.craft.curse.rimozione ? ` — si spezza: ${p.craft.curse.rimozione}` : ""}` : ""}</span>

@@ -25,6 +25,7 @@ import "./admin.css";
 import "./WorldBossAdmin.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
+import { deliverBossRewards, deliverySummaryText, MIN_ATTACKS, NO_PARTY } from "../data/worldBossRewardsDelivery";
 import BossRewardsEditor, { blankRewards, normalizeRewards, cleanRewards, rewardsSummary } from "./WorldBossRewards";
 
 import { isAdminEmail } from "../utils/roles";
@@ -506,6 +507,31 @@ export default function WorldBossAdmin() {
     return () => unsubBoss();
   }, []);
 
+  // Attacchi per boss (chi ne ha fatti ≥ MIN_ATTACKS prende i premi).
+  const [attackCounts, setAttackCounts] = useState({});
+  const [delivering, setDelivering] = useState(null);
+  const [lootOpenId, setLootOpenId] = useState(null);
+  useEffect(() => onSnapshot(doc(db, "battle_meta", "turn_tracker"),
+    (snap) => setAttackCounts(snap.data()?.attackCounts || {})), []);
+
+  const consegnaPremi = async (boss) => {
+    const n = Object.values(attackCounts[boss.id] || {}).filter((v) => (Number(v) || 0) >= MIN_ATTACKS).length;
+    if (!window.confirm(`Consegnare i premi di "${boss.name}" ai ${n} eroi che lo hanno attaccato almeno ${MIN_ATTACKS} volte?
+
+PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un eroe a caso per gruppo.`)) return;
+    setDelivering(boss.id);
+    try {
+      const res = await deliverBossRewards(boss.id, currentUser?.email || "");
+      if (res.nothing) alert("Questo boss non ha premi impostati: aggiungili con ✎ Modifica.");
+      else if (res.already) alert("Premi già consegnati.");
+      else { alert("✅ " + deliverySummaryText(res)); setLootOpenId(boss.id); }
+    } catch (e) {
+      alert("Consegna fallita: " + (e.message || e));
+    } finally {
+      setDelivering(null);
+    }
+  };
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "minions"), (snap) =>
       setMinions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
@@ -971,6 +997,33 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
                           : boss.rewards}
                       </div>
                     )}
+
+                    {boss.rewardsDelivered ? (
+                      <div className="wb-card-paid">
+                        <button type="button" className="wb-card-paid-head" onClick={() => setLootOpenId(lootOpenId === boss.id ? null : boss.id)} aria-expanded={lootOpenId === boss.id}>
+                          🎁 Premi consegnati a {boss.rewardsDelivered.participants?.length || 0} eroi {lootOpenId === boss.id ? "▴" : "▾"}
+                        </button>
+                        {lootOpenId === boss.id && (
+                          <ul className="wb-card-paid-list">
+                            {(boss.rewardsDelivered.participants || []).map((p) => (
+                              <li key={p.uid}>
+                                <strong>{p.name}</strong> <small>{p.party === NO_PARTY ? "senza gruppo" : p.party} · {p.attacks} attacchi</small>
+                                {(boss.rewardsDelivered.items || []).filter((i) => i.uid === p.uid).map((i, k) => <span key={k} className="wb-paid-item">🎁 {i.item}</span>)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : (rd && (isDefeated || boss.isActive)) ? (
+                      <div className="wb-card-pay">
+                        <small>⚔ {Object.values(attackCounts[boss.id] || {}).filter((v) => (Number(v) || 0) >= MIN_ATTACKS).length} eroi con almeno {MIN_ATTACKS} attacchi</small>
+                        {isDefeated && (
+                          <button type="button" className="wb-btn primary" disabled={delivering === boss.id} onClick={() => consegnaPremi(boss)}>
+                            {delivering === boss.id ? "⏳ Consegno…" : "🎁 Consegna premi"}
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
 
                     {mapOpenId === boss.id && (
                       <div className="wb-card-map">

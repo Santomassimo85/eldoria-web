@@ -59,6 +59,8 @@ export async function resetWorldBossFight({ boss = null, clearChat = true } = {}
     b.update(doc(db, "bosses", boss.id), {
       hp: Number(boss.maxHp) || Number(boss.hp) || 1, shield: 0,
       nextTurnCondition: null, debuffSource: null,
+      // battaglia nuova = vittoria, sconfitta e premi da rifare
+      victoryNotified: deleteField(), defeatNotified: deleteField(), rewardsDelivered: deleteField(),
       ...(boss.baseAc != null ? { ac: Number(boss.baseAc) || boss.ac, baseAc: deleteField() } : {}),
     });
     await b.commit();

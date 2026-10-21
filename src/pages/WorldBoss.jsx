@@ -32,6 +32,7 @@ import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { resetWorldBossFight } from "../data/worldBossReset";
+import { deliverBossRewards, deliverySummaryText } from "../data/worldBossRewardsDelivery";
 import { useSpriteBox, spriteVars } from "./spriteBox";
 
 // Barra dei PF in scena (verde → oro sotto metà → sangue sotto un quarto, scudo sopra).
@@ -518,21 +519,43 @@ export default function WorldBoss() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
+  const victoryRunRef = useRef(null);
   useEffect(() => {
     if (!isMaster || !areAllEnemiesDead || activeBosses.length === 0) return;
     const boss = activeBosses[0];
-    if (boss.victoryNotified) return;
+    if (boss.victoryNotified && boss.rewardsDelivered) return;
+    if (victoryRunRef.current === boss.id) return; // già in corso/fatto in questa pagina
+    victoryRunRef.current = boss.id;
     const notify = async () => {
+      if (!boss.victoryNotified) {
       const servi = minionInstances.length ? ` e i suoi ${minionInstances.length} servi` : "";
       await sendBattleNotification(
         "🏆 VITTORIA DEGLI EROI!",
         `Avete sconfitto ${boss.name}${servi}! ${boss.rewards ? "Ricompense: " + boss.rewards : "Il Master vi assegnerà le ricompense."}`
       );
       await updateDoc(doc(db, "bosses", boss.id), { victoryNotified: true });
+      }
+      if (boss.rewardsDelivered) return;
+      // Premi: PE/monete/Corone a chi ha attaccato ≥2 volte, un oggetto per gruppo a un eroe a caso.
+      // Transazione con `rewardsDelivered` sul boss: non si consegna mai due volte.
+      try {
+        const res = await deliverBossRewards(boss.id, currentUser?.email || "");
+        const txt = res.already ? "" : deliverySummaryText(res);
+        if (txt) {
+          await addDoc(collection(db, "world_boss_chat"), {
+            uid: BOSS_SYSTEM_UID, senderName: "Master System", type: "notification",
+            content: `🎁 Premi consegnati! ${txt}`,
+            timestamp: serverTimestamp(), isSystem: true,
+          });
+        }
+      } catch (e) {
+        console.error("[World Boss] consegna premi:", e);
+        window.alert("Premi del boss NON consegnati: " + (e.message || e) + "\nPuoi riprovare da DM Admin → World Boss (🎁 Consegna premi).");
+      }
     };
     notify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areAllEnemiesDead]);
+  }, [areAllEnemiesDead, isMaster, activeBosses[0]?.id]);
 
   useEffect(() => {
     if (!isMaster || !isTimeExpired || activeBosses.length === 0) return;

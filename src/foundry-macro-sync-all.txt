@@ -475,10 +475,12 @@ async function leggiCoda() {
   if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
   return (data.documents || [])
     .map((doc) => ({ _path: doc.name, _id: doc.name.split("/").pop(), ...obj(doc.fields || {}) }))
-    .filter((d) => d.status === "pending");
+    .filter((d) => d.status === "pending" || (d.kind === "xp" && d.status === "pending_xp"));
 }
 
-const descriviVoce = (d) => d.kind === "gold"
+const descriviVoce = (d) => d.kind === "xp"
+  ? `${d.targetName || d.targetUid}: +${d.amount} PE (${d.reason || "premio"})`
+  : d.kind === "gold"
   ? `${d.targetName || d.targetUid}: ${d.op === "add" ? "+" : "−"}${d.amount} mo (${d.reason || "spesa"})`
   : `${d.name || "Oggetto"} → ${d.target === "player" ? (d.targetName || d.targetUid) : "Oggetti del mondo"}`;
 
@@ -551,13 +553,26 @@ async function scalaMonete(actor, d) {
   catch (e) { console.warn("[Coda] oro scalato su Foundry ma il sito non si è aggiornato:", e); }
 }
 
+// PE (premi del World Boss, 2026-10-21): si sommano a system.details.xp.value.
+async function daiPE(actor, d) {
+  const amount = Math.max(0, Math.round(Number(d.amount) || 0));
+  const prima = Number(foundry.utils.getProperty(actor, "system.details.xp.value")) || 0;
+  await actor.update({ "system.details.xp.value": prima + amount });
+  await ChatMessage.create({
+    speaker: { alias: "World Boss" },
+    content: `<p><strong>${esc(actor.name)}</strong>: +${amount} PE (${prima} → ${prima + amount}).</p>`
+      + `<p style="font-size:.9em;opacity:.8">${esc(d.reason || "")}</p>`,
+    whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
+  });
+}
+
 // Processa la coda. attoreDi(uid) → attore del PG (dal piano dei collegamenti).
 // Ritorna { oggetti, spese, saltate, toccati:Set(uid), righe:[] }.
 async function processaCoda(voci, attoreDi) {
-  const esito = { oggetti: 0, spese: 0, saltate: 0, toccati: new Set(), righe: [] };
+  const esito = { oggetti: 0, spese: 0, pe: 0, saltate: 0, toccati: new Set(), righe: [] };
   for (const d of voci) {
     try {
-      if (d.kind === "gold" || d.target === "player") {
+      if (d.kind === "gold" || d.kind === "xp" || d.target === "player") {
         const actor = attoreDi(d.targetUid);
         if (!actor) {
           esito.saltate++;
@@ -565,6 +580,7 @@ async function processaCoda(voci, attoreDi) {
           continue;
         }
         if (d.kind === "gold") { await scalaMonete(actor, d); esito.spese++; }
+        else if (d.kind === "xp") { await daiPE(actor, d); esito.pe++; }
         else { await actor.createEmbeddedDocuments("Item", [buildItemData(d)]); esito.oggetti++; }
         esito.toccati.add(d.targetUid);
       } else {
@@ -704,7 +720,7 @@ async function syncOne(uid, actor, userName) {
   const ko = report.filter((x) => !x.esito.startsWith("ok"));
   const righe = ok.map((x) => `<li>${esc(x.pg)} · ${x.mo} mo${x.inBorse ? ` (${x.inBorse} in borsa)` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
   const male = ko.map((x) => `<li style="opacity:.7">${esc(x.pg)} — ${esc(x.esito)}</li>`).join("");
-  const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} spese${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+  const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} monete, ${esitoCoda.pe} PE${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
   ChatMessage.create({
     whisper: ChatMessage.getWhisperRecipients("GM"),
     content: `<h3>☁ Sito ↔ Foundry</h3>${codaRighe}<p><strong>Schede sul sito:</strong> ${ok.length}/${report.length}</p><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
@@ -729,8 +745,8 @@ async function syncOne(uid, actor, userName) {
           const a = perUid.get(uid) || attoreDaFlag(uid);
           if (a) await syncOne(uid, a, nomeUtente.get(uid)).catch((e) => console.warn("[Coda] sync:", e));
         }
-        if (es.oggetti || es.spese) {
-          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} spese.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
+        if (es.oggetti || es.spese || es.pe) {
+          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} monete, ${es.pe} PE.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
         }
       } catch (e) { console.warn("[Coda] giro automatico:", e); }
       finally { G.inCorso = false; }
