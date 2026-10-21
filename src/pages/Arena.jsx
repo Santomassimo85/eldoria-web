@@ -619,7 +619,10 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
   }
   // Scudi: ora +1 CA (prima +2). La CA salvata nel personaggio include già +2
   // dello scudo (sia umani che IA), quindi correggiamo di -1 per chi ha scudo.
-  const shieldAdj = charSnapshot?.hasShield ? -1 : 0;
+  // Armatura della Bottega a CA FISSA (niente selectedArmor): la CA è quella e
+  // basta, lo scudo non conta (regola scritta in Bottega). Prima il −1 dello scudo
+  // la abbassava sotto la CA fissa: Soran con Pelle di gnoll 14 risultava 13 (2026-10-21).
+  const shieldAdj = charSnapshot?.hasShield && !hasMarketFixedArmor(charSnapshot) ? -1 : 0;
   // Monaco · Movimento Senza Armatura (Lv2): +1 CA se combatte senz'armatura.
   const cls = (charSnapshot?.class || "").toLowerCase();
   const monkAcBonus = (isMonkClass(cls) && getSnapLevel(charSnapshot) >= 2 && charSnapshot?.selectedArmor?.unarmoredDefense) ? 1 : 0;
@@ -668,7 +671,7 @@ function getDisplayAc(matchPlayer, snap) {
   let ac = getEffectiveAc(matchPlayer, snap);
   if (matchPlayer?.wildShape && WILD_SHAPES[matchPlayer.wildShape]?.ac != null) parts.push(`forma selvatica ${ac}`);
   else if (ac < base + subAc) parts.push(`furia irruenta ${ac - base - subAc}`);
-  if (snap?.hasShield && matchPlayer?.shieldSuppressed) { ac -= 1; parts.push("scudo inutilizzabile −1"); }
+  if (snap?.hasShield && !hasMarketFixedArmor(snap) && matchPlayer?.shieldSuppressed) { ac -= 1; parts.push("scudo inutilizzabile −1"); }
   const shieldSkill = (matchPlayer?.shieldSkillTurns ?? 0) > 0 ? (matchPlayer?.shieldSkillBonus ?? 3) : 0;
   if (shieldSkill) { ac += shieldSkill; parts.push(`scudo +${shieldSkill} (${matchPlayer.shieldSkillTurns}t)`); }
   const forge = (matchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
@@ -1920,10 +1923,11 @@ function spellResistMult(action, defenderSnap) {
   const t = spellDamageType(action);
   return t ? damageMultiplier(t, defenderSnap?.marketResist || {}) : 1;
 }
-function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell) {
+function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell, fallbackType = null) {
   const resist = defenderSnap?.marketResist || {};
   // Incantesimi: il tipo si ricava dal testo (prima nessuna resistenza scattava).
-  const primaryType = isSpell ? spellDamageType(action) : (action?.damageType || null);
+  // Abilità con l'arma senza tipo: quello dell'arma (fallbackType).
+  const primaryType = isSpell ? spellDamageType(action) : (action?.damageType || fallbackType || null);
   const primaryMult = primaryType ? damageMultiplier(primaryType, resist) : 1;
   let total = primaryRaw * primaryMult;
   let resisted = primaryMult < 1; // resistenza/immunità sul tipo primario
@@ -1972,7 +1976,23 @@ function actionElement(action) {
 // Classe di peso dell'armatura equipaggiata, letta dallo snapshot.selectedArmor.
 function isHeavyArmor(snap) { return snap?.selectedArmor?.maxDex === 0; }
 function isLightArmor(snap) { const a = snap?.selectedArmor; return !!a && !a.unarmoredDefense && a.maxDex === 99; }
-function isNoArmor(snap)    { const a = snap?.selectedArmor; return !a || a.unarmoredDefense === true; }
+function isNoArmor(snap)    { const a = snap?.selectedArmor; return a ? a.unarmoredDefense === true : !hasMarketFixedArmor(snap); }
+// Armatura della Bottega a CA fissa: il loadout la accetta solo al posto di
+// un'armatura base, quindi uno snapshot di giocatore senza selectedArmor ce l'ha.
+function hasMarketFixedArmor(snap) { return !!snap && !snap.selectedArmor && snap.stats?.ac != null && !snap.isAi; }
+// Abilità che colpiscono con l'arma (Carica, Attacco Poderoso, Turbine di Lame…)
+// non hanno un tipo di danno: prendono quello dell'arma impugnata, così le
+// resistenze fisiche della Bottega valgono anche su di loro (2026-10-21).
+function physicalFallbackType(action, attackerSnap, attackerMP) {
+  if (!action || action.damageType) return null;
+  const physical = action.type === "weapon" || ["str", "dex"].includes(action.statKey);
+  if (!physical) return null;
+  const acts = attackerSnap?.selectedActions || [];
+  const held = attackerMP?.equippedWeaponNames?.[0];
+  const w = acts.find(a => a?.type === "weapon" && a.name === held && a.damageType)
+    || acts.find(a => a?.type === "weapon" && a.damageType);
+  return w?.damageType || "contundente";
+}
 // Vulnerabile al fuoco: armatura leggera/di pelle, oppure druido in forma animale.
 function isFireVulnerable(snap, matchPlayer) { return isLightArmor(snap) || !!matchPlayer?.wildShape; }
 // L'attaccante tira per colpire a vantaggio se il bersaglio è in armatura pesante
@@ -6877,7 +6897,7 @@ export default function Arena() {
       const aiDivineStrike = divineStrikeBonus(aiSnap, false); // Chierico Lv8 · Colpo Divino: +1d8 radiante
       const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult + aiDivineStrike + aiSubBonus;
       // Bottega: componenti elementali dell'arma IA + resistenze del bersaglio.
-      const aiTyped = applyTypedDamage(raw, chosen, critMult, targetSnap, false);
+      const aiTyped = applyTypedDamage(raw, chosen, critMult, targetSnap, false, physicalFallbackType(chosen, aiSnap, aiPlayer));
       damage = applyDefenderDamageMods(aiTyped.total, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
@@ -7760,7 +7780,8 @@ export default function Arena() {
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici (kiBypass).
     // Bottega: componenti di danno elementali dell'arma + resistenze del bersaglio.
-    const typedDmg = applyTypedDamage(rawDamage, action, critMult, defenderSnap, isSpellAction);
+    const typedDmg = applyTypedDamage(rawDamage, action, critMult, defenderSnap, isSpellAction,
+      isSpellAction ? null : physicalFallbackType(action, attackerSnap, attackerMatchPlayer));
     _hitResisted = typedDmg.resisted;
     const rageReducedDamage = applyDefenderDamageMods(typedDmg.total, defenderSnap, defMatchPlayer, isSpellAction, kiBypass);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.

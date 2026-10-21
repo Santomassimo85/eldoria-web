@@ -103,11 +103,24 @@ function currentAc(p, snap) {
     return w;
   }
   let ac = (snap && snap.stats && snap.stats.ac) || 12;
-  if (snap && snap.hasShield) ac -= p && p.shieldSuppressed ? 2 : 1;
+  // Armatura della Bottega a CA fissa (niente selectedArmor): la CA è quella,
+  // lo scudo non conta (come getEffectiveAc in Arena.jsx).
+  const fixedArmor = snap && !snap.selectedArmor && !snap.isAi;
+  if (snap && snap.hasShield && !fixedArmor) ac -= p && p.shieldSuppressed ? 2 : 1;
   if (p && (p.shieldSkillTurns || 0) > 0) ac += (p.shieldSkillBonus != null ? p.shieldSkillBonus : 3);
   if (p && (p.armorForgeTurns || 0) > 0) ac += 2;
   if (p && p.defensiveBonus) ac += p.defensiveBonus;
   return ac;
+}
+
+// Resistenze della Bottega (= damageMultiplier di src/data/arenaDamageTypes.js).
+const RESIST_MULT = { resist: 0.5, immune: 0, vuln: 2 };
+// Tipo di danno dell'attacco: il suo, o quello dell'arma per le abilità fisiche.
+function attackDamageType(action, snap) {
+  if (action && action.damageType) return action.damageType;
+  const acts = (snap && snap.selectedActions) || [];
+  const w = acts.find((a) => a && a.type === "weapon" && a.damageType);
+  return (w && w.damageType) || "contundente";
 }
 
 function wildShapeKnockout(p, logs) {
@@ -231,7 +244,9 @@ async function runArenaBotTurns(admin) {
           if (isCrit || hitTotal >= targetAc) {
             const critMult = isCrit ? 2 : 1;
             const barb = cls.includes("barbar") ? 2 : 0;
-            const dmg = Math.max(1, (rollDice(chosen.damage) + statMod + barb) * critMult);
+            const dtype = attackDamageType(chosen, aiSnap);
+            const rmult = RESIST_MULT[(targetSnap.marketResist || {})[dtype]] ?? 1;
+            const dmg = Math.max(rmult === 0 ? 0 : 1, Math.round((rollDice(chosen.damage) + statMod + barb) * critMult * rmult));
             target.hp = Math.max(0, (target.hp || 0) - dmg);
             logs.push(`💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${isCrit ? " ★CRITICO★" : ""}${autoTag} — ${dmg} danni (${target.hp} HP)`);
             wildShapeKnockout(target, logs);
