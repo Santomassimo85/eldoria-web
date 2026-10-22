@@ -27,7 +27,7 @@ import {
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
-import { showD20Roll } from "../components/DiceRoll";
+import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
@@ -271,6 +271,8 @@ function getSpellAttackBonus(charData) {
 
 export default function WorldBoss() {
   const { currentUser } = useAuth();
+  // Dado 3D scaricato subito: il primo tiro parte senza attese.
+  useEffect(() => { preloadDice3D(); }, []);
   const [charData, setCharData] = useState(null);
   const [activeBosses, setActiveBosses] = useState([]);
   const [messages, setMessages] = useState([]);

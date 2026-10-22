@@ -7,7 +7,7 @@ import {
   runTransaction, increment, query, where, writeBatch,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
+import { showD20Roll, DICE_SKINS, setDiceSkin, preloadDice3D } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
@@ -3406,6 +3406,9 @@ export default function Arena() {
   const [titlesModalOpen, setTitlesModalOpen] = useState(false);
   const [statsTournModalOpen, setStatsTournModalOpen] = useState(false);
   const [statsFunModalOpen, setStatsFunModalOpen] = useState(false);
+
+  // Dado 3D scaricato subito: il primo tiro parte senza attese.
+  useEffect(() => { preloadDice3D(); }, []);
 
   // Carica la skin del dado salvata per questo utente e la rende attiva.
   useEffect(() => {

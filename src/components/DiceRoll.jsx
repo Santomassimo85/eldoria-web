@@ -55,7 +55,10 @@ let pendingResolve = null;
 // solo al primo tiro). Resta il dado disegnato in CSS per i tiri segreti
 // dell'Officina e dove WebGL non c'è.
 let dice3dMod = null;
-const load3D = () => (dice3dMod ||= import("./dice3d").then((m) => (m.canUse3D() ? m : null)).catch(() => null));
+const load3D = () => (dice3dMod ||= import("./dice3d").then((m) => (ready3D = m.canUse3D() ? m : null)).catch(() => null));
+/** Scarica il dado 3D in anticipo (Arena e World Boss all'apertura): il primo tiro parte subito. */
+export function preloadDice3D() { load3D(); }
+let ready3D = null; // modulo già caricato (null finché il download non è finito)
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function showD20Roll(value, opts = {}) {
@@ -107,9 +110,11 @@ export default function DiceRollHost() {
   useEffect(() => {
     if (!roll) return;
     if (roll.hidden) { setModeFor({ id: roll.id, mode: "css" }); return; }
+    if (ready3D) { setModeFor({ id: roll.id, mode: "3d" }); return; }
     let alive = true;
-    load3D().then((m) => { if (alive) setModeFor({ id: roll.id, mode: m ? "3d" : "css" }); });
-    return () => { alive = false; };
+    const t = setTimeout(() => { if (alive) { alive = false; setModeFor({ id: roll.id, mode: "css" }); } }, 700);
+    load3D().then((m) => { if (alive) { alive = false; clearTimeout(t); setModeFor({ id: roll.id, mode: m ? "3d" : "css" }); } });
+    return () => { alive = false; clearTimeout(t); };
   }, [roll]);
 
   useEffect(() => {
@@ -118,8 +123,15 @@ export default function DiceRollHost() {
     const accent = roll.value === 20 ? 0xffc23a : roll.value === 1 ? 0xff2a2a : null;
     load3D().then((m) => {
       if (!alive || !m) return;
-      m.roll3D(host3d.current, { value: roll.value, skin: roll.skin, durationMs: ROLL3D_MS, accent })
-        .then(() => roll.resolve());
+      try {
+        m.roll3D(host3d.current, { value: roll.value, skin: roll.skin, durationMs: ROLL3D_MS, accent })
+          .then(() => roll.resolve());
+      } catch (err) {
+        // WebGL che non parte: questo tiro col dado disegnato, e niente 3D finché non si ricarica
+        console.warn("[dadi 3D]", err);
+        ready3D = null; dice3dMod = Promise.resolve(null);
+        setModeFor({ id: roll.id, mode: "css" });
+      }
     });
     const tEnd = setTimeout(() => setRoll(null), ROLL3D_MS + HOLD3D_MS + FADE_MS);
     return () => { alive = false; clearTimeout(tEnd); dice3dMod?.then((m) => m?.stop3D()); roll.resolve(); };

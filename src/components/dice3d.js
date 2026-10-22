@@ -26,7 +26,8 @@ const COLS = 5, ROWS = 4;           // atlante delle 20 facce
 const TRI = { a: [0.5, 0.93], b: [0.04, 0.12], c: [0.96, 0.12] }; // triangolo nella cella (v verso l'alto)
 
 let renderer, scene, camera, die, dieMat, shadow, geo, faceFrames, lastSkin;
-let raf = 0, token = 0;
+let raf = 0, token = 0, lostFlag = false;
+let pv = null; // renderer delle anteprime del menu "I Tuoi Dadi"
 
 function makeAtlas(skin) {
   const [bg, ink] = SKIN_COLORS[skin] || SKIN_COLORS.classic;
@@ -97,8 +98,23 @@ function buildDie() {
   scene.add(shadow);
 }
 
+// Sul telefono il browser butta via il contesto WebGL quando l'app va in secondo
+// piano (o se ne apre un altro): un renderer morto non disegna più niente e il dado
+// spariva per sempre. Si controlla a ogni tiro e, se serve, si rifà tutto da capo.
+function rendererDead() {
+  try { return !renderer || renderer.getContext().isContextLost(); } catch { return true; }
+}
+function teardown() {
+  try { renderer?.dispose(); } catch { /* già morto */ }
+  try { renderer?.domElement?.remove(); } catch { /* niente */ }
+  renderer = scene = camera = die = dieMat = shadow = null;
+  lastSkin = null;
+  pv = null;
+}
+
 function setup() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); lostFlag = true; }, false);
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
@@ -126,45 +142,24 @@ export function canUse3D() {
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 
-// Lancio simulato: posizione (scivola e rimbalza) e rotazione (si smorza a ogni rimbalzo).
-function simulate(frames, halfW) {
-  const side = Math.random() < 0.5 ? -1 : 1;
-  const start = new THREE.Vector2(side * (halfW + 1.4), rnd(-1.6, 1.2));
-  const end = new THREE.Vector2(rnd(-0.5, 0.5), rnd(-0.25, 0.35));
-  const bounces = [[0, 0.24, 3.2, "fall"], [0.24, 0.52, 1.1], [0.52, 0.71, 0.42], [0.71, 0.83, 0.13]];
-  const height = (u) => {
-    for (const [t0, t1, h, kind] of bounces) {
-      if (u < t1) {
-        const s = (u - t0) / (t1 - t0);
-        return kind === "fall" ? h * (1 - s * s) : h * 4 * s * (1 - s);
-      }
-    }
-    return 0;
-  };
-  let w = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-0.4, 0.4)).normalize().multiplyScalar(rnd(15, 19));
-  let q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(0, 6.28), rnd(0, 6.28), rnd(0, 6.28)));
+// Lancio SUL POSTO (2026-10-22, richiesta dell'utente): il dado resta al centro
+// dello schermo, fa un saltello e gira su sé stesso sempre più piano finché si ferma.
+function simulate(frames) {
+  const axis = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-0.5, 0.5)).normalize();
+  const wobble = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize();
+  const turns = rnd(4.2, 5.4) * Math.PI * 2;         // giri totali
+  const q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(0, 6.28), rnd(0, 6.28), rnd(0, 6.28)));
   const out = [];
-  const dt = 1 / 60;
-  let nextBounce = 1;
   for (let i = 0; i <= frames; i++) {
     const u = i / frames;
-    if (nextBounce < bounces.length && u >= bounces[nextBounce][0]) {
-      // a ogni contatto col tavolo il dado perde giri e cambia un po' asse
-      w.add(new THREE.Vector3(rnd(-4, 4), rnd(-4, 4), rnd(-2, 2))).multiplyScalar(0.62);
-      nextBounce++;
-    }
-    const damp = u > 0.83 ? 0.80 : 0.985;
-    w.multiplyScalar(damp);
-    const ang = w.length() * dt;
-    if (ang > 1e-6) q = new THREE.Quaternion().setFromAxisAngle(w.clone().normalize(), ang).multiply(q);
-    const slide = Math.min(1, u / 0.88);
-    const e = 1 - Math.pow(1 - slide, 3);
-    out.push({
-      x: start.x + (end.x - start.x) * e,
-      y: start.y + (end.y - start.y) * e,
-      z: IN_R + height(u),
-      q: q.clone(),
-    });
+    const spin = 1 - Math.pow(1 - u, 3);               // veloce all'inizio, poi si smorza
+    const a = new THREE.Vector3().copy(axis).lerp(wobble, 0.35 * Math.sin(u * Math.PI)).normalize();
+    const q = new THREE.Quaternion().setFromAxisAngle(a, turns * spin).multiply(q0);
+    // saltello: sale, ricade, due rimbalzini sempre più bassi
+    const hop = u < 0.55 ? 1.1 * Math.sin((u / 0.55) * Math.PI)
+      : u < 0.8 ? 0.28 * Math.sin(((u - 0.55) / 0.25) * Math.PI)
+      : u < 0.92 ? 0.07 * Math.sin(((u - 0.8) / 0.12) * Math.PI) : 0;
+    out.push({ x: 0, y: 0.15, z: IN_R + hop, q });
   }
   return out;
 }
@@ -174,6 +169,7 @@ function simulate(frames, halfW) {
  * Risolve quando il dado è fermo (`durationMs`). `onLanded` arriva insieme.
  */
 export function roll3D(host, { value, skin = "classic", durationMs = 1350, accent = null }) {
+  if (lostFlag || rendererDead()) { lostFlag = false; teardown(); }
   if (!renderer) setup();
   cancelAnimationFrame(raf);
   const my = ++token;
@@ -195,16 +191,14 @@ export function roll3D(host, { value, skin = "classic", durationMs = 1350, accen
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     // sul telefono (verticale) il dado non deve riempire lo schermo
-    camera.position.set(0, -2.1, w < h ? 14 : 10.5);
+    camera.position.set(0, -1.6, w < h ? 10.5 : 8);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
   };
   resize();
 
-  const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
-  const halfW = halfH * camera.aspect;
   const frames = Math.max(30, Math.round(durationMs / (1000 / 60)));
-  const path = simulate(frames, halfW);
+  const path = simulate(frames);
   const face = Math.min(20, Math.max(1, Math.round(value) || 1)) - 1;
   const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rnd(-0.22, 0.22));
   const target = yaw.multiply(faceFrames[face].clone());
@@ -216,7 +210,9 @@ export function roll3D(host, { value, skin = "classic", durationMs = 1350, accen
     let landed = false;
     const tick = (now) => {
       if (my !== token) { resolve(); return; }
-      const t = Math.min(1, (now - t0) / durationMs);
+      // il primo fotogramma può avere un orario PRIMA di t0: senza il max(0) l indice
+      // veniva -1 e il dado non si disegnava mai (era il bug del dado invisibile)
+      const t = Math.max(0, Math.min(1, (now - t0) / durationMs));
       const fi = t * frames, i = Math.floor(fi), k = fi - i;
       const a = path[Math.min(i, frames)], b = path[Math.min(i + 1, frames)];
       die.position.set(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
@@ -243,11 +239,13 @@ export function roll3D(host, { value, skin = "classic", durationMs = 1350, accen
 // per ogni colore, disegnato una volta in un'immagine. Renderer e scena a parte,
 // così un'anteprima non disturba un lancio in corso.
 const previewCache = new Map();
-let pv = null;
+
 export function previewDie(skin = "classic", size = 160) {
   const key = `${skin}:${size}`;
   if (previewCache.has(key)) return previewCache.get(key);
+  if (lostFlag || rendererDead()) { lostFlag = false; teardown(); }
   if (!renderer) setup();
+  if (pv && pv.r.getContext().isContextLost()) pv = null;
   if (!pv) {
     const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     r.setClearColor(0x000000, 0);
