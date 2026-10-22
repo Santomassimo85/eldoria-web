@@ -140,7 +140,10 @@ function domePixels(Rx, Ry, P) {
 }
 
 // ── Layer ────────────────────────────────────────────────────────────────────
-export function VfxLayer({ messages }) {
+// `selfUid`: i tiri degli altri arrivano col d20 3D a schermo (msg.dice): l effetto parte
+// quando il dado si è fermato, come per chi ha tirato.
+const DICE_LAND_MS = 1400;
+export function VfxLayer({ messages, selfUid = null }) {
   const seenRef = useRef(new Set());
   const mountedAtRef = useRef(Date.now());
   const [items, setItems] = useState([]);
@@ -171,15 +174,19 @@ export function VfxLayer({ messages }) {
       // Niente replay della storia quando si entra in pagina.
       if (ts && ts < mountedAtRef.current - 5000) { seenRef.current.add(msg.id); continue; }
       seenRef.current.add(msg.id);
-      const spawned = spawnFor(msg, targets);
-      if (!spawned.length) continue;
-      setItems((prev) => [...prev, ...spawned]);
-      const ids = new Set(spawned.map((s) => s.id));
-      const ttl = Math.max(...spawned.map((s) => s.delay + s.dur)) + 150;
-      setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
-      playSound(normalizeEffect(msg).kind);
+      const play = () => {
+        const spawned = spawnFor(msg, targets);
+        if (!spawned.length) return;
+        setItems((prev) => [...prev, ...spawned]);
+        const ids = new Set(spawned.map((s) => s.id));
+        const ttl = Math.max(...spawned.map((s) => s.delay + s.dur)) + 150;
+        setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
+        playSound(normalizeEffect(msg).kind);
+      };
+      if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(play, DICE_LAND_MS);
+      else play();
     }
-  }, [messages]);
+  }, [messages, selfUid]);
 
   if (typeof document === "undefined") return null;
   return createPortal(

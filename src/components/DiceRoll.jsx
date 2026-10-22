@@ -61,6 +61,12 @@ export function preloadDice3D() { load3D(); }
 let ready3D = null; // modulo già caricato (null finché il download non è finito)
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/**
+ * Tira il d20 a schermo. `opts.dice` = più d20 insieme (2026-10-22): [{ value, name, dim }]
+ * — vantaggio/svantaggio (il dado scartato `dim`), tiri salvezza di gruppo (un dado per
+ * bersaglio, col nome sotto). `value` resta il dado che decide (CRITICO/FALLIMENTO);
+ * con più dadi senza un dado decisivo passare null.
+ */
 export function showD20Roll(value, opts = {}) {
   if (!trigger) return Promise.resolve();
   return trigger(value, opts);
@@ -79,6 +85,7 @@ export default function DiceRollHost() {
         setRoll({
           id: Math.random().toString(36).slice(2),
           value,
+          dice: Array.isArray(opts.dice) && opts.dice.length ? opts.dice : null,
           label: opts.label || "",
           // Tiro SEGRETO (Officina): il dado rotola e si ferma, ma sulla faccia
           // resta una runa. Il numero lo conosce solo il Master.
@@ -100,6 +107,8 @@ export default function DiceRollHost() {
   // si accende anche col risparmio energetico) il dado resta 3D ma rotola meno.
   const ROLL3D_MS = reducedMotion() ? 700 : 1350;
   const HOLD3D_MS = 900;   // il dado 3D resta fermo un po' di più: si legge la faccia
+  // con più dadi (e i nomi sotto) ci vuole più tempo per leggerli tutti
+  const holdFor = (r) => (r?.dice?.length > 1 ? 1500 + 120 * Math.min(r.dice.length, 8) : HOLD3D_MS);
 
   // Lancio 3D: si decide se usarlo PRIMA di montare l'overlay (mode "3d" | "css").
   const host3d = useRef(null);
@@ -120,11 +129,13 @@ export default function DiceRollHost() {
   useEffect(() => {
     if (!roll || mode !== "3d" || !host3d.current) return;
     let alive = true;
-    const accent = roll.value === 20 ? 0xffc23a : roll.value === 1 ? 0xff2a2a : null;
+    const accentOf = (v) => (v === 20 ? 0xffc23a : v === 1 ? 0xff2a2a : null);
+    const accent = accentOf(roll.value);
+    const dice = roll.dice?.map((d) => ({ ...d, accent: d.dim ? null : accentOf(d.value) }));
     load3D().then((m) => {
       if (!alive || !m) return;
       try {
-        m.roll3D(host3d.current, { value: roll.value, skin: roll.skin, durationMs: ROLL3D_MS, accent })
+        m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent })
           .then(() => roll.resolve());
       } catch (err) {
         // WebGL che non parte: questo tiro col dado disegnato, e niente 3D finché non si ricarica
@@ -133,7 +144,7 @@ export default function DiceRollHost() {
         setModeFor({ id: roll.id, mode: "css" });
       }
     });
-    const tEnd = setTimeout(() => setRoll(null), ROLL3D_MS + HOLD3D_MS + FADE_MS);
+    const tEnd = setTimeout(() => setRoll(null), ROLL3D_MS + holdFor(roll) + FADE_MS);
     return () => { alive = false; clearTimeout(tEnd); dice3dMod?.then((m) => m?.stop3D()); roll.resolve(); };
   }, [roll, mode]);
 
@@ -160,7 +171,7 @@ export default function DiceRollHost() {
   if (mode === "3d") {
     return createPortal(
       <div className={`dice-overlay dice-overlay--3d ${variant}`} key={roll.id} aria-hidden="true"
-        style={{ "--tumble-ms": `${ROLL3D_MS}ms`, "--settle-ms": "0ms", "--hold-ms": `${HOLD3D_MS}ms`, "--fade-ms": `${FADE_MS}ms` }}>
+        style={{ "--tumble-ms": `${ROLL3D_MS}ms`, "--settle-ms": "0ms", "--hold-ms": `${holdFor(roll)}ms`, "--fade-ms": `${FADE_MS}ms` }}>
         <div className="dice3d-host" ref={host3d} />
         <div className="dice3d-caption">
           {roll.label && <div className="dice-label">{roll.label}</div>}
@@ -184,7 +195,7 @@ export default function DiceRollHost() {
         }}
       >
         <div className="dice-d20-face">
-          <span className="dice-d20-num">{roll.hidden ? "?" : roll.value}</span>
+          <span className="dice-d20-num">{roll.hidden ? "?" : (roll.value ?? roll.dice?.filter((d) => !d.dim).map((d) => d.value).join(" · "))}</span>
         </div>
         <div className="dice-d20-glow" />
       </div>

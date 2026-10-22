@@ -129,6 +129,11 @@ const fxFields = (action, targets, { kind = null, from = null, miss = [], kill =
 // Modificatore al tiro salvezza di un nemico (boss/minion): se il doc lo porta, altrimenti 0.
 const enemySaveMod = (enemy, ab) => Number(enemy?.saves?.[ab] ?? enemy?.abilities?.[ab] ?? enemy?.[ab] ?? 0) || 0;
 const rollD20 = () => Math.floor(Math.random() * 20) + 1;
+// Vantaggio/svantaggio a schermo: due d20, quello scartato spento (a pari valore si scarta il secondo).
+const pairDice = (r1, r2, cond, name = "") => {
+  const keep = (cond === "advantage" ? r1 >= r2 : r1 <= r2) ? 0 : 1;
+  return [r1, r2].map((value, i) => (name ? { value, dim: i !== keep, name } : { value, dim: i !== keep }));
+};
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const BOSS_SYSTEM_UID = "BOSS_MSG";
@@ -276,6 +281,24 @@ export default function WorldBoss() {
   const [charData, setCharData] = useState(null);
   const [activeBosses, setActiveBosses] = useState([]);
   const [messages, setMessages] = useState([]);
+  // Tiri degli ALTRI (giocatori e Master, 2026-10-22): ogni tiro scrive `dice` sul messaggio
+  // e qui si rivede col d20 3D, in fila. La prima lettura della chat è storia: non si rigioca.
+  const diceSeenRef = useRef(null);
+  const diceQueueRef = useRef(Promise.resolve());
+  useEffect(() => {
+    if (!messages.length) return;
+    if (!diceSeenRef.current) { diceSeenRef.current = new Set(messages.map((m) => m.id)); return; }
+    const fresh = [...messages].reverse().filter((m) => {
+      if (diceSeenRef.current.has(m.id)) return false;
+      diceSeenRef.current.add(m.id);
+      return m.dice?.dice?.length && m.dice.by !== currentUser?.uid && document.visibilityState === "visible";
+    });
+    for (const m of fresh) {
+      const at = Date.now();
+      diceQueueRef.current = diceQueueRef.current.then(() =>
+        Date.now() - at > 8000 ? null : showD20Roll(m.dice.main ?? null, { label: m.dice.label, dice: m.dice.dice }));
+    }
+  }, [messages, currentUser]);
   const [players, setPlayers] = useState([]);
   const [text, setText] = useState("");
   const [openSections, setOpenSections] = useState({ Armi: true });
@@ -1038,6 +1061,13 @@ export default function WorldBoss() {
       } else { newHp = Math.max(0, currentHp - rem); }
       results.push({ enemy, roll, mod, saved, dmg, newShield, newHp, shieldHit: newShield < currentShield, killed: newHp <= 0 && currentHp > 0 });
     }
+    // un d20 per ogni nemico che tira il TS, col suo nome sotto
+    const saveTag = `TS ${SAVE_LABEL_IT[aoe.save] || String(aoe.save).toUpperCase()} · CD ${dc}`;
+    const diceMsg = {
+      by: currentUser.uid, label: `${charData?.name || "Eroe"} · ${action.name} · ${saveTag}`, main: null,
+      dice: results.map((r) => ({ value: r.roll, name: `${r.enemy.name} ${r.saved ? "✅" : "❌"}` })),
+    };
+    await showD20Roll(null, { label: `${action.name} · ${saveTag}`, dice: diceMsg.dice });
     try {
       const batch = writeBatch(db);
       results.forEach((r) => batch.update(enemyRef(r.enemy), { hp: r.newHp, shield: r.newShield }));
@@ -1050,6 +1080,7 @@ export default function WorldBoss() {
         actionName: `${action.name}${enemiesArg?.length ? "" : " (AREA)"} → ${results.length === 1 ? results[0].enemy.name : `${results.length} nemici`}`,
         hitRoll: `🎲 CD ${dc} · TS ${saveLbl} — ${tsLine}`,
         damageRoll: `💥 ${formula} = ${total} · ${dmgLine}`,
+        dice: diceMsg,
         uid: currentUser.uid, category: action.category,
         timestamp: serverTimestamp(),
         ...fxFields(action, results.map((r) => r.enemy.vfxKey), {
@@ -1201,18 +1232,23 @@ export default function WorldBoss() {
     if (!(await claimTurn())) return; // dopo lo smistamento: le magie/abilità sopra prenotano da sé
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto" || skill?.kind === "attack";
     const condition = charData.nextTurnCondition;
-    let d20, rollLabel;
+    let d20, rollLabel, shown;
     if (condition === "advantage" || condition === "disadvantage") {
       const r1 = Math.floor(Math.random() * 20) + 1;
       const r2 = Math.floor(Math.random() * 20) + 1;
       d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${condition === "advantage" ? "⬆ Vant" : "⬇ Svan"} [${r1},${r2}]→${d20}`;
+      shown = pairDice(r1, r2, condition);
       await updateDoc(doc(db, "characters", currentUser.uid), { nextTurnCondition: null });
     } else {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
+      shown = [{ value: d20 }];
     }
-    await showD20Roll(d20, { label: action.name }); // d20 3D: il colpo parte quando il dado si ferma
+    // d20 3D (due col vantaggio/svantaggio): il colpo parte quando i dadi si fermano;
+    // la stessa copia va sul messaggio e gli altri la rivedono.
+    const diceMsg = { by: currentUser.uid, label: `${charData?.name || "Eroe"} · ${action.name}`, main: d20, dice: shown };
+    await showD20Roll(d20, { label: action.name, dice: shown });
     const parsedBonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
     // Spell hit-roll fallback: when the action is a cantrip or "Livello X"
     // spell, prefer the proper spell attack bonus (spellMod + prof) if it
@@ -1244,6 +1280,7 @@ export default function WorldBoss() {
       actionName: (rider ? `${action.name} + ${rider.name}` : action.name) + (isCritical ? " (CRITICO!)" : "") + (isAttack ? ` → ${boss.name}` : ""),
       timestamp: serverTimestamp(), uid: currentUser.uid, category: action.category,
       hitRoll: `🎲 ${rollLabel} + ${bonusLabel} = ${hitTotal} `,
+      dice: diceMsg,
     };
     const fxAction = rider ? { ...action, dmgType: elementFor(rider) } : action;
     if (isAttack) {
@@ -1415,15 +1452,28 @@ export default function WorldBoss() {
       const dc = bossAoe.dc;
       const formula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
       const total = rollDice(formula);
-      const results = [];
-      for (const p of pool) {
+      // Prima si tirano tutti i TS (un d20 per eroe, due col vantaggio/svantaggio) e si
+      // mostrano insieme; poi si scrivono i danni.
+      const saveTag = `TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · CD ${dc}`;
+      const saves = pool.map((p) => {
         const cond = p.nextTurnCondition;
         const r1 = rollD20(), r2 = rollD20();
         const roll = cond === "advantage" ? Math.max(r1, r2) : cond === "disadvantage" ? Math.min(r1, r2) : r1;
+        const mod = statSave(p, bossAoe.save);
+        return { p, cond, r1, r2, roll, mod, saved: roll + mod >= dc };
+      });
+      const diceMsg = {
+        by: currentUser.uid, label: `${boss.name} · ${action.name} · ${saveTag}`, main: null,
+        dice: saves.flatMap(({ p, cond, r1, r2, saved }) => {
+          const name = `${(p.name || "Eroe").split(" ")[0]} ${saved ? "✅" : "❌"}`;
+          return cond === "advantage" || cond === "disadvantage" ? pairDice(r1, r2, cond, name) : [{ value: r1, name }];
+        }),
+      };
+      await showD20Roll(null, { label: diceMsg.label, dice: diceMsg.dice });
+      const results = [];
+      for (const { p, cond, r1, r2, roll, mod, saved } of saves) {
         const condTxt = cond === "advantage" ? `⬆[${r1},${r2}]` : cond === "disadvantage" ? `⬇[${r1},${r2}]` : "";
         if (cond === "advantage" || cond === "disadvantage") await updateDoc(doc(db, "characters", p.id), { nextTurnCondition: null });
-        const mod = statSave(p, bossAoe.save);
-        const saved = roll + mod >= dc;
         const dmg = saved ? (bossAoe.half ? Math.floor(total / 2) : 0) : total;
         let rem = dmg;
         let shield = p.stats?.shield || 0;
@@ -1438,7 +1488,7 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
         actionName: `${action.name} (${bossAoe.area ? "AREA" : "TS"})`,
         description: `${who} scatena ${action.name}${bossAoe.area ? " su tutta la zona" : ""} · CD ${dc}, TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · Danni ${formula} = ${total} → ${line}`,
-        masterDetails: results, timestamp: serverTimestamp(),
+        masterDetails: results, timestamp: serverTimestamp(), dice: diceMsg,
         ...fxFields(action, results.map((r) => `player-${r.id}`), {
           kind: bossAoe.area ? "aoe" : null, from: boss.vfxKey,
           miss: results.filter((r) => r.dmg === 0).map((r) => `player-${r.id}`),
@@ -1453,19 +1503,22 @@ export default function WorldBoss() {
     if (targets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
     // Consume any debuff condition (e.g. svantaggio applied by a player spell)
     const condition = boss.nextTurnCondition;
-    let d20, rollLabel;
+    let d20, rollLabel, shown;
     if (condition === "advantage" || condition === "disadvantage") {
       const r1 = Math.floor(Math.random() * 20) + 1;
       const r2 = Math.floor(Math.random() * 20) + 1;
       d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"}[${r1},${r2}]→${d20}`;
+      shown = pairDice(r1, r2, condition);
       // Clear after use so it only applies to one roll.
       try { await updateDoc(enemyRef(boss), { nextTurnCondition: null, debuffSource: null }); } catch (_) {}
     } else {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
+      shown = [{ value: d20 }];
     }
-    await showD20Roll(d20, { label: `${boss.name} · ${action.name}` });
+    const diceMsg = { by: currentUser.uid, label: `${boss.name} · ${action.name}`, main: d20, dice: shown };
+    await showD20Roll(d20, { label: diceMsg.label, dice: shown });
     const bossBonus = parseInt(action.bonus) || 0;
     const hitTotal = d20 + bossBonus;
     const damageFormula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
@@ -1505,7 +1558,7 @@ export default function WorldBoss() {
       uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
       actionName: action.name,
       description: `${who} scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
-      masterDetails: results, timestamp: serverTimestamp(),
+      masterDetails: results, timestamp: serverTimestamp(), dice: diceMsg,
       ...fxFields(action, allTargetIds, { from: boss.vfxKey, miss: missTargetIds, kill: killTargetIds }),
     });
     setSelectedTargets([]);
@@ -1697,7 +1750,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
 
   return (
     <div className="rpg-screen">
-      <VfxLayer messages={messages} />
+      <VfxLayer messages={messages} selfUid={currentUser?.uid} />
 
       {/* ── PALCO: testata + campo di battaglia. Sul telefono resta fermo in alto
            (sticky) e sotto scorrono azioni, status e log: l'effetto dell'attacco si vede. ── */}

@@ -514,3 +514,11 @@
 
 /* Anteprima 3D del colore nel menu "I Tuoi Dadi" (2026-10-21) */
 .dice-swatch-3d { width: 64px; height: 64px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+
+/* Più d20 insieme (2026-10-22): nome sotto ogni dado, compare quando i dadi sono fermi */
+.dice3d-name { position: absolute; transform: translate(-50%, 0); max-width: 30vw; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; padding: 2px 8px; border-radius: 3px; font: 600 clamp(.72rem, 2.6vw, .95rem)/1.3 var(--font-sc, "Alegreya SC", serif);
+  color: #f3ead6; background: rgba(12, 10, 10, .72); text-shadow: 0 1px 2px #000; opacity: 0;
+  animation: dice3d-caption 260ms ease-out var(--tumble-ms, 1350ms) forwards; }
+.dice3d-name.is-dim { color: #9a9387; text-decoration: line-through; }
+@media (prefers-reduced-motion: reduce) { .dice3d-name { animation: none; opacity: 1; } }
