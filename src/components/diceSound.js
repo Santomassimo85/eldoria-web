@@ -18,14 +18,16 @@ function getCtx() {
   return ctx;
 }
 
-// Il browser apre l'audio solo dopo un gesto: al primo tocco si sblocca, così
-// anche i tiri degli altri (che arrivano senza tocchi) si sentono.
+// Il browser apre l'audio solo dopo un gesto: a ogni tocco (in cattura, PRIMA dei
+// bottoni) si crea/riaccende il contesto, così il tiro che quel tocco fa partire si
+// sente, e anche i tiri degli altri, che arrivano senza tocchi. Il telefono lo
+// risospende quando l'app va in secondo piano: per questo il listener resta.
 if (typeof window !== "undefined") {
   const unlock = () => {
-    getCtx();
-    ["touchstart", "touchend", "click", "keydown"].forEach((e) => window.removeEventListener(e, unlock));
+    const c = getCtx();
+    if (c && c.state !== "running") c.resume().catch(() => {});
   };
-  ["touchstart", "touchend", "click", "keydown"].forEach((e) => window.addEventListener(e, unlock, { passive: true }));
+  ["pointerdown", "touchstart", "touchend", "click", "keydown"].forEach((e) => window.addEventListener(e, unlock, { capture: true, passive: true }));
 }
 
 function noiseBuffer(c) {
@@ -80,7 +82,18 @@ function knock(c, out, at, gain, pitch = 1) {
 /** Suona il lancio di `count` d20 che durano `durationMs` (fino al dado fermo). */
 export function playDiceRoll(durationMs = 1350, count = 1) {
   const c = getCtx();
-  if (!c || c.state !== "running") return;
+  if (!c) return;
+  // contesto ancora sospeso (nessun tocco dall'apertura, o appena riacceso): si suona
+  // appena riparte, se riparte in tempo utile
+  if (c.state !== "running") {
+    const asked = Date.now();
+    c.resume().then(() => { if (Date.now() - asked < 400) schedule(c, durationMs, count); }).catch(() => {});
+    return;
+  }
+  schedule(c, durationMs, count);
+}
+
+function schedule(c, durationMs, count) {
   try {
     const D = durationMs / 1000;
     const n = Math.max(1, Math.min(6, count));
