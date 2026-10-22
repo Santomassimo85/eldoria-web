@@ -14,7 +14,7 @@ import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (fo
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor, getSubclassDef, arenaClassKey, subclassToMount } from "../data/arenaSubclasses";
 import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
-import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
+import { currentWeekKey, weekEndLabel, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
 import { saveChronicle } from "../utils/arenaChronicle";
@@ -2890,6 +2890,14 @@ function renderLogWithDice(text) {
 }
 
 // ── BETTING PANEL ─────────────────────────────────────────────────────────────
+// Puntate in Monete Arena tarate sulla Bottega di adesso (2026-10-22: prima erano
+// 1 MA a fight e 1–3 sul torneo, briciole rispetto ai 60 MA della settimana e ai
+// prezzi del catalogo). Le vincite si spendono subito alla Bottega; domenica alle
+// 23:00 arenaWeeklyReset rimette tutti a 60 MA e annulla le scommesse aperte.
+const BET_MATCH_AMOUNTS = [5, 10, 20];
+const BET_MATCH_MULT = 2;          // fight vinto = puntata ×2
+const BET_TOURNAMENT_AMOUNTS = [5, 10, 20, 30];
+const BET_TOURNAMENT_MULT = 3;     // vincitore del torneo = puntata ×3 (più difficile da azzeccare)
 function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
   const [userBets, setUserBets] = useState([]);
   const [charCoins, setCharCoins] = useState(0);
@@ -2923,24 +2931,38 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
 
     // Block immediately — before any await
     placedRef.current.add(matchId);
-    const multiplier = type === "tournament" ? 2 : 2;
+    const multiplier = type === "tournament" ? BET_TOURNAMENT_MULT : BET_MATCH_MULT;
     // Optimistic local display
     setLocalBets(prev => ({ ...prev, [matchId]: { targetUid, targetName, amount, multiplier } }));
 
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), { arenaCoins: increment(-amount) });
-      await addDoc(collection(db, "arena_bets"), {
-        uid: currentUser.uid,
-        type, matchId, targetUid, targetName, amount, multiplier,
-        status: "pending",
-        createdAt: serverTimestamp(),
+      // Le monete si tolgono in transazione: con due schede aperte (o un acquisto in
+      // Bottega nello stesso istante) non si punta oro che non c'è più.
+      const betRef = doc(collection(db, "arena_bets"));
+      await runTransaction(db, async (tx) => {
+        const charRef = doc(db, "characters", currentUser.uid);
+        const cur = await tx.get(charRef);
+        const coins = cur.exists() ? (cur.data().arenaCoins ?? 0) : 0;
+        if (coins < amount) throw new Error("coins");
+        tx.update(charRef, { arenaCoins: increment(-amount) });
+        tx.set(betRef, {
+          uid: currentUser.uid,
+          type, matchId, targetUid, targetName, amount, multiplier,
+          weekKey: currentWeekKey(),
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
       });
-    } catch {
+    } catch (e) {
       // rollback on error
       placedRef.current.delete(matchId);
       setLocalBets(prev => { const n = { ...prev }; delete n[matchId]; return n; });
+      if (e?.message === "coins") alert("Monete Arena insufficienti.");
     }
   };
+  const myUid = currentUser?.uid;
+  // Chi combatte può puntare solo su sé stesso, mai sull'avversario (niente fight venduti).
+  const canBetOn = (fighterIds, targetUid) => !fighterIds.includes(myUid) || targetUid === myUid;
 
   const getRecentForm = (uid) => {
     const history = (arenaMeta.matchHistory || []).filter(e => e.uid === uid);
@@ -2963,11 +2985,14 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
         <span className="betting-title">🎲 Scommesse Arena</span>
         <span className="betting-balance">🪙 {charCoins} MA disponibili</span>
       </div>
+      <p className="betting-section-label">
+        Le vincite sono Monete Arena da spendere subito alla Bottega. Tutto si azzera {weekEndLabel()}: le scommesse ancora aperte si annullano e le monete tornano a 60.
+      </p>
 
       {/* Match bets */}
       {activeMatches.length > 0 && (
         <div className="betting-section">
-          <p className="betting-section-label">Fight in corso — vittoria x2 (max 1 MA)</p>
+          <p className="betting-section-label">Fight in corso — vittoria ×{BET_MATCH_MULT} (puntata {BET_MATCH_AMOUNTS.join(" / ")} MA)</p>
           {activeMatches.map(m => {
             const bet = existingBet(m.matchId);
             const bettingOpen = m.players.every(p => p.maxHp > 0 && p.hp >= p.maxHp * 0.5);
@@ -2992,9 +3017,9 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
                             ))}
                           </div>
                         )}
-                        {!bet && bettingOpen && (
+                        {!bet && bettingOpen && canBetOn(m.players.map(x => x.id), p.id) && (
                           <div className="bet-amounts">
-                            {[1].map(amt => (
+                            {BET_MATCH_AMOUNTS.map(amt => (
                               <button
                                 key={amt}
                                 className="bet-amount-btn"
@@ -3026,7 +3051,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
         const tBet = existingBet("tournament");
         return (
           <div className="betting-section">
-            <p className="betting-section-label">🏆 Vincitore del torneo — vittoria x2 (max 3 MA)</p>
+            <p className="betting-section-label">🏆 Vincitore del torneo — vittoria ×{BET_TOURNAMENT_MULT} (puntata {BET_TOURNAMENT_AMOUNTS.join(" / ")} MA)</p>
             {tBet ? (
               <div className="bet-placed">
                 ✓ Hai scommesso <strong>{tBet.amount} MA</strong> su <strong>{tBet.targetName}</strong> — possibile vincita: <strong>{tBet.amount * (tBet.multiplier || 2)} MA</strong>
@@ -3049,8 +3074,8 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
                           ))}
                         </div>
                       )}
-                      <div className="bet-amounts">
-                        {[1, 2, 3].map(amt => (
+                      {canBetOn(allFighters, uid) && <div className="bet-amounts">
+                        {BET_TOURNAMENT_AMOUNTS.map(amt => (
                           <button
                             key={amt}
                             className="bet-amount-btn"
@@ -3060,7 +3085,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
                             {amt}MA
                           </button>
                         ))}
-                      </div>
+                      </div>}
                     </div>
                   );
                 })}
@@ -10794,9 +10819,9 @@ export default function Arena() {
             <h3 className="arena-info-title">💰 Sistema Scommesse</h3>
             <div className="arena-info-example">
               <p>Durante il torneo puoi scommettere le tue <strong>Monete Arena (MA)</strong> sui combattenti usando il pannello Scommesse — anche se non hai partecipato all'arena.</p>
-              <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight — puntata fissa di <strong>1 MA</strong>, vincita <strong>2 MA</strong> (+1 MA profitto).</p>
-              <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l'intero torneo. Puntata da 1, 2 o 3 MA → se azzecchi, ricevi <strong>x2</strong> la puntata.</p>
-              <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale. Le MA vengono scalate subito; la vincita viene accreditata automaticamente a torneo concluso.</p>
+              <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight — puntata da <strong>{BET_MATCH_AMOUNTS.join(", ")} MA</strong>, se azzecchi ricevi <strong>×{BET_MATCH_MULT}</strong> la puntata.</p>
+              <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l&apos;intero torneo. Puntata da {BET_TOURNAMENT_AMOUNTS.join(", ")} MA → se azzecchi, ricevi <strong>×{BET_TOURNAMENT_MULT}</strong> la puntata.</p>
+              <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale; chi combatte può puntare solo su sé stesso. Le MA vengono scalate subito e la vincita arriva appena il fight (o il torneo) finisce: sono <strong>Monete Arena da spendere alla Bottega</strong>. Domenica alle 23:00 si azzera tutto: le scommesse ancora aperte si annullano e le monete tornano a 60.</p>
               <p><strong>Attenzione:</strong> le scommesse sui singoli match sono aperte solo finché entrambi i combattenti sono sopra il 50% HP. La scommessa sul vincitore del torneo è disponibile <strong>solo durante il Round 1</strong>.</p>
             </div>
 
