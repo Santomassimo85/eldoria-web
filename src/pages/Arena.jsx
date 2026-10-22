@@ -2898,6 +2898,10 @@ const BET_MATCH_AMOUNTS = [5, 10, 20];
 const BET_MATCH_MULT = 2;          // fight vinto = puntata ×2
 const BET_TOURNAMENT_AMOUNTS = [5, 10, 20, 30];
 const BET_TOURNAMENT_MULT = 3;     // vincitore del torneo = puntata ×3 (più difficile da azzeccare)
+// Si scommette solo su un fight NON ancora iniziato: in attesa di «Iniziamo», oppure
+// (match di prima del ready check) in fase iniziativa senza che nessuno abbia tirato.
+const betOpenOn = (m) => !!m && m.kind !== "fun" && m.status === "initiative" && !m.winner
+  && (isAwaitingReady(m) || (!m.readyCheck && !m.readyAt && !(m.players || []).some(p => p.init)));
 function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
   const [userBets, setUserBets] = useState([]);
   const [charCoins, setCharCoins] = useState(0);
@@ -2941,6 +2945,11 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       const betRef = doc(collection(db, "arena_bets"));
       await runTransaction(db, async (tx) => {
         const charRef = doc(db, "characters", currentUser.uid);
+        // il fight (o il Round 1 per il torneo) va ricontrollato sul server: può essere
+        // partito mentre il pannello era aperto
+        const meta = (await tx.get(doc(db, "arena_meta", "global"))).data() || {};
+        if (type === "match" && !betOpenOn((meta.matches || []).find(x => x.matchId === matchId))) throw new Error("started");
+        if (type === "tournament" && (meta.currentRound || 1) > 1) throw new Error("started");
         const cur = await tx.get(charRef);
         const coins = cur.exists() ? (cur.data().arenaCoins ?? 0) : 0;
         if (coins < amount) throw new Error("coins");
@@ -2958,6 +2967,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       placedRef.current.delete(matchId);
       setLocalBets(prev => { const n = { ...prev }; delete n[matchId]; return n; });
       if (e?.message === "coins") alert("Monete Arena insufficienti.");
+      else if (e?.message === "started") alert("Troppo tardi: il fight è già iniziato, le scommesse sono chiuse.");
     }
   };
   const myUid = currentUser?.uid;
@@ -2992,14 +3002,14 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       {/* Match bets */}
       {activeMatches.length > 0 && (
         <div className="betting-section">
-          <p className="betting-section-label">Fight in corso — vittoria ×{BET_MATCH_MULT} (puntata {BET_MATCH_AMOUNTS.join(" / ")} MA)</p>
+          <p className="betting-section-label">Fight del round — si punta solo prima che inizino — vittoria ×{BET_MATCH_MULT} (puntata {BET_MATCH_AMOUNTS.join(" / ")} MA)</p>
           {activeMatches.map(m => {
             const bet = existingBet(m.matchId);
-            const bettingOpen = m.players.every(p => p.maxHp > 0 && p.hp >= p.maxHp * 0.5);
+            const bettingOpen = betOpenOn(m);
             return (
               <div key={m.matchId} className="bet-match-card">
                 {!bettingOpen && !bet && (
-                  <div className="bet-closed-notice">⚠ Scommesse chiuse — un combattente è sotto il 50% HP</div>
+                  <div className="bet-closed-notice">⚠ Scommesse chiuse — il fight è già iniziato</div>
                 )}
                 <div className="bet-fighters">
                   {m.players.map(p => {
@@ -10822,7 +10832,7 @@ export default function Arena() {
               <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight — puntata da <strong>{BET_MATCH_AMOUNTS.join(", ")} MA</strong>, se azzecchi ricevi <strong>×{BET_MATCH_MULT}</strong> la puntata.</p>
               <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l&apos;intero torneo. Puntata da {BET_TOURNAMENT_AMOUNTS.join(", ")} MA → se azzecchi, ricevi <strong>×{BET_TOURNAMENT_MULT}</strong> la puntata.</p>
               <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale; chi combatte può puntare solo su sé stesso. Le MA vengono scalate subito e la vincita arriva appena il fight (o il torneo) finisce: sono <strong>Monete Arena da spendere alla Bottega</strong>. Domenica alle 23:00 si azzera tutto: le scommesse ancora aperte si annullano e le monete tornano a 60.</p>
-              <p><strong>Attenzione:</strong> le scommesse sui singoli match sono aperte solo finché entrambi i combattenti sono sopra il 50% HP. La scommessa sul vincitore del torneo è disponibile <strong>solo durante il Round 1</strong>.</p>
+              <p><strong>Attenzione:</strong> si scommette solo sui fight <strong>non ancora iniziati</strong> (finché i combattenti non hanno dato «Iniziamo»). La scommessa sul vincitore del torneo è disponibile <strong>solo durante il Round 1</strong>.</p>
             </div>
 
           </div>
