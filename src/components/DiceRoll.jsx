@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./DiceRoll.css";
+import { playDiceRoll } from "./diceSound";
 
 /* ── Skin del dado ───────────────────────────────────────────────
    Ogni giocatore sceglie l'aspetto del proprio d20 (menu "I Tuoi Dadi"
@@ -137,6 +138,7 @@ export default function DiceRollHost() {
       try {
         m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent })
           .then(() => roll.resolve());
+        playDiceRoll(ROLL3D_MS, dice?.length || 1);
       } catch (err) {
         // WebGL che non parte: questo tiro col dado disegnato, e niente 3D finché non si ricarica
         console.warn("[dadi 3D]", err);
@@ -154,6 +156,7 @@ export default function DiceRollHost() {
     // numero (tumble+settle), così il colpo è sincronizzato con la rivelazione.
     // L'overlay del dado resta visibile per hold+fade e si smonta da solo dopo.
     const revealAt = TUMBLE_MS + SETTLE_MS;
+    playDiceRoll(revealAt, 1);
     const total    = revealAt + HOLD_MS + FADE_MS;
     const tReveal = setTimeout(() => roll.resolve(), revealAt);
     const tEnd    = setTimeout(() => setRoll(null), total);
