@@ -3,6 +3,7 @@
 .achr-scope { display: inline-flex; gap: 0; border: 1px solid rgba(var(--osso-rgb), .18); border-radius: 3px; overflow: hidden; justify-self: start; }
 .achr-scope button { background: var(--roccia-2); color: var(--osso-2); border: 0; padding: 8px 16px; min-height: 36px; font-family: var(--font-sc, inherit); cursor: pointer; }
 .achr-scope button[aria-pressed="true"] { background: var(--el-deep, var(--roccia-4)); color: var(--osso); }
+.achr-who { background: var(--roccia-1); color: var(--osso); border: 0; border-left: 1px solid rgba(var(--osso-rgb), .18); padding: 0 10px; min-height: 36px; font-family: inherit; max-width: 60vw; }
 .achr-empty, .achr-err { color: var(--osso-2); font-style: italic; margin: 6px 0; }
 .achr-err { color: var(--sangue); }
 .achr-list { display: grid; gap: 10px; }

@@ -119,7 +119,9 @@ function ChronicleCard({ c, viewerUid, renderText, keepLeft, open, onToggle }) {
 }
 
 export default function ArenaChronicles({ currentUid, isMaster, renderText }) {
-  const [scope, setScope] = useState("mine");
+  // il Master apre direttamente "Tutte": gli servono per controllare i match di tutti
+  const [scope, setScope] = useState(isMaster ? "all" : "mine");
+  const [who, setWho] = useState("");
   const [list, setList] = useState(null);
   const [err, setErr] = useState(null);
   const [openId, setOpenId] = useState(null);
@@ -139,6 +141,14 @@ export default function ArenaChronicles({ currentUid, isMaster, renderText }) {
     return new Map(mine.map((c, i) => [c.id, CHRONICLE_KEEP - 1 - i]));
   }, [list, currentUid]);
 
+  // filtro per giocatore (solo vista "Tutte")
+  const fighters = useMemo(() => {
+    const m = new Map();
+    (list || []).forEach(c => (c.players || []).forEach(p => { if (p.id && !String(p.id).startsWith("AI_BOT_")) m.set(p.id, p.name); }));
+    return [...m].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  }, [list]);
+  const shown = useMemo(() => (list || []).filter(c => !who || (c.players || []).some(p => p.id === who)), [list, who]);
+
   return (
     <section className="achr">
       <div className="nx-testata">
@@ -154,6 +164,12 @@ export default function ArenaChronicles({ currentUid, isMaster, renderText }) {
         <div className="achr-scope" role="group" aria-label="Quali cronache">
           <button type="button" aria-pressed={scope === "mine"} onClick={() => setScope("mine")}>Le mie</button>
           <button type="button" aria-pressed={scope === "all"} onClick={() => setScope("all")}>Tutte</button>
+          {scope === "all" && list && (
+            <select className="achr-who" value={who} onChange={e => setWho(e.target.value)} aria-label="Filtra per giocatore">
+              <option value="">Tutti i giocatori ({list.length})</option>
+              {fighters.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          )}
         </div>
       )}
 
@@ -163,7 +179,7 @@ export default function ArenaChronicles({ currentUid, isMaster, renderText }) {
         <p className="achr-empty">Nessuna cronaca ancora: comparirà qui alla fine del tuo prossimo match.</p>
       )}
       <div className="achr-list">
-        {(list || []).map(c => (
+        {shown.map(c => (
           <ChronicleCard
             key={c.id}
             c={c}

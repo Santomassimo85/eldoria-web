@@ -8,13 +8,30 @@
 // sue ultime CHRONICLE_KEEP. `keepFor` = giocatori umani che la tengono ancora;
 // quando esce dalle ultime 8 di tutti, si cancella.
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where, arrayRemove,
+  doc, getDoc, getDocs, setDoc, updateDoc, collection, query, where, orderBy, limit, arrayRemove,
 } from "firebase/firestore";
 import { db } from "../firebase";
 
 export const CHRONICLE_KEEP = 8; // il match + altri 7
 const COLL = "arena_chronicles";
 const isBotId = (id) => typeof id === "string" && id.startsWith("AI_BOT_");
+
+// Gli id dei match del torneo si RIPETONO ogni settimana (GA_R1_M0, FINAL_M0…):
+// usati come id della cronaca, il primo torneo restava salvato per sempre e i
+// successivi venivano saltati ("esiste già"). L'id della cronaca aggiunge quindi
+// l'istante d'inizio del match (prima riga con orario, o readyAt/createdAt) e i
+// giocatori, così ogni match ha la sua.
+const firstLogTs = (m) => (m.logs || []).reduce((mn, l) => {
+  const t = l && typeof l === "object" && l.ts ? Date.parse(l.ts) : NaN;
+  return Number.isFinite(t) && (!mn || t < mn) ? t : mn;
+}, 0);
+export function chronicleId(m) {
+  if (!m?.matchId) return null;
+  if (String(m.matchId).startsWith("FUN_")) return m.matchId; // già unico
+  const start = Date.parse(m.readyAt || m.fightStartAt || m.createdAt || "") || firstLogTs(m);
+  const who = (m.players || []).map(p => String(p.id || "").slice(0, 6)).join("-");
+  return `${m.matchId}__${start || "x"}__${who}`;
+}
 
 const lastLogTs = (m) => (m.logs || []).reduce((mx, l) => {
   const t = l && typeof l === "object" && l.ts ? Date.parse(l.ts) : NaN;
@@ -27,6 +44,7 @@ export function chronicleFromMatch(m, snaps = {}) {
   const winnerP = (m.players || []).find(p => p.id === m.winner);
   return {
     matchId: m.matchId,
+    chronicleId: chronicleId(m),
     kind: m.kind || "tournament",
     group: m.group ?? null,
     ai: !!m.ai,
@@ -53,8 +71,9 @@ export function chronicleFromMatch(m, snaps = {}) {
 
 // Salva (una volta) e poi sfoltisce le cronache dei partecipanti.
 export async function saveChronicle(m, snaps) {
-  if (!m?.matchId) return false;
-  const ref = doc(db, COLL, m.matchId);
+  const id = chronicleId(m);
+  if (!id) return false;
+  const ref = doc(db, COLL, id);
   const ex = await getDoc(ref);
   if (ex.exists()) return false;
   const data = chronicleFromMatch(m, snaps);
@@ -72,18 +91,22 @@ export async function loadChronicles(uid) {
     .sort((a, b) => String(b.finishedAt || "").localeCompare(String(a.finishedAt || "")));
 }
 
+// Il giocatore tiene le sue ultime 8; il documento NON si cancella più, perché il
+// Master deve poter rileggere ogni match per cercare errori (vista "Tutte").
 export async function pruneChronicles(uid) {
   const list = await loadChronicles(uid);
   for (const c of list.slice(CHRONICLE_KEEP)) {
-    const rest = (c.keepFor || []).filter(x => x !== uid);
-    if (rest.length === 0) await deleteDoc(doc(db, COLL, c.id));
-    else await updateDoc(doc(db, COLL, c.id), { keepFor: arrayRemove(uid) });
+    await updateDoc(doc(db, COLL, c.id), { keepFor: arrayRemove(uid) });
   }
 }
 
-// Il Master le vede tutte (anche i match dove non ha combattuto).
+// Il Master le vede tutte (anche i match dove non ha combattuto), le più recenti prima.
+export const CHRONICLE_ALL_MAX = 300;
 export async function loadAllChronicles() {
-  const snap = await getDocs(collection(db, COLL));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const snap = await getDocs(query(collection(db, COLL), orderBy("finishedAt", "desc"), limit(CHRONICLE_ALL_MAX)));
+  // una cronaca col vecchio id (= matchId) e la stessa col nuovo: si tiene la nuova
+  const fresh = new Set(snap.docs.filter(d => d.data().chronicleId).map(d => `${d.data().matchId}|${d.data().finishedAt}`));
+  return snap.docs.filter(d => d.data().chronicleId || !fresh.has(`${d.data().matchId}|${d.data().finishedAt}`))
+    .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => String(b.finishedAt || "").localeCompare(String(a.finishedAt || "")));
 }

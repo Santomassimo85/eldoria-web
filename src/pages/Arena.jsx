@@ -17,7 +17,7 @@ import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
 import { currentWeekKey, weekEndLabel, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
 import { auditArenaMatch } from "../utils/arenaIntegrity";
-import { saveChronicle } from "../utils/arenaChronicle";
+import { saveChronicle, chronicleId } from "../utils/arenaChronicle";
 import ArenaChronicles, { HpTrace } from "./ArenaChronicles";
 import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, malusTypeLabel, EFFECT_KIND_KEYS } from "../data/arenaDamageTypes";
 import "./Arena.css";
@@ -3900,10 +3900,11 @@ export default function Arena() {
     for (const m of arenaMeta.matches) {
       if (m.status !== "finished" || !m.matchId || (m.players || []).length < 2) continue;
       if (!isMaster && !m.players.some(p => p.id === currentUser.uid)) continue;
-      if (chronicleDoneRef.current.has(m.matchId)) continue;
-      chronicleDoneRef.current.add(m.matchId);
+      const cid = chronicleId(m);
+      if (chronicleDoneRef.current.has(cid)) continue;
+      chronicleDoneRef.current.add(cid);
       saveChronicle(m, snaps).catch(e => {
-        chronicleDoneRef.current.delete(m.matchId);
+        chronicleDoneRef.current.delete(cid);
         console.warn("[arena] cronaca non salvata:", e);
       });
     }
