@@ -260,3 +260,13 @@ body .arena-page.arena-page.arena-page .loadout-char-stats strong.stat-buff {
 .master-fight-chip.is-hot .master-fight-chip-tag { color: var(--el); font-weight: 700; }
 .master-fight-chip.is-on { background: var(--roccia-3); border-color: var(--oro); box-shadow: inset 0 -3px 0 var(--oro); }
 .master-fight-chip:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+
+/* Tasto "Scommetti" (2026-10-22): stava in basso a sinistra a 16px, cioè SOTTO il
+   pallino degli utenti online e, sul telefono, sotto la barra in basso. Ora sta
+   sopra il pallino online, alla stessa distanza dal bordo. */
+body .arena-bet-fab,
+body .arena-page .arena-bet-fab {
+  left: calc(var(--fab-edge, 16px) + var(--safe-l, 0px)) !important;
+  bottom: calc(var(--fab-base, 16px) + var(--fab-online, 48px) + var(--fab-gap, 12px)) !important;
+  z-index: 1066 !important;
+}

@@ -2949,7 +2949,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
         // partito mentre il pannello era aperto
         const meta = (await tx.get(doc(db, "arena_meta", "global"))).data() || {};
         if (type === "match" && !betOpenOn((meta.matches || []).find(x => x.matchId === matchId))) throw new Error("started");
-        if (type === "tournament" && (meta.currentRound || 1) > 1) throw new Error("started");
+        if (type === "tournament" && (meta.phase !== "combat" || (meta.currentRound || 1) > 1)) throw new Error("started");
         const cur = await tx.get(charRef);
         const coins = cur.exists() ? (cur.data().arenaCoins ?? 0) : 0;
         if (coins < amount) throw new Error("coins");
@@ -2998,6 +2998,14 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       <p className="betting-section-label">
         Le vincite sono Monete Arena da spendere subito alla Bottega. Tutto si azzera {weekEndLabel()}: le scommesse ancora aperte si annullano e le monete tornano a 60.
       </p>
+
+      {activeMatches.length === 0 && (arenaMeta.phase !== "combat" || bettableFighters.length <= 1) && (
+        <div className="bet-closed-notice">
+          {arenaMeta.phase === "combat"
+            ? "Nessun fight su cui puntare adesso: torna quando parte il prossimo round."
+            : "Le scommesse si aprono quando il Master dà inizio al torneo."}
+        </div>
+      )}
 
       {/* Match bets */}
       {activeMatches.length > 0 && (
@@ -3057,7 +3065,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       )}
 
       {/* Tournament bet */}
-      {bettableFighters.length > 1 && (() => {
+      {arenaMeta.phase === "combat" && bettableFighters.length > 1 && (() => {
         const tBet = existingBet("tournament");
         return (
           <div className="betting-section">
@@ -10530,7 +10538,10 @@ export default function Arena() {
         const hasMyActive = currentUser && (arenaMeta.matches || []).some(m =>
           ((m.kind === "fun") || arenaMeta.phase === "combat") &&
           m.players?.some(p => p.id === currentUser?.uid) && m.status !== "open");
-        const showBet = arenaMeta.phase === "combat" && currentUser && (!isRegistered || isMaster);
+        const showBet = !!currentUser;
+        const betSub = arenaMeta.phase === "combat"
+          ? "Punta le tue Monete Arena sui fight non ancora iniziati"
+          : "Si apre col torneo: punta Monete Arena sui fight";
         // Voci del programma: numerale romano + titolo + nota, come una locandina.
         const program = [
           {
@@ -10558,7 +10569,7 @@ export default function Arena() {
           { key: "albo", title: "Albo dei Campioni", sub: `${champions.length} ${champions.length === 1 ? "eroe" : "eroi"} nella leggenda`, onClick: () => setArenaView("albo") },
           { key: "regole", title: "Regole & Classi", sub: "Come funziona l'Arena", onClick: () => setArenaView("regole") },
           { key: "dadi", title: "I Tuoi Dadi", sub: `${DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore`, onClick: () => setDicePickerOpen(true) },
-          ...(showBet ? [{ key: "bet", title: "Scommesse", sub: "Punta le tue Monete Arena sui duellanti", onClick: () => setBettingDrawerOpen(true) }] : []),
+          ...(showBet ? [{ key: "bet", title: "Scommesse", sub: betSub, onClick: () => setBettingDrawerOpen(true) }] : []),
           ...(isMaster ? [{ key: "master", title: "Pannello Master", sub: "Gestisci l'Arena", onClick: () => setArenaView("master") }] : []),
         ];
         const ICO = { join: "⚔", cronache: "🗞", bracket: "🏟", bottega: "🛍", libera: "🥊", gesta: "📜", albo: "👑", regole: "📖", dadi: "🎲", bet: "💰", master: "🛠" };
@@ -12930,9 +12941,9 @@ export default function Arena() {
 
       {/* FIX: P5d — Betting moved to floating drawer (FAB-triggered).
           Inline render is suppressed by CSS; the FAB and drawer below replace it. */}
-      {arenaMeta.phase === "combat" && (!isRegistered || isMaster) && currentUser && (
+      {currentUser && (
         <>
-          <button
+          {arenaMeta.phase === "combat" && <button
             type="button"
             className="arena-bet-fab"
             onClick={() => setBettingDrawerOpen(true)}
@@ -12943,7 +12954,7 @@ export default function Arena() {
             {userBetsCount > 0 && (
               <span className="arena-bet-fab-badge">{userBetsCount}</span>
             )}
-          </button>
+          </button>}
           <ArenaModal
             open={bettingDrawerOpen}
             onClose={() => setBettingDrawerOpen(false)}
