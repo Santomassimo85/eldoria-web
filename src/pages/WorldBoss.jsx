@@ -143,6 +143,9 @@ const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000;
 const BOSS_ACTIONS_PER_TURN = 3;
 const MINION_ACTIONS_PER_TURN = 1;
 const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000;
+// Se il Master non fa niente nel turno del boss, dopo 55 minuti il boss agisce da
+// solo sul server (functions/worldBossAuto.js: 1 attacco su 1–6 eroi a caso + 1 cura).
+const BOSS_AUTO_AFTER = 55 * 60 * 1000;
 
 // QUORUM del turno degli eroi: quando ha agito almeno questa quota degli eroi
 // VIVI (2/3: 8 su 12), il turno si chiude entro 10 minuti invece di aspettare
@@ -2204,6 +2207,15 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                         👑 {bossActsNow.boss || 0}/{BOSS_ACTIONS_PER_TURN}{minionInstances.some((m) => (m.hp ?? 0) > 0) ? ` · 🪓 ${bossActsNow.minion || 0}/${MINION_ACTIONS_PER_TURN}` : ""}
                       </span>
                     )}
+                    {fightStarted && turnState.phase === "boss" && !bossActsNow.boss && !bossActsNow.minion && turnState.bossAutoTurn !== turnState.turnNumber && turnState.expiryDate && (() => {
+                      const exp = turnState.expiryDate.toDate ? turnState.expiryDate.toDate() : new Date(turnState.expiryDate);
+                      const at = new Date(exp.getTime() - BOSS_TURN_DURATION + BOSS_AUTO_AFTER);
+                      return (
+                        <span className="rpg-flow-sub" title="Se non fai nessuna azione, il boss attacca 1–6 eroi a caso e si cura, poi tocca agli eroi">
+                          🤖 da solo alle {at.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      );
+                    })()}
                     <button className={`rpg-sm-btn${spawnOpen ? " active" : ""}`} onClick={() => setSpawnOpen((o) => !o)}>➕ Evoca minion</button>
                   </header>
                   {spawnOpen && (

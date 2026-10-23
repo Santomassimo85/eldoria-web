@@ -31,6 +31,7 @@ const { FieldValue } = require("firebase-admin/firestore");
 const PLAYER_TURN_DURATION_MS = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION_MS = 1 * 60 * 60 * 1000;
 const BOSS_SYSTEM_UID = "BOSS_MSG";
+const { maybeAutoBossTurn } = require("./worldBossAuto");
 
 /**
  * Diario degli agenti (collezione `agent_logs`, letta da "Il Concilio").
@@ -76,6 +77,15 @@ exports.autoSwitchBossTurn = onSchedule(
         let didSwitch = false;
         let newPhaseName = "";
 
+        // Turno del boss senza il Master da 55 minuti → il boss agisce da solo (attacco + cura)
+        // e passa il turno agli eroi.
+        try {
+            const acted = await maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_TURN_DURATION_MS, BOSS_TURN_DURATION_MS });
+            if (acted) return;
+        } catch (err) {
+            console.error("❌ turno automatico del boss fallito:", err);
+        }
+
         try {
             await dbAdmin.runTransaction(async (tx) => {
                 const snap = await tx.get(turnRef);
@@ -104,7 +114,7 @@ exports.autoSwitchBossTurn = onSchedule(
                 tx.update(turnRef, {
                     phase: newPhaseName,
                     expiryDate: new Date(nowMs + duration),
-                    actedPlayers: [],
+                    actedPlayers: [], bossActs: null,
                     turnNumber: newPhaseName === "players" ? (data.turnNumber || 0) + 1 : data.turnNumber,
                     lastSwitchedAt: FieldValue.serverTimestamp(),
                 });
