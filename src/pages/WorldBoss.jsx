@@ -139,6 +139,9 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 const BOSS_SYSTEM_UID = "BOSS_MSG";
 
 const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000;
+// Turno del boss: quante azioni prima che passi da solo agli eroi.
+const BOSS_ACTIONS_PER_TURN = 3;
+const MINION_ACTIONS_PER_TURN = 1;
 const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000;
 
 // QUORUM del turno degli eroi: quando ha agito almeno questa quota degli eroi
@@ -427,6 +430,7 @@ export default function WorldBoss() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isUrgent, setIsUrgent] = useState(false);
   const lastAutoFireRef = useRef(0);
+  const bossTurnBusyRef = useRef(false);
 
   const handleManualTurnChange = async (newPhase) => {
     if (!isMaster) return;
@@ -441,7 +445,7 @@ export default function WorldBoss() {
       await updateDoc(turnRef, {
         phase: newPhase,
         expiryDate: newExpiry,
-        actedPlayers: [],
+        actedPlayers: [], bossActs: null,
         turnNumber: newPhase === "players" ? increment(1) : turnState.turnNumber,
       });
       await addDoc(collection(db, "world_boss_chat"), {
@@ -474,7 +478,7 @@ export default function WorldBoss() {
         const duration = newPhaseName === "players" ? PLAYER_TURN_DURATION : BOSS_TURN_DURATION;
         const newExpiry = new Date(Date.now() + duration);
         transaction.update(turnRef, {
-          phase: newPhaseName, expiryDate: newExpiry, actedPlayers: [],
+          phase: newPhaseName, expiryDate: newExpiry, actedPlayers: [], bossActs: null,
           turnNumber: newPhaseName === "players" ? (data.turnNumber || 0) + 1 : data.turnNumber,
           lastSwitchedAt: serverTimestamp(),
         });
@@ -1363,7 +1367,7 @@ export default function WorldBoss() {
 
   // Attacco/abilità di un NEMICO (boss o minion evocato): stessa logica, cambia il doc.
   // `targetIdsArg` = bersagli scelti nel pannello Master (passo 2); senza, i selezionati.
-  const handleBossRoll = async (bossOrMinion, action, targetIdsArg) => {
+  const performBossAction = async (bossOrMinion, action, targetIdsArg) => {
     const targets = Array.isArray(targetIdsArg) ? targetIdsArg : selectedTargets;
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
     const boss = bossOrMinion.kind ? bossOrMinion : { ...bossOrMinion, kind: "boss", vfxKey: "boss" };
@@ -1384,7 +1388,7 @@ export default function WorldBoss() {
         ...fxFields(action, [boss.vfxKey], { kind: "heal" }),
         timestamp: serverTimestamp(),
       });
-      return;
+      return true;
     }
 
     // ── BUFF +CA: bump boss CA by acBonus ──
@@ -1401,7 +1405,7 @@ export default function WorldBoss() {
         ...fxFields(action, [boss.vfxKey], { kind: "shield" }),
         timestamp: serverTimestamp(),
       });
-      return;
+      return true;
     }
 
     // ── BUFF advantage: boss gains advantage on its next attack ──
@@ -1414,7 +1418,7 @@ export default function WorldBoss() {
         ...fxFields(action, [boss.vfxKey], { kind: "buff" }),
         timestamp: serverTimestamp(),
       });
-      return;
+      return true;
     }
 
     // ── DEBUFF disadvantage: selected players' next roll has disadvantage ──
@@ -1437,7 +1441,7 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
       });
       setSelectedTargets([]);
-      return;
+      return true;
     }
 
     // ── TIRO SALVEZZA AUTOMATICO: area (riconosciuta dal nome) o "Tiro salvezza"
@@ -1496,7 +1500,7 @@ export default function WorldBoss() {
         }),
       });
       setSelectedTargets([]);
-      return;
+      return true;
     }
 
     // ── ATTACK (default) ──
@@ -1562,6 +1566,66 @@ export default function WorldBoss() {
       ...fxFields(action, allTargetIds, { from: boss.vfxKey, miss: missTargetIds, kill: killTargetIds }),
     });
     setSelectedTargets([]);
+    return true;
+  };
+
+  // Turno del boss a tetto: BOSS_ACTIONS_PER_TURN azioni del boss + MINION_ACTIONS_PER_TURN
+  // dei minion (in tutto, solo se ce n'è almeno uno vivo), poi il turno passa da solo agli
+  // eroi. Conto in `turn_tracker.bossActs = {t: turnNumber, boss, minion}`: scade da solo
+  // al turno dopo. Fuori dal turno del boss il Master agisce come prima, senza conto.
+  const bossActsNow = turnState.bossActs?.t === turnState.turnNumber ? turnState.bossActs : { boss: 0, minion: 0 };
+  const handleBossRoll = async (bossOrMinion, action, targetIdsArg) => {
+    if (bossTurnBusyRef.current) return;
+    const counted = fightStarted && turnState.phase === "boss";
+    const kind = bossOrMinion.kind === "minion" ? "minion" : "boss";
+    if (counted) {
+      const cap = kind === "boss" ? BOSS_ACTIONS_PER_TURN : MINION_ACTIONS_PER_TURN;
+      if ((bossActsNow[kind] || 0) >= cap) {
+        return alert(kind === "boss"
+          ? `Il boss ha già fatto le sue ${BOSS_ACTIONS_PER_TURN} azioni in questo turno.`
+          : `I minion hanno già agito in questo turno (${MINION_ACTIONS_PER_TURN} azione).`);
+      }
+    }
+    bossTurnBusyRef.current = true;
+    try {
+      const done = await performBossAction(bossOrMinion, action, targetIdsArg);
+      if (!done || !counted) return;
+      const turnRef = doc(db, "battle_meta", "turn_tracker");
+      let passed = false;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(turnRef);
+        const d = snap.data() || {};
+        if (d.phase !== "boss") return;
+        const cur = d.bossActs?.t === d.turnNumber ? d.bossActs : { t: d.turnNumber, boss: 0, minion: 0 };
+        const next = { t: d.turnNumber, boss: cur.boss || 0, minion: cur.minion || 0 };
+        next[kind] += 1;
+        const bossAlive = activeBosses.some((b) => (b.hp ?? 0) > 0);
+        const minionsAlive = minionInstances.some((m) => (m.hp ?? 0) > 0);
+        const bossDone = !bossAlive || next.boss >= BOSS_ACTIONS_PER_TURN;
+        const minionDone = !minionsAlive || next.minion >= MINION_ACTIONS_PER_TURN;
+        if (bossDone && minionDone) {
+          passed = true;
+          tx.update(turnRef, {
+            phase: "players", expiryDate: new Date(Date.now() + PLAYER_TURN_DURATION),
+            actedPlayers: [], turnNumber: (d.turnNumber || 0) + 1, bossActs: null,
+            lastSwitchedAt: serverTimestamp(),
+          });
+        } else {
+          tx.update(turnRef, { bossActs: next });
+        }
+      });
+      if (passed) {
+        const turnMsg = "🛡️ Il nemico ha esaurito le sue azioni. Eroi, tocca a voi!";
+        await addDoc(collection(db, "world_boss_chat"), {
+          text: turnMsg, senderName: "SISTEMA", uid: BOSS_SYSTEM_UID,
+          content: turnMsg, category: "Turno", timestamp: serverTimestamp(), isSystem: true,
+        });
+      }
+    } catch (e) {
+      console.error("Errore azione del boss:", e);
+    } finally {
+      bossTurnBusyRef.current = false;
+    }
   };
 
   // Cura/ferita manuale di un eroe: mai sotto 0 né sopra i PF massimi.
@@ -1670,7 +1734,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
       await updateDoc(turnRef, {
         fightStarted: true, phase: "players", expiryDate: newExpiry,
         actedPlayers: [], turnNumber: 1, lastSwitchedAt: serverTimestamp(),
-        attackCounts: {}, turnActions: {},
+        attackCounts: {}, turnActions: {}, bossActs: null,
       });
       // I minion segnati ⚡ in Caserma scendono in campo col boss (se non ce
       // n'è già nessuno evocato a mano).
@@ -2135,6 +2199,11 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                   <header className="rpg-flow-head">
                     <span className="rpg-flow-num">1</span>
                     <span className="rpg-flow-title">Chi attacca</span>
+                    {fightStarted && turnState.phase === "boss" && (
+                      <span className="rpg-flow-sub" title="Esaurite le azioni, il turno passa da solo agli eroi">
+                        👑 {bossActsNow.boss || 0}/{BOSS_ACTIONS_PER_TURN}{minionInstances.some((m) => (m.hp ?? 0) > 0) ? ` · 🪓 ${bossActsNow.minion || 0}/${MINION_ACTIONS_PER_TURN}` : ""}
+                      </span>
+                    )}
                     <button className={`rpg-sm-btn${spawnOpen ? " active" : ""}`} onClick={() => setSpawnOpen((o) => !o)}>➕ Evoca minion</button>
                   </header>
                   {spawnOpen && (

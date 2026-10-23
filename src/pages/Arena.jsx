@@ -6103,6 +6103,47 @@ export default function Arena() {
     return players[nextIndex].id;
   };
 
+  // Sollecito del Master: un match fermo da troppo → una notifica (campanella + push)
+  // a ogni giocatore vero del match, con quello che manca a LUI (Iniziamo, iniziativa,
+  // il suo turno) o, se tocca all'altro, solo che il match è fermo.
+  const [matchNudges, setMatchNudges] = useState({});
+  const nudgeStalledMatch = async (m) => {
+    if (!isMaster || !m) return;
+    const humans = (m.players || []).filter(p => !isAiId(p.id) && !isMasterAltId(p.id));
+    if (!humans.length) return alert("In questo match non ci sono giocatori da avvisare.");
+    const vs = (m.players || []).map(p => p.name || "?").join(" vs ");
+    const turnName = m.players?.find(p => p.id === m.turn)?.name || "il tuo avversario";
+    const todo = (p) => {
+      if (isAwaitingReady(m)) return m.ready?.[p.id] ? "Aspettiamo che anche l'avversario prema «Iniziamo»." : "Entra in Arena e premi «✋ Iniziamo».";
+      if (m.status === "initiative") return p.init > 0 ? "Manca ancora il tiro d'iniziativa dell'avversario." : "Entra in Arena e tira l'iniziativa.";
+      if (m.turn === p.id) return "Tocca a te: entra in Arena e fai la tua mossa.";
+      return `Tocca a ${turnName}: il match aspetta la sua mossa.`;
+    };
+    try {
+      const batch = writeBatch(db);
+      humans.forEach((p) => {
+        batch.set(doc(collection(db, "notifications")), {
+          userId: p.id, read: false, timestamp: serverTimestamp(),
+          title: "⏳ Il tuo match in Arena è fermo",
+          message: `${vs} è fermo da parecchio. ${todo(p)}`,
+        });
+      });
+      await batch.commit();
+      setMatchNudges((prev) => ({ ...prev, [m.matchId]: Date.now() }));
+    } catch (e) {
+      console.error("nudgeStalledMatch:", e);
+      alert("Avviso non inviato: " + (e.message || e));
+    }
+  };
+  const nudgeButton = (m) => isMaster && (
+    <button type="button" className="btn-init" style={{ marginLeft: "0.5rem", padding: "0.15rem 0.6rem", fontSize: "0.72rem" }}
+      onClick={() => nudgeStalledMatch(m)} title="Manda ai giocatori del match una notifica: il match è fermo">
+      {matchNudges[m.matchId]
+        ? `🔔 Avvisati alle ${new Date(matchNudges[m.matchId]).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
+        : "🔔 Sollecita"}
+    </button>
+  );
+
   // "Iniziamo": transazione sul match fresco, così le due conferme quasi
   // simultanee si sommano invece di sovrascriversi. `force` = il Master avvia
   // il match anche se qualcuno non ha confermato.
@@ -12654,6 +12695,7 @@ export default function Arena() {
                         <span className="fun-challenge-hp">
                           {isAwaitingReady(m) ? "✋ In attesa di «Iniziamo»" : m.status === "initiative" ? "⚡ Iniziativa" : `⚔ Turno di ${turnName || "?"}`}
                           {" · "}HP {pa?.hp ?? "?"} / {pb?.hp ?? "?"}
+                          {nudgeButton(m)}
                         </span>
                       </div>
                     </div>
@@ -12755,6 +12797,7 @@ export default function Arena() {
                     ▶ Avvia
                   </button>
                 )}
+                {nudgeButton(m)}
               </div>
               {m.players.map((p) => {
                 const char = snapshots[p.id] || { stats: { maxHp: 70 } };
