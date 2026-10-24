@@ -26,7 +26,6 @@
 //   twoHandReroll: ritira gli 1-2 sui dadi di danno di un'arma a due mani da mischia
 //   spellResist:   frazione (0.25 = −25%) ai danni da incantesimo SUBITI
 //   rageAllResist: in Furia dimezzi ANCHE i danni da incantesimo
-//   rageExtraAttack: in Furia +1 attacco per turno (Frenesia)
 //   firstStrikeAdv: VANTAGGIO al colpo contro un bersaglio a PF pieni
 //   assassinate:   con firstStrikeAdv, il colpo a segno è un CRITICO
 //   retaliate:     "XdY" — chi ti colpisce in MISCHIA subisce questo danno
@@ -74,10 +73,14 @@ export const ARENA_SUBCLASSES = {
     options: [
       {
         key: "berserker", name: "Berserker", icon: "💢", dnd: "Path of the Berserker",
-        desc: "La furia senza freni: in Furia attacchi una volta in più ogni turno.",
-        effect: { rageExtraAttack: true, weaponDmg: 1 },
+        desc: "La furia senza freni: in Furia può scatenare un colpo in più, ma a fine Furia resta sfinito.",
+        effect: { weaponDmg: 1 },
         actions: [
-          passive("Frenesia", "🩸", "in Furia +1 attacco per turno · +1 al danno con le armi"),
+          passive("Ferocia", "💢", "+1 al danno con le armi"),
+          // Frenesia (2026-10-24): prima era +1 attacco a OGNI turno di Furia con tutti i
+          // bonus (troppo forte). Ora azione bonus a cariche: un colpo d'arma in più,
+          // solo dado + FOR, e a fine Furia svantaggio per un turno (sfinito).
+          { name: "Frenesia", hitBonus: 0, damage: "—", statKey: null, type: "skill", icon: "🩸", info: "Bonus Action · solo in Furia · un attacco con l'arma in più (dado + FOR, senza bonus) · a fine Furia sei sfinito: svantaggio per 1 turno · 2 cariche", special: "frenzy", bonusAction: true, maxUses: 2 },
           { name: "Presenza Intimidatoria", hitBonus: 0, damage: "—", statKey: null, type: "skill", icon: "😡", info: "Il nemico attacca a svantaggio per 2 turni · 1 carica", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 1 },
         ],
       },

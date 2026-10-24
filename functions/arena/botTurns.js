@@ -243,10 +243,9 @@ async function runArenaBotTurns(admin) {
           const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty;
           if (isCrit || hitTotal >= targetAc) {
             const critMult = isCrit ? 2 : 1;
-            const barb = cls.includes("barbar") ? 2 : 0;
             const dtype = attackDamageType(chosen, aiSnap);
             const rmult = RESIST_MULT[(targetSnap.marketResist || {})[dtype]] ?? 1;
-            const dmg = Math.max(rmult === 0 ? 0 : 1, Math.round((rollDice(chosen.damage) + statMod + barb) * critMult * rmult));
+            const dmg = Math.max(rmult === 0 ? 0 : 1, Math.round((rollDice(chosen.damage) + statMod) * critMult * rmult));
             target.hp = Math.max(0, (target.hp || 0) - dmg);
             logs.push(`💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${isCrit ? " ★CRITICO★" : ""}${autoTag} — ${dmg} danni (${target.hp} HP)`);
             wildShapeKnockout(target, logs);

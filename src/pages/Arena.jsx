@@ -2254,6 +2254,11 @@ function divineStrikeBonus(snap, isSpell) {
 }
 // Barbaro · Attacco Irruento (Lv2): mentre è in Furia colpisce con più foga (+2 al
 // colpire) ma abbassa la guardia (−2 CA, applicato in getEffectiveAc). Player + IA.
+// Berserker · Frenesia: chi l'ha usata, a Furia finita, è sfinito (svantaggio agli
+// attacchi) fino alla fine del suo prossimo turno d'attacco.
+function frenzyExhausted(p) {
+  return !!p?.frenzySpent && (p?.rageTurns ?? 0) <= 0;
+}
 function recklessRaging(snap, matchPlayer) {
   const cls = (snap?.class || "").toLowerCase();
   return isBarbarianClass(cls) && getSnapLevel(snap) >= 2 && (matchPlayer?.rageTurns ?? 0) > 0;
@@ -2298,6 +2303,7 @@ function scaleActionForLevel(action, level, chaScore) {
   }
   if (a.name === "Carica")             { a.maxUses = 3 + (lv >= 6 ? 1 : 0); a.info = `2d6+FOR · ${a.maxUses} cariche`; return a; }
   if (a.name === "Disarmare")          { a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
+  if (a.special === "rage")            { a.info = `Bonus Action · +${rageDamageBonus(lv)} danno armi per 3 turni · ${a.maxUses} cariche`; return a; }
   if (a.special === "turbine_lame")    { a.maxUses = 2 + (lv >= 8 ? 1 : 0); a.info = `2 attacchi rapidi · 2d10+FOR+3 · ${a.maxUses} cariche`; return a; }
   if (a.special === "concentrate_buff"){ a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
   return a;
@@ -2470,8 +2476,8 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
   // Sottoclasse · Bardo Valore/Spada: Attacco Extra (2 azioni) dal Lv6.
   const subEff = getSubclassEffect(snap);
   if (subEff.bardExtraAttack && isBardClass(cls) && (snap.classLevels?.[getClassKey(snap.class)] ?? 3) >= 6) base = Math.max(base, 2);
-  // Sottoclasse · Barbaro Berserker: Frenesia — +1 attacco per turno mentre è in Furia.
-  if (subEff.rageExtraAttack && isBarbarianClass(cls) && (matchPlayer?.rageTurns ?? 0) > 0) base += 1;
+  // Sottoclasse · Barbaro Berserker: Frenesia (azione bonus) — un attacco con l'arma in più in questo turno.
+  if (matchPlayer?.frenzyAttackPending) base += 1;
   // Druido · Forma di Orso: attacco multiplo naturale (morso + artiglio) → 2 attacchi.
   if (matchPlayer?.wildShape === "bear") base = Math.max(base, 2);
   if (matchPlayer?.extraTurnActive) base += 1;
@@ -2620,6 +2626,8 @@ function getFighterStatuses(p) {
   if (p.weaponPoisoned)                     push("wpoison", "🧪", "Arma Avvelenata", "is-buff", "Prossimo colpo: +1d12 veleno");
   if (p.aidBuff)                            push("aid", "🤝", `Aiuto +${readActiveBonus(p.aidBuff, 4)}`, "is-buff", `+${readActiveBonus(p.aidBuff, 4)} al prossimo tiro per colpire`);
   if ((p.aidDmgTurns ?? 0) > 0)             push("aiddmg", "🤝", `Aiuto +${p.aidDmgBonus ?? 1} dmg ${p.aidDmgTurns}t`, "is-buff", `+${p.aidDmgBonus ?? 1} al danno per ${p.aidDmgTurns} turni`);
+  if (frenzyExhausted(p))                   push("frenzy-tired", "🥵", "Sfinito", "is-debuff", "Frenesia: svantaggio agli attacchi per questo turno");
+  if (p.frenzyAttackPending)                push("frenzy", "🩸", "Frenesia", "is-rage", "Un attacco con l'arma in più in questo turno (solo dado + mod.)");
   if ((p.rageTurns ?? 0) > 0)               push("rage", "🔥", `Furia +${p.rageBonus ?? 2} ${p.rageTurns}t`, "is-rage", `+${p.rageBonus ?? 2} danni · riduzione danni subiti · ${p.rageTurns} turni`);
   if ((p.hunterMarkTurns ?? 0) > 0)         push("mark", "🎯", `Marchio ${p.hunterMarkTurns}t`, "is-rage", `+3 al colpire per ${p.hunterMarkTurns} turni`);
 
@@ -6503,7 +6511,7 @@ export default function Arena() {
         if (x.matchId !== matchId) return x;
         const players = x.players.map(p =>
           p.id === aiId
-            ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
+            ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
             : p
         );
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, `🌀 ${aiName} è sotto controllo: turno saltato (${remaining} rimanenti).`] };
@@ -6801,7 +6809,7 @@ export default function Arena() {
                 [sp.name]: Math.max(0, ((p.actionUsesLeft?.[sp.name]) ?? sp.maxUses ?? 1) - 1),
               };
               const turnEndPatch = stayingThisTurn ? {} : {
-                rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1),
+                rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(p) ? { frenzySpent: false } : {}),
                 hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
                 shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
                 concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
@@ -6934,7 +6942,6 @@ export default function Arena() {
     const effHunterMark      = (buffPatch.hunterMarkTurns ?? aiPlayer.hunterMarkTurns ?? 0) > 0;
     const effAidBonus        = readActiveBonus(buffPatch.aidBuff ?? aiPlayer.aidBuff, 4);
     const rageDmgBonus       = effRageTurns ? rageDamageBonus(getSnapLevel(aiSnap)) : 0;
-    const barbarianDmgBonus  = cls.includes("barbar") ? 2 : 0;
     const hunterMarkHitBonus = effHunterMark ? 3 : 0;   // Marchio = +3 AL COLPIRE (come il player)
     // Fighter: crit on 19+ (Critico Migliorato).
     const isFighter   = cls.includes("fighter") || cls.includes("guerr");
@@ -6983,7 +6990,7 @@ export default function Arena() {
       const aiSubBonus = subclassDamageDice(aiSnap, false).bonus; // Sottoclasse (Fase 2): dado bonus arma (Artigliere) — solo attacchi con arma dell'IA
       const aiBeastRageBonus = beastRageDamageBonus(aiSnap, { ...aiPlayer, ...buffPatch }); // Furia Bestiale (Lv3)
       const aiDivineStrike = divineStrikeBonus(aiSnap, false); // Chierico Lv8 · Colpo Divino: +1d8 radiante
-      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult + aiDivineStrike + aiSubBonus;
+      const raw = (total + statMod + rageDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult + aiDivineStrike + aiSubBonus;
       // Bottega: componenti elementali dell'arma IA + resistenze del bersaglio.
       const aiTyped = applyTypedDamage(raw, chosen, critMult, targetSnap, false, physicalFallbackType(chosen, aiSnap, aiPlayer));
       damage = applyDefenderDamageMods(aiTyped.total, targetSnap, tgtMatchPlayer, false);
@@ -6993,7 +7000,6 @@ export default function Arena() {
     const critTag = isCrit ? " ★CRITICO★" : "";
     const aidPart = effAidBonus ? ` +${effAidBonus} aiuto` : "";
     const ragePart= rageDmgBonus ? ` +${rageDmgBonus} furia` : "";
-    const barbPart= barbarianDmgBonus ? ` +${barbarianDmgBonus} barb` : "";
     const hmHitPart = hunterMarkHitBonus ? ` +${hunterMarkHitBonus} 🎯marchio` : "";
     const aiAdvTag = aiHasAdvantage && !aiHasDisadvantage ? ` 🌟vant.[${d20a},${d20b}]`
                    : aiHasDisadvantage && !aiHasAdvantage ? ` 🌑svant.[${d20a},${d20b}]`
@@ -7004,7 +7010,7 @@ export default function Arena() {
         ? `💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${critTag} — ${damage} danni`
         : `🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name} (${hitTotal} vs CA ${targetAc})`,
       att: isHit
-        ? `💥 Colpisci ${target.name} con ${chosen.name} [${breakdown}]${critTag} → 🎲${damageRolls}${statMod !== 0 ? `${statMod >= 0 ? "+" : ""}${statMod}` : ""}${ragePart}${barbPart}${isCrit ? " ×2" : ""} = ${damage} danni`
+        ? `💥 Colpisci ${target.name} con ${chosen.name} [${breakdown}]${critTag} → 🎲${damageRolls}${statMod !== 0 ? `${statMod >= 0 ? "+" : ""}${statMod}` : ""}${ragePart}${isCrit ? " ×2" : ""} = ${damage} danni`
         : `🛡️ Manchi ${target.name} con ${chosen.name} [${breakdown}]`,
       def: isHit
         ? `⚔️ ${aiSnap.name} ti colpisce con ${chosen.name}${critTag} — ${damage} danni`
@@ -7361,7 +7367,7 @@ export default function Arena() {
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(p) ? { frenzySpent: false } : {}), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -7485,7 +7491,7 @@ export default function Arena() {
           attackDisadvantageTurns: Math.max(0, (me?.attackDisadvantageTurns ?? 0) - 1),
           weaponLockTurns: Math.max(0, (me?.weaponLockTurns ?? 0) - 1),
           shieldSkillTurns: Math.max(0, (me?.shieldSkillTurns ?? 0) - 1),
-          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1),
+          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(me) ? { frenzySpent: false } : {}),
           hunterMarkTurns: Math.max(0, (me?.hunterMarkTurns ?? 0) - 1),
           concentrationTurns: Math.max(0, (me?.concentrationTurns ?? 0) - 1),
           pattoTurns: Math.max(0, (me?.pattoTurns ?? 0) - 1),
@@ -7534,7 +7540,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-            return { ...p, stealthAdvTurns: 2, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: me?.multiActionsUsed ?? 0 };
+            return { ...p, stealthAdvTurns: 2, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(p) ? { frenzySpent: false } : {}), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: me?.multiActionsUsed ?? 0 };
           }
           return p;
         });
@@ -7606,7 +7612,7 @@ export default function Arena() {
           attackDisadvantageTurns: Math.max(0, (me?.attackDisadvantageTurns ?? 0) - 1),
           weaponLockTurns: Math.max(0, (me?.weaponLockTurns ?? 0) - 1),
           shieldSkillTurns: Math.max(0, (me?.shieldSkillTurns ?? 0) - 1),
-          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1),
+          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(me) ? { frenzySpent: false } : {}),
           hunterMarkTurns: Math.max(0, (me?.hunterMarkTurns ?? 0) - 1),
           concentrationTurns: Math.max(0, (me?.concentrationTurns ?? 0) - 1),
           pattoTurns: Math.max(0, (me?.pattoTurns ?? 0) - 1),
@@ -7733,7 +7739,6 @@ export default function Arena() {
     const weaponBuff = !isSpellAction && (attackerSnap?.arenaBuffs?.weaponBonus ? 1 : 0);
     const aidBonus           = readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
     const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? rageDamageBonus(getSnapLevel(attackerSnap)) : 0;
-    const barbarianDmgBonus  = !isSpellAction && isBarbarianClass(attackerClassLower) ? 2 : 0;
     const concentrationDmg   = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 2 : 0;
     const bardInspirationActive = !!attackerMatchPlayer?.bardicInspirationActive;
     const { total: inspirationBonus, rolls: inspirationRolls } = bardInspirationActive ? rollDmg("1d6") : { total: 0, rolls: "" };
@@ -7768,7 +7773,9 @@ export default function Arena() {
                                  && (attackerMatchPlayer?.kiteChargesUsed ?? 0) < ARENA_KITE_MAX;
     // Barbaro Lv7 · Istinto Selvaggio: in Furia i tuoi attacchi ignorano lo svantaggio.
     const _ragingNoDisadv = isBarbarianClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 7 && (attackerMatchPlayer?.rageTurns ?? 0) > 0;
-    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv || _willKite || subclassForesightDisadv(defenderSnap, defMatchPlayer));
+    // Berserker · Frenesia: il prossimo attacco con l'arma è il colpo in più (solo dado + mod.).
+    const frenzyPlain = !isSpellAction && action.type === "weapon" && !!attackerMatchPlayer?.frenzyAttackPending;
+    const hasDisadvantage    = _ragingNoDisadv ? false : (frenzyExhausted(attackerMatchPlayer) || readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv || _willKite || subclassForesightDisadv(defenderSnap, defMatchPlayer));
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
@@ -7794,7 +7801,7 @@ export default function Arena() {
         if (aHit) {
           anyHit = true;
           const { total: ad } = rollDmg(perDie);
-          const arrowDmg = (ad + statMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus2) * (aCrit ? 2 : 1);
+          const arrowDmg = (ad + statMod + weaponBuff + rageDmgBonus + concentrationDmg + aidDmgBonus2) * (aCrit ? 2 : 1);
           total += arrowDmg;
           tags.push(`🎯${rd}${aCrit ? "★" : ""}=${arrowDmg}`);
         } else {
@@ -7864,7 +7871,12 @@ export default function Arena() {
     const divineStrikeDmg = (isHit && !isBlindDebuff) ? divineStrikeBonus(attackerSnap, isSpellAction) : 0;
     // Artefice Lv2 · Infusione: +1 al danno con arma.
     const infusionDmg = !isSpellAction ? infusionWeaponBonus(attackerSnap) : 0;
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus + infusionDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg + divineStrikeDmg + subclassBonusDmg : 0;
+    // Berserker · Frenesia: il colpo in più conta solo dado + modificatore (niente bonus).
+    const rawDamage = (isHit && !isBlindDebuff)
+      ? (frenzyPlain
+          ? (baseDmg + dmgStatMod) * critMult
+          : (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus + infusionDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg + divineStrikeDmg + subclassBonusDmg)
+      : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici (kiBypass).
     // Bottega: componenti di danno elementali dell'arma + resistenze del bersaglio.
@@ -7886,8 +7898,7 @@ export default function Arena() {
     const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
     const pattoTag       = pattoBonusDmg > 0 ? ` | 🩸patto 🎲${pattoRolls}=${pattoBonusDmg}` : "";
     const stormTag       = stormBonusDmg > 0 ? ` | ⚡tempesta 🎲${stormRolls}=${stormBonusDmg}` : "";
-    const rageTag        = rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
-    const barbDmgTag     = barbarianDmgBonus > 0 ? ` | barb +${barbarianDmgBonus}` : "";
+    const rageTag        = frenzyPlain ? " | 🩸frenesia (solo dado + mod.)" : rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
     const inspirationTag = inspirationBonus > 0 ? ` +ispirazione 🎵🎲${inspirationRolls}=${inspirationBonus}` : "";
     const magicDetTag    = magicDetectBonus > 0 ? ` +${magicDetectBonus} 🔮det.` : "";
@@ -7906,7 +7917,7 @@ export default function Arena() {
       .map(pt => ` | ${DAMAGE_TYPE_MAP[pt.type]?.icon || "✦"}${DAMAGE_TYPE_MAP[pt.type]?.label || pt.type} ${pt.resisted ? `${pt.raw}→` : ""}${pt.amount}`)
       .join("");
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag}${subclassBonusTagStr}${elementalTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${concentrationTag}${subclassBonusTagStr}${elementalTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     log = {
@@ -7997,7 +8008,7 @@ export default function Arena() {
           const selfAdvPatch = action.grantsAdvTurns ? { selfAdvTurns: action.grantsAdvTurns } : {};
           // Timer turn-based (Furia/Hunter Mark/Scudo/Patto/Forgia/Concentr/Aquila):
           // NON decrementati qui — si decrementano a fine turno (turnEndDecays).
-          const up = { ...p, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, attacksMade: (p.attacksMade ?? 0) + 1, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
+          const up = { ...p, ...(frenzyPlain ? { frenzyAttackPending: false } : {}), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, attacksMade: (p.attacksMade ?? 0) + 1, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
           // Bonus/cura all'impatto dell'arma della Bottega (a chi la impugna).
           if (_onHit.selfHeal > 0 || Object.keys(_onHit.selfPatch).length) {
             Object.assign(up, _onHit.selfPatch);
@@ -8043,7 +8054,7 @@ export default function Arena() {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
         weaponLockTurns: Math.max(0, (meBefore?.weaponLockTurns ?? 0) - 1),
         shieldSkillTurns: Math.max(0, (meBefore?.shieldSkillTurns ?? 0) - 1),
-        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1),
+        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(meBefore) ? { frenzySpent: false } : {}),
         hunterMarkTurns: Math.max(0, (meBefore?.hunterMarkTurns ?? 0) - 1),
         concentrationTurns: Math.max(0, (meBefore?.concentrationTurns ?? 0) - 1),
         pattoTurns: Math.max(0, (meBefore?.pattoTurns ?? 0) - 1),
@@ -8192,7 +8203,7 @@ export default function Arena() {
         const maxHp = mySnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, actionUsesLeft: newUses };
+        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(p) ? { frenzySpent: false } : {}), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, actionUsesLeft: newUses };
       });
       const log = { pub: `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -8369,6 +8380,7 @@ export default function Arena() {
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    if (frenzyExhausted(me)) { alert("🥵 Sei sfinito dalla Frenesia: niente Furia per questo turno."); return; }
     const log = `🔥 ${myName} entra in Furia! (+${rageBon} danno armi per 3 turni · bonus action)`;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -8382,6 +8394,36 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await commitArenaMatches(updatedMatches);
+  };
+
+  // ── FRENESIA (Barbaro Berserker · Bonus Action, solo in Furia) ─────────────
+  // Concede un attacco con l'arma in più in questo turno: il prossimo colpo d'arma
+  // conta solo dado + mod. (frenzyAttackPending). A Furia finita: sfinito (frenzySpent).
+  const handleFrenzy = async (matchId, action) => {
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Barbaro";
+      const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+      const me = myMatch?.players.find(p => p.id === currentUser.uid);
+      if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+      if ((me?.rageTurns ?? 0) <= 0) { alert("🩸 La Frenesia si scatena solo in Furia."); return; }
+      const updatedMatches = arenaMeta.matches.map(m => {
+        if (m.matchId !== matchId) return m;
+        const updatedPlayers = m.players.map(p => {
+          if (p.id !== currentUser.uid) return p;
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, frenzyAttackPending: true, frenzySpent: true, bonusActionUsed: true, actionUsesLeft: newUses };
+        });
+        const log = { pub: `🩸 ${myName} entra in Frenesia! Un attacco in più questo turno (a fine Furia sarà sfinito).`, attId: currentUser.uid, ts: new Date().toISOString() };
+        // Bonus action: il turno NON avanza.
+        return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
+      });
+      await commitArenaMatches(updatedMatches);
+    } finally {
+      actionInFlightRef.current = false;
+    }
   };
 
   // ── MARCHIO DEL CACCIATORE (Ranger · BONUS ACTION) ────────────────────────
@@ -9286,7 +9328,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
       );
       const log = reason === "invisible"
         ? `👻 ${myName} non riesce a colpire un bersaglio invisibile e salta il turno.`
@@ -9306,7 +9348,7 @@ export default function Arena() {
       const remaining = Math.max(0, (meBefore?.controlLostTurns ?? 0) - 1);
       const players = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
+          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
           : p
       );
       const log = `🌀 ${myName} è sotto controllo e perde il turno (${remaining} turni rimanenti).`;
@@ -9321,7 +9363,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
       );
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
@@ -9351,7 +9393,7 @@ export default function Arena() {
           extraTurnActive: false,
           ...tickEagleEnd(p),
           ...consumeInvisibility(p),
-          rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1),
+          rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(p) ? { frenzySpent: false } : {}),
           shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
           hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
           concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
@@ -9415,7 +9457,7 @@ export default function Arena() {
       const restoredMaxHp = myPData?.preWildShapeMaxHp ?? myPData?.maxHp ?? restoredHp;
       const updatedPlayers = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
+          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
           : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
@@ -9651,7 +9693,7 @@ export default function Arena() {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
         weaponLockTurns: Math.max(0, (meBefore?.weaponLockTurns ?? 0) - 1),
         shieldSkillTurns: Math.max(0, (meBefore?.shieldSkillTurns ?? 0) - 1),
-        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1),
+        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1), frenzyAttackPending: false, ...(frenzyExhausted(meBefore) ? { frenzySpent: false } : {}),
         hunterMarkTurns: Math.max(0, (meBefore?.hunterMarkTurns ?? 0) - 1),
         concentrationTurns: Math.max(0, (meBefore?.concentrationTurns ?? 0) - 1),
         pattoTurns: Math.max(0, (meBefore?.pattoTurns ?? 0) - 1),
@@ -10127,8 +10169,8 @@ export default function Arena() {
           // Sotto controllo: il timer scade → decrementa il contatore invece di applicare la posizione difensiva.
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
           let up = wasControlled
-            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
-            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false };
+            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
+            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false };
           if (wasControlled && !hasPendingCtrl) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           const autoSaveFaith = readSaveFaithBonus(p); // Scudo della Fede (letto da p, pre-tick)
           const autoFaithSign = autoSaveFaith > 0 ? `+${autoSaveFaith}✝` : "";
@@ -10847,7 +10889,7 @@ export default function Arena() {
             <h3 className="arena-info-title">🛡 Le 12 Classi</h3>
             <div className="arena-info-example">
               <p><strong>Guerriero (Fighter)</strong> — Armi semplici e marziali, 2 armi equipaggiabili, armatura pesante + scudo. <em>Skill:</em> Secondo Respiro (cura), Scatto d'Azione (azione extra), Carica (2d6+FOR), Disarmare (blocca armi 3T), Presenza Possente + Critico Migliorato (passive).</p>
-              <p><strong>Barbaro (Barbarian)</strong> — Armi semplici e marziali, 2 armi, armatura leggera/media o nessuna + scudo. <em>Skill:</em> Furia (+2 danni e riduzione danni 3T), Turbine di Lame (2 attacchi 2d10+FOR), Attacco Poderoso (2d8+FOR + vantaggio 3T).</p>
+              <p><strong>Barbaro (Barbarian)</strong> — Armi semplici e marziali, 2 armi, armatura leggera/media o nessuna + scudo. <em>Skill:</em> Furia (+2 danni, di più ai livelli alti, e riduzione danni 3T), Turbine di Lame (2 attacchi 2d10+FOR), Attacco Poderoso (2d8+FOR + vantaggio 3T).</p>
               <p><strong>Paladino (Paladin)</strong> — Armi marziali, 2 armi, armatura pesante + scudo. Spell paladino. <em>Skill:</em> Smite Divino (arma +2d8, 2 cariche), Imposizione delle Mani (pozza di cura = HP/3, scegli quanti curare).</p>
               <p><strong>Cacciatore (Ranger)</strong> — Armi ranger, 2 armi, armatura leggera/media + scudo. Spell ranger. <em>Skill:</em> Marchio del Cacciatore (+3 ai TPC per 3 turni, bonus action).</p>
               <p><strong>Monaco (Monk)</strong> — Solo mani nude (nessun'arma da scegliere), 2 attacchi a turno: 1° Pugno (2d4+DES), 2° Calcio (1d4+FOR). Nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+2 danno 2T), Assorbire Danni (80% del prossimo danno si converte in cura · 1 carica), Cura Ki (1d8+SAG).</p>
@@ -14526,6 +14568,27 @@ export default function Arena() {
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
                                 <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.rageTurns} turni` : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : `+${rageDamageBonus(getSnapLevel(mySnap))} danno · 3 turni`}</span>
+                                {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
+                              </button>
+                            );
+                          }
+                          if (action.special === "frenzy") {
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
+                            const noUses = usesLeft !== null && usesLeft <= 0;
+                            const alreadyActive = !!myPlayer?.frenzyAttackPending;
+                            const notRaging = (myPlayer?.rageTurns ?? 0) <= 0;
+                            const baUsed = !!myPlayer?.bonusActionUsed;
+                            const blocked = noUses || alreadyActive || baUsed || notRaging;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={alreadyActive ? "Frenesia attiva: attacca con l'arma" : noUses ? "Cariche esaurite" : notRaging ? "Solo in Furia" : baUsed ? "Bonus action già usata questo turno" : "Bonus action · un attacco con l'arma in più (dado + FOR) · a fine Furia svantaggio per 1 turno"}
+                                onClick={() => !blocked && handleFrenzy(m.matchId, action)}>
+                                <span className="bonus-action-tag">⚡ Bonus</span>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{alreadyActive ? "✓ +1 attacco" : noUses ? "Esaurita" : notRaging ? "Solo in Furia" : baUsed ? "⚡ Usata" : "+1 attacco"}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
