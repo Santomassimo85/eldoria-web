@@ -188,9 +188,8 @@ function buildFields(actor) {
 
   const at = A.attributes || {};
   const stats = fsMap({
-    hp: fsInt(at.hp?.value ?? 0),
+    // PF attuali e temporanei NON si sincronizzano (li gestisce il sito: World Boss ecc.), solo i massimi.
     maxHp: fsInt(at.hp?.max ?? 0),
-    tempHp: fsInt(at.hp?.temp ?? 0),
     ac: fsInt(at.ac?.value ?? 0),
     initiative: fsInt(at.init?.total ?? at.init?.mod ?? at.init?.bonus ?? dexMod),
     speed: fsInt(typeof at.movement?.walk === "number" ? at.movement.walk : 30),
@@ -317,7 +316,9 @@ async function mioUid(actor) {
   fields.foundryActorName = fsStr(base.name);
   const user = game.user.isGM ? ownerNames(base)[0] : game.user.name;
   if (user) fields.foundryUser = fsStr(user);
-  const mask = Object.keys(fields).map((f) => `updateMask.fieldPaths=${f}`).join("&");
+  // "stats" chiave per chiave: così stats.hp (PF attuali) sul sito non viene mai toccato.
+  const paths = Object.keys(fields).flatMap((f) => f === "stats" ? Object.keys(fields.stats.mapValue.fields).map((k) => `stats.${k}`) : [f]);
+  const mask = paths.map((f) => `updateMask.fieldPaths=${f}`).join("&");
   try {
     // Solo personaggi che esistono già: un PATCH su un UID senza documento lo creerebbe.
     const check = await fetch(`${BASE}/characters/${uid}?key=${FIREBASE_CONFIG.apiKey}&mask.fieldPaths=name`);

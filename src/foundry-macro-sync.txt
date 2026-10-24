@@ -317,9 +317,8 @@ if (!actor) {
     /* STATISTICHE PRINCIPALI (+ caratteristiche annidate) */
     const at = A.attributes || {};
     const stats = fsMap({
-      hp: fsInt(at.hp?.value ?? 0),
+      // PF attuali e temporanei NON si sincronizzano (li gestisce il sito: World Boss ecc.), solo i massimi.
       maxHp: fsInt(at.hp?.max ?? 0),
-      tempHp: fsInt(at.hp?.temp ?? 0),
       ac: fsInt(at.ac?.value ?? 0),
       initiative: fsInt(at.init?.total ?? at.init?.mod ?? at.init?.bonus ?? dexMod),
       speed: fsInt(typeof at.movement?.walk === "number" ? at.movement.walk : 30),
@@ -360,7 +359,7 @@ if (!actor) {
     }};
 
     const mask = ["name", "class", "subclass", "race", "background", "image", "level",
-                  "stats", "currency", "currencyPurse", "currencyBags",
+                  ...Object.keys(stats.mapValue.fields).map(k => `stats.${k}`), "currency", "currencyPurse", "currencyBags",
                   "spellSlots", "skills", "actions", "inventory",
                   "foundryActorId", "foundryActorName", "foundryUser"]
                  .map(f => `updateMask.fieldPaths=${f}`).join("&");
