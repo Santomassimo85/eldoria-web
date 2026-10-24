@@ -111,6 +111,7 @@ export default async function handler(req, res) {
 Nome: ${npc.nome}. Razza: ${npc.razza}. Ruolo: ${npc.ruolo}.
 Aspetto fisico (RIPRODUCI FEDELMENTE ogni dettaglio descritto — tatuaggi, cicatrici, colore di occhi/capelli, segni particolari nel punto esatto indicato): ${npc.aspetto}.
 ${npc.personalita ? `Carattere da trasmettere nell'espressione: ${npc.personalita}.` : ""}
+${npc.dettagliImmagine ? `DETTAGLI RICHIESTI DAL MASTER (VINCOLANTI: prevalgono su tutto il resto, anche su inquadratura, luce e sfondo qui sotto): ${String(npc.dettagliImmagine).slice(0, 800)}.` : ""}
 Inquadratura: ${inq}, ${ang}. Illuminazione: ${luce}. Sfondo: ${sfondo}.
 ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
   } else {

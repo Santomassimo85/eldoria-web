@@ -39,6 +39,8 @@ export default function GeneraNPC() {
   const [nomiVisti, setNomiVisti] = useState([]);
   // Stile di disegno scelto per il ritratto
   const [stile, setStile] = useState("olio");
+  // Ritocchi SOLO per il ritratto (non cambiano l'NPC né la scheda d'archivio)
+  const [ritocco, setRitocco] = useState({ razza: "", ruolo: "", aspetto: "", dettagli: "" });
 
   async function generaNpc() {
     setLoadingNpc(true); setStato("Sto evocando l'NPC…"); setErrore(false);
@@ -52,6 +54,7 @@ export default function GeneraNPC() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setNpc(data); setStato("");
+      setRitocco({ razza: data.razza || "", ruolo: data.ruolo || "", aspetto: data.aspetto || "", dettagli: "" });
       if (data.nome) setNomiVisti((prev) => [...prev, data.nome].slice(-20));
       // Prefill della scheda d'archivio coi dati generati (il Master può ritoccarli)
       setDest({
@@ -82,7 +85,16 @@ export default function GeneraNPC() {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ npc, stile, tono: getImageTone() })
+        body: JSON.stringify({
+          npc: {
+            ...npc,
+            razza: ritocco.razza.trim() || npc.razza,
+            ruolo: ritocco.ruolo.trim() || npc.ruolo,
+            aspetto: ritocco.aspetto.trim() || npc.aspetto,
+            dettagliImmagine: ritocco.dettagli.trim(),
+          },
+          stile, tono: getImageTone(),
+        })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -204,6 +216,55 @@ export default function GeneraNPC() {
             {immagine && (
               <img className="npcgen-img" src={immagine} alt={npc.nome} />
             )}
+
+            {/* ── Ritocchi per il ritratto: valgono solo per il disegno ── */}
+            <hr className="npcgen-divider" />
+            <p className="npcgen-k">✏️ Ritocca per il ritratto</p>
+            <p className="npcgen-archive-hint">
+              Correggi o precisa l'aspetto per un disegno più fedele. Questi campi
+              servono solo al ritratto: l'NPC e la scheda d'archivio restano com'erano.
+            </p>
+            <div className="npcgen-form-grid">
+              <div className="npcgen-fld">
+                <label className="npcgen-label" htmlFor="rit-razza">Razza</label>
+                <input
+                  id="rit-razza"
+                  className="npcgen-input"
+                  value={ritocco.razza}
+                  onChange={e => setRitocco({ ...ritocco, razza: e.target.value })}
+                />
+              </div>
+              <div className="npcgen-fld">
+                <label className="npcgen-label" htmlFor="rit-ruolo">Ruolo</label>
+                <input
+                  id="rit-ruolo"
+                  className="npcgen-input"
+                  value={ritocco.ruolo}
+                  onChange={e => setRitocco({ ...ritocco, ruolo: e.target.value })}
+                />
+              </div>
+              <div className="npcgen-fld npcgen-fld--full">
+                <label className="npcgen-label" htmlFor="rit-aspetto">Aspetto</label>
+                <textarea
+                  id="rit-aspetto"
+                  className="npcgen-input npcgen-textarea"
+                  value={ritocco.aspetto}
+                  rows="4"
+                  onChange={e => setRitocco({ ...ritocco, aspetto: e.target.value })}
+                />
+              </div>
+              <div className="npcgen-fld npcgen-fld--full">
+                <label className="npcgen-label" htmlFor="rit-dettagli">Dettagli in più per il disegno</label>
+                <textarea
+                  id="rit-dettagli"
+                  className="npcgen-input npcgen-textarea"
+                  value={ritocco.dettagli}
+                  rows="3"
+                  placeholder="es. mezzobusto, sorride, tiene un boccale, cappuccio verde, cicatrice sull'occhio sinistro, notte con lanterna…"
+                  onChange={e => setRitocco({ ...ritocco, dettagli: e.target.value })}
+                />
+              </div>
+            </div>
 
             <p className="npcgen-k">🎨 Stile del disegno</p>
             <div className="npcgen-styles" role="radiogroup" aria-label="Stile del disegno">
