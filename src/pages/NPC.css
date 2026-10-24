@@ -147,6 +147,37 @@
 .npc-page .npc-scheda .nx-titolo { text-align: left; }
 .npc-page .npc-scheda .nx-prosa { margin: 0; white-space: pre-line; }
 
+/* Ritratto intero: l'immagine non si taglia mai (contain), i lati vuoti li riempie
+   la stessa immagine sfocata. Altezza a misura di schermo, tocco = tutto schermo. */
+.npc-page .npc-ritratto {
+  position: relative; display: block; width: 100%; padding: 0; margin: 0 0 14px;
+  height: clamp(220px, 52svh, 520px); overflow: hidden; cursor: zoom-in;
+  background: var(--roccia-1); border: 1px solid var(--roccia-3); border-bottom: 3px solid var(--el); border-radius: 3px;
+}
+.npc-page .npc-ritratto::before {
+  content: ""; position: absolute; inset: -24px;
+  background: var(--ritratto) center / cover no-repeat;
+  filter: blur(18px) brightness(.55) saturate(1.1);
+}
+.npc-page .npc-ritratto img {
+  position: relative; display: block; width: 100%; height: 100%; object-fit: contain;
+}
+.npc-page .npc-ritratto-zoom {
+  position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px;
+  display: grid; place-items: center; font-size: 1.1rem; line-height: 1;
+  color: var(--osso); background: rgba(var(--ossidiana-rgb), .7); border: 1px solid var(--roccia-3); border-radius: 3px;
+}
+.npc-page .npc-ritratto:hover .npc-ritratto-zoom,
+.npc-page .npc-ritratto:focus-visible .npc-ritratto-zoom { color: var(--el); border-color: var(--el); }
+
+.npc-page .npc-zoom {
+  position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, .92); cursor: zoom-out;
+}
+.npc-page .npc-zoom img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 3px; }
+.npc-page .npc-zoom .nx-modale-close { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; }
+
 @media (max-width: 560px) {
   .npc-page .cine-toolbar { border-radius: 3px; flex-wrap: wrap; }
   .npc-page .cine-search { flex-basis: 100%; }

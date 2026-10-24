@@ -19,6 +19,13 @@ export default function NPC() {
   const [query, setQuery] = useState("");
   const [activeCity, setActiveCity] = useState(null);
   const [openNpc, setOpenNpc] = useState(null); // scheda-varco aperta (solo presentazione)
+  const [zoomImg, setZoomImg] = useState(null); // ritratto a tutto schermo
+  useEffect(() => {
+    if (!zoomImg) return;
+    const onKey = (e) => { if (e.key === "Escape") setZoomImg(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomImg]);
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   useParallaxScroll();
@@ -185,9 +192,15 @@ export default function NPC() {
         <div className="nx-modale-overlay" onClick={() => setOpenNpc(null)}>
           <div className="nx-modale npc-scheda" role="dialog" aria-modal="true" aria-label={openNpc.name} onClick={(e) => e.stopPropagation()}>
             <button type="button" className="nx-modale-close" onClick={() => setOpenNpc(null)} aria-label="Chiudi">✕</button>
+            {/* Ritratto INTERO (contain) su un fondo sfocato della stessa immagine:
+                si vede tutto su ogni schermo; tocco = a tutto schermo. */}
             {openNpc.image && (
-              <img className="nx-modale-img" src={openNpc.image} alt={openNpc.name}
-                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              <button type="button" className="npc-ritratto" onClick={() => setZoomImg(openNpc.image)}
+                      style={{ "--ritratto": `url("${openNpc.image}")` }} aria-label={`Ingrandisci il ritratto di ${openNpc.name}`}>
+                <img src={openNpc.image} alt={openNpc.name}
+                     onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }} />
+                <span className="npc-ritratto-zoom" aria-hidden="true">⤢</span>
+              </button>
             )}
             <span className="nx-kicker">{openNpc.linkedCity?.trim() || "Errante"}</span>
             <h3 className="nx-titolo">{openNpc.name}</h3>
@@ -199,6 +212,13 @@ export default function NPC() {
             )}
             {openNpc.description && <p className="nx-prosa">{openNpc.description}</p>}
           </div>
+        </div>
+      )}
+
+      {zoomImg && (
+        <div className="npc-zoom" role="dialog" aria-modal="true" aria-label="Ritratto a tutto schermo" onClick={() => setZoomImg(null)}>
+          <img src={zoomImg} alt="" />
+          <button type="button" className="nx-modale-close" onClick={() => setZoomImg(null)} aria-label="Chiudi">✕</button>
         </div>
       )}
 
