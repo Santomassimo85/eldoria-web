@@ -34,6 +34,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { resetWorldBossFight } from "../data/worldBossReset";
 import { deliverBossRewards, deliverySummaryText } from "../data/worldBossRewardsDelivery";
 import { useSpriteBox, spriteVars } from "./spriteBox";
+import { activeCond, condTurnsLeft, condConsumePatch, lastingCondPatch, ONE_SHOT, effectTurns, enemyAc, acBuffTotal, activeAcBuffs, addAcBuffPatch, damageTypeFor, applyResist, hasDefenses, resistOf, damageTypeLabel, DAMAGE_TYPES } from "./worldBossEffects";
 
 // Barra dei PF in scena (verde → oro sotto metà → sangue sotto un quarto, scudo sopra).
 function SceneHp({ hp, max, shield, variant, title, label, style }) {
@@ -107,9 +108,9 @@ function enemySaveSpec(action, enemy) {
 function masterActionMeta(a) {
   const t = a.type || "attack";
   if (t === "heal") return { kind: "self", ico: "💚", tag: `si cura ${parseInt(a.diceNum) || 1}${a.diceType || "d6"}${parseInt(a.bonus) ? "+" + parseInt(a.bonus) : ""}` };
-  if (t === "buff_ca") return { kind: "self", ico: "🛡", tag: `+${parseInt(a.acBonus) || 0} CA a sé` };
-  if (t === "buff_adv") return { kind: "self", ico: "⬆", tag: "vantaggio a sé" };
-  if (t === "debuff_dis") return { kind: "debuff", ico: "🌑", tag: "svantaggio ai bersagli", needs: true };
+  if (t === "buff_ca") return { kind: "self", ico: "🛡", tag: `+${parseInt(a.acBonus) || 0} CA a sé · ${effectTurns(a)} turni` };
+  if (t === "buff_adv") return { kind: "self", ico: "⬆", tag: `vantaggio a sé · ${effectTurns(a)} turni` };
+  if (t === "debuff_dis") return { kind: "debuff", ico: "🌑", tag: `svantaggio ai bersagli · ${effectTurns(a)} turni`, needs: true };
   const sv = enemySaveSpec(a, null);
   const dmg = a.damage || `${parseInt(a.diceNum) || 1}${a.diceType || "d6"}`;
   if (sv?.area) return { kind: "aoe", ico: "🌀", tag: `AREA · ${dmg} · TS ${SAVE_LABEL_IT[sv.save] || sv.save}` };
@@ -317,6 +318,7 @@ export default function WorldBoss() {
   // Pannello Master (2026-09-15): attacco in 3 passi + eroi espandibili
   const [attackerId, setAttackerId] = useState(null);      // chi attacca (boss o minion)
   const [targetMode, setTargetMode] = useState("all");     // "all" = tutti gli eroi vivi · "pick" = scelti
+  const [enemyHpInput, setEnemyHpInput] = useState("");   // HP da dare/togliere a mano a boss o minion
   const [spawnOpen, setSpawnOpen] = useState(false);       // riga "Evoca minion" aperta
   const [heroOpenId, setHeroOpenId] = useState(null);      // eroe con i comandi cura/ferite aperti
   const [heroAmount, setHeroAmount] = useState("5");       // quantità "a piacere"
@@ -605,7 +607,7 @@ export default function WorldBoss() {
   }, [isTimeExpired]);
 
   const handleSetCondition = async (playerId, condition) => {
-    await updateDoc(doc(db, "characters", playerId), { nextTurnCondition: condition });
+    await updateDoc(doc(db, "characters", playerId), { nextTurnCondition: condition, ...ONE_SHOT });
     const player = players.find((p) => p.id === playerId);
     const pName = player?.name?.split(" ")[0] || "Eroe";
     const label = condition === "advantage" ? "⬆ Vantaggio" : condition === "disadvantage" ? "⬇ Svantaggio" : "nessun bonus";
@@ -993,7 +995,7 @@ export default function WorldBoss() {
     try {
       const batch = writeBatch(db);
       targetIds.forEach((uid) => {
-        batch.update(doc(db, "characters", uid), { nextTurnCondition: "advantage" });
+        batch.update(doc(db, "characters", uid), { nextTurnCondition: "advantage", ...ONE_SHOT });
       });
       await batch.commit();
       const names = targetIds
@@ -1023,6 +1025,7 @@ export default function WorldBoss() {
       await updateDoc(enemyRef(boss), {
         nextTurnCondition: "disadvantage",
         debuffSource: action.name || null,
+        ...ONE_SHOT,
       });
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
@@ -1053,12 +1056,14 @@ export default function WorldBoss() {
     const dc = 8 + getProfBonus(charData) + dcMod;
     const formula = skill ? resolveSkillFormula(skill) : damageFormulaFor(action, "1d6").replace(/@mod/g, spellMod);
     const total = rollDice(formula);
+    const dtype = damageTypeFor(action);
     const results = [];
     for (const enemy of targets) {
       const roll = rollD20();
       const mod = enemySaveMod(enemy, aoe.save);
       const saved = roll + mod >= dc;
-      const dmg = saved ? (aoe.half ? Math.floor(total / 2) : 0) : total;
+      const res = applyResist(enemy, dtype, saved ? (aoe.half ? Math.floor(total / 2) : 0) : total);
+      const dmg = res.dmg;
       const currentShield = enemy.shield || 0;
       const currentHp = enemy.hp || 0;
       let rem = dmg, newShield = currentShield, newHp = currentHp;
@@ -1066,7 +1071,7 @@ export default function WorldBoss() {
         if (currentShield >= rem) { newShield -= rem; rem = 0; }
         else { rem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - rem); }
       } else { newHp = Math.max(0, currentHp - rem); }
-      results.push({ enemy, roll, mod, saved, dmg, newShield, newHp, shieldHit: newShield < currentShield, killed: newHp <= 0 && currentHp > 0 });
+      results.push({ enemy, roll, mod, saved, dmg, resNote: res.note, newShield, newHp, shieldHit: newShield < currentShield, killed: newHp <= 0 && currentHp > 0 });
     }
     // un d20 per ogni nemico che tira il TS, col suo nome sotto
     const saveTag = `TS ${SAVE_LABEL_IT[aoe.save] || String(aoe.save).toUpperCase()} · CD ${dc}`;
@@ -1081,7 +1086,7 @@ export default function WorldBoss() {
       await batch.commit();
       const saveLbl = SAVE_LABEL_IT[aoe.save] || aoe.save.toUpperCase();
       const tsLine = results.map((r) => `${r.enemy.name}: d20(${r.roll})${r.mod ? (r.mod > 0 ? "+" : "") + r.mod : ""}=${r.roll + r.mod} ${r.saved ? "✅" : "❌"}`).join(" · ");
-      const dmgLine = results.map((r) => `${r.enemy.name} −${r.dmg}${r.saved ? (aoe.half ? " (metà)" : " (evitato)") : ""}${r.shieldHit ? " 🛡️" : ""}${r.killed ? " ☠" : ""}`).join(", ");
+      const dmgLine = results.map((r) => `${r.enemy.name} −${r.dmg}${r.saved ? (aoe.half ? " (metà)" : " (evitato)") : ""}${r.resNote || ""}${r.shieldHit ? " 🛡️" : ""}${r.killed ? " ☠" : ""}`).join(", ");
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
         actionName: `${action.name}${enemiesArg?.length ? "" : " (AREA)"} → ${results.length === 1 ? results[0].enemy.name : `${results.length} nemici`}`,
@@ -1118,6 +1123,9 @@ export default function WorldBoss() {
     const darts = [];
     let totalDamage = 0;
     for (let i = 0; i < auto.darts; i++) { const r = rollDetail(formula); darts.push(r); totalDamage += r.total; }
+    const rolledDamage = totalDamage;
+    const autoRes = applyResist(boss, damageTypeFor(action), totalDamage);
+    totalDamage = autoRes.dmg;
     const currentShield = boss.shield || 0;
     const currentHp = boss.hp || 0;
     let rem = totalDamage, newShield = currentShield, newHp = currentHp;
@@ -1127,7 +1135,7 @@ export default function WorldBoss() {
     } else { newHp = Math.max(0, currentHp - rem); }
     try {
       await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
-      let damageRoll = `🎯 ${auto.darts} dardi: ${darts.map((d) => `${d.detail}=${d.total}`).join(" · ")} = 💥 ${totalDamage} DANNI!`;
+      let damageRoll = `🎯 ${auto.darts} dardi: ${darts.map((d) => `${d.detail}=${d.total}`).join(" · ")} = ${autoRes.note ? `${rolledDamage}${autoRes.note} → ` : ""}💥 ${totalDamage} DANNI!`;
       if (newShield < currentShield) damageRoll += " 🛡️ Scudo colpito!";
       if (newHp <= 0) damageRoll += ` ☠ ${boss.name} cade!`;
       await addDoc(collection(db, "world_boss_chat"), {
@@ -1238,7 +1246,7 @@ export default function WorldBoss() {
 
     if (!(await claimTurn())) return; // dopo lo smistamento: le magie/abilità sopra prenotano da sé
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto" || skill?.kind === "attack";
-    const condition = charData.nextTurnCondition;
+    const condition = activeCond(charData, turnState.turnNumber);
     let d20, rollLabel, shown;
     if (condition === "advantage" || condition === "disadvantage") {
       const r1 = Math.floor(Math.random() * 20) + 1;
@@ -1246,7 +1254,8 @@ export default function WorldBoss() {
       d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${condition === "advantage" ? "⬆ Vant" : "⬇ Svan"} [${r1},${r2}]→${d20}`;
       shown = pairDice(r1, r2, condition);
-      await updateDoc(doc(db, "characters", currentUser.uid), { nextTurnCondition: null });
+      const used = condConsumePatch(charData);
+      if (used) await updateDoc(doc(db, "characters", currentUser.uid), used);
     } else {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
@@ -1291,7 +1300,7 @@ export default function WorldBoss() {
     };
     const fxAction = rider ? { ...action, dmgType: elementFor(rider) } : action;
     if (isAttack) {
-      if (isCritical || hitTotal >= (boss.ac || 10)) {
+      if (isCritical || hitTotal >= enemyAc(boss, turnState.turnNumber)) {
         let formulaRaw = action.damage && action.damage !== "0" ? action.damage : "1d6";
         const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || action.name?.toLowerCase().includes("arco") || action.name?.toLowerCase().includes("scimitar");
         const modValue = statMod(charData, isFinesseOrRanged ? "dex" : "str");
@@ -1307,12 +1316,13 @@ export default function WorldBoss() {
         let totalDamage = dieRollTotal + staticBonus;
         // Abilità "su arma" (Divine Smite, Psionic Strike, Planar Warrior…): dadi extra sul colpo, raddoppiati dal critico.
         let riderNote = "";
+        let riderDamage = 0;
         if (rider && riderSkill) {
           const r = rollDetail(resolveSkillFormula(riderSkill));
-          totalDamage += r.total;
+          riderDamage = r.total;
           riderNote = ` + ${rider.name} ${r.detail}=${r.total}`;
         }
-        if (isCritical) totalDamage *= 2;
+        if (isCritical) { totalDamage *= 2; riderDamage *= 2; }
         let dieDetail = `Dado ${diePart}[${rolls.join("+")}]`;
         let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}${riderNote}`;
         if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}${riderNote}) x2`;
@@ -1328,6 +1338,12 @@ export default function WorldBoss() {
           totalDamage += sneakTotal;
           damageString += ` + ${sneakDice}d6 Furtivo(${sneakRolls.join("+")}=${sneakTotal})`;
         }
+        // Resistenze del nemico: l'arma col suo tipo, il rider (smite…) col suo.
+        const rolledTotal = totalDamage + riderDamage;
+        const wRes = applyResist(boss, damageTypeFor(action), totalDamage);
+        const rRes = riderDamage ? applyResist(boss, damageTypeFor(rider), riderDamage) : { dmg: 0, note: "" };
+        totalDamage = wRes.dmg + rRes.dmg;
+        const resNote = wRes.note + rRes.note;
         const currentShield = boss.shield || 0;
         const currentHp = boss.hp || 0;
         let dmgRem = totalDamage;
@@ -1338,7 +1354,7 @@ export default function WorldBoss() {
           else { dmgRem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - dmgRem); }
         } else { newHp = Math.max(0, currentHp - dmgRem); }
         await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
-        actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
+        actionData.damageRoll = `${damageString} = ${resNote ? `${rolledTotal}${resNote} → ` : ""}💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
         if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
         Object.assign(actionData, fxFields(fxAction, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }));
@@ -1394,42 +1410,47 @@ export default function WorldBoss() {
       return true;
     }
 
-    // ── BUFF +CA: bump boss CA by acBonus ──
+    // Effetti a durata: valgono `durationTurns` turni (scelti nell'editor), poi scadono da soli.
+    const turnNow = turnState.turnNumber || 1;
+    const turns = effectTurns(action);
+    const turnsTxt = `per ${turns} turn${turns === 1 ? "o" : "i"}`;
+
+    // ── BUFF +CA a tempo: `acBuffs` sul nemico, la CA base (`ac`) non si tocca ──
     if (actionType === "buff_ca") {
       const bump = parseInt(action.acBonus) || 0;
       if (bump <= 0) return alert("Imposta un bonus CA > 0 per questa abilità.");
-      const newAc = (boss.ac || 10) + bump;
-      // `baseAc` = la CA prima del primo buff: l'azzeramento della battaglia la rimette.
-      await updateDoc(enemyRef(boss), { ac: newAc, ...(boss.baseAc == null ? { baseAc: boss.ac || 10 } : {}) });
+      const patch = addAcBuffPatch(boss, turnNow, bump, turns, action.name);
+      const newAc = enemyAc({ ...boss, ...patch }, turnNow);
+      await updateDoc(enemyRef(boss), patch);
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
-        description: `${who} usa ${action.name}: 🛡 CA +${bump} (ora ${newAc}).`,
+        description: `${who} usa ${action.name}: 🛡 CA +${bump} ${turnsTxt} (ora ${newAc}).`,
         ...fxFields(action, [boss.vfxKey], { kind: "shield" }),
         timestamp: serverTimestamp(),
       });
       return true;
     }
 
-    // ── BUFF advantage: boss gains advantage on its next attack ──
+    // ── BUFF vantaggio a tempo: il nemico attacca con vantaggio finché dura ──
     if (actionType === "buff_adv") {
-      await updateDoc(enemyRef(boss), { nextTurnCondition: "advantage", debuffSource: action.name || null });
+      await updateDoc(enemyRef(boss), lastingCondPatch("advantage", turnNow, turns, action.name || null));
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
         actionName: action.name,
-        description: `${who} invoca ${action.name}: ⬆ vantaggio sul prossimo attacco.`,
+        description: `${who} invoca ${action.name}: ⬆ vantaggio sui suoi attacchi ${turnsTxt}.`,
         ...fxFields(action, [boss.vfxKey], { kind: "buff" }),
         timestamp: serverTimestamp(),
       });
       return true;
     }
 
-    // ── DEBUFF disadvantage: selected players' next roll has disadvantage ──
+    // ── DEBUFF svantaggio a tempo sui bersagli scelti ──
     if (actionType === "debuff_dis") {
       if (targets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
       const batch = writeBatch(db);
       targets.forEach((uid) => {
-        batch.update(doc(db, "characters", uid), { nextTurnCondition: "disadvantage" });
+        batch.update(doc(db, "characters", uid), lastingCondPatch("disadvantage", turnNow, turns, action.name || null));
       });
       await batch.commit();
       const names = players
@@ -1439,7 +1460,7 @@ export default function WorldBoss() {
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Debuff Boss",
         actionName: action.name,
-        description: `${who} colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
+        description: `${who} colpisce con ${action.name}: ⬇ svantaggio ai tiri di ${names} ${turnsTxt}.`,
         ...fxFields(action, targets.map((uid) => `player-${uid}`), { kind: "debuff", from: boss.vfxKey }),
         timestamp: serverTimestamp(),
       });
@@ -1463,7 +1484,7 @@ export default function WorldBoss() {
       // mostrano insieme; poi si scrivono i danni.
       const saveTag = `TS ${SAVE_LABEL_IT[bossAoe.save] || bossAoe.save} · CD ${dc}`;
       const saves = pool.map((p) => {
-        const cond = p.nextTurnCondition;
+        const cond = activeCond(p, turnNow);
         const r1 = rollD20(), r2 = rollD20();
         const roll = cond === "advantage" ? Math.max(r1, r2) : cond === "disadvantage" ? Math.min(r1, r2) : r1;
         const mod = statSave(p, bossAoe.save);
@@ -1480,7 +1501,8 @@ export default function WorldBoss() {
       const results = [];
       for (const { p, cond, r1, r2, roll, mod, saved } of saves) {
         const condTxt = cond === "advantage" ? `⬆[${r1},${r2}]` : cond === "disadvantage" ? `⬇[${r1},${r2}]` : "";
-        if (cond === "advantage" || cond === "disadvantage") await updateDoc(doc(db, "characters", p.id), { nextTurnCondition: null });
+        const usedCond = cond ? condConsumePatch(p) : null;
+        if (usedCond) await updateDoc(doc(db, "characters", p.id), usedCond);
         const dmg = saved ? (bossAoe.half ? Math.floor(total / 2) : 0) : total;
         let rem = dmg;
         let shield = p.stats?.shield || 0;
@@ -1509,7 +1531,7 @@ export default function WorldBoss() {
     // ── ATTACK (default) ──
     if (targets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
     // Consume any debuff condition (e.g. svantaggio applied by a player spell)
-    const condition = boss.nextTurnCondition;
+    const condition = activeCond(boss, turnNow);
     let d20, rollLabel, shown;
     if (condition === "advantage" || condition === "disadvantage") {
       const r1 = Math.floor(Math.random() * 20) + 1;
@@ -1517,8 +1539,9 @@ export default function WorldBoss() {
       d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"}[${r1},${r2}]→${d20}`;
       shown = pairDice(r1, r2, condition);
-      // Clear after use so it only applies to one roll.
-      try { await updateDoc(enemyRef(boss), { nextTurnCondition: null, debuffSource: null }); } catch (_) {}
+      // Da un tiro solo = si consuma; a durata = resta finché non scade.
+      const used = condConsumePatch(boss);
+      if (used) { try { await updateDoc(enemyRef(boss), used); } catch (_) {} }
     } else {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
@@ -1645,6 +1668,35 @@ export default function WorldBoss() {
     await updateDoc(enemyRef(e), { hp: Math.min(e.maxHp ?? e.hp ?? 0, (e.hp || 0) + amount) });
   };
 
+  // HP manuali di boss/minion: positivo cura, negativo ferisce (i PF, non lo scudo), fra 0 e il massimo.
+  const adjustEnemyHp = async (e, delta) => {
+    if (!e || !delta) return;
+    const max = e.maxHp ?? e.hp ?? 0;
+    const newHp = Math.max(0, Math.min(max, (e.hp || 0) + delta));
+    if (newHp === (e.hp || 0)) return;
+    await updateDoc(enemyRef(e), { hp: newHp });
+    await addDoc(collection(db, "world_boss_chat"), {
+      uid: BOSS_SYSTEM_UID, senderName: "Master System", type: "notification", isSystem: true,
+      content: `${delta < 0 ? "🩸" : "💖"} Il Master ${delta < 0 ? "toglie" : "dà"} ${Math.abs(newHp - (e.hp || 0))} HP a ${e.name}: ${newHp}/${max}.`,
+      timestamp: serverTimestamp(),
+    });
+  };
+  // CA base del nemico (i +CA a tempo restano sopra). Mai sotto 1.
+  const adjustEnemyAc = async (e, delta) => {
+    if (!e) return;
+    const base = parseInt(e.ac) || 10;
+    const next = Math.max(1, base + delta);
+    if (next === base) return;
+    // `baseAc` = CA di partenza: l'azzeramento della battaglia la rimette.
+    await updateDoc(enemyRef(e), { ac: next, ...(e.kind === "boss" && e.baseAc == null ? { baseAc: base } : {}) });
+    await addDoc(collection(db, "world_boss_chat"), {
+      uid: BOSS_SYSTEM_UID, senderName: "Master System", type: "notification", isSystem: true,
+      content: `${delta < 0 ? "🔻" : "🔺"} CA di ${e.name}: ${enemyAc({ ...e, ac: next }, turnState.turnNumber)} (${delta < 0 ? "abbassata" : "alzata"} dal Master).`,
+      timestamp: serverTimestamp(),
+    });
+  };
+  const clearEnemyAcBuffs = async (e) => { if (e) await updateDoc(enemyRef(e), { acBuffs: [] }); };
+
   const shieldBossManual = async () => {
     const boss = activeBosses[0];
     if (!boss) return;
@@ -1668,6 +1720,9 @@ export default function WorldBoss() {
         facing: def.facing === "right" ? "right" : "left",
         actions: Array.isArray(def.actions) ? def.actions.filter((a) => a && a.name) : [],
         nextTurnCondition: null, debuffSource: null,
+        resistances: Array.isArray(def.resistances) ? def.resistances : [],
+        vulnerabilities: Array.isArray(def.vulnerabilities) ? def.vulnerabilities : [],
+        immunities: Array.isArray(def.immunities) ? def.immunities : [],
         createdAt: serverTimestamp(),
       });
       await addDoc(collection(db, "world_boss_chat"), {
@@ -2211,7 +2266,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                       const exp = turnState.expiryDate.toDate ? turnState.expiryDate.toDate() : new Date(turnState.expiryDate);
                       const at = new Date(exp.getTime() - BOSS_TURN_DURATION + BOSS_AUTO_AFTER);
                       return (
-                        <span className="rpg-flow-sub" title="Se non fai nessuna azione, il boss attacca 1–6 eroi a caso e si cura, poi tocca agli eroi">
+                        <span className="rpg-flow-sub" title="Se non fai nessuna azione, il boss fa da solo 2 delle sue azioni pescate a caso (su 1–6 eroi a caso, o tutti se è ad area), poi tocca agli eroi">
                           🤖 da solo alle {at.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       );
@@ -2262,15 +2317,44 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                   {attacker && (
                     <div className="rpg-attacker-care">
                       <span className="rpg-attacker-care-txt">
-                        {attacker.kind === "boss" ? "👑" : "🪓"} <b>{attacker.name}</b> · {attacker.hp}/{attacker.maxHp ?? "?"} HP · CA {attacker.ac ?? "?"}
+                        {attacker.kind === "boss" ? "👑" : "🪓"} <b>{attacker.name}</b> · {attacker.hp}/{attacker.maxHp ?? "?"} HP · CA {enemyAc(attacker, turnState.turnNumber)}
+                        {acBuffTotal(attacker, turnState.turnNumber) ? ` (${parseInt(attacker.ac) || 10}+${acBuffTotal(attacker, turnState.turnNumber)} fino al T${Math.max(...activeAcBuffs(attacker, turnState.turnNumber).map((b) => b.untilTurn))})` : ""}
                         {(attacker.shield ?? 0) > 0 ? ` · 🛡 ${attacker.shield}` : ""}
-                        {attacker.nextTurnCondition === "advantage" ? " · ⬆ vantaggio" : attacker.nextTurnCondition === "disadvantage" ? " · 🌑 svantaggio" : ""}
+                        {(() => {
+                          const c = activeCond(attacker, turnState.turnNumber), left = condTurnsLeft(attacker, turnState.turnNumber);
+                          if (!c) return "";
+                          return ` · ${c === "advantage" ? "⬆ vantaggio" : "🌑 svantaggio"}${left ? ` (${left} turn${left === 1 ? "o" : "i"})` : ""}`;
+                        })()}
+                        {hasDefenses(attacker) && (
+                          <span className="rpg-attacker-defs">
+                            {DAMAGE_TYPES.filter((d) => resistOf(attacker, d.key)).map((d) => {
+                              const r = resistOf(attacker, d.key);
+                              return <i key={d.key} className={`rpg-def rpg-def--${r}`} title={`${r === "immune" ? "Immune" : r === "resist" ? "Resiste (metà)" : "Vulnerabile (×2)"} · ${damageTypeLabel(d.key)}`}>{d.icon}{r === "immune" ? "🚫" : r === "resist" ? "½" : "×2"}</i>;
+                            })}
+                          </span>
+                        )}
                       </span>
                       <span className="rpg-attacker-care-btns">
                         <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healEnemyManual(attacker, 5)}>+5</button>
                         <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => healEnemyManual(attacker, 10)}>+10</button>
                         <button className="rpg-sm-btn" onClick={() => attacker.kind === "minion" ? shieldMinionManual(attacker) : shieldBossManual()}>🛡 Scudo</button>
                         {attacker.kind === "minion" && <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => removeMinion(attacker)}>✕ Congeda</button>}
+                      </span>
+                      <span className="rpg-attacker-care-btns rpg-attacker-adjust">
+                        <span className="rpg-adjust-lbl">HP</span>
+                        <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => adjustEnemyHp(attacker, -10)}>−10</button>
+                        <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => adjustEnemyHp(attacker, -5)}>−5</button>
+                        <input className="rpg-adjust-input" type="number" placeholder="±n" value={enemyHpInput}
+                          aria-label="HP da togliere (negativo) o dare (positivo)"
+                          onChange={(e) => setEnemyHpInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && parseInt(enemyHpInput)) { adjustEnemyHp(attacker, parseInt(enemyHpInput)); setEnemyHpInput(""); } }} />
+                        <button className="rpg-sm-btn" disabled={!parseInt(enemyHpInput)} onClick={() => { adjustEnemyHp(attacker, parseInt(enemyHpInput)); setEnemyHpInput(""); }}>Applica</button>
+                        <span className="rpg-adjust-lbl">CA</span>
+                        <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => adjustEnemyAc(attacker, -1)}>−1</button>
+                        <button className="rpg-sm-btn" onClick={() => adjustEnemyAc(attacker, +1)}>+1</button>
+                        {acBuffTotal(attacker, turnState.turnNumber) > 0 && (
+                          <button className="rpg-sm-btn" onClick={() => clearEnemyAcBuffs(attacker)} title="Toglie subito i +CA a tempo">✕ buff CA</button>
+                        )}
                       </span>
                     </div>
                   )}
@@ -2381,8 +2465,8 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                             {isDead && <span className="rpg-dead-mark" title="A terra">💀</span>}
                             {(p.stats?.shield ?? 0) > 0 && <span className="rpg-ca-badge">🛡 {p.stats.shield}</span>}
                             {(p.selfAcBonus ?? 0) > 0 && <span className="rpg-ca-badge" title={p.selfAcSource || "Buff CA attivo"}>+{p.selfAcBonus} CA</span>}
-                            {p.nextTurnCondition === "advantage" && <span className="rpg-ca-badge" title="Vantaggio al prossimo tiro">⬆</span>}
-                            {p.nextTurnCondition === "disadvantage" && <span className="rpg-ca-badge rpg-ca-badge--dis" title="Svantaggio al prossimo tiro">⬇</span>}
+                            {activeCond(p, turnState.turnNumber) === "advantage" && <span className="rpg-ca-badge" title="Vantaggio">⬆{condTurnsLeft(p, turnState.turnNumber) ?? ""}</span>}
+                            {activeCond(p, turnState.turnNumber) === "disadvantage" && <span className="rpg-ca-badge rpg-ca-badge--dis" title={condTurnsLeft(p, turnState.turnNumber) ? `Svantaggio per ${condTurnsLeft(p, turnState.turnNumber)} turni` : "Svantaggio al prossimo tiro"}>⬇{condTurnsLeft(p, turnState.turnNumber) ?? ""}</span>}
                           </span>
                           <span className={`rpg-hero-row-hp ${hpCls}`}>{hp}/{maxHp}</span>
                           <span className="rpg-hero-row-chev" aria-hidden="true">{open ? "▴" : "▾"}</span>
@@ -2433,12 +2517,12 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                             <div className="rpg-hero-edit-row">
                               <span className="rpg-hero-edit-lbl">🎲 Prossimo tiro</span>
                               <button
-                                className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
-                                onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
+                                className={`rpg-sm-btn rpg-sm-btn--adv${activeCond(p, turnState.turnNumber) === "advantage" ? " active" : ""}`}
+                                onClick={() => handleSetCondition(p.id, activeCond(p, turnState.turnNumber) === "advantage" ? null : "advantage")}
                               >⬆ Vantaggio</button>
                               <button
-                                className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
-                                onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
+                                className={`rpg-sm-btn rpg-sm-btn--dis${activeCond(p, turnState.turnNumber) === "disadvantage" ? " active" : ""}`}
+                                onClick={() => handleSetCondition(p.id, activeCond(p, turnState.turnNumber) === "disadvantage" ? null : "disadvantage")}
                               >⬇ Svantaggio</button>
                             </div>
                           </div>
@@ -2470,9 +2554,13 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                       : "✓ Hai usato le tue azioni in questo turno: attendi il prossimo."}
                   </div>
                 )}
-                {charData?.nextTurnCondition && (
-                  <div className={`rpg-condition-badge rpg-condition-badge--${charData.nextTurnCondition}`}>
-                    {charData.nextTurnCondition === "advantage" ? "⬆ Prossimo tiro: VANTAGGIO" : "⬇ Prossimo tiro: SVANTAGGIO"}
+                {activeCond(charData, turnState.turnNumber) && (
+                  <div className={`rpg-condition-badge rpg-condition-badge--${activeCond(charData, turnState.turnNumber)}`}>
+                    {(() => {
+                      const c = activeCond(charData, turnState.turnNumber), left = condTurnsLeft(charData, turnState.turnNumber);
+                      const w = c === "advantage" ? "VANTAGGIO" : "SVANTAGGIO";
+                      return `${c === "advantage" ? "⬆" : "⬇"} ${left ? `${w} ai tiri · ancora ${left} turn${left === 1 ? "o" : "i"}` : `Prossimo tiro: ${w}`}`;
+                    })()}
                   </div>
                 )}
                 {fightStarted && turnState.phase === "players" && !isPlayerDead && !isFightOver && (() => {

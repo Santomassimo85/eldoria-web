@@ -20,6 +20,7 @@ import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
 import { DMG_TYPE_OPTIONS } from "./worldBossSpells";
+import { DAMAGE_TYPES, DAMAGE_TYPE_KEYS, EFFECT_TURNS_DEFAULT, EFFECT_TURNS_MAX } from "./worldBossEffects";
 import { resetWorldBossFight } from "../data/worldBossReset";
 import "./admin.css";
 import "./WorldBossAdmin.css";
@@ -36,9 +37,9 @@ const MAX_ACTIONS = 5;
 const ACTION_TYPES = [
   { value: "attack",     label: "⚔ Attacco",     hint: "Tira d20 + bonus vs CA. Danni: N×d." },
   { value: "heal",       label: "💖 Cura",        hint: "Cura il Boss di NdT + bonus HP." },
-  { value: "buff_ca",    label: "🛡 +CA",        hint: "Alza la CA del Boss del bonus indicato." },
-  { value: "buff_adv",   label: "⬆ Vantaggio",   hint: "Vantaggio sul prossimo attacco del Boss." },
-  { value: "debuff_dis", label: "⬇ Svantaggio",  hint: "Svantaggio sul prossimo tiro dei bersagli." },
+  { value: "buff_ca",    label: "🛡 +CA",        hint: "Alza la CA del Boss del bonus indicato per N turni." },
+  { value: "buff_adv",   label: "⬆ Vantaggio",   hint: "Vantaggio sugli attacchi del Boss per N turni." },
+  { value: "debuff_dis", label: "⬇ Svantaggio",  hint: "Svantaggio ai tiri dei bersagli per N turni." },
 ];
 
 // AoE shapes (mirrors battleModel.spellAoE geometry) + saving-throw abilities.
@@ -61,6 +62,7 @@ const blankAction = (i = 0) => ({
   diceType: i === 1 ? "d8" : "d6",
   bonus: 0,
   acBonus: 2,
+  durationTurns: EFFECT_TURNS_DEFAULT, // turni che durano +CA / vantaggio / svantaggio
   range: 1,            // gittata in tile (raggio d'azione per colpire/mirare)
   aoeShape: "single",  // single | sphere | square | line | cone
   aoeSize: 1,          // raggio (cerchio/quadrato) o lunghezza (linea/cono)
@@ -72,7 +74,7 @@ const blankAction = (i = 0) => ({
 });
 
 // A saved minion: simplified boss — name, HP, CA, attacks + alive/dead sprites.
-const blankMinion = () => ({ name: "", hp: 12, ac: 11, imageUrl: "", deadImageUrl: "", facing: "left", actions: [blankAction(0)] });
+const blankMinion = () => ({ name: "", hp: 12, ac: 11, imageUrl: "", deadImageUrl: "", facing: "left", actions: [blankAction(0)], resistances: [], vulnerabilities: [], immunities: [] });
 
 const initialBossState = {
   name: "",
@@ -87,6 +89,7 @@ const initialBossState = {
   gradoSfida: "",
   expiryDate: "",
   actions: [blankAction(0), blankAction(1)],
+  resistances: [], vulnerabilities: [], immunities: [],
 };
 
 const DICE = ["d4", "d6", "d8", "d10", "d12", "d20"];
@@ -133,6 +136,7 @@ const sanitizeAction = (a = {}, i = 0) => {
     diceType: VALID_DICE.includes(a.diceType) ? a.diceType : base.diceType,
     bonus: clamp(parseInt(a.bonus) || 0, -5, 30),
     acBonus: clamp(parseInt(a.acBonus) || 2, 1, 10),
+    durationTurns: clamp(parseInt(a.durationTurns) || EFFECT_TURNS_DEFAULT, 1, EFFECT_TURNS_MAX),
     range: clamp(parseInt(a.range) || 1, 1, 12),
     aoeShape: VALID_SHAPES.includes(a.aoeShape) ? a.aoeShape : "single",
     aoeSize: clamp(parseInt(a.aoeSize) || 1, 1, 6),
@@ -230,6 +234,49 @@ const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
    tipo + nome in testa, dadi e tipo di danno su una riga, il TS
    solo se serve. La spiegazione del tipo sta nel title del select.
    ────────────────────────────────────────────────────────────── */
+const TIMED_TYPES = ["buff_ca", "buff_adv", "debuff_dis"];
+
+/* Resistenze / vulnerabilità / immunità (2026-10-24): un tocco sul tipo di danno
+   cicla — · ½ resiste · ×2 vulnerabile · 🚫 immune. Valgono contro i danni degli eroi
+   nel fight (worldBossEffects.applyResist). */
+const DEF_STATES = [
+  { k: null, tag: "", title: "normale" },
+  { k: "resistances", tag: "½", title: "resiste: metà danni" },
+  { k: "vulnerabilities", tag: "×2", title: "vulnerabile: danni doppi" },
+  { k: "immunities", tag: "🚫", title: "immune: nessun danno" },
+];
+const DEF_KEYS = ["resistances", "vulnerabilities", "immunities"];
+const cleanDefList = (v) => (Array.isArray(v) ? v.filter((k) => DAMAGE_TYPE_KEYS.includes(k)) : []);
+const defensesOf = (o) => Object.fromEntries(DEF_KEYS.map((k) => [k, cleanDefList(o?.[k])]));
+const DefensesPicker = ({ value, onChange }) => {
+  const stateOf = (key) => DEF_KEYS.find((k) => (value?.[k] || []).includes(key)) || null;
+  const cycle = (key) => {
+    const cur = stateOf(key);
+    const next = DEF_STATES[(DEF_STATES.findIndex((st) => st.k === cur) + 1) % DEF_STATES.length].k;
+    const out = defensesOf(value);
+    DEF_KEYS.forEach((k) => { out[k] = out[k].filter((x) => x !== key); });
+    if (next) out[next] = [...out[next], key];
+    onChange(out);
+  };
+  return (
+    <div className="wb-defs">
+      <div className="wb-defs-grid">
+        {DAMAGE_TYPES.map((d) => {
+          const st = DEF_STATES.find((x) => x.k === stateOf(d.key));
+          return (
+            <button key={d.key} type="button" className={`wb-def ${st.k ? "wb-def--" + st.k : ""}`}
+              aria-label={`${d.label}: ${st.title}`} title={`${d.label}: ${st.title} (tocca per cambiare)`}
+              onClick={() => cycle(d.key)}>
+              <span aria-hidden="true">{d.icon}</span> {d.label}{st.tag && <b>{st.tag}</b>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="wb-defs-hint">Tocca un tipo di danno: <b>½</b> resiste · <b>×2</b> vulnerabile · <b>🚫</b> immune · di nuovo = normale.</p>
+    </div>
+  );
+};
+
 const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
   const type = action.type || "attack";
   const meta = ACTION_TYPES.find((t) => t.value === type) || ACTION_TYPES[0];
@@ -299,10 +346,17 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
         </div>
       )}
 
-      {type === "buff_ca" && (
+      {TIMED_TYPES.includes(type) && (
         <div className="wb-act-row">
-          <label className="wb-mini"><span>+CA</span>
-            <input className="admin-field-input" type="number" value={action.acBonus ?? 2} onChange={(e) => onChange({ acBonus: e.target.value })} />
+          {type === "buff_ca" && (
+            <label className="wb-mini"><span>+CA</span>
+              <input className="admin-field-input" type="number" value={action.acBonus ?? 2} onChange={(e) => onChange({ acBonus: e.target.value })} />
+            </label>
+          )}
+          <label className="wb-mini" title="Quanti turni dura l'effetto, poi scade da solo.">
+            <span>Turni</span>
+            <input className="admin-field-input" type="number" min="1" max={EFFECT_TURNS_MAX}
+              value={action.durationTurns ?? EFFECT_TURNS_DEFAULT} onChange={(e) => onChange({ durationTurns: e.target.value })} />
           </label>
         </div>
       )}
@@ -742,6 +796,7 @@ PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un e
       imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "",
       facing: m.facing === "right" ? "right" : "left",
       actions: m.actions?.length ? m.actions.map((a) => ({ ...blankAction(0), ...a })) : [blankAction(0)],
+      ...defensesOf(m),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -757,6 +812,7 @@ PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un e
       deadImageUrl: minionForm.deadImageUrl || "",
       facing: minionForm.facing === "right" ? "right" : "left",
       actions: minionForm.actions,
+      ...defensesOf(minionForm),
       updatedAt: serverTimestamp(),
     };
     try {
@@ -797,6 +853,7 @@ PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un e
       hp: boss.hp ?? "",
       actions: normalizeBossActions(boss),
       rewardsData: normalizeRewards(boss),
+      ...defensesOf(boss),
     });
     setTab("forgia");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -819,6 +876,7 @@ PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un e
       facing: form.facing === "right" ? "right" : "left",
       expiryDate: form.expiryDate || "",
       actions: form.actions,
+      ...defensesOf(form),
       rewardsData: cleanRewards(form.rewardsData),
       rewards: rewardsSummary(form.rewardsData),
     };
@@ -1109,6 +1167,10 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
                   value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="wb-field">
+                <label>🛡 Resistenze e debolezze</label>
+                <DefensesPicker value={form} onChange={(d) => setForm((b) => ({ ...b, ...d }))} />
+              </div>
+              <div className="wb-field">
                 <label>⏳ Fine dell'evento</label>
                 <DateTimePicker value={form.expiryDate || ""} onChange={(v) => setForm({ ...form, expiryDate: v })}
                   presets="auction" placeholder="Quando finisce l'evento?" />
@@ -1247,6 +1309,11 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="wb-field">
+                <label>🛡 Resistenze e debolezze</label>
+                <DefensesPicker value={minionForm} onChange={(d) => setMinionForm((m) => ({ ...m, ...d }))} />
               </div>
 
               <ActionsList title="⚔ Attacchi" actions={minionForm.actions} min={1}

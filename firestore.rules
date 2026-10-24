@@ -62,7 +62,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource', 'condUntilTurn'])
       );
     }
 
@@ -82,7 +82,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource', 'condUntilTurn'])
       );
     }
 

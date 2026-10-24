@@ -695,6 +695,15 @@
 .rpg-attacker-care-txt { font-size: .88rem; color: var(--rpg-dim); }
 .rpg-attacker-care-txt b { color: var(--osso); font-weight: 400; font-family: var(--rpg-font-sc); }
 .rpg-attacker-care-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+/* HP e CA a mano del boss/minion (2026-10-24) + resistenze */
+.rpg-attacker-adjust { width: 100%; align-items: center; }
+.rpg-adjust-lbl { font-family: var(--rpg-font-sc); font-size: .78rem; color: var(--rpg-dim); margin-left: 4px; }
+.rpg-adjust-input { width: 64px; min-height: 30px; padding: 2px 6px; background: rgba(var(--ossidiana-rgb), .55); color: var(--osso); border: 1px solid var(--rpg-border); border-radius: 3px; font: inherit; font-size: .85rem; }
+.rpg-attacker-defs { display: inline-flex; flex-wrap: wrap; gap: 3px; margin-left: 6px; vertical-align: middle; }
+.rpg-def { font-style: normal; font-size: .74rem; padding: 0 4px; border-radius: 3px; border: 1px solid var(--rpg-border); }
+.rpg-def--resist { color: var(--osso); }
+.rpg-def--immune { color: var(--rpg-dim); text-decoration: line-through; }
+.rpg-def--vuln { color: var(--rpg-red); border-color: rgba(217, 70, 59, .45); }
 
 /* Passo 2 · Tutti | Scelgo io + chip degli eroi */
 .rpg-seg { display: flex; gap: 3px; padding: 3px; background: var(--ossidiana); border: 1px solid var(--rpg-border); border-radius: var(--rpg-r); }

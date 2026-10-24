@@ -40,13 +40,13 @@ export async function resetWorldBossFight({ boss = null, clearChat = true } = {}
   const chars = await getDocs(collection(db, "characters"));
   const touched = chars.docs.filter((d) => {
     const c = d.data();
-    return c.nextTurnCondition || c.debuffSource || Number(c.stats?.shield) > 0 || Number(c.selfAcBonus) > 0;
+    return c.nextTurnCondition || c.debuffSource || c.condUntilTurn != null || Number(c.stats?.shield) > 0 || Number(c.selfAcBonus) > 0;
   });
   for (let i = 0; i < touched.length; i += 450) {
     const b = writeBatch(db);
     touched.slice(i, i + 450).forEach((d) => {
       const c = d.data();
-      const patch = { nextTurnCondition: null, debuffSource: null };
+      const patch = { nextTurnCondition: null, debuffSource: null, condUntilTurn: null };
       if (Number(c.stats?.shield) > 0) patch["stats.shield"] = 0;
       if (Number(c.selfAcBonus) > 0) Object.assign(patch, { selfAcBonus: 0, selfAcSource: null, selfAcAppliedAt: null });
       b.update(d.ref, patch);
@@ -58,7 +58,7 @@ export async function resetWorldBossFight({ boss = null, clearChat = true } = {}
     const b = writeBatch(db);
     b.update(doc(db, "bosses", boss.id), {
       hp: Number(boss.maxHp) || Number(boss.hp) || 1, shield: 0,
-      nextTurnCondition: null, debuffSource: null,
+      nextTurnCondition: null, debuffSource: null, condUntilTurn: null, acBuffs: [],
       // battaglia nuova = vittoria, sconfitta e premi da rifare
       victoryNotified: deleteField(), defeatNotified: deleteField(), rewardsDelivered: deleteField(),
       ...(boss.baseAc != null ? { ac: Number(boss.baseAc) || boss.ac, baseAc: deleteField() } : {}),
