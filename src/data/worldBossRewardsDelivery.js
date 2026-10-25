@@ -1,17 +1,20 @@
 import { db } from "../firebase";
-import { collection, doc, increment, runTransaction, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDocs, increment, runTransaction, serverTimestamp } from "firebase/firestore";
+import { isHiddenChar } from "./hiddenPlayers";
 import { marketItemToFoundryPayload } from "../utils/foundryMap";
 import { PARTY_MEMBERS } from "./partyMembers";
 import { cleanRewards } from "../pages/WorldBossRewards";
 
 /* ============================================================
    Consegna dei premi del World Boss (2026-10-21)
-   - PARTECIPANTE = chi ha attaccato il boss almeno MIN_ATTACKS volte
+   - PE, monete (mo) e Corone a TUTTI i PG attivi che stanno in un gruppo
+     (AMEA, LEAF, ENOX…), anche a chi non ha attaccato (2026-10-25,
+     scelta dell'utente). Inattivi (hiddenPlayers) e senza gruppo no.
+   - ATTACCANTE = chi ha attaccato il boss almeno MIN_ATTACKS volte
      (`battle_meta/turn_tracker.attackCounts[bossId][uid]`, colpi e mancati).
-   - PE, monete (mo) e Corone a OGNI partecipante.
-   - Ogni OGGETTO del bottino esce in UNA copia per gruppo (AMEA, LEAF,
-     ENOX, LAC…) e la prende un partecipante a caso di quel gruppo.
-     Chi non è in nessun gruppo finisce in "Altri", che conta come un gruppo.
+   - Ogni OGGETTO del bottino esce in UNA copia per gruppo e la prende un
+     attaccante a caso di quel gruppo. Un attaccante senza gruppo finisce in
+     "Altri", che conta come un gruppo.
    Tutto in UNA transazione che segna `rewardsDelivered` sul boss: due
    schede del Master o il bottone del pannello non consegnano due volte.
    Oggetti, monete e PE vanno in `foundry_inbox` (li porta "Fetch admin");
@@ -40,13 +43,22 @@ export const partyOfChar = (c) => {
 
 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-// Piano della consegna (puro: niente scritture). counts = attackCounts[bossId].
+// Piano della consegna (puro: niente scritture). counts = attackCounts[bossId],
+// charsById = tutte le schede. participants = chi prende PE/mo/Corone.
 export function planBossRewards(rewardsData, counts, charsById) {
   const r = cleanRewards(rewardsData || {});
-  const participants = Object.entries(counts || {})
+  const hero = (uid) => {
+    const c = charsById[uid];
+    return { uid, name: c.name || "Eroe", party: partyOfChar(c), attacks: Number(counts?.[uid]) || 0 };
+  };
+  const attackers = Object.entries(counts || {})
     .filter(([uid, n]) => (Number(n) || 0) >= MIN_ATTACKS && charsById[uid])
-    .map(([uid, n]) => ({ uid, name: charsById[uid].name || "Eroe", party: partyOfChar(charsById[uid]), attacks: Number(n) || 0 }));
-  const byParty = participants.reduce((acc, p) => { (acc[p.party] = acc[p.party] || []).push(p); return acc; }, {});
+    .map(([uid]) => hero(uid));
+  const members = Object.keys(charsById)
+    .filter((uid) => !isHiddenChar({ id: uid, ...charsById[uid] }) && partyOfChar(charsById[uid]) !== NO_PARTY)
+    .map(hero);
+  const participants = [...members, ...attackers.filter((a) => !members.some((m) => m.uid === a.uid))];
+  const byParty = attackers.reduce((acc, p) => { (acc[p.party] = acc[p.party] || []).push(p); return acc; }, {});
   const items = [];
   r.items.forEach((item) => {
     Object.entries(byParty).forEach(([party, members]) => {
@@ -63,6 +75,11 @@ export function planBossRewards(rewardsData, counts, charsById) {
  * ha attaccato abbastanza.
  */
 export async function deliverBossRewards(bossId, createdBy = "") {
+  // Tutte le schede (le transazioni web non leggono query): servono per
+  // sapere chi sta in un gruppo. Le Corone usano increment, quindi una
+  // lettura fuori dalla transazione non fa perdere niente.
+  const allChars = {};
+  (await getDocs(collection(db, "characters"))).forEach((s) => { allChars[s.id] = s.data(); });
   return runTransaction(db, async (tx) => {
     const bossRef = doc(db, "bosses", bossId);
     const bossSnap = await tx.get(bossRef);
@@ -75,12 +92,7 @@ export async function deliverBossRewards(bossId, createdBy = "") {
 
     const turnSnap = await tx.get(doc(db, "battle_meta", "turn_tracker"));
     const counts = turnSnap.data()?.attackCounts?.[bossId] || {};
-    const uids = Object.keys(counts).filter((u) => (Number(counts[u]) || 0) >= MIN_ATTACKS);
-    const charSnaps = await Promise.all(uids.map((u) => tx.get(doc(db, "characters", u))));
-    const charsById = {};
-    charSnaps.forEach((s) => { if (s.exists()) charsById[s.id] = s.data(); });
-
-    const plan = planBossRewards(boss.rewardsData, counts, charsById);
+    const plan = planBossRewards(boss.rewardsData, counts, allChars);
     if (!plan.participants.length) return { empty: true };
 
     const r = plan.rewards;
@@ -124,7 +136,7 @@ export async function deliverBossRewards(bossId, createdBy = "") {
 // Testo per chat/notifica: chi ha preso cosa.
 export function deliverySummaryText(s) {
   if (!s || s.nothing) return "";
-  if (s.empty) return "Nessun eroe ha attaccato almeno 2 volte: niente premi da consegnare.";
+  if (s.empty) return "Nessun eroe nei gruppi: niente premi da consegnare.";
   const who = (s.participants || []).map((p) => p.name.split(" ")[0]).join(", ");
   const coins = [s.xp && `${s.xp} PE`, s.gp && `${s.gp} mo`, s.corone && `${s.corone} Corone`].filter(Boolean).join(", ");
   const loot = (s.items || []).map((i) => `${i.item} → ${i.name.split(" ")[0]}${i.party && i.party !== NO_PARTY ? ` (${i.party})` : ""}`).join(" · ");

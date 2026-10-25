@@ -570,9 +570,9 @@ export default function WorldBossAdmin() {
 
   const consegnaPremi = async (boss) => {
     const n = Object.values(attackCounts[boss.id] || {}).filter((v) => (Number(v) || 0) >= MIN_ATTACKS).length;
-    if (!window.confirm(`Consegnare i premi di "${boss.name}" ai ${n} eroi che lo hanno attaccato almeno ${MIN_ATTACKS} volte?
+    if (!window.confirm(`Consegnare i premi di "${boss.name}"?
 
-PE e monete vanno nella coda di Foundry, le Corone sul sito, ogni oggetto a un eroe a caso per gruppo.`)) return;
+PE, monete e Corone a tutti gli eroi attivi dei gruppi (anche a chi non ha attaccato). Ogni oggetto a uno dei ${n} eroi che lo hanno attaccato almeno ${MIN_ATTACKS} volte, uno per gruppo.`)) return;
     setDelivering(boss.id);
     try {
       const res = await deliverBossRewards(boss.id, currentUser?.email || "");
@@ -1065,7 +1065,7 @@ Si azzera anche il fight: via i minion evocati (e le loro tombe), turni da capo,
                           <ul className="wb-card-paid-list">
                             {(boss.rewardsDelivered.participants || []).map((p) => (
                               <li key={p.uid}>
-                                <strong>{p.name}</strong> <small>{p.party === NO_PARTY ? "senza gruppo" : p.party} · {p.attacks} attacchi</small>
+                                <strong>{p.name}</strong> <small>{p.party === NO_PARTY ? "senza gruppo" : p.party} · {p.attacks ? `${p.attacks} attacchi` : "non ha attaccato"}</small>
                                 {(boss.rewardsDelivered.items || []).filter((i) => i.uid === p.uid).map((i, k) => <span key={k} className="wb-paid-item">🎁 {i.item}</span>)}
                               </li>
                             ))}
