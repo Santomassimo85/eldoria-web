@@ -28,7 +28,7 @@ const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
   ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   LAC: ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  LEAF: ["Soran", "Zethir", "Aksel", "Dago"],
+  LEAF: ["Soran", "Zethir", "Aksel", "Dago", "Karlberht"],
 };
 
 const PARTY_COLORS = {

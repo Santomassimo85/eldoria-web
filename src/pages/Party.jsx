@@ -72,6 +72,7 @@ const PARTIES = [
       { name: "Zethir",           race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg?v=2" },
       { name: "Aksel",            race: "Umano",      class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
       { name: "Dago",             race: "Umano",      class: "Ladro",    image: "/assets/player/dago.jpeg" },
+      { name: "Karlberht",        race: "Umano",      class: "Guerriero", image: "/assets/player/Karlberht.jpg" },
     ],
   },
 ];
@@ -99,6 +100,7 @@ const HERO_BIOS = {
   "Zethir": "",
   "Aksel": "",
   "Dago": "",
+  "Karlberht": "",
 };
 
 /* Compagnie con almeno un eroe ATTIVO: quelle svuotate (es. Lac) spariscono

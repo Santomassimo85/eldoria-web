@@ -358,7 +358,8 @@ export default function WorldBoss() {
     minionInstances.forEach((m) => list.push({ ...m, kind: "minion", vfxKey: `minion-${m.id}` }));
     return list;
   }, [activeBosses, minionInstances]);
-  const livingEnemies = useMemo(() => enemies.filter((e) => (e.hp ?? 0) > 0), [enemies]);
+  // PF illeggibili (NaN) = vivo: un dato rotto non deve mai dare la vittoria.
+  const livingEnemies = useMemo(() => enemies.filter((e) => (e.hp ?? 0) > 0 || Number.isNaN(e.hp)), [enemies]);
 
   // Il boss è a terra (sprite morto) — ma la battaglia continua finché vivono i servi.
   const isBossDefeated = useMemo(() => {
@@ -1305,11 +1306,15 @@ export default function WorldBoss() {
         const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || action.name?.toLowerCase().includes("arco") || action.name?.toLowerCase().includes("scimitar");
         const modValue = statMod(charData, isFinesseOrRanged ? "dex" : "str");
         let cleanFormula = formulaRaw.replace(/@mod/g, modValue).replace(/\s+/g, "");
-        const parts = cleanFormula.split("+");
-        const diePart = parts[0];
+        // Il primo termine coi dadi è il dado dell'arma; i numeri sono bonus fissi.
+        // Armi senza dado ("1+3": cerbottana, colpo senz'armi) = solo danno fisso:
+        // prima il "1" finiva letto come dado senza facce → NaN sui PF del boss.
+        const parts = cleanFormula.split("+").filter(Boolean);
+        const dieIdx = parts.findIndex((p) => /^\d*d\d+$/.test(p));
+        const diePart = dieIdx >= 0 ? parts[dieIdx] : null;
         let staticBonus = 0;
-        for (let i = 1; i < parts.length; i++) staticBonus += parseInt(parts[i]) || 0;
-        const [num, sides] = diePart.split("d").map((n) => parseInt(n) || 1);
+        parts.forEach((p, i) => { if (i !== dieIdx) staticBonus += parseInt(p) || 0; });
+        const [num, sides] = diePart ? diePart.split("d").map((n) => parseInt(n) || 1) : [0, 0];
         let dieRollTotal = 0;
         let rolls = [];
         for (let i = 0; i < num; i++) { const r = Math.floor(Math.random() * sides) + 1; dieRollTotal += r; rolls.push(r); }
@@ -1323,7 +1328,7 @@ export default function WorldBoss() {
           riderNote = ` + ${rider.name} ${r.detail}=${r.total}`;
         }
         if (isCritical) { totalDamage *= 2; riderDamage *= 2; }
-        let dieDetail = `Dado ${diePart}[${rolls.join("+")}]`;
+        let dieDetail = diePart ? `Dado ${diePart}[${rolls.join("+")}]` : "Danno fisso";
         let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}${riderNote}`;
         if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}${riderNote}) x2`;
         if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
@@ -1343,6 +1348,7 @@ export default function WorldBoss() {
         const wRes = applyResist(boss, damageTypeFor(action), totalDamage);
         const rRes = riderDamage ? applyResist(boss, damageTypeFor(rider), riderDamage) : { dmg: 0, note: "" };
         totalDamage = wRes.dmg + rRes.dmg;
+        if (!Number.isFinite(totalDamage)) totalDamage = 0; // mai NaN sui PF del nemico
         const resNote = wRes.note + rRes.note;
         const currentShield = boss.shield || 0;
         const currentHp = boss.hp || 0;

@@ -35,6 +35,7 @@ const PARTIES = [
     { name: "Zethir", image: "/assets/player/Zethir.jpeg?v=2" },
     { name: "Aksel",  image: "/assets/player/Aksel.png" },
     { name: "Dago",   image: "/assets/player/dago.jpeg" },
+    { name: "Karlberht", image: "/assets/player/Karlberht.jpg" },
   ] },
   { key: "ENOX",  label: "ENOX",  members: [
     { name: "Makenna",    image: "/assets/player/Makenna.jpeg" },
