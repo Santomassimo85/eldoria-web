@@ -80,7 +80,9 @@ Subject: ${who || "fantasy hero"}. Reproduce faithfully the appearance in the re
 ${dead
     ? `Pose: DEFEATED — the hero lies collapsed on the ground beside a small stone gravestone (tomb), eyes closed${wDesc ? `, the ${weapon.name} dropped on the ground next to them` : ", weapon dropped"}. Muted, sombre colours.`
     : alive}
-Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.
+Style: high-quality SERIOUS dark-fantasy pixel art, like the hero sprites of a polished modern 2D RPG: detailed 32-bit-era pixel shading on armour, cloth and leather, limited but rich palette, crisp pixels, clean outlines, NO anti-aliasing, NO blur.
+Proportions: REALISTIC adult anatomy, about 7 heads tall, normal-sized head and small eyes. NOT chibi, NOT super-deformed, NOT big-headed, NOT cute, NOT cartoon, NOT anime.
+Mood: grim, determined and focused warrior expression (or calm and solemn when defeated). NO comic or exaggerated expressions, NO sweat drops, NO wide scared eyes, NO open screaming mouth, NO motion lines, NO cartoon effects or emoji-like symbols.
 CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
 };
 
@@ -278,7 +280,9 @@ export default function PlayerSpritesAdmin() {
           prompt: heroSpritePrompt(char, dead, weaponFor(char)),
           refs: [ref],
           characters: [{ name: char.name, race: char.race, class: char.class }],
-          tono: getImageTone(),
+          // Niente tono del sito: gli sprite degli eroi sono sempre seri (il tono
+          // "divertente" li rendeva cartoni con gocce di sudore). Modello migliore.
+          qualita: true,
         }),
       });
       const data = await r.json();
@@ -509,7 +513,6 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
       {/* ── Sprite eroi ── */}
       <div className="adm-panel">
         <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
-        <ImageTonePicker compact />
         <small className="wb-ai-hint">✨ <strong>Genera</strong> = Gemini disegna lo sprite pixel-art partendo dall'<strong>avatar</strong> del PG (fondo rimosso, come boss e minion), <strong>in posa di combattimento rivolto a sinistra</strong> con l'arma scelta sotto il nome (in automatico la più forte o quella con un nome proprio, presa dalle armi della scheda). Serve un avatar sulla scheda. <strong>⇆ Gira</strong> = specchia lo sprite: nel fight gli eroi stanno a destra, quindi devono guardare a <strong>sinistra</strong>, verso il boss (l'anteprima qui è identica alla battaglia).</small>
         <div className="wbs-grid">
           {characters.map((char) => (

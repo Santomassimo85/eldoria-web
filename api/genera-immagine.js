@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile, refs, characters, aspectRatio, tono } = req.body || {};
+  const { prompt, npc, stile, refs, characters, aspectRatio, tono, qualita } = req.body || {};
   // Formato dell'immagine (es. "16:9" per gli sfondi di battaglia). Solo
   // quelli che Gemini accetta; altrimenti il suo predefinito (quadrato).
   const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
@@ -148,7 +148,7 @@ ${castBlock}ISTRUZIONI SUI RIFERIMENTI (IMPORTANTISSIMO):
     const data = await geminiCall({
       contents: [{ parts: reqParts }],
       generationConfig: { temperature: 1, ...(ratio ? { imageConfig: { aspectRatio: ratio } } : {}) }
-    }, { models: IMAGE_MODELS });
+    }, { models: qualita ? [...IMAGE_MODELS].reverse() : IMAGE_MODELS }); // qualita = prima il modello migliore (sprite degli eroi)
     if (data.error) return res.status(data.error.httpStatus === 402 || data.error.httpStatus === 429 ? 429 : 500).json({ error: data.error.message });
 
     const respParts = data?.candidates?.[0]?.content?.parts || [];
