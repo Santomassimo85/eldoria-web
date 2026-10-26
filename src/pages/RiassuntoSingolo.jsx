@@ -211,8 +211,22 @@ export default function RiassuntoSingolo() {
                     </button>
                 </div>
 
-                {/* ── Copertina arrotondata + testata a gradiente (kit Nesso) ── */}
-                {summary.coverImage && (
+                {/* ── Hero: video se presente, altrimenti copertina (kit Nesso) ── */}
+                {summary.videoUrl ? (
+                    <div className="rsx-cover rsx-video">
+                        <video
+                            className="nx-modale-img"
+                            src={summary.videoUrl}
+                            poster={summary.coverImage || undefined}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            controls
+                            onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                        />
+                    </div>
+                ) : summary.coverImage && (
                     <div className="rsx-cover">
                         <img
                             className="nx-modale-img"

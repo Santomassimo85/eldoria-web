@@ -44,6 +44,7 @@ const initialFormData = {
   date: "",
   coverImage: "",
   images: [],
+  videoUrl: "",
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -345,6 +346,13 @@ export default function SummaryAdmin() {
   // Cache degli avatar-riferimento per gruppo (evita di riscaricarli a ogni rigenera).
   const refsCache = useRef({});
 
+  // ── Video del riassunto (fal.ai Vidu, uno per riassunto) ──
+  const [videoBusy, setVideoBusy] = useState(false);      // generazione in corso
+  const [videoStatus, setVideoStatus] = useState("");      // messaggio di avanzamento
+  const [videoPending, setVideoPending] = useState(null);  // { url } da tenere/scartare
+  const [videoDuration, setVideoDuration] = useState(6);   // secondi (3–16)
+  const videoCancel = useRef(false);
+
   useEffect(() => {
     if (!canEditSummaries(currentUser)) return;
     const unsub = onSnapshot(collection(db, "summaries"), (snap) => {
@@ -477,6 +485,7 @@ export default function SummaryAdmin() {
     try {
       await cleanupStorageUrl(summary.coverImage);
       for (const url of (summary.images || [])) await cleanupStorageUrl(url);
+      if (summary.videoUrl) await cleanupStorageUrl(summary.videoUrl);
       await deleteDoc(doc(db, "summaries", summary.id));
       setStatus(`✅ Riassunto eliminato.`);
     } catch (error) {
@@ -500,6 +509,7 @@ export default function SummaryAdmin() {
           date: formData.date,
           coverImage: formData.coverImage || "",
           images: formData.images || [],
+          videoUrl: formData.videoUrl || "",
           updatedAt: new Date().toISOString(),
         });
         setStatus(`✅ "${formData.title}" aggiornato.`);
@@ -529,6 +539,7 @@ export default function SummaryAdmin() {
       date: summary.date || "",
       coverImage: summary.coverImage || "",
       images: Array.isArray(summary.images) ? summary.images : [],
+      videoUrl: summary.videoUrl || "",
     });
     setIsEditing(true);
     setEditingId(summary.id);
@@ -745,6 +756,107 @@ export default function SummaryAdmin() {
   // Cambia stile all'interno dell'anteprima (avrà effetto al prossimo "Rigenera").
   const setPendingStyle = (key) => setPending((p) => (p ? { ...p, style: key } : p));
 
+  /* ── VIDEO (fal.ai Vidu) — uno per riassunto, parte dalla copertina ──
+     Asincrono: avvia il lavoro, interroga lo stato finché pronto, mostra
+     l'anteprima. "Tieni" scarica l'mp4 e lo salva su Storage come le immagini. */
+  const buildVideoPrompt = (summary) => {
+    const bits = [summary?.title, summary?.subTitle, stripHtml(summary?.content).slice(0, 400)]
+      .filter(Boolean).join(". ");
+    return (
+      `${bits}. Animate this fantasy illustration with subtle cinematic motion: ` +
+      `slow drifting camera, gentle parallax, drifting embers and dust, flowing fabric and hair, ` +
+      `atmospheric flickering light. Keep the exact original art style and characters; no text.`
+    ).slice(0, 5000);
+  };
+
+  const startVideoGeneration = async (summary) => {
+    if (videoBusy || !summary) return;
+    const cover = (isEditing && editingId === summary.id) ? formData.coverImage : summary.coverImage;
+    if (!cover) { setStatus("❌ Serve prima una copertina: il video parte da quella."); return; }
+    videoCancel.current = false;
+    setVideoBusy(true);
+    setVideoStatus("🎬 Avvio generazione video…");
+    try {
+      const r = await fetch("/api/genera-video", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageUrl: cover, prompt: buildVideoPrompt(summary), duration: videoDuration }),
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      if (!d.statusUrl || !d.responseUrl) throw new Error("Avvio video non riuscito.");
+
+      // Interroga lo stato ogni 6 s (max ~6 min).
+      const started = Date.now();
+      while (!videoCancel.current) {
+        if (Date.now() - started > 6 * 60 * 1000) throw new Error("Il video ci sta mettendo troppo. Riprova.");
+        await new Promise((res) => setTimeout(res, 6000));
+        if (videoCancel.current) return;
+        const rs = await fetch("/api/video-stato", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ statusUrl: d.statusUrl, responseUrl: d.responseUrl }),
+        });
+        const s = await rs.json();
+        if (s.error) throw new Error(s.error);
+        if (s.ready && s.url) { setVideoPending({ url: s.url }); setVideoStatus(""); return; }
+        setVideoStatus(s.status === "IN_QUEUE" ? "🎬 In coda su fal…" : "🎬 Sto generando il video…");
+      }
+    } catch (e) {
+      setVideoStatus("");
+      setStatus(`❌ Errore video: ${e.message}`);
+    } finally {
+      setVideoBusy(false);
+    }
+  };
+
+  const commitVideo = async (summary) => {
+    if (!videoPending || videoBusy) return;
+    setVideoBusy(true);
+    setVideoStatus("💾 Salvo il video…");
+    try {
+      // Scarico via proxy server (evita CORS su fal.media).
+      const resp = await fetch(`/api/video-file?url=${encodeURIComponent(videoPending.url)}`);
+      if (!resp.ok) throw new Error("Download del video non riuscito.");
+      const blob = await resp.blob();
+      const path = `summaries/video/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, blob, { contentType: blob.type || "video/mp4" });
+      const url = await getDownloadURL(ref);
+      const old = (isEditing && editingId === summary.id) ? formData.videoUrl : summary.videoUrl;
+      await updateDoc(doc(db, "summaries", summary.id), { videoUrl: url, updatedAt: new Date().toISOString() });
+      if (old) cleanupStorageUrl(old);
+      if (isEditing && editingId === summary.id) setFormData((dd) => ({ ...dd, videoUrl: url }));
+      setVideoPending(null);
+      setVideoStatus("");
+      setStatus(`✅ Video salvato${summary.title ? ` per "${summary.title}"` : ""}.`);
+    } catch (e) {
+      setVideoStatus("");
+      setStatus(`❌ Errore salvataggio video: ${e.message}`);
+    } finally {
+      setVideoBusy(false);
+    }
+  };
+
+  const discardVideo = () => {
+    if (videoBusy) { videoCancel.current = true; setVideoBusy(false); }
+    setVideoPending(null);
+    setVideoStatus("");
+  };
+
+  const removeVideo = async (summary) => {
+    if (!summary?.videoUrl) return;
+    if (!window.confirm("Rimuovere il video da questo riassunto?")) return;
+    try {
+      await updateDoc(doc(db, "summaries", summary.id), { videoUrl: "", updatedAt: new Date().toISOString() });
+      cleanupStorageUrl(summary.videoUrl);
+      if (isEditing && editingId === summary.id) setFormData((dd) => ({ ...dd, videoUrl: "" }));
+      setStatus("✅ Video rimosso.");
+    } catch (e) {
+      setStatus(`❌ Errore: ${e.message}`);
+    }
+  };
+
   /* ── Derived data ── */
   const stats = useMemo(() => {
     const total = summaries.length;
@@ -908,6 +1020,75 @@ export default function SummaryAdmin() {
               )}
             </div>
 
+            {isEditing && editingId && (
+              <div className="sumadm-field">
+                <label>Video del riassunto (opzionale) · uno per riassunto</label>
+                {formData.videoUrl ? (
+                  <div className="sumadm-video-has">
+                    <video
+                      src={formData.videoUrl}
+                      controls
+                      muted
+                      loop
+                      playsInline
+                      style={{ width: "100%", borderRadius: 10, display: "block" }}
+                    />
+                    <div className="sumadm-scene-gen-styles" style={{ marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="sumadm-btn"
+                        disabled={videoBusy}
+                        onClick={() => startVideoGeneration(
+                          summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
+                        )}
+                      >
+                        {videoBusy ? "⏳ Genero…" : "🔄 Rigenera video (~0,40 €)"}
+                      </button>
+                      <button
+                        type="button"
+                        className="sumadm-btn ghost"
+                        disabled={videoBusy}
+                        onClick={() => removeVideo(summaries.find((s) => s.id === editingId) || { id: editingId, ...formData })}
+                      >
+                        ✕ Rimuovi video
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="sumadm-scene-gen">
+                    <div className="sumadm-scene-gen-styles">
+                      {[[6, "~0,40 €"], [10, "~0,65 €"], [16, "~1,00 €"]].map(([sec, price]) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          className={`sumadm-style-chip ${videoDuration === sec ? "on" : ""}`}
+                          disabled={videoBusy}
+                          onClick={() => setVideoDuration(sec)}
+                        >
+                          {sec}s · {price}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="sumadm-btn primary"
+                      disabled={videoBusy || !formData.coverImage}
+                      onClick={() => startVideoGeneration(
+                        summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
+                      )}
+                    >
+                      {videoBusy ? "⏳ Genero video…" : "🎬 Genera video (fal.ai Vidu)"}
+                    </button>
+                    <small className="sumadm-gallery-hint">
+                      Parte dalla <strong>copertina</strong> e la anima (cartoon/fantasy). A pagamento (~0,40–1,00 € a clip);
+                      se viene male puoi rigenerarlo. {!formData.coverImage && <em>Serve prima una copertina.</em>}
+                    </small>
+                  </div>
+                )}
+                {videoStatus && <p className="sumadm-scene-caption">{videoStatus}</p>}
+              </div>
+            )}
+
             <div className="sumadm-field">
               <label>Contenuto (HTML consentito)</label>
               <HtmlToolbar
@@ -1037,7 +1218,11 @@ export default function SummaryAdmin() {
             <small>Come apparirà nelle Memorie</small>
           </div>
           <div className="sumadm-preview-card">
-            {formData.coverImage ? (
+            {formData.videoUrl ? (
+              <div className="sumadm-preview-cover">
+                <video src={formData.videoUrl} muted loop autoPlay playsInline style={{ width: "100%", display: "block" }} />
+              </div>
+            ) : formData.coverImage ? (
               <div className="sumadm-preview-cover">
                 <img src={formData.coverImage} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
               </div>
@@ -1308,6 +1493,44 @@ export default function SummaryAdmin() {
               <button className="sumadm-btn ghost" onClick={discardPending} disabled={!!sceneBusyId}>
                 Annulla
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── ANTEPRIMA VIDEO: tieni / rigenera / annulla ── */}
+      {videoPending && (
+        <div className="sumadm-scene-backdrop" onClick={discardVideo}>
+          <div className="sumadm-scene-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="sumadm-scene-head">
+              <h3>🎬 Video della sessione</h3>
+              <button className="sumadm-scene-x" onClick={discardVideo} disabled={videoBusy} title="Chiudi">✕</button>
+            </div>
+            <div className="sumadm-scene-figure">
+              <video src={videoPending.url} controls autoPlay muted loop playsInline style={{ width: "100%", borderRadius: 10 }} />
+              {videoBusy && (
+                <div className="sumadm-scene-loading">
+                  <span className="sumadm-drop-spinner" />
+                  <strong>{videoStatus || "Elaboro…"}</strong>
+                </div>
+              )}
+            </div>
+            <div className="sumadm-scene-actions">
+              <button
+                className="sumadm-btn primary"
+                disabled={videoBusy}
+                onClick={() => commitVideo(summaries.find((s) => s.id === editingId) || { id: editingId, ...formData })}
+              >
+                ✅ Tieni
+              </button>
+              <button
+                className="sumadm-btn"
+                disabled={videoBusy}
+                onClick={() => { setVideoPending(null); startVideoGeneration(summaries.find((s) => s.id === editingId) || { id: editingId, ...formData }); }}
+                title="Rigenera (costa di nuovo)"
+              >
+                🔄 Rigenera (~0,40 €)
+              </button>
+              <button className="sumadm-btn ghost" onClick={discardVideo} disabled={videoBusy}>Annulla</button>
             </div>
           </div>
         </div>
