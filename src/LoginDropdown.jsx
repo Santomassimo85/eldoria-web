@@ -230,9 +230,20 @@ export default function LoginDropdown() {
 
           <button
             className="ld-menu-item"
-            onClick={() => { navigate("/my-pg"); setIsOpen(false); }}
+            onClick={() => { navigate("/scheda-pg"); setIsOpen(false); }}
           >
             📜 Scheda Personaggio
+          </button>
+
+          {/* Le pagine "di servizio" stanno qui, non nei gruppi del gioco (2026-10-27). */}
+          <button className="ld-menu-item" onClick={() => { navigate("/updates"); setIsOpen(false); }}>
+            ✨ Novità del sito
+          </button>
+          <button className="ld-menu-item" onClick={() => { navigate("/cinema"); setIsOpen(false); }}>
+            🎬 Cinema
+          </button>
+          <button className="ld-menu-item" onClick={() => { navigate("/feedback"); setIsOpen(false); }}>
+            💬 Feedback
           </button>
 
           {isAdminEmail(currentUser?.email) && (

@@ -1,0 +1,13 @@
+/* Barra delle pagine sorelle (PageTabs.jsx). Le rune e i colori delle schede
+   li mette covo.css su [role="tablist"]/[role="tab"]: qui solo il posto. */
+.page-tabs {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: 12px auto 0 !important;
+  padding: 6px 16px 10px !important;
+  justify-content: center;
+}
+@media (max-width: 640px) {
+  .page-tabs { margin-top: 6px !important; }
+}

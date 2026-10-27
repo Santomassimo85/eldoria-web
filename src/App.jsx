@@ -78,6 +78,7 @@ import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 import { isAdminEmail } from "./utils/roles";
+import PageTabs from "./components/PageTabs";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -267,44 +268,42 @@ const MasterPricingLink = ({ closeMenu }) => {
 // Le rotte sono ESATTAMENTE quelle del menu esistente (nessun link/route nuovo).
 // I gruppi aprono una "costellazione" (pannello con i link); "Altro" apre il
 // drawer completo (Agent, Update, Guide, DM Tools, DM Admin…).
+// MENU RIORDINATO (2026-10-27): ogni pagina in UN posto solo. Le pagine
+// sorelle (Mappa/Luoghi, Riassunti/Diario, Officina/Manuale, Mercato/Gilda dei
+// Ratti) sono una voce sola e si girano con le schede in cima (PageTabs); la
+// Bottega Arena si apre dall'hub dell'Arena; Cinema, Feedback e Update stanno
+// nel menu dell'avatar. Il drawer ripete gli stessi gruppi.
 const NESSO_GROUPS = {
   mondo: { rune: "ᛗ", label: "Mondo", links: [
-    { to: "/world-map", label: "Mappa" },
-    { to: "/Geo", label: "Archivio Geomantico" },
+    { to: "/world-map", label: "L'Atlante" },
+    { to: "/npc", label: "NPC" },
   ]},
   biblioteca: { rune: "ᛒ", label: "Biblioteca", links: [
     { to: "/scriba", label: "Lo Scriba" },
-    { to: "/riassunti", label: "Riassunti" },
-    { to: "/diario", label: "Diario di Bordo" },
+    { to: "/riassunti", label: "Le Cronache" },
     { to: "/almanacco", label: "Almanacco del Mondo" },
-    { to: "/crafting", label: "Crafting" },
-    { to: "/ratti-lore", label: "Gilda dei Ratti" },
   ]},
   eroi: { rune: "ᛖ", label: "Eroi", links: [
     { to: "/party", label: "Party" },
     { to: "/scheda-pg", label: "Scheda PG" },
-    { to: "/npc", label: "NPC" },
   ]},
   gilda: { rune: "ᚷ", label: "Gilda", links: [
     { to: "/officina", label: "Officina" },
     { to: "/mercato", label: "Mercato Nero" },
     { to: "/bacheca", label: "Bacheca" },
     { to: "/ruota", label: "Ruota di Exanthia" },
-    { to: "/cinema", label: "Cinema" },
-    { to: "/feedback", label: "Feedback" },
   ]},
   battaglia: { rune: "ᚦ", label: "Battaglia", links: [
     { to: "/arena", label: "Arena" },
-    { to: "/arena-bottega", label: "Bottega Arena" },
-    { to: "/world-boss-fight", label: "World Fight" },
+    { to: "/world-boss-fight", label: "World Boss" },
   ]},
 };
 const NESSO_GROUP_OF = (p) =>
   p === "/" ? "home"
-  : ["/world-map", "/Geo"].includes(p) ? "mondo"
-  : ["/scriba", "/riassunti", "/diario", "/almanacco", "/crafting", "/ratti-lore", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
-  : ["/party", "/scheda-pg", "/my-pg", "/npc"].some((x) => p.startsWith(x)) ? "eroi"
-  : ["/officina", "/mercato", "/bacheca", "/ruota", "/cinema", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
+  : ["/world-map", "/Geo", "/npc"].includes(p) ? "mondo"
+  : ["/scriba", "/riassunti", "/diario", "/almanacco", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
+  : ["/party", "/scheda-pg", "/my-pg"].some((x) => p.startsWith(x)) ? "eroi"
+  : ["/officina", "/crafting", "/mercato", "/ratti-lore", "/bacheca", "/ruota", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
   : ["/arena", "/arena-bottega", "/world-boss", "/tcg"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
@@ -702,46 +701,18 @@ export default function App() {
           <NavLink to="/assistente" onClick={closeMenu} className="nav-agent">Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
-          <NavDropdown label={<><span className="nav-rune" data-g="mondo" aria-hidden="true">ᛗ</span> Mondo</>} closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/world-map">Mappa</NavLink>
-            <NavLink to="/Geo">Archivio Geomantico</NavLink>
-          </NavDropdown>
+          {/* Stessi gruppi del d20 (NESSO_GROUPS): una voce per pagina. */}
+          {Object.entries(NESSO_GROUPS).map(([key, grp]) => (
+            <NavDropdown key={key} label={<><span className="nav-rune" data-g={key} aria-hidden="true">{grp.rune}</span> {grp.label}</>} closeAll={closeMenu} id={key} openId={openDd} setOpenId={setOpenDd}>
+              {grp.links.map((l) => <NavLink key={l.to} to={l.to}>{l.label}</NavLink>)}
+              {key === "gilda" && <MasterPricingLink closeMenu={closeMenu} />}
+              {/* {key === "eroi" && <NavLink to="/pet">Pet Hub</NavLink>} */}
+              {key === "battaglia" && <TcgNavLink />}
+            </NavDropdown>
+          ))}
 
-          <NavDropdown label={<><span className="nav-rune" data-g="biblioteca" aria-hidden="true">ᛒ</span> Biblioteca</>} closeAll={closeMenu} id="biblioteca" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/scriba">Lo Scriba</NavLink>
-            <NavLink to="/riassunti">Riassunti</NavLink>
-            <NavLink to="/diario">Diario di Bordo</NavLink>
-          </NavDropdown>
-
-          <NavDropdown label={<><span className="nav-rune" data-g="guide" aria-hidden="true">ᚱ</span> Guide</>} closeAll={closeMenu} id="guide" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/almanacco">Almanacco del Mondo</NavLink>
-            <NavLink to="/crafting">Crafting</NavLink>
-            <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
-          </NavDropdown>
-
-          <NavDropdown label={<><span className="nav-rune" data-g="eroi" aria-hidden="true">ᛖ</span> Eroi</>} closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/party">Party</NavLink>
-            <NavLink to="/scheda-pg">Scheda PG</NavLink>
-            <NavLink to="/npc">NPC</NavLink>
-          </NavDropdown>
-
-          <NavDropdown label={<><span className="nav-rune" data-g="gilda" aria-hidden="true">ᚷ</span> Gilda</>} closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/officina">⚒ Officina</NavLink>
-            <NavLink to="/mercato">Mercato Nero</NavLink>
-            <MasterPricingLink closeMenu={closeMenu} />
-            <NavLink to="/bacheca">Bacheca</NavLink>
-            <NavLink to="/ruota">🎡 Ruota di Exanthia</NavLink>
-            <NavLink to="/cinema">Cinema</NavLink>
-            <NavLink to="/feedback">💬 Feedback</NavLink>
-          </NavDropdown>
-
-          <NavDropdown label={<><span className="nav-rune" data-g="battaglia" aria-hidden="true">ᚦ</span> Battaglia</>} closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/arena">Arena</NavLink>
-            <NavLink to="/arena-bottega">Bottega Arena</NavLink>
-            {/* <NavLink to="/pet">Pet Hub</NavLink> */}
-            <TcgNavLink />
-            <NavLink to="/world-boss-fight">World Fight</NavLink>
-          </NavDropdown>
+          <NavLink to="/cinema" onClick={closeMenu}>Cinema</NavLink>
+          <NavLink to="/feedback" onClick={closeMenu}>💬 Feedback</NavLink>
 
           <DmToolsDropdown closeMenu={closeMenu} openId={openDd} setOpenId={setOpenDd} />
           <ConcilioNavLink closeMenu={closeMenu} />
@@ -757,10 +728,10 @@ export default function App() {
           <Route path="/assistente" element={<Assistente />} />
           <Route path="/agenti" element={<Concilio />} />
           <Route path="/npc" element={<NPC />} />
-          <Route path="/world-map" element={<WorldMap />} />
-          <Route path="/Geo" element={<Geo />} />
-          <Route path="/riassunti" element={<Riassunti />} />
-          <Route path="/diario" element={<Diario />} />
+          <Route path="/world-map" element={<PageTabs group="atlante"><WorldMap /></PageTabs>} />
+          <Route path="/Geo" element={<PageTabs group="atlante"><Geo /></PageTabs>} />
+          <Route path="/riassunti" element={<PageTabs group="cronache"><Riassunti /></PageTabs>} />
+          <Route path="/diario" element={<PageTabs group="cronache"><Diario /></PageTabs>} />
           <Route path="/riassunto/:id" element={<RiassuntoSingolo />} />
           <Route path="/sessions/:party" element={<GenerateSession />} />
           <Route path="/sessions/:party/:number" element={<SessionDetail />} />
@@ -768,23 +739,23 @@ export default function App() {
           <Route path="/scriba" element={<Scriba />} />
           <Route path="/giornale/:id" element={<ScribaSingolo />} />
           <Route path="/almanacco" element={<Almanacco />} />
-          <Route path="/ratti-lore" element={<RattiLore />} />
+          <Route path="/ratti-lore" element={<PageTabs group="mercato"><RattiLore /></PageTabs>} />
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
           <Route path="/cinema" element={<Cinema />} />
           {/* L'Oracolo dei Tarocchi è disattivato (2026-09-20): i vecchi link (notifiche) tornano alla Home. */}
           <Route path="/tarocchi" element={<Navigate to="/" replace />} />
-          <Route path="/my-pg" element={<SchedaPG />} />
+          <Route path="/my-pg" element={<Navigate to="/scheda-pg" replace />} />
           <Route path="/scheda-pg" element={<SchedaPG />} />
-          <Route path="/mercato" element={<Mercato />} />
+          <Route path="/mercato" element={<PageTabs group="mercato"><Mercato /></PageTabs>} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
           {/* <Route path="/pet" element={<PetHub />} /> */}
           {/* <Route path="/pet-arena" element={<PetArena />} /> */}
           <Route path="/tcg" element={<Tcg />} />
-          <Route path="/crafting" element={<Crafting />} />
-          <Route path="/officina" element={<Officina />} />
+          <Route path="/crafting" element={<PageTabs group="officina"><Crafting /></PageTabs>} />
+          <Route path="/officina" element={<PageTabs group="officina"><Officina /></PageTabs>} />
           <Route path="/ruota" element={<RuotaExanthia />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />

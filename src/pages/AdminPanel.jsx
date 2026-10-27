@@ -30,6 +30,7 @@ export default function AdminPanel() {
         { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",                 path: "/dm-admin/market" },
         { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà dei player alla Gilda di Obia.",       path: "/dm-admin/reputation" },
         { icon: "🪙", label: "Corone",           desc: "Saldo Corone dei personaggi.",                        path: "/dm-admin/platinum" },
+        { icon: "⚒", label: "Officina",         desc: "Il tavolo del crafting: artigiani, scorte, spese e registro.", path: "/officina" },
       ],
     },
     {
