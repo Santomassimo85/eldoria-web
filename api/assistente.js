@@ -145,6 +145,13 @@ function stripHtml(s) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+// Valore di tutte le monete in mo (1 mp = 10 mo, 1 me = ½, 1 ma = 1/10, 1 mr = 1/100).
+function currencyValueGp(cur) {
+  if (!cur || typeof cur !== "object") return 0;
+  const cp = (Number(cur.pp) || 0) * 1000 + (Number(cur.gp) || 0) * 100 + (Number(cur.ep) || 0) * 50 + (Number(cur.sp) || 0) * 10 + (Number(cur.cp) || 0);
+  return Math.floor(cp) / 100;
+}
+
 function formatCurrency(cur) {
   if (!cur || typeof cur !== "object") return null;
   const parts = [];
@@ -166,7 +173,8 @@ async function loadPlayerContext(uid, apiKey) {
     name: me.name,
     party: getPartyByCharName(me.name),
     platinum: me.platinum || 0,        // MP usati al mercato nero
-    gold: me.currency?.gp || 0,        // oro "normale"
+    gold: currencyValueGp(me.currency),      // tutte le monete della scheda, in mo
+    coins: formatCurrency(me.currency),
     arenaCoins: me.arenaCoins || 0,    // monete dell'Arena (scommesse)
     tcgCoins: me.tcgCoins || 0,        // monete del gioco di carte TCG
     rattoPoints: me.rattoPoints || 0,
@@ -206,7 +214,7 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
         cdIncantesimi: s.spellDc, bonusCompetenza: s.prof,
         // ── Economie e progressi (tutto ciò che il giocatore possiede) ──
         monete: {
-          oro: doc.currency?.gp || 0,
+          valoreTotaleMo: currencyValueGp(doc.currency),
           valutaCompleta: formatCurrency(doc.currency),
           platinoMercatoNero: doc.platinum || 0,
           moneteArena: doc.arenaCoins || 0,
@@ -541,7 +549,7 @@ function buildSystemPrompt(ctx) {
       (ctx.char?.level ? ` di livello ${ctx.char.level}` : "") +
       `, gruppo **${ctx.party}**.` +
       ` Statistiche: PF ${s.hp ?? "?"}/${s.maxHp ?? "?"}, CA ${s.ac ?? "?"}.` +
-      ` Soldi: **${ctx.platinum} MP** (platino, valuta del mercato nero), ${ctx.gold} mo (oro), **${ctx.arenaCoins} monete Arena** (per scommettere nell'arena) e **${ctx.tcgCoins} monete TCG** (per il gioco di carte).` +
+      ` Soldi: **${ctx.platinum} MP** (platino, valuta del mercato nero), monete della scheda: ${ctx.coins || "nessuna moneta"} (in tutto ${ctx.gold} mo), **${ctx.arenaCoins} monete Arena** (per scommettere nell'arena) e **${ctx.tcgCoins} monete TCG** (per il gioco di carte).` +
       ` Rango Ratto: **${ctx.rattoName}** (livello ${ctx.rattoLv}, ${ctx.rattoPoints} punti) — determina quali oggetti del mercato nero può vedere/comprare.` +
       (PARTY_ROSTER[ctx.party] ? ` Compagni di gruppo: ${PARTY_ROSTER[ctx.party].join(", ")}.` : "");
   }

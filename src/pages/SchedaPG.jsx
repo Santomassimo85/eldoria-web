@@ -4,6 +4,7 @@ import { doc, getDoc, getDocs, collection, addDoc, query as fsQuery, where, serv
 import { useAuth } from "../AuthContext";
 import GlacierHero from "../components/glacier/GlacierHero";
 import { buildSetIndex, matchInventorySets } from "../utils/itemSets";
+import { availableCoins, availableGp } from "../data/craftingPurse";
 
 /* ============================================================
    Scheda PG — vista in stile grimorio, legge characters/{uid}.
@@ -369,7 +370,9 @@ export default function SchedaPG() {
   // Foundry si scalano solo alla prossima importazione del Master: la scheda
   // del sito le toglie già (stesso conto della borsa dell'Officina).
   const craftPending = Math.max(0, Number(data.crafting?.goldPending) || 0);
-  const coinOf = (k) => (k === "gp" && craftPending ? Math.max(0, (Number(cur.gp) || 0) - craftPending) : (cur[k] ?? 0));
+  // Tolte come le paga la macro: prima l'oro, poi le altre monete, col resto.
+  const coinsLeft = craftPending ? availableCoins(data) : null;
+  const coinOf = (k) => (coinsLeft ? coinsLeft[k] : (cur[k] ?? 0));
   const inv = data.inventory || [];
   const invSets = matchInventorySets(inv, setIndex);
   const initial = (data.name || "?").trim().charAt(0).toUpperCase();
@@ -646,7 +649,7 @@ export default function SchedaPG() {
                   ))}
                 </div>
                 {craftPending > 0 && (
-                  <div className="spg-hint">⚒ {craftPending} MO già spese all'Officina (tolte qui, su Foundry si scalano alla prossima importazione).</div>
+                  <div className="spg-hint">⚒ {craftPending} MO già spese all'Officina: qui sono già tolte (prima l'oro, poi le altre monete, col resto), su Foundry si scalano alla prossima importazione. In tutto ti restano {availableGp(data)} MO.</div>
                 )}
                 {inv.length ? (() => {
                   const loose = inv.filter(i => !i.container && !i.isContainer);

@@ -8,7 +8,7 @@
 // mai. Tiene invece un contatore a parte, `crafting.goldPending`: le monete già
 // spese all'Officina e NON ancora scalate sull'attore di Foundry.
 //
-//     oro disponibile = currency.gp − crafting.goldPending
+//     disponibile = tutte le monete (in mo) − crafting.goldPending
 //
 // AUTOMATICO (2026-10-03): al tiro la spesa entra DA SOLA nella coda di
 // Foundry (`foundry_inbox`, `kind: "gold"`, `pendingOnSite: true`) e la voce
@@ -20,21 +20,59 @@
 // Le spese di prima (senza `goldAuto`) seguono la vecchia regola: escono da
 // `goldPending` quando il Master le manda o le segna "già pagate".
 
-// Si ragiona in MONETE D'ORO come la macro (`system.currency.gp`): platino,
-// argento e rame non entrano nel conto, si cambiano al tavolo.
+// TUTTE LE VALUTE (2026-10-27): prima contava solo `currency.gp` e chi aveva
+// platino o argento risultava al verde. Ora la borsa vale la somma di tutte le
+// monete (1 mp = 10 mo, 1 me = ½ mo, 1 ma = 1/10, 1 mr = 1/100) e la spesa in
+// sospeso si toglie come la paga la macro "Fetch admin" (`pagaDa`): prima
+// l'oro, poi argento e rame, poi elettro e platino, spezzando una moneta e
+// dando il resto in mo/ma/mr. I conti si fanno in RAME, così niente decimali.
+export const COINS = ["pp", "gp", "ep", "sp", "cp"];
+export const COIN_CP = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
+export const COIN_LABEL = { pp: "mp", gp: "mo", ep: "me", sp: "ma", cp: "mr" };
+const PAY_ORDER = ["gp", "sp", "cp", "ep", "pp"];
 
-export const sheetGp = (charData) => Math.max(0, Number(charData?.currency?.gp) || 0);
+// {pp, gp, ep, sp, cp} interi ≥ 0 da un `currency` qualsiasi.
+export const coinsOf = (currency) => Object.fromEntries(COINS.map((k) => [k, Math.max(0, Math.floor(Number(currency?.[k]) || 0))]));
+export const coinsCp = (coins) => COINS.reduce((a, k) => a + (coins?.[k] || 0) * COIN_CP[k], 0);
+// "3 mp · 120 mo · 5 ma"
+export const fmtCoins = (coins) => COINS.filter((k) => coins?.[k]).map((k) => `${coins[k]} ${COIN_LABEL[k]}`).join(" · ") || "nessuna moneta";
+
+// Toglie `cp` rame dalle monete (copia), come la macro; `missing` = quanto non bastava.
+export function payCoins(coins, cp) {
+  const m = coinsOf(coins);
+  let need = Math.max(0, Math.round(Number(cp) || 0));
+  for (const k of PAY_ORDER) {
+    const n = Math.min(m[k], Math.floor(need / COIN_CP[k]));
+    m[k] -= n; need -= n * COIN_CP[k];
+  }
+  if (need > 0) {
+    const k = ["cp", "sp", "ep", "gp", "pp"].find((x) => m[x] > 0 && COIN_CP[x] >= need);
+    if (k) {
+      m[k] -= 1;
+      let rest = COIN_CP[k] - need;
+      need = 0;
+      for (const r of ["gp", "sp", "cp"]) { const n = Math.floor(rest / COIN_CP[r]); m[r] += n; rest -= n * COIN_CP[r]; }
+    }
+  }
+  return { coins: m, missing: need };
+}
+
+// Valore della scheda in mo (tutte le valute, arrotondato per difetto).
+export const sheetGp = (charData) => Math.floor(coinsCp(coinsOf(charData?.currency)) / 100);
 export const goldPending = (crafting) => Math.max(0, Number(crafting?.goldPending) || 0);
 
 // Scheda mai sincronizzata da Foundry: `currency` non c'è proprio. In quel caso
 // NON si blocca nessuno (sarebbe un muro per chi non ha ancora fatto il sync):
 // si avvisa e basta.
 export const hasPurse = (charData) =>
-  !!charData?.currency && charData.currency.gp !== undefined && charData.currency.gp !== null;
+  !!charData?.currency && COINS.some((k) => charData.currency[k] !== undefined && charData.currency[k] !== null);
 
-// Oro spendibile adesso, al netto di quel che è già stato speso al banco.
-export const availableGp = (charData) =>
-  Math.max(0, sheetGp(charData) - goldPending(charData?.crafting));
+// Le monete che restano davvero, tolta la spesa già fatta al banco.
+export const availableCoins = (charData) =>
+  payCoins(coinsOf(charData?.currency), goldPending(charData?.crafting) * 100).coins;
+
+// Valore spendibile adesso in mo, al netto di quel che è già stato speso al banco.
+export const availableGp = (charData) => Math.floor(coinsCp(availableCoins(charData)) / 100);
 
 // Il PG può permettersi la spesa? Il Master non paga mai (crea a piacere).
 // `unknown: true` = scheda senza oro sincronizzato: si passa, ma con avviso.
@@ -50,9 +88,8 @@ export function canAfford(charData, costMo, { isMaster = false } = {}) {
 // Stessa verifica sui dati LETTI NELLA TRANSAZIONE (snapshot fresco), così
 // due schede aperte in parallelo non spendono due volte lo stesso oro.
 export function affordFromSnapshot(data, costMo) {
-  const cur = data?.currency || null;
-  if (!cur || cur.gp === undefined || cur.gp === null) return { ok: true, unknown: true, have: 0, missing: 0 };
-  const have = Math.max(0, (Number(cur.gp) || 0) - goldPending(data?.crafting));
+  if (!hasPurse(data)) return { ok: true, unknown: true, have: 0, missing: 0 };
+  const have = availableGp(data);
   const cost = Math.max(0, Math.round(Number(costMo) || 0));
   return { ok: have >= cost, unknown: false, have, missing: Math.max(0, cost - have) };
 }

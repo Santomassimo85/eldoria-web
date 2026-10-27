@@ -36,7 +36,7 @@ import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classif
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
-import { affordFromSnapshot, availableGp, canAfford, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
+import { affordFromSnapshot, availableCoins, availableGp, canAfford, coinsOf, fmtCoins, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
 import "./CraftingOfficina.css";
 
 // Officina = solo il Master governa; il co-master (Luisa/Makenna) ci lavora da giocatrice (2026-10-07).
@@ -376,7 +376,7 @@ export default function CraftingOfficina() {
     if (!prof || busy) return;
     if (!allow.can) { setMsg(allow.reason); return; }
     // Niente lavoro a credito: i materiali si pagano prima di accendere la forgia.
-    if (!purse.ok) { setMsg(`💰 Non hai abbastanza oro: servono ${fmtMo(purse.cost)} di materiali e in borsa ne hai ${fmtMo(purse.have)}${purse.pending ? ` (${fmtMo(purse.pending)} già spesi al banco)` : ""}. Ti mancano ${fmtMo(purse.missing)}.`); return; }
+    if (!purse.ok) { setMsg(`💰 Non hai abbastanza monete: servono ${fmtMo(purse.cost)} di materiali e in borsa, contando tutte le monete, hai ${fmtMo(purse.have)}${purse.pending ? ` (${fmtMo(purse.pending)} già spesi al banco)` : ""}. Ti mancano ${fmtMo(purse.missing)}.`); return; }
     setBusy(true); setMsg("");
     try {
       // Ora vera dal server: decide giorno, settimana e la fine del lavoro.
@@ -472,7 +472,7 @@ export default function CraftingOfficina() {
         // L'oro si ricontrolla sullo snapshot fresco: due schede aperte in
         // parallelo non possono spendere due volte le stesse monete.
         const pay = affordFromSnapshot(data, costMo);
-        if (!isMaster && !pay.ok) throw new Error(`💰 Non hai abbastanza oro: servono ${fmtMo(costMo)} di materiali e in borsa ne hai ${fmtMo(pay.have)}. Ti mancano ${fmtMo(pay.missing)}.`);
+        if (!isMaster && !pay.ok) throw new Error(`💰 Non hai abbastanza monete: servono ${fmtMo(costMo)} di materiali e in borsa, contando tutte le monete, hai ${fmtMo(pay.have)}. Ti mancano ${fmtMo(pay.missing)}.`);
         const prevLog = Array.isArray(cur.log) ? cur.log : [];
         if (prevLog.some((e) => !e.inboxId && !e.skipped)) throw new Error("Hai già un lavoro sul banco: finiscilo o scartalo prima.");
         entry.dayKey = al.dayKey; entry.weekKey = al.weekKey;
@@ -970,9 +970,9 @@ export default function CraftingOfficina() {
                   {/* La borsa: le monete escono dalla scheda appena parte il lavoro. */}
                   <span className={`off-sum-borsa${purse.ok ? "" : " is-short"}`}>
                     {purse.master ? <>👑 Master: crei senza pagare.</>
-                      : purse.unknown ? <>💰 Oro non ancora sincronizzato da Foundry: la spesa non si può controllare. Fai una sincronizzazione della scheda.</>
-                      : purse.ok ? <>💰 In borsa <b>{fmtMo(purse.have)}</b> → dopo il lavoro te ne restano <b>{fmtMo(purse.have - purse.cost)}</b>{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco e non ancora scalati su Foundry)</i> : null}</>
-                      : <>💰 In borsa <b>{fmtMo(purse.have)}</b>: ti mancano <b>{fmtMo(purse.missing)}</b> per i materiali{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco)</i> : null}</>}
+                      : purse.unknown ? <>💰 Monete non ancora sincronizzate da Foundry: la spesa non si può controllare. Fai una sincronizzazione della scheda.</>
+                      : purse.ok ? <>💰 In borsa <b>{fmtMo(purse.have)}</b> <i>({fmtCoins(availableCoins(charData))})</i> → dopo il lavoro te ne restano <b>{fmtMo(purse.have - purse.cost)}</b>{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco e non ancora scalati su Foundry)</i> : null}</>
+                      : <>💰 In borsa <b>{fmtMo(purse.have)}</b> <i>({fmtCoins(availableCoins(charData))})</i>: ti mancano <b>{fmtMo(purse.missing)}</b> per i materiali{purse.pending ? <i> ({fmtMo(purse.pending)} già spesi al banco)</i> : null}</>}
                   </span>
                 </div>
               </div>
@@ -1619,7 +1619,7 @@ function ArtisanCard({ c, now, nowMs, open, onToggle, busy, setBusy, act }) {
         <div className={al.usedToday ? "is-used" : ""}><dt>Oggi</dt><dd>{al.usedToday ? 1 : 0}<i>/{CRAFT_MAX_PER_DAY}</i></dd></div>
         <div className={al.weekCount >= CRAFT_MAX_PER_WEEK ? "is-used" : ""}><dt>Settimana</dt><dd>{al.weekCount}<i>/{CRAFT_MAX_PER_WEEK}</i></dd></div>
         <div><dt>Creazioni</dt><dd>{total}</dd></div>
-        <div title={hasPurse(c) ? `sulla scheda ${fmtMo(sheetGp(c))}${goldPending(cr) ? ` · ${fmtMo(goldPending(cr))} in sospeso` : ""}` : "oro non ancora sincronizzato da Foundry"}><dt>Oro</dt><dd className="is-gold">{hasPurse(c) ? fmtMo(availableGp(c)).replace(" mo", "") : "—"}{hasPurse(c) && <i> mo</i>}</dd></div>
+        <div title={hasPurse(c) ? `sulla scheda ${fmtCoins(coinsOf(c.currency))} = ${fmtMo(sheetGp(c))}${goldPending(cr) ? ` · ${fmtMo(goldPending(cr))} in sospeso` : ""}` : "monete non ancora sincronizzate da Foundry"}><dt>Monete</dt><dd className="is-gold">{hasPurse(c) ? fmtMo(availableGp(c)).replace(" mo", "") : "—"}{hasPurse(c) && <i> mo</i>}</dd></div>
       </dl>
 
       {bench && (
@@ -1851,7 +1851,7 @@ function CraftSpese({ chars }) {
                 {/* La borsa com'è ADESSO: oro della scheda Foundry, meno quello
                     già speso al banco e non ancora scalato dalla macro. */}
                 <small className="off-spese-borsa">{hasPurse(c)
-                  ? <>👛 sulla scheda {fmtMo(sheetGp(c))} · disponibili {fmtMo(availableGp(c))}{goldPending(c.crafting) ? ` (${fmtMo(goldPending(c.crafting))} in sospeso)` : ""}</>
+                  ? <>👛 sulla scheda {fmtCoins(coinsOf(c.currency))} = {fmtMo(sheetGp(c))} · disponibili {fmtMo(availableGp(c))}{goldPending(c.crafting) ? ` (${fmtMo(goldPending(c.crafting))} in sospeso)` : ""}</>
                   : <>👛 oro non ancora sincronizzato da Foundry</>}</small></span>
               <span className="off-spese-mo">{fmtMo(e.costMo)}{e.halfCost ? <i> invece di {fmtMo(e.listCostMo || 0)}</i> : null}</span>
               <span className="off-spese-acts">
