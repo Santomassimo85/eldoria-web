@@ -20,6 +20,50 @@ export const TIER_TO_FOUNDRY = {
   legendary: { rarity: "legendary", price: 40000 },
 };
 
+// ── Valore di vendita deciso dal TIRO (2026-10-27) ──────────────────────────
+// Prima il valore era fisso per rarità USCITA mentre la spesa è della rarità
+// MIRATA (più l'investimento): bastava mancare di una fascia per vendere
+// sotto costo. Ora il valore parte da quanto costano i materiali della prova
+// (listino della mirata con l'investimento, prima dello sconto del 20
+// naturale) e il tiro lo moltiplica: centrare la rarità rende sempre più di
+// quanto si è speso, e più il totale supera la soglia, più l'oggetto vale.
+// Mancarla è una perdita. Sotto non si va mai sotto `TIER_TO_FOUNDRY[uscita]`.
+const TIER_MIN_TOTAL = { common: 6, uncommon: 11, rare: 16, veryRare: 21, legendary: 26 };
+export const CRAFT_VALUE_SCALE = [
+  { key: "nat20",  mult: 2.5,  label: "20 naturale" },
+  { key: "top",    mult: 2,    label: "centrata, 4+ sopra la soglia" },
+  { key: "good",   mult: 1.75, label: "centrata, 2–3 sopra la soglia" },
+  { key: "hit",    mult: 1.5,  label: "centrata di misura" },
+  { key: "miss1",  mult: 0.9,  label: "una rarità sotto" },
+  { key: "miss2",  mult: 0.6,  label: "due o più rarità sotto" },
+  { key: "scarso", mult: 0.35, label: "Scarso" },
+  { key: "nat1",   mult: 0.25, label: "1 naturale" },
+];
+const SCALE_BY_KEY = Object.fromEntries(CRAFT_VALUE_SCALE.map((s) => [s.key, s]));
+
+// Gradino della scala per un esito. `tier` = rarità uscita, `total` = totale del d20.
+export function craftValueStep({ targetTier, tier, total, nat20 = false, fumble = false }) {
+  const target = normTier(targetTier);
+  const out = normTier(tier);
+  if (fumble) return SCALE_BY_KEY.nat1;
+  if (nat20) return SCALE_BY_KEY.nat20;
+  if (out === "scarso") return SCALE_BY_KEY.scarso;
+  const order = PREGIATURE.map((p) => p.key);
+  const dist = order.indexOf(target) - order.indexOf(out);
+  if (dist >= 2) return SCALE_BY_KEY.miss2;
+  if (dist === 1) return SCALE_BY_KEY.miss1;
+  // Centrata (anche con l'Opera Definitiva, che la impone col totale basso).
+  const margin = (Number(total) || 0) - (TIER_MIN_TOTAL[target] || 0);
+  return margin >= 4 ? SCALE_BY_KEY.top : margin >= 2 ? SCALE_BY_KEY.good : SCALE_BY_KEY.hit;
+}
+
+// Valore in mo: costo dei materiali × gradino, mai sotto il valore base della rarità uscita.
+export function craftSaleValue({ costMo, tier, ...rest }) {
+  const step = craftValueStep({ tier, ...rest });
+  const floor = (TIER_TO_FOUNDRY[normTier(tier)] || TIER_TO_FOUNDRY.common).price;
+  return { price: Math.max(floor, Math.round((Number(costMo) || 0) * step.mult)), step };
+}
+
 // Tipo dnd5e "di casa" per ogni professione (quando il nome non dice altro).
 const PROF_DEFAULT_TYPE = {
   fabbro: "equipment", alchimista: "consumable", intagliatore: "loot", sarto: "equipment",
@@ -190,7 +234,9 @@ function fxChanges(fx = []) {
 // ── Payload per `foundry_inbox`: stessa forma del form del Master + i dati della prova.
 // `resType` = resistenza scelta al ritiro (oggetti con `res: "choice"`).
 // `crafter.level` ≥ 10 = Nome nel regno: firma nel nome e valore doppio.
-export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [], upgraded = false, resType = "" }) {
+// `sale` = { targetTier, total, nat20, fumble, costMo }: il valore lo decide il
+// tiro (craftSaleValue). Senza, resta il valore fisso della rarità (prove vecchie).
+export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, desc, choice, enhancer, crafter, roll, note, work, components = [], upgraded = false, resType = "", sale = null }) {
   const tier = normTier(rawTier);
   const chosen = (choice || itemChoices(name)[0] || name).trim();
   // La meccanica Foundry della ricetta (craftingCatalogo.js), se c'è.
@@ -230,7 +276,9 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
   }
 
   // Componenti con effetto sull'oggetto: monete in più o nota "a scelta del DM".
-  let price = t.price;
+  // Col tiro il "pregio" è già nel costo dei materiali (+50%): niente ×1,5 in più.
+  const saleValue = sale && Number(sale.costMo) > 0 ? craftSaleValue({ ...sale, tier }) : null;
+  let price = saleValue ? saleValue.price : t.price;
 
   // Materiali di pregio (+50% di spesa): l'oggetto esce MIGLIORATO.
   // Armi: +1 al colpire e ai danni, conta come magica. Armature/scudi: +1 alla CA.
@@ -247,7 +295,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     } else {
       descParts.push("✦ Fattura superiore (materiali di pregio): l'effetto dell'oggetto è di un grado più forte — +1d4 all'effetto, durata doppia o bonus equivalente a scelta del DM.");
     }
-    price = Math.round(price * 1.5);
+    if (!saleValue) price = Math.round(price * 1.5);
   }
   for (const k of components) {
     const c = componentByKey(k);
@@ -289,6 +337,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
     `Rarità ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}${roll.d12 ? `, d12 = ${roll.d12}` : ", oggetto scelto dal catalogo"}.` +
     (work ? ` Tempo di lavoro: ${craftTimeLabel(work)}.` : "") +
+    (saleValue ? ` Valore: ${saleValue.price} mo (${saleValue.step.label}, ×${String(saleValue.step.mult).replace(".", ",")} sul costo dei materiali).` : "") +
     (note ? ` Nota: ${note}` : "")
   );
 

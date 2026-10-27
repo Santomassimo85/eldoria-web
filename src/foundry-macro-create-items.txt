@@ -81,7 +81,158 @@ function obj(fields) {
 // ----------------------------------------------------------------
 const DND_MAJOR = parseInt((game.system.version || "3").split(".")[0]) || 3;
 
+// ── Oggetto pronto all'uso (2026-10-27) ──
+// Da dnd5e 4 attacchi, cure, tiri salvezza e danni non stanno più nei campi
+// dell'oggetto (actionType, damage.parts, save) ma nelle ATTIVITÀ: senza, un
+// arma arriva senza tiro per colpire e una pozione non cura. Qui le si scrive
+// esplicite, così l'oggetto funziona appena entra nell'inventario.
+const rid = () => foundry.utils.randomID();
+// "1d8 + 2" → {number: 1, denomination: 8, bonus: "2"}; altrimenti null.
+function dado(f) {
+  const m = /^\s*(\d+)\s*d\s*(\d+)\s*(?:([+-])\s*(\d+))?\s*$/i.exec(String(f || ""));
+  if (!m || ![4, 6, 8, 10, 12, 20, 100].includes(Number(m[2]))) return null;
+  return { number: Number(m[1]), denomination: Number(m[2]), bonus: m[3] ? `${m[3] === "-" ? "-" : ""}${m[4]}` : "" };
+}
+// Parte di danno o cura di un'attività: dadi veri se si può, sennò formula libera.
+function parteDanno(formula, type) {
+  const d = dado(formula);
+  const types = type ? [type] : [];
+  return d
+    ? { number: d.number, denomination: d.denomination, bonus: d.bonus, types, custom: { enabled: false, formula: "" }, scaling: { mode: "", number: null, formula: "" } }
+    : { number: null, denomination: null, bonus: "", types, custom: { enabled: true, formula: String(formula) }, scaling: { mode: "", number: null, formula: "" } };
+}
+function attivita(type, extra = {}) {
+  return {
+    _id: rid(), type, name: "", sort: 0,
+    activation: { type: "action", value: 1, condition: "", override: false },
+    consumption: { targets: [], scaling: { allowed: false, max: "" }, spellSlot: true },
+    ...extra,
+  };
+}
+
+function buildItemDataV4(d) {
+  const descHtml = /<[a-z][\s\S]*>/i.test(d.description || "")
+    ? (d.description || "")
+    : `<p>${(d.description || "").replace(/\n/g, "<br>")}</p>`;
+  const type = d.foundryType || "loot";
+  const system = {
+    description: { value: descHtml, chat: "" },
+    quantity: d.quantity || 1,
+    price: { value: d.price || 0, denomination: "gp" },
+    rarity: d.rarity || "",
+    identified: true,
+    weight: { value: d.weight || 0, units: "lb" },
+  };
+  const activities = [];
+  const isCons = type === "consumable";
+  // Danni in più (cristalli, rune, veleni doppi…) come parti a sé.
+  const extra = [];
+  if (d.damage2Formula) extra.push(parteDanno(d.damage2Formula, d.damage2Type));
+  for (const x of Array.isArray(d.extraDamage) ? d.extraDamage : []) if (x && x.formula) extra.push(parteDanno(x.formula, x.type));
+  // Gli usi si spendono dall'attività: la pozione bevuta sparisce, la bacchetta scala una carica.
+  const spendi = d.uses && Number(d.uses.max) > 0 ? { targets: [{ type: "itemUses", target: "", value: "1", scaling: { mode: "", formula: "" } }], scaling: { allowed: false, max: "" }, spellSlot: true } : null;
+
+  if (type === "weapon") {
+    const ranged = d.actionType === "rwak";
+    const props = Array.isArray(d.properties) ? [...d.properties] : [];
+    const base = dado(d.damageFormula);
+    // Il "+N" della formula è il bonus magico: vale al colpire e ai danni.
+    const magic = base && base.bonus ? Number(base.bonus) || 0 : 0;
+    if (magic && !props.includes("mgc")) props.push("mgc");
+    system.type = { value: ranged ? "martialR" : "martialM", baseItem: "" };
+    system.properties = props;
+    system.proficient = d.proficient ? 1 : null;
+    system.magicalBonus = magic || null;
+    system.damage = {
+      base: base
+        ? { number: base.number, denomination: base.denomination, bonus: "", types: d.damageType ? [d.damageType] : [], custom: { enabled: false, formula: "" }, scaling: { mode: "", number: null, formula: "" } }
+        : parteDanno(d.damageFormula || "1d4", d.damageType || "bludgeoning"),
+    };
+    const ver = dado(d.versatileFormula);
+    if (ver) system.damage.versatile = { number: ver.number, denomination: ver.denomination, bonus: "", types: d.damageType ? [d.damageType] : [], custom: { enabled: false, formula: "" }, scaling: { mode: "", number: null, formula: "" } };
+    if (ranged) system.range = { value: props.includes("hvy") ? 150 : 80, long: props.includes("hvy") ? 600 : 320, reach: null, units: "ft" };
+    else if (props.includes("thr")) system.range = { value: 20, long: 60, reach: null, units: "ft" };
+    // Il bonus al colpire che non viene dal +N (Polvere di Mithril) va sull'attacco.
+    const toHit = Math.max(0, (Number(d.attackBonus) || 0) - magic);
+    activities.push(attivita("attack", {
+      attack: { ability: "", bonus: toHit ? String(toHit) : "", critical: { threshold: null }, flat: false, type: { value: ranged ? "ranged" : "melee", classification: "weapon" } },
+      damage: { critical: { bonus: "" }, includeBase: true, parts: extra },
+    }));
+  } else if (type === "equipment") {
+    const armor = d.armorType || "";
+    system.type = { value: armor || "trinket", baseItem: "" };
+    if (armor) system.armor = { value: d.armorValue || 0, dex: armor === "medium" ? 2 : armor === "heavy" ? 0 : null, magicalBonus: null };
+  } else if (isCons) {
+    system.type = { value: d.consumableType || "trinket", subtype: "" };
+  }
+
+  // ── Cosa fa quando lo usi (consumabili e oggetti con cariche) ──
+  if (type !== "weapon") {
+    const f = d.damageFormula;
+    const save = d.saveAbility && d.saveDC ? { ability: [d.saveAbility], dc: { calculation: "", formula: String(d.saveDC) } } : null;
+    if (d.actionType === "heal" && f) {
+      activities.push(attivita("heal", {
+        healing: { ...parteDanno(f, d.damageType === "temphp" ? "temphp" : "healing") },
+        target: { affects: { type: "creature", count: "1", choice: false, special: "" }, template: { count: "", contiguous: false, type: "", size: "", width: "", height: "", units: "ft" }, override: false, prompt: true },
+        range: { units: "touch", special: "", override: false },
+        ...(spendi ? { consumption: spendi } : {}),
+      }));
+    } else if (save) {
+      activities.push(attivita("save", {
+        save,
+        damage: { onSave: "half", parts: f ? [parteDanno(f, d.damageType), ...extra] : extra },
+        ...(spendi ? { consumption: spendi } : {}),
+      }));
+    } else if (f && d.actionType === "rwak") {
+      activities.push(attivita("attack", {
+        attack: { ability: "dex", bonus: "", critical: { threshold: null }, flat: false, type: { value: "ranged", classification: "weapon" } },
+        damage: { critical: { bonus: "" }, includeBase: false, parts: [parteDanno(f, d.damageType), ...extra] },
+        range: { value: "20", long: "60", units: "ft", special: "", override: false },
+        ...(spendi ? { consumption: spendi } : {}),
+      }));
+    } else if (f) {
+      activities.push(attivita("damage", {
+        damage: { critical: { allow: false, bonus: "" }, parts: [parteDanno(f, d.damageType), ...extra] },
+        ...(spendi ? { consumption: spendi } : {}),
+      }));
+    }
+  }
+
+  // Usi/cariche (formato dnd5e 4+).
+  if (d.uses && Number(d.uses.max) > 0) {
+    const max = Number(d.uses.max);
+    const per = d.uses.per || "charges";
+    const recovery = per === "charges" ? [] : [d.uses.recovery
+      ? { period: per === "day" ? "dawn" : per, type: "formula", formula: String(d.uses.recovery) }
+      : { period: per === "day" ? "dawn" : per, type: "recoverAll", formula: "" }];
+    system.uses = { spent: 0, max: String(max), recovery, autoDestroy: isCons && per === "charges" };
+  }
+
+  const out = { name: d.name || "Oggetto", type, system };
+  if (d.img) out.img = d.img;
+  // Effetti attivi: addosso finché lo porti (transfer) o applicati quando lo usi.
+  const effetti = Array.isArray(d.effects) ? d.effects : [];
+  if (effetti.length) {
+    out.effects = effetti.map((e) => ({
+      _id: rid(), name: e.name || out.name, img: "icons/svg/aura.svg",
+      transfer: e.transfer !== false, disabled: false,
+      changes: (e.changes || []).map((c) => ({ key: c.key, mode: Number(c.mode) || 2, value: String(c.value) })),
+    }));
+    const daUsare = out.effects.filter((e) => !e.transfer).map((e) => ({ _id: e._id }));
+    if (daUsare.length) {
+      // L'effetto si applica dall'attività: la prima che c'è, o una apposta.
+      if (activities.length) activities[0].effects = daUsare;
+      else activities.push(attivita("utility", { effects: daUsare, ...(spendi ? { consumption: spendi } : {}) }));
+    }
+  }
+  // Oggetti con cariche ma nessuna azione (bacchette, anelli…): un'attività che scala la carica.
+  if (!activities.length && spendi && type !== "loot") activities.push(attivita("utility", { consumption: spendi }));
+  if (activities.length) system.activities = Object.fromEntries(activities.map((a) => [a._id, a]));
+  return out;
+}
+
 function buildItemData(d) {
+  if (DND_MAJOR >= 4) return buildItemDataV4(d);
   const descHtml = /<[a-z][\s\S]*>/i.test(d.description || "")
     ? (d.description || "")
     : `<p>${(d.description || "").replace(/\n/g, "<br>")}</p>`;

@@ -32,7 +32,7 @@ import { PREGIATURE, PREGIATURA_COSTS, PROFESSIONI, SENTIERO_MAESTRO, TIER_ORDER
 import { CRAFT_MAX_PER_DAY, CRAFT_MAX_PER_WEEK, craftAllowance, craftDayKey, craftResetLabel, craftWeekKey } from "../data/craftingWeek";
 import { serverClockOffset, serverNow } from "../data/serverClock";
 import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
-import { DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
+import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftSaleValue, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
@@ -48,6 +48,12 @@ const STAT_KEY = { FOR: "str", DES: "dex", INT: "int", SAG: "wis" };
 const LEGACY_QUALITY = { sup: "di qualità superiore", fortuna: "di fortuna" };
 // Costo dei materiali della rarità, in monete.
 const tierMo = (tier) => PREGIATURA_COSTS.find((c) => c.tier === normTier(tier))?.mo || 0;
+// Dati del tiro che decidono il valore dell'oggetto su Foundry (craftSaleValue):
+// il costo è il listino della prova, prima dello sconto del 20 naturale.
+const saleOf = (e) => ({
+  targetTier: e.targetTier, total: e.total, nat20: !!e.nat20 || e.d20 === 20, fumble: !!e.fumble,
+  costMo: Number(e.listCostMo) || investCostMo(tierMo(e.targetTier), investmentByKey(e.invest)),
+});
 // Il fallimento critico della FRETTA (5%) rovina il lavoro: il banco resta
 // occupato due minuti con la barra rossa, poi si scopre il disastro. L'1
 // naturale non passa più di qui: l'oggetto esce, Scarso e maledetto.
@@ -269,21 +275,28 @@ export default function CraftingOfficina() {
         ? (lineItem(pickLine, tier)?.[0] || `un oggetto a caso della tabella ${tm.label} (d12)`)
         : tm.pick ? "— scegli l'oggetto qui sopra —" : `un oggetto a caso della tabella ${tm.label} (d12)`;
       const dist = Math.max(0, idxT - TIER_ORDER.indexOf(tier));
+      // Valore su Foundry: per la fascia mirata va dal minimo (di misura) al massimo (4+ sopra).
+      const sale = { targetTier: target, tier, costMo };
+      const lo = craftSaleValue({ ...sale, total: low }).price;
+      const hi = i === idxT ? craftSaleValue({ ...sale, total: Number(low) + 4 }).price : lo;
       rows.push({
         key: TIER_ORDER[i], tier, top: i === idxT, merged,
         range: i === idxT ? `${low}+` : meta.range,
         name, dist,
         minutes: applyOutcomeTime(work, { dist }).minutes,
         xp: xpWithInvestment(XP_PER_TIER[tier] || 0, investOpt),
+        value: hi > lo ? `${fmtMo(lo)}–${fmtMo(hi).replace(" mo", "")} mo` : fmtMo(lo),
       });
     }
     return rows;
-  }, [target, pickLine, work, investOpt, prog.scarsoAsComune]);
+  }, [target, pickLine, work, investOpt, prog.scarsoAsComune, costMo]);
   const timeRange = outcomeTimeRange(work.minutes);
   // La riga dell'1 naturale nella tabella "Cosa può uscire": sempre Scarso,
   // con il tempo della caduta più lunga e i PE più bassi.
   const nat1Minutes = applyOutcomeTime(work, { dist: TIER_ORDER.indexOf(target) }).minutes;
   const nat1Xp = xpWithInvestment(XP_PER_TIER.scarso || 0, investOpt);
+  const nat1Value = craftSaleValue({ targetTier: target, tier: "scarso", costMo, fumble: true }).price;
+  const nat20Value = craftSaleValue({ targetTier: target, tier: target, costMo, nat20: true }).price;
 
   const activeEntry = revealed ? pendingEntry : null;
   const activeProf = activeEntry ? (PROFESSIONI.find((x) => x.key === activeEntry.profession) || prof) : null;
@@ -296,6 +309,7 @@ export default function CraftingOfficina() {
       choice: previewName, enhancer: enh, note: note.trim(), work: activeEntry.work || null, components: activeEntry.components || [], upgraded: !!activeEntry.upgraded, resType,
       crafter: { uid, name: charData?.name || "", gradeName: prog.grado.name, level: prog.level.lv },
       roll: { d20: activeEntry.d20, bonus: activeEntry.bonus, total: activeEntry.total, d12: activeEntry.d12 },
+      sale: saleOf(activeEntry),
     });
   }, [activeEntry, activeProf, previewName, enhKey, note, resType, charData?.name, prog.grado.name, prog.level.lv, uid]);
   const needsRes = !!activeEntry && !activeEntry.failed && needsResChoice(activeEntry.name, previewName);
@@ -578,6 +592,7 @@ export default function CraftingOfficina() {
         enhancer: enh, note: note.trim(), work: entry.work || null, components: entry.components || [], upgraded: !!entry.upgraded, resType,
         crafter: { uid, name: charData?.name || currentUser.email, gradeName: prog.grado.name, level: prog.level.lv },
         roll: { d20: entry.d20, bonus: entry.bonus, total: entry.total, d12: entry.d12 },
+        sale: saleOf(entry),
       });
       const inv = investmentByKey(entry.invest);
       const conds = [
@@ -818,7 +833,7 @@ export default function CraftingOfficina() {
                       <span className="off-band-r">{b.range}</span>
                       <span className="off-band-t">{tm.icon} {tm.label}{b.merged ? <i> (lo Scarso ti conta come Comune)</i> : null}</span>
                       <span className="off-band-n">{b.name}</span>
-                      <span className="off-band-x">⏱ {fmtMinutes(b.minutes)} · +{b.xp} PE</span>
+                      <span className="off-band-x">⏱ {fmtMinutes(b.minutes)} · +{b.xp} PE · 💰 {b.value}</span>
                     </div>
                   );
                 })}
@@ -829,10 +844,10 @@ export default function CraftingOfficina() {
                   <span className="off-band-r">1 nat.</span>
                   <span className="off-band-t">🪨 Scarso</span>
                   <span className="off-band-n">esce il peggio del banco, e il pezzo si porta dietro qualcosa: lo sa solo il Master</span>
-                  <span className="off-band-x">⏱ {fmtMinutes(nat1Minutes)} · +{nat1Xp} PE</span>
+                  <span className="off-band-x">⏱ {fmtMinutes(nat1Minutes)} · +{nat1Xp} PE · 💰 {fmtMo(nat1Value)}</span>
                 </div>
               </div>
-              <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60%, PE doppi e <strong>materiali a metà prezzo</strong>, perché te ne è bastata la metà.</p>
+              <p className="nx-nota off-bands-note">Il totale non può salire sopra la rarità mirata: i materiali sono quelli. Più il tiro resta sotto, più pezzi devi rifare e più il lavoro dura (+25% una rarità sotto, +50% da due in giù). Con un <strong>20 naturale</strong> ti riesce al primo colpo: tempo al 60%, PE doppi e <strong>materiali a metà prezzo</strong>, perché te ne è bastata la metà. 💰 è il valore dell'oggetto su Foundry: parte dal costo dei materiali ({fmtMo(costMo)}) e il tiro lo moltiplica — {CRAFT_VALUE_SCALE.map((s) => `${s.label} ×${String(s.mult).replace(".", ",")}`).join(" · ")}. Centrare la rarità rende sempre più di quanto spendi (col 20 naturale {fmtMo(nat20Value)}); mancarla è una perdita.</p>
             </div>
 
             <div className="off-bank-col off-bank-side">
@@ -1848,7 +1863,7 @@ function CraftSpese({ chars }) {
         </ul>
       )}
       {msg && <p className={`nx-nota off-spese-msg${msg.startsWith("Errore") ? " is-err" : ""}`}>{msg}</p>}
-      <p className="nx-nota">Gli <strong>oggetti</strong> creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry per rarità: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
+      <p className="nx-nota">Gli <strong>oggetti</strong> creati arrivano in <Link to="/dm-admin/foundry-item">Crea Oggetto → Foundry</Link> con l'etichetta ⚒, il tempo di lavoro e la nota della prova. Valore Foundry = costo dei materiali × esito del tiro ({CRAFT_VALUE_SCALE.map((s) => `${s.label} ×${String(s.mult).replace(".", ",")}`).join(" · ")}), mai sotto il minimo della rarità uscita: {TIER_ORDER.map((t) => `${tierMeta(t).label} ${TIER_TO_FOUNDRY[t].price} mo`).join(", ")}.</p>
       <p className="nx-nota">Su Foundry basta UNA macro, <strong>Crea Oggetti dal sito → Foundry</strong>: crea gli oggetti nell'inventario, toglie le monete delle spese (tasche e poi borse), aggiorna l'oro anche sul sito e svuota la coda. Le spese in coda ora: {fmtMo(chars.reduce((a, c) => a + goldPending(c.crafting), 0))} in sospeso.</p>
     </div>
   );
