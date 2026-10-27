@@ -95,6 +95,19 @@ function getDamageFormula(item, strMod, dexMod) {
 }
 
 /* ---- Dati di UN attore nel formato Firestore ---- */
+// Riepilogo delle monete in tutte le valute (2026-10-27).
+const SIGLE_MONETE = { pp: "mp", gp: "mo", ep: "me", sp: "ma", cp: "mr" };
+const VALORE_MONETE = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
+function testoMonete(m) {
+  if (!m) return "nessuna moneta";
+  const parti = Object.keys(SIGLE_MONETE).filter((k) => m[k]).map((k) => `${m[k]} ${SIGLE_MONETE[k]}`);
+  if (!parti.length) return "nessuna moneta";
+  const mr = Object.keys(VALORE_MONETE).reduce((a, k) => a + (m[k] || 0) * VALORE_MONETE[k], 0);
+  const gp = Math.floor(mr / 100), sp = Math.floor((mr % 100) / 10), rc = mr % 10;
+  const tot = [gp ? `${gp} mo` : "", sp ? `${sp} ma` : "", rc ? `${rc} mr` : ""].filter(Boolean).join(" ") || "0 mo";
+  return parti.length === 1 && m.gp ? parti[0] : `${parti.join(" · ")} (= ${tot})`;
+}
+
 function buildFields(actor) {
   const A = actor.system;
   const strMod = A.abilities?.str?.mod ?? 0;
@@ -220,7 +233,9 @@ function buildFields(actor) {
     actions:    fsArr(actions),
     inventory:  fsArr(inventory)
   };
-  return { fields, gp: totale.gp, gpBags: totale.gp - tasche.gp };
+  // Tutte le valute per il riepilogo (2026-10-27): prima diceva solo le mo.
+  const inBorsa = Object.fromEntries(COINS.map((k) => [k, totale[k] - tasche[k]]));
+  return { fields, coins: totale, bagCoins: inBorsa, gp: totale.gp, gpBags: totale.gp - tasche.gp };
 }
 
 /* ---- Personaggi del sito (lettura aperta) ---- */
@@ -311,7 +326,7 @@ async function mioUid(actor) {
   }
 
   const base = game.actors.get(actor.id) || actor;
-  const { fields, gp, gpBags } = buildFields(actor);
+  const { fields, gp, gpBags, coins, bagCoins } = buildFields(actor);
   fields.foundryActorId   = fsStr(base.id);
   fields.foundryActorName = fsStr(base.name);
   const user = game.user.isGM ? ownerNames(base)[0] : game.user.name;
@@ -343,5 +358,6 @@ async function mioUid(actor) {
   try {
     if (base.isOwner && base.getFlag("world", "firebaseUID") !== uid) await base.setFlag("world", "firebaseUID", uid);
   } catch (e) { console.warn("[Sync] flag non scritto:", e); }
-  ui.notifications.info(`✅ ${actor.name} sincronizzato sul sito · ${gp} mo${gpBags ? ` (${gpBags} in borsa)` : ""}.`);
+  const borse = bagCoins && Object.values(bagCoins).some(Boolean) ? ` — in borsa: ${testoMonete(bagCoins)}` : "";
+  ui.notifications.info(`✅ ${actor.name} sincronizzato sul sito · ${testoMonete(coins)}${borse}.`);
 })();

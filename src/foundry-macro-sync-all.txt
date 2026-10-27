@@ -225,7 +225,9 @@ function buildFields(actor) {
     actions:    fsArr(actions),
     inventory:  fsArr(inventory)
   };
-  return { fields, gp: totale.gp, gpBags: totale.gp - tasche.gp };
+  // Tutte le valute per il riepilogo (2026-10-27): prima diceva solo le mo.
+  const inBorsa = Object.fromEntries(COINS.map((k) => [k, totale[k] - tasche[k]]));
+  return { fields, coins: totale, bagCoins: inBorsa, gp: totale.gp, gpBags: totale.gp - tasche.gp };
 }
 
 /* ---- Personaggi del sito (lettura aperta) ---- */
@@ -854,9 +856,22 @@ async function linkOne(r) {
 }
 
 /* ---- Scheda, monete, inventario → sito ---- */
+// Riepilogo delle monete in tutte le valute (2026-10-27).
+const SIGLE_MONETE = { pp: "mp", gp: "mo", ep: "me", sp: "ma", cp: "mr" };
+const VALORE_MONETE = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
+function testoMonete(m) {
+  if (!m) return "nessuna moneta";
+  const parti = Object.keys(SIGLE_MONETE).filter((k) => m[k]).map((k) => `${m[k]} ${SIGLE_MONETE[k]}`);
+  if (!parti.length) return "nessuna moneta";
+  const mr = Object.keys(VALORE_MONETE).reduce((a, k) => a + (m[k] || 0) * VALORE_MONETE[k], 0);
+  const gp = Math.floor(mr / 100), sp = Math.floor((mr % 100) / 10), rc = mr % 10;
+  const tot = [gp ? `${gp} mo` : "", sp ? `${sp} ma` : "", rc ? `${rc} mr` : ""].filter(Boolean).join(" ") || "0 mo";
+  return parti.length === 1 && m.gp ? parti[0] : `${parti.join(" · ")} (= ${tot})`;
+}
+
 async function syncOne(uid, actor, userName) {
   const base = game.actors.get(actor.id) || actor;
-  const { fields, gp, gpBags } = buildFields(base);
+  const { fields, gp, gpBags, coins, bagCoins } = buildFields(base);
   fields.foundryActorId   = fsStr(base.id);
   fields.foundryActorName = fsStr(base.name);
   if (userName) fields.foundryUser = fsStr(userName);
@@ -872,7 +887,7 @@ async function syncOne(uid, actor, userName) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
-  return { gp, gpBags };
+  return { gp, gpBags, coins, bagCoins };
 }
 
 (async () => {
@@ -916,8 +931,9 @@ async function syncOne(uid, actor, userName) {
     for (const r of rows) {
       if (!r.actor) { report.push({ pg: r.c.name, esito: `non trovato: ${r.how}` }); continue; }
       try {
-        const { gp, gpBags } = await syncOne(r.c.uid, r.actor, r.user?.name);
-        report.push({ pg: r.c.name, esito: r.linkErr ? `ok (collegamento: ${r.linkErr})` : "ok", mo: gp, inBorse: gpBags, sistemato: r.fix.join(" · ") });
+        const { coins, bagCoins } = await syncOne(r.c.uid, r.actor, r.user?.name);
+        const borse = bagCoins && Object.values(bagCoins).some(Boolean) ? testoMonete(bagCoins) : "";
+        report.push({ pg: r.c.name, esito: r.linkErr ? `ok (collegamento: ${r.linkErr})` : "ok", monete: testoMonete(coins), inBorse: borse, sistemato: r.fix.join(" · ") });
       } catch (e) {
         console.error(`[Sync] ${r.c.name}:`, e);
         report.push({ pg: r.c.name, esito: `errore: ${e.message}` });
@@ -928,7 +944,7 @@ async function syncOne(uid, actor, userName) {
 
   const ok = report.filter((x) => x.esito.startsWith("ok"));
   const ko = report.filter((x) => !x.esito.startsWith("ok"));
-  const righe = ok.map((x) => `<li>${esc(x.pg)} · ${x.mo} mo${x.inBorse ? ` (${x.inBorse} in borsa)` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
+  const righe = ok.map((x) => `<li>${esc(x.pg)} · ${esc(x.monete)}${x.inBorse ? ` — in borsa: ${esc(x.inBorse)}` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
   const male = ko.map((x) => `<li style="opacity:.7">${esc(x.pg)} — ${esc(x.esito)}</li>`).join("");
   const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} monete, ${esitoCoda.pe} PE${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
   ChatMessage.create({
