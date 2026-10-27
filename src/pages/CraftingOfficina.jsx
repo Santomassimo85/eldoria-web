@@ -34,7 +34,7 @@ import { serverClockOffset, serverNow } from "../data/serverClock";
 import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftSaleValue, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, roundMo, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import { affordFromSnapshot, availableCoins, availableGp, canAfford, coinsOf, fmtCoins, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
 import "./CraftingOfficina.css";
@@ -285,7 +285,7 @@ export default function CraftingOfficina() {
         name, dist,
         minutes: applyOutcomeTime(work, { dist }).minutes,
         xp: xpWithInvestment(XP_PER_TIER[tier] || 0, investOpt),
-        value: hi > lo ? `${fmtMo(lo)}–${fmtMo(hi).replace(" mo", "")} mo` : fmtMo(lo),
+        value: hi > lo ? `${fmtMo(lo)} – ${fmtMo(hi)}` : fmtMo(lo),
       });
     }
     return rows;
@@ -433,7 +433,7 @@ export default function CraftingOfficina() {
       const failMs = FAIL_MINUTES * 60000;
       const nat20 = d20 === 20;
       // 20 naturale: tanta bravura che i materiali bastano per metà della spesa.
-      const paidMo = nat20 && !failed ? Math.round(costMo * NAT20_COST_MULT) : costMo;
+      const paidMo = nat20 && !failed ? roundMo(costMo * NAT20_COST_MULT) : costMo;
       // L'esito pesa sul tempo: centrare la rarità costa il tempo preparato,
       // mancarla lo allunga, un 20 naturale lo accorcia.
       const dist = Math.max(0, TIER_ORDER.indexOf(target) - TIER_ORDER.indexOf(tier));
@@ -492,7 +492,7 @@ export default function CraftingOfficina() {
           // `availableGp` la toglie dall'oro della scheda. Il Master la chiude
           // quando la manda alla macro (o la segna "già pagata").
           // Il Master non paga: niente spesa in sospeso.
-          "crafting.goldPending": Math.max(0, (Number(cur.goldPending) || 0) + (goldRef ? (Number(entry.costMo) || 0) : 0)),
+          "crafting.goldPending": roundMo(Math.max(0, (Number(cur.goldPending) || 0) + (goldRef ? (Number(entry.costMo) || 0) : 0))),
         };
         // I componenti: dalla scorta del Master si consumano (uno per tipo); altrimenti
         // devono risultare sulla scheda Foundry o comprati al Mercato (il Master li toglie lui).
@@ -966,7 +966,7 @@ export default function CraftingOfficina() {
                     {perkB !== 0 && <span className="off-piece"><b>{sign(perkB)}</b><small>Sentiero</small></span>}
                     <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
                   </div>
-                  <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(Math.round(costMo * NAT20_COST_MULT))}</i></span>
+                  <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(roundMo(costMo * NAT20_COST_MULT))}</i></span>
                   {/* La borsa: le monete escono dalla scheda appena parte il lavoro. */}
                   <span className={`off-sum-borsa${purse.ok ? "" : " is-short"}`}>
                     {purse.master ? <>👑 Master: crei senza pagare.</>
@@ -1619,7 +1619,7 @@ function ArtisanCard({ c, now, nowMs, open, onToggle, busy, setBusy, act }) {
         <div className={al.usedToday ? "is-used" : ""}><dt>Oggi</dt><dd>{al.usedToday ? 1 : 0}<i>/{CRAFT_MAX_PER_DAY}</i></dd></div>
         <div className={al.weekCount >= CRAFT_MAX_PER_WEEK ? "is-used" : ""}><dt>Settimana</dt><dd>{al.weekCount}<i>/{CRAFT_MAX_PER_WEEK}</i></dd></div>
         <div><dt>Creazioni</dt><dd>{total}</dd></div>
-        <div title={hasPurse(c) ? `sulla scheda ${fmtCoins(coinsOf(c.currency))} = ${fmtMo(sheetGp(c))}${goldPending(cr) ? ` · ${fmtMo(goldPending(cr))} in sospeso` : ""}` : "monete non ancora sincronizzate da Foundry"}><dt>Monete</dt><dd className="is-gold">{hasPurse(c) ? fmtMo(availableGp(c)).replace(" mo", "") : "—"}{hasPurse(c) && <i> mo</i>}</dd></div>
+        <div title={hasPurse(c) ? `sulla scheda ${fmtCoins(coinsOf(c.currency))} = ${fmtMo(sheetGp(c))}${goldPending(cr) ? ` · ${fmtMo(goldPending(cr))} in sospeso` : ""}` : "monete non ancora sincronizzate da Foundry"}><dt>Monete</dt><dd className="is-gold">{hasPurse(c) ? fmtMo(availableGp(c)) : "—"}</dd></div>
       </dl>
 
       {bench && (

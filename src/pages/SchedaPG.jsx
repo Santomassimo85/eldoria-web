@@ -5,6 +5,7 @@ import { useAuth } from "../AuthContext";
 import GlacierHero from "../components/glacier/GlacierHero";
 import { buildSetIndex, matchInventorySets } from "../utils/itemSets";
 import { availableCoins, availableGp } from "../data/craftingPurse";
+import { fmtMo } from "../data/craftingTime";
 
 /* ============================================================
    Scheda PG — vista in stile grimorio, legge characters/{uid}.
@@ -649,7 +650,7 @@ export default function SchedaPG() {
                   ))}
                 </div>
                 {craftPending > 0 && (
-                  <div className="spg-hint">⚒ {craftPending} MO già spese all'Officina: qui sono già tolte (prima l'oro, poi le altre monete, col resto), su Foundry si scalano alla prossima importazione. In tutto ti restano {availableGp(data)} MO.</div>
+                  <div className="spg-hint">⚒ {fmtMo(craftPending)} già spese all'Officina: qui sono già tolte (prima l'oro, poi le altre monete, col resto), su Foundry si scalano alla prossima importazione. In tutto ti restano {fmtMo(availableGp(data))}.</div>
                 )}
                 {inv.length ? (() => {
                   const loose = inv.filter(i => !i.container && !i.isContainer);

@@ -61,9 +61,21 @@ export const INVESTMENTS = [
 export const investmentByKey = (k) => INVESTMENTS.find((i) => i.key === (k || "")) || INVESTMENTS[0];
 // Costo dei materiali con l'investimento scelto, in monete d'oro.
 // Accetta anche un investimento già ritoccato (Materiali docili: "pregio" a +25%).
-export const investCostMo = (mo, inv) => { const i = inv && typeof inv === "object" && "costPct" in inv ? inv : investmentByKey(inv?.key ?? inv); return Math.round((Number(mo) || 0) * (1 + i.costPct / 100)); };
-// "3.000 mo"
-export const fmtMo = (n) => `${new Intl.NumberFormat("it-IT").format(Math.round(Number(n) || 0))} mo`;
+export const investCostMo = (mo, inv) => { const i = inv && typeof inv === "object" && "costPct" in inv ? inv : investmentByKey(inv?.key ?? inv); return roundMo((Number(mo) || 0) * (1 + i.costPct / 100)); };
+// TUTTE LE VALUTE (2026-10-27): gli importi dell'Officina sono in mo ma
+// precisi al RAME (due decimali: 62,5 mo = 62 mo 5 ma), mai più arrotondati
+// alla moneta d'oro. `roundMo` li tiene puliti, `fmtMo` li scrive in mo/ma/mr.
+export const roundMo = (n) => Math.round((Number(n) || 0) * 100) / 100;
+// "3.000 mo" · "62 mo 5 ma" · "7 ma 5 mr"
+export function fmtMo(n) {
+  const cp = Math.max(0, Math.round(Math.abs(Number(n) || 0) * 100));
+  const gp = Math.floor(cp / 100), sp = Math.floor((cp % 100) / 10), rc = cp % 10;
+  const parts = [];
+  if (gp) parts.push(`${new Intl.NumberFormat("it-IT").format(gp)} mo`);
+  if (sp) parts.push(`${sp} ma`);
+  if (rc) parts.push(`${rc} mr`);
+  return (Number(n) < 0 ? "−" : "") + (parts.join(" ") || "0 mo");
+}
 // PE della prova con l'investimento (arrotondati per eccesso: +5% di 10 = 11).
 export const xpWithInvestment = (xp, inv) => { const i = investmentByKey(inv?.key ?? inv); return i.xpPct ? Math.ceil((Number(xp) || 0) * (1 + i.xpPct / 100)) : (Number(xp) || 0); };
 

@@ -57,9 +57,9 @@ export function payCoins(coins, cp) {
   return { coins: m, missing: need };
 }
 
-// Valore della scheda in mo (tutte le valute, arrotondato per difetto).
-export const sheetGp = (charData) => Math.floor(coinsCp(coinsOf(charData?.currency)) / 100);
-export const goldPending = (crafting) => Math.max(0, Number(crafting?.goldPending) || 0);
+// Valore della scheda in mo (tutte le valute, preciso al rame: 36,24 mo).
+export const sheetGp = (charData) => coinsCp(coinsOf(charData?.currency)) / 100;
+export const goldPending = (crafting) => Math.max(0, Math.round((Number(crafting?.goldPending) || 0) * 100) / 100);
 
 // Scheda mai sincronizzata da Foundry: `currency` non c'è proprio. In quel caso
 // NON si blocca nessuno (sarebbe un muro per chi non ha ancora fatto il sync):
@@ -72,17 +72,20 @@ export const availableCoins = (charData) =>
   payCoins(coinsOf(charData?.currency), goldPending(charData?.crafting) * 100).coins;
 
 // Valore spendibile adesso in mo, al netto di quel che è già stato speso al banco.
-export const availableGp = (charData) => Math.floor(coinsCp(availableCoins(charData)) / 100);
+export const availableGp = (charData) => coinsCp(availableCoins(charData)) / 100;
+
+// Importo in mo preciso al rame, mai negativo.
+const toMo = (n) => Math.max(0, Math.round((Number(n) || 0) * 100) / 100);
 
 // Il PG può permettersi la spesa? Il Master non paga mai (crea a piacere).
 // `unknown: true` = scheda senza oro sincronizzato: si passa, ma con avviso.
 export function canAfford(charData, costMo, { isMaster = false } = {}) {
-  const cost = Math.max(0, Math.round(Number(costMo) || 0));
+  const cost = toMo(costMo);
   const have = availableGp(charData);
   const pending = goldPending(charData?.crafting);
   if (isMaster) return { ok: true, master: true, cost, have, pending, missing: 0, unknown: false };
   if (!hasPurse(charData)) return { ok: true, cost, have: 0, pending, missing: 0, unknown: true };
-  return { ok: have >= cost, cost, have, pending, missing: Math.max(0, cost - have), unknown: false };
+  return { ok: have >= cost, cost, have, pending, missing: toMo(cost - have), unknown: false };
 }
 
 // Stessa verifica sui dati LETTI NELLA TRANSAZIONE (snapshot fresco), così
@@ -90,8 +93,8 @@ export function canAfford(charData, costMo, { isMaster = false } = {}) {
 export function affordFromSnapshot(data, costMo) {
   if (!hasPurse(data)) return { ok: true, unknown: true, have: 0, missing: 0 };
   const have = availableGp(data);
-  const cost = Math.max(0, Math.round(Number(costMo) || 0));
-  return { ok: have >= cost, unknown: false, have, missing: Math.max(0, cost - have) };
+  const cost = toMo(costMo);
+  return { ok: have >= cost, unknown: false, have, missing: toMo(cost - have) };
 }
 
 // Chiude la spesa di UNA prova: le sue monete escono da `goldPending` una volta
@@ -106,8 +109,8 @@ export function pendingAfterClose(crafting, entryId, { queued = false } = {}) {
   const e = log.find((x) => x?.id === entryId);
   const pend = goldPending(crafting);
   if (!e) return pend;
-  const cost = Math.max(0, Number(e.costMo) || 0);
-  if (e.goldAuto) return queued ? Math.max(0, pend - cost) : pend;
+  const cost = toMo(e.costMo);
+  if (e.goldAuto) return queued ? toMo(pend - cost) : pend;
   if (e.goldInboxId || e.goldDone) return pend;
-  return Math.max(0, pend - cost);
+  return toMo(pend - cost);
 }

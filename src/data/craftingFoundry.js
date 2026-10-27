@@ -6,7 +6,7 @@
 // proprietà… così l'oggetto creato dal giocatore arriva su Foundry "da manuale".
 
 import { PREGIATURE, normTier } from "./crafting";
-import { componentByKey, craftTimeLabel } from "./craftingTime";
+import { componentByKey, craftTimeLabel, fmtMo, roundMo } from "./craftingTime";
 import { itemMech } from "./craftingCatalogo";
 
 // Rarità dnd5e e valore (mo) dell'oggetto su Foundry per pregiatura: sopra il
@@ -61,7 +61,7 @@ export function craftValueStep({ targetTier, tier, total, nat20 = false, fumble 
 export function craftSaleValue({ costMo, tier, ...rest }) {
   const step = craftValueStep({ tier, ...rest });
   const floor = (TIER_TO_FOUNDRY[normTier(tier)] || TIER_TO_FOUNDRY.common).price;
-  return { price: Math.max(floor, Math.round((Number(costMo) || 0) * step.mult)), step };
+  return { price: Math.max(floor, roundMo((Number(costMo) || 0) * step.mult)), step };
 }
 
 // Tipo dnd5e "di casa" per ogni professione (quando il nome non dice altro).
@@ -295,7 +295,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     } else {
       descParts.push("✦ Fattura superiore (materiali di pregio): l'effetto dell'oggetto è di un grado più forte — +1d4 all'effetto, durata doppia o bonus equivalente a scelta del DM.");
     }
-    if (!saleValue) price = Math.round(price * 1.5);
+    if (!saleValue) price = roundMo(price * 1.5);
   }
   for (const k of components) {
     const c = componentByKey(k);
@@ -330,14 +330,14 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
   // Nome nel regno (livello 10 della professione): la firma e il valore doppio.
   if (Number(crafter?.level) >= 10 && crafter?.name) {
     finalName = `${finalName} · firma di ${String(crafter.name).split(" ")[0]}`;
-    price = Math.round(price * 2);
+    price = roundMo(price * 2);
   }
 
   descParts.push(
     `— Creato nell'Officina da ${crafter.name} (${profession.name}, ${crafter.gradeName}). ` +
     `Rarità ${tierMeta?.label || tier}: d20 ${roll.d20} + ${roll.bonus} = ${roll.total}${roll.d12 ? `, d12 = ${roll.d12}` : ", oggetto scelto dal catalogo"}.` +
     (work ? ` Tempo di lavoro: ${craftTimeLabel(work)}.` : "") +
-    (saleValue ? ` Valore: ${saleValue.price} mo (${saleValue.step.label}, ×${String(saleValue.step.mult).replace(".", ",")} sul costo dei materiali).` : "") +
+    (saleValue ? ` Valore: ${fmtMo(saleValue.price)} (${saleValue.step.label}, ×${String(saleValue.step.mult).replace(".", ",")} sul costo dei materiali).` : "") +
     (note ? ` Nota: ${note}` : "")
   );
 
@@ -395,8 +395,8 @@ export function craftGoldPayload({ crafter, amount, tierLabel, itemName, compone
     kind: "gold",
     op: "subtract",
     currency: "gp",
-    amount: Math.max(0, Math.round(Number(amount) || 0)),
-    name: `−${Math.max(0, Math.round(Number(amount) || 0))} mo · ${what}`,
+    amount: Math.max(0, roundMo(amount)),
+    name: `−${fmtMo(Math.max(0, roundMo(amount)))} · ${what}`,
     reason: bits.join(" · "),
     target: "player",
     targetUid: crafter.uid,

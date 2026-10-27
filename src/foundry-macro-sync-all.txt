@@ -442,7 +442,7 @@ function buildItemDataV4(d) {
   const system = {
     description: { value: descHtml, chat: "" },
     quantity: d.quantity || 1,
-    price: { value: d.price || 0, denomination: "gp" },
+    price: prezzoFoundry(d.price),
     rarity: d.rarity || "",
     identified: true,
     weight: { value: d.weight || 0, units: "lb" },
@@ -563,7 +563,7 @@ function buildItemData(d) {
   const system = {
     description: { value: descHtml, chat: "" },
     quantity: d.quantity || 1,
-    price: { value: d.price || 0, denomination: "gp" },
+    price: prezzoFoundry(d.price),
     rarity: d.rarity || "",
     identified: true,
   };
@@ -633,7 +633,7 @@ async function leggiCoda() {
 const descriviVoce = (d) => d.kind === "xp"
   ? `${d.targetName || d.targetUid}: +${d.amount} PE (${d.reason || "premio"})`
   : d.kind === "gold"
-  ? `${d.targetName || d.targetUid}: ${d.op === "add" ? "+" : "−"}${d.amount} mo (${d.reason || "spesa"})`
+  ? `${d.targetName || d.targetUid}: ${d.op === "add" ? "+" : "−"}${fmtMr((Number(d.amount) || 0) * (VALORE_MR[d.currency] || 100))} (${d.reason || "spesa"})`
   : `${d.name || "Oggetto"} → ${d.target === "player" ? (d.targetName || d.targetUid) : "Oggetti del mondo"}`;
 
 // Dopo aver scalato su Foundry: oro nuovo sul sito + spesa tolta da goldPending.
@@ -643,6 +643,20 @@ const descriviVoce = (d) => d.kind === "xp"
 // al banco: prima l'oro, poi gli spiccioli, poi elettro e platino, e se serve
 // si spezza una moneta e il resto torna in oro, argento e rame.
 const VALUTE = ["pp", "gp", "ep", "sp", "cp"];
+// Importo in rame → "62 mo 5 ma" (gli importi del sito sono in mo precisi al rame).
+function fmtMr(mr) {
+  const cp = Math.max(0, Math.round(Number(mr) || 0));
+  const gp = Math.floor(cp / 100), sp = Math.floor((cp % 100) / 10), rc = cp % 10;
+  return [gp ? `${gp} mo` : "", sp ? `${sp} ma` : "", rc ? `${rc} mr` : ""].filter(Boolean).join(" ") || "0 mo";
+}
+// Prezzo di un oggetto (mo, anche con decimali) nella valuta più grande che lo
+// scrive intero: 75 → 75 mo · 17,5 → 175 ma · 12,25 → 1225 mr.
+function prezzoFoundry(p) {
+  const cp = Math.max(0, Math.round((Number(p) || 0) * 100));
+  if (cp % 100 === 0) return { value: cp / 100, denomination: "gp" };
+  if (cp % 10 === 0) return { value: cp / 10, denomination: "sp" };
+  return { value: cp, denomination: "cp" };
+}
 const VALORE_MR = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
 const SIGLA = { pp: "mp", gp: "mo", ep: "me", sp: "ma", cp: "mr" };
 const ORDINE_PAGA = ["gp", "sp", "cp", "ep", "pp"];
@@ -682,7 +696,7 @@ async function aggiornaSito(uid, moneteDopo, scalaPending) {
     currentDocument: { exists: true },
   };
   if (scalaPending > 0) {
-    write.updateTransforms = [{ fieldPath: "crafting.goldPending", increment: { integerValue: String(-Math.round(scalaPending)) } }];
+    write.updateTransforms = [{ fieldPath: "crafting.goldPending", increment: { doubleValue: -Math.round(scalaPending * 100) / 100 } }];
   }
   const res = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:commit?key=${FIREBASE_CONFIG.apiKey}`, {
     method: "POST",
@@ -711,7 +725,11 @@ async function scalaMonete(actor, d) {
   if (add) {
     // le monete in più vanno sempre addosso al PG, nella loro valuta
     const t = casse.find((c) => c.nome === "tasche") || casse[0];
-    t.dopo[valuta] += amount;
+    let mr = Math.round(amount * VALORE_MR[valuta]);
+    const intere = Math.floor(mr / VALORE_MR[valuta]);
+    t.dopo[valuta] += intere;
+    mr -= intere * VALORE_MR[valuta];
+    for (const r of ["gp", "sp", "cp"]) { const n = Math.floor(mr / VALORE_MR[r]); t.dopo[r] += n; mr -= n * VALORE_MR[r]; }
   } else {
     let need = Math.round(amount * VALORE_MR[valuta]);
     for (const c of casse) { if (need <= 0) break; need = pagaDa(c.dopo, need); }
@@ -729,17 +747,17 @@ async function scalaMonete(actor, d) {
   const riga = (k) => `<tr><td>${SIGLA[k]}</td><td style="text-align:right">${prima[k]}</td><td style="text-align:center">→</td><td style="text-align:right"><strong>${dopo[k]}</strong></td></tr>`;
   await ChatMessage.create({
     speaker: { alias: "Officina" },
-    content: `<p><strong>${esc(actor.name)}</strong>: ${add ? "+" : "−"}${amount} ${SIGLA[valuta]}</p>`
+    content: `<p><strong>${esc(actor.name)}</strong>: ${add ? "+" : "−"}${valuta === "gp" ? fmtMr(amount * 100) : `${amount} ${SIGLA[valuta]}`}</p>`
       + `<table style="font-size:.9em;width:auto">${VALUTE.filter((k) => prima[k] || dopo[k]).map(riga).join("")}</table>`
       + `<p style="font-size:.9em;opacity:.8">In tutto: ${fmtMo(valoreMr(prima))} → ${fmtMo(valoreMr(dopo))}.</p>`
       + (mosse.length ? `<p style="font-size:.9em;opacity:.8">${esc(mosse.join(" · "))}</p>` : "")
       + `<p style="font-size:.9em;opacity:.8">${esc(d.reason || "")}</p>`
-      + (manca ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${fmtMo(manca)}, tasche e borse sono vuote.</p>` : ""),
+      + (manca ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${fmtMr(manca)}, tasche e borse sono vuote.</p>` : ""),
     whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
   });
   // Il sito si allinea subito. Se non ci riesce la voce si cancella lo stesso:
   // le monete su Foundry sono già scalate e rifarlo sarebbe peggio (lo sistema la sync).
-  try { await aggiornaSito(d.targetUid, dopo, d.pendingOnSite && !add ? amount : 0); }
+  try { await aggiornaSito(d.targetUid, dopo, d.pendingOnSite && !add ? amount * VALORE_MR[valuta] / 100 : 0); }
   catch (e) { console.warn("[Coda] monete scalate su Foundry ma il sito non si è aggiornato:", e); }
 }
 
