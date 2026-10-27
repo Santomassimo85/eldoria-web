@@ -14,8 +14,9 @@
 //    per flag → foundryActorId → personaggio assegnato → unico posseduto → nome.
 // 2. CODA DELL'APP → FOUNDRY (foundry_inbox): oggetti creati all'Officina o
 //    dal form "Crea Oggetto" nell'inventario del PG (o negli Oggetti del
-//    mondo), SPESE in monete del crafting scalate da tasche e poi borse, con
-//    currency.gp e crafting.goldPending aggiornati subito sul sito.
+//    mondo), SPESE in monete del crafting scalate da tasche e poi borse con
+//    TUTTE le valute (resto compreso), e monete e crafting.goldPending
+//    aggiornati subito sul sito.
 // 3. SCHEDE → SITO: scheda, monete (tasche + borse), inventario, azioni.
 // Poi resta accesa: ogni CODA_OGNI_MINUTI porta da sola oggetti e spese
 // nuove e risincronizza i PG toccati, finche' Foundry resta aperto.
@@ -373,8 +374,9 @@ function makePlan(active) {
    "Crea Oggetto" e SPESE in monete (kind "gold") del crafting.
    - oggetti "player" → inventario dell'attore del PG; "world" → Oggetti del mondo;
    - monete: si scalano dalle tasche e poi dalle borse (i contenitori dnd5e
-     hanno una loro currency), il sito si aggiorna subito (currency.gp e
-     crafting.goldPending), la voce si cancella dalla coda.
+     hanno una loro currency) usando tutte le valute e dando il resto; il
+     sito si aggiorna subito (currency.* e crafting.goldPending), la voce si
+     cancella dalla coda. In chat: prima → dopo di ogni moneta.
    Una voce il cui PG non ha attore resta in coda: non si perde niente.
    ================================================================= */
 
@@ -635,11 +637,48 @@ const descriviVoce = (d) => d.kind === "xp"
   : `${d.name || "Oggetto"} → ${d.target === "player" ? (d.targetName || d.targetUid) : "Oggetti del mondo"}`;
 
 // Dopo aver scalato su Foundry: oro nuovo sul sito + spesa tolta da goldPending.
-async function aggiornaSito(uid, gpDopo, scalaPending) {
+// ── Monete: TUTTE le valute (2026-10-27) ──
+// Prima si guardavano solo le monete d'oro: chi aveva platino o argento
+// risultava al verde e il resto non si dava mai. Ora una spesa si paga come
+// al banco: prima l'oro, poi gli spiccioli, poi elettro e platino, e se serve
+// si spezza una moneta e il resto torna in oro, argento e rame.
+const VALUTE = ["pp", "gp", "ep", "sp", "cp"];
+const VALORE_MR = { pp: 1000, gp: 100, ep: 50, sp: 10, cp: 1 };
+const SIGLA = { pp: "mp", gp: "mo", ep: "me", sp: "ma", cp: "mr" };
+const ORDINE_PAGA = ["gp", "sp", "cp", "ep", "pp"];
+
+// {pp, gp, ep, sp, cp} di un attore o di una borsa.
+const leggiMonete = (doc) => Object.fromEntries(VALUTE.map((k) => [k, Math.max(0, Number(foundry.utils.getProperty(doc, `system.currency.${k}`)) || 0)]));
+const valoreMr = (m) => VALUTE.reduce((a, k) => a + (m[k] || 0) * VALORE_MR[k], 0);
+const sommaMonete = (lista) => Object.fromEntries(VALUTE.map((k) => [k, lista.reduce((a, m) => a + (m[k] || 0), 0)]));
+const fmtMonete = (m) => VALUTE.filter((k) => m[k]).map((k) => `${m[k]} ${SIGLA[k]}`).join(" · ") || "nessuna moneta";
+const fmtMo = (mr) => `${Math.round(mr / 10) / 10} mo`.replace(".", ",");
+
+// Toglie `need` (in rame) dalla cassa `m` (modificata sul posto); restituisce quanto manca ancora.
+function pagaDa(m, need) {
+  for (const k of ORDINE_PAGA) {
+    const n = Math.min(m[k], Math.floor(need / VALORE_MR[k]));
+    m[k] -= n; need -= n * VALORE_MR[k];
+  }
+  if (need > 0) {
+    // Restano solo monete più grandi del debito: se ne spezza una e si dà il resto.
+    const k = ["cp", "sp", "ep", "gp", "pp"].find((x) => m[x] > 0 && VALORE_MR[x] >= need);
+    if (k) {
+      m[k] -= 1;
+      let resto = VALORE_MR[k] - need;
+      need = 0;
+      for (const r of ["gp", "sp", "cp"]) { const n = Math.floor(resto / VALORE_MR[r]); m[r] += n; resto -= n * VALORE_MR[r]; }
+    }
+  }
+  return need;
+}
+
+// Il sito si allinea: tutte le valute (totali tasche + borse, come la sync).
+async function aggiornaSito(uid, moneteDopo, scalaPending) {
   const nome = `projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/characters/${uid}`;
   const write = {
-    update: { name: nome, fields: { currency: { mapValue: { fields: { gp: { integerValue: String(Math.max(0, Math.round(gpDopo))) } } } } } },
-    updateMask: { fieldPaths: ["currency.gp"] },
+    update: { name: nome, fields: { currency: { mapValue: { fields: Object.fromEntries(VALUTE.map((k) => [k, { integerValue: String(Math.max(0, Math.round(moneteDopo[k] || 0))) }])) } } } },
+    updateMask: { fieldPaths: VALUTE.map((k) => `currency.${k}`) },
     currentDocument: { exists: true },
   };
   if (scalaPending > 0) {
@@ -657,50 +696,51 @@ const cancellaVoce = (d) => fetch(`https://firestore.googleapis.com/v1/${d._path
 
 async function scalaMonete(actor, d) {
   const amount = Math.max(0, Number(d.amount) || 0);
+  const valuta = VALUTE.includes(d.currency) ? d.currency : "gp";
   const add = d.op === "add";
   const borse = actor.items.filter((i) =>
     (i.type === "container" || i.type === "backpack") && foundry.utils.getProperty(i, "system.currency"));
   const casse = [
-    { nome: "tasche", leggi: () => Number(foundry.utils.getProperty(actor, "system.currency.gp")) || 0,
-      scrivi: (v) => actor.update({ "system.currency.gp": v }) },
-    ...borse.map((b) => ({ nome: b.name,
-      leggi: () => Number(foundry.utils.getProperty(b, "system.currency.gp")) || 0,
-      scrivi: (v) => b.update({ "system.currency.gp": v }) })),
-  ];
+    { nome: "tasche", doc: actor },
+    ...borse.map((b) => ({ nome: b.name, doc: b })),
+  ].map((c) => ({ ...c, prima: leggiMonete(c.doc) }));
   if (!PRIMA_LE_TASCHE) casse.reverse();
-  const prima = casse.reduce((a, c) => a + c.leggi(), 0);
-  const mosse = [];
-  let resto = amount;
+  for (const c of casse) c.dopo = { ...c.prima };
+
+  let manca = 0;
   if (add) {
-    // le monete in più vanno sempre addosso al PG
+    // le monete in più vanno sempre addosso al PG, nella loro valuta
     const t = casse.find((c) => c.nome === "tasche") || casse[0];
-    await t.scrivi(t.leggi() + amount);
-    mosse.push(`${t.nome} +${amount}`);
-    resto = 0;
+    t.dopo[valuta] += amount;
   } else {
-    for (const c of casse) {
-      if (resto <= 0) break;
-      const ha = c.leggi();
-      if (ha <= 0) continue;
-      const preso = Math.min(ha, resto);
-      await c.scrivi(ha - preso);
-      resto -= preso;
-      mosse.push(`${c.nome} −${preso}`);
-    }
+    let need = Math.round(amount * VALORE_MR[valuta]);
+    for (const c of casse) { if (need <= 0) break; need = pagaDa(c.dopo, need); }
+    manca = need;
   }
-  const dopo = casse.reduce((a, c) => a + c.leggi(), 0);
+  const mosse = [];
+  for (const c of casse) {
+    const diff = VALUTE.filter((k) => c.dopo[k] !== c.prima[k]);
+    if (!diff.length) continue;
+    await c.doc.update(Object.fromEntries(diff.map((k) => [`system.currency.${k}`, c.dopo[k]])));
+    mosse.push(`${c.nome}: ${diff.map((k) => `${c.dopo[k] - c.prima[k] > 0 ? "+" : "−"}${Math.abs(c.dopo[k] - c.prima[k])} ${SIGLA[k]}`).join(", ")}`);
+  }
+  const prima = sommaMonete(casse.map((c) => c.prima));
+  const dopo = sommaMonete(casse.map((c) => c.dopo));
+  const riga = (k) => `<tr><td>${SIGLA[k]}</td><td style="text-align:right">${prima[k]}</td><td style="text-align:center">→</td><td style="text-align:right"><strong>${dopo[k]}</strong></td></tr>`;
   await ChatMessage.create({
     speaker: { alias: "Officina" },
-    content: `<p><strong>${esc(actor.name)}</strong>: ${add ? "+" : "−"}${amount} mo (${prima} → ${dopo}).</p>`
-      + (mosse.length > 1 ? `<p style="font-size:.9em;opacity:.8">Presi da: ${esc(mosse.join(", "))}.</p>` : "")
+    content: `<p><strong>${esc(actor.name)}</strong>: ${add ? "+" : "−"}${amount} ${SIGLA[valuta]}</p>`
+      + `<table style="font-size:.9em;width:auto">${VALUTE.filter((k) => prima[k] || dopo[k]).map(riga).join("")}</table>`
+      + `<p style="font-size:.9em;opacity:.8">In tutto: ${fmtMo(valoreMr(prima))} → ${fmtMo(valoreMr(dopo))}.</p>`
+      + (mosse.length ? `<p style="font-size:.9em;opacity:.8">${esc(mosse.join(" · "))}</p>` : "")
       + `<p style="font-size:.9em;opacity:.8">${esc(d.reason || "")}</p>`
-      + (resto ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${resto} mo, tasche e borse sono a 0.</p>` : ""),
+      + (manca ? `<p style="color:#b91c1c"><strong>Attenzione:</strong> gli mancavano ${fmtMo(manca)}, tasche e borse sono vuote.</p>` : ""),
     whisper: ChatMessage.getWhisperRecipients("GM").map((u) => u.id),
   });
   // Il sito si allinea subito. Se non ci riesce la voce si cancella lo stesso:
-  // l'oro su Foundry è già scalato e rifarlo sarebbe peggio (lo sistema la sync).
+  // le monete su Foundry sono già scalate e rifarlo sarebbe peggio (lo sistema la sync).
   try { await aggiornaSito(d.targetUid, dopo, d.pendingOnSite && !add ? amount : 0); }
-  catch (e) { console.warn("[Coda] oro scalato su Foundry ma il sito non si è aggiornato:", e); }
+  catch (e) { console.warn("[Coda] monete scalate su Foundry ma il sito non si è aggiornato:", e); }
 }
 
 // PE (premi del World Boss, 2026-10-21): si sommano a system.details.xp.value.
