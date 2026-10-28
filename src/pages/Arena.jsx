@@ -9706,7 +9706,7 @@ export default function Arena() {
           Inline render is suppressed by CSS; the FAB and drawer below replace it. */}
       {currentUser && (
         <>
-          {arenaMeta.phase === "combat" && <button
+          {arenaMeta.phase === "combat" && !bettingDrawerOpen && <button
             type="button"
             className="arena-bet-fab"
             onClick={() => setBettingDrawerOpen(true)}
