@@ -6126,7 +6126,6 @@ export default function Arena() {
           bonusActionUsed: false, itemUsedThisTurn: false,
           defensiveBonus: 0,
           actionSurgeActive: false,
-          bardicInspirationActive: false,
           extraTurnActive: false,
           ...tickEagleEnd(p),
           ...consumeInvisibility(p),
@@ -6302,12 +6301,14 @@ export default function Arena() {
       const targetAc = targetAcNow(defMatchPlayer, defenderSnap);
       const d20 = Math.floor(Math.random() * 20) + 1;
       await showD20Roll(d20, { label: `${attName} tira per colpire · ${action.name}` });
-      const totalHit = d20 + spellHit + aidHit + jackOfAllTradesBonus;
+      // Ispirazione Bardica: +1d6 anche agli incantesimi a tiro per colpire.
+      const insp = attackerMatchPlayer?.bardicInspirationActive ? rollDmg("1d6") : null;
+      const totalHit = d20 + spellHit + aidHit + jackOfAllTradesBonus + (insp?.total || 0);
       // Gli incantesimi NON fanno critico: nat 20 colpisce sempre, nat 1 manca, ma niente danni raddoppiati.
       connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
       // Stregoneria Innata (spell-attack): d20 naturale 17+ che colpisce → danno +50%.
       sorcererCrit = connected && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 >= 17;
-      const aidPart = aidHit ? `+${aidHit}` : "";
+      const aidPart = (aidHit ? `+${aidHit}` : "") + (insp ? `+🎵${insp.total}` : "");
       outcomeLog = connected
         ? `colpisce [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`
         : `manca [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`;
@@ -6315,6 +6316,7 @@ export default function Arena() {
         const newMdAtk = Math.max(0, mdAtk - 1);
         casterHitPatch = { magicDetectAttacks: newMdAtk, magicDetectActive: newMdAtk > 0 ? attackerMatchPlayer?.magicDetectActive : false };
       }
+      if (insp) casterHitPatch = { ...casterHitPatch, bardicInspirationActive: false };
     } else {
       // save_half / save_negate: il bersaglio tira il TS nella stat dell'incantesimo.
       const defMod = defenderSaveMod(defenderSnap, saveAbil);
@@ -6409,7 +6411,7 @@ export default function Arena() {
           const myMaxHp = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
           const healedHp = vampHeal > 0 ? Math.min(myMaxHp, (p.hp ?? 0) + vampHeal) : (p.hp ?? 0);
           // Timer turn-based gestiti in turnEndDecaysSpell (sotto), non qui.
-          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...casterHitPatch, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...usePatch };
+          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, ...casterHitPatch, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...usePatch };
         }
         return { ...p, ...consumeInvisibility(p) };
       });
@@ -6905,8 +6907,8 @@ export default function Arena() {
           // Sotto controllo: il timer scade → decrementa il contatore invece di applicare la posizione difensiva.
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
           let up = wasControlled
-            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, mightyStrikePending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
-            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, mightyStrikePending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false };
+            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, mightyStrikePending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
+            : { ...p, defensiveBonus: 0, actionSurgeActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, frenzyAttackPending: false, mightyStrikePending: false, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false };
           if (wasControlled && !hasPendingCtrl) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           const autoSaveFaith = readSaveFaithBonus(p); // Scudo della Fede (letto da p, pre-tick)
           const autoFaithSign = autoSaveFaith > 0 ? `+${autoSaveFaith}✝` : "";
@@ -7630,7 +7632,7 @@ export default function Arena() {
               <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
               <p><strong>Druido (Druid)</strong> — Armi druido, 1 arma, armatura druidica + scudo di legno. Spell druido. <em>Skill:</em> Forma Selvaggia (Wild Shape, trasformazione con HP propri). <strong>Orso</strong>: attacco multiplo naturale — <strong>2 attacchi</strong> a turno (morso + artiglio). <strong>Lupo</strong>: ogni colpo ha il <strong>20%</strong> di causare <strong>sanguinamento</strong> (1d4/turno per 2 turni).</p>
               <p><strong>Chierico (Cleric)</strong> — Armi cleric, 1 arma, armatura leggera/media + scudo. Slot magia (cura, buff, danni divini). <em>Spell chiave:</em> Scudo della Fede (+2 a TUTTI i TS per 2T), Aiuto (+1 al danno per 2T).</p>
-              <p><strong>Bardo (Bard)</strong> — Armi bardo, 1 arma, armatura leggera, no scudo. Spell bardo. <em>Skill:</em> Ispirazione Bardica (+1d6 al prossimo TPC alleato, cariche = CAR, bonus action).</p>
+              <p><strong>Bardo (Bard)</strong> — Armi bardo, 1 arma, armatura leggera, no scudo. Spell bardo. <em>Skill:</em> Ispirazione Bardica (bonus action: +1d6 al prossimo tiro per colpire, con l'arma o con un incantesimo; resta finché non attacchi; cariche = CAR) · Nota Dolente (2d6+CAR tuono + vantaggio al prossimo attacco, 2 cariche) · Tuttofare (+1 ai tiri per colpire e ai TS).</p>
             </div>
 
             <h3 className="arena-info-title">🧪 Oggetti Consumabili</h3>

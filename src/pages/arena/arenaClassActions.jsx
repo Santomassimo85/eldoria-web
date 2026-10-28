@@ -165,19 +165,23 @@ export const CUNNING_ACTION_ACTION = {
   special: "action_surge", maxUses: 2, bonusAction: true, reqLevel: 4,
 };
 
-// Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
+// Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join).
+// 2026-10-28: vale anche per gli incantesimi a tiro per colpire e resta accesa
+// finché non attacchi (prima si spegneva a fine turno e con le spell si sprecava).
+export const BARDIC_INSPIRATION_INFO = "Bonus Action · +1d6 al prossimo tiro per colpire (arma o incantesimo) · resta finché non attacchi · cariche = CAR";
 export const BARDIC_INSPIRATION_ACTION = {
   name: "Ispirazione Bardica", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🎵", info: "Bonus Action · +1d6 al prossimo tiro per colpire · cariche = CAR",
+  type: "skill", icon: "🎵", info: BARDIC_INSPIRATION_INFO,
   special: "bardic_inspiration", maxUses: 1, bonusAction: true,
 };
 
-// Nota Dolente (Bardo) — potenziamento Bottega: 3d6 fulmine + vantaggio 2 turni, 2 cariche.
-// Disponibile solo se il bardo ha acquistato il buff "bardNotaDolente" in Bottega.
+// Nota Dolente (Bardo) — 2026-10-28: abilità di classe di TUTTI i Bardi (prima era un
+// potenziamento della vecchia Bottega, non più in vendita). 2d6+CAR tuono e vantaggio
+// al prossimo attacco, 2 cariche.
 export const NOTA_DOLENTE_ACTION = {
-  name: "Nota Dolente", hitBonus: 3, damage: "3d6", statKey: "cha",
-  type: "skill", icon: "⚡", info: "3d6 danni da fulmine + vantaggio per 2 turni · 2 cariche",
-  damageType: "fulmine", grantsAdvTurns: 2, maxUses: 2, requiresBuff: "bardNotaDolente",
+  name: "Nota Dolente", hitBonus: 3, damage: "2d6", statKey: "cha",
+  type: "skill", icon: "🔊", info: "2d6+CAR danni da tuono + vantaggio al prossimo attacco · 2 cariche",
+  damageType: "tuono", grantsAdvTurns: 1, maxUses: 2,
 };
 
 // Furia (Barbarian) — aggiunto automaticamente (2 cariche, +2 danno armi per 3 turni).

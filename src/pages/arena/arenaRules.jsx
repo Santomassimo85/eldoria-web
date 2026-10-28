@@ -4,7 +4,7 @@ import DieIcon from "../../components/DieIcon";
 import { EFFECT_KIND_KEYS, MALUS_TYPE_MAP, damageMultiplier, malusTypeLabel } from "../../data/arenaDamageTypes";
 import { ARENA_SUBCLASSES, arenaClassKey, getSubclassDef, getSubclassEffectFor } from "../../data/arenaSubclasses";
 import { currentWeekKey } from "../../data/arenaWeek";
-import { ACTION_SURGE_ACTION, ARTIFICER_SPELLS, ARTIFICER_WEAPON_OPTIONS, ASSORBIRE_DANNI_ACTION, ATTACCO_IRRUENTO_PASSIVE, AURA_PROTEZIONE_PASSIVE, BARDIC_INSPIRATION_ACTION, CARICA_PUGNI_ACTION, CHARGE_ACTION, COLPI_KI_PASSIVE, COLPO_BENEDETTO_PASSIVE, COLPO_DIVINO_PASSIVE, CONCENTRAZIONE_ACTION, CRITICO_MIGLIORATO_PASSIVE, CUNNING_ACTION_ACTION, DIFESA_PREDATORE_PASSIVE, DISARM_ACTION, ELUSIONE_PASSIVE, FORGIA_ARMATURA_ACTION, FURIA_BESTIALE_PASSIVE, HUNTER_MARK_ACTION, INFUSIONE_PASSIVE, INNATE_SORCERY_PASSIVE, ISTINTO_SELVAGGIO_PASSIVE, KI_HEALING_ACTION, LAY_OF_HANDS_ACTION, MAGICAL_CUNNING_ACTION, MIGHTY_STRIKE_ACTION, MOVIMENTO_SENZA_ARMATURA_PASSIVE, NOTA_DOLENTE_ACTION, PATTO_DEMONIACO_ACTION, PRESENZA_POSSENTE_PASSIVE, RAGE_ACTION, RANGER_VOLLEY_ACTION, RECUPERO_ARCANO_ACTION, RESISTENZA_FERINA_PASSIVE, RISOLUTEZZA_PASSIVE, SCHIVATA_PRODIGIOSA_PASSIVE, SECOND_WIND_ACTION, SMITE_ACTION, SNEAK_ATTACK_ACTION, STEALTH_ACTION, STUN_STRIKE_ACTION, SURVIVOR_ACTION, TRIBOLI_ACTION, TURBINE_LAME_ACTION, TUTTOFARE_PASSIVE } from "./arenaClassActions";
+import { ACTION_SURGE_ACTION, ARTIFICER_SPELLS, ARTIFICER_WEAPON_OPTIONS, ASSORBIRE_DANNI_ACTION, ATTACCO_IRRUENTO_PASSIVE, AURA_PROTEZIONE_PASSIVE, BARDIC_INSPIRATION_ACTION, BARDIC_INSPIRATION_INFO, CARICA_PUGNI_ACTION, CHARGE_ACTION, COLPI_KI_PASSIVE, COLPO_BENEDETTO_PASSIVE, COLPO_DIVINO_PASSIVE, CONCENTRAZIONE_ACTION, CRITICO_MIGLIORATO_PASSIVE, CUNNING_ACTION_ACTION, DIFESA_PREDATORE_PASSIVE, DISARM_ACTION, ELUSIONE_PASSIVE, FORGIA_ARMATURA_ACTION, FURIA_BESTIALE_PASSIVE, HUNTER_MARK_ACTION, INFUSIONE_PASSIVE, INNATE_SORCERY_PASSIVE, ISTINTO_SELVAGGIO_PASSIVE, KI_HEALING_ACTION, LAY_OF_HANDS_ACTION, MAGICAL_CUNNING_ACTION, MIGHTY_STRIKE_ACTION, MOVIMENTO_SENZA_ARMATURA_PASSIVE, NOTA_DOLENTE_ACTION, PATTO_DEMONIACO_ACTION, PRESENZA_POSSENTE_PASSIVE, RAGE_ACTION, RANGER_VOLLEY_ACTION, RECUPERO_ARCANO_ACTION, RESISTENZA_FERINA_PASSIVE, RISOLUTEZZA_PASSIVE, SCHIVATA_PRODIGIOSA_PASSIVE, SECOND_WIND_ACTION, SMITE_ACTION, SNEAK_ATTACK_ACTION, STEALTH_ACTION, STUN_STRIKE_ACTION, SURVIVOR_ACTION, TRIBOLI_ACTION, TURBINE_LAME_ACTION, TUTTOFARE_PASSIVE } from "./arenaClassActions";
 import { BARD_WEAPON_OPTIONS, CLERIC_WEAPON_OPTIONS, DRUID_WEAPON_OPTIONS, MARTIAL_WEAPONS, MONK_WEAPON_OPTIONS, RANGER_WEAPON_OPTIONS, ROGUE_WEAPON_OPTIONS, SIMPLE_WEAPONS, WEAPON_IS_RANGED, WILD_SHAPES } from "./arenaGear";
 import { FONTE_DI_MAGIA_ACTION } from "./arenaMatchFlow";
 import { BARD_SPELLS, CLERIC_SPELLS, DRUID_SPELLS, PALADIN_SPELLS, RANGER_SPELLS, SORCERER_SPELLS, WARLOCK_SPELLS, WIZARD_SPELLS } from "./arenaSpells";
@@ -693,11 +693,38 @@ export function migrateBarbarianAction(a) {
   }
   return a;
 }
+// Bardo potenziato (2026-10-28): Ispirazione col testo nuovo (le cariche restano quelle
+// dello snapshot) e Nota Dolente nuova, aggiunta a chi non l'aveva.
+function migrateBardActions(sn) {
+  const acts = sn?.selectedActions;
+  if (!Array.isArray(acts) || !isBardClass(String(sn.class || "").toLowerCase())) return null;
+  let changed = false;
+  const next = acts.map((a) => {
+    if (a?.special === "bardic_inspiration" && !String(a.info || "").startsWith(BARDIC_INSPIRATION_INFO)) {
+      changed = true;
+      return { ...a, info: BARDIC_INSPIRATION_INFO + (/Fonte d'Ispirazione/.test(a.info || "") ? " · +1 carica (Fonte d'Ispirazione)" : "") };
+    }
+    if (a?.name === NOTA_DOLENTE_ACTION.name && (a.damage !== NOTA_DOLENTE_ACTION.damage || a.requiresBuff)) {
+      changed = true;
+      return { ...NOTA_DOLENTE_ACTION };
+    }
+    return a;
+  });
+  if (!next.some((a) => a?.name === NOTA_DOLENTE_ACTION.name)) {
+    const at = next.findIndex((a) => a?.type === "passive");
+    next.splice(at < 0 ? next.length : at, 0, { ...NOTA_DOLENTE_ACTION });
+    changed = true;
+  }
+  return changed ? next : null;
+}
+
 export function migrateArenaSnapshots(snaps) {
   if (!snaps || typeof snaps !== "object") return snaps;
   let changed = false;
   const out = {};
   for (const [k, sn] of Object.entries(snaps)) {
+    const bard = migrateBardActions(sn);
+    if (bard) { out[k] = { ...sn, selectedActions: bard }; changed = true; continue; }
     const acts = sn?.selectedActions;
     if (Array.isArray(acts) && acts.some(a => a && (a.special === "rage" || a.name === "Turbine di Lame" || a.name === "Attacco Poderoso"))) {
       const next = acts.map(migrateBarbarianAction);
