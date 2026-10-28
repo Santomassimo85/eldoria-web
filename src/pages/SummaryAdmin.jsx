@@ -29,8 +29,8 @@ const canEditSummaries = (user) => !!user && isAdminEmail(user.email);
 
 const PARTIES = [
   { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius" },
-  { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe" },
-  { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Zethir, Aksel, Dago, Karlberht" },
+  { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe", closed: true }, // gruppo chiuso: resta per l'archivio, non per i riassunti nuovi
+  { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Zethir, Dago, Karlberht" },
   { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Makenna, Temistocle, Lael, Palar" },
   { key: "Unico", label: "Storia del Mondo", color: "var(--oro)", roster: "Cronache globali" },
 ];
@@ -954,7 +954,7 @@ export default function SummaryAdmin() {
                   value={formData.party}
                   onChange={handleChange}
                 >
-                  {PARTIES.map((p) => (
+                  {PARTIES.filter((p) => !p.closed || p.key === formData.party).map((p) => (
                     <option key={p.key} value={p.key}>{p.key === "Unico" ? p.label : `${p.key} (${p.roster})`}</option>
                   ))}
                 </select>

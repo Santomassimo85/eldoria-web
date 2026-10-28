@@ -31,7 +31,7 @@ const COMASTER_EMAIL = "ripperti96@gmail.com";
 /* ── Roster: unica fonte di verità (allineato a Bacheca.jsx) ─────────────── */
 const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
-  LEAF: ["Soran", "Zethir Nightwhisper", "Aksel", "Dago", "Karlberht"],
+  LEAF: ["Soran", "Zethir Nightwhisper", "Dago", "Karlberht"],
   ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   LAC:  ["Horn", "Thinkle Muschioverde", "Cleofe"],
 };

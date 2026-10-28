@@ -8,7 +8,7 @@ export const PARTY_ROSTER = {
   "AMEA": ["Tanagar", "Garroth Tel´Arion", "Garroth", "Caius Maxis-Richtofen"],
   "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Soran", "Zethir Nightwhisper", "Zethir", "Aksel", "Dago", "Karlberht"],
+  "LEAF": ["Soran", "Zethir Nightwhisper", "Zethir", "Dago", "Karlberht"],
 };
 
 export const NO_PARTY = "Senza Gruppo";

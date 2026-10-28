@@ -17,7 +17,6 @@ export const PARTY_MEMBERS = {
   LEAF: [
     { name: "Soran",  race: "Umano",      class: "Bardo",         image: "/assets/player/Soran.png" },
     { name: "Zethir", race: "Shadar-Kai", class: "Paladino",      image: "/assets/player/Zethir.jpeg?v=2" },
-    { name: "Aksel",  race: "Umano",      class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
     { name: "Dago",   race: "Umano",      class: "Ladro",         image: "/assets/player/dago.jpeg" },
     { name: "Karlberht", race: "Umano",   class: "Guerriero",     image: "/assets/player/Karlberht.jpg" },
   ],

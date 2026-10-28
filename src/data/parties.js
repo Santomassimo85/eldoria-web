@@ -18,7 +18,7 @@ export const PARTIES = [
     id: "LEAF",
     name: "Gruppo LEAF",
     world: "Nyxaris Aetherna / Exanthia",
-    characters: ["Soran", "Zethir", "Aksel", "Dago", "Karlberht"],
+    characters: ["Soran", "Zethir", "Dago", "Karlberht"],
     closingChronicle: "Canti di Nyxaris",
     color: "#27ae60",
     active: false,

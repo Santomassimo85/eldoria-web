@@ -25,7 +25,7 @@ const PARTIES = [
     { name: "Tanagar", image: "/assets/player/Tanagar2.png" },
     { name: "Caius",   image: "/assets/player/caius2.jpeg" },
   ] },
-  { key: "LAC",   label: "LAC",   members: [
+  { key: "LAC",   label: "LAC",   closed: true, members: [
     { name: "Horn",   image: "/assets/player/Horn.jpg" },
     { name: "Thoki",  image: "/assets/player/Thoki.jpg" },
     { name: "Cleofe", image: "/assets/player/Cleofe.jpg" },
@@ -33,7 +33,6 @@ const PARTIES = [
   { key: "LEAF",  label: "LEAF",  members: [
     { name: "Soran",  image: "/assets/player/Soran.png" },
     { name: "Zethir", image: "/assets/player/Zethir.jpeg?v=2" },
-    { name: "Aksel",  image: "/assets/player/Aksel.png" },
     { name: "Dago",   image: "/assets/player/dago.jpeg" },
     { name: "Karlberht", image: "/assets/player/Karlberht.jpg" },
   ] },
@@ -602,7 +601,7 @@ export default function DmTools() {
               <label className="npcgen-label">Gruppo</label>
               <select className="npcgen-input" value={ria.party}
                 onChange={e => { setRia({ ...ria, party: e.target.value }); }}>
-                {PARTIES.map(p => (
+                {PARTIES.filter(p => !p.closed || p.key === ria.party).map(p => (
                   <option key={p.key} value={p.key}>{p.members.length ? `${p.key} (${rosterOf(p.key)})` : p.label}</option>
                 ))}
               </select>
@@ -796,7 +795,7 @@ export default function DmTools() {
                 <div className="dmt-field">
                   <label className="npcgen-label">Gruppo</label>
                   <select className="npcgen-input" value={ria.party} onChange={e => { setRia({ ...ria, party: e.target.value }); setRiaPrefix(null); setSaved(false); }}>
-                    {PARTIES.map(p => (
+                    {PARTIES.filter(p => !p.closed || p.key === ria.party).map(p => (
                       <option key={p.key} value={p.key}>{p.members.length ? `${p.key} (${rosterOf(p.key)})` : p.label}</option>
                     ))}
                   </select>

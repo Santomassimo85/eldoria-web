@@ -23,7 +23,7 @@ const PARTY_ROSTER = {
   "AMEA": ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
   "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Lael", "Palar"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Soran", "Zethir Nightwhisper", "Aksel", "Dago", "Karlberht"],
+  "LEAF": ["Soran", "Zethir Nightwhisper", "Dago", "Karlberht"],
 };
 const getPartyByCharName = (name) => {
   for (const [party, members] of Object.entries(PARTY_ROSTER)) {
