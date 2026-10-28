@@ -672,6 +672,41 @@ export function kiStrikesBypass(snap, isSpell) {
   const cls = (snap?.class || "").toLowerCase();
   return isMonkClass(cls) && getSnapLevel(snap) >= 6;
 }
+// Barbaro ribilanciato (2026-10-28): gli snapshot salvati prima hanno ancora le
+// abilità vecchie (Furia 4 cariche, Turbine 2d10 a un tiro, Attacco Poderoso
+// attacco + vantaggio 3 turni). Le riscrive con le regole nuove, conservando le
+// cariche scalate per livello. Chiamata sugli snapshot appena letti da Firestore.
+export function migrateBarbarianAction(a) {
+  if (!a || typeof a !== "object") return a;
+  if (a.special === "rage" && (a.maxUses ?? 0) > 2) {
+    return { ...a, maxUses: 2, info: String(a.info || "").replace(/\d+ cariche/, "2 cariche") };
+  }
+  if (a.name === "Turbine di Lame" && !a.multiHit) {
+    const uses = a.maxUses ?? 2;
+    return { ...a, damage: "2×1d6", multiHit: 2, perHitDamage: "1d6", info: `2 attacchi · ognuno tira per colpire e fa 1d6+FOR · ${uses} cariche` };
+  }
+  if (a.name === "Attacco Poderoso" && a.special !== "mighty_strike") {
+    const { grantsAdvTurns: _old, ...rest } = a; // eslint-disable-line no-unused-vars
+    return { ...rest, hitBonus: 0, damage: "—", statKey: null, type: "skill",
+      special: "mighty_strike", bonusAction: true, maxUses: a.maxUses ?? 2,
+      info: `Bonus Action · vantaggio al prossimo attacco di questo turno · ${a.maxUses ?? 2} cariche` };
+  }
+  return a;
+}
+export function migrateArenaSnapshots(snaps) {
+  if (!snaps || typeof snaps !== "object") return snaps;
+  let changed = false;
+  const out = {};
+  for (const [k, sn] of Object.entries(snaps)) {
+    const acts = sn?.selectedActions;
+    if (Array.isArray(acts) && acts.some(a => a && (a.special === "rage" || a.name === "Turbine di Lame" || a.name === "Attacco Poderoso"))) {
+      const next = acts.map(migrateBarbarianAction);
+      if (next.some((a, i) => a !== acts[i])) { out[k] = { ...sn, selectedActions: next }; changed = true; continue; }
+    }
+    out[k] = sn;
+  }
+  return changed ? out : snaps;
+}
 // Applica a un'azione automatica lo scaling per livello di cariche/danno (Lv4-8).
 // Usato al momento dell'iscrizione, così i valori scalati entrano nello snapshot
 // e tutto il resto (UI cariche, danno in combattimento) li legge da lì.
@@ -700,7 +735,7 @@ export function scaleActionForLevel(action, level, chaScore) {
   if (a.name === "Carica")             { a.maxUses = 3 + (lv >= 6 ? 1 : 0); a.info = `2d6+FOR · ${a.maxUses} cariche`; return a; }
   if (a.name === "Disarmare")          { a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
   if (a.special === "rage")            { a.info = `Bonus Action · +${rageDamageBonus(lv)} danno armi per 3 turni · ${a.maxUses} cariche`; return a; }
-  if (a.special === "turbine_lame")    { a.maxUses = 2 + (lv >= 8 ? 1 : 0); a.info = `2 attacchi rapidi · 2d10+FOR+3 · ${a.maxUses} cariche`; return a; }
+  if (a.special === "turbine_lame")    { a.maxUses = 2 + (lv >= 8 ? 1 : 0); a.info = `2 attacchi · ognuno tira per colpire e fa 1d6+FOR · ${a.maxUses} cariche`; return a; }
   if (a.special === "concentrate_buff"){ a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
   return a;
 }
@@ -1023,6 +1058,7 @@ export function getFighterStatuses(p) {
   if (p.aidBuff)                            push("aid", "🤝", `Aiuto +${readActiveBonus(p.aidBuff, 4)}`, "is-buff", `+${readActiveBonus(p.aidBuff, 4)} al prossimo tiro per colpire`);
   if ((p.aidDmgTurns ?? 0) > 0)             push("aiddmg", "🤝", `Aiuto +${p.aidDmgBonus ?? 1} dmg ${p.aidDmgTurns}t`, "is-buff", `+${p.aidDmgBonus ?? 1} al danno per ${p.aidDmgTurns} turni`);
   if (frenzyExhausted(p))                   push("frenzy-tired", "🥵", "Sfinito", "is-debuff", "Frenesia: svantaggio agli attacchi per questo turno");
+  if (p.mightyStrikePending)               push("mighty", "💪", "Poderoso", "is-rage", "Vantaggio al prossimo attacco di questo turno");
   if (p.frenzyAttackPending)                push("frenzy", "🩸", "Frenesia", "is-rage", "Un attacco con l'arma in più in questo turno (solo dado + mod.)");
   if ((p.rageTurns ?? 0) > 0)               push("rage", "🔥", `Furia +${p.rageBonus ?? 2} ${p.rageTurns}t`, "is-rage", `+${p.rageBonus ?? 2} danni · riduzione danni subiti · ${p.rageTurns} turni`);
   if ((p.hunterMarkTurns ?? 0) > 0)         push("mark", "🎯", `Marchio ${p.hunterMarkTurns}t`, "is-rage", `+3 al colpire per ${p.hunterMarkTurns} turni`);

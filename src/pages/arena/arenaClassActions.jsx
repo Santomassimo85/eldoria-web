@@ -180,25 +180,29 @@ export const NOTA_DOLENTE_ACTION = {
   damageType: "fulmine", grantsAdvTurns: 2, maxUses: 2, requiresBuff: "bardNotaDolente",
 };
 
-// Furia (Barbarian) — aggiunto automaticamente (4 cariche, +2 danno armi per 3 turni)
+// Furia (Barbarian) — aggiunto automaticamente (2 cariche, +2 danno armi per 3 turni).
+// 2026-10-28: era 4 cariche = Furia accesa per tutto il fight. Ora va scelta.
 export const RAGE_ACTION = {
   name: "Furia", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🔥", info: "Bonus Action · +2 danno armi per 3 turni · 4 cariche",
-  special: "rage", maxUses: 4, bonusAction: true,
+  type: "skill", icon: "🔥", info: "Bonus Action · +2 danno armi per 3 turni · 2 cariche",
+  special: "rage", maxUses: 2, bonusAction: true,
 };
 
-// Turbine di Lame (Barbarian) — 2 attacchi rapidi, 2d10+FOR+3 totali
+// Turbine di Lame (Barbarian) — 2 attacchi VERI, ognuno col suo tiro per colpire:
+// 1d6+FOR (+Furia) a colpo. 2026-10-28: prima era un tiro solo da 2d10+FOR.
 export const TURBINE_LAME_ACTION = {
-  name: "Turbine di Lame", hitBonus: 3, damage: "2d10"  , statKey: "str",
-  type: "skill", icon: "🌪", info: "2 attacchi rapidi · 2d10+FOR+3 · 2 cariche",
-  special: "turbine_lame", maxUses: 2,
+  name: "Turbine di Lame", hitBonus: 3, damage: "2×1d6", statKey: "str",
+  type: "skill", icon: "🌪", info: "2 attacchi · ognuno tira per colpire e fa 1d6+FOR · 2 cariche",
+  special: "turbine_lame", multiHit: 2, perHitDamage: "1d6", maxUses: 2,
 };
 
-// Attacco Poderoso (Barbarian) — 2d8+FOR + vantaggio per 3 turni, 2 cariche
+// Attacco Poderoso (Barbarian) — BONUS ACTION: vantaggio al prossimo attacco di
+// QUESTO turno (mightyStrikePending, si spegne a fine turno). 2026-10-28: prima era
+// un attacco 2d8+FOR che dava vantaggio per 3 turni.
 export const MIGHTY_STRIKE_ACTION = {
-  name: "Attacco Poderoso", hitBonus: 3, damage: "2d8", statKey: "str",
-  type: "skill", icon: "💪", info: "2d8+FOR · concede vantaggio per 3 turni · 2 cariche",
-  grantsAdvTurns: 3, maxUses: 2,
+  name: "Attacco Poderoso", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "💪", info: "Bonus Action · vantaggio al prossimo attacco di questo turno · 2 cariche",
+  special: "mighty_strike", bonusAction: true, maxUses: 2,
 };
 
 // Carica di Pugni (Monk) — 2 pugni consecutivi, 2d6+DES, 2 usi
