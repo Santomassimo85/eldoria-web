@@ -707,6 +707,27 @@ export function migrateArenaSnapshots(snaps) {
   }
   return changed ? out : snaps;
 }
+// Match ancora aperti costruiti con la Furia a 4 cariche (più di 2 rimaste = per forza
+// quelli vecchi): si tolgono le 2 in più, così chi ne ha già usata una ne ha ancora 1.
+// Restituisce lo stesso array se non c'è niente da cambiare.
+export function migrateMatchRageUses(matches) {
+  if (!Array.isArray(matches)) return matches;
+  let changed = false;
+  const out = matches.map((m) => {
+    if (!m || m.status === "finished" || m.winner || !Array.isArray(m.players)) return m;
+    let touched = false;
+    const players = m.players.map((p) => {
+      const left = p?.actionUsesLeft?.Furia;
+      if (!(typeof left === "number" && left > 2)) return p;
+      touched = true;
+      return { ...p, actionUsesLeft: { ...p.actionUsesLeft, Furia: left - 2 } };
+    });
+    if (!touched) return m;
+    changed = true;
+    return { ...m, players };
+  });
+  return changed ? out : matches;
+}
 // Applica a un'azione automatica lo scaling per livello di cariche/danno (Lv4-8).
 // Usato al momento dell'iscrizione, così i valori scalati entrano nello snapshot
 // e tutto il resto (UI cariche, danno in combattimento) li legge da lì.

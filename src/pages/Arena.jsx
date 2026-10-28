@@ -35,7 +35,7 @@ import { ARENA_ARCHETYPE_BY_CLASS, ARENA_EXPIRY_GRACE_MS, ARENA_INITIATIVE_DURAT
 import { ARENA_ARMORS, ARENA_KITE_MAX, GOOD_STATUS_CLS, IS_TWO_HANDED_MELEE, PLAYER_HAS_RANGED_WEAPON, WEAPON_IS_RANGED, WILD_SHAPES, getDisplayAc, resolveMonkUnarmed, resolveWeaponRider, targetAcNow } from "./arena/arenaGear";
 import { ARENA_ITEMS, applySlotLoss, describeMarketPurchase, formatPrizeConfig, prizeTierToStr, resolveMarketGear, scrollSlotLossFor, trimSpellsToLimits } from "./arena/arenaMarketGear";
 import { finalizeArenaMatch, processWsKnockouts } from "./arena/arenaMatchFlow";
-import { ARENA_KEY_STATS, ARENA_TITLES, FIGHT_RESULT_DELAY_MS, SAVE_LABEL, SORC_SLOTS_MAX, STAT_DESCS, actionElement, applyDefenderDamageMods, applyMarketEffects, applyTypedDamage, beastRageDamageBonus, clearDebuffs, clericBlessedDice, consumeInvisibility, countDebuffs, defenderRetaliate, defenderSaveMod, disadvTag, displayLog, divineStrikeBonus, dotResistMult, effectsHaveEnemyTarget, elementalOnHitStatus, frenzyExhausted, getAidBonusForClass, getAsiPoints, getCharTitles, getClassKey, getFighterStatuses, getHpDice, getLoadoutConfig, getMagicDetectBonusForClass, getMaxActionsPerTurn, getProficiencyBonus, getSnapLevel, getSnapTitles, getSpellAttackBonus, getSpellCast, getSpellMod, getSpellSaveDC, getSpellcastingAbility, getSubclassEffect, getTitleHitBonus, heavyElemAttackAdv, infusionWeaponBonus, isArtificerClass, isBarbarianClass, isBardClass, isFighterClass, isHeavyArmor, isMonkClass, isNoArmor, isPaladinClass, isRangerClass, isRogueClass, isSaveDamageSpell, isSorcererClass, isStormSpell, isWarlockClass, isWizardClass, kiStrikesBypass, logPubText, migrateArenaSnapshots, ownedSubclassKey, parseSpellSaveAbility, physicalFallbackType, rageDamageBonus, readActiveBonus, readAidDmgBonus, readSaveFaithBonus, readSpellSlots, readSpellUsesLeft, readStealthAdvTurns, readStealthAnyTurns, readStealthDisadvTurns, recklessRaging, renderLogWithDice, rollDmg, savedCharMissing, scaleActionForLevel, selectableSubclasses, sneakAttackDice, spellMechanicTag, spellResistMult, spendSpellUse, subclassCritThreshold, subclassDamageDice, subclassFirstStrike, subclassForesightDisadv, subclassRangedHit, tickEagleEnd, usesSharedSpellSlots } from "./arena/arenaRules";
+import { ARENA_KEY_STATS, ARENA_TITLES, FIGHT_RESULT_DELAY_MS, SAVE_LABEL, SORC_SLOTS_MAX, STAT_DESCS, actionElement, applyDefenderDamageMods, applyMarketEffects, applyTypedDamage, beastRageDamageBonus, clearDebuffs, clericBlessedDice, consumeInvisibility, countDebuffs, defenderRetaliate, defenderSaveMod, disadvTag, displayLog, divineStrikeBonus, dotResistMult, effectsHaveEnemyTarget, elementalOnHitStatus, frenzyExhausted, getAidBonusForClass, getAsiPoints, getCharTitles, getClassKey, getFighterStatuses, getHpDice, getLoadoutConfig, getMagicDetectBonusForClass, getMaxActionsPerTurn, getProficiencyBonus, getSnapLevel, getSnapTitles, getSpellAttackBonus, getSpellCast, getSpellMod, getSpellSaveDC, getSpellcastingAbility, getSubclassEffect, getTitleHitBonus, heavyElemAttackAdv, infusionWeaponBonus, isArtificerClass, isBarbarianClass, isBardClass, isFighterClass, isHeavyArmor, isMonkClass, isNoArmor, isPaladinClass, isRangerClass, isRogueClass, isSaveDamageSpell, isSorcererClass, isStormSpell, isWarlockClass, isWizardClass, kiStrikesBypass, logPubText, migrateArenaSnapshots, migrateMatchRageUses, ownedSubclassKey, parseSpellSaveAbility, physicalFallbackType, rageDamageBonus, readActiveBonus, readAidDmgBonus, readSaveFaithBonus, readSpellSlots, readSpellUsesLeft, readStealthAdvTurns, readStealthAnyTurns, readStealthDisadvTurns, recklessRaging, renderLogWithDice, rollDmg, savedCharMissing, scaleActionForLevel, selectableSubclasses, sneakAttackDice, spellMechanicTag, spellResistMult, spendSpellUse, subclassCritThreshold, subclassDamageDice, subclassFirstStrike, subclassForesightDisadv, subclassRangedHit, tickEagleEnd, usesSharedSpellSlots } from "./arena/arenaRules";
 import { ARENA_FX_OFFENSIVE, classifyArenaVfx, normalizeArenaFx, withArenaFx } from "./arena/arenaVfx";
 export { WIZARD_SPELLS, SORCERER_SPELLS, WARLOCK_SPELLS, DRUID_SPELLS, CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS, RANGER_SPELLS } from "./arena/arenaSpells";
 export { ARTIFICER_SPELLS } from "./arena/arenaClassActions";
@@ -132,6 +132,7 @@ export default function Arena() {
   const [fightResult, setFightResult] = useState(null);
   const fightResultSeenRef = useRef(null);
   const fightResultTimerRef = useRef(null);
+  const snapMigrationRef = useRef(false);   // migrazione del Barbaro scritta una volta per sessione
   /* FIX: P5b/P5c/P5d — modal/drawer state */
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
@@ -864,6 +865,25 @@ export default function Arena() {
         const migSnaps = migrateArenaSnapshots(raw.characterSnapshots);
         const data = migSnaps === raw.characterSnapshots ? raw : { ...raw, characterSnapshots: migSnaps };
         setArenaMeta(data);
+        // …e la correzione si SCRIVE nel database, una volta: finché restava solo in
+        // lettura, un'app aperta da prima dell'aggiornamento costruiva i match (e
+        // giocava) col Barbaro vecchio (Lael vs Temistocle, 2026-10-28).
+        if ((migSnaps !== raw.characterSnapshots || migrateMatchRageUses(raw.matches) !== raw.matches) && !snapMigrationRef.current) {
+          snapMigrationRef.current = true;
+          runTransaction(db, async (tx) => {
+            const cur = (await tx.get(ref)).data() || {};
+            const snaps = migrateArenaSnapshots(cur.characterSnapshots);
+            const matches = migrateMatchRageUses(cur.matches);
+            const patch = {};
+            if (snaps !== cur.characterSnapshots) {
+              Object.keys(snaps).forEach((uid) => {
+                if (snaps[uid] !== cur.characterSnapshots[uid]) patch[`characterSnapshots.${uid}.selectedActions`] = snaps[uid].selectedActions;
+              });
+            }
+            if (matches !== cur.matches) patch.matches = matches;
+            if (Object.keys(patch).length) tx.update(ref, patch);
+          }).catch((e) => { snapMigrationRef.current = false; console.warn("[arena] migrazione snapshot", e); });
+        }
         if (isMaster) {
           setPrizeText(data.prizes || "");
           const pc = data.prizeConfig || {};
