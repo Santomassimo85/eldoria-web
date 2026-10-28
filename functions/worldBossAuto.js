@@ -314,4 +314,4 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
   return true;
 }
 
-module.exports = { maybeAutoBossTurn, AUTO_AFTER_MS };
+module.exports = { maybeAutoBossTurn, AUTO_AFTER_MS, loadHidden };

@@ -5,6 +5,17 @@ import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
 import "./admin.css";
 
+// Il server (functions/sessionReminder.js) avvisa i giocatori del gruppo 8 ore prima.
+const REMIND_BEFORE_MS = 8 * 60 * 60 * 1000;
+const hhmm = (ms) => new Date(ms).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+const reminderLabel = (s) => {
+  const start = new Date(s.date).getTime();
+  if (Number.isNaN(start)) return "";
+  if (s.reminderFor === s.date) return "🔔 Promemoria inviato ai giocatori";
+  const at = start - REMIND_BEFORE_MS;
+  return at <= Date.now() ? "🔔 Promemoria in partenza (entro 10 minuti)" : `🔔 Promemoria ai giocatori alle ${hhmm(at)} del ${new Date(at).toLocaleDateString("it-IT")}`;
+};
+
 export default function AdminSessions() {
   const [party, setParty] = useState("Amea");
   const [date, setDate] = useState("");
@@ -33,7 +44,8 @@ export default function AdminSessions() {
   const saveSession = async () => {
     if (!date) return;
     try {
-      await setDoc(doc(db, "sessions", party), { date, updatedAt: new Date().toISOString() });
+      // merge: lo stato del promemoria (reminderFor) resta; con una data nuova si riarma da solo
+      await setDoc(doc(db, "sessions", party), { date, updatedAt: new Date().toISOString() }, { merge: true });
     } catch (e) {
       console.error("Errore nel salvataggio della sessione:", e);
     }
@@ -55,7 +67,7 @@ export default function AdminSessions() {
         <div className="adm-mast-main">
           <span className="adm-eyebrow">📅 Calendario di gioco</span>
           <h1 className="adm-title">Gestione Sessioni</h1>
-          <p className="adm-sub">Imposta date, orari e link per i party di Exanthia.</p>
+          <p className="adm-sub">Imposta date, orari e link per i party di Exanthia. 8 ore prima i giocatori del gruppo ricevono una notifica.</p>
         </div>
         <div className="adm-mast-aside">
           <div className="adm-stat"><span>Programmate</span><strong>{activeSessions.length}</strong></div>
@@ -99,6 +111,7 @@ export default function AdminSessions() {
                   <div>
                     <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif" }}>{s.id}</strong>
                     <div style={{ fontSize: "0.82rem", color: "var(--osso-2)" }}>{new Date(s.date).toLocaleString("it-IT")}</div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--osso-3, var(--osso-2))" }}>{reminderLabel(s)}</div>
                   </div>
                   <button onClick={() => deleteSession(s.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
                 </div>

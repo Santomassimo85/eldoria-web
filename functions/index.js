@@ -32,6 +32,7 @@ const PLAYER_TURN_DURATION_MS = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION_MS = 1 * 60 * 60 * 1000;
 const BOSS_SYSTEM_UID = "BOSS_MSG";
 const { maybeAutoBossTurn } = require("./worldBossAuto");
+const { sendSessionReminders, sessionStartMs } = require("./sessionReminder");
 
 /**
  * Diario degli agenti (collezione `agent_logs`, letta da "Il Concilio").
@@ -153,9 +154,8 @@ exports.cleanupExpiredSessions = onSchedule(
         try {
             const snap = await dbAdmin.collection("sessions").get();
             const expired = snap.docs.filter((d) => {
-                const date = d.data().date;
-                if (!date) return false;
-                const ts = new Date(date).getTime();
+                if (!d.data().date) return false;
+                const ts = sessionStartMs(d.data());
                 return !Number.isNaN(ts) && ts < nowMs;
             });
             if (expired.length === 0) {
@@ -166,6 +166,19 @@ exports.cleanupExpiredSessions = onSchedule(
             console.log(`🧹 cleanupExpiredSessions: eliminate ${expired.length} sessioni scadute (${expired.map((d) => d.id).join(", ")}).`);
         } catch (err) {
             console.error("❌ cleanupExpiredSessions fallita:", err);
+        }
+    },
+);
+
+// Promemoria della sessione: 8 ore prima dell'ora del calendario, notifica ai
+// giocatori del gruppo (functions/sessionReminder.js). Ogni 10 minuti.
+exports.sessionReminder = onSchedule(
+    { schedule: "every 10 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        try {
+            await sendSessionReminders();
+        } catch (err) {
+            console.error("❌ sessionReminder fallita:", err);
         }
     },
 );
