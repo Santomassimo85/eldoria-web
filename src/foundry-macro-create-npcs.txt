@@ -81,7 +81,28 @@ function buildNpcData(d) {
       system: { description: { value: `<p>${esc(d.action).replace(/\n/g, "<br>")}</p>` } }
     });
   }
+  // Il token prende lo stesso ritratto (prima restava il manichino).
+  out.prototypeToken = { name: out.name, texture: { src: out.img || "icons/svg/mystery-man.svg" } };
   return { actor: out, items };
+}
+
+// ----------------------------------------------------------------
+// RITRATTO (2026-10-29): su Forge le immagini di Firebase non si caricano
+// nel canvas (niente CORS: token vuoto), quindi il sito manda il ritratto
+// anche come webp in d.imgData e qui va fra i file di Foundry. Se fallisce
+// resta il link.
+// ----------------------------------------------------------------
+const CARTELLA_RITRATTI = "eldoria-npc";
+async function caricaRitratto(d) {
+  if (!d.imgData) return "";
+  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+  const src = (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge) ? "forgevtt" : "data";
+  try { await FP.createDirectory(src, CARTELLA_RITRATTI, {}); } catch (e) { /* esiste già */ }
+  const blob = await (await fetch(d.imgData)).blob();
+  const slug = String(d.name || "npc").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "npc";
+  const file = new File([blob], `${slug}-${Date.now()}.webp`, { type: "image/webp" });
+  const res = await FP.upload(src, CARTELLA_RITRATTI, file, {}, { notify: false });
+  return res?.path || "";
 }
 
 // ----------------------------------------------------------------
@@ -135,6 +156,10 @@ function buildNpcData(d) {
   for (const d of pending) {
     try {
       const { actor, items } = buildNpcData(d);
+      let ritratto = "";
+      try { ritratto = await caricaRitratto(d); }
+      catch (e) { console.warn(`[Import NPC] ritratto di "${d.name}" non caricato, resta il link:`, e); }
+      if (ritratto) { actor.img = ritratto; actor.prototypeToken.texture.src = ritratto; }
       const created_actor = await Actor.create(actor);
       if (created_actor && items.length) {
         await created_actor.createEmbeddedDocuments("Item", items);

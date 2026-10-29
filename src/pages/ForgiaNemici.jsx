@@ -22,6 +22,7 @@ import {
   normalizeEnemy, enemyToFoundryActor, abilityMod, fmtMod, profForCr, fmtCr, xpForCr,
   hpOf, acOf, weaponStats, featureDc, typeLabel,
 } from "../data/enemyFoundry";
+import { portraitData } from "../utils/portraitData";
 import "./ForgiaNemici.css";
 
 const RUOLI = [
@@ -39,19 +40,6 @@ const CRS = [0.125, 0.25, 0.5, ...Array.from({ length: 20 }, (_, i) => i + 1), 2
 const KIND_IT = { passive: "Tratto", action: "Azione", bonus: "Azione bonus", reaction: "Reazione", legendary: "Leggendaria" };
 const MODE_IT = { atwill: "a volontà", innate: "/giorno", spell: "" };
 const USES_IT = (u) => !u?.per ? "" : u.per === "recharge" ? `ricarica ${u.recharge || 5}–6` : `${u.max || 1}/${u.per === "day" ? "giorno" : u.per === "sr" ? "riposo breve" : "riposo lungo"}`;
-
-// Su Forge le immagini di Firebase non arrivano (niente CORS per quel dominio: il
-// token resta vuoto), quindi il ritratto viaggia nella voce della coda come webp
-// piccolo e "Fetch admin" lo carica fra i file di Foundry (ritratto + token).
-async function portraitData(url, max = 512) {
-  const blob = await (await fetch(url)).blob();
-  const bmp = await createImageBitmap(blob);
-  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const cv = document.createElement("canvas");
-  cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
-  return cv.toDataURL("image/webp", 0.85);
-}
 
 const ft = (n) =>`${n} ft (${Math.round(n * 0.3 * 10) / 10} m)`;
 

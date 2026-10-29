@@ -5,6 +5,7 @@ import {
   collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, serverTimestamp,
 } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import { portraitData, absoluteUrl } from "../utils/portraitData";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -197,11 +198,14 @@ export default function FoundryNpcForm() {
   const setContinentFilter = (c) => { setContinent(c); setCity(null); };
   const resetFilters = () => { setContinent(null); setCity(null); setQ(""); };
 
-  const buildPayload = (n) => ({
+  // Il ritratto viaggia anche come webp (imgData): la macro lo carica su Foundry
+  // e lo usa per il token (i link di Firebase su Forge non si vedono).
+  const buildPayload = async (n) => ({
     status: "pending",
     kind: "npc",
     name: n.name || "NPC",
-    img: n.image || "",
+    img: absoluteUrl(n.image),
+    imgData: n.image ? await portraitData(n.image).catch(() => "") : "",
     ac: numOf(n.statblock?.CA),
     hp: numOf(n.statblock?.PF),
     saves: n.statblock?.tiri_salvezza || "",
@@ -222,7 +226,7 @@ export default function FoundryNpcForm() {
     try {
       let ok = 0;
       for (const n of chosen) {
-        try { await addDoc(collection(db, "foundry_npc_inbox"), buildPayload(n)); ok++; }
+        try { await addDoc(collection(db, "foundry_npc_inbox"), await buildPayload(n)); ok++; }
         catch (e) { console.error("Coda NPC fallita:", n.name, e); }
       }
       setMsg(`✅ ${ok} NPC in coda! Lancia la macro NPC su Foundry per crearli.`);
@@ -235,7 +239,7 @@ export default function FoundryNpcForm() {
   const queueOne = async (n) => {
     setBusy(true); setMsg(`Invio "${n.name}" in coda…`);
     try {
-      await addDoc(collection(db, "foundry_npc_inbox"), buildPayload(n));
+      await addDoc(collection(db, "foundry_npc_inbox"), await buildPayload(n));
       setMsg(`✅ "${n.name}" in coda!`);
     } catch (e) {
       setMsg("Errore: " + (e.message || e));
