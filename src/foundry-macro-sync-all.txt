@@ -629,10 +629,12 @@ async function leggiCoda() {
   if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
   return (data.documents || [])
     .map((doc) => ({ _path: doc.name, _id: doc.name.split("/").pop(), ...obj(doc.fields || {}) }))
-    .filter((d) => d.status === "pending" || (d.kind === "xp" && d.status === "pending_xp"));
+    .filter((d) => d.status === "pending" || (d.kind === "xp" && d.status === "pending_xp") || (d.kind === "actor" && d.status === "pending_actor"));
 }
 
-const descriviVoce = (d) => d.kind === "xp"
+const descriviVoce = (d) => d.kind === "actor"
+  ? `👹 ${d.name || "Nemico"} → Attori · ${CARTELLA_NEMICI}`
+  : d.kind === "xp"
   ? `${d.targetName || d.targetUid}: +${d.amount} PE (${d.reason || "premio"})`
   : d.kind === "gold"
   ? `${d.targetName || d.targetUid}: ${d.op === "add" ? "+" : "−"}${fmtMr((Number(d.amount) || 0) * (VALORE_MR[d.currency] || 100))} (${d.reason || "spesa"})`
@@ -776,13 +778,59 @@ async function daiPE(actor, d) {
   });
 }
 
+// ── Nemici della Forgia (2026-10-29) ──
+// La voce porta l'attore già pronto (actorJson = {actor, items}, scritto dal
+// sito con src/data/enemyFoundry.js). Qui si mette nella cartella e gli
+// incantesimi segnati con flags.world.srdSpell si prendono dal compendio
+// (dnd5e.spells, poi spells24): arrivano con attività, scaling e componenti veri.
+const CARTELLA_NEMICI = "Nemici dal sito";
+async function cartellaNemici() {
+  return game.folders.find((f) => f.type === "Actor" && f.name === CARTELLA_NEMICI)
+    || await Folder.create({ name: CARTELLA_NEMICI, type: "Actor", color: "#7a1f1f" });
+}
+const _indici = {};
+async function dalCompendio(packId, nome) {
+  const pack = game.packs.get(packId);
+  if (!pack) return null;
+  if (!_indici[packId]) _indici[packId] = await pack.getIndex();
+  const n = normName(nome);
+  const e = _indici[packId].find((x) => normName(x.name) === n);
+  const doc = e ? await pack.getDocument(e._id) : null;
+  return doc ? doc.toObject() : null;
+}
+async function creaNemico(d) {
+  const { actor, items } = JSON.parse(d.actorJson || "{}");
+  if (!actor?.name) throw new Error("scheda del nemico vuota");
+  const cartella = await cartellaNemici();
+  const pronti = [];
+  for (const it of items || []) {
+    const srd = it.flags?.world?.srdSpell;
+    const vero = it.type === "spell" && srd
+      ? (await dalCompendio("dnd5e.spells", srd)) || (await dalCompendio("dnd5e.spells24", srd))
+      : null;
+    if (!vero) { pronti.push(it); continue; }
+    delete vero._id;
+    vero.system.method = it.system.method || "spell";
+    vero.system.prepared = 1;
+    if (vero.system.method === "innate") vero.system.uses = it.system.uses;
+    vero.flags = { ...(vero.flags || {}), world: { ...(vero.flags?.world || {}), srdSpell: srd } };
+    pronti.push(vero);
+  }
+  const creato = await Actor.create({ ...actor, folder: cartella.id });
+  if (pronti.length) await creato.createEmbeddedDocuments("Item", pronti);
+  return creato;
+}
+
 // Processa la coda. attoreDi(uid) → attore del PG (dal piano dei collegamenti).
 // Ritorna { oggetti, spese, saltate, toccati:Set(uid), righe:[] }.
 async function processaCoda(voci, attoreDi) {
-  const esito = { oggetti: 0, spese: 0, pe: 0, saltate: 0, toccati: new Set(), righe: [] };
+  const esito = { oggetti: 0, spese: 0, pe: 0, nemici: 0, saltate: 0, toccati: new Set(), righe: [] };
   for (const d of voci) {
     try {
-      if (d.kind === "gold" || d.kind === "xp" || d.target === "player") {
+      if (d.kind === "actor") {
+        await creaNemico(d);
+        esito.nemici++;
+      } else if (d.kind === "gold" || d.kind === "xp" || d.target === "player") {
         const actor = attoreDi(d.targetUid);
         if (!actor) {
           esito.saltate++;
@@ -946,7 +994,7 @@ async function syncOne(uid, actor, userName) {
   const ko = report.filter((x) => !x.esito.startsWith("ok"));
   const righe = ok.map((x) => `<li>${esc(x.pg)} · ${esc(x.monete)}${x.inBorse ? ` — in borsa: ${esc(x.inBorse)}` : ""}${x.sistemato ? ` <em>— ${esc(x.sistemato)}</em>` : ""}</li>`).join("");
   const male = ko.map((x) => `<li style="opacity:.7">${esc(x.pg)} — ${esc(x.esito)}</li>`).join("");
-  const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} monete, ${esitoCoda.pe} PE${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+  const codaRighe = esitoCoda ? `<p><strong>Dall'app:</strong> ${esitoCoda.oggetti} oggetti, ${esitoCoda.spese} monete, ${esitoCoda.pe} PE, ${esitoCoda.nemici} nemici${esitoCoda.saltate ? `, ${esitoCoda.saltate} rimaste in coda` : ""}</p><ul>${esitoCoda.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
   ChatMessage.create({
     whisper: ChatMessage.getWhisperRecipients("GM"),
     content: `<h3>☁ Sito ↔ Foundry</h3>${codaRighe}<p><strong>Schede sul sito:</strong> ${ok.length}/${report.length}</p><ul>${righe}</ul>${male ? `<ul>${male}</ul>` : ""}`
@@ -971,8 +1019,8 @@ async function syncOne(uid, actor, userName) {
           const a = perUid.get(uid) || attoreDaFlag(uid);
           if (a) await syncOne(uid, a, nomeUtente.get(uid)).catch((e) => console.warn("[Coda] sync:", e));
         }
-        if (es.oggetti || es.spese || es.pe) {
-          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} monete, ${es.pe} PE.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
+        if (es.oggetti || es.spese || es.pe || es.nemici) {
+          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} monete, ${es.pe} PE, ${es.nemici} nemici.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
         }
       } catch (e) { console.warn("[Coda] giro automatico:", e); }
       finally { G.inCorso = false; }

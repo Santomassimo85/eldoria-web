@@ -3,6 +3,10 @@
 // chiama Claude e restituisce un boss o un minion completo di STATISTICHE e
 // AZIONI/SPELL in JSON, conforme allo schema del pannello WorldBossAdmin.
 // Vive su Vercel. La chiave Anthropic resta qui, nascosta.
+// { tipo: "nemico" } = Forgia dei Nemici (scheda 5e completa, vedi _enemy.js).
+import { generaNemico } from "./_enemy.js";
+
+export const config = { maxDuration: 90 };
 
 // Enumerazioni VALIDE (devono combaciare con WorldBossAdmin / battleModel).
 const TYPES = ["attack", "heal", "buff_ca", "buff_adv", "debuff_dis"];
@@ -16,6 +20,7 @@ export default async function handler(req, res) {
 
   const { tipo = "boss", contesto = "", evita } = req.body || {};
   if (tipo === "bonus") return generaBonus(req.body || {}, res);
+  if (tipo === "nemico") return generaNemico(req.body || {}, res);
   const isMinion = tipo === "minion";
   const seme = Math.floor(Math.random() * 1e9);
 

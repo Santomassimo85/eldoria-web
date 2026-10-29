@@ -1,0 +1,107 @@
+/* Forgia dei Nemici (/dm-admin/nemici) — token del Covo, respiro Arcano dell'admin. */
+.fn-page { max-width: 1240px; margin: 0 auto; padding: 24px 16px 96px; color: var(--osso); font-family: var(--font-text, "Alegreya", serif); }
+.fn-locked { padding: 40px 0; text-align: center; color: var(--osso-2); }
+
+.fn-head { margin-bottom: 22px; }
+.fn-back { font-family: var(--font-sc, "Alegreya SC", serif); color: var(--osso-2); text-decoration: none; font-size: .9rem; }
+.fn-back:hover { color: var(--el-soft); }
+.fn-eyebrow { margin: 14px 0 2px; font-family: var(--font-sc, "Alegreya SC", serif); letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; color: var(--el-soft); }
+.fn-title { margin: 0; font-family: var(--font-title, "Grenze Gotisch", serif); font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1; color: var(--osso); }
+.fn-sub { max-width: 820px; margin: 10px 0 0; color: var(--osso-2); line-height: 1.5; }
+
+.fn-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
+.fn-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.fn-panel { background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .1); border-top: 2px solid var(--el); border-radius: 3px; padding: 16px; }
+.fn-h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-family: var(--font-head, "Grenze Gotisch", serif); font-size: 1.45rem; font-weight: 400; color: var(--osso); }
+.fn-h2 span { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--el); border-radius: 50%; font-family: var(--font-num, "Cinzel", serif); font-size: .9rem; color: var(--el-soft); }
+.fn-h2 em { font-style: normal; font-family: var(--font-num, "Cinzel", serif); font-size: .95rem; color: var(--osso-2); }
+.fn-h2--wide { margin-top: 36px; }
+
+.fn-label { display: block; margin: 12px 0 6px; font-family: var(--font-sc, "Alegreya SC", serif); font-size: .85rem; letter-spacing: .04em; color: var(--osso-2); }
+.fn-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fn-chip { min-height: 36px; padding: 6px 11px; border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; background: var(--roccia); color: var(--osso-2); font: inherit; font-size: .92rem; cursor: pointer; }
+.fn-chip:hover { border-color: var(--el); color: var(--osso); }
+.fn-chip.is-on { background: var(--el-deep, var(--roccia-4)); border-color: var(--el); color: var(--osso); box-shadow: inset 0 0 0 1px var(--el); }
+
+.fn-input { width: 100%; box-sizing: border-box; padding: 9px 11px; background: var(--roccia); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .14); border-radius: 3px; color: var(--osso); font: inherit; resize: vertical; }
+.fn-input:focus { outline: none; border-color: var(--el); }
+.fn-input--short { width: auto; min-width: 220px; }
+
+.fn-cta { display: block; width: 100%; margin-top: 16px; min-height: 46px; padding: 10px 16px; border: 0; border-radius: 3px; background: linear-gradient(180deg, var(--el), var(--el-2)); color: var(--ossidiana, #111); font-family: var(--font-num, "Cinzel", serif); font-weight: 700; letter-spacing: .05em; cursor: pointer; }
+.fn-cta:disabled, .fn-btn:disabled { opacity: .55; cursor: wait; }
+.fn-cta--inline { width: auto; margin-top: 0; flex: 1 1 200px; }
+.fn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.fn-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 14px; border: 1px solid var(--el); border-radius: 3px; background: var(--roccia-3); color: var(--osso); font: inherit; cursor: pointer; }
+.fn-btn:hover { background: var(--roccia-4); }
+.fn-btn--ghost { border-color: rgba(var(--osso-rgb, 236, 229, 214), .2); background: transparent; }
+.fn-note { margin: 10px 0 0; font-size: .9rem; color: var(--osso-2); line-height: 1.45; }
+.fn-msg { margin: 0; padding: 10px 12px; border-left: 3px solid var(--el); background: var(--roccia-2); color: var(--osso); }
+.fn-msg.is-err { border-left-color: var(--sangue, #b3261e); color: #f3b0a8; }
+
+.fn-portrait { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; }
+.fn-portrait-img { aspect-ratio: 1; border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .14); border-radius: 3px; overflow: hidden; background: var(--roccia); display: grid; place-items: center; }
+.fn-portrait-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fn-portrait-img.is-empty span { font-size: 3.5rem; opacity: .6; }
+.fn-portrait-side .fn-label:first-child { margin-top: 0; }
+
+.fn-empty { min-height: 320px; display: grid; place-content: center; text-align: center; border: 1px dashed rgba(var(--osso-rgb, 236, 229, 214), .18); border-radius: 3px; color: var(--osso-2); }
+.fn-empty-glyph { font-size: 3rem; margin: 0; opacity: .5; }
+
+/* Scheda del nemico: blocco statistiche alla maniera del Manuale dei Mostri. */
+.fn-sb { background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .1); border-top: 3px solid var(--oro, #c9a24a); border-bottom: 3px solid var(--oro, #c9a24a); padding: 16px 18px; border-radius: 3px; }
+.fn-sb hr { border: 0; height: 2px; margin: 10px 0; background: linear-gradient(90deg, var(--sangue, #8c2b22), transparent); }
+.fn-sb-name { width: 100%; padding: 0; border: 0; border-bottom: 1px dashed transparent; background: transparent; color: var(--osso); font-family: var(--font-title, "Grenze Gotisch", serif); font-size: clamp(1.6rem, 3.4vw, 2.2rem); }
+.fn-sb-name:focus { outline: none; border-bottom-color: var(--el); }
+.fn-sb-kind { margin: 2px 0 0; font-style: italic; color: var(--osso-2); }
+.fn-sb-core, .fn-sb-lines { margin: 0; }
+.fn-sb-core div, .fn-sb-lines div { margin: 3px 0; }
+.fn-sb-core dt, .fn-sb-lines dt { display: inline; font-weight: 700; color: var(--oro, #c9a24a); }
+.fn-sb-core dt::after, .fn-sb-lines dt::after { content: " "; }
+.fn-sb-core dd, .fn-sb-lines dd { display: inline; margin: 0; }
+.fn-sb-num { width: 56px; margin-left: 6px; padding: 2px 6px; background: var(--roccia); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; color: var(--osso); font: inherit; }
+.fn-sb-sel { padding: 2px 6px; background: var(--roccia); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; color: var(--osso); font: inherit; }
+.fn-sb-abil { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.fn-sb-abil label { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fn-sb-abil span { font-family: var(--font-sc, "Alegreya SC", serif); font-weight: 700; color: var(--oro, #c9a24a); font-size: .85rem; }
+.fn-sb-abil input { width: 100%; max-width: 54px; padding: 3px; text-align: center; background: var(--roccia); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; color: var(--osso); font-family: var(--font-num, "Cinzel", serif); }
+.fn-sb-abil em { font-style: normal; font-family: var(--font-num, "Cinzel", serif); font-size: .85rem; color: var(--osso-2); }
+.fn-sb-sec { margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--sangue, #8c2b22); font-family: var(--font-head, "Grenze Gotisch", serif); font-weight: 400; font-size: 1.3rem; color: var(--osso); }
+.fn-sb-p { margin: 6px 0; line-height: 1.45; }
+.fn-sb-p strong { font-style: italic; color: var(--osso); }
+.fn-sb-item { position: relative; padding-right: 30px; }
+.fn-x { position: absolute; top: 2px; right: 0; width: 26px; height: 26px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--osso-2); cursor: pointer; }
+.fn-x:hover { border-color: var(--sangue, #8c2b22); color: #f3b0a8; }
+.fn-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; font-family: var(--font-sc, "Alegreya SC", serif); font-size: .74rem; color: var(--el-soft); white-space: nowrap; vertical-align: 1px; }
+.fn-spells { list-style: none; margin: 4px 0 0; padding: 0; }
+.fn-spells li { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 5px 0; }
+.fn-spells-lvl { min-width: 78px; font-family: var(--font-sc, "Alegreya SC", serif); color: var(--oro, #c9a24a); }
+.fn-spell { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 8px; background: var(--roccia-3); border-radius: 3px; font-style: italic; }
+.fn-spell button { border: 0; background: transparent; color: var(--osso-2); cursor: pointer; padding: 0 3px; }
+.fn-spell button:hover { color: #f3b0a8; }
+
+.fn-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.fn-card { display: flex; flex-direction: column; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .1); border-radius: 3px; overflow: hidden; }
+.fn-card.is-open { border-color: var(--el); }
+.fn-card-open { display: flex; flex-direction: column; gap: 2px; padding: 0 0 8px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fn-card-img { display: grid; place-items: center; aspect-ratio: 1; background: var(--roccia); font-size: 2.6rem; overflow: hidden; }
+.fn-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.fn-card-name { padding: 6px 10px 0; font-family: var(--font-head, "Grenze Gotisch", serif); font-size: 1.15rem; line-height: 1.1; color: var(--osso); }
+.fn-card-meta { padding: 0 10px; font-size: .85rem; color: var(--osso-2); }
+.fn-card-foot { display: flex; align-items: center; gap: 4px; margin-top: auto; padding: 6px 8px; border-top: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .08); }
+.fn-card-state { flex: 1; font-family: var(--font-sc, "Alegreya SC", serif); font-size: .78rem; color: var(--osso-2); }
+.fn-card-state.is-queued { color: var(--oro, #c9a24a); }
+.fn-card-state.is-done { color: #8fd18f; }
+.fn-mini { min-width: 34px; min-height: 34px; border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .16); border-radius: 3px; background: var(--roccia); color: var(--osso-2); cursor: pointer; }
+.fn-mini:hover { border-color: var(--el); color: var(--osso); }
+
+@media (max-width: 900px) {
+  .fn-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .fn-portrait { grid-template-columns: 1fr; }
+  .fn-portrait-img { max-width: 220px; }
+  .fn-sb { padding: 14px 12px; }
+  .fn-sb-abil { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fn-input--short { width: 100%; min-width: 0; }
+}

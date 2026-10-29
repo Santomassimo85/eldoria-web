@@ -67,6 +67,7 @@ import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
 import FoundryItemForm from "./pages/FoundryItemForm";
 import FoundryNpcForm from "./pages/FoundryNpcForm";
+import ForgiaNemici from "./pages/ForgiaNemici";
 import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
@@ -194,6 +195,7 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
       <NavLink to="/dm-admin/strumenti?tab=cronaca">📜 Scrivi la cronaca (AI)</NavLink>
       <NavLink to="/dm/generate-session">🔮 Genera Sessione (AI)</NavLink>
       <NavLink to="/dm-admin/genera-npc">🧙 Genera NPC (AI)</NavLink>
+      <NavLink to="/dm-admin/nemici">👹 Forgia dei Nemici (AI)</NavLink>
       <NavLink to="/dm-admin/strumenti?tab=login">🗓 Login dei giocatori</NavLink>
       <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
       <NavLink to="/dm-admin/foundry-npc">NPC → Foundry</NavLink>
@@ -767,6 +769,7 @@ export default function App() {
           <Route path="/dm-admin/strumenti" element={<DmTools />} />
           <Route path="/dm-admin/foundry-item" element={<FoundryItemForm />} />
           <Route path="/dm-admin/foundry-npc" element={<FoundryNpcForm />} />
+          <Route path="/dm-admin/nemici" element={<ForgiaNemici />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />

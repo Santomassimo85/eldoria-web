@@ -440,6 +440,8 @@ service cloud.firestore {
     match /geo_archive/{docId}    { allow read: if true; allow write: if isMaster(); }
     match /map_pins/{pinId}       { allow read: if true; allow write: if isMaster(); }
     match /npcs/{npcId}           { allow read: if true; allow write: if isMaster(); }
+    // Forgia dei Nemici (2026-10-29): schede dei nemici generati, solo Master e co-master.
+    match /enemies/{enemyId}      { allow read, write: if isMaster(); }
     match /sessions/{partyId}     { allow read: if true; allow write: if isMaster(); }
     match /quests/{questId} {
       allow read: if true;

@@ -68,6 +68,7 @@ export default function AdminPanel() {
         { icon: "🛠", label: "Strumenti DM",     desc: "Cronaca, generatori e utilità del Master.",           path: "/dm-admin/strumenti" },
         { icon: "📜", label: "Scrivi la cronaca (AI)", desc: "Il riassunto della sessione scritto dall'AI dalle tue linee guida.", path: "/dm-admin/strumenti?tab=cronaca" },
         { icon: "🔮", label: "Genera Sessione (AI)", desc: "Prep-sessione dei party con Claude.",          path: "/dm/generate-session" },
+        { icon: "👹", label: "Forgia dei Nemici (AI)", desc: "Nemici completi (armi, capacità, incantesimi, ritratto) pronti per Foundry.", path: "/dm-admin/nemici" },
         { icon: "🧙", label: "Genera NPC (AI)",  desc: "Nuovi volti per le strade di Exanthia.",              path: "/dm-admin/genera-npc" },
         { icon: "🗓", label: "Login dei giocatori", desc: "Quanti giorni è entrato ognuno, mese per mese.", path: "/dm-admin/strumenti?tab=login" },
         { icon: "📦", label: "Oggetto → Foundry",desc: "Esporta un oggetto in formato Foundry.",              path: "/dm-admin/foundry-item" },
