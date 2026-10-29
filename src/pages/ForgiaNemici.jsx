@@ -65,7 +65,7 @@ export default function ForgiaNemici() {
 
   useEffect(() => {
     if (!ok) return undefined;
-    const u1 = onSnapshot(query(collection(db, "enemies"), orderBy("createdAt", "desc")), (s) => setList(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {});
+    const u1 = onSnapshot(query(collection(db, "enemies"), orderBy("createdAt", "desc")), (s) => setList(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => setErr("Bestiario non leggibile: " + e.message + " (ricarica la pagina)"));
     // "In coda" finché la voce è in foundry_inbox, poi "su Foundry" (l'ha creata Fetch admin).
     const u2 = onSnapshot(collection(db, "foundry_inbox"), (s) => setQueued(new Set(s.docs.map((d) => d.id))), () => {});
     return () => { u1(); u2(); };

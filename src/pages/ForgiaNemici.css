@@ -1,13 +1,15 @@
 /* Forgia dei Nemici (/dm-admin/nemici) — token del Covo, respiro Arcano dell'admin. */
 .fn-page { max-width: 1240px; margin: 0 auto; padding: 24px 16px 96px; color: var(--osso); font-family: var(--font-text, "Alegreya", serif); }
+/* La regola globale "p, li" li farebbe grigio scuro su roccia. */
+.fn-page p, .fn-page li, .fn-page dd { color: var(--osso-body, var(--osso)); }
 .fn-locked { padding: 40px 0; text-align: center; color: var(--osso-2); }
 
 .fn-head { margin-bottom: 22px; }
 .fn-back { font-family: var(--font-sc, "Alegreya SC", serif); color: var(--osso-2); text-decoration: none; font-size: .9rem; }
 .fn-back:hover { color: var(--el-soft); }
-.fn-eyebrow { margin: 14px 0 2px; font-family: var(--font-sc, "Alegreya SC", serif); letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; color: var(--el-soft); }
+.fn-page .fn-eyebrow { margin: 14px 0 2px; font-family: var(--font-sc, "Alegreya SC", serif); letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; color: var(--el-soft); }
 .fn-title { margin: 0; font-family: var(--font-title, "Grenze Gotisch", serif); font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1; color: var(--osso); }
-.fn-sub { max-width: 820px; margin: 10px 0 0; color: var(--osso-2); line-height: 1.5; }
+.fn-page .fn-sub { max-width: 820px; margin: 10px 0 0; color: var(--osso-2); line-height: 1.5; }
 
 .fn-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
 .fn-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -35,9 +37,9 @@
 .fn-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 14px; border: 1px solid var(--el); border-radius: 3px; background: var(--roccia-3); color: var(--osso); font: inherit; cursor: pointer; }
 .fn-btn:hover { background: var(--roccia-4); }
 .fn-btn--ghost { border-color: rgba(var(--osso-rgb, 236, 229, 214), .2); background: transparent; }
-.fn-note { margin: 10px 0 0; font-size: .9rem; color: var(--osso-2); line-height: 1.45; }
-.fn-msg { margin: 0; padding: 10px 12px; border-left: 3px solid var(--el); background: var(--roccia-2); color: var(--osso); }
-.fn-msg.is-err { border-left-color: var(--sangue, #b3261e); color: #f3b0a8; }
+.fn-page .fn-note { margin: 10px 0 0; font-size: .9rem; color: var(--osso-2); line-height: 1.45; }
+.fn-page .fn-msg { margin: 0; padding: 10px 12px; border-left: 3px solid var(--el); background: var(--roccia-2); color: var(--osso); }
+.fn-page .fn-msg.is-err { border-left-color: var(--sangue, #b3261e); color: #f3b0a8; }
 
 .fn-portrait { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; }
 .fn-portrait-img { aspect-ratio: 1; border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .14); border-radius: 3px; overflow: hidden; background: var(--roccia); display: grid; place-items: center; }
@@ -45,15 +47,16 @@
 .fn-portrait-img.is-empty span { font-size: 3.5rem; opacity: .6; }
 .fn-portrait-side .fn-label:first-child { margin-top: 0; }
 
-.fn-empty { min-height: 320px; display: grid; place-content: center; text-align: center; border: 1px dashed rgba(var(--osso-rgb, 236, 229, 214), .18); border-radius: 3px; color: var(--osso-2); }
-.fn-empty-glyph { font-size: 3rem; margin: 0; opacity: .5; }
+.fn-page .fn-empty { min-height: 320px; display: grid; place-content: center; text-align: center; border: 1px dashed rgba(var(--osso-rgb, 236, 229, 214), .18); border-radius: 3px; color: var(--osso-2); }
+.fn-page .fn-empty p { color: var(--osso-2); }
+.fn-page .fn-empty-glyph { font-size: 3rem; margin: 0; opacity: .5; }
 
 /* Scheda del nemico: blocco statistiche alla maniera del Manuale dei Mostri. */
 .fn-sb { background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .1); border-top: 3px solid var(--oro, #c9a24a); border-bottom: 3px solid var(--oro, #c9a24a); padding: 16px 18px; border-radius: 3px; }
 .fn-sb hr { border: 0; height: 2px; margin: 10px 0; background: linear-gradient(90deg, var(--sangue, #8c2b22), transparent); }
 .fn-sb-name { width: 100%; padding: 0; border: 0; border-bottom: 1px dashed transparent; background: transparent; color: var(--osso); font-family: var(--font-title, "Grenze Gotisch", serif); font-size: clamp(1.6rem, 3.4vw, 2.2rem); }
 .fn-sb-name:focus { outline: none; border-bottom-color: var(--el); }
-.fn-sb-kind { margin: 2px 0 0; font-style: italic; color: var(--osso-2); }
+.fn-page .fn-sb-kind { margin: 2px 0 0; font-style: italic; color: var(--osso-2); }
 .fn-sb-core, .fn-sb-lines { margin: 0; }
 .fn-sb-core div, .fn-sb-lines div { margin: 3px 0; }
 .fn-sb-core dt, .fn-sb-lines dt { display: inline; font-weight: 700; color: var(--oro, #c9a24a); }
