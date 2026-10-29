@@ -18,7 +18,7 @@ import { isAdminEmail } from "../utils/roles";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 import {
-  CREATURE_TYPES, SIZES, ABILITIES, ABILITY_IT, DAMAGE_IT, SKILLS, SRD_ARMOR, SRD_WEAPONS,
+  CREATURE_TYPES, SIZES, ABILITIES, ABILITY_IT, DAMAGE_IT, SKILLS, SRD_ARMOR, SRD_WEAPONS, CONDITION_IT,
   normalizeEnemy, enemyToFoundryActor, abilityMod, fmtMod, profForCr, fmtCr, xpForCr,
   hpOf, acOf, weaponStats, featureDc, typeLabel,
 } from "../data/enemyFoundry";
@@ -353,7 +353,7 @@ function StatBlock({ n, patch, dropAt, dropSpell }) {
         {n.vulnerabilities.length > 0 && <div><dt>Vulnerabilità</dt><dd>{n.vulnerabilities.map((d) => DAMAGE_IT[d]).join(", ")}</dd></div>}
         {n.resistances.length > 0 && <div><dt>Resistenze</dt><dd>{n.resistances.map((d) => DAMAGE_IT[d]).join(", ")}</dd></div>}
         {n.immunities.length > 0 && <div><dt>Immunità</dt><dd>{n.immunities.map((d) => DAMAGE_IT[d]).join(", ")}</dd></div>}
-        {n.conditionImmunities.length > 0 && <div><dt>Immune a</dt><dd>{n.conditionImmunities.join(", ")}</dd></div>}
+        {n.conditionImmunities.length > 0 && <div><dt>Immune a</dt><dd>{n.conditionImmunities.map((c) => CONDITION_IT[c] || c).join(", ")}</dd></div>}
         <div><dt>Sensi</dt><dd>{[...senses, `Percezione passiva ${passive}`].join(", ")}</dd></div>
         <div><dt>Linguaggi</dt><dd>{n.languages || "—"}</dd></div>
         <div>

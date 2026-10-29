@@ -40,6 +40,7 @@ export const DAMAGE_IT = {
   slashing: "tagliente", thunder: "tuono", healing: "cura",
 };
 export const CONDITIONS = ["blinded", "charmed", "deafened", "exhaustion", "frightened", "grappled", "incapacitated", "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious"];
+export const CONDITION_IT = { blinded: "accecato", charmed: "affascinato", deafened: "assordato", exhaustion: "indebolimento", frightened: "spaventato", grappled: "afferrato", incapacitated: "incapacitato", invisible: "invisibile", paralyzed: "paralizzato", petrified: "pietrificato", poisoned: "avvelenato", prone: "prono", restrained: "trattenuto", stunned: "stordito", unconscious: "privo di sensi" };
 export const SKILLS = {
   acr: "Acrobazia", ani: "Addestrare animali", arc: "Arcano", ath: "Atletica", dec: "Inganno", his: "Storia",
   ins: "Intuizione", itm: "Intimidire", inv: "Indagare", med: "Medicina", nat: "Natura", prc: "Percezione",
