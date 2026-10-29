@@ -33,6 +33,7 @@ const TOKEN_SIZE = { tiny: 0.5, sm: 1, med: 1, lg: 2, huge: 3, grg: 4 };
 
 export const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
 export const ABILITY_IT = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
+const ABILITY_EN = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
 export const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
 export const DAMAGE_IT = {
   acid: "acido", bludgeoning: "contundente", cold: "freddo", fire: "fuoco", force: "forza", lightning: "fulmine",
@@ -87,6 +88,10 @@ export const SRD_WEAPONS = {
   heavycrossbow: ["Balestra pesante", "martialR", "1d10", "piercing", ["hvy", "two"], [100, 400], 18, 50, "icons/weapons/crossbows/crossbow-loaded-black.webp"],
   longbow: ["Arco lungo", "martialR", "1d8", "piercing", ["hvy", "two"], [150, 600], 2, 50, "icons/weapons/bows/longbow-recurve-leather-brown.webp"],
 };
+
+// Nomi inglesi dei pezzi SRD: su Foundry gli oggetti si chiamano come quelli dei PG.
+export const SRD_WEAPON_EN = {"club":"Club","dagger":"Dagger","greatclub":"Greatclub","handaxe":"Handaxe","javelin":"Javelin","lighthammer":"Light Hammer","mace":"Mace","quarterstaff":"Quarterstaff","sickle":"Sickle","spear":"Spear","lightcrossbow":"Light Crossbow","dart":"Dart","shortbow":"Shortbow","sling":"Sling","battleaxe":"Battleaxe","flail":"Flail","glaive":"Glaive","greataxe":"Greataxe","greatsword":"Greatsword","halberd":"Halberd","lance":"Lance","longsword":"Longsword","maul":"Maul","morningstar":"Morningstar","pike":"Pike","rapier":"Rapier","scimitar":"Scimitar","shortsword":"Shortsword","trident":"Trident","warpick":"War Pick","warhammer":"Warhammer","whip":"Whip","handcrossbow":"Hand Crossbow","heavycrossbow":"Heavy Crossbow","longbow":"Longbow"};
+export const SRD_ARMOR_EN = {"padded":"Padded Armor","leather":"Leather Armor","studded":"Studded Leather Armor","hide":"Hide Armor","chainshirt":"Chain Shirt","scalemail":"Scale Mail","breastplate":"Breastplate","halfplate":"Half Plate Armor","ringmail":"Ring Mail","chainmail":"Chain Mail","splint":"Splint Armor","plate":"Plate Armor"};
 
 // Armature SRD 2014: CA base, categoria, peso, prezzo, icona.
 export const SRD_ARMOR = {
@@ -263,7 +268,7 @@ function buildWeapon(e, w) {
   };
   if (srd?.[9]) sys.damage.versatile = { ...part(srd[9], st.dtype), bonus: "" };
   return {
-    name: w.name, type: "weapon",
+    name: srd ? `${SRD_WEAPON_EN[w.base]}${magic ? ` +${magic}` : ""}` : w.name, type: "weapon",
     img: srd ? srd[8] : (w.icon || "icons/creatures/claws/claw-curved-jagged-gray.webp"),
     system: sys,
     flags: { world: { forgedEnemy: true } },
@@ -275,7 +280,7 @@ function buildArmorItems(e) {
   const a = SRD_ARMOR[e.armor?.base];
   if (a) {
     out.push({
-      name: e.armor.name || a[0], type: "equipment", img: a[5],
+      name: SRD_ARMOR_EN[e.armor.base] || a[0], type: "equipment", img: a[5],
       system: {
         description: { value: "", chat: "" }, quantity: 1, equipped: true, proficient: 1, identified: true,
         type: { value: a[2], baseItem: e.armor.base }, armor: { value: a[1], dex: a[2] === "medium" ? 2 : a[2] === "heavy" ? 0 : null },
@@ -286,7 +291,7 @@ function buildArmorItems(e) {
   }
   if (a && e.armor.shield) {
     out.push({
-      name: "Scudo", type: "equipment", img: "icons/equipment/shield/heater-steel-worn.webp",
+      name: "Shield", type: "equipment", img: "icons/equipment/shield/heater-steel-worn.webp",
       system: {
         description: { value: "", chat: "" }, quantity: 1, equipped: true, proficient: 1, identified: true,
         type: { value: "shield", baseItem: "shield" }, armor: { value: 2, dex: null },
@@ -366,7 +371,7 @@ function buildSpell(e, s) {
   return {
     name: s.name, type: "spell", img: "icons/magic/symbols/runes-star-orange.webp",
     system: {
-      description: { value: para(s.note || "Incantesimo dal compendio SRD."), chat: "" },
+      description: { value: para(s.note || "SRD spell from the compendium."), chat: "" },
       level: lvl, school: "evo", properties: ["vocal", "somatic"],
       method: atWill ? "atwill" : perDay ? "innate" : "spell", prepared: 1,
       uses: perDay ? { max: String(clamp(s.perDay, 1, 3, 1)), spent: 0, recovery: [{ period: "day", type: "recoverAll", formula: "" }] } : { max: "", spent: 0, recovery: [] },
@@ -443,14 +448,17 @@ export function enemyToFoundryActor(raw, { img = "" } = {}) {
     ...buildArmorItems(e),
     ...e.weapons.map((w) => buildWeapon(e, w)),
   ];
-  if (e.multiattack) items.unshift(buildFeature(e, { name: "Multiattacco", kind: "action", description: e.multiattack, icon: "icons/skills/melee/blade-tips-triple-steel.webp" }));
-  if (e.legendaryResistances) items.push(buildFeature(e, { name: `Resistenza leggendaria (${e.legendaryResistances}/giorno)`, kind: "passive", description: "Se fallisce un tiro salvezza, può scegliere di superarlo." }));
-  items.push(...e.features.map((f) => buildFeature(e, f)));
-  if (e.legendaryActions) items.push(buildFeature(e, { name: "Azioni leggendarie", kind: "passive", description: `Può compiere ${e.legendaryActions} azioni leggendarie, una alla fine del turno di un'altra creatura. Le recupera all'inizio del suo turno.` }));
+  if (e.multiattack) items.unshift(buildFeature(e, { name: "Multiattack", kind: "action", description: e.multiattack, icon: "icons/skills/melee/blade-tips-triple-steel.webp" }));
+  if (e.legendaryResistances) items.push(buildFeature(e, { name: `Legendary Resistance (${e.legendaryResistances}/Day)`, kind: "passive", description: "If it fails a saving throw, it can choose to succeed instead." }));
+  // Una capacità che ricopia un incantesimo della lista sarebbe un doppione.
+  const spellNames = (sc?.spells || []).map((s) => String(s?.name || "").toLowerCase()).filter(Boolean);
+  const isSpellCopy = (f) => spellNames.some((n) => String(f.name).toLowerCase().includes(n));
+  items.push(...e.features.filter((f) => !isSpellCopy(f)).map((f) => buildFeature(e, f)));
+  if (e.legendaryActions) items.push(buildFeature(e, { name: "Legendary Actions", kind: "passive", description: `It can take ${e.legendaryActions} legendary actions, choosing from the options below. Only one legendary action option can be used at a time and only at the end of another creature's turn. It regains spent legendary actions at the start of its turn.` }));
   if (sc) {
     items.push(buildFeature(e, {
-      name: "Incantesimi", kind: "passive", icon: "icons/sundries/books/book-embossed-jewel-silver-green.webp",
-      description: `Incantatore di ${casterLevel}° livello. Caratteristica: ${ABILITY_IT[system.attributes.spellcasting]} (CD ${featureDc(e, system.attributes.spellcasting)}, ${fmtMod(profForCr(e.cr) + abilityMod(e.abilities[system.attributes.spellcasting]))} a colpire).`,
+      name: "Spellcasting", kind: "passive", icon: "icons/sundries/books/book-embossed-jewel-silver-green.webp",
+      description: `It is a level ${casterLevel} spellcaster. Its spellcasting ability is ${ABILITY_EN[system.attributes.spellcasting]} (spell save DC ${featureDc(e, system.attributes.spellcasting)}, ${fmtMod(profForCr(e.cr) + abilityMod(e.abilities[system.attributes.spellcasting]))} to hit with spell attacks).`,
     }));
     items.push(...sc.spells.filter((s) => s && s.name).map((s) => buildSpell(e, s)));
   }

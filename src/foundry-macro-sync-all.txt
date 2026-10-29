@@ -798,9 +798,30 @@ async function dalCompendio(packId, nome) {
   const doc = e ? await pack.getDocument(e._id) : null;
   return doc ? doc.toObject() : null;
 }
+// Il ritratto arriva come webp in d.imgData (le immagini di Firebase su Forge
+// non si caricano nel canvas: niente CORS) e va fra i file di Foundry, così
+// fa da ritratto E da token. Se il caricamento fallisce resta il link.
+const CARTELLA_RITRATTI = "eldoria-nemici";
+async function caricaRitratto(d, nome) {
+  if (!d.imgData) return "";
+  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+  const src = (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge) ? "forgevtt" : "data";
+  try { await FP.createDirectory(src, CARTELLA_RITRATTI, {}); } catch (e) { /* esiste già */ }
+  const blob = await (await fetch(d.imgData)).blob();
+  const file = new File([blob], `${normName(nome).replace(/[^a-z0-9]+/g, "-") || "nemico"}-${Date.now()}.webp`, { type: "image/webp" });
+  const res = await FP.upload(src, CARTELLA_RITRATTI, file, {}, { notify: false });
+  return res?.path || "";
+}
 async function creaNemico(d) {
   const { actor, items } = JSON.parse(d.actorJson || "{}");
   if (!actor?.name) throw new Error("scheda del nemico vuota");
+  let ritratto = "";
+  try { ritratto = await caricaRitratto(d, actor.name); }
+  catch (e) { console.warn("[Nemici] ritratto non caricato, resta il link:", e); }
+  if (ritratto) {
+    actor.img = ritratto;
+    actor.prototypeToken = { ...(actor.prototypeToken || {}), texture: { ...(actor.prototypeToken?.texture || {}), src: ritratto } };
+  }
   const cartella = await cartellaNemici();
   const pronti = [];
   for (const it of items || []) {

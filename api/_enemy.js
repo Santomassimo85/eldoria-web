@@ -43,7 +43,7 @@ const TOOL = {
           base: { type: "string", enum: ARMOR, description: "natural = armatura naturale o vestiti" },
           ac: { type: "integer", description: "Solo per natural: la CA totale" },
           shield: { type: "boolean" },
-          name: { type: "string", description: "Nome in italiano dell'armatura (facoltativo)" },
+          name: { type: "string", description: "Facoltativo, non usato: su Foundry va il nome inglese SRD" },
         },
         required: ["base"],
       },
@@ -54,14 +54,14 @@ const TOOL = {
       immunities: { type: "array", items: { type: "string", enum: DMG } },
       vulnerabilities: { type: "array", items: { type: "string", enum: DMG } },
       conditionImmunities: { type: "array", items: { type: "string", enum: COND } },
-      multiattack: { type: "string", description: "Se attacca più volte: es. 'Compie due attacchi con la spada lunga'. Vuoto se no." },
+      multiattack: { type: "string", description: "IN INGLESE, come in un manuale dei mostri: es. 'The orc makes two attacks with its greataxe.' Vuoto se no." },
       weapons: {
         type: "array",
         description: "Armi impugnate (base SRD) e armi naturali (base natural: morso, artigli, coda…)",
         items: {
           type: "object",
           properties: {
-            name: { type: "string", description: "Nome in italiano (es. Spada lunga dentellata, Morso)" },
+            name: { type: "string", description: "Nome IN INGLESE come su Foundry (es. Longsword, Bite, Claws, Tail). Per le armi SRD Foundry usa comunque il nome inglese della base" },
             base: { type: "string", enum: WEAPONS },
             damage: { type: "string", description: "Solo per natural: dado del danno senza modificatore, es. 2d6" },
             damageType: { type: "string", enum: DMG, description: "Solo per natural" },
@@ -71,7 +71,7 @@ const TOOL = {
             ability: { type: "string", enum: ["", "str", "dex"], description: "Vuoto = automatico" },
             magicBonus: { type: "integer", minimum: 0, maximum: 3 },
             extra: { ...dmgObj, description: "Danno in più a ogni colpo (es. 2d6 veleno), facoltativo" },
-            description: { type: "string", description: "Breve, facoltativa (effetti a parte come prono, afferrato…)" },
+            description: { type: "string", description: "IN INGLESE, breve, facoltativa (effetti a parte: prone, grappled…)" },
             legendaryCost: { type: "integer", description: "Solo se è usabile come azione leggendaria" },
           },
           required: ["name", "base"],
@@ -83,9 +83,9 @@ const TOOL = {
         items: {
           type: "object",
           properties: {
-            name: { type: "string" },
+            name: { type: "string", description: "Nome IN INGLESE (es. Pack Tactics, Fire Breath, Parry)" },
             kind: { type: "string", enum: ["passive", "action", "bonus", "reaction", "legendary"] },
-            description: { type: "string", description: "Testo in italiano con l'effetto in regole 5e" },
+            description: { type: "string", description: "Testo IN INGLESE con l'effetto in regole 5e, nello stile del Monster Manual" },
             save: { type: "object", properties: { ability: { type: "string", enum: AB } }, description: "Tiro salvezza richiesto ai bersagli" },
             dcAbility: { type: "string", enum: AB, description: "Caratteristica che fissa la CD (8 + competenza + mod)" },
             onSave: { type: "string", enum: ["half", "none"] },
@@ -166,9 +166,9 @@ Richiesta del Master:
 ${spunto ? `- Spunto (rispettalo): ${String(spunto).slice(0, 800)}` : ""}
 
 REGOLE
-- Testi in italiano. Nomi delle magie in INGLESE esatto, presi SOLO da questa lista (sono quelle del compendio):
+- LINGUA: nome, descrizione, aspetto, tattiche, bottino, allineamento e lingue in italiano. TUTTO quello che finisce su Foundry come oggetto è IN INGLESE, come le schede dei giocatori: nomi e descrizioni di armi e capacità, multiattacco. Nomi delle magie in INGLESE esatto, presi SOLO da questa lista (sono quelle del compendio):
 ${spellList}
-- Armi: se impugna armi vere usa la base SRD (longsword, shortbow…); il nome in italiano può essere personalizzato. Mostri e bestie usano base "natural" con damage (solo dadi) e damageType. Il modificatore lo aggiunge Foundry: NON scriverlo nel dado.
+- Armi: se impugna armi vere usa la base SRD (longsword, shortbow…): su Foundry si chiamerà Longsword, Shortbow… come quelle dei PG. Mostri e bestie usano base "natural" con damage (solo dadi) e damageType. Il modificatore lo aggiunge Foundry: NON scriverlo nel dado.
 - Armatura: un umanoide armato usa un'armatura SRD (base) e magari lo scudo; mostri e bestie "natural" con la CA totale in "ac".
 - PF: scegli hitDice coerenti con la taglia; i PF = dadi + COS × numero di dadi.
 - Capacità (features): 1-4, con effetti in regole chiare. Per i soffi e le aree usa save + area + damage + uses (ricarica). Le passive (es. Tattiche di branco, Sensibilità alla luce) kind "passive".
