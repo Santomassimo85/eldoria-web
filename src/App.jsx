@@ -272,7 +272,9 @@ const MasterPricingLink = ({ closeMenu }) => {
 // drawer completo (Agent, Update, Guide, DM Tools, DM Admin…).
 // MENU RIORDINATO (2026-10-27): ogni pagina in UN posto solo. Le pagine
 // sorelle (Mappa/Luoghi, Riassunti/Diario, Officina/Manuale, Mercato/Gilda dei
-// Ratti) sono una voce sola e si girano con le schede in cima (PageTabs); la
+// Ratti) sono una voce sola e si girano con le schede in cima (PageTabs) —
+// tranne il Diario di Bordo, rimesso anche nel menu (2026-10-29: dalla sola
+// scheda dentro Le Cronache i giocatori non lo trovavano più); la
 // Bottega Arena si apre dall'hub dell'Arena; Cinema, Feedback e Update stanno
 // nel menu dell'avatar. Il drawer ripete gli stessi gruppi.
 const NESSO_GROUPS = {
@@ -283,6 +285,7 @@ const NESSO_GROUPS = {
   biblioteca: { rune: "ᛒ", label: "Biblioteca", links: [
     { to: "/scriba", label: "Lo Scriba" },
     { to: "/riassunti", label: "Le Cronache" },
+    { to: "/diario", label: "Diario di Bordo" },
     { to: "/almanacco", label: "Almanacco del Mondo" },
   ]},
   eroi: { rune: "ᛖ", label: "Eroi", links: [
