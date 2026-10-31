@@ -59,7 +59,7 @@ export function acceptChallenge(id, uid) {
     const battle = newBattle(m.teams.p, team, { pvp: true, names: { p: m.aName, e: m.bName } });
     const start = [{ kind: "info", text: `${m.aName} manda in campo ${battle.sides.p.team[0].name}!` }, { kind: "info", text: `${m.bName} manda in campo ${battle.sides.e.team[0].name}!` }];
     delete battle.log;
-    tx.update(ref(id), clean({ status: "active", teams: { p: m.teams.p, e: team }, battle, events: start, seq: 0, actions: {}, updatedAt: serverTimestamp() }));
+    tx.update(ref(id), clean({ status: "active", teams: { p: m.teams.p, e: team }, battle, events: start, logText: start.map((e) => e.text), seq: 0, actions: {}, updatedAt: serverTimestamp() }));
     return m;
   }).then((m) => { if (m.a !== m.b) notify(m.a, "🐾 Sfida accettata", `${m.bName} ha accettato la tua sfida: tocca a voi!`); });
 }
@@ -81,7 +81,9 @@ export function submitAction(id, side, action) {
     }
     const { battle, events } = withSeed(m.seed + (m.seq + 1) * 7919, () => playTurn({ ...m.battle, log: [] }, actions.p || null, actions.e || null));
     delete battle.log;
-    const patch = { battle, events, seq: m.seq + 1, actions: {}, updatedAt: serverTimestamp() };
+    // cronologia del fight: solo i testi, ultime 150 righe
+    const logText = [...(m.logText || []), ...events.filter((e) => e.text).map((e) => e.text)].slice(-150);
+    const patch = { battle, events, logText, seq: m.seq + 1, actions: {}, updatedAt: serverTimestamp() };
     if (battle.over) Object.assign(patch, { status: "done", winner: battle.over });
     tx.update(ref(id), clean(patch));
     return battle.over ? m : null;

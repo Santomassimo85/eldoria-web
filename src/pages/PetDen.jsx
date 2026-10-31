@@ -1211,10 +1211,12 @@ const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
 const diceLabel = (r, ev) => (r.kind === "save"
   ? `${r.who}: tiro salvezza ${sgn(r.mod)} contro CD ${r.vs}`
   : `${ev.att} · ${ev.mname}: d20 ${sgn(r.mod)} contro CA ${r.vs}${r.dis ? " (svantaggio)" : ""}`);
-function useLinePlayer() {
+// history = righe già mostrate (la cronologia del fight, senza anticipare quelle in coda).
+function useLinePlayer(initial = []) {
   const [queue, setQueue] = useState([]);
   const [shown, setShown] = useState(null);
   const [seq, setSeq] = useState(0);
+  const [history, setHistory] = useState(initial);
   const first = useRef(false);
   useEffect(() => { preloadDice3D(); }, []);
   useEffect(() => {
@@ -1229,6 +1231,7 @@ function useLinePlayer() {
       }
       if (!alive) return;
       setShown(next); setSeq((n) => n + 1); setQueue((q) => q.slice(1));
+      if (next.text) setHistory((h) => [...h, next.text].slice(-150));
     }, first.current ? 60 : STEP_MS);
     first.current = false;
     return () => { alive = false; clearTimeout(t); };
@@ -1241,7 +1244,7 @@ function useLinePlayer() {
     setShown({ kind: "wait", snap: events[0].snap, text: "" });
     setQueue(events);
   };
-  return { shown, seq, busy: queue.length > 0, play };
+  return { shown, seq, busy: queue.length > 0, play, history, seed: setHistory };
 }
 
 function AudioToggles() {
@@ -1259,7 +1262,8 @@ function AudioToggles() {
 
 // Campo di lotta: HUD (con CA), sprite, effetti, dado del tiro e testo.
 function BattleScreen({ battle, player, art, top, children, labels = {} }) {
-  const { shown, seq, busy } = player;
+  const { shown, seq, busy, history } = player;
+  const [histOpen, setHistOpen] = useState(false);
   const fieldRef = useRef(null);
   const spotP = useRef(null), spotE = useRef(null);
   const snap = busy ? (shown?.snap || null) : null;
@@ -1320,7 +1324,19 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
         <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
       </div>
       <div className="pd-console">
-        <p className="pd-text" aria-live="polite">{shown?.text || battle.log?.[battle.log.length - 1]?.text || ""}</p>
+        <p className="pd-text" aria-live="polite">{shown?.text || history[history.length - 1] || ""}</p>
+        {history.length > 1 && (
+          <div className="pd-hist">
+            <button type="button" className="pd-hist-btn" aria-expanded={histOpen} onClick={() => setHistOpen((o) => !o)}>
+              📜 Cronologia del fight ({history.length}) {histOpen ? "▴" : "▾"}
+            </button>
+            {histOpen && (
+              <ol className="pd-hist-list">
+                {history.map((t, i) => ({ t, i })).reverse().map(({ t, i }) => <li key={i}><span>{i + 1}</span>{t}</li>)}
+              </ol>
+            )}
+          </div>
+        )}
         {children}
       </div>
     </div>
@@ -1389,7 +1405,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     const b = newBattle(myPets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel });
     return { ...b, log: [{ text: `Piano ${plan.floor}: l'avversario manda in campo ${activeOf(b, "e").name}!` }, { text: `Vai, ${activeOf(b, "p").name}!` }] };
   });
-  const player = useLinePlayer();
+  const player = useLinePlayer(battle.log.map((l) => l.text));
   const { busy } = player;
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1484,7 +1500,12 @@ function PvpBattle({ uid, id, art, onExit }) {
   // Nuovo turno risolto: mostra le sue righe.
   useEffect(() => {
     if (!m || m.status === "pending") return;
-    if (lastSeq.current === null) { lastSeq.current = m.seq || 0; if (!m.seq && m.events) player.play(m.events); return; }
+    if (lastSeq.current === null) {
+      lastSeq.current = m.seq || 0;
+      if (!m.seq && m.events) player.play(m.events);
+      else player.seed(m.logText || []);
+      return;
+    }
     if ((m.seq || 0) > lastSeq.current) {
       lastSeq.current = m.seq;
       player.play((m.events || []).map((ev) => (flip ? flipEvent(ev) : ev)));

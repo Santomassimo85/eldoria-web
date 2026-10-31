@@ -521,3 +521,13 @@
   .pd-spot--p .pd-sprite { --pd-size: 124px !important; }
   .pd-hud-chips .pd-type { display: none; }
 }
+
+/* ── cronologia del fight (2026-10-31) ── */
+.pd-hist { margin-top: 6px; }
+.pd-hist-btn { background: none; border: 0; padding: 6px 2px; color: var(--pd-mute); font: 600 .85rem var(--font-ui); cursor: pointer; min-height: 36px; }
+.pd-hist-btn:hover { color: var(--pd-ink); }
+.pd-hist-list { list-style: none; margin: 0 0 6px; padding: 6px 10px; max-height: 260px; overflow-y: auto; background: var(--pd-bg); border: 2px solid rgba(255,255,255,.08); border-radius: 4px; }
+.pd-hist-list li { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.06); color: var(--pd-ink); font-size: .9rem; line-height: 1.35; }
+.pd-hist-list li:last-child { border-bottom: 0; }
+.pd-hist-list li:first-child { color: #f2c14e; }
+.pd-hist-list li span { flex: 0 0 auto; min-width: 2ch; color: var(--pd-mute); font: 600 .75rem var(--font-num); padding-top: 2px; }
