@@ -1,0 +1,56 @@
+/* Tesoreria del Master (2026-10-31): elenco a sinistra, casse a destra. Token del Covo. */
+.ta-page { max-width: 1240px; }
+.ta-status { position: sticky; top: 52px; z-index: 6; }
+.ta-layout { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 16px; }
+
+.ta-side { position: sticky; top: 56px; display: grid; gap: 10px; max-height: calc(100vh - 80px); overflow: hidden; grid-template-rows: auto auto minmax(0, 1fr); }
+.ta-search { width: 100%; box-sizing: border-box; }
+.ta-hidden-toggle { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--osso-2); cursor: pointer; }
+.ta-hidden-toggle input { width: 17px; height: 17px; accent-color: var(--el); }
+.ta-players { list-style: none; margin: 0; padding: 0 4px 0 0; display: grid; gap: 4px; overflow-y: auto; }
+.ta-player { width: 100%; display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; padding: 8px 10px; text-align: left; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-left: 3px solid transparent; border-radius: 4px; color: var(--osso); font: inherit; cursor: pointer; }
+.ta-player:hover { background: var(--roccia-3); }
+.ta-player.is-on { border-left-color: var(--el); background: var(--roccia-3); box-shadow: 0 0 0 1px rgba(var(--el-rgb), .35); }
+.ta-player img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.ta-player-main { display: grid; gap: 3px; min-width: 0; }
+.ta-player-main b { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--osso); }
+.ta-player-main b small { color: var(--osso-2); font-weight: 400; }
+.ta-player-mini { display: flex; flex-wrap: wrap; gap: 4px 10px; font-family: var(--font-num); font-size: .8rem; color: var(--osso-2); }
+
+.ta-detail { min-height: 300px; }
+.ta-empty { display: grid; place-items: center; gap: 8px; min-height: 320px; text-align: center; color: var(--osso-2); background: var(--roccia-2); border: 1px dashed rgba(var(--osso-rgb), .2); border-radius: 6px; }
+.ta-empty span { font-size: 2.4rem; }
+.ta-detail-head { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-top: 3px solid var(--el); border-radius: 6px; }
+.ta-detail-head img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--el); }
+.ta-detail-head h2 { margin: 0; font-family: var(--font-head); font-size: 1.7rem; color: var(--osso); }
+.ta-detail-head small { color: var(--osso-2); }
+.ta-close { margin-left: auto; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(var(--osso-rgb), .2); background: transparent; color: var(--osso); cursor: pointer; font-size: 1rem; }
+
+.ta-purses { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
+.ta-purse { display: grid; gap: 12px; padding: 16px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-radius: 6px; --ta-c: var(--el); border-top: 3px solid var(--ta-c); }
+.ta-purse--platinum { --ta-c: #f2c14e; }
+.ta-purse--tcgCoins { --ta-c: #5fa8e8; }
+.ta-purse--arenaCoins { --ta-c: #e0624f; }
+.ta-purse--petPoints { --ta-c: #6fcf7f; }
+.ta-purse header { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+.ta-purse-icon { font-size: 1.8rem; }
+.ta-purse h3 { margin: 0; font-family: var(--font-head); font-size: 1.25rem; color: var(--osso); }
+.ta-purse header small { color: var(--osso-2); font-size: .8rem; }
+.ta-purse-now { font-family: var(--font-num); font-size: 2.3rem; line-height: 1; color: var(--ta-c); }
+.ta-steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.ta-step, .ta-btn { min-height: 40px; border-radius: 4px; border: 1px solid rgba(var(--osso-rgb), .18); background: var(--roccia-3); color: var(--osso); font: 700 .95rem var(--font-num); cursor: pointer; }
+.ta-step.is-minus, .ta-btn.is-minus { border-color: rgba(224, 98, 79, .55); }
+.ta-step.is-plus, .ta-btn.is-plus { border-color: rgba(111, 207, 127, .55); }
+.ta-step:hover, .ta-btn:hover:not(:disabled) { background: var(--roccia-4, var(--roccia-3)); filter: brightness(1.15); }
+.ta-btn { padding: 0 14px; font-family: var(--font-ui); }
+.ta-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ta-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.ta-row:last-child { grid-template-columns: minmax(0, 1fr) auto; }
+.ta-row input { min-width: 0; min-height: 40px; padding: 6px 10px; background: var(--ossidiana); border: 1px solid rgba(var(--osso-rgb), .2); border-radius: 4px; color: var(--osso); font: inherit; }
+
+@media (max-width: 860px) {
+  .ta-layout { grid-template-columns: 1fr; }
+  .ta-side { position: static; max-height: none; }
+  .ta-players { max-height: 46vh; }
+  .ta-purses { grid-template-columns: 1fr; }
+}
