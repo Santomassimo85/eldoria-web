@@ -120,7 +120,7 @@ export default function PlatinumAdmin() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return characters
-      .filter((c) => showHidden || !isHiddenChar(c))
+      .filter((c) => showHidden || (c.name && !isHiddenChar(c)))
       .filter((c) => !q || (c.name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
   }, [characters, query, showHidden]);
   const sel = characters.find((c) => c.id === selId) || null;

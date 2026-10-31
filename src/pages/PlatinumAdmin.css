@@ -1,5 +1,5 @@
 /* Tesoreria del Master (2026-10-31): elenco a sinistra, casse a destra. Token del Covo. */
-.ta-page { max-width: 1240px; }
+.adm.ta-page, .ta-page { max-width: 1320px !important; width: 100%; }
 .ta-status { position: sticky; top: 52px; z-index: 6; }
 .ta-layout { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 16px; }
 
