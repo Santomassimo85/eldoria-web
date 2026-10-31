@@ -303,3 +303,5 @@
 .pd-master-eggs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 0; padding: 10px 12px; background: var(--pd-s2); border-radius: 4px; font-size: .9rem; color: var(--pd-mute); }
 .pd-master-egg { background: var(--pd-s3); border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 4px 6px; cursor: pointer; min-height: 40px; }
 .pd-master-egg:hover { border-color: var(--pd-acc); }
+.pd-page *, .pd-hatch * { box-sizing: border-box; }
+.pd-odds li, .pd-odds li span, .pd-eggpool li, .pd-eggpool li span, .pd-ledger li span, .pd-howto li, .pd-moves li span { color: var(--pd-ink); }
