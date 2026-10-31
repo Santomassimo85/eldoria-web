@@ -1568,7 +1568,10 @@ const dropNames = (ids = []) => ids.map((k) => `${PET_BAG[k]?.icon} ${PET_BAG[k]
 function PetBattle(props) {
   const { den, plan, att } = props;
   const curAtt = den.tower.att?.floor === plan.floor ? den.tower.att.n || 0 : 0;
-  if (att != null && curAtt !== att) return <p className="pd-loading">Preparo il piano…</p>;
+  // si controlla solo prima di partire: a lotta iniziata la scheda cambia (esito salvato)
+  const started = useRef(false);
+  if (!started.current && att != null && curAtt !== att) return <p className="pd-loading">Preparo il piano…</p>;
+  started.current = true;
   return <PetBattleRun {...props} />;
 }
 function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
