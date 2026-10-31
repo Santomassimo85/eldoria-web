@@ -24,11 +24,11 @@ import {
   MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, LOSS_XP, newBattle, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, LOSS_XP, withSeed, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
-  recordTowerResult, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
+  towerFinish, towerSeed, towerTurnSeed, towerStart, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
   learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
 } from "../utils/petDen";
 import {
@@ -231,7 +231,8 @@ export default function PetDen() {
           key={battle.key}
           uid={uid} den={den} art={art} plan={battle.plan} teamIds={battle.teamIds}
           onExit={() => { setBattle(null); setTab("torre"); }}
-          onRetry={() => { unlockAudio(); setBattle((b) => ({ ...b, key: Date.now() })); }}
+          onRetry={(att) => { unlockAudio(); setBattle((b) => ({ ...b, key: Date.now(), att })); }}
+          att={battle.att}
         />
       </section>
     );
@@ -489,7 +490,7 @@ function Manual() {
         <ul>
           <li>Dal Rifugio → Sfide scegli un altro domatore e lo sfidi con la tua squadra; lui accetta con la sua.</li>
           <li>Si gioca a turni anche a distanza: ognuno sceglie la mossa quando può, il turno parte quando avete scelto tutti e due. Arriva una notifica per la sfida, l'accettazione e la fine.</li>
-          <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. Sconfitta: solo {LOSS_XP} PE. Abbandonare conta come sconfitta e non dà PE.</li>
+          <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. PE fissi: {PVP_WIN_XP} a chi vince, {PVP_LOSS_XP} a chi perde, solo per le prime {PVP_XP_FIGHTS} sfide del giorno. Abbandonare conta come sconfitta e non dà PE.</li>
         </ul>
       </section>
       <section>
@@ -514,6 +515,7 @@ function Manual() {
         <ul>
           <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
           <li>Se perdi ritenti lo stesso piano e la squadra prende solo {LOSS_XP} PE; se ti ritiri non prende niente.</li>
+          <li>I dadi di un piano sono fissati: ritirarsi e ricominciare dà gli stessi tiri. Cambiano solo dopo una sconfitta. L'esito lo ricontrolla il server.</li>
           <li>È infinita e uguale per tutti: il piano 3 è sempre lo stesso piano 3. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
           <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica mostra fin dove è arrivato ognuno.</li>
         </ul>
@@ -1087,7 +1089,7 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
   const foeOf = (m) => (m.a === uid ? m.bName : m.aName);
   return (
     <div className="pd-tab">
-      <p className="pd-fine">Sfida un altro domatore con la tua squadra (fino a {MAX_TEAM} pet). Si gioca a turni: ognuno sceglie la sua mossa quando può, anche a distanza di ore. Vittoria = PE alla squadra e +{PVP_POINTS} punti pet (le prime {PVP_DAILY} vittorie del giorno); chi perde prende solo {LOSS_XP} PE, chi abbandona niente. Le statistiche: {den.pvp.wins} vinte · {den.pvp.losses} perse.</p>
+      <p className="pd-fine">Sfida un altro domatore con la tua squadra (fino a {MAX_TEAM} pet). Si gioca a turni: ognuno sceglie la sua mossa quando può, anche a distanza di ore. Vittoria = PE alla squadra e +{PVP_POINTS} punti pet (le prime {PVP_DAILY} vittorie del giorno); PE fissi: {PVP_WIN_XP} a chi vince e {PVP_LOSS_XP} a chi perde, per le prime {PVP_XP_FIGHTS} sfide del giorno; chi abbandona niente. Le statistiche: {den.pvp.wins} vinte · {den.pvp.losses} perse.</p>
       {incoming.length > 0 && (
         <>
           <h2 className="pd-h2">Sfide ricevute</h2>
@@ -1557,10 +1559,23 @@ function BattleControls({ battle, busy, art, onAct, forced }) {
 
 const dropNames = (ids = []) => ids.map((k) => `${PET_BAG[k]?.icon} ${PET_BAG[k]?.name}`).join(", ");
 
-function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
-  const myPets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+/* Torre verificata dal server (2026-10-31): dadi a seme fisso (towerSeed:
+   giocatore + piano + tentativo, cambia solo dopo una sconfitta registrata),
+   si tiene la lista delle azioni e a fine lotta il server la rigioca
+   (towerFinish) e decide lui l'esito. Dopo una sconfitta si riparte solo
+   quando la scheda ha già il tentativo nuovo (e i PE presi), altrimenti la
+   lotta del telefono e quella del server non coinciderebbero. */
+function PetBattle(props) {
+  const { den, plan, att } = props;
+  const curAtt = den.tower.att?.floor === plan.floor ? den.tower.att.n || 0 : 0;
+  if (att != null && curAtt !== att) return <p className="pd-loading">Preparo il piano…</p>;
+  return <PetBattleRun {...props} />;
+}
+function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
+  const seed = useMemo(() => towerSeed(uid, den, plan.floor), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const actions = useRef([]);
   const [battle, setBattleState] = useState(() => {
-    const b = newBattle(myPets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel });
+    const b = towerStart(den, plan.floor, teamIds, seed);
     return { ...b, log: [{ text: `Piano ${plan.floor}: l'avversario manda in campo ${activeOf(b, "e").name}!` }, { text: `Vai, ${activeOf(b, "p").name}!` }] };
   });
   const player = useLinePlayer(battle.log.map((l) => l.text));
@@ -1583,15 +1598,17 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     if (!battle.over || busy || savedRef.current) return;
     savedRef.current = true;
     setSaving(true);
-    recordTowerResult(uid, plan.floor, battle.over === "p", teamIds)
-      .then((r) => setResult({ ...r, won: battle.over === "p" }))
-      .catch((e) => setResult({ won: battle.over === "p", error: e.message }))
+    towerFinish(uid, plan.floor, teamIds, actions.current)
+      .then((r) => setResult(r))
+      .catch((e) => setResult({ won: false, error: e.message }))
       .finally(() => setSaving(false));
   }, [battle.over, busy, uid, plan.floor, teamIds]);
 
   const act = (action) => {
     if (busy || battle.over) return;
-    const { battle: nb, events } = playTurn(battle, action);
+    const i = actions.current.length;
+    const { battle: nb, events } = withSeed(towerTurnSeed(seed, i), () => playTurn(battle, action));
+    actions.current.push(action);
     setBattleState(nb);
     player.play(events);
   };
@@ -1623,7 +1640,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
               <div className="pd-result-actions">
                 {result.won
                   ? <button type="button" className="pd-btn pd-btn--main" onClick={onExit}>Avanti</button>
-                  : <button type="button" className="pd-btn pd-btn--main" onClick={onRetry}>Ritenta il piano</button>}
+                  : <button type="button" className="pd-btn pd-btn--main" onClick={() => onRetry(result.att)}>Ritenta il piano</button>}
                 <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Al Rifugio</button>
               </div>
             </>

@@ -4,12 +4,6 @@
    Firestore helpers for awarding points & writing pet state.
    ============================================================ */
 
-import {
-  doc,
-  runTransaction,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../firebase";
 import { PET_SPECIES, HATCH_POOLS, SKILL_UNLOCK_LEVELS } from "../data/petSpecies";
 import { PET_MOVES, typeMultiplier } from "../data/petMoves";
 
@@ -48,82 +42,19 @@ export function todayKey() {
 
 const PET_LEDGER_LIMIT = 30;
 
+// Dal 2026-10-31 i punti li scrive il SERVER (callable petAward in
+// functions/index.js: stesse soglie, e controlla che il premio sia vero);
+// le regole di Firestore non lasciano più scrivere petPoints dal browser.
 export async function awardPetPoints(uid, sourceKey, opts = {}) {
   if (!uid || !sourceKey) return { awarded: 0, reason: "no-args" };
-  const def = PET_POINT_SOURCES[sourceKey];
-  if (!def) return { awarded: 0, reason: "unknown-source" };
-  const { resourceKey = null, amountOverride = null, label: customLabel = null } = opts;
-  const amount = Math.max(0, amountOverride ?? def.amount);
-  if (amount <= 0) return { awarded: 0, reason: "zero-amount" };
-
-  const ref = doc(db, "characters", uid);
   try {
-    const out = await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return { awarded: 0, reason: "no-doc" };
-      const data = snap.data();
-      const today = todayKey();
-      const daily = data.petPointsDaily || {};
-      // Legacy docs may have stored a primitive at daily[today] (old bug);
-      // coerce non-objects back to an empty map so the counter is sound.
-      const rawToday = daily[today];
-      const todayMap = (rawToday && typeof rawToday === "object" && !Array.isArray(rawToday))
-        ? { ...rawToday }
-        : {};
-      const seen = data.petPointsSeen || {};
-
-      if (def.oncePerKey && resourceKey) {
-        const seenList = seen[sourceKey] || [];
-        if (seenList.includes(resourceKey)) {
-          return { awarded: 0, reason: "already-seen" };
-        }
-      }
-
-      if (def.dailyCap != null) {
-        const used = todayMap[sourceKey] || 0;
-        if (used >= def.dailyCap) return { awarded: 0, reason: "daily-cap" };
-      }
-
-      const newPoints = (data.petPoints || 0) + amount;
-      const ledger = [
-        { source: sourceKey, label: customLabel || def.label, amount, ts: new Date().toISOString(), resourceKey: resourceKey || null },
-        ...((data.petPointsLedger || []).slice(0, PET_LEDGER_LIMIT - 1)),
-      ];
-
-      const patch = {
-        petPoints: newPoints,
-        petPointsLedger: ledger,
-      };
-
-      if (def.dailyCap != null) {
-        const nextCount = (todayMap[sourceKey] || 0) + 1;
-        // Nested dot-path so each source has its own counter under the
-        // day map. The previous version wrote the count directly to
-        // `petPointsDaily.${today}`, overwriting the day map with a
-        // bare number — which made every refresh look like a fresh day.
-        patch[`petPointsDaily.${today}.${sourceKey}`] = nextCount;
-        const allDays = Object.keys(daily).sort().filter(k => k !== today);
-        if (allDays.length > 6) {
-          const stale = allDays.slice(0, allDays.length - 6);
-          stale.forEach(d => { patch[`petPointsDaily.${d}`] = null; });
-        }
-      }
-
-      if (def.oncePerKey && resourceKey) {
-        const seenList = seen[sourceKey] || [];
-        // Keep the most recent 500 resource keys per source so the array
-        // can't grow unbounded but still blocks reasonable replay windows.
-        const trimmed = [...seenList, resourceKey].slice(-500);
-        patch[`petPointsSeen.${sourceKey}`] = trimmed;
-      }
-
-      tx.update(ref, patch);
-      return { awarded: amount };
-    });
-    return out;
+    const [{ httpsCallable }, { functions }] = await Promise.all([import("firebase/functions"), import("../firebase")]);
+    const call = httpsCallable(functions, "petAward");
+    const r = await call({ uid, source: sourceKey, resourceKey: opts.resourceKey || null });
+    return r.data || { awarded: 0 };
   } catch (err) {
     console.warn("[awardPetPoints]", err);
-    return { awarded: 0, reason: "tx-failed" };
+    return { awarded: 0, reason: "call-failed" };
   }
 }
 

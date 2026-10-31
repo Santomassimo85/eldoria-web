@@ -1798,3 +1798,129 @@ exports.logPlatinumChange = onDocumentWrittenWithAuthContext(
     });
   },
 );
+
+// ── Rifugio dei Pet sul SERVER (2026-10-31) ─────────────────────────────────
+// Tutte le scritture di petDen / punti pet passano da qui: le regole di
+// Firestore non le lasciano più fare al browser. Le regole del gioco sono
+// src/data/petOps.js impacchettato in functions/petBundle.js
+// (`npm run build:pets` dalla radice del sito: da rifare dopo ogni modifica
+// a petOps/petDex/petEngine/petBag). La Torre si rigioca qui (towerFinish).
+const petBundle = require("./petBundle");
+const PET_MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
+const isPetMaster = (request) => PET_MASTER_EMAILS.includes(String(request.auth?.token?.email || "").toLowerCase());
+
+exports.petDo = onCall(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const opName = String(request.data?.op || "");
+    const args = Array.isArray(request.data?.args) ? request.data.args : [];
+    const def = petBundle.OPS[opName];
+    if (!def) throw new HttpsError("invalid-argument", "Operazione sconosciuta.");
+    const needMaster = typeof def.master === "function" ? def.master(args) : !!def.master;
+    if (needMaster && !isPetMaster(request)) throw new HttpsError("permission-denied", "Solo il Master.");
+    const db = admin.firestore();
+    const ref = db.collection("characters").doc(uid);
+    try {
+      return await db.runTransaction(async (tx) => {
+        let runArgs = args;
+        if (def.match) {
+          // sfide: si legge la sfida vera, chi chiama dev'esserne un giocatore
+          const [matchId, side] = args;
+          if (!matchId || String(matchId).includes("/")) throw new Error("Sfida non valida.");
+          const ms = await tx.get(db.collection("pet_matches").doc(String(matchId)));
+          const m = ms.exists ? { id: ms.id, ...ms.data() } : null;
+          if (!m || m.status !== "done") throw new Error("La sfida non è finita.");
+          const mine = (m.a === uid ? ["p"] : []).concat(m.b === uid ? ["e"] : []);
+          if (!mine.includes(side)) throw new Error("Non è una tua sfida.");
+          runArgs = [m, side];
+        }
+        const snap = await tx.get(ref);
+        if (!snap.exists) throw new Error("Scheda del personaggio non trovata.");
+        const data = snap.data();
+        const den = petBundle.denOf(data);
+        const res = def.run(den, data, ...runArgs, { uid }) || {};
+        tx.update(ref, { petDen: den, ...(res.patch || {}) });
+        return { out: res.out ?? null };
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      throw new HttpsError("failed-precondition", e?.message || "Operazione non riuscita.");
+    }
+  },
+);
+
+// Punti pet da Arena, login, Mercato, World Boss: prima li scriveva il browser
+// (awardPetPoints in utils/pet.js). Ora qui, con le stesse soglie giornaliere
+// e un controllo che il premio sia vero.
+const PET_POINT_SOURCES = {
+  arena_round: { label: "Round Arena vinto", amount: 3, dailyCap: 5, oncePerKey: true },
+  arena_tournament: { label: "Vincitore del torneo", amount: 25, dailyCap: 1, oncePerKey: true },
+  arena_libera: { label: "Sfida Libera conclusa", amount: 1, dailyCap: 5, oncePerKey: true },
+  market_bid: { label: "Offerta al Mercato Nero", amount: 1, dailyCap: 5, oncePerKey: true },
+  daily_login: { label: "Login del giorno", amount: 2, dailyCap: 1 },
+  boss_win: { label: "Vittoria sul World Boss", amount: 20, dailyCap: 2, oncePerKey: true },
+};
+async function petAwardAllowed(db, request, target, source, key) {
+  const caller = request.auth.uid;
+  if (source === "daily_login") return caller === target;
+  if (source === "boss_win") return isPetMaster(request);
+  if (source === "market_bid") {
+    if (caller !== target || !key) return false;
+    return (await db.collection("items").doc(String(key)).get()).exists;
+  }
+  if (source.startsWith("arena_")) {
+    if (!key) return false;
+    // il match dev'essere in arena_meta (finito, col premiato vincitore o giocatore)
+    for (let i = 0; i < 3; i++) {
+      const meta = (await db.collection("arena_meta").doc("global").get()).data() || {};
+      const m = (meta.matches || []).find((x) => x.matchId === key);
+      if (m && m.status === "finished") {
+        if (source === "arena_libera") return (m.players || []).some((p) => p?.id === target);
+        return m.winner === target;
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return false;
+  }
+  return false;
+}
+exports.petAward = onCall(
+  { region: "us-central1", timeoutSeconds: 20, memory: "256MiB" },
+  async (request) => {
+    if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const target = String(request.data?.uid || "");
+    const source = String(request.data?.source || "");
+    const key = request.data?.resourceKey ? String(request.data.resourceKey).slice(0, 200) : null;
+    const def = PET_POINT_SOURCES[source];
+    if (!def || !target || target.includes("/")) return { awarded: 0, reason: "unknown-source" };
+    const db = admin.firestore();
+    if (!(await petAwardAllowed(db, request, target, source, key))) return { awarded: 0, reason: "not-allowed" };
+    const ref = db.collection("characters").doc(target);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { awarded: 0, reason: "no-doc" };
+      const data = snap.data();
+      const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+      const daily = data.petPointsDaily || {};
+      const todayMap = daily[today] && typeof daily[today] === "object" ? daily[today] : {};
+      const seen = data.petPointsSeen || {};
+      if (def.oncePerKey && key && (seen[source] || []).includes(key)) return { awarded: 0, reason: "already-seen" };
+      if ((todayMap[source] || 0) >= def.dailyCap) return { awarded: 0, reason: "daily-cap" };
+      const ledger = [
+        { source, label: def.label, amount: def.amount, ts: new Date().toISOString(), resourceKey: key },
+        ...((data.petPointsLedger || []).slice(0, 29)),
+      ];
+      const patch = {
+        petPoints: (Number(data.petPoints) || 0) + def.amount,
+        petPointsLedger: ledger,
+        [`petPointsDaily.${today}.${source}`]: (todayMap[source] || 0) + 1,
+      };
+      Object.keys(daily).sort().filter((k) => k !== today).slice(0, -6).forEach((d) => { patch[`petPointsDaily.${d}`] = FieldValue.delete(); });
+      if (def.oncePerKey && key) patch[`petPointsSeen.${source}`] = [...(seen[source] || []), key].slice(-500);
+      tx.update(ref, patch);
+      return { awarded: def.amount };
+    });
+  },
+);

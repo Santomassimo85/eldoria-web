@@ -1,0 +1,425 @@
+/* ============================================================
+   PET OPS (2026-10-31) — le regole del Rifugio dei Pet, PURE (niente
+   Firebase). Le usa il SERVER: la callable `petDo` (functions/index.js)
+   carica functions/petBundle.js, che è QUESTO file impacchettato con
+   esbuild (`npm run build:pets`, da rifare dopo ogni modifica qui, in
+   petDex.js, petEngine.js o petBag.js). Il sito chiama solo la callable
+   (utils/petDen.js): le regole di Firestore non lasciano scrivere petDen,
+   punti pet e regali dal browser.
+   Ogni operazione è (den, data, ...args) → { patch, out }: modifica `den`
+   (= denOf(data)) e restituisce i campi in più da scrivere sul personaggio.
+   ============================================================ */
+
+import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
+import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor } from "./petEngine";
+import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops } from "./petBag";
+export { LOSS_XP };
+
+const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+export const denOf = (data) => {
+  const d = data?.petDen || {};
+  return {
+    starter: d.starter || null,
+    pets: Array.isArray(d.pets) ? d.pets : [],
+    team: Array.isArray(d.team) ? d.team : [],
+    tower: { floor: 1, best: 0, wins: 0, ...(d.tower || {}) },
+    eggs: Array.isArray(d.eggs) ? d.eggs : [],
+    mascot: d.mascot || null,
+    items: d.items && typeof d.items === "object" ? { ...d.items } : {},
+    pvp: { wins: 0, losses: 0, day: "", rewarded: 0, claimed: [], ...(d.pvp || {}) },
+    log: Array.isArray(d.log) ? d.log : [],
+  };
+};
+// Una voce nella storia del Rifugio (la più recente in testa).
+const LOG_MAX = 150;
+const addLog = (den, entry) => { den.log = [{ t: new Date().toISOString(), ...entry }, ...den.log].slice(0, LOG_MAX); };
+export const countOf = (den, species) => den.pets.filter((p) => p.species === species).length;
+
+
+const makePet = (species, from) => ({ id: newId(), species, level: 1, xp: 0, nick: "", from, at: new Date().toISOString() });
+
+export function chooseStarter(den, data, species) {
+    if (den.starter || den.pets.length) throw new Error("Hai già scelto il tuo primo compagno.");
+    if (!STARTERS.includes(species)) throw new Error("Non è un pet iniziale.");
+    const p = makePet(species, "starter");
+    den.starter = species;
+    den.pets.push(p);
+    den.team = [p.id];
+    addLog(den, { k: "starter", species });
+}
+
+// Pet dato a mano (Master, per le prove): niente punti.
+export function givePet(den, data, species) {
+    if (!PET_DEX[species]) throw new Error("Specie sconosciuta.");
+    if (countOf(den, species) >= MAX_PER_SPECIES) throw new Error(`Hai già ${MAX_PER_SPECIES} ${PET_DEX[species].name}.`);
+    const p = makePet(species, "master");
+    den.pets.push(p);
+    if (den.team.length < MAX_TEAM) den.team.push(p.id);
+    addLog(den, { k: "give", species });
+}
+
+const makeEgg = (egg, from) => ({ id: newId().replace("pet_", "egg_"), egg, from, at: new Date().toISOString() });
+
+export function buyEgg(den, data, eggKey, { free = false } = {}) {
+    const egg = EGGS[eggKey];
+    if (!egg) throw new Error("Uovo sconosciuto.");
+    if (den.eggs.length >= MAX_EGGS) throw new Error(`Il nido è pieno (${MAX_EGGS} uova): schiudine qualcuna.`);
+    const cost = free ? 0 : egg.cost;
+    const pts = Number(data.petPoints) || 0;
+    if (pts < cost) throw new Error(`Ti mancano ${cost - pts} punti pet.`);
+    den.eggs.push(makeEgg(eggKey, free ? "master" : "bottega"));
+    addLog(den, { k: "egg_buy", egg: eggKey, cost });
+    return { patch: cost ? { petPoints: pts - cost } : {} };
+}
+
+/* Schiude un uovo: il tiro avviene DENTRO la transazione, quindi l'esito
+   salvato è quello mostrato. Doppione oltre il limite = punti pet. */
+export function hatchEgg(den, data, eggId) {
+    if (!den.starter) throw new Error("Prima scegli il tuo pet iniziale.");
+    const egg = den.eggs.find((e) => e.id === eggId);
+    if (!egg) throw new Error("Quest'uovo non c'è più.");
+    den.eggs = den.eggs.filter((e) => e.id !== eggId);
+    const { species, rarity } = rollEgg(egg.egg);
+    if (countOf(den, species) >= MAX_PER_SPECIES) {
+      const pts = refundOf(species);
+      addLog(den, { k: "hatch", egg: egg.egg, species, rarity, refunded: pts });
+      return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { species, rarity, refunded: pts } };
+    }
+    const p = makePet(species, `uovo:${egg.egg}`);
+    den.pets.push(p);
+    const joined = den.team.length < MAX_TEAM;
+    if (joined) den.team.push(p.id);
+    addLog(den, { k: "hatch", egg: egg.egg, species, rarity });
+    return { out: { species, rarity, petId: p.id, joined } };
+}
+
+export const MASCOT_XP_BONUS = 0.05;
+
+// Mascotte: un pet a scelta (o nessuno con petId null).
+export function setMascot(den, data, petId) {
+    if (petId && !den.pets.some((p) => p.id === petId)) throw new Error("Pet non trovato.");
+    den.mascot = petId || null;
+}
+
+export function releasePet(den, data, petId) {
+    if (den.pets.length <= 1) throw new Error("Non puoi restare senza pet.");
+    if (den.mascot === petId) den.mascot = null;
+    den.pets = den.pets.filter((p) => p.id !== petId);
+    den.team = den.team.filter((id) => id !== petId);
+    if (!den.team.length) den.team = [den.pets[0].id];
+}
+
+export function setTeam(den, data, team) {
+    const ids = [...new Set(team)].filter((id) => den.pets.some((p) => p.id === id)).slice(0, MAX_TEAM);
+    if (!ids.length) throw new Error("La squadra deve avere almeno un pet.");
+    den.team = ids;
+}
+
+export function renamePet(den, data, petId, nick) {
+    const p = den.pets.find((x) => x.id === petId);
+    if (p) p.nick = String(nick || "").trim().slice(0, 18);
+}
+
+/* Gradi delle mosse: impara (o cambia) la mossa del grado `grade`.
+   La nuova mossa entra subito fra quelle di lotta: al posto della
+   vecchia dello stesso grado, oppure in un posto libero. */
+export function learnMove(den, data, petId, grade, moveId) {
+    const p = den.pets.find((x) => x.id === petId);
+    if (!p) throw new Error("Pet non trovato.");
+    if (grade > gradeOfLevel(p.level)) throw new Error("Grado non ancora sbloccato.");
+    if (!learnPool(p.species, grade).includes(moveId)) throw new Error("Questo pet non può imparare questa mossa.");
+    const before = battleMoves(p);
+    const old = (p.learned || {})[grade];
+    p.learned = { ...(p.learned || {}), [grade]: moveId };
+    let set = before.map((m) => (m === old ? moveId : m));
+    if (!set.includes(moveId) && set.length < MAX_MOVES) set = [...set, moveId];
+    p.moveset = set;
+}
+
+export function setMoveset(den, data, petId, moves) {
+    const p = den.pets.find((x) => x.id === petId);
+    if (!p) throw new Error("Pet non trovato.");
+    const known = knownMoves(p);
+    const set = moves.filter((m, i, a) => known.includes(m) && a.indexOf(m) === i).slice(0, MAX_MOVES);
+    if (!set.length) throw new Error("Serve almeno una mossa.");
+    p.moveset = set;
+}
+
+/* ── BISACCIA DEL DOMATORE ───────────────────────────────────── */
+const addItems = (den, ids) => ids.forEach((id) => { if (PET_BAG[id]) den.items[id] = (den.items[id] || 0) + 1; });
+const takeItem = (den, id) => {
+  if (!(den.items[id] > 0)) throw new Error("Non hai questo oggetto.");
+  den.items[id] -= 1;
+  if (!den.items[id]) delete den.items[id];
+};
+const petOf = (den, petId) => {
+  const p = den.pets.find((x) => x.id === petId);
+  if (!p) throw new Error("Pet non trovato.");
+  return p;
+};
+
+export function buyItem(den, data, id) {
+    const it = PET_BAG[id];
+    if (!it || !it.price) throw new Error("Questo oggetto non si compra.");
+    const pts = Number(data.petPoints) || 0;
+    if (pts < it.price) throw new Error(`Servono ${it.price} punti pet.`);
+    addItems(den, [id]);
+    addLog(den, { k: "item_buy", item: id, cost: it.price });
+    const ledger = [{ source: "shop", label: `Bisaccia: ${it.name}`, amount: -it.price, ts: new Date().toISOString() }, ...((data.petPointsLedger || []).slice(0, 29))];
+    return { patch: { petPoints: pts - it.price, petPointsLedger: ledger } };
+}
+
+// Oggetti gratis (Master, per le prove).
+export function giveItems(den, data, ids) { addItems(den, ids); addLog(den, { k: "item_give", items: ids }); }
+
+// Caramella Rara (+1 livello) o Pietra dell'Esperienza (PE).
+export function applyGrowthItem(den, data, petId, id) {
+    const it = PET_BAG[id];
+    const p = petOf(den, petId);
+    if (it?.kind === "level") {
+      if ((p.level || 1) >= MAX_LEVEL) throw new Error("È già al livello massimo.");
+      takeItem(den, id);
+      p.level = (p.level || 1) + 1;
+      p.xp = 0;
+      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
+      return { out: { level: p.level } };
+    }
+    if (it?.kind === "xp") {
+      if ((p.level || 1) >= MAX_LEVEL) throw new Error("È già al livello massimo.");
+      takeItem(den, id);
+      const n = addXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
+      p.level = n.level; p.xp = n.xp;
+      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
+      return { out: { level: p.level, ups: n.ups } };
+    }
+    throw new Error("Oggetto non adatto.");
+}
+
+// Amuleto: il pet lo tiene per `fights` lotte. Uno solo: quello vecchio si perde.
+export function giveCharm(den, data, petId, id) {
+    const it = PET_BAG[id];
+    if (it?.kind !== "charm") throw new Error("Non è un amuleto.");
+    const p = petOf(den, petId);
+    takeItem(den, id);
+    p.charm = { id, left: it.fights };
+}
+
+/* Pergamena: insegna la sua mossa (di qualunque elemento) al posto di
+   `forget`, che il pet dimentica: se era di un grado il grado si libera,
+   se era innata finisce fra le dimenticate, se era di pergamena sparisce. */
+export function teachScroll(den, data, petId, id, forget) {
+    const it = PET_BAG[id];
+    if (it?.kind !== "scroll") throw new Error("Non è una pergamena.");
+    const p = petOf(den, petId);
+    const known = knownMoves(p);
+    if (known.includes(it.move)) throw new Error("La conosce già.");
+    if (!known.includes(forget)) throw new Error("Scegli la mossa da dimenticare.");
+    const tms = (p.tms || []).filter((m) => m !== forget);
+    if (tms.length >= SCROLL_SLOTS) throw new Error(`Ha già ${SCROLL_SLOTS} mosse da pergamena: dimentica una di quelle.`);
+    const before = battleMoves(p);
+    if ((p.tms || []).includes(forget)) {
+      // già tolta sopra
+    } else if (learnedMoves(p).includes(forget)) {
+      const g = Object.keys(p.learned || {}).find((k) => p.learned[k] === forget);
+      const learned = { ...(p.learned || {}) };
+      delete learned[g];
+      p.learned = learned;
+    } else {
+      p.forgotten = [...(p.forgotten || []), forget];
+    }
+    takeItem(den, id);
+    addLog(den, { k: "scroll", item: id, pet: p.id, species: p.species, forget });
+    p.tms = [...tms, it.move];
+    p.moveset = before.includes(forget) ? before.map((m) => (m === forget ? it.move : m)) : [...before, it.move].slice(0, MAX_MOVES);
+}
+
+// Dopo ogni lotta gli amuleti dei pet in squadra perdono una carica.
+function wearCharms(den, teamIds) {
+  den.pets.forEach((p) => {
+    if (!teamIds.includes(p.id) || !p.charm) return;
+    const left = (p.charm.left || 1) - 1;
+    if (left > 0) p.charm = { ...p.charm, left };
+    else delete p.charm;
+  });
+}
+
+// Ritira i pet arrivati dal Mercato: oltre il limite diventano punti.
+export function claimGifts(den, data) {
+  const gifts = Array.isArray(data.petGifts) ? data.petGifts : [];
+  if (!gifts.length) return { out: null };
+  const got = [], refunded = [], eggs = [];
+  let pts = Number(data.petPoints) || 0;
+  gifts.forEach((g) => {
+    if (g.item && PET_BAG[g.item]) {
+      addItems(den, [g.item]);
+      addLog(den, { k: "gift", item: g.item, from: g.from || "mercato" });
+      eggs.push(`item:${g.item}`);
+      return;
+    }
+    if (g.egg && EGGS[g.egg]) {
+      den.eggs.push(makeEgg(g.egg, g.from || "mercato"));
+      addLog(den, { k: "gift", egg: g.egg, from: g.from || "mercato" });
+      eggs.push(g.egg);
+      return;
+    }
+    if (!PET_DEX[g.species]) return;
+    if (countOf(den, g.species) >= MAX_PER_SPECIES) { pts += refundOf(g.species); refunded.push(g.species); addLog(den, { k: "gift", species: g.species, from: g.from || "mercato", refunded: refundOf(g.species) }); return; }
+    addLog(den, { k: "gift", species: g.species, from: g.from || "mercato" });
+    const p = makePet(g.species, g.from || "mercato");
+    den.pets.push(p);
+    if (den.team.length < MAX_TEAM) den.team.push(p.id);
+    got.push(g.species);
+  });
+  return { patch: { petGifts: [], petPoints: pts }, out: { got, refunded, eggs } };
+}
+
+/* Esito di un piano della torre. Vittoria = PE alla squadra, punti pet
+   e piano successivo; sconfitta = PE minimi (LOSS_XP) e si ritenta lo stesso piano. Si scrive
+   solo se il piano è ancora quello in corso (niente doppie vittorie). */
+function recordTowerResult(den, data, floor, won, teamIds) {
+    if (den.tower.floor !== floor) throw new Error("Questo piano è già stato registrato.");
+    const xp = won ? towerXp(floor) : towerLossXp(floor);
+    const ups = [];
+    den.pets = den.pets.map((p) => {
+      if (!teamIds.includes(p.id)) return p;
+      const n = addXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
+      if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
+      const { ups: _u, ...rest } = n;
+      return rest;
+    });
+    wearCharms(den, teamIds);
+    const team = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.species}:${p.level}`);
+    if (!won) {
+      const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
+      den.tower = { ...den.tower, losses: (den.tower.losses || 0) + 1, att: { floor, n: att + 1 } };
+      addLog(den, { k: "tower", f: floor, won: false, xp, team });
+      return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1 } };
+    }
+    const pts = towerPoints(floor);
+    const drops = towerDrops(floor);
+    addItems(den, drops);
+    den.tower = { ...den.tower, att: null, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
+    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team });
+    return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { won: true, xp, pts, ups, drops } };
+}
+
+/* Esito di una sfida fra giocatori, ritirato da ciascuno per sé (una volta
+   sola per sfida: l'id finisce in pvp.claimed). PE alla squadra (vincitore
+   pieni, sconfitto LOSS_XP, chi abbandona niente), +PVP_POINTS punti pet per le prime
+   PVP_DAILY vittorie del giorno, e ogni tanto un amuleto. Le sfide contro
+   sé stessi (Master, per le prove) non danno premi. */
+export const PVP_POINTS = 3;
+export const PVP_DAILY = 3;
+// PE delle sfide (2026-10-31, scelta del Master): fissi e bassi, solo per le
+// prime PVP_XP_FIGHTS sfide del giorno; chi abbandona non prende niente.
+export const PVP_WIN_XP = 10;
+export const PVP_LOSS_XP = 3;
+export const PVP_XP_FIGHTS = 5;
+export function recordPvpResult(den, data, match, side) {
+  if (den.pvp.claimed.includes(match.id)) return { out: { already: true } };
+  den.pvp.claimed = [match.id, ...den.pvp.claimed].slice(0, 40);
+  const won = match.winner === side;
+  const self = match.a === match.b;
+  const teamIds = (match.teams?.[side] || []).map((p) => p.id);
+  wearCharms(den, teamIds);
+  if (self) return { out: { won, self: true, xp: 0, pts: 0, ups: [], drops: [] } };
+  const day = new Date().toISOString().slice(0, 10);
+  if (den.pvp.day !== day) { den.pvp.day = day; den.pvp.rewarded = 0; den.pvp.fights = 0; }
+  const quit = !won && match.forfeit === side;
+  const capped = (den.pvp.fights || 0) >= PVP_XP_FIGHTS;
+  const xp = capped || quit ? 0 : won ? PVP_WIN_XP : PVP_LOSS_XP;
+  if (!capped && !quit) den.pvp.fights = (den.pvp.fights || 0) + 1;
+  const ups = [];
+  den.pets = den.pets.map((p) => {
+    if (!teamIds.includes(p.id) || !xp) return p;
+    const n = addXp(p, xp);
+    if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
+    const { ups: _u, ...rest } = n;
+    return rest;
+  });
+  if (won) den.pvp.wins += 1; else den.pvp.losses += 1;
+  let pts = 0;
+  const drops = [];
+  if (won && den.pvp.rewarded < PVP_DAILY) {
+    den.pvp.rewarded += 1;
+    pts = PVP_POINTS;
+    if (Math.random() < 0.2) drops.push(CHARMS[Math.floor(Math.random() * CHARMS.length)]);
+    addItems(den, drops);
+  }
+  addLog(den, { k: "pvp", won, xp, pts, drops, quit, capped, vs: side === "p" ? match.bName : match.aName });
+  return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won, xp, pts, ups, drops, capped, quit } };
+}
+
+/* ── TORRE VERIFICATA DAL SERVER (2026-10-31) ─────────────────────
+   La lotta si gioca sul telefono, ma coi dadi a seme fisso: il seme
+   dipende da giocatore, piano e tentativo (cambia SOLO dopo una
+   sconfitta registrata, quindi ritirarsi e riprovare non rifà i dadi).
+   A fine lotta il sito manda le azioni scelte; il server rigioca tutto
+   con lo stesso seme e decide lui se è vittoria o sconfitta. */
+export function towerSeed(uid, den, floor) {
+  const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
+  let h = 2166136261;
+  for (const ch of `${uid}|${floor}|${att}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+export const towerTurnSeed = (seed, i) => (seed + (i + 1) * 7919) >>> 0;
+export function towerStart(den, floor, teamIds, seed) {
+  const pets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+  if (!pets.length || pets.length !== teamIds.length || pets.length > MAX_TEAM) throw new Error("Squadra non valida.");
+  const plan = towerFloor(floor);
+  return withSeed(seed, () => newBattle(pets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel }));
+}
+// L'azione del giocatore è lecita? (mosse che il pet ha davvero, con usi; cambi verso pet vivi)
+export function validAction(b, a) {
+  const side = b.sides.p;
+  const f = side.team[side.active];
+  if (a?.kind === "switch") {
+    const t = side.team[a.index];
+    return Number.isInteger(a.index) && !!t && t.hp > 0 && a.index !== side.active;
+  }
+  if (b.needSwitch && b.needSwitch.includes("p")) return false;
+  if (a?.kind !== "move") return false;
+  const left = Object.values(f.pp);
+  if (a.move === "zampata") return left.every((v) => v === 0);
+  return Object.prototype.hasOwnProperty.call(f.pp, a.move) && f.pp[a.move] !== 0;
+}
+export function replayTower(den, uid, floor, teamIds, actions) {
+  if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
+  const seed = towerSeed(uid, den, floor);
+  let b = towerStart(den, floor, teamIds, seed);
+  actions.forEach((a, i) => {
+    if (b.over) throw new Error("Lotta non valida (azioni dopo la fine).");
+    if (!validAction(b, a)) throw new Error("Lotta non valida (mossa non permessa).");
+    b = withSeed(towerTurnSeed(seed, i), () => playTurn(b, a).battle);
+  });
+  if (!b.over) throw new Error("La lotta non è finita.");
+  return b.over;
+}
+export function towerFinish(den, data, floor, teamIds, actions, ctx) {
+  if (den.tower.floor !== floor) throw new Error("Questo piano è già stato registrato.");
+  const over = replayTower(den, ctx.uid, floor, teamIds, actions);
+  return recordTowerResult(den, data, floor, over === "p", teamIds);
+}
+
+/* Operazioni che il server accetta (petDo). master = solo il Master. */
+export const OPS = {
+  chooseStarter: { run: chooseStarter },
+  givePet: { run: givePet, master: true },
+  buyEgg: { run: buyEgg, master: (args) => !!args[1]?.free },
+  hatchEgg: { run: hatchEgg },
+  setMascot: { run: setMascot },
+  releasePet: { run: releasePet },
+  setTeam: { run: setTeam },
+  renamePet: { run: renamePet },
+  learnMove: { run: learnMove },
+  setMoveset: { run: setMoveset },
+  buyItem: { run: buyItem },
+  giveItems: { run: giveItems, master: true },
+  applyGrowthItem: { run: applyGrowthItem },
+  giveCharm: { run: giveCharm },
+  teachScroll: { run: teachScroll },
+  claimGifts: { run: claimGifts },
+  towerFinish: { run: towerFinish },
+  recordPvpResult: { run: recordPvpResult, match: true },
+};

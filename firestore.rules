@@ -159,9 +159,19 @@ service cloud.firestore {
     // ── Characters & sheets ──────────────────────────────────────────────────
     // Writes intentionally open because the Pet system needs to write to the
     // opponent's character doc when a battle resolves.
+    // Rifugio dei Pet (2026-10-31): petDen, punti pet e regali li scrive SOLO
+    // il server (callable petDo / petAward / petReadReward) o il Master
+    // (reset dei giocatori, consegna delle aste del Mercato Nero). Il resto
+    // della scheda resta scrivibile come prima (sync di Foundry, sito…).
+    function touchesPets() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts"]);
+    }
     match /characters/{charId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if !request.resource.data.keys().hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts"]) || isMaster();
+      allow update: if !touchesPets() || isMaster();
+      allow delete: if true;
     }
 
     // ── Ruota di Exanthia: un doc per giro, lo scrive SOLO la function
@@ -268,7 +278,7 @@ service cloud.firestore {
     // aggiornano solo i due giocatori (azioni, turni risolti in transazione) o il Master.
     match /pet_matches/{matchId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && request.resource.data.a == request.auth.uid;
+      allow create: if isLoggedIn() && request.resource.data.a == request.auth.uid && request.resource.data.status == "pending";
       allow update: if isLoggedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid || isMaster());
       allow delete: if isMaster();
     }
