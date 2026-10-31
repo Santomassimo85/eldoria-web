@@ -18,6 +18,13 @@ const SKIN_COLORS = {
   infernale: ["#3b0e08", "#ff8a2a"],
   glaciale:  ["#bfe4f5", "#0f3a5a"],
   cosmico:   ["#22174c", "#ece6ff"],
+  // 5 speciali nuovi (2026-10-31): [fondo, numero, { bg2 = sfumatura sulla faccia,
+  // glow = alone del numero, speck = puntini/bolle, rainbow = un colore per faccia }]
+  ambra:     ["#c8781a", "#3a1a02", { bg2: "#f2b84a", speck: "rgba(70,30,0,.45)" }],
+  tempesta:  ["#162238", "#ffe45c", { bg2: "#2f4f86", glow: "#ffd400" }],
+  bosco:     ["#1d4a22", "#ffe7a3", { bg2: "#3f8a3a", glow: "#fff3b0", speck: "rgba(255,240,170,.55)" }],
+  abisso:    ["#06232e", "#7ff6e6", { bg2: "#0e5566", glow: "#38e8d2", speck: "rgba(180,255,245,.35)" }],
+  prisma:    ["#ffffff", "#1b1430", { rainbow: true }],
 };
 
 const R = 0.8;                      // raggio del dado (unità di scena)
@@ -34,16 +41,36 @@ let raf = 0, token = 0, lostFlag = false;
 let pv = null; // renderer delle anteprime del menu "I Tuoi Dadi"
 
 function makeAtlas(skin) {
-  const [bg, ink] = SKIN_COLORS[skin] || SKIN_COLORS.classic;
+  const [bg, ink, fx = {}] = SKIN_COLORS[skin] || SKIN_COLORS.classic;
   const W = 1280, H = 1024, cw = W / COLS, ch = H / ROWS;
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
   const g = cv.getContext("2d");
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 20; i++) {
     const x0 = (i % COLS) * cw, y0 = Math.floor(i / COLS) * ch;
     const P = (p) => [x0 + p[0] * cw, y0 + (1 - p[1]) * ch];
     const [ax, ay] = P(TRI.a), [bx, by] = P(TRI.b), [cx, cy] = P(TRI.c);
+    if (fx.rainbow) {
+      const gr = g.createLinearGradient(bx, by, ax, ay);
+      gr.addColorStop(0, `hsl(${(i * 47) % 360} 85% 62%)`);
+      gr.addColorStop(1, `hsl(${(i * 47 + 70) % 360} 90% 78%)`);
+      g.fillStyle = gr; g.fillRect(x0, y0, cw, ch);
+    } else if (fx.bg2) {
+      const gr = g.createRadialGradient(ax, ay + ch * 0.25, 4, (ax + bx + cx) / 3, (ay + by + cy) / 3, ch * 0.75);
+      gr.addColorStop(0, fx.bg2); gr.addColorStop(1, bg);
+      g.fillStyle = gr; g.fillRect(x0, y0, cw, ch);
+    }
+    if (fx.speck) {
+      g.fillStyle = fx.speck;
+      for (let k = 0; k < 14; k++) {
+        g.beginPath();
+        g.arc(x0 + rnd() * cw, y0 + rnd() * ch, 2 + rnd() * 6, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
     // spigoli appena più scuri: si leggono le facce anche col dado piatto di colore
     g.strokeStyle = "rgba(0,0,0,.28)"; g.lineWidth = 10;
     g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.lineTo(cx, cy); g.closePath(); g.stroke();
@@ -52,7 +79,10 @@ function makeAtlas(skin) {
     g.fillStyle = ink;
     g.font = `700 ${Math.round(ch * (n.length > 1 ? 0.3 : 0.34))}px "Cinzel", "Grenze Gotisch", Georgia, serif`;
     g.textAlign = "center"; g.textBaseline = "middle";
+    if (fx.glow) { g.shadowColor = fx.glow; g.shadowBlur = 28; }
+    if (fx.rainbow) { g.lineWidth = 6; g.strokeStyle = "rgba(255,255,255,.85)"; g.strokeText(n, mx, my); }
     g.fillText(n, mx, my);
+    g.shadowBlur = 0;
     if (n === "6" || n === "9") g.fillRect(mx - ch * 0.07, my + ch * 0.15, ch * 0.14, ch * 0.025);
   }
   const tex = new THREE.CanvasTexture(cv);

@@ -531,3 +531,20 @@
 .pd-hist-list li:last-child { border-bottom: 0; }
 .pd-hist-list li:first-child { color: #f2c14e; }
 .pd-hist-list li span { flex: 0 0 auto; min-width: 2ch; color: var(--pd-mute); font: 600 .75rem var(--font-num); padding-top: 2px; }
+
+/* ── dadi del Rifugio (2026-10-31): scelta a parte da quella dell'Arena ── */
+.pd-dice-modal { position: fixed; inset: 0; z-index: 2400; background: rgba(0,0,0,.72); display: grid; place-items: center; padding: 16px; }
+.pd-dice-box { width: min(720px, 100%); max-height: calc(100svh - 32px); overflow-y: auto; background: #17121a; border: 2px solid rgba(255,255,255,.14); border-radius: 6px; padding: 14px 16px 18px; color: #f3ead8; }
+.pd-dice-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.pd-dice-head h3 { margin: 0; font-family: var(--font-title); font-size: 1.5rem; color: #f3ead8; }
+.pd-dice-sec { margin: 14px 0 6px; font: 600 .8rem var(--font-sc); letter-spacing: .08em; text-transform: uppercase; color: #c9bfad; }
+.pd-dice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.pd-dice-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px 10px; background: rgba(255,255,255,.04); border: 2px solid rgba(255,255,255,.1); border-radius: 5px; color: #f3ead8; cursor: pointer; text-align: center; min-height: 44px; }
+.pd-dice-card:hover { border-color: rgba(242,193,78,.5); }
+.pd-dice-card.is-on { border-color: #f2c14e; background: rgba(242,193,78,.1); }
+.pd-dice-card img { width: 72px; height: 72px; }
+.pd-dice-card .dice-swatch { margin: 13px 0; }
+.pd-dice-card b { font-size: .88rem; }
+.pd-dice-card small { font-size: .72rem; color: #c9bfad; line-height: 1.25; }
+.pd-dice-card i { position: absolute; top: 4px; right: 6px; font-style: normal; color: #f2c14e; font-weight: 700; }
+@media (max-width: 480px) { .pd-dice-grid { grid-template-columns: repeat(3, 1fr); } .pd-dice-card img { width: 58px; height: 58px; } .pd-dice-card small { display: none; } }

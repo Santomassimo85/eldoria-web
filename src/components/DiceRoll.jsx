@@ -23,6 +23,12 @@ export const DICE_SKINS = [
   { id: "infernale", label: "Infernale",         kind: "special", glyph: "🔥", desc: "Crepe di lava ardente" },
   { id: "glaciale",  label: "Glaciale",          kind: "special", glyph: "❄",  desc: "Ghiaccio scintillante" },
   { id: "cosmico",   label: "Cosmico",           kind: "special", glyph: "🌌", desc: "Nebulosa stellare" },
+  // 5 speciali nuovi (2026-10-31, nati per il Rifugio dei Pet; valgono anche in Arena)
+  { id: "ambra",     label: "Ambra Fossile",     kind: "special", glyph: "🍯", desc: "Resina antica con briciole dentro" },
+  { id: "tempesta",  label: "Tempesta",          kind: "special", glyph: "⚡", desc: "Numeri che brillano come fulmini" },
+  { id: "bosco",     label: "Bosco Fatato",      kind: "special", glyph: "🍃", desc: "Muschio e lucciole" },
+  { id: "abisso",    label: "Abisso Marino",     kind: "special", glyph: "🌊", desc: "Acqua profonda e bolle luminose" },
+  { id: "prisma",    label: "Prismatico",        kind: "special", glyph: "🌈", desc: "Ogni faccia un colore" },
 ];
 
 const DEFAULT_SKIN = "classic";
@@ -94,7 +100,8 @@ export default function DiceRollHost() {
           // pixel = dado 3D a blocchi (lotta dei pet, 2026-10-31)
           pixel: !!opts.pixel,
           // La skin si legge al momento del tiro: rispecchia sempre la scelta corrente.
-          skin: VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
+          // opts.skin = skin di quel tiro (la lotta dei pet ha la sua, salvata a parte)
+          skin: VALID_SKINS.has(opts.skin) ? opts.skin : VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
           resolve: done,
         });
       });

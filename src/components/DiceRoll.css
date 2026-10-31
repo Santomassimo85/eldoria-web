@@ -523,3 +523,20 @@
   animation: dice3d-caption 260ms ease-out var(--tumble-ms, 1350ms) forwards; }
 .dice3d-name.is-dim { color: #9a9387; text-decoration: line-through; }
 @media (prefers-reduced-motion: reduce) { .dice3d-name { animation: none; opacity: 1; } }
+
+/* ── 5 speciali nuovi (2026-10-31): dado CSS di riserva e campioni ── */
+.dice-swatch.skin-ambra { border-color: #5a3006; background: radial-gradient(circle at 30% 25%, #ffe0a0, transparent 55%), linear-gradient(135deg, #f2b84a 0%, #c8781a 55%, #6e3c08 100%); }
+.dice-swatch.skin-tempesta { border-color: #0a1222; background: radial-gradient(circle at 60% 40%, #ffe45c 0 6%, transparent 30%), linear-gradient(135deg, #2f4f86 0%, #162238 60%, #070c16 100%); box-shadow: 0 0 10px rgba(255, 212, 0, .45); }
+.dice-swatch.skin-bosco { border-color: #0e2a12; background: radial-gradient(circle at 30% 30%, #fff3b0 0 4%, transparent 20%), linear-gradient(135deg, #3f8a3a 0%, #1d4a22 60%, #0c2410 100%); }
+.dice-swatch.skin-abisso { border-color: #021218; background: radial-gradient(circle at 35% 30%, #7ff6e6 0 5%, transparent 28%), linear-gradient(135deg, #0e5566 0%, #06232e 60%, #020c10 100%); box-shadow: 0 0 10px rgba(56, 232, 210, .45); }
+.dice-swatch.skin-prisma { border-color: #3a2a5a; background: conic-gradient(from 30deg, #ff6b6b, #ffd166, #6be38a, #4fc3ff, #b48cff, #ff6b6b); }
+.dice-overlay.normal.skin-ambra .dice-d20-face { background: linear-gradient(135deg, #f2b84a, #c8781a 55%, #6e3c08); border-color: #5a3006; }
+.dice-overlay.normal.skin-ambra .dice-d20-num { color: #3a1a02; }
+.dice-overlay.normal.skin-tempesta .dice-d20-face { background: linear-gradient(135deg, #2f4f86, #162238 60%, #070c16); border-color: #0a1222; }
+.dice-overlay.normal.skin-tempesta .dice-d20-num { color: #ffe45c; text-shadow: 0 0 12px #ffd400; }
+.dice-overlay.normal.skin-bosco .dice-d20-face { background: linear-gradient(135deg, #3f8a3a, #1d4a22 60%, #0c2410); border-color: #0e2a12; }
+.dice-overlay.normal.skin-bosco .dice-d20-num { color: #ffe7a3; text-shadow: 0 0 10px #fff3b0; }
+.dice-overlay.normal.skin-abisso .dice-d20-face { background: linear-gradient(135deg, #0e5566, #06232e 60%, #020c10); border-color: #021218; }
+.dice-overlay.normal.skin-abisso .dice-d20-num { color: #7ff6e6; text-shadow: 0 0 12px #38e8d2; }
+.dice-overlay.normal.skin-prisma .dice-d20-face { background: conic-gradient(from 30deg, #ff6b6b, #ffd166, #6be38a, #4fc3ff, #b48cff, #ff6b6b); border-color: #3a2a5a; }
+.dice-overlay.normal.skin-prisma .dice-d20-num { color: #1b1430; text-shadow: 0 0 4px #fff, 0 0 8px #fff; }

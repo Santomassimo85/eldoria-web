@@ -11,6 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { collection, deleteField, doc, getDocs, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
@@ -35,7 +36,7 @@ import {
 } from "../utils/petPvp";
 import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS } from "../data/petBag";
 import PetFx from "./PetFx";
-import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
+import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import "./PetDen.css";
@@ -1226,7 +1227,7 @@ function useLinePlayer(initial = []) {
     const t = setTimeout(async () => {
       const r = next.kind === "move" ? next.roll : null;
       if (r) {
-        await showD20Roll(r.d, { label: diceLabel(r, next),
+        await showD20Roll(r.d, { label: diceLabel(r, next), skin: petDiceSkin(),
           dice: r.dis ? [{ value: r.d, name: "tiene" }, { value: r.d2, name: "scarta", dim: true }] : undefined });
       }
       if (!alive) return;
@@ -1247,11 +1248,69 @@ function useLinePlayer(initial = []) {
   return { shown, seq, busy: queue.length > 0, play, history, seed: setHistory };
 }
 
+/* Dadi della lotta dei pet (2026-10-31): scelta SEPARATA da quella
+   dell'Arena (localStorage pd_dice_skin, non eldoria_dice_skin_<uid>). */
+const PD_SKIN_KEY = "pd_dice_skin";
+function petDiceSkin() {
+  try { const s = localStorage.getItem(PD_SKIN_KEY); return DICE_SKINS.some((d) => d.id === s) ? s : "classic"; } catch { return "classic"; }
+}
+function PetDicePicker({ onClose }) {
+  const [cur, setCur] = useState(petDiceSkin);
+  const [pics, setPics] = useState({});
+  useEffect(() => {
+    let alive = true;
+    import("../components/dice3d").then((m) => {
+      if (!alive || !m.canUse3D()) return;
+      const out = {};
+      DICE_SKINS.forEach((s) => { try { out[s.id] = m.previewDie(s.id, 120); } catch { /* resta il campione */ } });
+      setPics(out);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const pick = (s) => {
+    setCur(s.id);
+    try { localStorage.setItem(PD_SKIN_KEY, s.id); } catch { /* storage spento */ }
+    showD20Roll(2 + Math.floor(Math.random() * 18), { label: `Anteprima · ${s.label}`, skin: s.id });
+  };
+  const group = (kind, title) => (
+    <>
+      <p className="pd-dice-sec">{title}</p>
+      <div className="pd-dice-grid">
+        {DICE_SKINS.filter((s) => s.kind === kind).map((s) => (
+          <button key={s.id} type="button" className={`pd-dice-card${cur === s.id ? " is-on" : ""}`} onClick={() => pick(s)} aria-pressed={cur === s.id}>
+            {pics[s.id] ? <img src={pics[s.id]} alt="" /> : <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />}
+            <b>{s.label}</b>
+            {s.desc && <small>{s.desc}</small>}
+            {cur === s.id && <i aria-hidden="true">✓</i>}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+  return createPortal(
+    <div className="pd-dice-modal" role="dialog" aria-modal="true" aria-label="I dadi del Rifugio" onClick={onClose}>
+      <div className="pd-dice-box" onClick={(e) => e.stopPropagation()}>
+        <div className="pd-dice-head">
+          <h3>🎲 I dadi del Rifugio</h3>
+          <button type="button" className="pd-btn pd-btn--ghost" onClick={onClose}>Chiudi</button>
+        </div>
+        <p className="pd-fine">Il d20 delle lotte dei pet. È una scelta a parte: il dado dell'Arena non cambia. Critico (20) e fallimento (1) restano in oro e rosso.</p>
+        {group("base", "Colori base")}
+        {group("special", "Speciali ✦")}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function AudioToggles() {
   const [prefs, setPrefs] = useState(audioPrefs);
+  const [dice, setDice] = useState(false);
   useEffect(() => onAudioPrefs(setPrefs), []);
   return (
     <span className="pd-audio">
+      <button type="button" className="pd-audio-btn" onClick={() => setDice(true)} title="Cambia il dado">🎲<small>Dado</small></button>
+      {dice && <PetDicePicker onClose={() => setDice(false)} />}
       <button type="button" className={`pd-audio-btn${prefs.musicOn ? "" : " is-off"}`} onClick={() => setMusicOn(!prefs.musicOn)}
         aria-pressed={prefs.musicOn} title={prefs.musicOn ? "Spegni la musica" : "Accendi la musica"}>{prefs.musicOn ? "🎵" : "🔇"}<small>Musica</small></button>
       <button type="button" className={`pd-audio-btn${prefs.sfxOn ? "" : " is-off"}`} onClick={() => setSfxOn(!prefs.sfxOn)}
