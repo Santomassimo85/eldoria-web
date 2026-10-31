@@ -6,12 +6,12 @@
 .pfx > * { position: absolute; display: block; transform: translate(-50%, -50%); }
 
 /* ── pestone: onda d'urto a terra, polvere, "pow" ── */
-.pfx-shock { width: calc(var(--s) * 1.3); height: calc(var(--s) * .32); border-radius: 50%; border: 5px solid var(--c2); box-shadow: 0 0 10px var(--c3), inset 0 0 8px var(--c1); opacity: 0; animation: pfx-shock .6s ease-out .28s forwards; }
+.pfx-shock { width: calc(var(--s) * 1.7); height: calc(var(--s) * .42); border-radius: 50%; border: 7px solid var(--c2); box-shadow: 0 0 14px var(--c3), inset 0 0 10px var(--c1); opacity: 0; animation: pfx-shock .75s ease-out .28s forwards; }
 .pfx-shock--2 { border-width: 3px; animation-delay: .4s; }
 @keyframes pfx-shock { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); } }
-.pfx-dust { width: calc(var(--s) * .16 * var(--z)); height: calc(var(--s) * .16 * var(--z)); border-radius: 50%; opacity: 0; animation: pfx-dust .7s ease-out .3s forwards; }
+.pfx-dust { width: calc(var(--s) * .26 * var(--z)); height: calc(var(--s) * .26 * var(--z)); border-radius: 50%; opacity: 0; animation: pfx-dust .85s ease-out .3s forwards; }
 @keyframes pfx-dust { 0% { opacity: .95; transform: translate(-50%, -50%) scale(.4); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.4); } }
-.pfx-pow { width: calc(var(--s) * .7); height: calc(var(--s) * .7); background: radial-gradient(circle, var(--c1) 0 30%, var(--c2) 45%, transparent 70%); clip-path: polygon(50% 0, 61% 32%, 96% 20%, 72% 48%, 100% 72%, 64% 68%, 56% 100%, 44% 70%, 8% 86%, 30% 56%, 0 34%, 36% 34%); opacity: 0; animation: pfx-pow .38s ease-out .28s forwards; }
+.pfx-pow { width: calc(var(--s) * 1.05); height: calc(var(--s) * 1.05); background: radial-gradient(circle, var(--c1) 0 30%, var(--c2) 45%, transparent 70%); clip-path: polygon(50% 0, 61% 32%, 96% 20%, 72% 48%, 100% 72%, 64% 68%, 56% 100%, 44% 70%, 8% 86%, 30% 56%, 0 34%, 36% 34%); opacity: 0; animation: pfx-pow .5s ease-out .28s forwards; }
 .pfx-pow--late { animation-delay: .32s; }
 @keyframes pfx-pow { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.3) rotate(0); } 60% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(25deg); } }
 
@@ -23,7 +23,7 @@
 @keyframes pfx-jaw-bot { 0% { opacity: 0; transform: translate(-50%, 50%); } 30% { opacity: 1; } 75% { opacity: 1; transform: translate(-50%, -22%); } 100% { opacity: 0; transform: translate(-50%, -22%); } }
 
 /* ── artigliata: tre tagli ── */
-.pfx-slash { width: calc(var(--s) * 1.15); height: 7px; border-radius: 50%; background: linear-gradient(90deg, transparent, var(--c1) 30%, #fff 50%, var(--c2) 75%, transparent); box-shadow: 0 0 8px var(--c2); opacity: 0; animation: pfx-slash .45s ease-out forwards; }
+.pfx-slash { width: calc(var(--s) * 1.3); height: 9px; border-radius: 50%; background: linear-gradient(90deg, transparent, var(--c1) 30%, #fff 50%, var(--c2) 75%, transparent); box-shadow: 0 0 8px var(--c2); opacity: 0; animation: pfx-slash .45s ease-out forwards; }
 @keyframes pfx-slash { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scaleX(0); } 45% { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scaleX(1); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-55deg) scaleX(1) translateY(4px); } }
 
 /* ── proiettile ── */
