@@ -619,7 +619,9 @@ function logTxt(e) {
     case "egg_buy": return `🛒 Compra ${EGGS[e.egg]?.name || e.egg}${e.cost ? ` (−${e.cost} pt)` : " (gratis)"}`;
     case "hatch": return `🥚 Schiude ${EGGS[e.egg]?.name || e.egg} → ${spName(e.species)} (${RARITY[e.rarity]?.label || e.rarity})${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
     case "gift": return `🏴 Dal ${e.from || "mercato"}: ${e.species ? spName(e.species) : e.egg ? EGGS[e.egg]?.name || e.egg : itName(e.item)}${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
-    case "tower": return `🗼 Piano ${e.f} ${e.won ? "VINTO" : "perso"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}${e.drops?.length ? ` · ${e.drops.map(itName).join(", ")}` : ""}${e.team?.length ? ` · ${e.team.map((x) => { const [s, l] = x.split(":"); return `${spName(s)} Lv ${l}`; }).join(", ")}` : ""}`;
+    case "tower": return `🗼 Piano ${e.f} ${e.won ? (e.again ? "rivinto (solo PE)" : "VINTO") : "perso"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}${e.drops?.length ? ` · ${e.drops.map(itName).join(", ")}` : ""}${e.team?.length ? ` · ${e.team.map((x) => { const [s, l] = x.split(":"); return `${spName(s)} Lv ${l}`; }).join(", ")}` : ""}`;
+    case "tower_reset": return `↺ Ricomincia la torre dal piano 1 (era al ${e.from})`;
+    case "battle_items": return `🎒 Oggetti usati in lotta: ${(e.items || []).map(itName).join(", ")}`;
     case "pvp": return `⚔ Sfida ${e.won ? "vinta" : "persa"} contro ${e.vs || "?"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}`;
     case "item_buy": return `🎒 Compra ${itName(e.item)} (−${e.cost} pt)`;
     case "item_give": return `🎁 Il Master gli dà ${(e.items || []).length} oggetti`;
