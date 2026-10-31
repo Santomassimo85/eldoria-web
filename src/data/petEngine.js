@@ -534,7 +534,9 @@ export const AI_LABEL = ["Novellino", "Sveglio", "Astuto", "Stratega"];
 
 // PE a ogni pet della squadra per un piano vinto.
 export const towerXp = (floor) => 25 + floor * 10;
-// In sconfitta un terzo: chi resta bloccato su un piano cresce lo stesso.
-export const towerLossXp = (floor) => Math.floor(towerXp(floor) / 3);
+// Sconfitta = PE minimi (2026-10-31): prima era un terzo e si saliva di
+// livello perdendo apposta. Ritirarsi = niente PE (non si registra nulla).
+export const LOSS_XP = 5;
+export const towerLossXp = () => LOSS_XP;
 // Punti pet per un piano vinto (solo la prima volta: il piano sale).
 export const towerPoints = (floor) => 2 + Math.floor(floor / 5) * 2 + (floor % 5 === 0 ? 5 : 0);

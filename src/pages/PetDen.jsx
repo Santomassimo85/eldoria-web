@@ -24,7 +24,7 @@ import {
   MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, LOSS_XP, newBattle, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
@@ -489,7 +489,7 @@ function Manual() {
         <ul>
           <li>Dal Rifugio → Sfide scegli un altro domatore e lo sfidi con la tua squadra; lui accetta con la sua.</li>
           <li>Si gioca a turni anche a distanza: ognuno sceglie la mossa quando può, il turno parte quando avete scelto tutti e due. Arriva una notifica per la sfida, l'accettazione e la fine.</li>
-          <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. Sconfitta: un terzo dei PE. Abbandonare conta come sconfitta.</li>
+          <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. Sconfitta: solo {LOSS_XP} PE. Abbandonare conta come sconfitta e non dà PE.</li>
         </ul>
       </section>
       <section>
@@ -513,7 +513,7 @@ function Manual() {
         <h3>Torre dei Cuccioli</h3>
         <ul>
           <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
-          <li>Se perdi ritenti lo stesso piano, e la squadra prende comunque un terzo dei PE.</li>
+          <li>Se perdi ritenti lo stesso piano e la squadra prende solo {LOSS_XP} PE; se ti ritiri non prende niente.</li>
           <li>È infinita e uguale per tutti: il piano 3 è sempre lo stesso piano 3. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
           <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica mostra fin dove è arrivato ognuno.</li>
         </ul>
@@ -628,7 +628,7 @@ function TamerDetail({ c, d, art }) {
   const ledger = Array.isArray(c.petPointsLedger) ? c.petPointsLedger : [];
   const items = Object.entries(d.items).filter(([, n]) => Number(n) > 0);
   // PE che i soli piani vinti possono dare (mascotte +5%): se un pet ne ha molti di più
-  // li ha presi perdendo (un terzo a sconfitta), dalle sfide o da oggetti.
+  // li ha presi perdendo (fino al 2026-10-31 un terzo a sconfitta), dalle sfide o da oggetti.
   const winsXp = Array.from({ length: d.tower.best || 0 }, (_, i) => towerXp(i + 1)).reduce((a, n) => a + n, 0);
   return (
     <div className="pd-tamer">
@@ -1087,7 +1087,7 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
   const foeOf = (m) => (m.a === uid ? m.bName : m.aName);
   return (
     <div className="pd-tab">
-      <p className="pd-fine">Sfida un altro domatore con la tua squadra (fino a {MAX_TEAM} pet). Si gioca a turni: ognuno sceglie la sua mossa quando può, anche a distanza di ore. Vittoria = PE alla squadra e +{PVP_POINTS} punti pet (le prime {PVP_DAILY} vittorie del giorno); chi perde prende un terzo dei PE. Le statistiche: {den.pvp.wins} vinte · {den.pvp.losses} perse.</p>
+      <p className="pd-fine">Sfida un altro domatore con la tua squadra (fino a {MAX_TEAM} pet). Si gioca a turni: ognuno sceglie la sua mossa quando può, anche a distanza di ore. Vittoria = PE alla squadra e +{PVP_POINTS} punti pet (le prime {PVP_DAILY} vittorie del giorno); chi perde prende solo {LOSS_XP} PE, chi abbandona niente. Le statistiche: {den.pvp.wins} vinte · {den.pvp.losses} perse.</p>
       {incoming.length > 0 && (
         <>
           <h2 className="pd-h2">Sfide ricevute</h2>
@@ -1600,7 +1600,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     <>
       <span>🗼 Piano {plan.floor}{plan.boss ? " · 👑 Guardiano" : ""} · {AI_LABEL[plan.aiLevel]}</span>
       <AudioToggles />
-      <button type="button" className="pd-btn pd-btn--ghost" onClick={() => (battle.over || window.confirm("Ritirarti? Il piano resta da fare.")) && onExit()}>
+      <button type="button" className="pd-btn pd-btn--ghost" onClick={() => (battle.over || window.confirm("Ritirarti? Niente PE, il piano resta da fare.")) && onExit()}>
         {battle.over ? "Esci" : "Ritirati"}
       </button>
     </>

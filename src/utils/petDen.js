@@ -27,7 +27,7 @@
 import { deleteField, doc, runTransaction, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "../data/petDex";
-import { addXp, towerXp, towerLossXp, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext } from "../data/petEngine";
+import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext } from "../data/petEngine";
 import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops } from "../data/petBag";
 
 const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -339,7 +339,7 @@ export function claimGifts(uid) {
 }
 
 /* Esito di un piano della torre. Vittoria = PE alla squadra, punti pet
-   e piano successivo; sconfitta = un terzo dei PE e si ritenta lo stesso piano. Si scrive
+   e piano successivo; sconfitta = PE minimi (LOSS_XP) e si ritenta lo stesso piano. Si scrive
    solo se il piano è ancora quello in corso (niente doppie vittorie). */
 export function recordTowerResult(uid, floor, won, teamIds) {
   return mutate(uid, (den, data) => {
@@ -371,7 +371,7 @@ export function recordTowerResult(uid, floor, won, teamIds) {
 
 /* Esito di una sfida fra giocatori, ritirato da ciascuno per sé (una volta
    sola per sfida: l'id finisce in pvp.claimed). PE alla squadra (vincitore
-   pieni, sconfitto un terzo), +PVP_POINTS punti pet per le prime
+   pieni, sconfitto LOSS_XP, chi abbandona niente), +PVP_POINTS punti pet per le prime
    PVP_DAILY vittorie del giorno, e ogni tanto un amuleto. Le sfide contro
    sé stessi (Master, per le prove) non danno premi. */
 export const PVP_POINTS = 3;
@@ -388,7 +388,8 @@ export function recordPvpResult(uid, match, side) {
     if (self) return { out: { won, self: true, xp: 0, pts: 0, ups: [], drops: [] } };
     const foe = match.teams?.[side === "p" ? "e" : "p"] || [];
     const avg = foe.length ? foe.reduce((a, p) => a + (p.level || 1), 0) / foe.length : 1;
-    const xp = won ? pvpXp(avg) : Math.floor(pvpXp(avg) / 3);
+    const quit = !won && match.forfeit === side;
+    const xp = won ? pvpXp(avg) : quit ? 0 : LOSS_XP;
     const ups = [];
     den.pets = den.pets.map((p) => {
       if (!teamIds.includes(p.id)) return p;
