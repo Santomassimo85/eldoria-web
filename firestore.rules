@@ -246,6 +246,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Rifugio dei Pet (2026-10-31): pixel art e descrizioni delle 20 specie.
+    // La leggono tutti i loggati (sprite in lotta), la scrive solo il Master.
+    match /pet_dex/{species} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
     // ── Pet Arena (companion system) ─────────────────────────────────────────
     match /pet_battles/{battleId} {
       allow read: if isLoggedIn();

@@ -53,10 +53,9 @@ import ArenaMarket from "./pages/ArenaMarket";
 import DmTools from "./pages/DmTools";
 import Assistente from "./pages/Assistente";
 import Concilio from "./pages/Concilio";
-// PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
-// imports and the matching nav link / routes below.
-// import PetArena from "./pages/PetArena";
-// import PetHub from "./pages/PetHub";
+// PET SYSTEM (2026-10-31): il vecchio PetHub/PetArena resta spento; il nuovo
+// Rifugio dei Pet (/pet) per ora lo vede solo il Master principale.
+import PetDen from "./pages/PetDen";
 import Tcg from "./pages/Tcg";
 import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
@@ -78,7 +77,7 @@ import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
-import { isAdminEmail } from "./utils/roles";
+import { isAdminEmail, isMainMaster } from "./utils/roles";
 import PageTabs from "./components/PageTabs";
 
 // CONFIG
@@ -248,6 +247,13 @@ const TcgNavLink = ({ onClick }) => {
   );
 };
 
+// --- Rifugio dei Pet: per ora solo il Master principale (2026-10-31) ---
+const PetNavLink = ({ onClick, className }) => {
+  const { currentUser } = useAuth();
+  if (!isMainMaster(currentUser?.email)) return null;
+  return <NavLink to="/pet" onClick={onClick} className={className}>🐾 Pet</NavLink>;
+};
+
 // --- Master-only link to the offline pricing tool (opens in a new tab) ---
 const MasterPricingLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
@@ -309,7 +315,7 @@ const NESSO_GROUP_OF = (p) =>
   : ["/scriba", "/riassunti", "/diario", "/almanacco", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
   : ["/party", "/scheda-pg", "/my-pg"].some((x) => p.startsWith(x)) ? "eroi"
   : ["/officina", "/crafting", "/mercato", "/ratti-lore", "/bacheca", "/ruota", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
-  : ["/arena", "/arena-bottega", "/world-boss", "/tcg"].some((x) => p.startsWith(x)) ? "battaglia"
+  : ["/arena", "/arena-bottega", "/world-boss", "/tcg", "/pet"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
 function NessoNav({ openMenu }) {
@@ -379,6 +385,7 @@ function NessoNav({ openMenu }) {
               </NavLink>
             ))}
             {sheet === "battaglia" && <TcgNavLink />}
+            {sheet === "battaglia" && <PetNavLink className="mnav-sheet-link" onClick={() => setSheet(null)} />}
             {sheet === "gilda" && <MasterPricingLink closeMenu={() => setSheet(null)} />}
           </div>
         </div>
@@ -713,6 +720,7 @@ export default function App() {
               {key === "gilda" && <MasterPricingLink closeMenu={closeMenu} />}
               {/* {key === "eroi" && <NavLink to="/pet">Pet Hub</NavLink>} */}
               {key === "battaglia" && <TcgNavLink />}
+              {key === "battaglia" && <PetNavLink />}
             </NavDropdown>
           ))}
 
@@ -756,8 +764,7 @@ export default function App() {
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
-          {/* <Route path="/pet" element={<PetHub />} /> */}
-          {/* <Route path="/pet-arena" element={<PetArena />} /> */}
+          <Route path="/pet" element={<PetDen />} />
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<PageTabs group="officina"><Crafting /></PageTabs>} />
           <Route path="/officina" element={<PageTabs group="officina"><Officina /></PageTabs>} />

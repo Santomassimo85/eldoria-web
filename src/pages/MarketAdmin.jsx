@@ -17,6 +17,7 @@ import {
 } from "../utils/foundryMap";
 import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
 import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
+import { PET_DEX, PET_DEX_ORDER, RARITY as PET_RARITY, TYPE_ICON as PET_TYPE_ICON } from "../data/petDex";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
@@ -48,6 +49,9 @@ const ITEM_TYPES = [
   "Pozioni", "Pergamene", "Reagenti", "Varie",
   // PET SYSTEM — hidden while disabled
   // "Uovo Pet", "Oggetto Pet",
+  // "Pet" = una creatura del nuovo Rifugio dei Pet (2026-10-31): alla
+  // consegna arriva nel Rifugio del vincitore (characters.petGifts).
+  "Pet",
   "Pacchetto Carte", "Carta TCG",
 ];
 
@@ -60,6 +64,7 @@ const EGG_FLAVOR = {
   epic:      "🥚 Uovo Epico · 25% comuni · 50% rari · ~24% epici · 1% leggendari.",
   legendary: "🥚 Uovo Leggendario · 20% rari · 55% epici · 25% leggendari · nessun comune.",
 };
+const PET_MARKET_RARITY = { starter: "Rara", common: "Non comune", rare: "Rara", epic: "Molto rara", legendary: "Leggendaria" };
 const EGG_MARKET_RARITY = {
   common:    "Non comune",
   rare:      "Rara",
@@ -146,6 +151,7 @@ const initialFormData = {
   // Pet-payload fields — only populated when type is "Uovo Pet" or "Oggetto Pet"
   petRarity: "common",
   petItemKey: "",
+  petSpecies: "",
   // TCG-payload fields — only populated when type is "Pacchetto Carte" or "Carta TCG"
   tcgPackRarity: "epic",
   tcgPackElement: "fire",
@@ -732,6 +738,7 @@ export default function MarketAdmin() {
       // admin sees the right sub-option when editing a pet listing.
       petRarity: item.petPayload?.kind === "egg" ? item.petPayload.rarity : "common",
       petItemKey: item.petPayload?.kind === "petItem" ? item.petPayload.itemKey : "",
+      petSpecies: item.petPayload?.kind === "pet" ? item.petPayload.species : "",
       // Same idea for TCG listings.
       tcgPackRarity: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.rarity : "epic",
       tcgPackElement: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.element : "fire",
@@ -768,6 +775,18 @@ export default function MarketAdmin() {
         description: EGG_FLAVOR[rarity],
         class: EGG_MARKET_RARITY[rarity],
         img: prev.img || emojiToDataUri(EGG_ICON[rarity] || "🥚"),
+      }));
+    } else if (newType === "Pet") {
+      const k = formData.petSpecies || PET_DEX_ORDER.find((x) => PET_DEX[x].rarity !== "starter");
+      const sp = PET_DEX[k];
+      setFormData(prev => ({
+        ...prev,
+        type: newType,
+        petSpecies: k,
+        name: `Cucciolo di ${sp.name}`,
+        description: `${sp.icon} ${sp.desc} Arriva nel Rifugio dei Pet del vincitore.`,
+        class: PET_MARKET_RARITY[sp.rarity] || "Rara",
+        img: prev.img || emojiToDataUri(sp.icon),
       }));
     } else if (newType === "Oggetto Pet") {
       const firstKey = formData.petItemKey || ITEMS_ORDER[0];
@@ -814,6 +833,19 @@ export default function MarketAdmin() {
     } else {
       setFormData(prev => ({ ...prev, type: newType }));
     }
+  };
+
+  const handlePetSpeciesChange = (k) => {
+    const sp = PET_DEX[k];
+    if (!sp) return;
+    setFormData(prev => ({
+      ...prev,
+      petSpecies: k,
+      name: `Cucciolo di ${sp.name}`,
+      description: `${sp.icon} ${sp.desc} Arriva nel Rifugio dei Pet del vincitore.`,
+      class: PET_MARKET_RARITY[sp.rarity] || "Rara",
+      img: emojiToDataUri(sp.icon),
+    }));
   };
 
   const handleEggRarityChange = (rarity) => {
@@ -973,6 +1005,8 @@ export default function MarketAdmin() {
        (an egg of a specific rarity vs. a specific consumable item). */
     if (formData.type === "Uovo Pet" && formData.petRarity) {
       dataToSubmit.petPayload = { kind: "egg", rarity: formData.petRarity };
+    } else if (formData.type === "Pet" && PET_DEX[formData.petSpecies]) {
+      dataToSubmit.petPayload = { kind: "pet", species: formData.petSpecies };
     } else if (formData.type === "Oggetto Pet" && formData.petItemKey) {
       dataToSubmit.petPayload = { kind: "petItem", itemKey: formData.petItemKey };
     } else {
@@ -1486,6 +1520,29 @@ export default function MarketAdmin() {
                   <span className="mkadm-price-hint-icon">🥚</span>
                   <span>
                     Verrà consegnato come <strong>uovo {RARITY_LABEL[formData.petRarity]}</strong> nello zaino del vincitore.
+                  </span>
+                </p>
+              </div>
+            )}
+            {formData.type === "Pet" && (
+              <div className="mkadm-field">
+                <label>Creatura (Rifugio dei Pet)</label>
+                <select
+                  className="admin-field-select"
+                  required
+                  value={formData.petSpecies}
+                  onChange={(e) => handlePetSpeciesChange(e.target.value)}
+                >
+                  {PET_DEX_ORDER.map((k) => (
+                    <option key={k} value={k}>
+                      {PET_DEX[k].icon} {PET_DEX[k].name} · {PET_TYPE_ICON[PET_DEX[k].type]} · {PET_RARITY[PET_DEX[k].rarity].label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mkadm-price-hint" style={{ color: "var(--el)", borderColor: "#a78bfa55" }}>
+                  <span className="mkadm-price-hint-icon">🐾</span>
+                  <span>
+                    Alla consegna arriva nel <strong>Rifugio dei Pet</strong> del vincitore (se ne ha già 2, diventa punti pet).
                   </span>
                 </p>
               </div>

@@ -33,6 +33,8 @@ export const PET_POINT_SOURCES = {
   pet_battle_win:   { label: "Vittoria al Pet Arena",     amount: 5,  dailyCap: 5,  oncePerKey: true },
   tcg_match_win:    { label: "Vittoria nel TCG",           amount: 5,  dailyCap: 5,  oncePerKey: true },
   tcg_match_play:   { label: "Sfida TCG conclusa",         amount: 1,  dailyCap: 5,  oncePerKey: true },
+  // Rifugio dei Pet (2026-10-31): vittoria sul World Boss (resourceKey = id del boss)
+  boss_win:         { label: "Vittoria sul World Boss",     amount: 20, dailyCap: 2,  oncePerKey: true },
 };
 
 export function todayKey() {

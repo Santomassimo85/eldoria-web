@@ -97,6 +97,8 @@ export default function LoginRewardPopup() {
           setRes({ ...data, amount: 0, big: false, nice: false, already: true, stepAmount: step?.amount || 0 });
           return;
         }
+        // Punti pet del login (Rifugio dei Pet, 2026-10-31): 1 al giorno.
+        import("../utils/pet").then(({ awardPetPoints }) => awardPetPoints(uid, "daily_login")).catch(() => {});
         setRes(data); // il cancello si apre alla chiusura del popup
       } catch {
         release(); // niente rete o niente server: si riprova alla prossima apertura

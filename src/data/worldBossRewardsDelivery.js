@@ -80,7 +80,7 @@ export async function deliverBossRewards(bossId, createdBy = "") {
   // lettura fuori dalla transazione non fa perdere niente.
   const allChars = {};
   (await getDocs(collection(db, "characters"))).forEach((s) => { allChars[s.id] = s.data(); });
-  return runTransaction(db, async (tx) => {
+  const summary = await runTransaction(db, async (tx) => {
     const bossRef = doc(db, "bosses", bossId);
     const bossSnap = await tx.get(bossRef);
     if (!bossSnap.exists()) throw new Error("Boss non trovato.");
@@ -131,6 +131,13 @@ export async function deliverBossRewards(bossId, createdBy = "") {
     tx.update(bossRef, { rewardsDelivered: summary });
     return summary;
   });
+  // Punti pet a chi ha preso i premi (Rifugio dei Pet, 2026-10-31): una
+  // volta per boss (resourceKey), fuori dalla transazione dei premi.
+  if (summary?.participants?.length && !summary.already) {
+    const { awardPetPoints } = await import("../utils/pet");
+    await Promise.all(summary.participants.map((p) => awardPetPoints(p.uid, "boss_win", { resourceKey: bossId }).catch(() => null)));
+  }
+  return summary;
 }
 
 // Testo per chat/notifica: chi ha preso cosa.
