@@ -267,6 +267,12 @@ export default function LoginDropdown() {
             📜 Scheda Personaggio
           </button>
 
+          {/* Resoconto (2026-10-31): login del mese, punti pet e cosa si è già letto. */}
+          <button className="ld-menu-item" onClick={() => { navigate("/resoconto"); setIsOpen(false); }}>
+            <span>📊 Resoconto · login e letture</span>
+            {!isMaster && <span className="ld-login-count">{loginInfo.count} login</span>}
+          </button>
+
           {/* Le pagine "di servizio" stanno qui, non nei gruppi del gioco (2026-10-27). */}
           <button className="ld-menu-item" onClick={() => { navigate("/updates"); setIsOpen(false); }}>
             ✨ Novità del sito

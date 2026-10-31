@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../AuthContext';
-import { awardPetPoints } from '../utils/pet';
+import { useReadAfter } from '../utils/petReads';
 import './NPC.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
@@ -51,10 +51,8 @@ export default function NPC() {
     return () => unsub();
   }, []);
 
-  // 🐣 pet system: +1 point per day for visiting the NPC archive
-  useEffect(() => {
-    if (currentUser?.uid) awardPetPoints(currentUser.uid, "npc_visit");
-  }, [currentUser]);
+  // Punti pet: ogni scheda NPC aperta paga una volta sola (server, 2026-10-31).
+  useReadAfter("npc", openNpc?.id, !!openNpc && !!currentUser);
 
   // Raggruppa per linkedCity; senza città → sezione "Erranti"
   const grouped = npcs.reduce((acc, npc) => {

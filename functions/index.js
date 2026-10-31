@@ -1624,6 +1624,60 @@ exports.loginDaily = onCall(
   },
 );
 
+// ── Punti pet delle letture e visite (2026-10-31) ───────────────────────────
+// Ogni riassunto, NPC, luogo o pagina paga UNA volta sola per personaggio, per
+// sempre. Il registro è pet_reads/{uid}__{kind}__{id} (regole: write false):
+// esiste già → niente punti. Le letture dei riassunti pagate col vecchio
+// sistema (characters.petPointsSeen.summary_read) contano come già fatte.
+const petReads = require("./petReads");
+exports.petReadReward = onCall(
+  { region: "us-central1", timeoutSeconds: 20, memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const kind = String(request.data?.kind || "");
+    const id = String(request.data?.id || "").slice(0, 200);
+    if (!petReads.READ_POINTS[kind] || !id || id.includes("/")) throw new HttpsError("invalid-argument", "Lettura sconosciuta.");
+    const db = admin.firestore();
+    let title = "";
+    if (kind === "page") {
+      title = petReads.READ_PAGES[id];
+      if (!title) throw new HttpsError("invalid-argument", "Pagina sconosciuta.");
+    } else {
+      const snap = await db.collection(petReads.READ_COLLECTION[kind]).doc(id).get();
+      if (!snap.exists) throw new HttpsError("not-found", "Non esiste.");
+      const d = snap.data() || {};
+      title = String(d.title || d.name || d.nome || id).slice(0, 120);
+    }
+    const points = petReads.READ_POINTS[kind];
+    const charRef = db.collection("characters").doc(uid);
+    const readRef = db.collection("pet_reads").doc(`${uid}__${kind}__${id}`);
+    return db.runTransaction(async (tx) => {
+      const [cs, rs] = await Promise.all([tx.get(charRef), tx.get(readRef)]);
+      if (rs.exists) return { already: true, kind, id };
+      if (!cs.exists) throw new HttpsError("failed-precondition", "nochar");
+      const c = cs.data();
+      const legacy = kind === "summary" && (c.petPointsSeen?.summary_read || []).includes(id);
+      tx.set(readRef, {
+        uid, kind, id, title, name: c.name || "",
+        points: legacy ? 0 : points, legacy,
+        at: FieldValue.serverTimestamp(),
+      });
+      if (legacy) return { already: true, legacy: true, kind, id };
+      const ledger = [
+        { source: `read_${kind}`, label: `${petReads.KIND_LABEL[kind]}: ${title}`, amount: points, ts: new Date().toISOString(), resourceKey: id },
+        ...((c.petPointsLedger || []).slice(0, 29)),
+      ];
+      tx.update(charRef, { petPoints: FieldValue.increment(points), petPointsLedger: ledger });
+      return { already: false, kind, id, points, title };
+    }).catch((e) => {
+      if (e instanceof HttpsError) throw e;
+      console.error("[petRead]", e);
+      throw new HttpsError("internal", "Lettura non registrata.");
+    });
+  },
+);
+
 // ── Registro delle Corone (2026-10-17) ──────────────────────────────────────
 // Ogni variazione di `characters.platinum`, da qualunque parte arrivi (sito,
 // console del browser, REST senza login, server), finisce in `platinum_log`

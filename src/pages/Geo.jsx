@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
-import { awardPetPoints } from "../utils/pet";
+import { useReadAfter } from "../utils/petReads";
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok, loreSlug } from "../utils/loreLinks";
 import './Geo.css';
 import '../styles/cinematic.css';
@@ -197,10 +197,8 @@ export default function Geo() {
     return () => unsub();
   }, []);
 
-  // 🐣 pet system: +1 point per day for opening the Geo archive
-  useEffect(() => {
-    if (currentUser?.uid) awardPetPoints(currentUser.uid, "geo_visit");
-  }, [currentUser]);
+  // Punti pet: ogni luogo aperto paga una volta sola (server, 2026-10-31).
+  useReadAfter("geo", openLoc?.id, !!openLoc && !!currentUser);
 
   if (loading) {
     return (

@@ -73,6 +73,9 @@ import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import RuotaPopup from "./components/RuotaPopup";
 import LoginRewardPopup from "./components/LoginRewards";
+import Resoconto from "./pages/Resoconto";
+import { pageKeyOf } from "./data/petReads";
+import { useReadAfter } from "./utils/petReads";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
@@ -245,6 +248,16 @@ const TcgNavLink = ({ onClick }) => {
   return (
     <NavLink to="/tcg" onClick={onClick}>🎴 TCG</NavLink>
   );
+};
+
+// --- Punti pet della prima visita a una pagina (2026-10-31): lo decide il
+//     server (petReadReward), una volta sola per pagina e per personaggio. ---
+const PageVisitReward = () => {
+  const { currentUser } = useAuth();
+  const { pathname } = useLocation();
+  const key = pageKeyOf(pathname);
+  useReadAfter("page", key, !!key && !!currentUser);
+  return null;
 };
 
 // --- Rifugio dei Pet: per ora solo il Master principale (2026-10-31) ---
@@ -656,6 +669,7 @@ export default function App() {
       <NotificationOptIn />
       <LoginRewardPopup />
       <RuotaPopup />
+      <PageVisitReward />
       {hideChrome && !forceShowNav && (
         <button className="battle-nav-reopen" onClick={() => setForceShowNav(true)} aria-label="Apri menu">
           ☰
@@ -771,6 +785,7 @@ export default function App() {
           <Route path="/ruota" element={<RuotaExanthia />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/resoconto" element={<Resoconto />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/updates" element={<Updates />} />
 

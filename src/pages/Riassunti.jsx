@@ -8,7 +8,8 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
-import { awardPetPoints } from '../utils/pet';
+import { claimRead } from '../utils/petReads';
+import { READ_DWELL_MS } from '../data/petReads';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
 import { partyById } from '../data/parties';
 import './Riassunti.css';
@@ -187,6 +188,8 @@ export default function Riassunti() {
     const [lorePopup, setLorePopup] = useState(null);
 
     const recordVisit = async (summaryId) => {
+        // Punti pet della lettura: una volta sola, lo decide il server (2026-10-31).
+        setTimeout(() => claimRead("summary", summaryId), READ_DWELL_MS.summary);
         if (isMaster) return;
         try {
             await updateDoc(doc(db, 'summaries', summaryId), {
@@ -196,8 +199,6 @@ export default function Riassunti() {
         setAllSummaries(prev =>
             prev.map(s => s.id === summaryId ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s)
         );
-        // 🐣 pet system: +2 points the first time this summary is read
-        if (currentUser?.uid) awardPetPoints(currentUser.uid, "summary_read", { resourceKey: summaryId });
     };
 
     // Copia negli appunti il link diretto a una memoria, da condividere coi player.

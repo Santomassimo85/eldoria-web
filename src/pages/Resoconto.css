@@ -1,0 +1,54 @@
+/* Resoconto (2026-10-31): pagina normale del Covo, solo token (vale anche col Bianco). */
+.rc-page { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; color: var(--osso); font-family: var(--font-ui); }
+.rc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.rc-eyebrow { font-family: var(--font-sc); color: var(--el); letter-spacing: .14em; margin: 0 0 6px; }
+.rc-head h1 { font-family: var(--font-title); font-size: clamp(2rem, 5vw, 3rem); margin: 0; line-height: 1; color: var(--osso); }
+.rc-sub { color: var(--osso-2); margin: 8px 0 0; }
+.rc-who { display: flex; align-items: center; gap: 10px; }
+.rc-who img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid var(--el); }
+.rc-pick { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; flex-wrap: wrap; }
+.rc-pick select { min-height: 40px; padding: 6px 10px; background: var(--roccia-2); color: var(--osso); border: 1px solid rgba(var(--osso-rgb), .2); border-radius: 3px; font: inherit; }
+
+.rc-card { margin-top: 18px; padding: 18px; background: var(--roccia-2); border: 1px solid rgba(var(--osso-rgb), .1); border-top: 3px solid var(--el); border-radius: 4px; }
+.rc-card h2 { font-family: var(--font-head); font-size: 1.4rem; margin: 0 0 12px; color: var(--osso); }
+.rc-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rc-card-head h2 { margin: 0; }
+.rc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.rc-stats div { display: grid; gap: 2px; padding: 10px 12px; background: var(--roccia-3); border-radius: 3px; }
+.rc-stats b { font-family: var(--font-num); font-size: 1.7rem; color: var(--el); line-height: 1; }
+.rc-stats small { color: var(--osso-2); }
+.rc-line { margin: 8px 0 12px; color: var(--osso-2); }
+.rc-line b { color: var(--osso); }
+.rc-toggle { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.rc-toggle input { width: 18px; height: 18px; accent-color: var(--el); }
+
+.rc-ledger { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rc-ledger li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 10px; background: var(--roccia-3); border-radius: 3px; }
+.rc-ledger b { color: var(--el); font-family: var(--font-num); }
+.rc-ledger small { color: var(--osso-2); }
+
+.rc-group { margin-top: 8px; border: 1px solid rgba(var(--osso-rgb), .1); border-radius: 4px; overflow: hidden; }
+.rc-group-head { width: 100%; display: grid; grid-template-columns: minmax(130px, 1fr) auto minmax(80px, 1.2fr) auto auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--roccia-3); border: 0; color: var(--osso); font: inherit; cursor: pointer; text-align: left; }
+.rc-group-title { font-weight: 700; }
+.rc-group-count { font-family: var(--font-num); }
+.rc-group-pts { color: var(--osso-2); font-size: .85rem; }
+.rc-bar { height: 8px; border-radius: 99px; background: rgba(var(--ossidiana-rgb), .5); overflow: hidden; }
+.rc-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--el), var(--el-2)); }
+.rc-list { list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; max-height: 460px; overflow-y: auto; }
+.rc-list li { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 3px; }
+.rc-list li:nth-child(odd) { background: rgba(var(--osso-rgb), .03); }
+.rc-list li small { color: var(--osso-2); }
+.rc-list li.is-done .rc-name { color: var(--osso-2); }
+.rc-mark { font-weight: 800; text-align: center; color: var(--osso-2); }
+.is-done .rc-mark { color: #6fcf7f; }
+.rc-pts { font-family: var(--font-num); }
+.rc-go { color: var(--el); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.rc-empty { color: var(--osso-2); padding: 8px; }
+
+@media (max-width: 640px) {
+  .rc-group-head { grid-template-columns: 1fr auto auto; }
+  .rc-group-head .rc-bar { grid-column: 1 / -1; order: 5; }
+  .rc-group-head .rc-group-pts { grid-column: 1 / -1; order: 6; }
+  .rc-list li { grid-template-columns: 22px 1fr auto; }
+  .rc-list li > small:not(.rc-pts) { display: none; }
+}

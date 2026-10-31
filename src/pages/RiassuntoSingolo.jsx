@@ -8,7 +8,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
-import { awardPetPoints } from '../utils/pet';
+import { useReadAfter } from '../utils/petReads';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
 import './Riassunti.css';
 import './RiassuntoSingolo.css';
@@ -37,6 +37,8 @@ export default function RiassuntoSingolo() {
     const isMaster = isAdminEmail(currentUser?.email);
 
     const [summary, setSummary] = useState(null);
+    // Punti pet della lettura: una volta sola, lo decide il server (2026-10-31).
+    useReadAfter("summary", summary?.id, !!summary && !!currentUser);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -59,7 +61,6 @@ export default function RiassuntoSingolo() {
                 if (!isMaster && !counted.current) {
                     counted.current = true;
                     updateDoc(doc(db, 'summaries', id), { viewCount: increment(1) }).catch(() => {});
-                    if (currentUser?.uid) awardPetPoints(currentUser.uid, "summary_read", { resourceKey: id });
                 }
             } catch (_) {
                 if (alive) setNotFound(true);
