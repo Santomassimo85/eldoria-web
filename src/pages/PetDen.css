@@ -548,3 +548,19 @@
 .pd-dice-card small { font-size: .72rem; color: #c9bfad; line-height: 1.25; }
 .pd-dice-card i { position: absolute; top: 4px; right: 6px; font-style: normal; color: #f2c14e; font-weight: 700; }
 @media (max-width: 480px) { .pd-dice-grid { grid-template-columns: repeat(3, 1fr); } .pd-dice-card img { width: 58px; height: 58px; } .pd-dice-card small { display: none; } }
+
+/* ── Master: pet e storia di un giocatore (2026-10-31) ── */
+.pd-admin-list li { flex-wrap: wrap; }
+.pd-admin-open { margin-left: auto; }
+.pd-tamer { flex: 1 0 100%; margin-top: 8px; padding: 10px 12px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.1); border-radius: 4px; }
+.pd-tamer h4 { margin: 12px 0 6px; font: 600 .8rem var(--font-sc); letter-spacing: .08em; text-transform: uppercase; color: var(--pd-mute); }
+.pd-tamer-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--pd-ink); font-size: .9rem; }
+.pd-tamer-pets { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.pd-tamer-pets li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; background: rgba(255,255,255,.04); border-radius: 4px; }
+.pd-tamer-pets li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pd-tamer-pets b { color: var(--pd-ink); }
+.pd-tamer-pets small { color: var(--pd-mute); font-size: .8rem; }
+.pd-tamer-tag { font-style: normal; font-size: .72rem; margin-left: 6px; padding: 0 6px; border-radius: 99px; background: rgba(242,193,78,.18); color: #f2c14e; }
+.pd-tamer-log { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: .85rem; }
+.pd-tamer-log li { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); color: var(--pd-ink); }
+.pd-tamer-log time { color: var(--pd-mute); font: 600 .75rem var(--font-num); margin-right: 6px; }

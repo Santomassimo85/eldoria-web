@@ -9,6 +9,10 @@
      mascot: id del pet mascotte (+5% PE, si vede accanto all'avatar)
      items: {id: quantità}  la Bisaccia del Domatore (data/petBag.js)
      pvp: {wins, losses, day, rewarded, claimed[]}  sfide fra giocatori
+     log: [{t, k, ...}]     storia del Rifugio (ultime 150 voci, la legge il
+                            Master in "Giocatori"): iniziale, uova comprate e
+                            schiuse, regali, piani vinti/persi coi PE, sfide,
+                            oggetti comprati e usati (dal 2026-10-31)
    }
    Sul pet: learned {grado: mossa}, moveset [4], tms [pergamene],
    forgotten [innate dimenticate], charm {id, left} (amuleto tenuto).
@@ -40,8 +44,12 @@ export const denOf = (data) => {
     mascot: d.mascot || null,
     items: d.items && typeof d.items === "object" ? { ...d.items } : {},
     pvp: { wins: 0, losses: 0, day: "", rewarded: 0, claimed: [], ...(d.pvp || {}) },
+    log: Array.isArray(d.log) ? d.log : [],
   };
 };
+// Una voce nella storia del Rifugio (la più recente in testa).
+const LOG_MAX = 150;
+const addLog = (den, entry) => { den.log = [{ t: new Date().toISOString(), ...entry }, ...den.log].slice(0, LOG_MAX); };
 export const countOf = (den, species) => den.pets.filter((p) => p.species === species).length;
 
 async function mutate(uid, fn) {
@@ -66,6 +74,7 @@ export function chooseStarter(uid, species) {
     den.starter = species;
     den.pets.push(p);
     den.team = [p.id];
+    addLog(den, { k: "starter", species });
   });
 }
 
@@ -77,6 +86,7 @@ export function givePet(uid, species) {
     const p = makePet(species, "master");
     den.pets.push(p);
     if (den.team.length < MAX_TEAM) den.team.push(p.id);
+    addLog(den, { k: "give", species });
   });
 }
 
@@ -91,6 +101,7 @@ export function buyEgg(uid, eggKey, { free = false } = {}) {
     const pts = Number(data.petPoints) || 0;
     if (pts < cost) throw new Error(`Ti mancano ${cost - pts} punti pet.`);
     den.eggs.push(makeEgg(eggKey, free ? "master" : "bottega"));
+    addLog(den, { k: "egg_buy", egg: eggKey, cost });
     return { patch: cost ? { petPoints: pts - cost } : {} };
   });
 }
@@ -106,12 +117,14 @@ export function hatchEgg(uid, eggId) {
     const { species, rarity } = rollEgg(egg.egg);
     if (countOf(den, species) >= MAX_PER_SPECIES) {
       const pts = refundOf(species);
+      addLog(den, { k: "hatch", egg: egg.egg, species, rarity, refunded: pts });
       return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { species, rarity, refunded: pts } };
     }
     const p = makePet(species, `uovo:${egg.egg}`);
     den.pets.push(p);
     const joined = den.team.length < MAX_TEAM;
     if (joined) den.team.push(p.id);
+    addLog(den, { k: "hatch", egg: egg.egg, species, rarity });
     return { out: { species, rarity, petId: p.id, joined } };
   });
 }
@@ -200,6 +213,7 @@ export function buyItem(uid, id) {
     const pts = Number(data.petPoints) || 0;
     if (pts < it.price) throw new Error(`Servono ${it.price} punti pet.`);
     addItems(den, [id]);
+    addLog(den, { k: "item_buy", item: id, cost: it.price });
     const ledger = [{ source: "shop", label: `Bisaccia: ${it.name}`, amount: -it.price, ts: new Date().toISOString() }, ...((data.petPointsLedger || []).slice(0, 29))];
     return { patch: { petPoints: pts - it.price, petPointsLedger: ledger } };
   });
@@ -207,7 +221,7 @@ export function buyItem(uid, id) {
 
 // Oggetti gratis (Master, per le prove).
 export function giveItems(uid, ids) {
-  return mutate(uid, (den) => { addItems(den, ids); });
+  return mutate(uid, (den) => { addItems(den, ids); addLog(den, { k: "item_give", items: ids }); });
 }
 
 // Caramella Rara (+1 livello) o Pietra dell'Esperienza (PE).
@@ -220,6 +234,7 @@ export function applyGrowthItem(uid, petId, id) {
       takeItem(den, id);
       p.level = (p.level || 1) + 1;
       p.xp = 0;
+      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
       return { out: { level: p.level } };
     }
     if (it?.kind === "xp") {
@@ -227,6 +242,7 @@ export function applyGrowthItem(uid, petId, id) {
       takeItem(den, id);
       const n = addXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
       p.level = n.level; p.xp = n.xp;
+      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
       return { out: { level: p.level, ups: n.ups } };
     }
     throw new Error("Oggetto non adatto.");
@@ -269,6 +285,7 @@ export function teachScroll(uid, petId, id, forget) {
       p.forgotten = [...(p.forgotten || []), forget];
     }
     takeItem(den, id);
+    addLog(den, { k: "scroll", item: id, pet: p.id, species: p.species, forget });
     p.tms = [...tms, it.move];
     p.moveset = before.includes(forget) ? before.map((m) => (m === forget ? it.move : m)) : [...before, it.move].slice(0, MAX_MOVES);
   });
@@ -298,16 +315,19 @@ export function claimGifts(uid) {
     gifts.forEach((g) => {
       if (g.item && PET_BAG[g.item]) {
         addItems(den, [g.item]);
+        addLog(den, { k: "gift", item: g.item, from: g.from || "mercato" });
         eggs.push(`item:${g.item}`);
         return;
       }
       if (g.egg && EGGS[g.egg]) {
         den.eggs.push(makeEgg(g.egg, g.from || "mercato"));
+        addLog(den, { k: "gift", egg: g.egg, from: g.from || "mercato" });
         eggs.push(g.egg);
         return;
       }
       if (!PET_DEX[g.species]) return;
-      if (countOf(den, g.species) >= MAX_PER_SPECIES) { pts += refundOf(g.species); refunded.push(g.species); return; }
+      if (countOf(den, g.species) >= MAX_PER_SPECIES) { pts += refundOf(g.species); refunded.push(g.species); addLog(den, { k: "gift", species: g.species, from: g.from || "mercato", refunded: refundOf(g.species) }); return; }
+      addLog(den, { k: "gift", species: g.species, from: g.from || "mercato" });
       const p = makePet(g.species, g.from || "mercato");
       den.pets.push(p);
       if (den.team.length < MAX_TEAM) den.team.push(p.id);
@@ -334,11 +354,17 @@ export function recordTowerResult(uid, floor, won, teamIds) {
       return rest;
     });
     wearCharms(den, teamIds);
-    if (!won) return { out: { won: false, xp, pts: 0, ups, drops: [] } };
+    const team = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.species}:${p.level}`);
+    if (!won) {
+      den.tower = { ...den.tower, losses: (den.tower.losses || 0) + 1 };
+      addLog(den, { k: "tower", f: floor, won: false, xp, team });
+      return { out: { won: false, xp, pts: 0, ups, drops: [] } };
+    }
     const pts = towerPoints(floor);
     const drops = towerDrops(floor);
     addItems(den, drops);
-    den.tower = { floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
+    den.tower = { ...den.tower, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
+    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team });
     return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { won: true, xp, pts, ups, drops } };
   });
 }
@@ -382,6 +408,7 @@ export function recordPvpResult(uid, match, side) {
       if (Math.random() < 0.2) drops.push(CHARMS[Math.floor(Math.random() * CHARMS.length)]);
       addItems(den, drops);
     }
+    addLog(den, { k: "pvp", won, xp, pts, drops, vs: side === "p" ? match.bName : match.aName });
     return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won, xp, pts, ups, drops } };
   });
 }

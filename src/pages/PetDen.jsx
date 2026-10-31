@@ -300,7 +300,7 @@ export default function PetDen() {
           {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={setPvpId} />}
           {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} run={run} />}
           {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
-          {sec === "giocatori" && <PlayersAdmin run={run} />}
+          {sec === "giocatori" && <PlayersAdmin run={run} art={art} />}
           <div className="pd-secfoot"><button type="button" className="pd-back" onClick={back}>← Torna all'hub</button></div>
         </>
       )}
@@ -530,7 +530,8 @@ function Manual() {
 }
 
 /* ── Giocatori (Master): azzera punti e pet ───────────────── */
-function PlayersAdmin({ run }) {
+function PlayersAdmin({ run, art }) {
+  const [open, setOpen] = useState(null);
   const [chars, setChars] = useState([]);
   const [sel, setSel] = useState({});
   const [showHidden, setShowHidden] = useState(false);
@@ -571,10 +572,106 @@ function PlayersAdmin({ run }) {
               <span className="pd-admin-stat">{Number(c.petPoints) || 0} pt</span>
               <span className="pd-admin-stat">{d.pets.length} pet · {d.eggs.length} uova</span>
               <span className="pd-admin-stat">{d.starter ? `piano ${d.tower.floor}` : "senza iniziale"}</span>
+              {d.starter && (
+                <button type="button" className="pd-btn pd-btn--ghost pd-admin-open" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)}>
+                  {open === c.id ? "Chiudi" : "👁 Pet e storia"}
+                </button>
+              )}
+              {open === c.id && <TamerDetail c={c} d={d} art={art} />}
             </li>
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/* ── Master: i pet di un giocatore e come li ha avuti (2026-10-31) ── */
+const FROM_TXT = (from) => {
+  if (!from) return "?";
+  if (from === "starter") return "🌱 iniziale";
+  if (from === "master") return "🎁 dato dal Master";
+  if (from === "mercato") return "🏴 Mercato Nero";
+  if (from.startsWith("uovo:")) return `🥚 uovo ${EGGS[from.slice(5)]?.name || from.slice(5)}`;
+  return from;
+};
+const whenTxt = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+};
+// PE totali di un pet: tutti i livelli già presi + quelli verso il prossimo.
+const totalXpOf = (p) => {
+  let t = p.xp || 0;
+  for (let l = 1; l < (p.level || 1); l++) t += xpToNext(l);
+  return t;
+};
+const spName = (k) => PET_DEX[k]?.name || k;
+const itName = (k) => PET_BAG[k]?.name || k;
+function logTxt(e) {
+  switch (e.k) {
+    case "starter": return `🌱 Sceglie l'iniziale ${spName(e.species)}`;
+    case "give": return `🎁 Il Master gli dà ${spName(e.species)}`;
+    case "egg_buy": return `🛒 Compra ${EGGS[e.egg]?.name || e.egg}${e.cost ? ` (−${e.cost} pt)` : " (gratis)"}`;
+    case "hatch": return `🥚 Schiude ${EGGS[e.egg]?.name || e.egg} → ${spName(e.species)} (${RARITY[e.rarity]?.label || e.rarity})${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
+    case "gift": return `🏴 Dal ${e.from || "mercato"}: ${e.species ? spName(e.species) : e.egg ? EGGS[e.egg]?.name || e.egg : itName(e.item)}${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
+    case "tower": return `🗼 Piano ${e.f} ${e.won ? "VINTO" : "perso"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}${e.drops?.length ? ` · ${e.drops.map(itName).join(", ")}` : ""}${e.team?.length ? ` · ${e.team.map((x) => { const [s, l] = x.split(":"); return `${spName(s)} Lv ${l}`; }).join(", ")}` : ""}`;
+    case "pvp": return `⚔ Sfida ${e.won ? "vinta" : "persa"} contro ${e.vs || "?"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}`;
+    case "item_buy": return `🎒 Compra ${itName(e.item)} (−${e.cost} pt)`;
+    case "item_give": return `🎁 Il Master gli dà ${(e.items || []).length} oggetti`;
+    case "item_use": return `✨ Usa ${itName(e.item)} su ${spName(e.species)} → Lv ${e.level}`;
+    case "scroll": return `📜 ${itName(e.item)} a ${spName(e.species)} (dimentica ${PET_DEX_MOVES[e.forget]?.name || e.forget})`;
+    default: return e.k;
+  }
+}
+function TamerDetail({ c, d, art }) {
+  const ledger = Array.isArray(c.petPointsLedger) ? c.petPointsLedger : [];
+  const items = Object.entries(d.items).filter(([, n]) => Number(n) > 0);
+  // PE che i soli piani vinti possono dare (mascotte +5%): se un pet ne ha molti di più
+  // li ha presi perdendo (un terzo a sconfitta), dalle sfide o da oggetti.
+  const winsXp = Array.from({ length: d.tower.best || 0 }, (_, i) => towerXp(i + 1)).reduce((a, n) => a + n, 0);
+  return (
+    <div className="pd-tamer">
+      <div className="pd-tamer-stats">
+        <span>🗼 piano {d.tower.floor} · record {d.tower.best || 0} · {d.tower.wins || 0} vinti{d.tower.losses != null ? ` · ${d.tower.losses} persi` : ""}</span>
+        <span>⚔ sfide {d.pvp.wins} vinte · {d.pvp.losses} perse</span>
+        <span>💰 {Number(c.petPoints) || 0} punti</span>
+      </div>
+      <h4>Pet ({d.pets.length})</h4>
+      <ul className="pd-tamer-pets">
+        {d.pets.map((p) => {
+          const tot = totalXpOf(p);
+          const much = winsXp > 0 && tot > winsXp * 1.6;
+          return (
+            <li key={p.id}>
+              <PetSprite species={p.species} art={art} size={52} />
+              <div>
+                <b>{p.nick || spName(p.species)}</b>{p.nick ? <small> ({spName(p.species)})</small> : null}
+                {d.team.includes(p.id) && <em className="pd-tamer-tag">in squadra</em>}
+                {d.mascot === p.id && <em className="pd-tamer-tag">⭐ mascotte</em>}
+                <small>Lv {p.level} · {tot} PE in tutto{much ? ` ⚠ più di quanti ne danno i piani vinti (${winsXp})` : ""}</small>
+                <small>{FROM_TXT(p.from)} · {whenTxt(p.at)}</small>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {d.eggs.length > 0 && <p className="pd-fine">🥚 Nel nido: {d.eggs.map((e) => `${EGGS[e.egg]?.name || e.egg} (${e.from}, ${whenTxt(e.at)})`).join(" · ")}</p>}
+      {items.length > 0 && <p className="pd-fine">🎒 Bisaccia: {items.map(([k, n]) => `${itName(k)} ×${n}`).join(" · ")}</p>}
+      <h4>Storia del Rifugio</h4>
+      {d.log.length ? (
+        <ol className="pd-tamer-log">
+          {d.log.map((e, i) => <li key={i}><time>{whenTxt(e.t)}</time> {logTxt(e)}</li>)}
+        </ol>
+      ) : <p className="pd-fine">Nessuna voce: la storia si registra dal 2026-10-31 sera (prima c'erano solo i pet con origine e data qui sopra).</p>}
+      {ledger.length > 0 && (
+        <>
+          <h4>Registro dei punti</h4>
+          <ol className="pd-tamer-log">
+            {ledger.map((e, i) => <li key={i}><time>{whenTxt(e.ts)}</time> {e.label || e.source} · {e.amount > 0 ? "+" : ""}{e.amount}</li>)}
+          </ol>
+        </>
+      )}
     </div>
   );
 }
