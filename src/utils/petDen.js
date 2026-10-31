@@ -5,9 +5,11 @@
      pets: [{id, species, level, xp, nick, from, at}],
      team: [id, id, id],    massimo 3, in ordine (il primo entra in campo)
      tower: {floor, best, wins},   floor = prossimo piano da combattere
+     eggs: [{id, egg, from, at}],  il NIDO: uova da schiudere
    }
-   + characters.petGifts = [{species, from, itemId, at}] scritto dal
-   Mercato Nero alla consegna dell'asta: il Rifugio li ritira.
+   + characters.petGifts = [{species | egg, from, itemId, at}] scritto dal
+   Mercato Nero alla consegna dell'asta: il Rifugio li ritira (i pet nella
+   collezione, le uova nel nido).
    Il portafoglio resta characters.petPoints (utils/pet.js).
    Pixel art: pet_dex/{species} = {image (PNG trasparente), look}.
    Tutto in transazione: due schede aperte non comprano due volte.
@@ -15,7 +17,7 @@
 
 import { doc, runTransaction, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
-import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, costOf, refundOf } from "../data/petDex";
+import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, EGGS, refundOf, rollEgg } from "../data/petDex";
 import { addXp, towerXp, towerLossXp, towerPoints } from "../data/petEngine";
 
 const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -28,6 +30,7 @@ export const denOf = (data) => {
     pets: Array.isArray(d.pets) ? d.pets : [],
     team: Array.isArray(d.team) ? d.team : [],
     tower: { floor: 1, best: 0, wins: 0, ...(d.tower || {}) },
+    eggs: Array.isArray(d.eggs) ? d.eggs : [],
   };
 };
 export const countOf = (den, species) => den.pets.filter((p) => p.species === species).length;
@@ -57,18 +60,50 @@ export function chooseStarter(uid, species) {
   });
 }
 
-export function buyPet(uid, species, { free = false } = {}) {
-  return mutate(uid, (den, data) => {
+// Pet dato a mano (Master, per le prove): niente punti.
+export function givePet(uid, species) {
+  return mutate(uid, (den) => {
     if (!PET_DEX[species]) throw new Error("Specie sconosciuta.");
-    if (!den.starter) throw new Error("Prima scegli il tuo pet iniziale.");
     if (countOf(den, species) >= MAX_PER_SPECIES) throw new Error(`Hai già ${MAX_PER_SPECIES} ${PET_DEX[species].name}.`);
-    const cost = free ? 0 : costOf(species);
-    const pts = Number(data.petPoints) || 0;
-    if (pts < cost) throw new Error(`Ti mancano ${cost - pts} punti pet.`);
-    const p = makePet(species, free ? "master" : "rifugio");
+    const p = makePet(species, "master");
     den.pets.push(p);
     if (den.team.length < MAX_TEAM) den.team.push(p.id);
+  });
+}
+
+const makeEgg = (egg, from) => ({ id: newId().replace("pet_", "egg_"), egg, from, at: new Date().toISOString() });
+
+export function buyEgg(uid, eggKey, { free = false } = {}) {
+  return mutate(uid, (den, data) => {
+    const egg = EGGS[eggKey];
+    if (!egg) throw new Error("Uovo sconosciuto.");
+    if (den.eggs.length >= MAX_EGGS) throw new Error(`Il nido è pieno (${MAX_EGGS} uova): schiudine qualcuna.`);
+    const cost = free ? 0 : egg.cost;
+    const pts = Number(data.petPoints) || 0;
+    if (pts < cost) throw new Error(`Ti mancano ${cost - pts} punti pet.`);
+    den.eggs.push(makeEgg(eggKey, free ? "master" : "bottega"));
     return { patch: cost ? { petPoints: pts - cost } : {} };
+  });
+}
+
+/* Schiude un uovo: il tiro avviene DENTRO la transazione, quindi l'esito
+   salvato è quello mostrato. Doppione oltre il limite = punti pet. */
+export function hatchEgg(uid, eggId) {
+  return mutate(uid, (den, data) => {
+    if (!den.starter) throw new Error("Prima scegli il tuo pet iniziale.");
+    const egg = den.eggs.find((e) => e.id === eggId);
+    if (!egg) throw new Error("Quest'uovo non c'è più.");
+    den.eggs = den.eggs.filter((e) => e.id !== eggId);
+    const { species, rarity } = rollEgg(egg.egg);
+    if (countOf(den, species) >= MAX_PER_SPECIES) {
+      const pts = refundOf(species);
+      return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { species, rarity, refunded: pts } };
+    }
+    const p = makePet(species, `uovo:${egg.egg}`);
+    den.pets.push(p);
+    const joined = den.team.length < MAX_TEAM;
+    if (joined) den.team.push(p.id);
+    return { out: { species, rarity, petId: p.id, joined } };
   });
 }
 
@@ -105,9 +140,14 @@ export function claimGifts(uid) {
     const gifts = Array.isArray(data.petGifts) ? data.petGifts : [];
     if (!gifts.length) return null;
     const den = denOf(data);
-    const got = [], refunded = [];
+    const got = [], refunded = [], eggs = [];
     let pts = Number(data.petPoints) || 0;
     gifts.forEach((g) => {
+      if (g.egg && EGGS[g.egg]) {
+        den.eggs.push(makeEgg(g.egg, g.from || "mercato"));
+        eggs.push(g.egg);
+        return;
+      }
       if (!PET_DEX[g.species]) return;
       if (countOf(den, g.species) >= MAX_PER_SPECIES) { pts += refundOf(g.species); refunded.push(g.species); return; }
       const p = makePet(g.species, g.from || "mercato");
@@ -116,7 +156,7 @@ export function claimGifts(uid) {
       got.push(g.species);
     });
     tx.update(charRef(uid), { petDen: den, petGifts: [], petPoints: pts });
-    return { got, refunded };
+    return { got, refunded, eggs };
   });
 }
 

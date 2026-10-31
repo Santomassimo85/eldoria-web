@@ -361,13 +361,15 @@ export default function Mercato() {
         });
 
         // --- AGGIORNA PERSONAGGIO (PUNTI RATTO +1) ---
-        // Un Pet (Rifugio dei Pet, 2026-10-31) va nei regali del vincitore:
-        // il Rifugio lo ritira alla prossima apertura.
+        // Un Pet o un Uovo del Rifugio dei Pet (2026-10-31) va nei regali del
+        // vincitore: il Rifugio lo ritira alla prossima apertura (uova nel nido).
         transaction.update(charRef, {
           rattoPoints: increment(1),
           ...(item.petPayload?.kind === "pet" && item.petPayload.species
             ? { petGifts: arrayUnion({ species: item.petPayload.species, from: "mercato", itemId: item.id, at: new Date().toISOString() }) }
-            : {}),
+            : item.petPayload?.kind === "petEgg" && item.petPayload.egg
+              ? { petGifts: arrayUnion({ egg: item.petPayload.egg, from: "mercato", itemId: item.id, at: new Date().toISOString() }) }
+              : {}),
         });
 
         const buyerName = (winnerBidData && winnerBidData.charName) ? winnerBidData.charName : "Un eroe";

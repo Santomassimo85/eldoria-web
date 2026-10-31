@@ -1,0 +1,118 @@
+/* Effetti della lotta dei pet (PetFx.jsx). Ogni pezzo è posizionato al
+   centro (left/top) e si centra con translate(-50%,-50%). Colori:
+   --c1 chiaro, --c2 pieno, --c3 scuro (dall'elemento della mossa). */
+
+.pfx { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.pfx > * { position: absolute; display: block; transform: translate(-50%, -50%); }
+
+/* ── pestone: onda d'urto a terra, polvere, "pow" ── */
+.pfx-shock { width: calc(var(--s) * 1.3); height: calc(var(--s) * .32); border-radius: 50%; border: 5px solid var(--c2); box-shadow: 0 0 10px var(--c3), inset 0 0 8px var(--c1); opacity: 0; animation: pfx-shock .6s ease-out .28s forwards; }
+.pfx-shock--2 { border-width: 3px; animation-delay: .4s; }
+@keyframes pfx-shock { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); } }
+.pfx-dust { width: calc(var(--s) * .16 * var(--z)); height: calc(var(--s) * .16 * var(--z)); border-radius: 50%; opacity: 0; animation: pfx-dust .7s ease-out .3s forwards; }
+@keyframes pfx-dust { 0% { opacity: .95; transform: translate(-50%, -50%) scale(.4); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.4); } }
+.pfx-pow { width: calc(var(--s) * .7); height: calc(var(--s) * .7); background: radial-gradient(circle, var(--c1) 0 30%, var(--c2) 45%, transparent 70%); clip-path: polygon(50% 0, 61% 32%, 96% 20%, 72% 48%, 100% 72%, 64% 68%, 56% 100%, 44% 70%, 8% 86%, 30% 56%, 0 34%, 36% 34%); opacity: 0; animation: pfx-pow .38s ease-out .28s forwards; }
+.pfx-pow--late { animation-delay: .32s; }
+@keyframes pfx-pow { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.3) rotate(0); } 60% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(25deg); } }
+
+/* ── morso: due file di denti che si chiudono ── */
+.pfx-jaw { width: calc(var(--s) * .95); height: calc(var(--s) * .34); background: linear-gradient(var(--c1), #ffffff); filter: drop-shadow(0 0 4px var(--c2)) drop-shadow(0 2px 0 var(--c3)); opacity: 0; }
+.pfx-jaw--top { clip-path: polygon(0 0, 100% 0, 100% 40%, 92% 100%, 84% 40%, 75% 100%, 67% 40%, 58% 100%, 50% 40%, 42% 100%, 33% 40%, 25% 100%, 17% 40%, 8% 100%, 0 40%); animation: pfx-jaw-top .42s cubic-bezier(.5, 0, .9, .5) forwards; }
+.pfx-jaw--bot { clip-path: polygon(0 100%, 100% 100%, 100% 60%, 92% 0, 84% 60%, 75% 0, 67% 60%, 58% 0, 50% 60%, 42% 0, 33% 60%, 25% 0, 17% 60%, 8% 0, 0 60%); animation: pfx-jaw-bot .42s cubic-bezier(.5, 0, .9, .5) forwards; }
+@keyframes pfx-jaw-top { 0% { opacity: 0; transform: translate(-50%, -150%); } 30% { opacity: 1; } 75% { opacity: 1; transform: translate(-50%, -78%); } 100% { opacity: 0; transform: translate(-50%, -78%); } }
+@keyframes pfx-jaw-bot { 0% { opacity: 0; transform: translate(-50%, 50%); } 30% { opacity: 1; } 75% { opacity: 1; transform: translate(-50%, -22%); } 100% { opacity: 0; transform: translate(-50%, -22%); } }
+
+/* ── artigliata: tre tagli ── */
+.pfx-slash { width: calc(var(--s) * 1.15); height: 7px; border-radius: 50%; background: linear-gradient(90deg, transparent, var(--c1) 30%, #fff 50%, var(--c2) 75%, transparent); box-shadow: 0 0 8px var(--c2); opacity: 0; animation: pfx-slash .45s ease-out forwards; }
+@keyframes pfx-slash { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scaleX(0); } 45% { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scaleX(1); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-55deg) scaleX(1) translateY(4px); } }
+
+/* ── proiettile ── */
+.pfx-orb { width: calc(var(--s) * .36); height: calc(var(--s) * .36); border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff 0 15%, var(--c1) 30%, var(--c2) 55%, transparent 72%); box-shadow: 0 0 18px var(--c2); animation: pfx-travel .42s ease-in forwards; }
+@keyframes pfx-travel { 0% { transform: translate(-50%, -50%) scale(.5); opacity: 1; } 92% { opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); opacity: 0; } }
+
+/* ── raggio ── */
+.pfx-beam { width: var(--len); height: calc(var(--s) * .14); transform-origin: 0 50%; border-radius: 99px; background: linear-gradient(180deg, transparent, var(--c2) 25%, #fff 50%, var(--c2) 75%, transparent); box-shadow: 0 0 14px var(--c2), 0 0 28px var(--c3); opacity: 0; animation: pfx-beam .62s ease-out forwards; }
+@keyframes pfx-beam { 0% { opacity: 1; transform: translate(0, -50%) rotate(var(--ang)) scaleX(0); } 30% { opacity: 1; transform: translate(0, -50%) rotate(var(--ang)) scaleX(1); } 70% { opacity: 1; transform: translate(0, -50%) rotate(var(--ang)) scaleX(1) scaleY(.6); } 100% { opacity: 0; transform: translate(0, -50%) rotate(var(--ang)) scaleX(1) scaleY(0); } }
+
+/* ── soffio / risucchio: particelle in viaggio ── */
+.pfx-part { width: calc(var(--s) * .15 * var(--z)); height: calc(var(--s) * .15 * var(--z)); border-radius: 50%; filter: blur(.5px); box-shadow: 0 0 8px var(--c2); opacity: 0; animation: pfx-part .5s ease-out forwards; }
+@keyframes pfx-part { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.4); } 85% { opacity: .9; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx) + var(--ox)), calc(-50% + var(--dy) + var(--oy))) scale(1.8); } }
+.pfx-part.is-rev { animation-name: pfx-part-rev; }
+@keyframes pfx-part-rev { 0% { opacity: 1; transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))) scale(1.2); } 100% { opacity: 0; transform: translate(calc(-50% - var(--dx)), calc(-50% - var(--dy))) scale(.3); } }
+
+/* ── colpo a segno (generico) ── */
+.pfx-pop { width: calc(var(--s) * .9); height: calc(var(--s) * .9); border-radius: 50%; background: radial-gradient(circle, #fff 0 12%, var(--c1) 25%, var(--c2) 45%, transparent 70%); opacity: 0; animation: pfx-pop .4s ease-out forwards; }
+.pfx-pop--orb { animation-delay: .38s; }
+.pfx-pop--beam { animation-delay: .18s; }
+.pfx-pop--breath { animation-delay: .5s; }
+.pfx-pop--bolt { animation-delay: .1s; }
+.pfx-pop--rain { animation-delay: .5s; }
+@keyframes pfx-pop { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); } }
+
+/* ── esplosione ── */
+.pfx-boom { width: calc(var(--s) * 1.1); height: calc(var(--s) * 1.1); border-radius: 50%; background: radial-gradient(circle, #fff 0 10%, var(--c1) 22%, var(--c2) 45%, var(--c3) 62%, transparent 72%); opacity: 0; animation: pfx-boom .65s ease-out forwards; }
+@keyframes pfx-boom { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.1); } 50% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.9); } }
+.pfx-ring { width: calc(var(--s) * 1.2); height: calc(var(--s) * 1.2); border-radius: 50%; border: 4px solid var(--c1); box-shadow: 0 0 12px var(--c2); opacity: 0; animation: pfx-shock .6s ease-out .08s forwards; }
+.pfx-ray { width: calc(var(--s) * .6); height: 5px; border-radius: 99px; background: linear-gradient(90deg, var(--c1), var(--c2), transparent); transform-origin: 0 50%; opacity: 0; animation: pfx-ray .55s ease-out .05s forwards; }
+@keyframes pfx-ray { 0% { opacity: 1; transform: translate(0, -50%) rotate(var(--r)) translateX(0) scaleX(.2); } 100% { opacity: 0; transform: translate(0, -50%) rotate(var(--r)) translateX(calc(var(--s) * .55)) scaleX(1); } }
+
+/* ── fulmine dall'alto ── */
+.pfx-bolt { position: absolute; inset: 0; transform: none !important; width: 100%; height: 100%; filter: drop-shadow(0 0 8px var(--c2)); animation: pfx-flicker .5s steps(1) forwards; }
+@keyframes pfx-flicker { 0% { opacity: 1; } 15% { opacity: .2; } 30% { opacity: 1; } 55% { opacity: .4; } 70% { opacity: 1; } 100% { opacity: 0; } }
+.pfx-flash { inset: 0; left: 0; top: 0; transform: none !important; width: 100%; height: 100%; background: var(--c1); opacity: 0; animation: pfx-flash .35s ease-out forwards; }
+@keyframes pfx-flash { 0% { opacity: .55; } 100% { opacity: 0; } }
+
+/* ── pioggia di schegge / sassi ── */
+.pfx-drop { width: calc(var(--s) * .1 * var(--z)); height: calc(var(--s) * .26 * var(--z)); background: linear-gradient(var(--c1), var(--c2)); border-radius: 50% 50% 45% 45%; opacity: 0; animation: pfx-fall .45s ease-in forwards; }
+.pfx-drop--cold { clip-path: polygon(50% 100%, 0 0, 100% 0); border-radius: 0; background: linear-gradient(#fff, var(--c2)); }
+.pfx-drop--earth { width: calc(var(--s) * .2 * var(--z)); height: calc(var(--s) * .17 * var(--z)); border-radius: 30% 45% 35% 40%; background: linear-gradient(135deg, var(--c1), var(--c2) 45%, var(--c3)); }
+@keyframes pfx-fall { 0% { opacity: 1; transform: translate(-50%, calc(-50% - var(--s) * 2.4)); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2, .6); } }
+
+/* ── onde (psichiche, d'acqua, ruggiti) ── */
+.pfx-arc { width: calc(var(--s) * .5); height: calc(var(--s) * .8); border-radius: 50%; border: 6px solid transparent; border-right-color: var(--c2); box-shadow: 8px 0 12px -6px var(--c1); opacity: 0; animation: pfx-arc .6s ease-in forwards; }
+.pfx-arc.is-roar { border-right-color: rgba(255, 255, 255, .85); border-right-width: 4px; }
+@keyframes pfx-arc { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--ang)) scale(.4); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--ang)) scale(1.5); } }
+
+/* ── nube (spore, veleno, inchiostro, melma) ── */
+.pfx-puff { width: calc(var(--s) * .38 * var(--z)); height: calc(var(--s) * .38 * var(--z)); border-radius: 50%; filter: blur(2px); opacity: 0; animation: pfx-puff .9s ease-out forwards; }
+@keyframes pfx-puff { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scale(.3); } 30% { opacity: .8; } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(calc(var(--a) + 90deg)) translateX(var(--rr)) scale(1.3); } }
+
+/* ── maledizione / ipnosi: spirale ── */
+.pfx-spiral { width: calc(var(--s) * 1.1); height: calc(var(--s) * 1.1); border-radius: 50%; border: 4px dashed var(--c2); box-shadow: 0 0 14px var(--c3), inset 0 0 14px var(--c3); opacity: 0; animation: pfx-spiral .8s ease-in forwards; }
+.pfx-spiral--in { width: calc(var(--s) * .7); height: calc(var(--s) * .7); border-style: dotted; border-color: var(--c1); animation-direction: normal; animation-name: pfx-spiral-in; }
+@keyframes pfx-spiral { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(1.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(300deg) scale(.3); } }
+@keyframes pfx-spiral-in { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(1.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-360deg) scale(.2); } }
+.pfx-eye { width: calc(var(--s) * .34); height: calc(var(--s) * .2); border-radius: 50%; background: radial-gradient(circle, #000 0 22%, var(--c2) 25% 55%, var(--c1) 60%); box-shadow: 0 0 12px var(--c2); opacity: 0; animation: pfx-pop .7s ease-out .25s forwards; }
+
+/* ── potenziamento: anelli che salgono + frecce ── */
+.pfx-aura { width: calc(var(--s) * 1.1); height: calc(var(--s) * .3); border-radius: 50%; border: 3px solid var(--c2); box-shadow: 0 0 12px var(--c2), inset 0 0 8px var(--c1); opacity: 0; animation: pfx-aura .75s ease-out forwards; }
+@keyframes pfx-aura { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.6); } 100% { opacity: 0; transform: translate(-50%, calc(-50% - var(--s) * .9)) scale(1.05); } }
+.pfx-up { font-size: calc(var(--s) * .16); color: var(--c1); text-shadow: 0 0 6px var(--c2), 0 1px 0 var(--c3); opacity: 0; animation: pfx-rise .8s ease-out forwards; }
+@keyframes pfx-rise { 0% { opacity: 0; transform: translate(-50%, -20%); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, calc(-50% - var(--s) * .7)); } }
+
+/* ── cura / sonno ── */
+.pfx-glow { width: calc(var(--s) * 1.2); height: calc(var(--s) * 1.2); border-radius: 50%; background: radial-gradient(circle, var(--c1), transparent 65%); opacity: 0; animation: pfx-glow .9s ease-out forwards; }
+@keyframes pfx-glow { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 40% { opacity: .8; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1); } }
+.pfx-plus { font-size: calc(var(--s) * .17); color: #8ef5a0; text-shadow: 0 0 6px var(--c2), 0 1px 0 #1d6b31; opacity: 0; animation: pfx-rise .8s ease-out forwards; }
+.pfx-plus--late { animation-duration: .7s; }
+.pfx-z { font: 800 calc(var(--s) * .2) var(--font-num, serif); color: #dfe8ff; text-shadow: 0 0 6px #7aa2ff; opacity: 0; animation: pfx-z 1s ease-out forwards; }
+@keyframes pfx-z { 0% { opacity: 0; transform: translate(-50%, -20%) rotate(-10deg) scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--s) * .35), calc(-50% - var(--s) * .6)) rotate(12deg) scale(1.2); } }
+
+/* ── chi attacca: balzo del pestone e affondo di morsi/artigli ── */
+.pd-act { position: relative; z-index: 1; }
+.pd-act.is-stomp.side-p { animation: pd-stomp-p .55s ease-in-out; }
+.pd-act.is-stomp.side-e { animation: pd-stomp-e .55s ease-in-out; }
+.pd-act.is-lunge.side-p { animation: pd-lunge-p .42s ease-in-out; }
+.pd-act.is-lunge.side-e { animation: pd-lunge-e .42s ease-in-out; }
+@keyframes pd-stomp-p { 0% { transform: none; } 40% { transform: translate(14%, -38%) scale(.96, 1.06); } 55% { transform: translate(24%, -6%) scale(1.1, .86); } 70% { transform: translate(24%, 0) scale(1); } 100% { transform: none; } }
+@keyframes pd-stomp-e { 0% { transform: none; } 40% { transform: translate(-14%, -38%) scale(.96, 1.06); } 55% { transform: translate(-24%, 6%) scale(1.1, .86); } 70% { transform: translate(-24%, 8%) scale(1); } 100% { transform: none; } }
+@keyframes pd-lunge-p { 0% { transform: none; } 45% { transform: translate(30%, -18%); } 100% { transform: none; } }
+@keyframes pd-lunge-e { 0% { transform: none; } 45% { transform: translate(-30%, 18%); } 100% { transform: none; } }
+/* chi incassa un pestone sobbalza */
+.pd-act.is-shaken { animation: pd-shaken .4s ease-out .28s; }
+@keyframes pd-shaken { 0%, 100% { transform: none; } 25% { transform: translate(-5px, 3px); } 50% { transform: translate(5px, -2px); } 75% { transform: translate(-3px, 1px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pfx > * { animation-duration: .01s !important; animation-delay: 0s !important; }
+  .pd-act { animation: none !important; }
+}

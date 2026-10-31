@@ -11,7 +11,7 @@
      STAB 1,25 × critico 1,5 (6%) × caso 0,85–1.
    ============================================================ */
 
-import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, typeMultiplier } from "./petDex";
+import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, STARTERS, typeMultiplier } from "./petDex";
 
 const rnd = () => Math.random();
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
@@ -103,7 +103,7 @@ function applyMove(b, side, moveId, out) {
     return;
   }
   if (att.pp[moveId] != null) att.pp[moveId] = Math.max(0, att.pp[moveId] - 1);
-  emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, text: `${att.name} usa ${m.name}!` });
+  emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, fx: m.fx, text: `${att.name} usa ${m.name}!` });
   const e = m.effect || {};
   const targetsFoe = m.power > 0 || e.foe || e.burn || e.poison || e.stun;
   if (targetsFoe && rnd() * 100 >= m.acc) {
@@ -326,14 +326,16 @@ export function towerFloor(floor) {
   const n = Math.max(1, floor | 0);
   const r = seeded(n * 7919);
   const size = n <= 3 ? 1 : n <= 9 ? 2 : 3;
-  // Piani 1–2: solo creature di tipo neutro, così nessun iniziale parte svantaggiato.
-  const pool = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n && (n > 2 || PET_DEX[k].type === "neutral"));
+  // Piani 1–2: solo creature che non hanno vantaggio di tipo su nessun
+  // iniziale, così nessuno parte svantaggiato.
+  const pool = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n
+    && (n > 2 || STARTERS.every((st) => typeMultiplier(PET_DEX[k].type, PET_DEX[st].type) <= 1)));
   const team = [];
   for (let i = 0; i < size; i++) {
     let k = pool[Math.floor(r() * pool.length)];
     if (team.some((t) => t.species === k) && pool.length > size) k = pool[Math.floor(r() * pool.length)];
     const lead = Math.round(1 + (n - 1) * 0.55);
-    const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 2 : 0) - (size - 1 - i), 1, MAX_LEVEL);
+    const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
     team.push({ id: `tw${n}_${i}`, species: k, level });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
