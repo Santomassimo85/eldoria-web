@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
-import { useReadAfter } from "../utils/petReads";
+import ReadTracker from "../components/ReadTracker";
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok, loreSlug } from "../utils/loreLinks";
 import './Geo.css';
 import '../styles/cinematic.css';
@@ -197,8 +197,6 @@ export default function Geo() {
     return () => unsub();
   }, []);
 
-  // Punti pet: ogni luogo aperto paga una volta sola (server, 2026-10-31).
-  useReadAfter("geo", openLoc?.id, !!openLoc && !!currentUser);
 
   if (loading) {
     return (
@@ -497,6 +495,8 @@ export default function Geo() {
       {/* ══ MODALE-VARCO: il luogo, e sopra di lui — a pila — ogni link aperto
             dal testo (luoghi con i loro link, PG e NPC in scheda breve).
             "‹ Indietro" e le briciole riportano alle pagine precedenti. ══ */}
+      {/* Punti pet: ogni luogo letto paga una volta sola (server, 2026-10-31). */}
+      <ReadTracker kind="geo" id={openLoc?.id} active={!!openLoc} slot={1} />
       {openLoc && (() => {
         const top = pila.length ? pila[pila.length - 1] : { kind: "loc", loc: openLoc };
         const gTop = top.kind === "loc"

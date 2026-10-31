@@ -12,4 +12,12 @@ const READ_PAGES = {
 const READ_COLLECTION = { summary: "summaries", npc: "npcs", geo: "geo_archive" };
 const KIND_LABEL = { summary: "Cronaca letta", npc: "NPC consultato", geo: "Luogo esplorato", page: "Pagina visitata" };
 
-module.exports = { READ_POINTS, READ_PAGES, READ_COLLECTION, KIND_LABEL };
+// Tempo minimo (copia di readNeedMs in src/data/petReads.js).
+const READ_FIXED_MS = { npc: 5000, geo: 5000, page: 4000 };
+const wordCount = (html) => String(html || "").replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+function readNeedMs(kind, words = 0) {
+  if (kind !== "summary") return READ_FIXED_MS[kind] || 5000;
+  return Math.round(Math.min(40000, Math.max(12000, (words / 250) * 60000 * 0.15)));
+}
+
+module.exports = { READ_POINTS, READ_PAGES, READ_COLLECTION, KIND_LABEL, wordCount, readNeedMs };

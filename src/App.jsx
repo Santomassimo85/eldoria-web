@@ -75,7 +75,7 @@ import RuotaPopup from "./components/RuotaPopup";
 import LoginRewardPopup from "./components/LoginRewards";
 import Resoconto from "./pages/Resoconto";
 import { pageKeyOf } from "./data/petReads";
-import { useReadAfter } from "./utils/petReads";
+import ReadTracker from "./components/ReadTracker";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
@@ -256,8 +256,7 @@ const PageVisitReward = () => {
   const { currentUser } = useAuth();
   const { pathname } = useLocation();
   const key = pageKeyOf(pathname);
-  useReadAfter("page", key, !!key && !!currentUser);
-  return null;
+  return <ReadTracker kind="page" id={key} active={!!key && !!currentUser} slot={0} />;
 };
 
 // --- Rifugio dei Pet: per ora solo il Master principale (2026-10-31) ---

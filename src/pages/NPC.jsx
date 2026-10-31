@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { useAuth } from '../AuthContext';
-import { useReadAfter } from '../utils/petReads';
+import ReadTracker from '../components/ReadTracker';
 import './NPC.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
@@ -26,7 +25,6 @@ export default function NPC() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomImg]);
-  const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   useParallaxScroll();
 
@@ -51,8 +49,6 @@ export default function NPC() {
     return () => unsub();
   }, []);
 
-  // Punti pet: ogni scheda NPC aperta paga una volta sola (server, 2026-10-31).
-  useReadAfter("npc", openNpc?.id, !!openNpc && !!currentUser);
 
   // Raggruppa per linkedCity; senza città → sezione "Erranti"
   const grouped = npcs.reduce((acc, npc) => {
@@ -186,6 +182,8 @@ export default function NPC() {
       )}
 
       {/* ── SCHEDA-VARCO: dettaglio del volto ── */}
+      {/* Punti pet: ogni scheda NPC letta paga una volta sola (server, 2026-10-31). */}
+      <ReadTracker kind="npc" id={openNpc?.id} active={!!openNpc} slot={1} />
       {openNpc && (
         <div className="nx-modale-overlay" onClick={() => setOpenNpc(null)}>
           <div className="nx-modale npc-scheda" role="dialog" aria-modal="true" aria-label={openNpc.name} onClick={(e) => e.stopPropagation()}>

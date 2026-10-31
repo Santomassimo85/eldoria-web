@@ -1,0 +1,21 @@
+/* Indicatore discreto della lettura in corso (ReadTracker.jsx). In alto a
+   destra, sotto la testata; due tracker insieme (pagina + scheda) si impilano. */
+.rt-pill {
+  position: fixed; z-index: 1060; right: 14px; top: calc(58px + var(--rt-slot, 0) * 44px);
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px;
+  background: rgba(var(--ossidiana-rgb, 13,10,10), .88); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .18);
+  border-radius: 99px; color: var(--osso, #ece5d6); font: 600 .82rem var(--font-ui, serif);
+  box-shadow: 0 4px 14px rgba(0,0,0,.35); pointer-events: none; animation: rt-in .3s ease-out;
+}
+.rt-ring {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem;
+  background:
+    radial-gradient(circle, rgba(var(--ossidiana-rgb, 13,10,10), 1) 55%, transparent 57%),
+    conic-gradient(var(--el, #e0782b) calc(var(--rt-p, 0) * 360deg), rgba(var(--osso-rgb, 236,229,214), .18) 0);
+  transition: background .4s;
+}
+.rt-pill.is-done { border-color: rgba(111, 207, 127, .7); }
+.rt-pill.is-done .rt-ring { background: #3d9a4c; color: #fff; }
+.rt-pill.is-done .rt-text { color: #b9f0c2; }
+@keyframes rt-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) { .rt-pill { top: calc(64px + var(--rt-slot, 0) * 42px); right: 10px; } }

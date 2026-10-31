@@ -252,6 +252,10 @@ service cloud.firestore {
       allow read: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
       allow write: if false;
     }
+    // Inizio delle letture in corso (ora del server): solo la function.
+    match /pet_read_sessions/{uid} {
+      allow read, write: if false;
+    }
 
     // ── Rifugio dei Pet (2026-10-31): pixel art e descrizioni delle 20 specie.
     // La leggono tutti i loggati (sprite in lotta), la scrive solo il Master.

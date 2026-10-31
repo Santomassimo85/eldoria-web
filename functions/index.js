@@ -1629,17 +1629,24 @@ exports.loginDaily = onCall(
 // sempre. Il registro è pet_reads/{uid}__{kind}__{id} (regole: write false):
 // esiste già → niente punti. Le letture dei riassunti pagate col vecchio
 // sistema (characters.petPointsSeen.summary_read) contano come già fatte.
+// In DUE TEMPI: action "start" segna l'inizio con l'ora del SERVER in
+// pet_read_sessions/{uid}.{kind} (una lettura per tipo alla volta), action
+// "finish" paga solo se da allora è passato il tempo minimo (readNeedMs, che
+// per le cronache dipende dalla lunghezza). Chi chiama la funzione a mano deve
+// comunque aspettare il tempo vero, cronaca per cronaca.
 const petReads = require("./petReads");
 exports.petReadReward = onCall(
   { region: "us-central1", timeoutSeconds: 20, memory: "256MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const action = request.data?.action === "start" ? "start" : "finish";
     const kind = String(request.data?.kind || "");
     const id = String(request.data?.id || "").slice(0, 200);
     if (!petReads.READ_POINTS[kind] || !id || id.includes("/")) throw new HttpsError("invalid-argument", "Lettura sconosciuta.");
     const db = admin.firestore();
     let title = "";
+    let words = 0;
     if (kind === "page") {
       title = petReads.READ_PAGES[id];
       if (!title) throw new HttpsError("invalid-argument", "Pagina sconosciuta.");
@@ -1648,21 +1655,40 @@ exports.petReadReward = onCall(
       if (!snap.exists) throw new HttpsError("not-found", "Non esiste.");
       const d = snap.data() || {};
       title = String(d.title || d.name || d.nome || id).slice(0, 120);
+      if (kind === "summary") words = petReads.wordCount(d.content);
     }
+    const need = petReads.readNeedMs(kind, words);
     const points = petReads.READ_POINTS[kind];
     const charRef = db.collection("characters").doc(uid);
     const readRef = db.collection("pet_reads").doc(`${uid}__${kind}__${id}`);
+    const sessRef = db.collection("pet_read_sessions").doc(uid);
+
+    if (action === "start") {
+      const rs = await readRef.get();
+      if (rs.exists) return { already: true, kind, id };
+      await sessRef.set({ [kind]: { id, startedAt: Date.now(), need } }, { merge: true });
+      return { already: false, kind, id, need, points };
+    }
+
     return db.runTransaction(async (tx) => {
-      const [cs, rs] = await Promise.all([tx.get(charRef), tx.get(readRef)]);
+      const [cs, rs, ss] = await Promise.all([tx.get(charRef), tx.get(readRef), tx.get(sessRef)]);
       if (rs.exists) return { already: true, kind, id };
       if (!cs.exists) throw new HttpsError("failed-precondition", "nochar");
       const c = cs.data();
       const legacy = kind === "summary" && (c.petPointsSeen?.summary_read || []).includes(id);
+      if (!legacy) {
+        const sess = ss.exists ? ss.data()?.[kind] : null;
+        // 1,5 s di margine per la rete; il tempo attivo del sito è sempre ≤ di quello vero.
+        if (!sess || sess.id !== id || Date.now() - Number(sess.startedAt || 0) < need - 1500) {
+          return { already: false, notYet: true, kind, id, need };
+        }
+      }
       tx.set(readRef, {
         uid, kind, id, title, name: c.name || "",
         points: legacy ? 0 : points, legacy,
         at: FieldValue.serverTimestamp(),
       });
+      tx.set(sessRef, { [kind]: FieldValue.delete() }, { merge: true });
       if (legacy) return { already: true, legacy: true, kind, id };
       const ledger = [
         { source: `read_${kind}`, label: `${petReads.KIND_LABEL[kind]}: ${title}`, amount: points, ts: new Date().toISOString(), resourceKey: id },

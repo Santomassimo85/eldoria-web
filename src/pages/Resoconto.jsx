@@ -16,11 +16,9 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { LoginTrack } from "../components/LoginRewards";
 import { loginState, monthLabel, romeMonthKey } from "../data/loginRewards";
-import { READ_PAGES, READ_POINTS, READ_KIND_LABEL } from "../data/petReads";
+import { READ_PAGES, READ_POINTS, READ_KIND_LABEL, PETS_PUBLIC } from "../data/petReads";
 import "./Resoconto.css";
 
-// Quando il Rifugio dei Pet aprirà a tutti: true.
-const PETS_PUBLIC = false;
 
 const fmtDay = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("it-IT", { day: "numeric", month: "long" }) : "—");
 const stripHtml = (t) => String(t || "").replace(/<[^>]*>/g, " ");
@@ -191,7 +189,7 @@ export default function Resoconto() {
                   <h2>📚 Letture e visite</h2>
                   <label className="rc-toggle"><input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} /> Solo quelle da fare</label>
                 </div>
-                <p className="rc-line">Ogni cronaca, NPC, luogo o pagina dà i punti <b>una volta sola</b>: cronaca {READ_POINTS.summary} pt, NPC {READ_POINTS.npc}, luogo {READ_POINTS.geo}, pagina {READ_POINTS.page}. Conta dopo qualche secondo che l'hai aperta.</p>
+                <p className="rc-line">Ogni cronaca, NPC, luogo o pagina dà i punti <b>una volta sola</b>: cronaca {READ_POINTS.summary} pt, NPC {READ_POINTS.npc}, luogo {READ_POINTS.geo}, pagina {READ_POINTS.page}. Conta se ci passi qualche secondo (la pagina in primo piano e tu attivo); le cronache vanno anche scorse almeno a metà abbondante. In alto a destra un cerchietto mostra la lettura in corso.</p>
                 {!catalog ? <p className="rc-sub">Carico l'elenco…</p> : (
                   ["summary", "npc", "geo", "page"].map((k) => (
                     <ReadGroup key={k} kind={k} items={catalog[k]} done={done} onlyMissing={onlyMissing} />

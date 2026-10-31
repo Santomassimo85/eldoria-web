@@ -37,5 +37,19 @@ export const READ_PAGES = [
 ];
 export const pageKeyOf = (path) => READ_PAGES.find((p) => p.path === path)?.key || null;
 
-// Secondi minimi prima che una lettura conti (si deve almeno aprirla davvero).
-export const READ_DWELL_MS = { summary: 15000, npc: 4000, geo: 4000, page: 3000 };
+/* Quanto tempo ATTIVO serve perché una lettura conti (2026-10-31). Leggero
+   apposta: leggere non è obbligatorio, è solo un invito. Cronaca = ~15% del
+   tempo di lettura stimato (250 parole al minuto), fra 12 e 40 secondi, e
+   bisogna scorrerla almeno al 60%. Il SERVER rifà lo stesso conto e paga
+   solo se dal suo "inizio" è passato davvero questo tempo. */
+export const READ_FIXED_MS = { npc: 5000, geo: 5000, page: 4000 };
+export const READ_SCROLL_NEED = { summary: 0.6 };
+export const wordCount = (html) => String(html || "").replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+export function readNeedMs(kind, words = 0) {
+  if (kind !== "summary") return READ_FIXED_MS[kind] || 5000;
+  return Math.round(Math.min(40000, Math.max(12000, (words / 250) * 60000 * 0.15)));
+}
+
+// Finché il Rifugio dei Pet è solo del Master, l'indicatore di lettura e la
+// parte "punti" del Resoconto li vede solo lui. Quando apre a tutti: true.
+export const PETS_PUBLIC = false;

@@ -8,7 +8,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
-import { useReadAfter } from '../utils/petReads';
+import ReadTracker from '../components/ReadTracker';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
 import './Riassunti.css';
 import './RiassuntoSingolo.css';
@@ -37,8 +37,6 @@ export default function RiassuntoSingolo() {
     const isMaster = isAdminEmail(currentUser?.email);
 
     const [summary, setSummary] = useState(null);
-    // Punti pet della lettura: una volta sola, lo decide il server (2026-10-31).
-    useReadAfter("summary", summary?.id, !!summary && !!currentUser);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -199,6 +197,8 @@ export default function RiassuntoSingolo() {
 
     return (
         <section className="rsx-page">
+            {/* Punti pet della lettura: una volta sola, lo decide il server (2026-10-31). */}
+            <ReadTracker kind="summary" id={summary?.id} active={!!summary} targetId="rs-read-body" slot={1} />
             <article className="nx-pannello rsx-scroll">
                 <div className="rsx-topbar">
                     <Link to="/riassunti" className="nx-pillola rsx-back">← Tutte le memorie</Link>
@@ -252,6 +252,7 @@ export default function RiassuntoSingolo() {
                 <div
                     className="rs-summary-html nx-prosa rsx-body"
                     onClick={handleLoreClick}
+                    id="rs-read-body"
                     dangerouslySetInnerHTML={{ __html: linkedHtml || summary.content }}
                 />
 

@@ -8,8 +8,7 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
-import { claimRead } from '../utils/petReads';
-import { READ_DWELL_MS } from '../data/petReads';
+import ReadTracker from '../components/ReadTracker';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
 import { partyById } from '../data/parties';
 import './Riassunti.css';
@@ -187,9 +186,10 @@ export default function Riassunti() {
     // entità mostrata nel popup interno (null = chiuso)
     const [lorePopup, setLorePopup] = useState(null);
 
+    // Cronaca aperta in lettura (punti pet, una volta sola: ReadTracker, 2026-10-31).
+    const [reading, setReading] = useState(null);
     const recordVisit = async (summaryId) => {
-        // Punti pet della lettura: una volta sola, lo decide il server (2026-10-31).
-        setTimeout(() => claimRead("summary", summaryId), READ_DWELL_MS.summary);
+        setReading(summaryId);
         if (isMaster) return;
         try {
             await updateDoc(doc(db, 'summaries', summaryId), {
@@ -460,6 +460,7 @@ export default function Riassunti() {
 
     return (
         <section className="riassunti-page">
+            <ReadTracker kind="summary" id={reading} active={!!reading} targetId={reading ? `rs-sum-${reading}` : undefined} slot={1} />
 
             {/* ── HERO = VARCO (GlacierHero): portale esagonale + testata a gradiente ── */}
             <GlacierHero
@@ -639,6 +640,7 @@ export default function Riassunti() {
                                                 titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
                                                 contentClass="summary-content-padding"
                                                 onOpen={() => recordVisit(summary.id)}
+                                                onClose={() => setReading((r) => (r === summary.id ? null : r))}
                                             >
                                                 {summary.date && (
                                                     <h2 className="summaryDate nx-kicker">{summary.date}</h2>
@@ -647,6 +649,7 @@ export default function Riassunti() {
                                                     <h4 className="Obia nx-meta">{summary.subTitle}</h4>
                                                 )}
                                                 <div
+                                                    id={`rs-sum-${summary.id}`}
                                                     className="rs-summary-html nx-prosa"
                                                     onClick={handleLoreClick}
                                                     dangerouslySetInnerHTML={{ __html: linkedContent[summary.id] || summary.content }}
