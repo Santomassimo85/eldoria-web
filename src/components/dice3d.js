@@ -211,7 +211,7 @@ export function roll3D(host, { value, dice = null, skin = "classic", durationMs 
 
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight, aspect = w / h;
-    renderer.setPixelRatio(pixel ? 0.14 : Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(pixel ? 0.4 : Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(w, h, false);
     camera.aspect = aspect;
     // sul telefono (verticale) il dado non deve riempire lo schermo; con più dadi ci si allontana
