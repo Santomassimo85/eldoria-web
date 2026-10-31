@@ -32,7 +32,7 @@ function ReadGroup({ kind, items, done, onlyMissing }) {
   const shown = onlyMissing ? items.filter((i) => !done.has(`${kind}:${i.id}`)) : items;
   const pct = items.length ? Math.round((got.length / items.length) * 100) : 0;
   return (
-    <section className="rc-group">
+    <div className="rc-group">
       <button type="button" className="rc-group-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="rc-group-title">{READ_KIND_LABEL[kind]}</span>
         <span className="rc-group-count">{got.length}/{items.length}</span>
@@ -56,7 +56,7 @@ function ReadGroup({ kind, items, done, onlyMissing }) {
           })}
         </ul>
       )}
-    </section>
+    </div>
   );
 }
 

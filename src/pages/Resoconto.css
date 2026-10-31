@@ -52,3 +52,8 @@
   .rc-list li { grid-template-columns: 22px 1fr auto; }
   .rc-list li > small:not(.rc-pts) { display: none; }
 }
+/* testo sempre chiaro (gli stili globali scurivano span e label) */
+.rc-page :where(p, li, span, label, small, b, strong) { color: inherit; }
+.rc-list li .rc-name { color: var(--osso); }
+.rc-list li.is-done .rc-name { color: var(--osso-2); }
+.rc-toggle, .rc-pick { color: var(--osso); }
