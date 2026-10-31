@@ -91,6 +91,8 @@ export default function DiceRollHost() {
           // Tiro SEGRETO (Officina): il dado rotola e si ferma, ma sulla faccia
           // resta una runa. Il numero lo conosce solo il Master.
           hidden: !!opts.hidden,
+          // pixel = dado 3D a blocchi (lotta dei pet, 2026-10-31)
+          pixel: !!opts.pixel,
           // La skin si legge al momento del tiro: rispecchia sempre la scelta corrente.
           skin: VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
           resolve: done,
@@ -136,7 +138,7 @@ export default function DiceRollHost() {
     load3D().then((m) => {
       if (!alive || !m) return;
       try {
-        m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent })
+        m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent, pixel: roll.pixel })
           .then(() => roll.resolve());
         playDiceRoll(ROLL3D_MS, dice?.length || 1);
       } catch (err) {

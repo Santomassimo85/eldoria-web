@@ -181,7 +181,7 @@ function simulate(frames, rx = 0, ry = 0.15) {
  * (vantaggio/svantaggio), si spegne quando è fermo; `name` = scritta sotto il dado.
  * Senza `dice` è il solito d20 singolo su `value`. Risolve quando i dadi sono fermi.
  */
-export function roll3D(host, { value, dice = null, skin = "classic", durationMs = 1350, accent = null }) {
+export function roll3D(host, { value, dice = null, skin = "classic", durationMs = 1350, accent = null, pixel = false }) {
   if (lostFlag || rendererDead()) { lostFlag = false; teardown(); }
   if (!renderer) setup();
   cancelAnimationFrame(raf);
@@ -197,7 +197,8 @@ export function roll3D(host, { value, dice = null, skin = "classic", durationMs 
   pool.forEach((d) => { d.mesh.visible = false; d.shadow.visible = false; });
 
   const el = renderer.domElement;
-  el.className = "dice3d-canvas";
+  // pixel = disegnato a bassa risoluzione e ingrandito a blocchi (lotta dei pet)
+  el.className = pixel ? "dice3d-canvas is-pixel" : "dice3d-canvas";
   if (el.parentNode !== host) host.appendChild(el);
 
   // Griglia: al massimo 3 per riga sul telefono in verticale, 5 sul largo.
@@ -210,7 +211,7 @@ export function roll3D(host, { value, dice = null, skin = "classic", durationMs 
 
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight, aspect = w / h;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(pixel ? 0.2 : Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(w, h, false);
     camera.aspect = aspect;
     // sul telefono (verticale) il dado non deve riempire lo schermo; con più dadi ci si allontana

@@ -20,10 +20,10 @@ import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
   eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
-  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf,
+  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, acOf, hitChance, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
@@ -35,6 +35,7 @@ import {
 } from "../utils/petPvp";
 import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS } from "../data/petBag";
 import PetFx from "./PetFx";
+import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import "./PetDen.css";
@@ -76,10 +77,12 @@ const Bar = ({ value, max, kind = "hp" }) => {
 };
 
 /* ── Mosse del pet: in lotta, innate e gradi I–VI ───────────── */
+const usesTxt = (m) => (usesOf(m) == null ? "usi ∞" : `${usesOf(m)} usi`);
+const accTxt = (m) => `${accMod(PET_DEX_MOVES[m].acc) >= 0 ? "+" : "−"}${Math.abs(accMod(PET_DEX_MOVES[m].acc))} al colpire`;
 const moveInfo = (m) => {
   const mv = PET_DEX_MOVES[m];
   const kind = moveCat(m) === "atk" ? "attacco" : "incantesimo";
-  return mv.power ? `${kind} · pot. ${mv.power} · ${mv.acc}% · PP ${mv.pp}` : `${kind} di stato · PP ${mv.pp}`;
+  return mv.power ? `${kind} · ${mv.dice} ${DMG_LABEL[damageKindOf(mv)].toLowerCase()} · ${accTxt(m)} · ${usesTxt(m)}` : `${kind} di stato · ${usesTxt(m)}`;
 };
 function MoveChip({ m, on, disabled, onClick, title }) {
   const mv = PET_DEX_MOVES[m];
@@ -87,7 +90,7 @@ function MoveChip({ m, on, disabled, onClick, title }) {
     <button type="button" className={`pd-mchip${on ? " is-on" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }}
       disabled={disabled} onClick={onClick} aria-pressed={on} title={title}>
       <b>{TYPE_ICON[mv.type]} {mv.name}</b>
-      <small>{moveInfo(m)}{!mv.power ? "" : ` · ${DMG_ICON[damageKindOf(mv)]}`}</small>
+      <small>{moveInfo(m)}</small>
     </button>
   );
 }
@@ -456,10 +459,12 @@ function Manual() {
           <li>Combatte un pet per parte. Ogni turno scegli una mossa oppure cambi pet: il cambio consuma il turno.</li>
           <li>Se il tuo pet va a terra, scegli il prossimo senza perdere il turno. Vince chi resta in piedi.</li>
           <li>Agisce prima chi è più veloce (alcune mosse rapide passano davanti a tutto).</li>
-          <li><b>Si tira il dado, come in D&amp;D</b>: ogni attacco è d20 + bonus per colpire contro la <b>Classe Armatura</b> (CA) del bersaglio. 20 naturale = colpo critico, 1 naturale = mancato. La precisione della mossa diventa un bonus o un malus (100% = +2, 90% = 0, 75% = −3).</li>
+          <li><b>Si tira il dado, come in D&amp;D e in Arena</b>: ogni attacco è d20 + bonus per colpire contro la <b>Classe Armatura</b> (CA) del bersaglio. 20 naturale = colpo critico (dadi del danno doppi), 1 naturale = mancato. Ogni mossa ha il suo bonus o malus al colpire.</li>
+          <li><b>Danni in dadi</b>: ogni attacco fa i suoi dadi (2d6 da fuoco, 3d10 tagliente…) + il modificatore del pet. Salendo di livello i dadi aumentano, come i trucchetti: ×1,5 al Lv 9, ×2 al 17, ×3 al 33. Poi contano elemento, resistenze e stesso elemento (×1,25).</li>
+          <li><b>Usi</b>: gli attacchi base (grado I) si usano quanto vuoi (∞); le altre mosse hanno pochi usi per lotta (6 al grado II, 4 al III, 3 al IV, 2 al V, 1 al VI; cure 2). Sul tasto vedi quanti ne restano.</li>
           <li>Le mosse di stato sul nemico (veleno, sonno, maledizioni) chiedono a lui un <b>tiro salvezza</b> contro la CD di chi le lancia.</li>
           <li>Alcune mosse alzano la CA (Rintanarsi, Scudo della Fede, Pelle di Pietra…, fino a +4); l'acido la corrode. Chi è <b>avvelenato</b> perde PF ogni turno e attacca con <b>svantaggio</b> (tira due d20, tiene il peggiore).</li>
-          <li>Competenza e CA crescono insieme ogni 12 livelli: un attacco normale va a segno circa 3 volte su 4. Sul tasto di ogni mossa vedi la probabilità.</li>
+          <li>Competenza e CA crescono insieme ogni 12 livelli: un attacco normale va a segno circa 3 volte su 4. Sul tasto di ogni mossa vedi il tiro per colpire e la CA del bersaglio (o la CD del tiro salvezza).</li>
           <li>Le mosse hanno potenza, precisione e usi (PP). Le mosse di stato potenziano, curano, avvelenano, scottano o intontiscono.</li>
           <li>Le mosse dello stesso elemento del pet colpiscono un po' più forte. Delle 4 mosse innate, la terza e la quarta si sbloccano al livello 5 e 10.</li>
           <li>Effetti e suoni: ogni mossa ha la sua forma (pestone, morso, artigli, frusta, pungiglione, carica, spuntoni, raggio, soffio…) con i colori e il suono del suo elemento. La musica e gli effetti si spengono dai tasti 🎵 e 🔊 in alto nella lotta.</li>
@@ -1214,20 +1219,40 @@ const STATUS_TXT = { burn: "🔥 Scottato", poison: "☠ Avvelenato (svantaggio)
 const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
 
 // Mostra le righe di un turno una alla volta (con il loro suono).
+// Come in Arena: prima di ogni tiro per colpire o tiro salvezza rotola il
+// d20 3D (qui a pixel), poi si vede la riga con l'effetto.
+const diceLabel = (r, ev) => (r.kind === "save"
+  ? `${r.who}: tiro salvezza ${sgn(r.mod)} contro CD ${r.vs}`
+  : `${ev.att} · ${ev.mname}: d20 ${sgn(r.mod)} contro CA ${r.vs}${r.dis ? " (svantaggio)" : ""}`);
 function useLinePlayer() {
   const [queue, setQueue] = useState([]);
   const [shown, setShown] = useState(null);
   const [seq, setSeq] = useState(0);
+  const first = useRef(false);
+  useEffect(() => { preloadDice3D(); }, []);
   useEffect(() => {
     if (!queue.length) return undefined;
-    const t = setTimeout(() => { setShown(queue[0]); setSeq((n) => n + 1); setQueue((q) => q.slice(1)); }, STEP_MS);
-    return () => clearTimeout(t);
+    let alive = true;
+    const next = queue[0];
+    const t = setTimeout(async () => {
+      const r = next.kind === "move" ? next.roll : null;
+      if (r) {
+        await showD20Roll(r.d, { label: diceLabel(r, next), pixel: true,
+          dice: r.dis ? [{ value: r.d, name: "tiene" }, { value: r.d2, name: "scarta", dim: true }] : undefined });
+      }
+      if (!alive) return;
+      setShown(next); setSeq((n) => n + 1); setQueue((q) => q.slice(1));
+    }, first.current ? 60 : STEP_MS);
+    first.current = false;
+    return () => { alive = false; clearTimeout(t); };
   }, [queue]);
   useEffect(() => { sfx(shown); }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
   const play = (events) => {
-    setShown(events[0] || null);
-    setSeq((n) => n + 1);
-    setQueue(events.slice(1));
+    if (!events.length) return;
+    // finché il primo dado rotola il campo resta com'era prima del turno
+    first.current = true;
+    setShown({ kind: "wait", snap: events[0].snap, text: "" });
+    setQueue(events);
   };
   return { shown, seq, busy: queue.length > 0, play };
 }
@@ -1272,7 +1297,6 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
     const hp = snap ? snap[side].hp[i] : f.hp;
     return <span key={i} className={`pd-ball${hp > 0 ? "" : " is-out"}`} />;
   });
-  const roll = shown?.kind === "move" ? shown.roll : null;
   const hud = (side, V) => (
     <div className={`pd-hud pd-hud--${side}`}>
       <div className="pd-hud-name"><b>{V.f.name}</b><small>Lv {V.f.level}</small></div>
@@ -1306,15 +1330,6 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
           </div>
         </div>
         {hud("p", P)}
-        {roll && (
-          <div key={`r${seq}`} className={`pd-roll${roll.d === 20 ? " is-crit" : roll.d === 1 ? " is-fumble" : ""}${roll.ok ? " is-ok" : " is-ko"}`}>
-            <span className="pd-roll-die">{roll.d}</span>
-            <span className="pd-roll-math">
-              {roll.kind === "save" ? `TS ${sgn(roll.mod)} = ${roll.total} vs CD ${roll.vs}` : `${sgn(roll.mod)} = ${roll.total} vs CA ${roll.vs}`}
-              {roll.dis && <small>svantaggio ({roll.d}/{roll.d2})</small>}
-            </span>
-          </div>
-        )}
         <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
       </div>
       <div className="pd-console">
@@ -1349,19 +1364,29 @@ function BattleControls({ battle, busy, art, onAct, forced }) {
   }
   return (
     <div className="pd-actions">
+      <p className="pd-fine pd-uses-head">Usi rimasti in questa lotta · gli attacchi base sono infiniti (∞)</p>
       <div className="pd-movegrid">
         {Object.keys(me.pp).map((m) => {
           const mv = PET_DEX_MOVES[m];
-          const hc = foe ? Math.round(hitChance(me, foe, m) * 100) : 100;
           const self = !mv.power && !(mv.effect?.foe || mv.effect?.burn || mv.effect?.poison || mv.effect?.stun);
+          const toHit = me.toHit + accMod(mv.acc);
+          const dc = me.dcBase + accMod(mv.acc);
+          const left = me.pp[m];
+          const max = usesOf(m);
           return (
-            <button key={m} type="button" className="pd-move" style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || me.pp[m] <= 0} onClick={() => act({ kind: "move", move: m })}>
-              <b>{mv.name}</b>
-              <small>{TYPE_ICON[mv.type]} {mv.power ? `pot. ${mv.power}` : "stato"} · PP {me.pp[m]}/{mv.pp}{self ? "" : ` · 🎲 ${hc}%`}</small>
+            <button key={m} type="button" className={`pd-move${left === 0 ? " is-spent" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || left === 0} onClick={() => act({ kind: "move", move: m })}>
+              <span className="pd-move-top"><b>{mv.name}</b><em className={`pd-uses${left === INFINITE ? " is-inf" : ""}`}>{left === INFINITE ? "∞" : `${left}/${max}`}</em></span>
+              <small>
+                {TYPE_ICON[mv.type]} {mv.power ? `${diceText(m, me.level)}${me.atkMod ? sgn(me.atkMod) : ""} ${DMG_LABEL[damageKindOf(mv)].toLowerCase()}` : "stato"}
+                {mv.power ? ` · 🎯 d20 ${sgn(toHit)} vs CA ${foe ? acOf(foe) : "?"}` : self ? "" : ` · TS CD ${dc}`}
+              </small>
             </button>
           );
         })}
       </div>
+      {Object.values(me.pp).every((v) => v === 0) && (
+        <button type="button" className="pd-btn" disabled={busy} onClick={() => act({ kind: "move", move: "zampata" })}>✊ Zampata disperata (usi finiti)</button>
+      )}
       <button type="button" className="pd-btn pd-switch-open" disabled={busy || !bench.length} onClick={() => setView("switch")}>
         🔄 Cambia pet {bench.length ? `(${bench.length})` : ""}
       </button>

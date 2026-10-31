@@ -8,8 +8,9 @@
      il prossimo senza perdere il turno.
    - Ordine: priorità della mossa, poi velocità (pari = a caso).
    - Danno = potenza × ATK/DEF × fattore di livello × tipo ×
-     resistenze D&D (metà / doppio / zero) × STAB 1,25 × critico 1,5
-     × caso 0,85–1.
+     (2026-10-31) dadi della mossa (più dadi salendo di livello) +
+     modificatore, × stadi Attacco/Difesa × elemento × resistenze D&D
+     (metà / doppio / zero) × stesso elemento 1,25; critico = dadi doppi.
    - Tiri alla D&D (2026-10-31): ogni attacco tira il d20 contro la CA
      (20 naturale = critico, 1 = mancato); le mosse di stato sul nemico
      chiedono un tiro salvezza contro la CD. Avvelenato = svantaggio
@@ -20,7 +21,7 @@
      da un seme (withSeed), così il turno si risolve uguale ovunque.
    ============================================================ */
 
-import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool, dndOf, accMod } from "./petDex";
+import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool, dndOf, accMod, usesOf, DMG_LABEL } from "./petDex";
 import { charmFx } from "./petBag";
 
 let rnd = Math.random;
@@ -31,7 +32,18 @@ export function withSeed(seed, fn) {
   try { return fn(); } finally { rnd = prev; }
 }
 const d20 = () => 1 + Math.floor(rnd() * 20);
-const DMG_SCALE = 1.25; // compensa i colpi mancati del d20: le lotte durano come prima
+
+/* Dadi del danno al livello del pet: il numero di dadi cresce come i
+   trucchetti di D&D (×1,5 al Lv 9, ×2 al 17, ×3 al 33, ×4 al 49). */
+export function diceAt(moveId, level) {
+  const m = PET_DEX_MOVES[moveId];
+  if (!m?.dice) return null;
+  const [n, d] = m.dice.split("d").map(Number);
+  return { n: Math.max(1, Math.round(n * (0.9375 + 0.0625 * (level || 1)))), d };
+}
+export const diceText = (moveId, level) => { const dd = diceAt(moveId, level); return dd ? `${dd.n}d${dd.d}` : ""; };
+// Usi rimasti: -1 = infiniti (così si salva anche su Firestore).
+export const INFINITE = -1;
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -50,7 +62,8 @@ export function statsAt(speciesKey, level, boost = 1) {
   const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
   const L = clamp(level || 1, 1, MAX_LEVEL);
   const grow = (v, k) => Math.round(v * (1 + (L - 1) * k) * boost);
-  return { hp: grow(b.hp, 0.08), atk: grow(b.atk, 0.06), def: grow(b.def, 0.06), spd: grow(b.spd, 0.05) };
+  // PF ×0,8: coi tiri per colpire (circa 3 su 4 a segno) le lotte durano come prima
+  return { hp: Math.round(grow(b.hp, 0.08) * 0.8), atk: grow(b.atk, 0.06), def: grow(b.def, 0.06), spd: grow(b.spd, 0.05) };
 }
 
 export const movesAt = (speciesKey, level) =>
@@ -109,13 +122,14 @@ export function makeFighter(pet, boost = 1) {
     type: sp?.type || "neutral", level: pet.level || 1,
     maxHp: hp, hp, atk: st.atk, def: st.def, spd: st.spd,
     // D&D: CA, bonus per colpire, CD delle mosse di stato, tiro salvezza (+ amuleto)
+    atkMod: d.atkMod, dmgBoost: boost,
     ac: d.ac + (cf.ac || 0), toHit: d.toHit + (cf.hit || 0), dcBase: d.dcBase + (cf.hit || 0), save: d.save + (cf.save || 0),
     critOn: cf.crit || 20, resist: cf.resist || null, berry: cf.berry || 0, spd0: cf.spd || 0,
     charm: pet.charm?.id || null,
     stages: { atk: 0, def: 0, spd: cf.spd || 0, ac: 0 },
     status: null,          // { kind: "burn"|"poison", turns }
     stunned: false,
-    pp: Object.fromEntries(battleMoves(pet).map((m) => [m, PET_DEX_MOVES[m].pp])),
+    pp: Object.fromEntries(battleMoves(pet).map((m) => [m, usesOf(m) ?? INFINITE])),
   };
 }
 
@@ -161,10 +175,16 @@ function emit(b, out, ev) { out.push({ ...ev, snap: snapOf(b) }); }
 export function previewDamage(att, def, moveId) {
   const m = PET_DEX_MOVES[moveId];
   if (!m || !m.power) return 0;
+  const dd = diceAt(moveId, att.level);
+  const avg = Math.max(1, (dd.n * (dd.d + 1)) / 2 + (att.atkMod || 0));
+  return avg * damageMult(att, def, m);
+}
+
+// Moltiplicatori del danno: stadi di Attacco/Difesa, elemento, resistenze, stesso elemento ×1,25.
+function damageMult(att, def, m) {
   const tm = typeMultiplier(m.type, def.type) * resistOf(def, damageKindOf(m));
   const stab = m.type === att.type && m.type !== "neutral" ? 1.25 : 1;
-  const lvl = 0.18 + att.level * 0.012;
-  return m.power * (eff(att, "atk") / Math.max(1, eff(def, "def"))) * lvl * tm * stab * DMG_SCALE;
+  return (stageMult(att.stages.atk || 0) / stageMult(def.stages.def || 0)) * tm * stab * (att.dmgBoost || 1);
 }
 
 // Probabilità che la mossa vada a segno (tiro per colpire o salvezza fallita).
@@ -210,7 +230,7 @@ function applyMove(b, side, moveId, out) {
     emit(b, out, { side, kind: "stun", text: `${att.name} è intontito e non riesce a muoversi!` });
     return;
   }
-  if (att.pp[moveId] != null) att.pp[moveId] = Math.max(0, att.pp[moveId] - 1);
+  if (att.pp[moveId] > 0) att.pp[moveId] -= 1;
   const e = m.effect || {};
   const targetsFoe = alive(foe) && (m.power > 0 || e.foe || e.burn || e.poison || e.stun);
   let roll = null;
@@ -230,20 +250,28 @@ function applyMove(b, side, moveId, out) {
     const saved = d === 20 || (d !== 1 && d + foe.save >= vs);
     roll = { kind: "save", d, mod: foe.save, total: d + foe.save, vs, ok: !saved, who: foe.name };
   }
-  emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, fx: m.fx, roll, text: `${att.name} usa ${m.name}!${rollText(roll)}` });
+  emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, fx: m.fx, roll, att: att.name, mname: m.name, text: `${att.name} usa ${m.name}!${rollText(roll)}` });
   if (roll && !roll.ok) {
     const txt = roll.kind === "save" ? `…${foe.name} resiste all'effetto!` : roll.d === 1 ? "…1 naturale: mancato!" : "…ma manca il bersaglio!";
     emit(b, out, { side, kind: "miss", text: txt });
     return;
   }
-  let dealt = 0;
+  let dealt = 0, dmgTxt = "";
   const rm = resistOf(foe, damageKindOf(m));
   if (m.power > 0 && alive(foe) && rm === 0) {
     emit(b, out, { side, kind: "immune", target: other(side), text: `${foe.name} è immune: nessun danno!` });
   } else if (m.power > 0 && alive(foe)) {
     const crit = !!roll?.crit;
-    const raw = previewDamage(att, foe, moveId) * (crit ? 1.5 : 1) * (0.85 + rnd() * 0.15);
-    dealt = Math.max(1, Math.round(raw));
+    // dadi del danno (col critico si tirano il doppio dei dadi, come in D&D) + modificatore
+    const dd = diceAt(moveId, att.level);
+    const nd = dd.n * (crit ? 2 : 1);
+    let sum = 0;
+    for (let i = 0; i < nd; i++) sum += 1 + Math.floor(rnd() * dd.d);
+    const base = Math.max(1, sum + (att.atkMod || 0));
+    const mult = damageMult(att, foe, m);
+    dealt = Math.max(1, Math.round(base * mult));
+    const multTxt = Math.abs(mult - 1) > 0.01 ? ` ×${String(Math.round(mult * 100) / 100).replace(".", ",")}` : "";
+    dmgTxt = ` (🎲 ${nd}d${dd.d} ${sign(att.atkMod || 0)} = ${base}${multTxt}, ${DMG_LABEL[damageKindOf(m)].toLowerCase()})`;
     foe.hp = Math.max(0, foe.hp - dealt);
     const tm = typeMultiplier(m.type, foe.type);
     const note = [
@@ -251,7 +279,7 @@ function applyMove(b, side, moveId, out) {
       rm > 1 ? ` ${foe.name} è vulnerabile!` : rm < 1 ? ` ${foe.name} resiste.` : "",
     ].join("");
     emit(b, out, { side, kind: "hit", dmg: dealt, crit, tm: tm * rm, target: other(side),
-      text: `${foe.name} perde ${dealt} PF.${crit ? " Colpo critico!" : ""}${note}` });
+      text: `${foe.name} perde ${dealt} PF${dmgTxt}.${crit ? " Colpo critico: dadi doppi!" : ""}${note}` });
     berryCheck(b, other(side), out);
   }
   const chance = (c) => rnd() < (c ?? 1);
@@ -405,7 +433,7 @@ export function playTurn(battle, action, actionE = null) {
    migliore, si cura quando è bassa · 3 = come 2 e cambia pet quando il
    confronto di tipo è sfavorevole. */
 function usableMoves(f) {
-  const list = Object.keys(f.pp).filter((m) => f.pp[m] > 0);
+  const list = Object.keys(f.pp).filter((m) => f.pp[m] !== 0);
   return list.length ? list : ["zampata"];
 }
 
@@ -497,7 +525,7 @@ export function towerFloor(floor) {
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   // i primi piani sono un tutorial: avversari più deboli del normale
-  const enemyBoost = n <= 3 ? 0.75 + (n - 1) * 0.05 : 1 + Math.floor((n - 1) / 10) * 0.06;
+  const enemyBoost = n <= 3 ? 0.65 + (n - 1) * 0.05 : 1 + Math.floor((n - 1) / 10) * 0.06;
   const boss = n % 5 === 0;
   return { floor: n, team, aiLevel, enemyBoost, boss };
 }

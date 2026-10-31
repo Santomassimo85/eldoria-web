@@ -468,3 +468,10 @@
 .pd-board li { display: flex; justify-content: space-between; gap: 8px; color: var(--pd-ink); font-size: .9rem; }
 .pd-board li b { font-family: var(--font-num); color: var(--pd-acc); }
 .pd-board li.is-me { font-weight: 700; }
+
+/* ── tasti delle mosse: usi rimasti ── */
+.pd-move-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.pd-uses { font: 700 .78rem var(--font-num); font-style: normal; padding: 0 6px; border-radius: 99px; background: rgba(0, 0, 0, .35); color: #f3ead8; }
+.pd-uses.is-inf { color: #f2c14e; }
+.pd-move.is-spent { opacity: .45; }
+.pd-uses-head { margin: 0 0 2px; }

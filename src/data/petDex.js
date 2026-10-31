@@ -128,7 +128,13 @@ export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "com
      { self: {ac: +n} }                +n alla Classe Armatura (da -4 a +4)
      { foe:  {atk|def|spd|ac: -n}, chance }  indebolisce il bersaglio
      { heal: 0.5 } · { drain: 0.5 } · { recoil: 0.25 } */
-const M = (name, type, power, acc, pp, fx, extra = {}) => ({ name, type, power, acc, pp, fx, ...extra });
+/* Danni in dadi (2026-10-31): la "potenza" resta come misura interna e
+   diventa dadi alla D&D (40 = 2d6, 90 = 3d10, 120 = 4d10…). In lotta il
+   numero di dadi cresce col livello come i trucchetti (×1,5 al Lv 9, ×2 al
+   17, ×3 al 33: diceAt in petEngine.js) e si somma il modificatore. */
+const DICE_BY_POWER = [[35, "1d12"], [40, "2d6"], [45, "3d4"], [55, "2d8"], [65, "2d10"], [70, "2d12"], [75, "3d8"], [80, "4d6"], [90, "3d10"], [95, "5d6"], [100, "4d8"], [115, "6d6"], [999, "4d10"]];
+const diceFor = (p) => (p ? DICE_BY_POWER.find(([x]) => p <= x)[1] : null);
+const M = (name, type, power, acc, pp, fx, extra = {}) => ({ name, type, power, acc, pp, fx, dice: diceFor(power), ...extra });
 export const PET_DEX_MOVES = {
   // ── fisiche (neutre: chiunque le può imparare) ──
   zampata:      M("Zampata", "neutral", 40, 100, 30, "stomp", { lv: 1 }),
@@ -318,6 +324,20 @@ export const PET_DEX_MOVES = {
    In lotta porta MAX_MOVES mosse, scelte fra le innate sbloccate e
    quelle imparate. */
 export const MOVE_GRADES = [1, 4, 8, 14, 22, 32];
+
+/* Usi per lotta (2026-10-31, al posto dei PP): gli attacchi base (grado I)
+   sono infiniti; gli altri hanno pochi usi, meno quanto più è alto il grado.
+   null = infiniti. */
+const USES_BY_GRADE = [null, null, 6, 4, 3, 2, 1];
+export function usesOf(moveId) {
+  const m = PET_DEX_MOVES[moveId];
+  if (!m) return null;
+  if (m.uses !== undefined) return m.uses;
+  if (m.effect?.heal) return 2;
+  if (!m.lv) return 3;
+  if (m.lv === 1 && m.power) return null;
+  return USES_BY_GRADE[m.lv] ?? 1;
+}
 
 /* ── TIRI ALLA D&D (2026-10-31) ─────────────────────────────
    Ogni attacco tira il d20: d20 + bonus per colpire contro la CA del
