@@ -80,7 +80,7 @@ import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import CovoOverlay from "./components/CovoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
-import { isAdminEmail, isMainMaster } from "./utils/roles";
+import { isAdminEmail } from "./utils/roles";
 import PageTabs from "./components/PageTabs";
 
 // CONFIG
@@ -259,10 +259,10 @@ const PageVisitReward = () => {
   return <ReadTracker kind="page" id={key} active={!!key && !!currentUser} slot={0} />;
 };
 
-// --- Rifugio dei Pet: per ora solo il Master principale (2026-10-31) ---
+// --- Rifugio dei Pet: aperto a tutti i loggati (2026-10-31) ---
 const PetNavLink = ({ onClick, className }) => {
   const { currentUser } = useAuth();
-  if (!isMainMaster(currentUser?.email)) return null;
+  if (!currentUser) return null;
   return <NavLink to="/pet" onClick={onClick} className={className}>🐾 Pet</NavLink>;
 };
 

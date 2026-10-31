@@ -1,9 +1,9 @@
 /* ============================================================
    IL RIFUGIO DEI PET (2026-10-31) — /pet
    Nuovo sistema pet alla Pokémon (dati in data/petDex.js, lotta in
-   data/petEngine.js, scritture in utils/petDen.js). Per ora SOLO il
-   Master principale lo vede (isMainMaster): agli altri la pagina dice
-   che apre presto e il menu non lo mostra.
+   data/petEngine.js, scritture in utils/petDen.js). Aperto a tutti i
+   giocatori dal 2026-10-31; Bestiario, Giocatori e gli strumenti di
+   prova restano del Master principale (isMainMaster).
    Hub a piastrelle → sezioni (ognuna con "← Torna all'hub"): Squadra ·
    Nido · Bottega delle uova · Torre · Pet Dex · Manuale · Bestiario e
    Giocatori (solo Master: pixel art con Gemini, reset di punti e pet).
@@ -166,25 +166,25 @@ export default function PetDen() {
   const giftsTried = useRef(false);
 
   useEffect(() => {
-    if (!uid || !master) return undefined;
+    if (!uid) return undefined;
     return onSnapshot(doc(db, "characters", uid), (s) => setChar(s.exists() ? s.data() : {}));
-  }, [uid, master]);
+  }, [uid]);
   useEffect(() => {
-    if (!master) return undefined;
+    if (!uid) return undefined;
     return onSnapshot(collection(db, "pet_dex"), (snap) => {
       const m = {};
       snap.forEach((d) => { m[d.id] = d.data(); });
       setArt(m);
     }, () => setArt({}));
-  }, [master]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!uid || !master) return undefined;
+    if (!uid) return undefined;
     const sub = (field, set) => onSnapshot(query(collection(db, "pet_matches"), where(field, "==", uid)),
       (snap) => set(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => set([]));
     const u1 = sub("a", setMA), u2 = sub("b", setMB);
     return () => { u1(); u2(); };
-  }, [uid, master]);
+  }, [uid]);
   const matches = useMemo(() => {
     const all = [...mA, ...mB.filter((m) => m.a !== m.b)];
     const t = (m) => m.updatedAt?.toMillis?.() || 0;
@@ -217,18 +217,6 @@ export default function PetDen() {
 
   if (!currentUser) {
     return <section className="pd-page"><div className="pd-closed"><h1>Il Rifugio dei Pet</h1><p>Accedi per entrare.</p></div></section>;
-  }
-  if (!master) {
-    return (
-      <section className="pd-page">
-        <div className="pd-closed">
-          <span className="pd-closed-egg" aria-hidden="true">🥚</span>
-          <h1>Il Rifugio dei Pet</h1>
-          <p>Qualcosa si muove nelle uova… Il Rifugio aprirà presto.</p>
-          <Link to="/" className="pd-btn">Torna al Covo</Link>
-        </div>
-      </section>
-    );
   }
   if (!char) return <section className="pd-page"><p className="pd-loading">Il Rifugio si sveglia…</p></section>;
 
@@ -293,7 +281,6 @@ export default function PetDen() {
           <span className="pd-wallet-l">punti pet</span>
         </div>
       </header>
-      {master && <p className="pd-master-note">👁 Visibile solo a te: i giocatori vedono "aprirà presto".</p>}
       {msg && <p className="pd-msg" onClick={() => setMsg("")}>{msg}</p>}
 
       {sec === "hub" ? (

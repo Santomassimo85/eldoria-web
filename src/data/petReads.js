@@ -50,6 +50,6 @@ export function readNeedMs(kind, words = 0) {
   return Math.round(Math.min(40000, Math.max(12000, (words / 250) * 60000 * 0.15)));
 }
 
-// Finché il Rifugio dei Pet è solo del Master, l'indicatore di lettura e la
-// parte "punti" del Resoconto li vede solo lui. Quando apre a tutti: true.
-export const PETS_PUBLIC = false;
+// Rifugio dei Pet aperto a tutti (2026-10-31): indicatore di lettura e
+// parte "punti" del Resoconto visibili a ogni giocatore.
+export const PETS_PUBLIC = true;
