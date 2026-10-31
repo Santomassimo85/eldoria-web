@@ -15,7 +15,8 @@ import {
   FOUNDRY_TYPES, FOUNDRY_DAMAGE_TYPES, FOUNDRY_ACTION_TYPES,
   FOUNDRY_WEAPON_PROPS, FOUNDRY_ARMOR_TYPES, FOUNDRY_ABILITIES,
 } from "../utils/foundryMap";
-import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
+// "Oggetto Pet" = un oggetto della Bisaccia del Domatore (nuovo Rifugio, 2026-10-31)
+import { PET_BAG as PET_ITEMS, BAG_ORDER as ITEMS_ORDER } from "../data/petBag";
 import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 import { PET_DEX, PET_DEX_ORDER, RARITY as PET_RARITY, TYPE_ICON as PET_TYPE_ICON, EGGS as PET_EGGS, EGG_ORDER as PET_EGG_ORDER } from "../data/petDex";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
@@ -52,7 +53,7 @@ const ITEM_TYPES = [
   // Rifugio dei Pet (2026-10-31): "Uovo Pet" = un uovo elementale, "Pet" =
   // una creatura. Alla consegna finiscono in characters.petGifts e il
   // Rifugio li ritira (le uova nel nido, i pet in collezione).
-  "Uovo Pet", "Pet",
+  "Uovo Pet", "Pet", "Oggetto Pet",
   "Pacchetto Carte", "Carta TCG",
 ];
 

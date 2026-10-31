@@ -145,6 +145,12 @@ export function sfx(ev) {
   const t = c.currentTime + 0.02;
   switch (ev.kind) {
     case "move":
+      if (ev.roll) { // il d20 che rotola, poi l'esito (squillo se 20, tonfo se 1)
+        [0, 0.05, 0.11].forEach((d) => hiss(t + d, { f: 2800 + Math.random() * 1500, q: 3, vol: 0.12, dur: 0.03 }));
+        if (ev.roll.d === 20) [784, 1046, 1318].forEach((f, i) => tone(t + 0.15 + i * 0.06, { f, type: "square", vol: 0.08, dur: 0.12 }));
+        if (ev.roll.d === 1) tone(t + 0.15, { f: 200, to: 90, vol: 0.12, dur: 0.25 });
+      }
+      if (ev.roll && !ev.roll.ok) break; // mancato: niente colpo (il fruscio lo fa la riga "miss")
       (SHAPES[ev.fx] || SHAPES.orb)(t);
       if (ev.mtype && ev.mtype !== "neutral" && IMPACT_AT[ev.fx] != null) ELEMENT[ev.mtype]?.(t + IMPACT_AT[ev.fx]);
       break;

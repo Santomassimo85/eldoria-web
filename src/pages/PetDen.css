@@ -414,3 +414,57 @@
 .pd-grade-head small { color: var(--pd-mute); }
 .pd-grade.is-locked .pd-grade-head b { opacity: .6; }
 .pd-newmove { margin-left: 8px; padding: 1px 7px; border-radius: 99px; background: #f2b552; color: #2a1606; font: 700 .7rem var(--font-ui); vertical-align: middle; }
+
+/* ── tiro del d20 in campo ── */
+.pd-ac { padding: 1px 6px; border-radius: 3px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .2); font: 700 .72rem var(--font-num); color: #f3ead8; }
+.pd-charmchip { font-size: .9rem; }
+.pd-hud-owner { font: 600 .72rem var(--font-sc); color: var(--pd-mute); margin-top: -3px; }
+.pd-roll { position: absolute; z-index: 4; left: 50%; top: 42%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(10, 8, 8, .82); border: 2px solid #f3ead8; border-radius: 4px; pointer-events: none; animation: pd-roll-in .85s steps(8, end) forwards; image-rendering: pixelated; }
+.pd-roll-die { width: 40px; height: 40px; display: grid; place-items: center; background: #f3ead8; color: #1a1210; font: 800 1.25rem var(--font-num); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); animation: pd-roll-spin .35s steps(4, end); }
+.pd-roll-math { display: grid; font: 700 .82rem var(--font-num); color: #f3ead8; white-space: nowrap; }
+.pd-roll-math small { font: 400 .7rem var(--font-ui); color: #c9bfad; }
+.pd-roll.is-ok { border-color: #6fcf7f; }
+.pd-roll.is-ko { border-color: #e0624f; }
+.pd-roll.is-crit .pd-roll-die { background: #f2c14e; box-shadow: 0 0 0 3px #8a4b1f; }
+.pd-roll.is-fumble .pd-roll-die { background: #e0624f; color: #fff; }
+@keyframes pd-roll-in { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
+@keyframes pd-roll-spin { 0% { transform: rotate(-180deg) scale(.5); } 100% { transform: none; } }
+.pd-holding { margin: 2px 0; font-size: .82rem; color: var(--pd-ink); }
+
+/* ── sfide ── */
+.pd-mlist { display: grid; gap: 6px; }
+.pd-mrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--pd-s2); border: 1px solid rgba(255, 255, 255, .1); border-left: 3px solid transparent; border-radius: 4px; color: var(--pd-ink); }
+.pd-mrow b { color: var(--pd-ink); }
+.pd-mrow.is-hot { border-left-color: #f2b552; }
+.pd-mrow.is-past { opacity: .8; }
+.pd-mrow-who { display: grid; gap: 2px; }
+.pd-mrow-who small { color: var(--pd-mute); }
+.pd-mrow-actions { display: flex; gap: 6px; }
+.pd-wait { display: grid; gap: 6px; justify-items: center; text-align: center; color: var(--pd-ink); }
+.pd-wait small { color: var(--pd-mute); }
+
+/* ── bisaccia ── */
+.pd-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.pd-item { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px; background: var(--pd-s2); border: 1px solid rgba(255, 255, 255, .1); border-top: 3px solid #8a8f99; border-radius: 4px; }
+.pd-item--rare { border-top-color: #3d8fd1; }
+.pd-item--epic { border-top-color: #a45ad8; }
+.pd-item--legendary { border-top-color: #e0782b; }
+.pd-item-icon { font-size: 2rem; line-height: 1; }
+.pd-item-body { display: grid; gap: 4px; align-content: start; }
+.pd-item-body h3 { margin: 0; font: 700 1rem var(--font-head); color: var(--pd-ink); }
+.pd-item-body h3 small { color: var(--pd-acc); font-family: var(--font-num); }
+.pd-item-body p { margin: 0; font-size: .85rem; color: var(--pd-mute); }
+.pd-baguse { display: grid; gap: 6px; padding: 8px; background: rgba(0, 0, 0, .25); border-radius: 4px; }
+.pd-baguse label { display: grid; gap: 3px; font-size: .82rem; color: var(--pd-ink); }
+.pd-baguse select, .pd-filters select { min-height: 34px; background: var(--ossidiana, #0d0a0a); color: var(--pd-ink); border: 1px solid rgba(255, 255, 255, .2); border-radius: 4px; padding: 4px 6px; font: inherit; }
+.pd-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.pd-chipbtn { min-height: 34px; padding: 0 12px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .2); background: rgba(0, 0, 0, .25); color: var(--pd-ink); font: 600 .85rem var(--font-ui); cursor: pointer; }
+.pd-chipbtn.is-on { background: #f2b552; color: #2a1606; border-color: #f2b552; }
+
+/* ── classifica della torre ── */
+.pd-board { margin-top: 12px; padding: 10px 12px; background: rgba(0, 0, 0, .22); border-radius: 4px; }
+.pd-board h3 { margin: 0 0 6px; font: 700 1rem var(--font-sc); color: var(--pd-ink); }
+.pd-board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.pd-board li { display: flex; justify-content: space-between; gap: 8px; color: var(--pd-ink); font-size: .9rem; }
+.pd-board li b { font-family: var(--font-num); color: var(--pd-acc); }
+.pd-board li.is-me { font-weight: 700; }

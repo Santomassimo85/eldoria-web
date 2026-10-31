@@ -369,7 +369,9 @@ export default function Mercato() {
             ? { petGifts: arrayUnion({ species: item.petPayload.species, from: "mercato", itemId: item.id, at: new Date().toISOString() }) }
             : item.petPayload?.kind === "petEgg" && item.petPayload.egg
               ? { petGifts: arrayUnion({ egg: item.petPayload.egg, from: "mercato", itemId: item.id, at: new Date().toISOString() }) }
-              : {}),
+              : item.petPayload?.kind === "petItem" && item.petPayload.itemKey
+                ? { petGifts: arrayUnion({ item: item.petPayload.itemKey, from: "mercato", itemId: item.id, at: new Date().toISOString() }) }
+                : {}),
         });
 
         const buyerName = (winnerBidData && winnerBidData.charName) ? winnerBidData.charName : "Un eroe";

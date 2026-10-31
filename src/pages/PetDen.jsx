@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, deleteField, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { collection, deleteField, doc, getDocs, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
@@ -20,16 +20,20 @@ import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
   eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
-  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf,
+  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, acOf, hitChance, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
   recordTowerResult, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
-  learnMove, setMoveset,
+  learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
 } from "../utils/petDen";
+import {
+  createChallenge, acceptChallenge, declineChallenge, cancelChallenge, submitAction, forfeit, pendingSide, sidesOf, flipBattle, flipEvent,
+} from "../utils/petPvp";
+import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS } from "../data/petBag";
 import PetFx from "./PetFx";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
@@ -153,6 +157,9 @@ export default function PetDen() {
   const [tab, setTab] = useState("hub");
   const [msg, setMsg] = useState("");
   const [battle, setBattle] = useState(null); // { floor, plan, teamIds }
+  const [pvpId, setPvpId] = useState(null);   // sfida aperta
+  const [mA, setMA] = useState([]);
+  const [mB, setMB] = useState([]);
   const giftsTried = useRef(false);
 
   useEffect(() => {
@@ -168,6 +175,19 @@ export default function PetDen() {
     }, () => setArt({}));
   }, [master]);
 
+  useEffect(() => {
+    if (!uid || !master) return undefined;
+    const sub = (field, set) => onSnapshot(query(collection(db, "pet_matches"), where(field, "==", uid)),
+      (snap) => set(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => set([]));
+    const u1 = sub("a", setMA), u2 = sub("b", setMB);
+    return () => { u1(); u2(); };
+  }, [uid, master]);
+  const matches = useMemo(() => {
+    const all = [...mA, ...mB.filter((m) => m.a !== m.b)];
+    const t = (m) => m.updatedAt?.toMillis?.() || 0;
+    return all.sort((x, y) => t(y) - t(x));
+  }, [mA, mB]);
+
   const den = useMemo(() => denOf(char), [char]);
   const points = Number(char?.petPoints) || 0;
 
@@ -181,7 +201,8 @@ export default function PetDen() {
       const names = (l) => l.map((k) => PET_DEX[k]?.name).join(", ");
       setMsg([
         r.got.length && `🎁 Arrivati dal Mercato: ${names(r.got)}.`,
-        r.eggs?.length && `🥚 Nel nido: ${r.eggs.map((e) => EGGS[e]?.name).join(", ")}.`,
+        r.eggs?.filter((e) => !e.startsWith("item:")).length && `🥚 Nel nido: ${r.eggs.filter((e) => !e.startsWith("item:")).map((e) => EGGS[e]?.name).join(", ")}.`,
+        r.eggs?.some((e) => e.startsWith("item:")) && `🎒 Nella bisaccia: ${r.eggs.filter((e) => e.startsWith("item:")).map((e) => PET_BAG[e.slice(5)]?.name).join(", ")}.`,
         r.refunded.length && `Già al completo: ${names(r.refunded)} → convertiti in punti pet.`,
       ].filter(Boolean).join(" "));
     }).catch((e) => setMsg(e.message));
@@ -224,6 +245,14 @@ export default function PetDen() {
     );
   }
 
+  if (pvpId) {
+    return (
+      <section className="pd-page pd-page--battle">
+        <PvpBattle key={pvpId} uid={uid} id={pvpId} art={art} onExit={() => { setPvpId(null); setTab("sfide"); }} />
+      </section>
+    );
+  }
+
   if (!den.starter) {
     return (
       <section className="pd-page">
@@ -237,7 +266,9 @@ export default function PetDen() {
     squadra: { title: "Squadra e collezione", sub: `${den.pets.length} pet` },
     nido: { title: "Il nido", sub: `${den.eggs.length}/${MAX_EGGS} uova` },
     uova: { title: "Bottega delle uova" },
-    torre: { title: "Torre dei Cuccioli" },
+    torre: { title: "Torre dei Cuccioli", sub: "infinita" },
+    sfide: { title: "Sfide fra domatori" },
+    bisaccia: { title: "Bisaccia del Domatore", sub: "oggetti dei pet" },
     dex: { title: "Pet Dex" },
     manuale: { title: "Manuale" },
     bestiario: { title: "Bestiario del Master" },
@@ -263,7 +294,7 @@ export default function PetDen() {
       {msg && <p className="pd-msg" onClick={() => setMsg("")}>{msg}</p>}
 
       {sec === "hub" ? (
-        <Hub den={den} art={art} points={points} master={master} go={go} />
+        <Hub den={den} art={art} points={points} master={master} go={go} matches={matches} uid={uid} />
       ) : (
         <>
           <SectionHead title={SECTIONS[sec].title} sub={SECTIONS[sec].sub} onBack={back} />
@@ -273,8 +304,10 @@ export default function PetDen() {
           {sec === "dex" && <DexTab den={den} art={art} />}
           {sec === "manuale" && <Manual />}
           {sec === "torre" && (
-            <TowerTab den={den} art={art} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
+            <TowerTab uid={uid} den={den} art={art} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
           )}
+          {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={setPvpId} />}
+          {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} run={run} />}
           {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
           {sec === "giocatori" && <PlayersAdmin run={run} />}
           <div className="pd-secfoot"><button type="button" className="pd-back" onClick={back}>← Torna all'hub</button></div>
@@ -294,7 +327,7 @@ function SectionHead({ title, sub, onBack }) {
   );
 }
 
-function Hub({ den, art, points, master, go }) {
+function Hub({ den, art, points, master, go, matches = [], uid }) {
   const mascot = den.pets.find((p) => p.id === den.mascot);
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   const owned = PET_DEX_ORDER.filter((k) => countOf(den, k) > 0).length;
@@ -303,6 +336,12 @@ function Hub({ den, art, points, master, go }) {
     { key: "nido", icon: "🥚", title: "Il nido", sub: den.eggs.length ? `${den.eggs.length} uova da schiudere` : "nessun uovo", hot: den.eggs.length > 0 },
     { key: "uova", icon: "🛒", title: "Bottega delle uova", sub: `${points} punti pet da spendere` },
     { key: "torre", icon: "🗼", title: "Torre dei Cuccioli", sub: `piano ${den.tower.floor} · record ${den.tower.best || 0}` },
+    (() => {
+      const turn = matches.filter((m) => m.status === "active" && pendingSide(m, uid)).length;
+      const inc = matches.filter((m) => m.status === "pending" && m.b === uid).length;
+      return { key: "sfide", icon: "⚔", title: "Sfide fra domatori", sub: turn || inc ? [turn && `${turn} tocca a te`, inc && `${inc} nuove sfide`].filter(Boolean).join(" · ") : `${den.pvp.wins} vinte · ${den.pvp.losses} perse`, hot: turn + inc > 0 };
+    })(),
+    { key: "bisaccia", icon: "🎒", title: "Bisaccia del Domatore", sub: `${Object.values(den.items).reduce((a, n) => a + n, 0)} oggetti · amuleti, pergamene` },
     { key: "dex", icon: "📖", title: "Pet Dex", sub: `${owned}/${PET_DEX_ORDER.length} specie scoperte` },
     { key: "manuale", icon: "📜", title: "Manuale", sub: "regole, elementi, uova, torre" },
     ...(master ? [
@@ -417,6 +456,10 @@ function Manual() {
           <li>Combatte un pet per parte. Ogni turno scegli una mossa oppure cambi pet: il cambio consuma il turno.</li>
           <li>Se il tuo pet va a terra, scegli il prossimo senza perdere il turno. Vince chi resta in piedi.</li>
           <li>Agisce prima chi è più veloce (alcune mosse rapide passano davanti a tutto).</li>
+          <li><b>Si tira il dado, come in D&amp;D</b>: ogni attacco è d20 + bonus per colpire contro la <b>Classe Armatura</b> (CA) del bersaglio. 20 naturale = colpo critico, 1 naturale = mancato. La precisione della mossa diventa un bonus o un malus (100% = +2, 90% = 0, 75% = −3).</li>
+          <li>Le mosse di stato sul nemico (veleno, sonno, maledizioni) chiedono a lui un <b>tiro salvezza</b> contro la CD di chi le lancia.</li>
+          <li>Alcune mosse alzano la CA (Rintanarsi, Scudo della Fede, Pelle di Pietra…, fino a +4); l'acido la corrode. Chi è <b>avvelenato</b> perde PF ogni turno e attacca con <b>svantaggio</b> (tira due d20, tiene il peggiore).</li>
+          <li>Competenza e CA crescono insieme ogni 12 livelli: un attacco normale va a segno circa 3 volte su 4. Sul tasto di ogni mossa vedi la probabilità.</li>
           <li>Le mosse hanno potenza, precisione e usi (PP). Le mosse di stato potenziano, curano, avvelenano, scottano o intontiscono.</li>
           <li>Le mosse dello stesso elemento del pet colpiscono un po' più forte. Delle 4 mosse innate, la terza e la quarta si sbloccano al livello 5 e 10.</li>
           <li>Effetti e suoni: ogni mossa ha la sua forma (pestone, morso, artigli, frusta, pungiglione, carica, spuntoni, raggio, soffio…) con i colori e il suono del suo elemento. La musica e gli effetti si spengono dai tasti 🎵 e 🔊 in alto nella lotta.</li>
@@ -449,6 +492,23 @@ function Manual() {
         <p>Come in D&amp;D, ogni creatura ha le sue: <b>resistenza</b> = metà danni, <b>vulnerabilità</b> = danni doppi, <b>immunità</b> = nessun danno (e niente scottature o veleno se è immune a fuoco o veleno). Gli attacchi fisici sono contundenti (pestoni), perforanti (morsi) o taglienti (artigli). Le trovi nel Pet Dex e nei dettagli di ogni pet.</p>
       </section>
       <section>
+        <h3>Sfide fra domatori</h3>
+        <ul>
+          <li>Dal Rifugio → Sfide scegli un altro domatore e lo sfidi con la tua squadra; lui accetta con la sua.</li>
+          <li>Si gioca a turni anche a distanza: ognuno sceglie la mossa quando può, il turno parte quando avete scelto tutti e due. Arriva una notifica per la sfida, l'accettazione e la fine.</li>
+          <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. Sconfitta: un terzo dei PE. Abbandonare conta come sconfitta.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Bisaccia del Domatore</h3>
+        <ul>
+          <li><b>Amuleti</b>: li tiene un pet e valgono per alcune lotte (CA, colpire, PF, velocità, tiri salvezza, critico col 19, resistenza a un elemento, bacca che cura).</li>
+          <li><b>Pietra dell'Esperienza</b>: tanti PE in un colpo. <b>Caramella Rara</b>: +1 livello, rarissima (solo dalla Torre).</li>
+          <li><b>Pergamene</b>: insegnano una mossa di qualunque elemento, anche un incantesimo di gelo a un pet di fuoco, ma il pet deve <b>dimenticarne</b> un'altra. Massimo {SCROLL_SLOTS} mosse da pergamena per pet.</li>
+          <li>Si trovano nella Torre, vincendo sfide e nella bottega della Bisaccia (coi punti pet), e anche all'asta del Mercato Nero.</li>
+        </ul>
+      </section>
+      <section>
         <h3>Uova</h3>
         <ul>
           <li>Ogni uovo elementale contiene un pet del suo elemento: Comune {ELEMENT_ODDS.common}%, Raro {ELEMENT_ODDS.rare}%, Epico {String(ELEMENT_ODDS.epic).replace(".", ",")}%, Leggendario {String(ELEMENT_ODDS.legendary).replace(".", ",")}%.</li>
@@ -461,7 +521,8 @@ function Manual() {
         <ul>
           <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
           <li>Se perdi ritenti lo stesso piano, e la squadra prende comunque un terzo dei PE.</li>
-          <li>Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
+          <li>È infinita e uguale per tutti: il piano 3 è sempre lo stesso piano 3. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
+          <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica mostra fin dove è arrivato ognuno.</li>
         </ul>
       </section>
       <section>
@@ -584,7 +645,9 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         <dl className="pd-stats pd-stats--row">
           <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
           <div><dt>DIF</dt><dd>{st.def}</dd></div><div><dt>VEL</dt><dd>{st.spd}</dd></div>
+          <div><dt>CA</dt><dd>{dndOf(pet.species, pet.level).ac}</dd></div><div><dt>Colpire</dt><dd>+{dndOf(pet.species, pet.level).toHit}</dd></div>
         </dl>
+        {pet.charm && PET_BAG[pet.charm.id] && <p className="pd-holding">{PET_BAG[pet.charm.id].icon} Tiene {PET_BAG[pet.charm.id].name} · {pet.charm.left} lotte</p>}
         <div className="pd-card-actions">
           <button type="button" className="pd-btn" onClick={onToggle} disabled={!inTeam && !canAdd}>
             {inTeam ? "Togli dalla squadra" : canAdd ? "In squadra" : "Squadra piena"}
@@ -864,10 +927,10 @@ function DexTab({ den, art }) {
 }
 
 /* ── Torre ────────────────────────────────────────────────── */
-function TowerTab({ den, art, onFight }) {
+function TowerTab({ uid, den, art, onFight }) {
   const floor = den.tower.floor || 1;
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
-  const plan = towerFloor(floor, team[0] ? PET_DEX[team[0].species]?.type : null);
+  const plan = towerFloor(floor);
   const upcoming = [floor + 1, floor + 2, floor + 3].map(towerFloor);
   return (
     <div className="pd-tab">
@@ -886,7 +949,7 @@ function TowerTab({ den, art, onFight }) {
               <div key={t.id} className="pd-foe">
                 <PetSprite species={t.species} art={art} size={72} flip />
                 <span>{PET_DEX[t.species].name}</span>
-                <small>Lv {t.level} · {TYPE_ICON[PET_DEX[t.species].type]}</small>
+                <small>Lv {t.level} · {TYPE_ICON[PET_DEX[t.species].type]} · CA {dndOf(t.species, t.level).ac}</small>
                 <ResLine species={t.species} compact />
               </div>
             ))}
@@ -894,7 +957,7 @@ function TowerTab({ den, art, onFight }) {
           <button type="button" className="pd-btn pd-btn--main pd-btn--big" disabled={!team.length} onClick={() => onFight(plan)}>
             ⚔ Sali al piano {floor}
           </button>
-          <p className="pd-fine">Vinci e passi al piano dopo. Perdi e ritenti lo stesso piano (la squadra prende comunque un po' di PE). A ogni piano gli avversari salgono di livello e diventano più furbi.</p>
+          <p className="pd-fine">La torre non finisce mai: ogni piano è sempre uguale per tutti, con avversari diversi e sempre più forti. Vinci e passi al piano dopo; perdi e ritenti lo stesso piano (la squadra prende comunque un po' di PE). Fin dove arrivi lo dice la classifica. Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e 1% a ogni piano).</p>
         </div>
         <div className="pd-tower-next">
           <h3>Più in alto…</h3>
@@ -906,15 +969,407 @@ function TowerTab({ den, art, onFight }) {
             </div>
           ))}
           <p className="pd-fine">I tuoi in squadra: {team.map((p) => `${p.nick || PET_DEX[p.species].name} Lv ${p.level}`).join(", ") || "nessuno"}</p>
+          <TowerBoard uid={uid} />
         </div>
       </div>
     </div>
   );
 }
 
+/* ── Sfide fra giocatori ──────────────────────────────────── */
+const MATCH_LABEL = { pending: "in attesa", active: "in corso", done: "conclusa", declined: "rifiutata", cancelled: "annullata" };
+function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
+  const [players, setPlayers] = useState(null);
+  useEffect(() => {
+    getDocs(collection(db, "characters")).then((snap) => setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .filter((c) => c.name && (c.petDen?.team || []).length && !isHiddenChar(c) && (c.id !== uid || master))
+      .sort((a, b) => a.name.localeCompare(b.name)))).catch(() => setPlayers([]));
+  }, [uid, master]);
+  const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+  const myName = char?.name || "Un domatore";
+  const challenge = (c) => window.confirm(`Sfidare ${c.id === uid ? "te stesso (prova)" : c.name} con la tua squadra attuale?`)
+    && run(() => createChallenge({ uid, name: myName, den, foeUid: c.id, foeName: c.id === uid ? `${myName} (2)` : c.name }), "Sfida inviata!");
+  const by = (st) => matches.filter((m) => m.status === st);
+  const incoming = by("pending").filter((m) => m.b === uid);
+  const outgoing = by("pending").filter((m) => m.a === uid && m.b !== uid);
+  const active = by("active");
+  const done = matches.filter((m) => ["done", "declined", "cancelled"].includes(m.status)).slice(0, 12);
+  const foeOf = (m) => (m.a === uid ? m.bName : m.aName);
+  return (
+    <div className="pd-tab">
+      <p className="pd-fine">Sfida un altro domatore con la tua squadra (fino a {MAX_TEAM} pet). Si gioca a turni: ognuno sceglie la sua mossa quando può, anche a distanza di ore. Vittoria = PE alla squadra e +{PVP_POINTS} punti pet (le prime {PVP_DAILY} vittorie del giorno); chi perde prende un terzo dei PE. Le statistiche: {den.pvp.wins} vinte · {den.pvp.losses} perse.</p>
+      {incoming.length > 0 && (
+        <>
+          <h2 className="pd-h2">Sfide ricevute</h2>
+          <div className="pd-mlist">
+            {incoming.map((m) => (
+              <div key={m.id} className="pd-mrow is-hot">
+                <span><b>{m.aName}</b> ti sfida · {(m.teams?.p || []).map((p) => `${PET_DEX[p.species]?.icon} Lv ${p.level}`).join(" ")}</span>
+                <span className="pd-mrow-actions">
+                  <button type="button" className="pd-btn pd-btn--main" disabled={!team.length} onClick={() => run(() => acceptChallenge(m.id, uid).then(() => { unlockAudio(); openMatch(m.id); }))}>Accetta</button>
+                  {m.a !== uid && <button type="button" className="pd-btn pd-btn--ghost" onClick={() => run(() => declineChallenge(m.id), "Sfida rifiutata.")}>Rifiuta</button>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {active.length > 0 && (
+        <>
+          <h2 className="pd-h2">In corso</h2>
+          <div className="pd-mlist">
+            {active.map((m) => {
+              const mineTurn = !!pendingSide(m, uid);
+              return (
+                <div key={m.id} className={`pd-mrow${mineTurn ? " is-hot" : ""}`}>
+                  <span>contro <b>{foeOf(m)}</b> · turno {(m.seq || 0) + 1} · {mineTurn ? "✨ tocca a te" : "aspetti l'altro"}</span>
+                  <button type="button" className="pd-btn pd-btn--main" onClick={() => { unlockAudio(); openMatch(m.id); }}>Entra</button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {outgoing.length > 0 && (
+        <>
+          <h2 className="pd-h2">Sfide inviate</h2>
+          <div className="pd-mlist">
+            {outgoing.map((m) => (
+              <div key={m.id} className="pd-mrow">
+                <span>a <b>{m.bName}</b> · in attesa che accetti</span>
+                <button type="button" className="pd-btn pd-btn--ghost" onClick={() => run(() => cancelChallenge(m.id), "Sfida annullata.")}>Annulla</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <h2 className="pd-h2">Lancia una sfida <small>la tua squadra: {team.map((p) => `${p.nick || PET_DEX[p.species].name} Lv ${p.level}`).join(", ") || "vuota"}</small></h2>
+      {players === null ? <p className="pd-loading">Cerco i domatori…</p> : !players.length ? <p className="pd-empty">Nessun altro domatore ha ancora una squadra.</p> : (
+        <div className="pd-mlist">
+          {players.map((c) => {
+            const d = denOf(c);
+            const t = d.team.map((id) => d.pets.find((p) => p.id === id)).filter(Boolean);
+            return (
+              <div key={c.id} className="pd-mrow">
+                <span className="pd-mrow-who">
+                  <b>{c.id === uid ? "Te stesso (prova)" : c.name}</b>
+                  <small>{t.map((p) => `${PET_DEX[p.species]?.icon} Lv ${p.level}`).join(" ")} · torre {d.tower.best || 0}</small>
+                </span>
+                <button type="button" className="pd-btn" disabled={!team.length} onClick={() => challenge(c)}>⚔ Sfida</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {done.length > 0 && (
+        <>
+          <h2 className="pd-h2">Ultime sfide</h2>
+          <div className="pd-mlist">
+            {done.map((m) => {
+              const mine = sidesOf(m, uid);
+              const res = m.status !== "done" ? MATCH_LABEL[m.status] : m.a === m.b ? "prova" : mine.includes(m.winner) ? "🏆 vinta" : "persa";
+              return (
+                <div key={m.id} className="pd-mrow is-past">
+                  <span>contro <b>{foeOf(m)}</b> · {res}{m.forfeit ? " (abbandono)" : ""}</span>
+                  {m.status === "done" && <button type="button" className="pd-btn pd-btn--ghost" onClick={() => openMatch(m.id)}>Rivedi</button>}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Bisaccia del Domatore: oggetti posseduti e bottega ──── */
+function BagUse({ id, den, onDone, run, uid }) {
+  const it = PET_BAG[id];
+  const [petId, setPetId] = useState(den.pets[0]?.id || "");
+  const [forget, setForget] = useState("");
+  const pet = den.pets.find((p) => p.id === petId);
+  const known = pet ? knownMoves(pet) : [];
+  const go = () => {
+    if (!pet) return;
+    const name = pet.nick || PET_DEX[pet.species].name;
+    if (it.kind === "charm") {
+      if (pet.charm && !window.confirm(`${name} tiene già ${PET_BAG[pet.charm.id]?.name}: si perde. Continuare?`)) return;
+      return run(() => giveCharm(uid, pet.id, id), `${name} tiene ${it.name}.`).then(onDone);
+    }
+    if (it.kind === "scroll") {
+      if (!forget) return;
+      return run(() => teachScroll(uid, pet.id, id, forget), `${name} dimentica ${PET_DEX_MOVES[forget].name} e impara ${PET_DEX_MOVES[it.move].name}!`).then(onDone);
+    }
+    return run(() => applyGrowthItem(uid, pet.id, id), `${it.name} usata su ${name}!`).then(onDone);
+  };
+  return (
+    <div className="pd-baguse">
+      <label>Su quale pet?
+        <select value={petId} onChange={(e) => { setPetId(e.target.value); setForget(""); }}>
+          {den.pets.map((p) => <option key={p.id} value={p.id}>{p.nick || PET_DEX[p.species].name} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
+        </select>
+      </label>
+      {it.kind === "scroll" && pet && (
+        known.includes(it.move) ? <p className="pd-fine">La conosce già.</p> : (
+          <label>Quale mossa dimentica?
+            <select value={forget} onChange={(e) => setForget(e.target.value)}>
+              <option value="">— scegli —</option>
+              {known.map((m) => <option key={m} value={m}>{TYPE_ICON[PET_DEX_MOVES[m].type]} {PET_DEX_MOVES[m].name}{(pet.tms || []).includes(m) ? " (pergamena)" : ""}</option>)}
+            </select>
+          </label>
+        )
+      )}
+      <button type="button" className="pd-btn pd-btn--main" disabled={!pet || (it.kind === "scroll" && (!forget || known.includes(it.move)))} onClick={go}>Usa</button>
+      <button type="button" className="pd-btn pd-btn--ghost" onClick={onDone}>Annulla</button>
+    </div>
+  );
+}
+
+function BagTab({ uid, den, points, run }) {
+  const [using, setUsing] = useState(null);
+  const [shopKind, setShopKind] = useState("charm");
+  const [shopEl, setShopEl] = useState("all");
+  const owned = BAG_ORDER.filter((k) => den.items[k] > 0);
+  const holders = den.pets.filter((p) => p.charm && PET_BAG[p.charm.id]);
+  const shop = BAG_ORDER.filter((k) => {
+    const it = PET_BAG[k];
+    if (!it.price) return false;
+    if (shopKind === "scroll") return it.kind === "scroll" && (shopEl === "all" || PET_DEX_MOVES[it.move].type === shopEl);
+    return shopKind === "charm" ? it.kind === "charm" : it.kind === "xp";
+  });
+  const row = (k, buy) => {
+    const it = PET_BAG[k];
+    const mv = it.move && PET_DEX_MOVES[it.move];
+    return (
+      <article key={k} className={`pd-item pd-item--${it.rarity}`}>
+        <span className="pd-item-icon" aria-hidden="true">{it.icon}</span>
+        <div className="pd-item-body">
+          <h3>{it.name} {!buy && <small>×{den.items[k]}</small>}</h3>
+          <p>{it.desc}{it.fights ? ` Dura ${it.fights} lotte.` : ""}</p>
+          {mv && <small className="pd-fine">{TYPE_ICON[mv.type]} {moveInfo(it.move)}</small>}
+          {buy ? (
+            <button type="button" className="pd-btn" disabled={points < it.price} onClick={() => window.confirm(`Comprare ${it.name} per ${it.price} punti pet?`) && run(() => buyItem(uid, k), `${it.name} nella bisaccia!`)}>Compra · {it.price} pt</button>
+          ) : using === k ? (
+            <BagUse id={k} den={den} uid={uid} run={run} onDone={() => setUsing(null)} />
+          ) : (
+            <button type="button" className="pd-btn pd-btn--main" onClick={() => setUsing(k)}>{it.kind === "charm" ? "Fai tenere" : it.kind === "scroll" ? "Insegna" : "Usa"}</button>
+          )}
+        </div>
+      </article>
+    );
+  };
+  return (
+    <div className="pd-tab">
+      <p className="pd-fine">Amuleti da far tenere ai pet (valgono per alcune lotte, Torre o sfide), pietre e caramelle per crescere, pergamene per insegnare mosse di QUALUNQUE elemento al posto di un'altra (massimo {SCROLL_SLOTS} per pet). La Caramella Rara non si compra: esce solo dalla Torre.</p>
+      <h2 className="pd-h2">Nella bisaccia <small>{owned.reduce((a, k) => a + den.items[k], 0)} oggetti</small></h2>
+      {owned.length ? <div className="pd-items">{owned.map((k) => row(k, false))}</div> : <p className="pd-empty">La bisaccia è vuota. Gli oggetti escono dalla Torre (Guardiani, ogni 10 piani), dalle sfide vinte e dalla bottega qui sotto.</p>}
+      {holders.length > 0 && (
+        <>
+          <h2 className="pd-h2">Amuleti in uso</h2>
+          <ul className="pd-ledger">
+            {holders.map((p) => <li key={p.id}><span>{PET_BAG[p.charm.id].icon} {p.nick || PET_DEX[p.species].name} tiene {PET_BAG[p.charm.id].name}</span><b>{p.charm.left}</b><small>lotte</small></li>)}
+          </ul>
+        </>
+      )}
+      <h2 className="pd-h2">Bottega degli oggetti <small>{points} punti pet</small></h2>
+      <div className="pd-filters">
+        {[["charm", "Amuleti"], ["xp", "Esperienza"], ["scroll", "Pergamene"]].map(([k, l]) => (
+          <button key={k} type="button" className={`pd-chipbtn${shopKind === k ? " is-on" : ""}`} aria-pressed={shopKind === k} onClick={() => setShopKind(k)}>{l}</button>
+        ))}
+        {shopKind === "scroll" && (
+          <select value={shopEl} onChange={(e) => setShopEl(e.target.value)} aria-label="Elemento">
+            <option value="all">Tutti gli elementi</option>
+            {[...ELEMENTS, "neutral"].map((el) => <option key={el} value={el}>{TYPE_ICON[el]} {TYPE_LABEL[el]}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="pd-items">{shop.map((k) => row(k, true))}</div>
+    </div>
+  );
+}
+
+/* ── Classifica della Torre ───────────────────────────────── */
+function TowerBoard({ uid }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    getDocs(collection(db, "characters")).then((snap) => setRows(snap.docs.map((d) => ({ id: d.id, name: d.data().name, best: d.data().petDen?.tower?.best || 0, hidden: isHiddenChar(d.data()) }))
+      .filter((r) => r.name && r.best > 0 && !r.hidden).sort((a, b) => b.best - a.best).slice(0, 20))).catch(() => setRows([]));
+  }, []);
+  if (!rows) return null;
+  return (
+    <div className="pd-board">
+      <h3>🏆 Classifica della Torre</h3>
+      {!rows.length ? <p className="pd-fine">Nessuno ha ancora superato un piano.</p> : (
+        <ol>
+          {rows.map((r, i) => <li key={r.id} className={r.id === uid ? "is-me" : ""}><span>{["🥇", "🥈", "🥉"][i] || `${i + 1}.`} {r.name}</span><b>piano {r.best}</b></li>)}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 /* ── LOTTA ────────────────────────────────────────────────── */
 const STEP_MS = 850;
-const STATUS_TXT = { burn: "🔥 Scottato", poison: "☠ Avvelenato", stun: "💫 Intontito" };
+const STATUS_TXT = { burn: "🔥 Scottato", poison: "☠ Avvelenato (svantaggio)", stun: "💫 Intontito" };
+const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
+
+// Mostra le righe di un turno una alla volta (con il loro suono).
+function useLinePlayer() {
+  const [queue, setQueue] = useState([]);
+  const [shown, setShown] = useState(null);
+  const [seq, setSeq] = useState(0);
+  useEffect(() => {
+    if (!queue.length) return undefined;
+    const t = setTimeout(() => { setShown(queue[0]); setSeq((n) => n + 1); setQueue((q) => q.slice(1)); }, STEP_MS);
+    return () => clearTimeout(t);
+  }, [queue]);
+  useEffect(() => { sfx(shown); }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
+  const play = (events) => {
+    setShown(events[0] || null);
+    setSeq((n) => n + 1);
+    setQueue(events.slice(1));
+  };
+  return { shown, seq, busy: queue.length > 0, play };
+}
+
+function AudioToggles() {
+  const [prefs, setPrefs] = useState(audioPrefs);
+  useEffect(() => onAudioPrefs(setPrefs), []);
+  return (
+    <span className="pd-audio">
+      <button type="button" className={`pd-audio-btn${prefs.musicOn ? "" : " is-off"}`} onClick={() => setMusicOn(!prefs.musicOn)}
+        aria-pressed={prefs.musicOn} title={prefs.musicOn ? "Spegni la musica" : "Accendi la musica"}>{prefs.musicOn ? "🎵" : "🔇"}<small>Musica</small></button>
+      <button type="button" className={`pd-audio-btn${prefs.sfxOn ? "" : " is-off"}`} onClick={() => setSfxOn(!prefs.sfxOn)}
+        aria-pressed={prefs.sfxOn} title={prefs.sfxOn ? "Spegni gli effetti" : "Accendi gli effetti"}>{prefs.sfxOn ? "🔊" : "🔈"}<small>Effetti</small></button>
+    </span>
+  );
+}
+
+// Campo di lotta: HUD (con CA), sprite, effetti, dado del tiro e testo.
+function BattleScreen({ battle, player, art, top, children, labels = {} }) {
+  const { shown, seq, busy } = player;
+  const fieldRef = useRef(null);
+  const spotP = useRef(null), spotE = useRef(null);
+  const snap = busy ? (shown?.snap || null) : null;
+  const sideView = (side) => {
+    const s = battle.sides[side];
+    const idx = snap ? snap[side].active : s.active;
+    const f = s.team[idx];
+    const hp = snap ? snap[side].hp[idx] : f.hp;
+    const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.stunned ? "stun" : null));
+    return { f, hp, status, idx };
+  };
+  const P = sideView("p"), E = sideView("e");
+  const hitSide = shown?.kind === "hit" ? shown.target : null;
+  const lunge = shown?.kind === "move" ? LUNGE_FX[shown.fx] : null;
+  const actCls = (side) => {
+    if (!shown) return "";
+    if (lunge && shown.side === side) return ` is-${lunge}`;
+    if (shown.kind === "move" && ["stomp", "dash", "spikes"].includes(shown.fx) && shown.side !== side) return " is-shaken";
+    return "";
+  };
+  const balls = (side) => battle.sides[side].team.map((f, i) => {
+    const hp = snap ? snap[side].hp[i] : f.hp;
+    return <span key={i} className={`pd-ball${hp > 0 ? "" : " is-out"}`} />;
+  });
+  const roll = shown?.kind === "move" ? shown.roll : null;
+  const hud = (side, V) => (
+    <div className={`pd-hud pd-hud--${side}`}>
+      <div className="pd-hud-name"><b>{V.f.name}</b><small>Lv {V.f.level}</small></div>
+      {labels[side] && <div className="pd-hud-owner">{labels[side]}</div>}
+      <div className="pd-hud-chips">
+        <TypeChip type={V.f.type} />
+        <span className="pd-ac" title="Classe Armatura">🛡 CA {acOf(V.f)}</span>
+        <ResLine species={V.f.species} compact />
+        {V.f.charm && PET_BAG[V.f.charm] && <span className="pd-charmchip" title={PET_BAG[V.f.charm].name}>{PET_BAG[V.f.charm].icon}</span>}
+        {V.status && <span className="pd-status">{STATUS_TXT[V.status]}</span>}
+      </div>
+      <Bar value={V.hp} max={V.f.maxHp} />
+      {side === "p" && <div className="pd-hud-hp">{V.hp}/{V.f.maxHp} PF</div>}
+      <div className="pd-balls">{balls(side)}</div>
+    </div>
+  );
+  return (
+    <div className="pd-battle">
+      <div className="pd-battle-top">{top}</div>
+      <div className={`pd-field${art.__arena?.bg ? " has-bg" : ""}`} ref={fieldRef}
+        style={art.__arena?.bg ? { "--pd-bg-img": `url("${art.__arena.bg}")` } : undefined}>
+        {hud("e", E)}
+        <div className="pd-spot pd-spot--e" ref={spotE}>
+          <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")}`}>
+            <PetSprite key={`e${E.idx}`} species={E.f.species} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
+          </div>
+        </div>
+        <div className="pd-spot pd-spot--p" ref={spotP}>
+          <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")}`}>
+            <PetSprite key={`p${P.idx}`} species={P.f.species} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
+          </div>
+        </div>
+        {hud("p", P)}
+        {roll && (
+          <div key={`r${seq}`} className={`pd-roll${roll.d === 20 ? " is-crit" : roll.d === 1 ? " is-fumble" : ""}${roll.ok ? " is-ok" : " is-ko"}`}>
+            <span className="pd-roll-die">{roll.d}</span>
+            <span className="pd-roll-math">
+              {roll.kind === "save" ? `TS ${sgn(roll.mod)} = ${roll.total} vs CD ${roll.vs}` : `${sgn(roll.mod)} = ${roll.total} vs CA ${roll.vs}`}
+              {roll.dis && <small>svantaggio ({roll.d}/{roll.d2})</small>}
+            </span>
+          </div>
+        )}
+        <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
+      </div>
+      <div className="pd-console">
+        <p className="pd-text" aria-live="polite">{shown?.text || battle.log?.[battle.log.length - 1]?.text || ""}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Mosse e cambi del pet in campo (lato "p" della vista).
+function BattleControls({ battle, busy, art, onAct, forced }) {
+  const [view, setView] = useState("main");
+  const me = activeOf(battle, "p");
+  const foe = activeOf(battle, "e");
+  const bench = benchAlive(battle, "p");
+  const act = (a) => { setView("main"); onAct(a); };
+  if (forced || view === "switch") {
+    return (
+      <div className="pd-switch">
+        <p className="pd-fine">{forced ? "Chi mandi in campo?" : "Cambiare pet consuma il turno."}</p>
+        {bench.map(({ f, i }) => (
+          <button key={f.id} type="button" className="pd-switch-btn" disabled={busy} onClick={() => act({ kind: "switch", index: i })}>
+            <PetSprite species={f.species} art={art} size={44} />
+            <span><b>{f.name}</b> Lv {f.level}<Bar value={f.hp} max={f.maxHp} /></span>
+            <small>{f.hp}/{f.maxHp}</small>
+          </button>
+        ))}
+        {!forced && <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setView("main")}>Indietro</button>}
+      </div>
+    );
+  }
+  return (
+    <div className="pd-actions">
+      <div className="pd-movegrid">
+        {Object.keys(me.pp).map((m) => {
+          const mv = PET_DEX_MOVES[m];
+          const hc = foe ? Math.round(hitChance(me, foe, m) * 100) : 100;
+          const self = !mv.power && !(mv.effect?.foe || mv.effect?.burn || mv.effect?.poison || mv.effect?.stun);
+          return (
+            <button key={m} type="button" className="pd-move" style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || me.pp[m] <= 0} onClick={() => act({ kind: "move", move: m })}>
+              <b>{mv.name}</b>
+              <small>{TYPE_ICON[mv.type]} {mv.power ? `pot. ${mv.power}` : "stato"} · PP {me.pp[m]}/{mv.pp}{self ? "" : ` · 🎲 ${hc}%`}</small>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" className="pd-btn pd-switch-open" disabled={busy || !bench.length} onClick={() => setView("switch")}>
+        🔄 Cambia pet {bench.length ? `(${bench.length})` : ""}
+      </button>
+    </div>
+  );
+}
+
+const dropNames = (ids = []) => ids.map((k) => `${PET_BAG[k]?.icon} ${PET_BAG[k]?.name}`).join(", ");
 
 function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
   const myPets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
@@ -922,29 +1377,13 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     const b = newBattle(myPets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel });
     return { ...b, log: [{ text: `Piano ${plan.floor}: l'avversario manda in campo ${activeOf(b, "e").name}!` }, { text: `Vai, ${activeOf(b, "p").name}!` }] };
   });
-  const [queue, setQueue] = useState([]);   // righe ancora da mostrare
-  const [shown, setShown] = useState(null); // riga corrente (con istantanea PF)
-  const [seq, setSeq] = useState(0);        // conta le righe mostrate (riavvia gli effetti)
-  const fieldRef = useRef(null);
-  const spotP = useRef(null), spotE = useRef(null);
-  const [view, setView] = useState("main"); // main | switch
+  const player = useLinePlayer();
+  const { busy } = player;
   const [result, setResult] = useState(null);
   const [saving, setSaving] = useState(false);
   const savedRef = useRef(false);
 
-  // Mostra le righe una alla volta.
-  useEffect(() => {
-    if (!queue.length) return undefined;
-    const t = setTimeout(() => { setShown(queue[0]); setSeq((n) => n + 1); setQueue((q) => q.slice(1)); }, STEP_MS);
-    return () => clearTimeout(t);
-  }, [queue]);
-  const busy = queue.length > 0;
-
-  // Suoni: musica per tutta la lotta, un effetto per ogni riga mostrata.
-  const [prefs, setPrefs] = useState(audioPrefs);
-  useEffect(() => onAudioPrefs(setPrefs), []);
   useEffect(() => { battleMusic(true); return () => battleMusic(false); }, []);
-  useEffect(() => { sfx(shown); }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
   const jingled = useRef(false);
   useEffect(() => {
     if (!battle.over || busy || jingled.current) return;
@@ -968,140 +1407,142 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     if (busy || battle.over) return;
     const { battle: nb, events } = playTurn(battle, action);
     setBattleState(nb);
-    setView("main");
-    setShown(events[0] || null);
-    setSeq((n) => n + 1);
-    setQueue(events.slice(1));
+    player.play(events);
   };
 
-  // Durante l'animazione i PF e chi è in campo vengono dall'istantanea della riga.
-  const snap = busy ? (shown?.snap || null) : null;
-  const sideView = (side) => {
-    const s = battle.sides[side];
-    const idx = snap ? snap[side].active : s.active;
-    const f = s.team[idx];
-    const hp = snap ? snap[side].hp[idx] : f.hp;
-    const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.stunned ? "stun" : null));
-    return { f, hp, status, idx };
-  };
-  const P = sideView("p"), E = sideView("e");
-  const hitSide = shown?.kind === "hit" ? shown.target : null;
-  // Chi attacca con una mossa fisica balza; chi incassa un pestone sobbalza.
-  const lunge = shown?.kind === "move" ? LUNGE_FX[shown.fx] : null;
-  const actCls = (side) => {
-    if (!shown) return "";
-    if (lunge && shown.side === side) return ` is-${lunge}`;
-    if (shown.kind === "move" && ["stomp", "dash", "spikes"].includes(shown.fx) && shown.side !== side) return " is-shaken";
-    return "";
-  };
-  const text = shown?.text || battle.log[battle.log.length - 1]?.text || "";
-  const me = activeOf(battle, "p");
-  const bench = benchAlive(battle, "p");
-  const forced = battle.needSwitch === "p" && !busy;
-  const balls = (side) => battle.sides[side].team.map((f, i) => {
-    const hp = snap ? snap[side].hp[i] : f.hp;
-    return <span key={i} className={`pd-ball${hp > 0 ? "" : " is-out"}`} />;
-  });
-
+  const top = (
+    <>
+      <span>🗼 Piano {plan.floor}{plan.boss ? " · 👑 Guardiano" : ""} · {AI_LABEL[plan.aiLevel]}</span>
+      <AudioToggles />
+      <button type="button" className="pd-btn pd-btn--ghost" onClick={() => (battle.over || window.confirm("Ritirarti? Il piano resta da fare.")) && onExit()}>
+        {battle.over ? "Esci" : "Ritirati"}
+      </button>
+    </>
+  );
   return (
-    <div className="pd-battle">
-      <div className="pd-battle-top">
-        <span>🗼 Piano {plan.floor}{plan.boss ? " · 👑 Guardiano" : ""} · {AI_LABEL[plan.aiLevel]}</span>
-        <span className="pd-audio">
-          <button type="button" className={`pd-audio-btn${prefs.musicOn ? "" : " is-off"}`} onClick={() => setMusicOn(!prefs.musicOn)}
-            aria-pressed={prefs.musicOn} title={prefs.musicOn ? "Spegni la musica" : "Accendi la musica"}>{prefs.musicOn ? "🎵" : "🔇"}<small>Musica</small></button>
-          <button type="button" className={`pd-audio-btn${prefs.sfxOn ? "" : " is-off"}`} onClick={() => setSfxOn(!prefs.sfxOn)}
-            aria-pressed={prefs.sfxOn} title={prefs.sfxOn ? "Spegni gli effetti" : "Accendi gli effetti"}>{prefs.sfxOn ? "🔊" : "🔈"}<small>Effetti</small></button>
-        </span>
-        <button type="button" className="pd-btn pd-btn--ghost" onClick={() => (battle.over || window.confirm("Ritirarti? Il piano resta da fare.")) && onExit()}>
-          {battle.over ? "Esci" : "Ritirati"}
-        </button>
-      </div>
+    <BattleScreen battle={battle} player={player} art={art} top={top}>
+      {battle.over && !busy ? (
+        <div className="pd-result">
+          {saving && <p>Salvo l'esito…</p>}
+          {result && (
+            <>
+              <h2>{result.won ? "🏆 Piano superato!" : "💤 La squadra è esausta"}</h2>
+              {result.error ? <p className="pd-fine">{result.error}</p> : (
+                <p>
+                  +{result.xp} PE a ogni pet della squadra{result.won ? ` · +${result.pts} punti pet` : ""}.
+                  {(result.ups || []).map((u) => ` ${PET_DEX[u.species].name} sale al Lv ${u.level}!`).join("")}
+                  {result.drops?.length ? ` Trovato: ${dropNames(result.drops)}!` : ""}
+                </p>
+              )}
+              <div className="pd-result-actions">
+                {result.won
+                  ? <button type="button" className="pd-btn pd-btn--main" onClick={onExit}>Avanti</button>
+                  : <button type="button" className="pd-btn pd-btn--main" onClick={onRetry}>Ritenta il piano</button>}
+                <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Al Rifugio</button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <BattleControls battle={battle} busy={busy} art={art} onAct={act} forced={battle.needSwitch === "p" && !busy} />
+      )}
+    </BattleScreen>
+  );
+}
 
-      <div className={`pd-field${art.__arena?.bg ? " has-bg" : ""}`} ref={fieldRef}
-        style={art.__arena?.bg ? { "--pd-bg-img": `url("${art.__arena.bg}")` } : undefined}>
-        <div className="pd-hud pd-hud--e">
-          <div className="pd-hud-name"><b>{E.f.name}</b><small>Lv {E.f.level}</small></div>
-          <div className="pd-hud-chips"><TypeChip type={E.f.type} /><ResLine species={E.f.species} compact />{E.status && <span className="pd-status">{STATUS_TXT[E.status]}</span>}</div>
-          <Bar value={E.hp} max={E.f.maxHp} />
-          <div className="pd-balls">{balls("e")}</div>
-        </div>
-        <div className="pd-spot pd-spot--e" ref={spotE}>
-          <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")}`}>
-            <PetSprite key={`e${E.idx}`} species={E.f.species} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
-          </div>
-        </div>
-        <div className="pd-spot pd-spot--p" ref={spotP}>
-          <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")}`}>
-            <PetSprite key={`p${P.idx}`} species={P.f.species} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
-          </div>
-        </div>
-        <div className="pd-hud pd-hud--p">
-          <div className="pd-hud-name"><b>{P.f.name}</b><small>Lv {P.f.level}</small></div>
-          <div className="pd-hud-chips"><TypeChip type={P.f.type} /><ResLine species={P.f.species} compact />{P.status && <span className="pd-status">{STATUS_TXT[P.status]}</span>}</div>
-          <Bar value={P.hp} max={P.f.maxHp} />
-          <div className="pd-hud-hp">{P.hp}/{P.f.maxHp} PF</div>
-          <div className="pd-balls">{balls("p")}</div>
-        </div>
-        <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
-      </div>
+/* ── Sfida fra giocatori: la lotta letta da pet_matches ───── */
+function PvpBattle({ uid, id, art, onExit }) {
+  const [m, setM] = useState(null);
+  const player = useLinePlayer();
+  const lastSeq = useRef(null);
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState("");
+  const [result, setResult] = useState(null);
+  const claimed = useRef(false);
 
-      <div className="pd-console">
-        <p className="pd-text" aria-live="polite">{text}</p>
+  useEffect(() => onSnapshot(doc(db, "pet_matches", id), (s) => setM(s.exists() ? { id: s.id, ...s.data() } : false)), [id]);
+  useEffect(() => { battleMusic(true); return () => battleMusic(false); }, []);
 
-        {battle.over && !busy ? (
-          <div className="pd-result">
-            {saving && <p>Salvo l'esito…</p>}
-            {result && (
-              <>
-                <h2>{result.won ? "🏆 Piano superato!" : "💤 La squadra è esausta"}</h2>
-                {result.error ? <p className="pd-fine">{result.error}</p> : (
-                  <p>
-                    +{result.xp} PE a ogni pet della squadra{result.won ? ` · +${result.pts} punti pet` : ""}.
-                    {(result.ups || []).map((u) => ` ${PET_DEX[u.species].name} sale al Lv ${u.level}!`).join("")}
-                  </p>
-                )}
-                <div className="pd-result-actions">
-                  {result.won
-                    ? <button type="button" className="pd-btn pd-btn--main" onClick={onExit}>Avanti</button>
-                    : <button type="button" className="pd-btn pd-btn--main" onClick={onRetry}>Ritenta il piano</button>}
-                  <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Al Rifugio</button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : forced || view === "switch" ? (
-          <div className="pd-switch">
-            <p className="pd-fine">{forced ? "Chi mandi in campo?" : "Cambiare pet consuma il turno."}</p>
-            {bench.map(({ f, i }) => (
-              <button key={f.id} type="button" className="pd-switch-btn" disabled={busy} onClick={() => act({ kind: "switch", index: i })}>
-                <PetSprite species={f.species} art={art} size={44} />
-                <span><b>{f.name}</b> Lv {f.level}<Bar value={f.hp} max={f.maxHp} /></span>
-                <small>{f.hp}/{f.maxHp}</small>
-              </button>
-            ))}
-            {!forced && <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setView("main")}>Indietro</button>}
-          </div>
-        ) : (
-          <div className="pd-actions">
-            <div className="pd-movegrid">
-              {Object.keys(me.pp).map((m) => {
-                const mv = PET_DEX_MOVES[m];
-                return (
-                  <button key={m} type="button" className="pd-move" style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || me.pp[m] <= 0} onClick={() => act({ kind: "move", move: m })}>
-                    <b>{mv.name}</b>
-                    <small>{TYPE_ICON[mv.type]} {mv.power ? `pot. ${mv.power}` : "stato"} · PP {me.pp[m]}/{mv.pp}</small>
-                  </button>
-                );
-              })}
-            </div>
-            <button type="button" className="pd-btn pd-switch-open" disabled={busy || !bench.length} onClick={() => setView("switch")}>
-              🔄 Cambia pet {bench.length ? `(${bench.length})` : ""}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+  const pend = m ? pendingSide(m, uid) : null;
+  const mine = m ? sidesOf(m, uid) : [];
+  // Il proprio lato sta sempre in basso; contro sé stessi si gira verso chi deve scegliere.
+  const viewSide = pend || (mine.includes("p") ? "p" : "e");
+  const flip = viewSide === "e";
+
+  // Nuovo turno risolto: mostra le sue righe.
+  useEffect(() => {
+    if (!m || m.status === "pending") return;
+    if (lastSeq.current === null) { lastSeq.current = m.seq || 0; if (!m.seq && m.events) player.play(m.events); return; }
+    if ((m.seq || 0) > lastSeq.current) {
+      lastSeq.current = m.seq;
+      player.play((m.events || []).map((ev) => (flip ? flipEvent(ev) : ev)));
+    }
+  }, [m?.seq, m?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fine: musichetta e premi (ognuno ritira i suoi, una volta sola).
+  const done = m?.status === "done" && !player.busy;
+  useEffect(() => {
+    if (!done || claimed.current) return;
+    claimed.current = true;
+    battleMusic(false);
+    const myWin = mine.includes(m.winner);
+    jingle(m.a === m.b ? true : myWin);
+    const side = mine.includes("p") ? "p" : "e";
+    recordPvpResult(uid, m, side).then(setResult).catch((e) => setResult({ error: e.message }));
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (m === null) return <p className="pd-loading">Carico la sfida…</p>;
+  if (m === false) return <p className="pd-empty">Sfida non trovata. <button type="button" className="pd-btn" onClick={onExit}>Indietro</button></p>;
+  if (!m.battle) return <p className="pd-empty">La sfida non è ancora iniziata. <button type="button" className="pd-btn" onClick={onExit}>Indietro</button></p>;
+
+  const battle = flip ? flipBattle(m.battle) : m.battle;
+  const foeName = flip ? m.aName : m.bName;
+  const send = async (action) => {
+    if (!pend || sending) return;
+    setSending(true); setErr("");
+    try { unlockAudio(); await submitAction(id, pend, action); } catch (e) { setErr(e.message); } finally { setSending(false); }
+  };
+  const giveUp = () => window.confirm("Abbandonare la sfida? Conta come sconfitta.") && forfeit(id, mine.includes("p") ? "p" : "e").catch((e) => setErr(e.message));
+  const self = m.a === m.b;
+  const top = (
+    <>
+      <span>⚔ {m.aName} contro {m.bName}{self ? " · prova" : ""} · turno {(m.seq || 0) + 1}</span>
+      <AudioToggles />
+      <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Esci</button>
+    </>
+  );
+  const waiting = m.status === "active" && !pend;
+  const forcedHere = !!pend && !!m.battle.needSwitch;
+  return (
+    <BattleScreen battle={battle} player={player} art={art} top={top} labels={{ p: flip ? m.bName : m.aName, e: foeName }}>
+      {err && <p className="pd-msg">{err}</p>}
+      {done ? (
+        <div className="pd-result">
+          <h2>{self ? `Vince ${m.winner === "p" ? m.aName : m.bName}` : mine.includes(m.winner) ? "🏆 Sfida vinta!" : "💤 Sfida persa"}</h2>
+          {m.forfeit && <p className="pd-fine">{m.forfeit === "p" ? m.aName : m.bName} ha abbandonato.</p>}
+          {result && !result.error && !result.self && !result.already && (
+            <p>+{result.xp} PE a ogni pet della squadra{result.pts ? ` · +${result.pts} punti pet` : ""}.
+              {(result.ups || []).map((u) => ` ${PET_DEX[u.species].name} sale al Lv ${u.level}!`).join("")}
+              {result.drops?.length ? ` Trovato: ${dropNames(result.drops)}!` : ""}</p>
+          )}
+          {result?.self && <p className="pd-fine">Sfida di prova contro te stesso: niente premi.</p>}
+          {result?.error && <p className="pd-fine">{result.error}</p>}
+          <div className="pd-result-actions"><button type="button" className="pd-btn pd-btn--main" onClick={onExit}>Alle sfide</button></div>
+        </div>
+      ) : waiting ? (
+        <div className="pd-wait">
+          <p>⏳ {m.actions?.[viewSide] ? "Mossa scelta: aspetti" : "Tocca a"} {foeName}…</p>
+          <small>Ti arriva tutto qui appena sceglie, anche se chiudi e riapri.</small>
+          {!player.busy && <button type="button" className="pd-btn pd-btn--danger" onClick={giveUp}>Abbandona</button>}
+        </div>
+      ) : (
+        <>
+          {self && <p className="pd-fine">Scegli per {viewSide === "p" ? m.aName : m.bName}.</p>}
+          <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere} />
+          {!forcedHere && <button type="button" className="pd-link" onClick={giveUp}>Abbandona la sfida</button>}
+        </>
+      )}
+    </BattleScreen>
   );
 }
 
@@ -1151,6 +1592,12 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
       </div>
       <p className="pd-fine">"Genera pixel art" chiede a Gemini UNA creatura alla volta (la descrizione qui sotto dice cosa disegnare, in inglese; si può ritoccare e resta salvata). Lo sfondo magenta si toglie da solo e il respiro è un'animazione del sito.</p>
       {err && <p className="pd-msg">{err}</p>}
+      {den.starter && (
+        <div className="pd-master-eggs">
+          <span>Oggetti gratis per provare la bisaccia:</span>
+          <button type="button" className="pd-btn" onClick={() => run(() => giveItems(uid, ["caramella", "pietra", ...CHARMS.slice(0, 7), SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)], SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)]]), "Oggetti nella bisaccia (prova).")}>🎒 Riempi la bisaccia</button>
+        </div>
+      )}
       {den.starter && (
         <div className="pd-master-eggs">
           <span>Uova gratis per provare la schiusa:</span>

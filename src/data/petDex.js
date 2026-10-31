@@ -125,7 +125,8 @@ export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "com
      { burn|poison: chance }           stato a turni sul bersaglio
      { stun: chance }                  il bersaglio salta il prossimo turno
      { self: {atk|def|spd: +n} }       potenzia chi la usa (stadi -3..+3)
-     { foe:  {atk|def|spd: -n}, chance }  indebolisce il bersaglio
+     { self: {ac: +n} }                +n alla Classe Armatura (da -4 a +4)
+     { foe:  {atk|def|spd|ac: -n}, chance }  indebolisce il bersaglio
      { heal: 0.5 } · { drain: 0.5 } · { recoil: 0.25 } */
 const M = (name, type, power, acc, pp, fx, extra = {}) => ({ name, type, power, acc, pp, fx, ...extra });
 export const PET_DEX_MOVES = {
@@ -142,7 +143,7 @@ export const PET_DEX_MOVES = {
   schianto:     M("Schianto", "neutral", 120, 80, 5, "stomp", { lv: 6 }),
   // neutre di stato: solo innate (non si imparano)
   ruggitino:    M("Ruggitino", "neutral", 0, 100, 15, "roar", { effect: { foe: { atk: -1 } } }),
-  guscio:       M("Rintanarsi", "neutral", 0, 100, 10, "aura", { effect: { self: { def: 2 } } }),
+  guscio:       M("Rintanarsi", "neutral", 0, 100, 10, "aura", { effect: { self: { ac: 2, def: 1 } } }),
   pisolino:     M("Pisolino", "neutral", 0, 100, 5, "sleep", { effect: { heal: 0.5 } }),
 
   // ── fuoco ──
@@ -151,6 +152,7 @@ export const PET_DEX_MOVES = {
   sbuffo:       M("Sbuffo di Brace", "fire", 65, 95, 15, "breath", { lv: 2, effect: { burn: 0.2 } }),
   fuocherello:  M("Fuocherello", "fire", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
   morsofuoco:   M("Zanne Ardenti", "fire", 60, 95, 15, "bite", { lv: 2, effect: { burn: 0.2 } }),
+  scudofuoco:   M("Scudo di Fuoco", "fire", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 1, atk: 1 } } }),
   frustafiamme: M("Frusta di Fiamme", "fire", 70, 95, 15, "whip", { lv: 3, effect: { burn: 0.2 } }),
   sferafuoco:   M("Sfera di Fuoco", "fire", 75, 90, 10, "orb", { lv: 3, effect: { burn: 0.2 } }),
   caricarovente:M("Carica Rovente", "fire", 85, 90, 10, "dash", { lv: 4, effect: { burn: 0.2 } }),
@@ -164,7 +166,7 @@ export const PET_DEX_MOVES = {
   brina:        M("Scheggia di Brina", "cold", 40, 100, 25, "orb", { lv: 1, effect: { foe: { spd: -1 }, chance: 0.2 } }),
   unghiegelo:   M("Unghie di Ghiaccio", "cold", 40, 100, 25, "claw", { lv: 1, effect: { foe: { spd: -1 }, chance: 0.1 } }),
   soffiogelo:   M("Soffio Gelido", "cold", 65, 95, 15, "breath", { lv: 2, effect: { foe: { spd: -1 }, chance: 0.3 } }),
-  mantobrina:   M("Manto di Brina", "cold", 0, 100, 10, "aura", { lv: 2, effect: { self: { def: 2 } } }),
+  mantobrina:   M("Manto di Brina", "cold", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   morsogelo:    M("Morso Gelido", "cold", 60, 95, 15, "bite", { lv: 2, effect: { stun: 0.1 } }),
   frustagelo:   M("Frusta di Ghiaccioli", "cold", 70, 95, 15, "whip", { lv: 3, effect: { stun: 0.1 } }),
   raggiogelo:   M("Raggio Gelido", "cold", 75, 90, 10, "beam", { lv: 3, effect: { foe: { spd: -1 }, chance: 0.3 } }),
@@ -180,6 +182,7 @@ export const PET_DEX_MOVES = {
   pinzetta:     M("Pinzetta", "water", 40, 100, 25, "claw", { lv: 1 }),
   bolla:        M("Bollicine", "water", 60, 95, 15, "orb", { lv: 2, effect: { foe: { spd: -1 }, chance: 0.3 } }),
   inchiostro:   M("Spruzzo d'Inchiostro", "water", 0, 90, 10, "cloud", { lv: 2, effect: { foe: { atk: -1, spd: -1 } } }),
+  barriera:     M("Barriera d'Acqua", "water", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   codaspuma:    M("Coda Spumeggiante", "water", 55, 100, 20, "whip", { lv: 2 }),
   pioggia:      M("Pioggerella", "water", 0, 100, 5, "heal", { lv: 3, effect: { heal: 0.4 } }),
   morsoabissale:M("Morso Abissale", "water", 70, 95, 15, "bite", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
@@ -198,6 +201,7 @@ export const PET_DEX_MOVES = {
   caricastatica:M("Carica Statica", "lightning", 0, 100, 10, "aura", { lv: 2, effect: { self: { spd: 2 } } }),
   saetta:       M("Saetta", "lightning", 45, 100, 20, "beam", { lv: 2, prio: 1 }),
   morsovoltaico:M("Morso Voltaico", "lightning", 60, 95, 15, "bite", { lv: 2, effect: { stun: 0.15 } }),
+  campostatico: M("Campo Statico", "lightning", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 1, spd: 1 } } }),
   frustaelettrica: M("Frusta Elettrica", "lightning", 70, 95, 15, "whip", { lv: 3, effect: { stun: 0.2 } }),
   sferatonante: M("Sfera Tonante", "lightning", 75, 90, 10, "orb", { lv: 3, effect: { stun: 0.2 } }),
   scattofulmineo: M("Scatto Fulmineo", "lightning", 80, 95, 10, "dash", { lv: 4, prio: 1 }),
@@ -213,6 +217,7 @@ export const PET_DEX_MOVES = {
   spore:        M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { stun: 1 } }),
   linfa:        M("Succhia-linfa", "earth", 55, 100, 15, "drain", { lv: 2, effect: { drain: 0.5 } }),
   zampapietra:  M("Zampata di Pietra", "earth", 55, 100, 20, "stomp", { lv: 2 }),
+  pellepietra:  M("Pelle di Pietra", "earth", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 2, def: 1 } } }),
   frustaspine:  M("Frusta di Spine", "earth", 70, 95, 15, "whip", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
   frana:        M("Franetta", "earth", 75, 90, 10, "rain", { lv: 3, effect: { stun: 0.1 } }),
   cornoroccia:  M("Corno di Roccia", "earth", 85, 90, 10, "dash", { lv: 4 }),
@@ -223,25 +228,27 @@ export const PET_DEX_MOVES = {
   spaccaterra:  M("Spaccaterra", "earth", 120, 80, 5, "spikes", { lv: 6, effect: { stun: 0.2 } }),
 
   // ── acido ──
-  sputoacido:   M("Sputo Acido", "acid", 40, 100, 25, "orb", { lv: 1, effect: { foe: { def: -1 }, chance: 0.2 } }),
-  artiglicorrosivi: M("Artigli Corrosivi", "acid", 40, 100, 25, "claw", { lv: 1, effect: { foe: { def: -1 }, chance: 0.1 } }),
-  spruzzoacido: M("Spruzzo Corrosivo", "acid", 65, 95, 15, "breath", { lv: 2, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  sputoacido:   M("Sputo Acido", "acid", 40, 100, 25, "orb", { lv: 1, effect: { foe: { ac: -1 }, chance: 0.2 } }),
+  artiglicorrosivi: M("Artigli Corrosivi", "acid", 40, 100, 25, "claw", { lv: 1, effect: { foe: { ac: -1 }, chance: 0.1 } }),
+  spruzzoacido: M("Spruzzo Corrosivo", "acid", 65, 95, 15, "breath", { lv: 2, effect: { foe: { ac: -1 }, chance: 0.3 } }),
   melma:        M("Melma Appiccicosa", "acid", 0, 95, 15, "cloud", { lv: 2, effect: { foe: { spd: -2 } } }),
-  morsoacido:   M("Morso Acido", "acid", 60, 95, 15, "bite", { lv: 2, effect: { foe: { def: -1 }, chance: 0.2 } }),
-  frustacaustica: M("Frusta Caustica", "acid", 70, 95, 15, "whip", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
-  bollacorrosiva: M("Bolla Corrosiva", "acid", 75, 90, 10, "orb", { lv: 3, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  morsoacido:   M("Morso Acido", "acid", 60, 95, 15, "bite", { lv: 2, effect: { foe: { ac: -1 }, chance: 0.2 } }),
+  frustacaustica: M("Frusta Caustica", "acid", 70, 95, 15, "whip", { lv: 3, effect: { foe: { ac: -1 }, chance: 0.2 } }),
+  bollacorrosiva: M("Bolla Corrosiva", "acid", 75, 90, 10, "orb", { lv: 3, effect: { foe: { ac: -1 }, chance: 0.3 } }),
+  corazzamelma: M("Corazza di Melma", "acid", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 2 } } }),
   tonfo:        M("Tonfo Gelatinoso", "acid", 85, 90, 10, "stomp", { lv: 4, effect: { foe: { spd: -1 }, chance: 0.3 } }),
   bagnoacido:   M("Bagno d'Acido", "acid", 90, 85, 5, "burst", { lv: 4 }),
-  caricamelmosa:M("Carica Melmosa", "acid", 100, 85, 8, "dash", { lv: 5, effect: { foe: { def: -1 }, chance: 0.3 } }),
-  pioggiaacida: M("Pioggia Acida", "acid", 100, 85, 8, "rain", { lv: 5, effect: { foe: { def: -1 }, chance: 0.3 } }),
-  faucidissolventi: M("Fauci Dissolventi", "acid", 115, 90, 5, "bite", { lv: 6, effect: { foe: { def: -2 }, chance: 0.3 } }),
-  geyseracido:  M("Geyser d'Acido", "acid", 120, 80, 5, "spikes", { lv: 6, effect: { foe: { def: -1 }, chance: 0.5 } }),
+  caricamelmosa:M("Carica Melmosa", "acid", 100, 85, 8, "dash", { lv: 5, effect: { foe: { ac: -1 }, chance: 0.3 } }),
+  pioggiaacida: M("Pioggia Acida", "acid", 100, 85, 8, "rain", { lv: 5, effect: { foe: { ac: -1 }, chance: 0.3 } }),
+  faucidissolventi: M("Fauci Dissolventi", "acid", 115, 90, 5, "bite", { lv: 6, effect: { foe: { ac: -2 }, chance: 0.3 } }),
+  geyseracido:  M("Geyser d'Acido", "acid", 120, 80, 5, "spikes", { lv: 6, effect: { foe: { ac: -1 }, chance: 0.5 } }),
 
   // ── veleno ──
   veleno:       M("Puntura Velenosa", "poison", 40, 100, 20, "sting", { lv: 1, effect: { poison: 0.3 } }),
   spruzzotossico: M("Spruzzo Tossico", "poison", 40, 100, 25, "orb", { lv: 1, effect: { poison: 0.2 } }),
   zannevelenose:M("Zanne Velenose", "poison", 60, 95, 15, "bite", { lv: 2, effect: { poison: 0.3 } }),
   nubetossica:  M("Nube Tossica", "poison", 0, 85, 10, "cloud", { lv: 2, effect: { poison: 1 } }),
+  pelleviscida: M("Pelle Viscida", "poison", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 1, def: 1 } } }),
   codapungente: M("Coda Pungente", "poison", 70, 95, 15, "sting", { lv: 3, effect: { poison: 0.3 } }),
   soffiomefitico: M("Soffio Mefitico", "poison", 75, 90, 10, "breath", { lv: 3, effect: { poison: 0.3 } }),
   artigliinfetti: M("Artigli Infetti", "poison", 85, 90, 10, "claw", { lv: 4, effect: { poison: 0.3 } }),
@@ -257,6 +264,7 @@ export const PET_DEX_MOVES = {
   toccotetro:   M("Tocco Tetro", "necrotic", 50, 100, 20, "drain", { lv: 2, effect: { drain: 0.5 } }),
   maledizione:  M("Maledizione", "necrotic", 0, 90, 10, "curse", { lv: 2, effect: { foe: { atk: -1, def: -1 } } }),
   colpossa:     M("Colpo d'Ossa", "necrotic", 55, 100, 20, "stomp", { lv: 2 }),
+  armaturaossa: M("Armatura d'Ossa", "necrotic", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 2 } } }),
   morso:        M("Morso Oscuro", "necrotic", 70, 95, 15, "bite", { lv: 3, effect: { foe: { def: -1 }, chance: 0.3 } }),
   raggiosinistro: M("Raggio Sinistro", "necrotic", 65, 95, 15, "beam", { lv: 3 }),
   frustaombra:  M("Frusta d'Ombra", "necrotic", 85, 90, 10, "whip", { lv: 4, effect: { foe: { def: -1 }, chance: 0.2 } }),
@@ -269,7 +277,8 @@ export const PET_DEX_MOVES = {
   // ── radioso ──
   luccichio:    M("Luccichio", "radiant", 45, 100, 25, "orb", { lv: 1, effect: { foe: { atk: -1 }, chance: 0.2 } }),
   artigliluce:  M("Artiglio di Luce", "radiant", 40, 100, 25, "claw", { lv: 1 }),
-  aureola:      M("Aureola", "radiant", 0, 100, 10, "aura", { lv: 2, effect: { self: { def: 1, atk: 1 } } }),
+  aureola:      M("Aureola", "radiant", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 1, atk: 1 } } }),
+  scudofede:    M("Scudo della Fede", "radiant", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   cornosplendente: M("Corno Splendente", "radiant", 55, 100, 20, "dash", { lv: 2 }),
   benedizione:  M("Benedizione", "radiant", 0, 100, 5, "heal", { lv: 3, effect: { heal: 0.5 } }),
   frustaluce:   M("Frusta di Luce", "radiant", 70, 95, 15, "whip", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.2 } }),
@@ -285,6 +294,7 @@ export const PET_DEX_MOVES = {
   ondamentale:  M("Onda Mentale", "psychic", 45, 100, 25, "wave", { lv: 1 }),
   zampapsichica:M("Zampata Psichica", "psychic", 40, 100, 25, "stomp", { lv: 1 }),
   concentrazione: M("Concentrazione", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
+  scudomentale: M("Scudo Mentale", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   morsoillusorio: M("Morso Illusorio", "psychic", 55, 100, 20, "bite", { lv: 2 }),
   ipnosi:       M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { stun: 1 } }),
   urlopsichico: M("Urlo Psichico", "psychic", 65, 95, 15, "wave", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.3 } }),
@@ -308,6 +318,25 @@ export const PET_DEX_MOVES = {
    In lotta porta MAX_MOVES mosse, scelte fra le innate sbloccate e
    quelle imparate. */
 export const MOVE_GRADES = [1, 4, 8, 14, 22, 32];
+
+/* ── TIRI ALLA D&D (2026-10-31) ─────────────────────────────
+   Ogni attacco tira il d20: d20 + bonus per colpire contro la CA del
+   bersaglio (20 naturale = critico, 1 naturale = mancato). Le mosse di
+   stato sul nemico chiedono invece un tiro salvezza contro la CD di
+   chi le lancia. Competenza e CA salgono insieme ogni 12 livelli,
+   così la probabilità di colpire resta intorno al 70-75%.
+   La precisione della mossa diventa un modificatore (100% = +2,
+   90% = 0, 75% = −3). */
+export const profOf = (level) => 2 + Math.floor((level || 1) / 12);
+export const accMod = (acc) => Math.round(((acc ?? 90) - 90) / 5);
+export function dndOf(speciesKey, level = 1) {
+  const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
+  const prof = profOf(level);
+  const atkMod = Math.round((b.atk - 9) / 2);
+  const defMod = Math.round((b.def - 10) / 2);
+  const ac = (PET_DEX[speciesKey]?.ac ?? 10 + Math.round((b.def - 8) / 2) + (b.spd >= 14 ? 1 : 0)) + Math.floor((level || 1) / 12);
+  return { prof, atkMod, defMod, ac, toHit: prof + atkMod, save: Math.floor(prof / 2) + defMod, dcBase: 12 + prof + atkMod };
+}
 export const MAX_MOVES = 4;
 export const GRADE_ROMAN = ["I", "II", "III", "IV", "V", "VI"];
 const PHYS_FX = new Set(["stomp", "bite", "claw", "whip", "sting", "dash"]);

@@ -264,6 +264,15 @@ service cloud.firestore {
       allow write: if isMaster();
     }
 
+    // ── Sfide fra domatori del Rifugio (2026-10-31): le crea chi sfida, le
+    // aggiornano solo i due giocatori (azioni, turni risolti in transazione) o il Master.
+    match /pet_matches/{matchId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.a == request.auth.uid;
+      allow update: if isLoggedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid || isMaster());
+      allow delete: if isMaster();
+    }
+
     // ── Pet Arena (companion system) ─────────────────────────────────────────
     match /pet_battles/{battleId} {
       allow read: if isLoggedIn();
