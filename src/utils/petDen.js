@@ -18,8 +18,8 @@
 
 import { deleteField, doc, runTransaction, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
-import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, EGGS, refundOf, rollEgg } from "../data/petDex";
-import { addXp, towerXp, towerLossXp, towerPoints } from "../data/petEngine";
+import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "../data/petDex";
+import { addXp, towerXp, towerLossXp, towerPoints, battleMoves, knownMoves } from "../data/petEngine";
 
 const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const charRef = (uid) => doc(db, "characters", uid);
@@ -141,6 +141,35 @@ export function renamePet(uid, petId, nick) {
   return mutate(uid, (den) => {
     const p = den.pets.find((x) => x.id === petId);
     if (p) p.nick = String(nick || "").trim().slice(0, 18);
+  });
+}
+
+/* Gradi delle mosse: impara (o cambia) la mossa del grado `grade`.
+   La nuova mossa entra subito fra quelle di lotta: al posto della
+   vecchia dello stesso grado, oppure in un posto libero. */
+export function learnMove(uid, petId, grade, moveId) {
+  return mutate(uid, (den) => {
+    const p = den.pets.find((x) => x.id === petId);
+    if (!p) throw new Error("Pet non trovato.");
+    if (grade > gradeOfLevel(p.level)) throw new Error("Grado non ancora sbloccato.");
+    if (!learnPool(p.species, grade).includes(moveId)) throw new Error("Questo pet non può imparare questa mossa.");
+    const before = battleMoves(p);
+    const old = (p.learned || {})[grade];
+    p.learned = { ...(p.learned || {}), [grade]: moveId };
+    let set = before.map((m) => (m === old ? moveId : m));
+    if (!set.includes(moveId) && set.length < MAX_MOVES) set = [...set, moveId];
+    p.moveset = set;
+  });
+}
+
+export function setMoveset(uid, petId, moves) {
+  return mutate(uid, (den) => {
+    const p = den.pets.find((x) => x.id === petId);
+    if (!p) throw new Error("Pet non trovato.");
+    const known = knownMoves(p);
+    const set = moves.filter((m, i, a) => known.includes(m) && a.indexOf(m) === i).slice(0, MAX_MOVES);
+    if (!set.length) throw new Error("Serve almeno una mossa.");
+    p.moveset = set;
   });
 }
 

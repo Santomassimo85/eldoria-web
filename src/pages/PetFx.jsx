@@ -128,6 +128,66 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
         </>
       );
       break;
+    case "whip": {
+      // UNA sferzata: la frusta parte da chi attacca, si srotola ad arco e schiocca sul bersaglio.
+      const mx = (a.x + b.x) / 2, my = Math.min(a.y, b.y) - Math.abs(b.x - a.x) * 0.35;
+      const d = `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
+      body = (
+        <>
+          <svg className="pfx-whip" width="100%" height="100%" aria-hidden="true">
+            <path d={d} pathLength="100" fill="none" stroke="var(--c3)" strokeWidth="15" strokeLinecap="square" />
+            <path d={d} pathLength="100" fill="none" stroke="var(--c2)" strokeWidth="9" strokeLinecap="square" />
+            <path d={d} pathLength="100" fill="none" stroke="var(--c1)" strokeWidth="3" strokeLinecap="square" />
+          </svg>
+          <span className="pfx-crack" style={at("var(--x1)", "var(--y1)")} />
+          <Sparks parts={parts} s={b.s} delay={330} n={6} />
+        </>
+      );
+      break;
+    }
+    case "sting":
+      // pungiglione: un ago veloce, la puntura e qualche goccia dell'elemento
+      body = (
+        <>
+          <span className="pfx-needle" style={at("var(--x0)", "var(--y0)")} />
+          <span className="pfx-prick" style={at("var(--x1)", "var(--y1)")} />
+          {parts.slice(0, 5).map((p, i) => (
+            <span key={i} className="pfx-drip" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * b.s * 0.5}px)`, "var(--y1)", { animationDelay: `${330 + i * 50}ms` })} />
+          ))}
+        </>
+      );
+      break;
+    case "dash":
+      // carica: scie di velocità lungo il percorso e botta sul bersaglio (chi attacca si lancia, vedi .is-dash)
+      body = (
+        <>
+          {parts.slice(0, 6).map((p, i) => (
+            <span key={i} className="pfx-streak" style={at(`calc(var(--x0) + var(--dx) * ${0.15 + p[0] * 0.55})`, `calc(var(--y0) + var(--dy) * ${0.15 + p[0] * 0.55} + ${(p[1] - 0.5) * b.s * 0.6}px)`, { animationDelay: `${Math.round(p[2] * 120)}ms` })} />
+          ))}
+          <span className="pfx-pow" style={at("var(--x1)", "var(--y1)")} />
+          <span className="pfx-ring" style={at("var(--x1)", "var(--y1)", { animationDelay: ".3s" })} />
+          <Sparks parts={parts} s={b.s * 1.2} delay={300} n={10} />
+        </>
+      );
+      break;
+    case "spikes":
+      // spuntoni che salgono dal terreno sotto il bersaglio
+      body = (
+        <>
+          {[-0.42, -0.2, 0, 0.22, 0.44].map((k, i) => (
+            <span key={i} className={`pfx-spike pfx-spike--${ev.mtype}`} style={at(`calc(var(--x1) + ${k}*var(--s))`, "var(--fy)", {
+              "--h": `${b.s * (i === 2 ? 0.95 : 0.55 + P(i)[0] * 0.3)}px`, animationDelay: `${120 + Math.abs(i - 2) * 70}ms`,
+            })} />
+          ))}
+          {parts.slice(0, 6).map((p, i) => (
+            <span key={`d${i}`} className="pfx-dust" style={at("var(--x1)", "var(--fy)", {
+              "--tx": `${(p[0] - 0.5) * b.s * 1.4}px`, "--ty": `${-p[1] * b.s * 0.35}px`, "--z": 0.5 + p[2] * 0.6,
+              background: i % 2 ? "var(--c2)" : "var(--c3)",
+            })} />
+          ))}
+        </>
+      );
+      break;
     case "orb":
       body = (
         <>

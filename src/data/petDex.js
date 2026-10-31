@@ -60,7 +60,7 @@ export const TYPE_COLORS = {
 export const PHYS_KINDS = ["bludgeoning", "piercing", "slashing"];
 export const DMG_ICON = { ...TYPE_ICON, bludgeoning: "🔨", piercing: "🦷", slashing: "🗡️" };
 export const DMG_LABEL = { ...TYPE_LABEL, bludgeoning: "Contundente", piercing: "Perforante", slashing: "Tagliente" };
-const PHYS_OF_FX = { stomp: "bludgeoning", bite: "piercing", claw: "slashing" };
+const PHYS_OF_FX = { stomp: "bludgeoning", dash: "bludgeoning", bite: "piercing", sting: "piercing", claw: "slashing", whip: "slashing" };
 export const damageKindOf = (move) => (move?.type && move.type !== "neutral" ? move.type : PHYS_OF_FX[move?.fx] || "bludgeoning");
 
 /* Regole di D&D: resistenza = metà, vulnerabilità = doppio, immunità = zero. */
@@ -114,8 +114,10 @@ export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "com
 /* ── MOSSE ──────────────────────────────────────────────────
    power = potenza (0 = mossa di stato), acc = precisione %, pp = usi per
    lotta, prio = priorità (1 = agisce prima).
-   fx = come si vede in lotta: stomp (pestone, onda d'urto) · bite ·
-   claw · orb (proiettile) · beam (raggio) · breath (soffio a cono) ·
+   fx = come si vede (e si sente) in lotta: stomp (pestone, onda
+   d'urto) · bite · claw (tre tagli) · whip (UNA sferzata che schiocca) ·
+   sting (pungiglione/ago) · dash (carica di tutto il corpo) · spikes
+   (spuntoni che salgono dal terreno) · orb (proiettile) · beam (raggio) · breath (soffio a cono) ·
    burst (esplosione sul bersaglio) · bolt (fulmine dall'alto) · rain
    (schegge/sassi che cadono) · wave (onde) · cloud (nube) · curse
    (spirale) · aura (potenziamento) · heal · sleep · drain · roar.
@@ -127,75 +129,201 @@ export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "com
      { heal: 0.5 } · { drain: 0.5 } · { recoil: 0.25 } */
 const M = (name, type, power, acc, pp, fx, extra = {}) => ({ name, type, power, acc, pp, fx, ...extra });
 export const PET_DEX_MOVES = {
-  // fisiche
-  zampata:      M("Zampata", "neutral", 40, 100, 30, "stomp"),
-  morsetto:     M("Morsetto", "neutral", 55, 95, 20, "bite"),
-  testata:      M("Testata", "neutral", 80, 85, 10, "stomp", { effect: { recoil: 0.25 } }),
-  scattino:     M("Scattino", "neutral", 35, 100, 20, "claw", { prio: 1 }),
-  graffio:      M("Graffio", "neutral", 45, 100, 25, "claw"),
+  // ── fisiche (neutre: chiunque le può imparare) ──
+  zampata:      M("Zampata", "neutral", 40, 100, 30, "stomp", { lv: 1 }),
+  graffio:      M("Graffio", "neutral", 45, 100, 25, "claw", { lv: 1 }),
+  scattino:     M("Scattino", "neutral", 35, 100, 20, "dash", { lv: 1, prio: 1 }),
+  morsetto:     M("Morsetto", "neutral", 55, 95, 20, "bite", { lv: 2 }),
+  colpocoda:    M("Colpo di Coda", "neutral", 55, 100, 20, "whip", { lv: 2 }),
+  ingoiare:     M("Ingoiare", "neutral", 60, 90, 10, "bite", { lv: 3, effect: { drain: 0.5 } }),
+  doppiograffio:M("Doppio Graffio", "neutral", 70, 95, 15, "claw", { lv: 3 }),
+  testata:      M("Testata", "neutral", 80, 85, 10, "dash", { lv: 4, effect: { recoil: 0.25 } }),
+  caricafuriosa:M("Carica Furiosa", "neutral", 100, 85, 8, "dash", { lv: 5, effect: { recoil: 0.25 } }),
+  schianto:     M("Schianto", "neutral", 120, 80, 5, "stomp", { lv: 6 }),
+  // neutre di stato: solo innate (non si imparano)
   ruggitino:    M("Ruggitino", "neutral", 0, 100, 15, "roar", { effect: { foe: { atk: -1 } } }),
   guscio:       M("Rintanarsi", "neutral", 0, 100, 10, "aura", { effect: { self: { def: 2 } } }),
   pisolino:     M("Pisolino", "neutral", 0, 100, 5, "sleep", { effect: { heal: 0.5 } }),
-  ingoiare:     M("Ingoiare", "neutral", 60, 90, 10, "bite", { effect: { drain: 0.5 } }),
-  // fuoco
-  scintilla:    M("Scintilla", "fire", 40, 100, 25, "orb", { effect: { burn: 0.1 } }),
-  sbuffo:       M("Sbuffo di Brace", "fire", 65, 95, 15, "breath", { effect: { burn: 0.2 } }),
-  vampata:      M("Vampata", "fire", 90, 85, 5, "burst", { effect: { burn: 0.3 } }),
-  fuocherello:  M("Fuocherello", "fire", 0, 100, 10, "aura", { effect: { self: { atk: 2 } } }),
-  morsofuoco:   M("Zanne Ardenti", "fire", 60, 95, 15, "bite", { effect: { burn: 0.2 } }),
-  // gelo
-  brina:        M("Scheggia di Brina", "cold", 40, 100, 25, "orb", { effect: { foe: { spd: -1 }, chance: 0.2 } }),
-  soffiogelo:   M("Soffio Gelido", "cold", 65, 95, 15, "breath", { effect: { foe: { spd: -1 }, chance: 0.3 } }),
-  grandine:     M("Grandinata", "cold", 90, 85, 5, "rain", { effect: { stun: 0.1 } }),
-  mantobrina:   M("Manto di Brina", "cold", 0, 100, 10, "aura", { effect: { self: { def: 2 } } }),
-  morsogelo:    M("Morso Gelido", "cold", 60, 95, 15, "bite", { effect: { stun: 0.1 } }),
-  // acqua
-  spruzzo:      M("Getto d'Acqua", "water", 40, 100, 25, "beam"),
-  bolla:        M("Bollicine", "water", 60, 95, 15, "orb", { effect: { foe: { spd: -1 }, chance: 0.3 } }),
-  ondata:       M("Ondata", "water", 90, 85, 5, "wave"),
-  inchiostro:   M("Spruzzo d'Inchiostro", "water", 0, 90, 10, "cloud", { effect: { foe: { atk: -1, spd: -1 } } }),
-  pioggia:      M("Pioggerella", "water", 0, 100, 5, "heal", { effect: { heal: 0.4 } }),
-  // fulmine
-  scarica:      M("Scarica", "lightning", 40, 100, 25, "orb", { effect: { stun: 0.1 } }),
-  scossa:       M("Scossetta", "lightning", 60, 95, 15, "bolt", { effect: { stun: 0.2 } }),
-  fulmine:      M("Fulmine", "lightning", 90, 85, 5, "bolt", { effect: { stun: 0.3 } }),
-  caricastatica:M("Carica Statica", "lightning", 0, 100, 10, "aura", { effect: { self: { spd: 2 } } }),
-  saetta:       M("Saetta", "lightning", 45, 100, 20, "beam", { prio: 1 }),
-  // terra
-  rametto:      M("Frusta di Rami", "earth", 40, 100, 25, "claw"),
-  spore:        M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { effect: { stun: 1 } }),
-  frana:        M("Franetta", "earth", 75, 90, 10, "rain", { effect: { stun: 0.1 } }),
-  terremoto:    M("Terremotino", "earth", 95, 85, 5, "stomp"),
-  linfa:        M("Succhia-linfa", "earth", 55, 100, 15, "drain", { effect: { drain: 0.5 } }),
-  // acido
-  sputoacido:   M("Sputo Acido", "acid", 40, 100, 25, "orb", { effect: { foe: { def: -1 }, chance: 0.2 } }),
-  spruzzoacido: M("Spruzzo Corrosivo", "acid", 65, 95, 15, "breath", { effect: { foe: { def: -1 }, chance: 0.3 } }),
-  bagnoacido:   M("Bagno d'Acido", "acid", 90, 85, 5, "burst"),
-  melma:        M("Melma Appiccicosa", "acid", 0, 95, 15, "cloud", { effect: { foe: { spd: -2 } } }),
-  // veleno
-  veleno:       M("Puntura Velenosa", "poison", 40, 100, 20, "orb", { effect: { poison: 0.3 } }),
-  zannevelenose:M("Zanne Velenose", "poison", 60, 95, 15, "bite", { effect: { poison: 0.3 } }),
-  nubetossica:  M("Nube Tossica", "poison", 0, 85, 10, "cloud", { effect: { poison: 1 } }),
-  fiotto:       M("Fiotto di Veleno", "poison", 90, 85, 5, "beam", { effect: { poison: 0.3 } }),
-  // necrotico
-  toccotetro:   M("Tocco Tetro", "necrotic", 50, 100, 20, "drain", { effect: { drain: 0.5 } }),
-  morso:        M("Morso Oscuro", "necrotic", 70, 95, 15, "bite", { effect: { foe: { def: -1 }, chance: 0.3 } }),
-  maledizione:  M("Maledizione", "necrotic", 0, 90, 10, "curse", { effect: { foe: { atk: -1, def: -1 } } }),
-  mietitura:    M("Mietitura", "necrotic", 90, 85, 5, "burst"),
-  raggiosinistro: M("Raggio Sinistro", "necrotic", 65, 95, 15, "beam"),
-  // radioso
-  luccichio:    M("Luccichio", "radiant", 45, 100, 25, "orb", { effect: { foe: { atk: -1 }, chance: 0.2 } }),
-  raggio:       M("Raggio Sacro", "radiant", 80, 90, 10, "beam"),
-  benedizione:  M("Benedizione", "radiant", 0, 100, 5, "heal", { effect: { heal: 0.5 } }),
-  aureola:      M("Aureola", "radiant", 0, 100, 10, "aura", { effect: { self: { def: 1, atk: 1 } } }),
-  lucesplosione:M("Esplosione di Luce", "radiant", 90, 85, 5, "burst", { effect: { stun: 0.1 } }),
-  // psichico
-  ondamentale:  M("Onda Mentale", "psychic", 45, 100, 25, "wave"),
-  ipnosi:       M("Ipnosi", "psychic", 0, 75, 10, "curse", { effect: { stun: 1 } }),
-  sguardo:      M("Sguardo Malefico", "psychic", 85, 85, 5, "beam", { effect: { stun: 0.2 } }),
-  urlopsichico: M("Urlo Psichico", "psychic", 65, 95, 15, "wave", { effect: { foe: { atk: -1 }, chance: 0.3 } }),
-  concentrazione: M("Concentrazione", "psychic", 0, 100, 10, "aura", { effect: { self: { atk: 2 } } }),
+
+  // ── fuoco ──
+  scintilla:    M("Scintilla", "fire", 40, 100, 25, "orb", { lv: 1, effect: { burn: 0.1 } }),
+  artigliardenti: M("Artigli Ardenti", "fire", 40, 100, 25, "claw", { lv: 1, effect: { burn: 0.1 } }),
+  sbuffo:       M("Sbuffo di Brace", "fire", 65, 95, 15, "breath", { lv: 2, effect: { burn: 0.2 } }),
+  fuocherello:  M("Fuocherello", "fire", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
+  morsofuoco:   M("Zanne Ardenti", "fire", 60, 95, 15, "bite", { lv: 2, effect: { burn: 0.2 } }),
+  frustafiamme: M("Frusta di Fiamme", "fire", 70, 95, 15, "whip", { lv: 3, effect: { burn: 0.2 } }),
+  sferafuoco:   M("Sfera di Fuoco", "fire", 75, 90, 10, "orb", { lv: 3, effect: { burn: 0.2 } }),
+  caricarovente:M("Carica Rovente", "fire", 85, 90, 10, "dash", { lv: 4, effect: { burn: 0.2 } }),
+  vampata:      M("Vampata", "fire", 90, 85, 5, "burst", { lv: 4, effect: { burn: 0.3 } }),
+  zoccolomagma: M("Pestone di Magma", "fire", 100, 85, 8, "stomp", { lv: 5, effect: { burn: 0.3 } }),
+  murofuoco:    M("Muro di Fuoco", "fire", 100, 85, 8, "wave", { lv: 5, effect: { burn: 0.3 } }),
+  cometa:       M("Cometa Ardente", "fire", 120, 85, 5, "dash", { lv: 6, effect: { burn: 0.3, recoil: 0.3 } }),
+  meteore:      M("Pioggia di Meteore", "fire", 120, 80, 5, "rain", { lv: 6, effect: { burn: 0.3 } }),
+
+  // ── gelo ──
+  brina:        M("Scheggia di Brina", "cold", 40, 100, 25, "orb", { lv: 1, effect: { foe: { spd: -1 }, chance: 0.2 } }),
+  unghiegelo:   M("Unghie di Ghiaccio", "cold", 40, 100, 25, "claw", { lv: 1, effect: { foe: { spd: -1 }, chance: 0.1 } }),
+  soffiogelo:   M("Soffio Gelido", "cold", 65, 95, 15, "breath", { lv: 2, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  mantobrina:   M("Manto di Brina", "cold", 0, 100, 10, "aura", { lv: 2, effect: { self: { def: 2 } } }),
+  morsogelo:    M("Morso Gelido", "cold", 60, 95, 15, "bite", { lv: 2, effect: { stun: 0.1 } }),
+  frustagelo:   M("Frusta di Ghiaccioli", "cold", 70, 95, 15, "whip", { lv: 3, effect: { stun: 0.1 } }),
+  raggiogelo:   M("Raggio Gelido", "cold", 75, 90, 10, "beam", { lv: 3, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  pestoneglaciale: M("Pestone Glaciale", "cold", 85, 90, 10, "stomp", { lv: 4, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  grandine:     M("Grandinata", "cold", 90, 85, 5, "rain", { lv: 4, effect: { stun: 0.1 } }),
+  valanga:      M("Carica Valanga", "cold", 100, 85, 8, "dash", { lv: 5, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  lancegelo:    M("Lance di Ghiaccio", "cold", 100, 85, 8, "spikes", { lv: 5, effect: { stun: 0.15 } }),
+  zannepolari:  M("Zanne Polari", "cold", 115, 90, 5, "bite", { lv: 6, effect: { stun: 0.2 } }),
+  bufera:       M("Bufera", "cold", 120, 80, 5, "breath", { lv: 6, effect: { foe: { spd: -1 }, chance: 0.5, stun: 0.1 } }),
+
+  // ── acqua ──
+  spruzzo:      M("Getto d'Acqua", "water", 40, 100, 25, "beam", { lv: 1 }),
+  pinzetta:     M("Pinzetta", "water", 40, 100, 25, "claw", { lv: 1 }),
+  bolla:        M("Bollicine", "water", 60, 95, 15, "orb", { lv: 2, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  inchiostro:   M("Spruzzo d'Inchiostro", "water", 0, 90, 10, "cloud", { lv: 2, effect: { foe: { atk: -1, spd: -1 } } }),
+  codaspuma:    M("Coda Spumeggiante", "water", 55, 100, 20, "whip", { lv: 2 }),
+  pioggia:      M("Pioggerella", "water", 0, 100, 5, "heal", { lv: 3, effect: { heal: 0.4 } }),
+  morsoabissale:M("Morso Abissale", "water", 70, 95, 15, "bite", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  bollagigante: M("Bolla Gigante", "water", 75, 90, 10, "orb", { lv: 3, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  tuffo:        M("Tuffo a Bomba", "water", 85, 90, 10, "stomp", { lv: 4 }),
+  ondata:       M("Ondata", "water", 90, 85, 5, "wave", { lv: 4 }),
+  siluro:       M("Siluro", "water", 100, 85, 8, "dash", { lv: 5 }),
+  vortice:      M("Vortice", "water", 100, 85, 8, "curse", { lv: 5, effect: { stun: 0.2 } }),
+  morsakraken:  M("Morsa del Kraken", "water", 115, 90, 5, "bite", { lv: 6, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  maremoto:     M("Maremoto", "water", 120, 80, 5, "wave", { lv: 6 }),
+
+  // ── fulmine ──
+  scarica:      M("Scarica", "lightning", 40, 100, 25, "orb", { lv: 1, effect: { stun: 0.1 } }),
+  graffioelettrico: M("Graffio Elettrico", "lightning", 40, 100, 25, "claw", { lv: 1, effect: { stun: 0.1 } }),
+  scossa:       M("Scossetta", "lightning", 60, 95, 15, "bolt", { lv: 2, effect: { stun: 0.2 } }),
+  caricastatica:M("Carica Statica", "lightning", 0, 100, 10, "aura", { lv: 2, effect: { self: { spd: 2 } } }),
+  saetta:       M("Saetta", "lightning", 45, 100, 20, "beam", { lv: 2, prio: 1 }),
+  morsovoltaico:M("Morso Voltaico", "lightning", 60, 95, 15, "bite", { lv: 2, effect: { stun: 0.15 } }),
+  frustaelettrica: M("Frusta Elettrica", "lightning", 70, 95, 15, "whip", { lv: 3, effect: { stun: 0.2 } }),
+  sferatonante: M("Sfera Tonante", "lightning", 75, 90, 10, "orb", { lv: 3, effect: { stun: 0.2 } }),
+  scattofulmineo: M("Scatto Fulmineo", "lightning", 80, 95, 10, "dash", { lv: 4, prio: 1 }),
+  fulmine:      M("Fulmine", "lightning", 90, 85, 5, "bolt", { lv: 4, effect: { stun: 0.3 } }),
+  pestonetonante: M("Pestone Tonante", "lightning", 100, 85, 8, "stomp", { lv: 5, effect: { stun: 0.2 } }),
+  catenafulmini:M("Catena di Fulmini", "lightning", 100, 85, 8, "beam", { lv: 5, effect: { stun: 0.2 } }),
+  caricatuono:  M("Carica del Tuono", "lightning", 120, 85, 5, "dash", { lv: 6, effect: { stun: 0.3, recoil: 0.3 } }),
+  tempesta:     M("Tempesta", "lightning", 120, 80, 5, "bolt", { lv: 6, effect: { stun: 0.3 } }),
+
+  // ── terra ──
+  rametto:      M("Frusta di Rami", "earth", 40, 100, 25, "whip", { lv: 1 }),
+  sassi:        M("Lancio di Sassi", "earth", 40, 100, 25, "orb", { lv: 1 }),
+  spore:        M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { stun: 1 } }),
+  linfa:        M("Succhia-linfa", "earth", 55, 100, 15, "drain", { lv: 2, effect: { drain: 0.5 } }),
+  zampapietra:  M("Zampata di Pietra", "earth", 55, 100, 20, "stomp", { lv: 2 }),
+  frustaspine:  M("Frusta di Spine", "earth", 70, 95, 15, "whip", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  frana:        M("Franetta", "earth", 75, 90, 10, "rain", { lv: 3, effect: { stun: 0.1 } }),
+  cornoroccia:  M("Corno di Roccia", "earth", 85, 90, 10, "dash", { lv: 4 }),
+  spuntoni:     M("Spuntoni di Pietra", "earth", 85, 90, 10, "spikes", { lv: 4 }),
+  terremoto:    M("Terremotino", "earth", 95, 85, 5, "stomp", { lv: 5 }),
+  rovi:         M("Rovi Stritolanti", "earth", 100, 85, 8, "spikes", { lv: 5, effect: { foe: { spd: -1 }, chance: 0.5 } }),
+  colosso:      M("Carica del Colosso", "earth", 120, 85, 5, "dash", { lv: 6, effect: { recoil: 0.3 } }),
+  spaccaterra:  M("Spaccaterra", "earth", 120, 80, 5, "spikes", { lv: 6, effect: { stun: 0.2 } }),
+
+  // ── acido ──
+  sputoacido:   M("Sputo Acido", "acid", 40, 100, 25, "orb", { lv: 1, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  artiglicorrosivi: M("Artigli Corrosivi", "acid", 40, 100, 25, "claw", { lv: 1, effect: { foe: { def: -1 }, chance: 0.1 } }),
+  spruzzoacido: M("Spruzzo Corrosivo", "acid", 65, 95, 15, "breath", { lv: 2, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  melma:        M("Melma Appiccicosa", "acid", 0, 95, 15, "cloud", { lv: 2, effect: { foe: { spd: -2 } } }),
+  morsoacido:   M("Morso Acido", "acid", 60, 95, 15, "bite", { lv: 2, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  frustacaustica: M("Frusta Caustica", "acid", 70, 95, 15, "whip", { lv: 3, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  bollacorrosiva: M("Bolla Corrosiva", "acid", 75, 90, 10, "orb", { lv: 3, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  tonfo:        M("Tonfo Gelatinoso", "acid", 85, 90, 10, "stomp", { lv: 4, effect: { foe: { spd: -1 }, chance: 0.3 } }),
+  bagnoacido:   M("Bagno d'Acido", "acid", 90, 85, 5, "burst", { lv: 4 }),
+  caricamelmosa:M("Carica Melmosa", "acid", 100, 85, 8, "dash", { lv: 5, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  pioggiaacida: M("Pioggia Acida", "acid", 100, 85, 8, "rain", { lv: 5, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  faucidissolventi: M("Fauci Dissolventi", "acid", 115, 90, 5, "bite", { lv: 6, effect: { foe: { def: -2 }, chance: 0.3 } }),
+  geyseracido:  M("Geyser d'Acido", "acid", 120, 80, 5, "spikes", { lv: 6, effect: { foe: { def: -1 }, chance: 0.5 } }),
+
+  // ── veleno ──
+  veleno:       M("Puntura Velenosa", "poison", 40, 100, 20, "sting", { lv: 1, effect: { poison: 0.3 } }),
+  spruzzotossico: M("Spruzzo Tossico", "poison", 40, 100, 25, "orb", { lv: 1, effect: { poison: 0.2 } }),
+  zannevelenose:M("Zanne Velenose", "poison", 60, 95, 15, "bite", { lv: 2, effect: { poison: 0.3 } }),
+  nubetossica:  M("Nube Tossica", "poison", 0, 85, 10, "cloud", { lv: 2, effect: { poison: 1 } }),
+  codapungente: M("Coda Pungente", "poison", 70, 95, 15, "sting", { lv: 3, effect: { poison: 0.3 } }),
+  soffiomefitico: M("Soffio Mefitico", "poison", 75, 90, 10, "breath", { lv: 3, effect: { poison: 0.3 } }),
+  artigliinfetti: M("Artigli Infetti", "poison", 85, 90, 10, "claw", { lv: 4, effect: { poison: 0.3 } }),
+  fiotto:       M("Fiotto di Veleno", "poison", 90, 85, 5, "beam", { lv: 4, effect: { poison: 0.3 } }),
+  pungiglione:  M("Pungiglione Letale", "poison", 100, 85, 8, "sting", { lv: 5, effect: { poison: 0.4 } }),
+  palude:       M("Palude Venefica", "poison", 100, 85, 8, "cloud", { lv: 5, effect: { poison: 0.4 } }),
+  morsoviverna: M("Morso della Viverna", "poison", 120, 85, 5, "bite", { lv: 6, effect: { poison: 0.5 } }),
+  miasma:       M("Miasma", "poison", 120, 80, 5, "burst", { lv: 6, effect: { poison: 0.5 } }),
+
+  // ── necrotico ──
+  luminotetro:  M("Lumino Tetro", "necrotic", 40, 100, 25, "orb", { lv: 1, effect: { foe: { atk: -1 }, chance: 0.1 } }),
+  graffiospettrale: M("Graffio Spettrale", "necrotic", 45, 100, 25, "claw", { lv: 1 }),
+  toccotetro:   M("Tocco Tetro", "necrotic", 50, 100, 20, "drain", { lv: 2, effect: { drain: 0.5 } }),
+  maledizione:  M("Maledizione", "necrotic", 0, 90, 10, "curse", { lv: 2, effect: { foe: { atk: -1, def: -1 } } }),
+  colpossa:     M("Colpo d'Ossa", "necrotic", 55, 100, 20, "stomp", { lv: 2 }),
+  morso:        M("Morso Oscuro", "necrotic", 70, 95, 15, "bite", { lv: 3, effect: { foe: { def: -1 }, chance: 0.3 } }),
+  raggiosinistro: M("Raggio Sinistro", "necrotic", 65, 95, 15, "beam", { lv: 3 }),
+  frustaombra:  M("Frusta d'Ombra", "necrotic", 85, 90, 10, "whip", { lv: 4, effect: { foe: { def: -1 }, chance: 0.2 } }),
+  mietitura:    M("Mietitura", "necrotic", 90, 85, 5, "burst", { lv: 4 }),
+  falcespettrale: M("Falce Spettrale", "necrotic", 100, 85, 8, "claw", { lv: 5 }),
+  prosciugare:  M("Prosciugare Vita", "necrotic", 95, 90, 8, "drain", { lv: 5, effect: { drain: 0.5 } }),
+  dannati:      M("Carica dei Dannati", "necrotic", 120, 85, 5, "dash", { lv: 6, effect: { recoil: 0.25 } }),
+  ditomorte:    M("Dito della Morte", "necrotic", 120, 80, 5, "curse", { lv: 6 }),
+
+  // ── radioso ──
+  luccichio:    M("Luccichio", "radiant", 45, 100, 25, "orb", { lv: 1, effect: { foe: { atk: -1 }, chance: 0.2 } }),
+  artigliluce:  M("Artiglio di Luce", "radiant", 40, 100, 25, "claw", { lv: 1 }),
+  aureola:      M("Aureola", "radiant", 0, 100, 10, "aura", { lv: 2, effect: { self: { def: 1, atk: 1 } } }),
+  cornosplendente: M("Corno Splendente", "radiant", 55, 100, 20, "dash", { lv: 2 }),
+  benedizione:  M("Benedizione", "radiant", 0, 100, 5, "heal", { lv: 3, effect: { heal: 0.5 } }),
+  frustaluce:   M("Frusta di Luce", "radiant", 70, 95, 15, "whip", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.2 } }),
+  raggio:       M("Raggio Sacro", "radiant", 80, 90, 10, "beam", { lv: 3 }),
+  morsosacro:   M("Morso Sacro", "radiant", 85, 90, 10, "bite", { lv: 4 }),
+  lucesplosione:M("Esplosione di Luce", "radiant", 90, 85, 5, "burst", { lv: 4, effect: { stun: 0.1 } }),
+  caricaceleste:M("Carica Celeste", "radiant", 100, 85, 8, "dash", { lv: 5 }),
+  colonnaluce:  M("Colonna di Luce", "radiant", 100, 85, 8, "bolt", { lv: 5 }),
+  giudizio:     M("Giudizio", "radiant", 120, 85, 5, "stomp", { lv: 6, effect: { stun: 0.2 } }),
+  raggiosolare: M("Raggio Solare", "radiant", 120, 80, 5, "beam", { lv: 6 }),
+
+  // ── psichico ──
+  ondamentale:  M("Onda Mentale", "psychic", 45, 100, 25, "wave", { lv: 1 }),
+  zampapsichica:M("Zampata Psichica", "psychic", 40, 100, 25, "stomp", { lv: 1 }),
+  concentrazione: M("Concentrazione", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
+  morsoillusorio: M("Morso Illusorio", "psychic", 55, 100, 20, "bite", { lv: 2 }),
+  ipnosi:       M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { stun: 1 } }),
+  urlopsichico: M("Urlo Psichico", "psychic", 65, 95, 15, "wave", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.3 } }),
+  artiglifantasma: M("Artigli Fantasma", "psychic", 70, 95, 15, "claw", { lv: 3 }),
+  telecinesi:   M("Carica Telecinetica", "psychic", 85, 90, 10, "dash", { lv: 4 }),
+  sguardo:      M("Sguardo Malefico", "psychic", 85, 85, 5, "beam", { lv: 4, effect: { stun: 0.2 } }),
+  frustamentale:M("Frusta Mentale", "psychic", 100, 85, 8, "whip", { lv: 5, effect: { stun: 0.2 } }),
+  sferapsionica:M("Sfera Psionica", "psychic", 100, 85, 8, "orb", { lv: 5, effect: { foe: { atk: -1 }, chance: 0.3 } }),
+  schiantotele: M("Schianto Telecinetico", "psychic", 120, 85, 5, "stomp", { lv: 6 }),
+  tempestapsi:  M("Tempesta Psichica", "psychic", 120, 80, 5, "curse", { lv: 6, effect: { stun: 0.2 } }),
 };
+
+/* ── GRADI DELLE MOSSE (2026-10-31) ─────────────────────────
+   Ogni mossa imparabile ha un grado `lv` da 1 a 6 (come i livelli
+   degli incantesimi). Il pet sblocca il grado g al livello
+   MOVE_GRADES[g-1] e per ogni grado sbloccato impara UNA mossa a
+   scelta (si può cambiare quando si vuole, fuori dalla lotta):
+   - attacchi (forme fisiche) del SUO elemento o neutri;
+   - incantesimi SOLO del suo elemento (un pet di fuoco non impara
+     mai un incantesimo di gelo: servirà un oggetto, più avanti).
+   In lotta porta MAX_MOVES mosse, scelte fra le innate sbloccate e
+   quelle imparate. */
+export const MOVE_GRADES = [1, 4, 8, 14, 22, 32];
+export const MAX_MOVES = 4;
+export const GRADE_ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+const PHYS_FX = new Set(["stomp", "bite", "claw", "whip", "sting", "dash"]);
+export const moveCat = (m) => (PHYS_FX.has(PET_DEX_MOVES[m]?.fx) ? "atk" : "spell");
+export const gradeOfLevel = (level) => MOVE_GRADES.filter((l) => (level || 1) >= l).length;
+// Mosse che la specie può imparare al grado g (le innate escluse).
+export function learnPool(speciesKey, grade) {
+  const sp = PET_DEX[speciesKey];
+  if (!sp) return [];
+  return Object.keys(PET_DEX_MOVES).filter((m) => {
+    const mv = PET_DEX_MOVES[m];
+    if (mv.lv !== grade || sp.moves.includes(m)) return false;
+    if (mv.type === sp.type) return true;
+    return mv.type === "neutral" && moveCat(m) === "atk";
+  });
+}
 
 /* ── SPECIE ───────────────────────────────────────────────── */
 const S = (key, name, icon, type, rarity, desc, look, base, moves, res = null) =>

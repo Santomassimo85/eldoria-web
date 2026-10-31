@@ -390,3 +390,27 @@
 /* ── sfondo della lotta generato dall'IA (pet_dex/__arena.bg, pagina admin Sprite) ── */
 .pd-field.has-bg { background: var(--pd-bg-img) center / cover no-repeat, #2a3d5c; image-rendering: pixelated; }
 .pd-field.has-bg .pd-spot--e::before, .pd-field.has-bg .pd-spot--p::before { background: rgba(0, 0, 0, .22); border-color: transparent; }
+
+/* ── interruttori audio della lotta (musica / effetti) ── */
+.pd-audio { display: inline-flex; gap: 6px; margin-left: auto; }
+.pd-audio-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 10px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .22); background: rgba(0, 0, 0, .25); color: #f3ead8; font: 600 .82rem var(--font-ui); cursor: pointer; }
+.pd-audio-btn.is-off { opacity: .6; text-decoration: line-through; }
+@media (max-width: 520px) { .pd-audio-btn small { display: none; } }
+
+/* ── gradi delle mosse (MovePanel) ── */
+.pd-movepanel { display: grid; gap: 8px; margin: 8px 0; }
+.pd-movepanel h4 { margin: 6px 0 0; font: 700 .95rem var(--font-sc); color: var(--pd-ink); }
+.pd-movepanel h4 small { font: 400 .78rem var(--font-ui); color: var(--pd-mute); margin-left: 6px; }
+.pd-mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px; }
+.pd-mchip { display: grid; gap: 2px; text-align: left; padding: 6px 8px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .14); border-left: 4px solid var(--tc); background: rgba(0, 0, 0, .28); color: var(--pd-ink); font: inherit; cursor: pointer; }
+.pd-mchip b { font-size: .86rem; color: var(--pd-ink); }
+.pd-mchip small { font-size: .72rem; color: var(--pd-mute); }
+.pd-mchip.is-on { background: color-mix(in srgb, var(--tc) 26%, rgba(0, 0, 0, .35)); box-shadow: 0 0 0 1px var(--tc); }
+.pd-mchip:disabled { cursor: default; }
+.pd-mchip:disabled:not(.is-on) { opacity: .5; }
+.pd-grade { padding: 6px 8px; border-radius: 4px; background: rgba(0, 0, 0, .18); display: grid; gap: 5px; }
+.pd-grade-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pd-grade-head b { color: var(--pd-ink); font-family: var(--font-sc); }
+.pd-grade-head small { color: var(--pd-mute); }
+.pd-grade.is-locked .pd-grade-head b { opacity: .6; }
+.pd-newmove { margin-left: 8px; padding: 1px 7px; border-radius: 99px; background: #f2b552; color: #2a1606; font: 700 .7rem var(--font-ui); vertical-align: middle; }

@@ -20,20 +20,23 @@ import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
   eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
+  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf,
 } from "../data/petDex";
 import {
-  statsAt, movesAt, xpToNext, newBattle, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, newBattle, battleMoves, learnedMoves, knownMoves, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
   recordTowerResult, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
+  learnMove, setMoveset,
 } from "../utils/petDen";
 import PetFx from "./PetFx";
+import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import "./PetDen.css";
 
 // Mosse fisiche: chi attacca fa un balzo verso il bersaglio (classi in PetFx.css).
-const LUNGE_FX = { stomp: "stomp", bite: "lunge", claw: "lunge" };
+const LUNGE_FX = { stomp: "stomp", bite: "lunge", claw: "lunge", whip: "lunge", sting: "lunge", dash: "dash" };
 
 /* ── pezzi comuni ─────────────────────────────────────────── */
 export function PetSprite({ species, art, flip = false, size = 96, fainted = false, hit = false }) {
@@ -68,20 +71,75 @@ const Bar = ({ value, max, kind = "hp" }) => {
   );
 };
 
-function MoveList({ species, level }) {
+/* ── Mosse del pet: in lotta, innate e gradi I–VI ───────────── */
+const moveInfo = (m) => {
+  const mv = PET_DEX_MOVES[m];
+  const kind = moveCat(m) === "atk" ? "attacco" : "incantesimo";
+  return mv.power ? `${kind} · pot. ${mv.power} · ${mv.acc}% · PP ${mv.pp}` : `${kind} di stato · PP ${mv.pp}`;
+};
+function MoveChip({ m, on, disabled, onClick, title }) {
+  const mv = PET_DEX_MOVES[m];
   return (
-    <ul className="pd-moves">
-      {(PET_DEX[species]?.moves || []).map((m, i) => {
-        const mv = PET_DEX_MOVES[m];
-        const locked = level < MOVE_UNLOCK[i];
+    <button type="button" className={`pd-mchip${on ? " is-on" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }}
+      disabled={disabled} onClick={onClick} aria-pressed={on} title={title}>
+      <b>{TYPE_ICON[mv.type]} {mv.name}</b>
+      <small>{moveInfo(m)}{!mv.power ? "" : ` · ${DMG_ICON[damageKindOf(mv)]}`}</small>
+    </button>
+  );
+}
+function MovePanel({ pet, onLearn, onMoveset }) {
+  const sp = PET_DEX[pet.species];
+  const set = battleMoves(pet);
+  const known = knownMoves(pet);
+  const learned = learnedMoves(pet);
+  const g = gradeOfLevel(pet.level);
+  const toggle = (m) => {
+    if (set.includes(m)) { if (set.length > 1) onMoveset(set.filter((x) => x !== m)); return; }
+    if (set.length < MAX_MOVES) onMoveset([...set, m]);
+  };
+  return (
+    <div className="pd-movepanel">
+      <h4>In lotta <small>{set.length}/{MAX_MOVES} · tocca per togliere o mettere</small></h4>
+      <div className="pd-mgrid">
+        {known.map((m) => (
+          <MoveChip key={m} m={m} on={set.includes(m)} disabled={!set.includes(m) && set.length >= MAX_MOVES}
+            onClick={() => toggle(m)} title={set.includes(m) ? "Togli dalla lotta" : set.length >= MAX_MOVES ? `Ne porta già ${MAX_MOVES}: togline una` : "Porta in lotta"} />
+        ))}
+      </div>
+      <h4>Innate</h4>
+      <ul className="pd-moves">
+        {sp.moves.map((m, i) => {
+          const mv = PET_DEX_MOVES[m];
+          const locked = pet.level < MOVE_UNLOCK[i];
+          return (
+            <li key={m} className={locked ? "is-locked" : ""}>
+              <span>{TYPE_ICON[mv.type]} {mv.name}</span>
+              <small>{locked ? `🔒 Lv ${MOVE_UNLOCK[i]}` : moveInfo(m)}</small>
+            </li>
+          );
+        })}
+      </ul>
+      <h4>Gradi delle mosse <small>una a scelta per grado · attacchi {TYPE_ICON[sp.type]} o neutri, incantesimi solo {TYPE_ICON[sp.type]} {TYPE_LABEL[sp.type]}</small></h4>
+      {MOVE_GRADES.map((lvl, i) => {
+        const grade = i + 1;
+        const open = grade <= g;
+        const pick = (pet.learned || {})[grade];
         return (
-          <li key={m} className={locked ? "is-locked" : ""}>
-            <span>{TYPE_ICON[mv.type]} {mv.name}</span>
-            <small>{locked ? `🔒 Lv ${MOVE_UNLOCK[i]}` : mv.power ? `pot. ${mv.power} · ${mv.acc}%` : "stato"}</small>
-          </li>
+          <div key={grade} className={`pd-grade${open ? "" : " is-locked"}`}>
+            <div className="pd-grade-head">
+              <b>Grado {GRADE_ROMAN[i]}</b>
+              <small>{open ? (pick && learned.includes(pick) ? `imparata: ${PET_DEX_MOVES[pick].name}` : "✨ scegli una mossa") : `🔒 al Lv ${lvl}`}</small>
+            </div>
+            <div className="pd-mgrid">
+              {learnPool(pet.species, grade).map((m) => (
+                <MoveChip key={m} m={m} on={pick === m} disabled={!open || pick === m}
+                  onClick={() => onLearn(grade, m)} title={open ? (pick ? `Impara ${PET_DEX_MOVES[m].name} al posto di ${PET_DEX_MOVES[pick]?.name}` : `Impara ${PET_DEX_MOVES[m].name}`) : `Si sblocca al Lv ${lvl}`} />
+              ))}
+            </div>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -160,7 +218,7 @@ export default function PetDen() {
           key={battle.key}
           uid={uid} den={den} art={art} plan={battle.plan} teamIds={battle.teamIds}
           onExit={() => { setBattle(null); setTab("torre"); }}
-          onRetry={() => setBattle((b) => ({ ...b, key: Date.now() }))}
+          onRetry={() => { unlockAudio(); setBattle((b) => ({ ...b, key: Date.now() })); }}
         />
       </section>
     );
@@ -215,7 +273,7 @@ export default function PetDen() {
           {sec === "dex" && <DexTab den={den} art={art} />}
           {sec === "manuale" && <Manual />}
           {sec === "torre" && (
-            <TowerTab den={den} art={art} onFight={(plan) => setBattle({ plan, teamIds: den.team, key: Date.now() })} />
+            <TowerTab den={den} art={art} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
           )}
           {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
           {sec === "giocatori" && <PlayersAdmin run={run} />}
@@ -360,7 +418,18 @@ function Manual() {
           <li>Se il tuo pet va a terra, scegli il prossimo senza perdere il turno. Vince chi resta in piedi.</li>
           <li>Agisce prima chi è più veloce (alcune mosse rapide passano davanti a tutto).</li>
           <li>Le mosse hanno potenza, precisione e usi (PP). Le mosse di stato potenziano, curano, avvelenano, scottano o intontiscono.</li>
-          <li>Le mosse dello stesso elemento del pet colpiscono un po' più forte. Il terzo e il quarto attacco si sbloccano al livello 5 e 10.</li>
+          <li>Le mosse dello stesso elemento del pet colpiscono un po' più forte. Delle 4 mosse innate, la terza e la quarta si sbloccano al livello 5 e 10.</li>
+          <li>Effetti e suoni: ogni mossa ha la sua forma (pestone, morso, artigli, frusta, pungiglione, carica, spuntoni, raggio, soffio…) con i colori e il suono del suo elemento. La musica e gli effetti si spengono dai tasti 🎵 e 🔊 in alto nella lotta.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Gradi delle mosse (I–VI)</h3>
+        <ul>
+          <li>Crescendo, il pet sblocca sei gradi di mosse, come i livelli degli incantesimi: grado {MOVE_GRADES.map((l, i) => `${GRADE_ROMAN[i]} al Lv ${l}`).join(", ")}.</li>
+          <li>Per ogni grado sbloccato impara <b>una</b> mossa a scelta (Squadra → Dettagli). Si può cambiare quando vuoi, fuori dalla lotta.</li>
+          <li>Può imparare gli <b>attacchi</b> del suo elemento o neutri, e gli <b>incantesimi</b> SOLO del suo elemento: un pet di fuoco non imparerà mai un incantesimo di gelo.</li>
+          <li>In lotta porta {MAX_MOVES} mosse, scelte fra le innate e quelle imparate. Più alto il grado, più forte (e meno precisa) la mossa.</li>
+          <li>Anche i pet della Torre imparano le loro mosse salendo di livello.</li>
         </ul>
       </section>
       <section>
@@ -495,7 +564,7 @@ function StarterPick({ art, onPick }) {
 }
 
 /* ── squadra e collezione ─────────────────────────────────── */
-function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot }) {
+function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset }) {
   const sp = PET_DEX[pet.species];
   const st = statsAt(pet.species, pet.level);
   const [open, setOpen] = useState(false);
@@ -506,7 +575,9 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
       {isMascot && <span className="pd-mascot-badge" title="Mascotte">⭐</span>}
       <PetSprite species={pet.species} art={art} size={84} />
       <div className="pd-card-body">
-        <h3>{pet.nick || sp.name} <small>Lv {pet.level}</small></h3>
+        <h3>{pet.nick || sp.name} <small>Lv {pet.level}</small>
+          {gradeOfLevel(pet.level) > Object.keys(pet.learned || {}).filter((k) => k <= gradeOfLevel(pet.level)).length && <span className="pd-newmove" title="Ha un grado di mosse da scegliere (Dettagli)">✨ mossa nuova</span>}
+        </h3>
         <div className="pd-chips"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
         <ResLine species={pet.species} compact />
         <div className="pd-xp"><Bar value={pet.xp} max={xpToNext(pet.level)} kind="xp" /><small>{pet.xp}/{xpToNext(pet.level)} PE</small></div>
@@ -527,7 +598,7 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
           <div className="pd-card-more">
             <p className="pd-fine">{sp.desc}</p>
             <ResLine species={pet.species} />
-            <MoveList species={pet.species} level={pet.level} />
+            <MovePanel pet={pet} onLearn={onLearn} onMoveset={onMoveset} />
             <div className="pd-rename">
               <input value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
               <button type="button" className="pd-btn" onClick={() => onRename(nick)}>Rinomina</button>
@@ -556,6 +627,8 @@ function TeamTab({ uid, den, art, run }) {
       onToggle={() => toggle(p)}
       onRename={(n) => run(() => renamePet(uid, p.id, n), "Nome cambiato.")}
       onRelease={() => window.confirm(`Liberare ${p.nick || PET_DEX[p.species].name}? Non torna più.`) && run(() => releasePet(uid, p.id), "Liberato.")}
+      onLearn={(g, m) => run(() => learnMove(uid, p.id, g, m), `${p.nick || PET_DEX[p.species].name} impara ${PET_DEX_MOVES[m].name}!`)}
+      onMoveset={(list) => run(() => setMoveset(uid, p.id, list))}
       isMascot={den.mascot === p.id}
       onMascot={() => run(() => setMascot(uid, den.mascot === p.id ? null : p.id), den.mascot === p.id ? "Niente più mascotte." : `${p.nick || PET_DEX[p.species].name} è la tua mascotte!`)}
     />
@@ -867,6 +940,19 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
   }, [queue]);
   const busy = queue.length > 0;
 
+  // Suoni: musica per tutta la lotta, un effetto per ogni riga mostrata.
+  const [prefs, setPrefs] = useState(audioPrefs);
+  useEffect(() => onAudioPrefs(setPrefs), []);
+  useEffect(() => { battleMusic(true); return () => battleMusic(false); }, []);
+  useEffect(() => { sfx(shown); }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
+  const jingled = useRef(false);
+  useEffect(() => {
+    if (!battle.over || busy || jingled.current) return;
+    jingled.current = true;
+    battleMusic(false);
+    jingle(battle.over === "p");
+  }, [battle.over, busy]);
+
   // Fine lotta: salva l'esito una volta sola, dopo l'ultima riga.
   useEffect(() => {
     if (!battle.over || busy || savedRef.current) return;
@@ -904,8 +990,8 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
   const lunge = shown?.kind === "move" ? LUNGE_FX[shown.fx] : null;
   const actCls = (side) => {
     if (!shown) return "";
-    if (lunge && shown.side === side) return lunge === "stomp" ? " is-stomp" : " is-lunge";
-    if (shown.kind === "move" && shown.fx === "stomp" && shown.side !== side) return " is-shaken";
+    if (lunge && shown.side === side) return ` is-${lunge}`;
+    if (shown.kind === "move" && ["stomp", "dash", "spikes"].includes(shown.fx) && shown.side !== side) return " is-shaken";
     return "";
   };
   const text = shown?.text || battle.log[battle.log.length - 1]?.text || "";
@@ -921,6 +1007,12 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     <div className="pd-battle">
       <div className="pd-battle-top">
         <span>🗼 Piano {plan.floor}{plan.boss ? " · 👑 Guardiano" : ""} · {AI_LABEL[plan.aiLevel]}</span>
+        <span className="pd-audio">
+          <button type="button" className={`pd-audio-btn${prefs.musicOn ? "" : " is-off"}`} onClick={() => setMusicOn(!prefs.musicOn)}
+            aria-pressed={prefs.musicOn} title={prefs.musicOn ? "Spegni la musica" : "Accendi la musica"}>{prefs.musicOn ? "🎵" : "🔇"}<small>Musica</small></button>
+          <button type="button" className={`pd-audio-btn${prefs.sfxOn ? "" : " is-off"}`} onClick={() => setSfxOn(!prefs.sfxOn)}
+            aria-pressed={prefs.sfxOn} title={prefs.sfxOn ? "Spegni gli effetti" : "Accendi gli effetti"}>{prefs.sfxOn ? "🔊" : "🔈"}<small>Effetti</small></button>
+        </span>
         <button type="button" className="pd-btn pd-btn--ghost" onClick={() => (battle.over || window.confirm("Ritirarti? Il piano resta da fare.")) && onExit()}>
           {battle.over ? "Esci" : "Ritirati"}
         </button>
@@ -993,7 +1085,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
         ) : (
           <div className="pd-actions">
             <div className="pd-movegrid">
-              {movesAt(me.species, me.level).map((m) => {
+              {Object.keys(me.pp).map((m) => {
                 const mv = PET_DEX_MOVES[m];
                 return (
                   <button key={m} type="button" className="pd-move" style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || me.pp[m] <= 0} onClick={() => act({ kind: "move", move: m })}>

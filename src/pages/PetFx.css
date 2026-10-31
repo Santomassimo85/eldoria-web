@@ -105,12 +105,40 @@
 .pfx-z { font: 800 calc(var(--s) * .2) var(--font-num, serif); color: #dfe8ff; text-shadow: 0 0 6px #7aa2ff; opacity: 0; animation: pfx-z 1s ease-out forwards; }
 @keyframes pfx-z { 0% { opacity: 0; transform: translate(-50%, -20%) rotate(-10deg) scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--s) * .35), calc(-50% - var(--s) * .6)) rotate(12deg) scale(1.2); } }
 
+/* ── frusta: una sola sferzata che si srotola e schiocca ── */
+.pfx-whip { position: absolute; inset: 0; transform: none !important; width: 100%; height: 100%; overflow: visible; }
+.pfx-whip path { stroke-dasharray: 100; stroke-dashoffset: 100; animation: pfx-whip .5s steps(9, end) forwards; }
+@keyframes pfx-whip { 0% { stroke-dashoffset: 100; opacity: 1; } 60% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: -100; opacity: 0; } }
+.pfx-crack { width: calc(var(--s) * .7); height: calc(var(--s) * .7); background: var(--c1); box-shadow: 0 0 0 3px var(--c3); clip-path: polygon(50% 0, 58% 38%, 100% 50%, 58% 62%, 50% 100%, 42% 62%, 0 50%, 42% 38%); opacity: 0; animation: pfx-pow .35s ease-out .3s forwards; }
+
+/* ── pungiglione ── */
+.pfx-needle { width: calc(var(--s) * .42); height: 6px; background: linear-gradient(90deg, var(--c3), var(--c2) 40%, #fff 90%); clip-path: polygon(0 0, 85% 25%, 100% 50%, 85% 75%, 0 100%); animation: pfx-needle .32s ease-in forwards; }
+@keyframes pfx-needle { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--ang)); } 92% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--ang)); } }
+.pfx-prick { width: calc(var(--s) * .45); height: calc(var(--s) * .45); background: var(--c2); box-shadow: 0 0 0 2px var(--c3); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); opacity: 0; animation: pfx-pop .35s ease-out .3s forwards; }
+.pfx-drip { width: calc(var(--s) * .07); height: calc(var(--s) * .11); min-width: 5px; min-height: 7px; background: var(--c2); box-shadow: 0 0 0 2px var(--c3); opacity: 0; animation: pfx-drip .5s forwards; }
+@keyframes pfx-drip { 0% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, calc(-50% + var(--s) * .45)); } }
+
+/* ── carica: scie di velocità ── */
+.pfx-streak { width: calc(var(--s) * .5); height: 5px; background: linear-gradient(90deg, transparent, var(--c1), var(--c2)); box-shadow: 0 0 0 2px var(--c3); opacity: 0; animation: pfx-streak .35s forwards; }
+@keyframes pfx-streak { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ang)) scaleX(.2); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ang)) translateX(calc(var(--s) * .4)) scaleX(1.2); } }
+
+/* ── spuntoni dal terreno (forma e colore per elemento) ── */
+.pfx-spike { width: calc(var(--s) * .2); height: var(--h); transform-origin: 50% 100%; background: linear-gradient(90deg, var(--c3), var(--c2) 45%, var(--c1)); clip-path: polygon(50% 0, 100% 100%, 0 100%); opacity: 0; animation: pfx-spike .6s forwards; }
+.pfx-spike--cold { background: linear-gradient(90deg, var(--c2), #fff 50%, var(--c1)); }
+.pfx-spike--acid { clip-path: polygon(50% 0, 70% 40%, 100% 100%, 0 100%, 30% 40%); }
+.pfx-spike--earth { clip-path: polygon(45% 0, 62% 18%, 100% 100%, 0 100%, 25% 30%); }
+@keyframes pfx-spike { 0% { opacity: 1; transform: translate(-50%, -100%) scaleY(0); } 35% { opacity: 1; transform: translate(-50%, -100%) scaleY(1.1); } 75% { opacity: 1; transform: translate(-50%, -100%) scaleY(1); } 100% { opacity: 0; transform: translate(-50%, -100%) scaleY(.2); } }
+
 /* ── chi attacca: balzo del pestone e affondo di morsi/artigli ── */
 .pd-act { position: relative; z-index: 1; }
 .pd-act.is-stomp.side-p { animation: pd-stomp-p .55s ease-in-out; }
 .pd-act.is-stomp.side-e { animation: pd-stomp-e .55s ease-in-out; }
 .pd-act.is-lunge.side-p { animation: pd-lunge-p .42s ease-in-out; }
 .pd-act.is-lunge.side-e { animation: pd-lunge-e .42s ease-in-out; }
+.pd-act.is-dash.side-p { animation: pd-dash-p .5s ease-in; }
+.pd-act.is-dash.side-e { animation: pd-dash-e .5s ease-in; }
+@keyframes pd-dash-p { 0% { transform: none; } 20% { transform: translate(-8%, 4%) scale(1.05, .95); } 55% { transform: translate(85%, -55%) scale(1.08); } 70% { transform: translate(70%, -45%); } 100% { transform: none; } }
+@keyframes pd-dash-e { 0% { transform: none; } 20% { transform: translate(8%, -4%) scale(1.05, .95); } 55% { transform: translate(-85%, 55%) scale(1.08); } 70% { transform: translate(-70%, 45%); } 100% { transform: none; } }
 @keyframes pd-stomp-p { 0% { transform: none; } 40% { transform: translate(14%, -38%) scale(.96, 1.06); } 55% { transform: translate(24%, -6%) scale(1.1, .86); } 70% { transform: translate(24%, 0) scale(1); } 100% { transform: none; } }
 @keyframes pd-stomp-e { 0% { transform: none; } 40% { transform: translate(-14%, -38%) scale(.96, 1.06); } 55% { transform: translate(-24%, 6%) scale(1.1, .86); } 70% { transform: translate(-24%, 8%) scale(1); } 100% { transform: none; } }
 @keyframes pd-lunge-p { 0% { transform: none; } 45% { transform: translate(30%, -18%); } 100% { transform: none; } }

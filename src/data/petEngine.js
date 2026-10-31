@@ -12,7 +12,7 @@
      (6%) × caso 0,85–1.
    ============================================================ */
 
-import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, typeMultiplier, resistMultiplier, damageKindOf } from "./petDex";
+import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool } from "./petDex";
 
 const rnd = () => Math.random();
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
@@ -39,6 +39,41 @@ export function statsAt(speciesKey, level, boost = 1) {
 export const movesAt = (speciesKey, level) =>
   (PET_DEX[speciesKey]?.moves || []).filter((_, i) => (level || 1) >= MOVE_UNLOCK[i]);
 
+/* Gradi (2026-10-31): pet.learned = {grado: mossa} (una per grado
+   sbloccato), pet.moveset = le MAX_MOVES mosse portate in lotta.
+   Tutto si ricontrolla qui: una mossa che il pet non può avere (grado
+   non ancora raggiunto, elemento sbagliato) viene ignorata. */
+export function learnedMoves(pet) {
+  const g = gradeOfLevel(pet?.level);
+  return Object.entries(pet?.learned || {})
+    .filter(([grade, m]) => Number(grade) <= g && learnPool(pet.species, Number(grade)).includes(m))
+    .sort((a, b) => a[0] - b[0]).map(([, m]) => m);
+}
+export const knownMoves = (pet) => [...movesAt(pet.species, pet.level), ...learnedMoves(pet)];
+export function battleMoves(pet) {
+  const known = knownMoves(pet);
+  const chosen = (Array.isArray(pet?.moveset) ? pet.moveset : []).filter((m, i, a) => known.includes(m) && a.indexOf(m) === i);
+  if (chosen.length) return chosen.slice(0, MAX_MOVES);
+  return known.slice(0, MAX_MOVES).length === known.length ? known : [...known.slice(0, MAX_MOVES - 1), known[known.length - 1]];
+}
+
+/* Mosse dei nemici della torre: per ogni grado sbloccato una mossa
+   del suo repertorio (a seme fisso), poi le MAX_MOVES più forti fra
+   innate e imparate, tenendo una mossa di stato se c'era. */
+function enemyMoveset(species, level, r) {
+  const learned = {};
+  for (let g = 1; g <= gradeOfLevel(level); g++) {
+    const pool = learnPool(species, g);
+    if (pool.length) learned[g] = pool[Math.floor(r() * pool.length)];
+  }
+  const known = knownMoves({ species, level, learned });
+  if (known.length <= MAX_MOVES) return known;
+  const pow = (m) => PET_DEX_MOVES[m].power;
+  const status = known.find((m) => !pow(m));
+  const hits = known.filter((m) => pow(m)).sort((a, b) => pow(b) - pow(a));
+  return status ? [...hits.slice(0, MAX_MOVES - 1), status] : hits.slice(0, MAX_MOVES);
+}
+
 /* ── COMBATTENTI ───────────────────────────────────────────── */
 export function makeFighter(pet, boost = 1) {
   const sp = PET_DEX[pet.species];
@@ -50,7 +85,7 @@ export function makeFighter(pet, boost = 1) {
     stages: { atk: 0, def: 0, spd: 0 },
     status: null,          // { kind: "burn"|"poison", turns }
     stunned: false,
-    pp: Object.fromEntries(movesAt(pet.species, pet.level).map((m) => [m, PET_DEX_MOVES[m].pp])),
+    pp: Object.fromEntries(battleMoves(pet).map((m) => [m, PET_DEX_MOVES[m].pp])),
   };
 }
 
@@ -351,7 +386,8 @@ export function towerFloor(floor, leadType = null) {
     if (team.some((t) => t.species === k) && pool.length > size) k = pool[Math.floor(r() * pool.length)];
     const lead = Math.round(1 + (n - 1) * 0.55);
     const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
-    team.push({ id: `tw${n}_${i}`, species: k, level });
+    // seme a parte: le mosse non cambiano le squadre dei piani
+    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31)) });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   // i primi piani sono un tutorial: avversari più deboli del normale
