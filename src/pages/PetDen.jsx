@@ -1207,7 +1207,7 @@ const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
 
 // Mostra le righe di un turno una alla volta (con il loro suono).
 // Come in Arena: prima di ogni tiro per colpire o tiro salvezza rotola il
-// d20 3D (qui a pixel), poi si vede la riga con l'effetto.
+// d20 3D, poi si vede la riga con l'effetto.
 const diceLabel = (r, ev) => (r.kind === "save"
   ? `${r.who}: tiro salvezza ${sgn(r.mod)} contro CD ${r.vs}`
   : `${ev.att} · ${ev.mname}: d20 ${sgn(r.mod)} contro CA ${r.vs}${r.dis ? " (svantaggio)" : ""}`);
@@ -1224,7 +1224,7 @@ function useLinePlayer() {
     const t = setTimeout(async () => {
       const r = next.kind === "move" ? next.roll : null;
       if (r) {
-        await showD20Roll(r.d, { label: diceLabel(r, next), pixel: true,
+        await showD20Roll(r.d, { label: diceLabel(r, next),
           dice: r.dis ? [{ value: r.d, name: "tiene" }, { value: r.d2, name: "scarta", dim: true }] : undefined });
       }
       if (!alive) return;
