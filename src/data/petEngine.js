@@ -326,7 +326,8 @@ export function towerFloor(floor) {
   const n = Math.max(1, floor | 0);
   const r = seeded(n * 7919);
   const size = n <= 3 ? 1 : n <= 9 ? 2 : 3;
-  const pool = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n);
+  // Piani 1–2: solo creature di tipo neutro, così nessun iniziale parte svantaggiato.
+  const pool = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n && (n > 2 || PET_DEX[k].type === "neutral"));
   const team = [];
   for (let i = 0; i < size; i++) {
     let k = pool[Math.floor(r() * pool.length)];
