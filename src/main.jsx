@@ -9,6 +9,10 @@ import "./styles/light-theme.css"; // tema chiaro "Pergamena Antica" — caricat
 import "./styles/layout.css"; // posizionamento flottanti coerente + safe-area iOS
 import "./styles/nesso.css"; // Prototipo J "Il Nesso" — il vuoto arcano, varchi esagonali (solo tema chiaro)
 import "./styles/covo.css"; // "R · Il Covo del Drago" — il tema di TUTTO il sito (caricato per ultimo, vince)
+import { startAutoUpdate } from "./utils/autoUpdate";
+
+// App Android e PWA aperte in secondo piano: prendono da sole la versione nuova
+startAutoUpdate();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
