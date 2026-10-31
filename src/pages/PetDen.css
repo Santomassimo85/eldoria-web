@@ -386,3 +386,7 @@
   .pd-hub-grid { grid-template-columns: 1fr 1fr; }
   .pd-tile { min-height: 100px; padding: 14px 12px; }
 }
+
+/* ── sfondo della lotta generato dall'IA (pet_dex/__arena.bg, pagina admin Sprite) ── */
+.pd-field.has-bg { background: var(--pd-bg-img) center / cover no-repeat, #2a3d5c; image-rendering: pixelated; }
+.pd-field.has-bg .pd-spot--e::before, .pd-field.has-bg .pd-spot--p::before { background: rgba(0, 0, 0, .22); border-color: transparent; }

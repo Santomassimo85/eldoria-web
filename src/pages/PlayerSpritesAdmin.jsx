@@ -10,7 +10,7 @@ import "./WorldBossAdmin.css";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 
-import { isAdminEmail } from "../utils/roles";
+import { isAdminEmail, isMainMaster } from "../utils/roles";
 
 // Avatar del PG → data URL ridotto (max 640px, jpeg): è il riferimento visivo che
 // passiamo a Gemini così lo sprite somiglia davvero al personaggio.
@@ -364,6 +364,59 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
     }
   };
 
+  // ── Sfondo della lotta dei pet (Rifugio dei Pet, 2026-10-31) ──
+  // Sta in pet_dex/__arena.bg (stesse regole della pixel art dei pet: la
+  // legge chi è loggato, la scrive il Master). Pixel art cucciolosa, con
+  // gli spazi liberi dove stanno i due pet (in basso a sinistra il nostro,
+  // in alto a destra l'avversario).
+  const petBgInputRef = useRef(null);
+  const [petBg, setPetBg] = useState(null);
+  const [petBgIdea, setPetBgIdea] = useState("");
+  const [petBgBusy, setPetBgBusy] = useState(false);
+  useEffect(() => onSnapshot(doc(db, "pet_dex", "__arena"), (s) => setPetBg(s.data()?.bg || null), () => setPetBg(null)), []);
+  const toJpeg = (src) => new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => {
+      const scale = i.width > 1280 ? 1280 / i.width : 1;
+      const c = document.createElement("canvas");
+      c.width = Math.round(i.width * scale); c.height = Math.round(i.height * scale);
+      c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/jpeg", 0.75));
+    };
+    i.onerror = () => rej(new Error("immagine non leggibile"));
+    i.src = src;
+  });
+  const savePetBg = (bg) => setDoc(doc(db, "pet_dex", "__arena"), { bg, updatedAt: new Date().toISOString() }, { merge: true });
+  const loadPetBg = (file) => {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = async (e) => { try { await savePetBg(await toJpeg(e.target.result)); } catch (err) { alert(err.message); } };
+    r.readAsDataURL(file);
+  };
+  const generatePetBg = async () => {
+    if (petBgBusy) return;
+    if (petBg && !window.confirm("Sostituire lo sfondo della lotta dei pet con uno nuovo dell'IA?")) return;
+    setPetBgBusy(true);
+    try {
+      const prompt = `Wide 16:9 background scene for a cute turn-based monster-collecting battle, in the style of classic handheld creature-battle RPGs, detailed 16-bit pixel art, bright and inviting colours, crisp pixels, no anti-aliasing.
+Setting: ${petBgIdea.trim() || "a charming fantasy meadow at the edge of an enchanted forest from a Dungeons & Dragons world, soft clouds in the sky"}.
+Composition (IMPORTANT): two small flat battle spots drawn on the ground, like round grass/earth patches: one larger in the LOWER-LEFT foreground and one smaller in the UPPER-RIGHT middle ground. Keep those two areas clear and simple, because two creatures will be drawn on top of them. Scenery and details around the edges and in the sky.
+EMPTY SCENE: no creatures, no monsters, no characters, no people, no text, no UI, no frame, no border.`;
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt, aspectRatio: "16:9", tono: getImageTone() }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      await savePetBg(await toJpeg(data.immagine));
+    } catch (e) {
+      alert("Generazione sfondo fallita: " + (e.message || e));
+    } finally {
+      setPetBgBusy(false);
+    }
+  };
+
   const removeBattleBg = async () => {
     await setDoc(doc(db, "battle_meta", "turn_tracker"), { battleBg: "" }, { merge: true });
     setBattleBg(null);
@@ -449,6 +502,25 @@ EMPTY SCENE: no characters, no creatures, no monsters, no people, no text, no UI
               {arenaBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={removeArenaBg}>✖ Rimuovi</button>}
             </div>
           </div>
+          {/* Lotta dei Pet: per ora il Rifugio è solo del Master */}
+          {isMainMaster(currentUser?.email) && (
+            <div>
+              <label className="adm-label" style={{ display: "block", marginBottom: 8 }}>Sfondo Lotta dei Pet</label>
+              {petBg
+                ? <img src={petBg} alt="Sfondo della lotta dei pet" className="wbs-bg-preview" />
+                : <div className="wbs-bg-empty">🐾</div>}
+              <input ref={petBgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => loadPetBg(e.target.files[0])} />
+              <div className="adm-btn-row">
+                <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => petBgInputRef.current?.click()}>📁 {petBg ? "Cambia" : "Carica"}</button>
+                <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={petBgBusy} onClick={generatePetBg}
+                  title="Gemini disegna il campo di lotta dei pet">{petBgBusy ? "⏳ Disegno…" : "✨ Genera con l'IA"}</button>
+                {petBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => savePetBg("")}>✖ Rimuovi</button>}
+              </div>
+              <textarea className="wbs-in wbs-bg-idea" rows={2} value={petBgIdea} onChange={(e) => setPetBgIdea(e.target.value)}
+                placeholder={'Idea (facoltativa): es. "spiaggia al tramonto", "caverna di cristalli", "tetti di una città"'} />
+              <small className="wb-ai-hint">Esce panoramico, in pixel art puccioso, con due piazzole libere: in basso a sinistra il tuo pet, in alto a destra l'avversario. Lo usa la Torre del Rifugio dei Pet.</small>
+            </div>
+          )}
         </div>
       </div>
 

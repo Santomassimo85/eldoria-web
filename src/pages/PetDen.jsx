@@ -926,7 +926,8 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
         </button>
       </div>
 
-      <div className="pd-field" ref={fieldRef}>
+      <div className={`pd-field${art.__arena?.bg ? " has-bg" : ""}`} ref={fieldRef}
+        style={art.__arena?.bg ? { "--pd-bg-img": `url("${art.__arena.bg}")` } : undefined}>
         <div className="pd-hud pd-hud--e">
           <div className="pd-hud-name"><b>{E.f.name}</b><small>Lv {E.f.level}</small></div>
           <div className="pd-hud-chips"><TypeChip type={E.f.type} /><ResLine species={E.f.species} compact />{E.status && <span className="pd-status">{STATUS_TXT[E.status]}</span>}</div>

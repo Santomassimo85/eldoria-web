@@ -52,7 +52,7 @@ export const TYPE_COLORS = {
   necrotic: ["#d9f99d", "#4b5e3c", "#14180f"],
   radiant: ["#ffffff", "#ffe9a0", "#e8b21c"],
   psychic: ["#ffd6f6", "#f052c4", "#7e22ce"],
-  neutral: ["#ffffff", "#d9cfbb", "#7a6e5c"],
+  neutral: ["#fff4d6", "#f2b552", "#8a4b1f"],   // colpi fisici: ambra calda (il bianco non si vedeva)
 };
 
 /* Danni fisici: le mosse "neutral" fanno un danno di D&D secondo la forma

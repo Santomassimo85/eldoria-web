@@ -3,6 +3,9 @@
    Ogni mossa ha un `fx` (forma dell'attacco, vedi petDex.js) e un
    tipo (elemento → colori). Le posizioni vengono misurate dagli
    sprite veri in campo, così valgono su telefono e desktop.
+   Look pixel art: tutto lo strato passa dal filtro SVG #pd-pixelate
+   (blocchi da PIX px), i movimenti vanno a scatti (steps) e le
+   particelle sono quadrate. Negli impatti escono scintille quadrate.
    ============================================================ */
 
 import React, { useLayoutEffect, useMemo, useState } from "react";
@@ -22,6 +25,37 @@ function measure(field, el) {
   const f = field.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2 - f.left, y: r.top + r.height * 0.55 - f.top, feet: r.bottom - f.top, s: r.width };
+}
+
+const PIX = 5; // lato dei "pixel" del filtro
+
+// Filtro di pixelatura: campiona un punto ogni PIX px e lo allarga a blocco.
+function PixelFilter() {
+  const h = Math.floor(PIX / 2);
+  return (
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+      <filter id="pd-pixelate" x="0" y="0" width="100%" height="100%">
+        <feFlood x={h} y={h} height="1" width="1" />
+        <feComposite width={PIX} height={PIX} />
+        <feTile result="grid" />
+        <feComposite in="SourceGraphic" in2="grid" operator="in" />
+        <feMorphology operator="dilate" radius={h} />
+      </filter>
+    </svg>
+  );
+}
+
+// Scintille quadrate che schizzano dal punto d'impatto.
+function Sparks({ parts, s, delay = 0, n = 8 }) {
+  return parts.slice(0, n).map((p, i) => (
+    <span key={`sp${i}`} className="pfx-spark" style={{
+      left: "var(--x1)", top: "var(--y1)",
+      "--tx": `${Math.cos((i / n) * 6.283 + p[0]) * s * (0.45 + p[1] * 0.35)}px`,
+      "--ty": `${Math.sin((i / n) * 6.283 + p[0]) * s * (0.45 + p[1] * 0.35)}px`,
+      background: i % 3 === 0 ? "#ffffff" : i % 3 === 1 ? "var(--c1)" : "var(--c2)",
+      animationDelay: `${delay}ms`,
+    }} />
+  ));
 }
 
 export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
@@ -70,6 +104,7 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
             })} />
           ))}
           <span className="pfx-pow" style={at("var(--x1)", "var(--y1)")} />
+          <Sparks parts={parts} s={b.s} delay={300} />
         </>
       );
       break;
@@ -79,19 +114,26 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
           <span className="pfx-jaw pfx-jaw--top" style={at("var(--x1)", "var(--y1)")} />
           <span className="pfx-jaw pfx-jaw--bot" style={at("var(--x1)", "var(--y1)")} />
           <span className="pfx-pow pfx-pow--late" style={at("var(--x1)", "var(--y1)")} />
+          <Sparks parts={parts} s={b.s} delay={320} />
         </>
       );
       break;
     case "claw":
-      body = [0, 1, 2].map((i) => (
-        <span key={i} className="pfx-slash" style={at(`calc(var(--x1) + ${(i - 1) * 0.22}*var(--s))`, `calc(var(--y1) + ${(i - 1) * 0.08}*var(--s))`, { animationDelay: `${i * 70}ms` })} />
-      ));
+      body = (
+        <>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="pfx-slash" style={at(`calc(var(--x1) + ${(i - 1) * 0.22}*var(--s))`, `calc(var(--y1) + ${(i - 1) * 0.08}*var(--s))`, { animationDelay: `${i * 70}ms` })} />
+          ))}
+          <Sparks parts={parts} s={b.s} delay={200} n={6} />
+        </>
+      );
       break;
     case "orb":
       body = (
         <>
           <span className="pfx-orb" style={at("var(--x0)", "var(--y0)")} />
           <span className="pfx-pop pfx-pop--orb" style={at("var(--x1)", "var(--y1)")} />
+          <Sparks parts={parts} s={b.s} delay={380} n={6} />
         </>
       );
       break;
@@ -131,6 +173,7 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
           {Array.from({ length: 10 }, (_, i) => (
             <span key={i} className="pfx-ray" style={at("var(--x1)", "var(--y1)", { "--r": `${i * 36 + P(i)[0] * 20}deg` })} />
           ))}
+          <Sparks parts={parts} s={b.s * 1.3} delay={60} n={10} />
         </>
       );
       break;
@@ -212,5 +255,10 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
       body = <span className="pfx-pop" style={at("var(--x1)", "var(--y1)")} />;
   }
 
-  return <div key={seq} className={`pfx pfx--${ev.mtype}`} style={style} aria-hidden="true">{body}</div>;
+  return (
+    <>
+      <PixelFilter />
+      <div key={seq} className={`pfx pfx--${ev.mtype}`} style={style} aria-hidden="true">{body}</div>
+    </>
+  );
 }
