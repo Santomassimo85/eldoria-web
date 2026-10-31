@@ -305,3 +305,84 @@
 .pd-master-egg:hover { border-color: var(--pd-acc); }
 .pd-page *, .pd-hatch * { box-sizing: border-box; }
 .pd-odds li, .pd-odds li span, .pd-eggpool li, .pd-eggpool li span, .pd-ledger li span, .pd-howto li, .pd-moves li span { color: var(--pd-ink); }
+
+/* ── leggibilità (2026-10-31): il grigio secondario del Covo (--osso-3)
+   sul fondo scuro non si leggeva. Qui tutto il testo secondario è chiaro. */
+.pd-page, .pd-hatch { --pd-mute: #c9bfad; --pd-ink: #f3ece0; }
+.pd-page :where(p, li, td, th, dd, dt, small, label, span, strong, b, h1, h2, h3, h4) { color: inherit; }
+.pd-page small, .pd-page dt, .pd-fine, .pd-sub, .pd-wallet-l, .pd-master-note { color: var(--pd-mute) !important; }
+.pd-page input, .pd-page textarea { color: var(--pd-ink); }
+.pd-page input::placeholder, .pd-page textarea::placeholder { color: #9e937f; }
+
+/* ── hub ── */
+.pd-hub { margin-top: 22px; display: grid; gap: 18px; }
+.pd-hub-team { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; padding: 18px 12px 12px; background: radial-gradient(ellipse at 50% 85%, rgba(98,160,70,.25), transparent 65%), var(--pd-s2); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; }
+.pd-hub-pet { display: grid; justify-items: center; gap: 2px; }
+.pd-hub-pet span { font-weight: 700; }
+.pd-hub-pet.is-mascot { opacity: .9; }
+.pd-hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.pd-tile { position: relative; display: grid; justify-items: start; gap: 4px; text-align: left; padding: 18px 16px; min-height: 120px; background: var(--pd-s2); border: 1px solid rgba(255,255,255,.1); border-top: 3px solid var(--pd-acc); border-radius: 4px; color: var(--pd-ink); cursor: pointer; font: inherit; transition: transform .15s, background .15s; }
+.pd-tile:hover { transform: translateY(-3px); background: var(--pd-s3); }
+.pd-tile-icon { font-size: 1.9rem; line-height: 1; }
+.pd-tile strong { font-family: var(--font-head); font-size: 1.2rem; }
+.pd-tile.is-master { border-top-color: #a45ad8; }
+.pd-tile.is-hot::after { content: ""; position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--pd-acc); box-shadow: 0 0 10px var(--pd-acc); animation: pd-breathe 1.6s ease-in-out infinite; }
+
+/* ── testata di sezione e ritorno ── */
+.pd-sechead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 22px 0 6px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.1); position: sticky; top: 44px; z-index: 5; background: linear-gradient(var(--pd-bg) 70%, transparent); padding-top: 8px; }
+.pd-sectitle { font-family: var(--font-head); font-size: 1.6rem; margin: 0 !important; }
+.pd-sectitle small { font-family: var(--font-ui); font-size: .9rem; margin-left: 10px; }
+.pd-back { display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 99px; border: 1px solid rgba(var(--el-rgb, 224,120,43), .6); background: rgba(var(--el-rgb, 224,120,43), .12); color: var(--pd-ink); font: 700 .92rem var(--font-ui); cursor: pointer; }
+.pd-back:hover { background: rgba(var(--el-rgb, 224,120,43), .25); }
+.pd-secfoot { margin-top: 30px; display: flex; justify-content: center; }
+
+/* ── filtri ── */
+.pd-filterbar { display: grid; gap: 8px; margin: 10px 0 14px; }
+.pd-search { width: 100%; min-height: 42px; padding: 8px 12px; background: var(--pd-bg); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; font: inherit; font-size: 1rem; }
+.pd-search:focus { outline: none; border-color: var(--pd-acc); }
+.pd-filters button { color: var(--pd-ink); }
+
+/* ── resistenze ── */
+.pd-res { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0 0; font-size: .82rem; }
+.pd-res.is-compact { gap: 4px; margin: 0; }
+.pd-res span { padding: 1px 7px; border-radius: 99px; border: 1px solid; }
+.pd-res-imm { border-color: rgba(160, 200, 255, .6) !important; background: rgba(160, 200, 255, .12); }
+.pd-res-res { border-color: rgba(120, 210, 140, .6) !important; background: rgba(120, 210, 140, .12); }
+.pd-res-vul { border-color: rgba(240, 110, 100, .7) !important; background: rgba(240, 110, 100, .14); }
+.pd-res--none { color: var(--pd-mute) !important; }
+.pd-hud .pd-res { font-size: .72rem; }
+
+/* ── mascotte ── */
+.pd-card.is-mascot { box-shadow: 0 0 0 2px rgba(255, 210, 90, .55); }
+.pd-mascot-badge { position: absolute; top: 4px; right: 8px; font-size: 1.1rem; filter: drop-shadow(0 0 6px rgba(255,210,90,.8)); }
+.pd-btn--star { background: rgba(255, 210, 90, .18); border-color: rgba(255, 210, 90, .7); }
+
+/* ── manuale ── */
+.pd-manual { display: grid; gap: 14px; }
+.pd-manual section { padding: 16px 18px; background: var(--pd-s2); border-left: 3px solid var(--pd-acc); border-radius: 4px; }
+.pd-manual h3 { font-family: var(--font-head); font-size: 1.25rem; margin-bottom: 8px !important; }
+.pd-manual ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.pd-manual p { margin: 0 0 8px; }
+.pd-chart { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.pd-chart th, .pd-chart td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.1); text-align: left; }
+.pd-chart th { font-family: var(--font-sc); color: var(--pd-acc) !important; }
+
+/* ── giocatori (Master) ── */
+.pd-admin-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0; padding: 10px 12px; background: var(--pd-s2); border-radius: 4px; position: sticky; top: 110px; z-index: 4; }
+.pd-admin-count { font-weight: 700; margin-right: auto; }
+.pd-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.pd-check input { width: 18px; height: 18px; accent-color: var(--pd-acc); }
+.pd-admin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pd-admin-list li { display: grid; grid-template-columns: minmax(0, 1.6fr) auto auto auto; gap: 12px; align-items: center; padding: 6px 12px; background: var(--pd-s2); border: 1px solid transparent; border-radius: 4px; }
+.pd-admin-list li.on { border-color: rgba(240, 110, 100, .6); background: rgba(240, 110, 100, .08); }
+.pd-admin-list img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.pd-admin-stat { font-family: var(--font-num); font-size: .88rem; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .pd-sechead { top: 0; }
+  .pd-admin-bar { top: 60px; }
+  .pd-admin-list li { grid-template-columns: 1fr auto; }
+  .pd-admin-list li .pd-admin-stat:nth-of-type(n+2) { display: none; }
+  .pd-hub-grid { grid-template-columns: 1fr 1fr; }
+  .pd-tile { min-height: 100px; padding: 14px 12px; }
+}

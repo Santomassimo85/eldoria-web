@@ -6,6 +6,7 @@
      team: [id, id, id],    massimo 3, in ordine (il primo entra in campo)
      tower: {floor, best, wins},   floor = prossimo piano da combattere
      eggs: [{id, egg, from, at}],  il NIDO: uova da schiudere
+     mascot: id del pet mascotte (+5% PE, si vede accanto all'avatar)
    }
    + characters.petGifts = [{species | egg, from, itemId, at}] scritto dal
    Mercato Nero alla consegna dell'asta: il Rifugio li ritira (i pet nella
@@ -15,7 +16,7 @@
    Tutto in transazione: due schede aperte non comprano due volte.
    ============================================================ */
 
-import { doc, runTransaction, setDoc, serverTimestamp } from "firebase/firestore";
+import { deleteField, doc, runTransaction, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, EGGS, refundOf, rollEgg } from "../data/petDex";
 import { addXp, towerXp, towerLossXp, towerPoints } from "../data/petEngine";
@@ -31,6 +32,7 @@ export const denOf = (data) => {
     team: Array.isArray(d.team) ? d.team : [],
     tower: { floor: 1, best: 0, wins: 0, ...(d.tower || {}) },
     eggs: Array.isArray(d.eggs) ? d.eggs : [],
+    mascot: d.mascot || null,
   };
 };
 export const countOf = (den, species) => den.pets.filter((p) => p.species === species).length;
@@ -107,9 +109,20 @@ export function hatchEgg(uid, eggId) {
   });
 }
 
+export const MASCOT_XP_BONUS = 0.05;
+
+// Mascotte: un pet a scelta (o nessuno con petId null).
+export function setMascot(uid, petId) {
+  return mutate(uid, (den) => {
+    if (petId && !den.pets.some((p) => p.id === petId)) throw new Error("Pet non trovato.");
+    den.mascot = petId || null;
+  });
+}
+
 export function releasePet(uid, petId) {
   return mutate(uid, (den) => {
     if (den.pets.length <= 1) throw new Error("Non puoi restare senza pet.");
+    if (den.mascot === petId) den.mascot = null;
     den.pets = den.pets.filter((p) => p.id !== petId);
     den.team = den.team.filter((id) => id !== petId);
     if (!den.team.length) den.team = [den.pets[0].id];
@@ -170,7 +183,7 @@ export function recordTowerResult(uid, floor, won, teamIds) {
     const ups = [];
     den.pets = den.pets.map((p) => {
       if (!teamIds.includes(p.id)) return p;
-      const n = addXp(p, xp);
+      const n = addXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
       if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
       const { ups: _u, ...rest } = n;
       return rest;
@@ -180,6 +193,24 @@ export function recordTowerResult(uid, floor, won, teamIds) {
     den.tower = { floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
     return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { won: true, xp, pts, ups } };
   });
+}
+
+/* Reset del Master (2026-10-31): per i personaggi scelti azzera i punti
+   pet (e il loro registro) e/o i pet (Rifugio intero: collezione,
+   squadra, nido, torre, mascotte, regali in attesa). */
+export async function resetPetPlayers(uids, { points = false, pets = false } = {}) {
+  if (!uids.length || (!points && !pets)) return 0;
+  for (let i = 0; i < uids.length; i += 400) {
+    const batch = writeBatch(db);
+    uids.slice(i, i + 400).forEach((uid) => {
+      const patch = {};
+      if (points) Object.assign(patch, { petPoints: 0, petPointsLedger: [], petPointsDaily: {}, petPointsSeen: {} });
+      if (pets) Object.assign(patch, { petDen: deleteField(), petGifts: deleteField() });
+      batch.update(charRef(uid), patch);
+    });
+    await batch.commit();
+  }
+  return uids.length;
 }
 
 export const savePetArt = (species, image, look) =>

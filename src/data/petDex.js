@@ -1,8 +1,9 @@
 /* ============================================================
    PET DEX — il sistema pet "alla Pokémon" (2026-10-31).
-   35 creature di D&D in versione cucciola: 5 iniziali (si sceglie
-   UNA sola volta, al primo accesso) + 30 che escono dalle UOVA
-   (Bottega delle uova coi punti pet, Mercato Nero, premi).
+   37 creature di D&D in versione cucciola: 10 iniziali COMUNI, uno per
+   elemento (si sceglie UNA sola volta, al primo accesso) + le altre che
+   escono dalle UOVA (Bottega delle uova coi punti pet, Mercato Nero).
+   Anche gli iniziali escono dalle uova, come comuni.
    Per ora visibile solo al Master.
    ------------------------------------------------------------
    Tipi = gli elementi di D&D (fuoco, gelo, acqua, fulmine, terra,
@@ -15,6 +16,9 @@
      look   — descrizione in INGLESE per Gemini (cosa disegnare)
      base   — { hp, atk, def, spd } al livello 1
      moves  — 4 mosse: le prime 2 subito, la 3ª al Lv 5, la 4ª al Lv 10
+     res    — resistenze/immunità/vulnerabilità prese dalla scheda D&D del
+              mostro: { resist: [], immune: [], vuln: [] } con i tipi qui
+              sotto o i danni fisici bludgeoning/piercing/slashing.
    Le evoluzioni arriveranno più avanti.
    ============================================================ */
 
@@ -51,6 +55,25 @@ export const TYPE_COLORS = {
   neutral: ["#ffffff", "#d9cfbb", "#7a6e5c"],
 };
 
+/* Danni fisici: le mosse "neutral" fanno un danno di D&D secondo la forma
+   (pestone = contundente, morso = perforante, artigli = tagliente). */
+export const PHYS_KINDS = ["bludgeoning", "piercing", "slashing"];
+export const DMG_ICON = { ...TYPE_ICON, bludgeoning: "🔨", piercing: "🦷", slashing: "🗡️" };
+export const DMG_LABEL = { ...TYPE_LABEL, bludgeoning: "Contundente", piercing: "Perforante", slashing: "Tagliente" };
+const PHYS_OF_FX = { stomp: "bludgeoning", bite: "piercing", claw: "slashing" };
+export const damageKindOf = (move) => (move?.type && move.type !== "neutral" ? move.type : PHYS_OF_FX[move?.fx] || "bludgeoning");
+
+/* Regole di D&D: resistenza = metà, vulnerabilità = doppio, immunità = zero. */
+export function resistMultiplier(speciesKey, kind) {
+  const r = PET_DEX[speciesKey]?.res;
+  if (!r) return 1;
+  if (r.immune?.includes(kind)) return 0;
+  let m = 1;
+  if (r.resist?.includes(kind)) m *= 0.5;
+  if (r.vuln?.includes(kind)) m *= 2;
+  return m;
+}
+
 /* Efficacia: STRONG[a] = tipi contro cui `a` fa ×1,5. Il contrario
    (difensore forte contro l'attaccante) fa ×0,5. */
 const STRONG = {
@@ -76,17 +99,17 @@ export const weakAgainst = (t) => ELEMENTS.filter((a) => STRONG[a]?.includes(t))
 
 /* ── RARITÀ ──────────────────────────────────────────────────
    value = quanto "vale" un pet (un doppione oltre il limite diventa
-   metà di questo in punti pet). Gli iniziali, nelle uova, contano
-   come rari. */
+   metà di questo in punti pet). Gli iniziali sono comuni: nelle uova
+   escono come comuni. */
 export const RARITY = {
-  starter:   { label: "Iniziale",    color: "#d9a441", value: 150 },
+  starter:   { label: "Iniziale",    color: "#d9a441", value: 40 },
   common:    { label: "Comune",      color: "#8a8f99", value: 40 },
   rare:      { label: "Raro",        color: "#3d8fd1", value: 90 },
   epic:      { label: "Epico",       color: "#a45ad8", value: 180 },
   legendary: { label: "Leggendario", color: "#e0782b", value: 400 },
 };
 export const HATCH_RARITIES = ["common", "rare", "epic", "legendary"];
-export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "rare" : PET_DEX[key]?.rarity);
+export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "common" : PET_DEX[key]?.rarity);
 
 /* ── MOSSE ──────────────────────────────────────────────────
    power = potenza (0 = mossa di stato), acc = precisione %, pp = usi per
@@ -175,87 +198,97 @@ export const PET_DEX_MOVES = {
 };
 
 /* ── SPECIE ───────────────────────────────────────────────── */
-const S = (key, name, icon, type, rarity, desc, look, base, moves) =>
-  ({ key, name, icon, type, rarity, desc, look, base, moves });
+const S = (key, name, icon, type, rarity, desc, look, base, moves, res = null) =>
+  ({ key, name, icon, type, rarity, desc, look, base, moves, res });
+const R = (resist = [], immune = [], vuln = []) => ({ resist, immune, vuln });
 
 export const PET_DEX = {
-  // ── 5 INIZIALI ──
-  brace: S("brace", "Brace", "🐲", "fire", "starter",
+  // ── ex iniziali, ora più rari (2026-10-31) ──
+  brace: S("brace", "Brace", "🐲", "fire", "epic",
     "Cucciolo di drago rosso: sputa scintille quando è contento.",
     "a baby red dragon wyrmling, tiny chubby body, small stubby wings, big shiny eyes, little horns, smoke puffing from its nostrils",
-    { hp: 46, atk: 13, def: 10, spd: 12 }, ["zampata", "scintilla", "sbuffo", "vampata"]),
-  tartadrago: S("tartadrago", "Tartadrago", "🐢", "water", "starter",
+    { hp: 46, atk: 13, def: 10, spd: 12 }, ["zampata", "scintilla", "sbuffo", "vampata"], R([], ["fire"])),
+  tartadrago: S("tartadrago", "Tartadrago", "🐢", "water", "epic",
     "Tartaruga-drago appena uscita dal guscio: lenta, testarda, inaffondabile.",
     "a baby dragon turtle, round spiky blue-green shell, small dragon head with tiny fins, sleepy friendly face",
-    { hp: 54, atk: 11, def: 14, spd: 7 }, ["morsetto", "spruzzo", "guscio", "ondata"]),
-  gufurso: S("gufurso", "Gufurso", "🦉", "earth", "starter",
+    { hp: 54, atk: 11, def: 14, spd: 7 }, ["morsetto", "spruzzo", "guscio", "ondata"], R(["fire"])),
+  gufurso: S("gufurso", "Gufurso", "🦉", "earth", "rare",
     "Cucciolo di gufo-orso: abbracci fortissimi, piume ovunque.",
     "a baby owlbear cub, fluffy brown fur and feathers, owl face with big round eyes and a small beak, stubby bear paws",
     { hp: 52, atk: 14, def: 11, spd: 8 }, ["zampata", "rametto", "ruggitino", "terremoto"]),
-  pseudodrago: S("pseudodrago", "Pseudodrago", "🐉", "poison", "starter",
+  pseudodrago: S("pseudodrago", "Pseudodrago", "🐉", "poison", "rare",
     "Draghetto da spalla grande come un gatto: la coda punge e addormenta.",
     "a tiny pseudodragon, cat-sized slender reddish dragon with butterfly-like translucent wings, long curled tail with a stinger dripping a drop of purple venom, mischievous smile",
     { hp: 42, atk: 12, def: 9, spd: 15 }, ["scattino", "veleno", "nubetossica", "fiotto"]),
-  gattombra: S("gattombra", "Gattombra", "🐈‍⬛", "psychic", "starter",
+  gattombra: S("gattombra", "Gattombra", "🐈‍⬛", "psychic", "rare",
     "Gattino distorcente: lo vedi sempre un passo più in là di dov'è.",
     "a displacer beast kitten, dark blue-black panther kitten with six little legs and two soft tentacles on its back ending in pads, glowing violet eyes, shimmering illusory afterimage",
     { hp: 44, atk: 13, def: 10, spd: 13 }, ["graffio", "ondamentale", "ipnosi", "sguardo"]),
 
   // ── COMUNI ──
-  mefitino: S("mefitino", "Mefitino", "😈", "fire", "common",
+  mefitino: S("mefitino", "Mefitino", "😈", "fire", "starter",
     "Mefite di magma che gocciola lava e ride per niente.",
     "a tiny magma mephit, small impish creature made of cooling lava with glowing cracks, little bat wings, cheeky grin",
-    { hp: 40, atk: 12, def: 9, spd: 12 }, ["scintilla", "graffio", "fuocherello", "sbuffo"]),
-  cubetto: S("cubetto", "Cubetto", "🧊", "acid", "common",
+    { hp: 40, atk: 12, def: 9, spd: 12 }, ["scintilla", "graffio", "fuocherello", "sbuffo"], R([], ["fire", "poison"])),
+  cubetto: S("cubetto", "Cubetto", "🧊", "acid", "starter",
     "Cubo gelatinoso grande come un dado: dentro ha sempre una moneta.",
     "a small gelatinous cube, translucent wobbly lime-green acidic jelly cube with a tiny coin and a little bone floating inside, two cute dot eyes, tiny acid bubbles",
     { hp: 58, atk: 10, def: 12, spd: 5 }, ["sputoacido", "ingoiare", "guscio", "bagnoacido"]),
-  funghetto: S("funghetto", "Funghetto", "🍄", "earth", "common",
+  funghetto: S("funghetto", "Funghetto", "🍄", "earth", "starter",
     "Miconide bambino: comunica a sbuffi di spore profumate.",
     "a baby myconid, small walking mushroom person with a spotted purple cap, stubby legs and arms, sleepy eyes, puffs of spores",
     { hp: 46, atk: 10, def: 11, spd: 7 }, ["rametto", "spore", "linfa", "pisolino"]),
-  saltello: S("saltello", "Saltello", "🐕", "radiant", "common",
+  saltello: S("saltello", "Saltello", "🐕", "radiant", "starter",
     "Cucciolo di cane intermittente: sparisce e ricompare per giocare.",
     "a blink dog puppy, golden fey puppy with big ears, sparkles of light around it as it teleports, happy tongue out",
     { hp: 42, atk: 11, def: 9, spd: 15 }, ["scattino", "luccichio", "aureola", "lucesplosione"]),
   diavoletto: S("diavoletto", "Diavoletto", "👿", "necrotic", "common",
     "Imp dispettoso che firma contratti col pennarello.",
     "a tiny imp, small red devil with little horns, bat wings, a pointed tail, holding a tiny scroll, wisps of dark smoke, smug smile",
-    { hp: 40, atk: 12, def: 9, spd: 13 }, ["graffio", "toccotetro", "maledizione", "raggiosinistro"]),
+    { hp: 40, atk: 12, def: 9, spd: 13 }, ["graffio", "toccotetro", "maledizione", "raggiosinistro"], R(["cold"], ["fire", "poison"])),
   scrignetto: S("scrignetto", "Scrignetto", "🧰", "acid", "common",
     "Mimic cucciolo: finge di essere un portagioie. Morde le dita.",
     "a baby mimic shaped like a small wooden treasure chest, open lid showing tiny teeth and a long pink sticky tongue dripping green goo, two little eyes on the lid",
-    { hp: 52, atk: 12, def: 13, spd: 6 }, ["morsetto", "sputoacido", "melma", "spruzzoacido"]),
-  yetino: S("yetino", "Yetino", "🐻‍❄️", "cold", "common",
+    { hp: 52, atk: 12, def: 13, spd: 6 }, ["morsetto", "sputoacido", "melma", "spruzzoacido"], R([], ["acid"])),
+  yetino: S("yetino", "Yetino", "🐻‍❄️", "cold", "starter",
     "Cucciolo di yeti: si rotola nella neve e ne esce più grosso.",
     "a baby yeti, round fluffy white fur ball with small blue face, tiny horns, big feet, snowflakes around",
-    { hp: 52, atk: 12, def: 12, spd: 7 }, ["zampata", "brina", "mantobrina", "grandine"]),
+    { hp: 52, atk: 12, def: 12, spd: 7 }, ["zampata", "brina", "mantobrina", "grandine"], R([], ["cold"])),
   brinello: S("brinello", "Brinello", "❄️", "cold", "common",
     "Mefite del ghiaccio: starnutisce fiocchi di neve.",
     "a tiny ice mephit, small impish creature made of icy blue crystal, frosty wings, icicle horns, sneezing a snowflake",
-    { hp: 40, atk: 12, def: 9, spd: 13 }, ["brina", "scattino", "soffiogelo", "morsogelo"]),
-  granchietto: S("granchietto", "Granchietto", "🦀", "water", "common",
+    { hp: 40, atk: 12, def: 9, spd: 13 }, ["brina", "scattino", "soffiogelo", "morsogelo"], R([], ["cold", "poison"], ["bludgeoning", "fire"])),
+  granchietto: S("granchietto", "Granchietto", "🦀", "water", "starter",
     "Granchio gigante, ma non ancora. Pizzica tutto quello che luccica.",
     "a baby giant crab, round shiny red-blue shell, oversized claws, eyes on stalks, bubbles around it",
     { hp: 48, atk: 12, def: 14, spd: 6 }, ["graffio", "bolla", "guscio", "ondata"]),
-  ragnetto: S("ragnetto", "Ragnetto", "🕷️", "poison", "common",
+  ragnetto: S("ragnetto", "Ragnetto", "🕷️", "poison", "starter",
     "Ragno gigante neonato: otto occhi, otto zampe, otto volte coccolone.",
     "a baby giant spider, fuzzy round dark purple body, eight big shiny eyes, stubby legs, tiny fangs dripping green venom",
     { hp: 42, atk: 12, def: 10, spd: 13 }, ["zannevelenose", "scattino", "melma", "nubetossica"]),
-  scheletrino: S("scheletrino", "Scheletrino", "🦴", "necrotic", "common",
+  scheletrino: S("scheletrino", "Scheletrino", "🦴", "necrotic", "starter",
     "Cucciolo di scheletro: porta l'osso, ma è il suo.",
     "a skeleton puppy, small undead dog made of white bones with a big round skull, ghostly green glow in the eye sockets, wagging bony tail",
-    { hp: 44, atk: 12, def: 11, spd: 11 }, ["morsetto", "toccotetro", "ruggitino", "morso"]),
+    { hp: 44, atk: 12, def: 11, spd: 11 }, ["morsetto", "toccotetro", "ruggitino", "morso"], R([], ["poison"], ["bludgeoning"])),
+
+  behirino: S("behirino", "Behirino", "🐍", "lightning", "starter",
+    "Behir neonato: un serpentone con dodici zampette che sputa scintille.",
+    "a baby behir, small long blue serpentine lizard with many tiny stubby legs, little curved horns, crackling small lightning sparks from its mouth, big friendly eyes",
+    { hp: 44, atk: 12, def: 10, spd: 13 }, ["morsetto", "scarica", "caricastatica", "scossa"], R([], ["lightning"])),
+  flumphino: S("flumphino", "Flumphino", "🪼", "psychic", "starter",
+    "Flumph cucciolo: una medusa volante gentile che sente i pensieri. E si offende.",
+    "a baby flumph, small floating pale jellyfish-like creature with a round disc body, little tendrils hanging below, two eyestalks on top, soft pink psychic glow, gentle smile",
+    { hp: 46, atk: 11, def: 11, spd: 12 }, ["ondamentale", "scattino", "concentrazione", "urlopsichico"], R([], [], ["psychic"])),
 
   // ── RARI ──
   salamandrina: S("salamandrina", "Salamandrina", "🦎", "fire", "rare",
     "Salamandra di fuoco: la coda brucia come una candela.",
     "a baby fire salamander, small orange-red serpentine lizard with a flaming tail and fiery spines along its back, bright eyes",
-    { hp: 46, atk: 15, def: 10, spd: 13 }, ["scintilla", "morsofuoco", "sbuffo", "vampata"]),
+    { hp: 46, atk: 15, def: 10, spd: 13 }, ["scintilla", "morsofuoco", "sbuffo", "vampata"], R([], ["fire"], ["cold"])),
   krakino: S("krakino", "Krakino", "🐙", "water", "rare",
     "Kraken neonato: otto tentacoli, zero buone maniere.",
     "a baby kraken, small round squid-octopus with many curly tentacles, huge curious eyes, deep teal and purple colors",
-    { hp: 56, atk: 13, def: 12, spd: 9 }, ["spruzzo", "inchiostro", "bolla", "ondata"]),
+    { hp: 56, atk: 13, def: 12, spd: 9 }, ["spruzzo", "inchiostro", "bolla", "ondata"], R([], ["lightning"])),
   ruggine: S("ruggine", "Ruggine", "🐜", "acid", "rare",
     "Mostro della ruggine piccolo: si mangia le forchette di nascosto.",
     "a baby rust monster, insect-like creature with a rusty orange armored body, two long feathery antennae, wagging tail like a puppy, flakes of rust",
@@ -263,7 +296,7 @@ export const PET_DEX = {
   turbino: S("turbino", "Turbino", "🌪️", "lightning", "rare",
     "Elementale della tempesta in miniatura: un mulinello che fa scintille.",
     "a tiny storm elemental, a small swirling whirlwind of pale blue air crackling with little lightning sparks, two cute eyes",
-    { hp: 42, atk: 14, def: 9, spd: 17 }, ["saetta", "scarica", "caricastatica", "fulmine"]),
+    { hp: 42, atk: 14, def: 9, spd: 17 }, ["saetta", "scarica", "caricastatica", "fulmine"], R(["lightning"], ["poison"])),
   occhietto: S("occhietto", "Occhietto", "👁️", "psychic", "rare",
     "Spettatore cucciolo: un occhione, quattro occhietti, tanta curiosità.",
     "a baby beholder (spectator), round floating purple ball with one big central eye and four small eyestalks, small toothy smile, pink psychic glow",
@@ -275,19 +308,19 @@ export const PET_DEX = {
   cerberino: S("cerberino", "Cerberino", "🐕‍🦺", "fire", "rare",
     "Segugio infernale cucciolo: abbaia scintille, scava buche nella lava.",
     "a hell hound puppy, small black dog with glowing red eyes, fiery orange mane and flaming tail, tiny fangs, ember sparks",
-    { hp: 50, atk: 16, def: 11, spd: 13 }, ["morsofuoco", "ruggitino", "sbuffo", "vampata"]),
+    { hp: 50, atk: 16, def: 11, spd: 13 }, ["morsofuoco", "ruggitino", "sbuffo", "vampata"], R([], ["fire"])),
   lupogelo: S("lupogelo", "Lupogelo", "🐺", "cold", "rare",
     "Cucciolo di lupo invernale: ulula e la brina si posa sugli alberi.",
     "a winter wolf pup, fluffy snow-white wolf cub with icy blue eyes, frosty breath, little icicles on its fur",
-    { hp: 50, atk: 15, def: 11, spd: 14 }, ["morsogelo", "ruggitino", "soffiogelo", "grandine"]),
+    { hp: 50, atk: 15, def: 11, spd: 14 }, ["morsogelo", "ruggitino", "soffiogelo", "grandine"], R([], ["cold"])),
   gocciolo: S("gocciolo", "Gocciolo", "💧", "water", "rare",
     "Stranezza dell'acqua: una goccia viva che si offende se la bevi.",
     "a tiny water weird, a living droplet of clear blue water shaped like a little serpent with a big drop head, two shiny eyes, small splashes",
-    { hp: 50, atk: 13, def: 12, spd: 12 }, ["spruzzo", "bolla", "pioggia", "ondata"]),
+    { hp: 50, atk: 13, def: 12, spd: 12 }, ["spruzzo", "bolla", "pioggia", "ondata"], R(["fire"], ["poison"])),
   fuocofatuo: S("fuocofatuo", "Fuocofatuo", "🔆", "lightning", "rare",
     "Fuoco fatuo: una lucina elettrica che ti porta dove non dovresti.",
     "a will-o'-wisp, small floating ball of pale blue-yellow electric light with a cute face, crackling little sparks, faint glowing trail",
-    { hp: 40, atk: 15, def: 9, spd: 17 }, ["scarica", "saetta", "scossa", "fulmine"]),
+    { hp: 40, atk: 15, def: 9, spd: 17 }, ["scarica", "saetta", "scossa", "fulmine"], R(["acid", "cold", "fire", "necrotic"], ["lightning", "poison"])),
   otyughino: S("otyughino", "Otyughino", "🗑️", "poison", "rare",
     "Otyugh piccolo: vive nei rifiuti e li trova deliziosi.",
     "a baby otyugh, round lumpy greenish-brown blob creature on three stubby legs, two little tentacles, one eye on a stalk, big toothy grin, stink lines",
@@ -295,7 +328,7 @@ export const PET_DEX = {
   fantasmino: S("fantasmino", "Fantasmino", "👻", "necrotic", "rare",
     "Fantasma giovane: fa \"buh\" e poi si scusa.",
     "a little ghost, small translucent pale green spirit with a wispy tail, big sad-cute eyes, ghostly chains as a tiny bracelet",
-    { hp: 44, atk: 15, def: 12, spd: 12 }, ["toccotetro", "maledizione", "raggiosinistro", "mietitura"]),
+    { hp: 44, atk: 15, def: 12, spd: 12 }, ["toccotetro", "maledizione", "raggiosinistro", "mietitura"], R(["acid", "fire", "lightning"], ["cold", "necrotic", "poison"])),
 
   // ── EPICI ──
   squalterra: S("squalterra", "Squalterra", "🦈", "earth", "epic",
@@ -305,15 +338,15 @@ export const PET_DEX = {
   piumaserpe: S("piumaserpe", "Piumaserpe", "🪶", "radiant", "epic",
     "Couatl neonato: serpente piumato che sa sempre la verità.",
     "a baby couatl, small feathered serpent with rainbow feathered wings, golden scales, gentle wise eyes, soft holy glow",
-    { hp: 50, atk: 15, def: 12, spd: 15 }, ["luccichio", "benedizione", "raggio", "lucesplosione"]),
+    { hp: 50, atk: 15, def: 12, spd: 15 }, ["luccichio", "benedizione", "raggio", "lucesplosione"], R(["radiant"])),
   nevischio: S("nevischio", "Nevischio", "🐲", "cold", "epic",
     "Cucciolo di drago bianco: morde i ghiaccioli come caramelle.",
     "a baby white dragon wyrmling, chubby icy-white dragon with pale blue frills, small frosty wings, big eyes, frost crystals on its horns",
-    { hp: 54, atk: 16, def: 13, spd: 13 }, ["brina", "morsogelo", "soffiogelo", "grandine"]),
+    { hp: 54, atk: 16, def: 13, spd: 13 }, ["brina", "morsogelo", "soffiogelo", "grandine"], R([], ["cold"])),
   saettino: S("saettino", "Saettino", "🐉", "lightning", "epic",
     "Cucciolo di drago blu: ogni starnuto è un piccolo temporale.",
     "a baby blue dragon wyrmling, chubby sapphire-blue dragon with a single small horn on its nose, tiny wings, little lightning sparks crackling around",
-    { hp: 52, atk: 17, def: 12, spd: 14 }, ["scarica", "morsetto", "scossa", "fulmine"]),
+    { hp: 52, atk: 17, def: 12, spd: 14 }, ["scarica", "morsetto", "scossa", "fulmine"], R([], ["lightning"])),
   girino: S("girino", "Girino", "🦑", "psychic", "epic",
     "Girino di mind flayer, ma buono. Dice. Legge i pensieri a voce alta.",
     "a cute baby mind flayer tadpole, small purple-pink wiggly tadpole with four tiny face tentacles, huge glossy white eyes, glowing psychic aura",
@@ -323,15 +356,17 @@ export const PET_DEX = {
   tarrasquino: S("tarrasquino", "Tarrasquino", "🦖", "earth", "legendary",
     "Il Tarrasque, ma in miniatura. Per ora. Mangia di tutto.",
     "a baby tarrasque, small chunky purple-green reptile kaiju with a spiked shell back, two forward horns, tiny claws, big hungry mouth, adorable",
-    { hp: 64, atk: 18, def: 16, spd: 10 }, ["morsetto", "ruggitino", "testata", "terremoto"]),
+    { hp: 64, atk: 18, def: 16, spd: 10 }, ["morsetto", "ruggitino", "testata", "terremoto"], R(["bludgeoning", "piercing", "slashing"], ["fire", "poison"])),
   lichetto: S("lichetto", "Lichetto", "☠️", "necrotic", "legendary",
     "Un lich piccolissimo col filatterio a forma di ciuccio.",
     "a tiny chibi lich, small skeletal sorcerer in oversized tattered purple robes and a little golden crown, glowing green eyes, holding a tiny phylactery like a pacifier, necrotic green wisps",
-    { hp: 56, atk: 19, def: 14, spd: 13 }, ["raggiosinistro", "maledizione", "toccotetro", "mietitura"]),
+    { hp: 56, atk: 19, def: 14, spd: 13 }, ["raggiosinistro", "maledizione", "toccotetro", "mietitura"], R(["cold", "lightning", "necrotic"], ["poison"])),
 };
 
 export const PET_DEX_ORDER = Object.keys(PET_DEX);
-export const STARTERS = PET_DEX_ORDER.filter((k) => PET_DEX[k].rarity === "starter");
+// Ordinati per elemento (un iniziale comune per ogni elemento).
+export const STARTERS = PET_DEX_ORDER.filter((k) => PET_DEX[k].rarity === "starter")
+  .sort((a, b) => ELEMENTS.indexOf(PET_DEX[a].type) - ELEMENTS.indexOf(PET_DEX[b].type));
 
 /* ── UOVA ───────────────────────────────────────────────────
    Uovo elementale = un pet del suo elemento; Prismatico = qualunque

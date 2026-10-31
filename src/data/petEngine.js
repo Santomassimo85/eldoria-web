@@ -8,10 +8,11 @@
      il prossimo senza perdere il turno.
    - Ordine: priorità della mossa, poi velocità (pari = a caso).
    - Danno = potenza × ATK/DEF × fattore di livello × tipo ×
-     STAB 1,25 × critico 1,5 (6%) × caso 0,85–1.
+     resistenze D&D (metà / doppio / zero) × STAB 1,25 × critico 1,5
+     (6%) × caso 0,85–1.
    ============================================================ */
 
-import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, STARTERS, typeMultiplier } from "./petDex";
+import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, typeMultiplier, resistMultiplier, damageKindOf } from "./petDex";
 
 const rnd = () => Math.random();
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
@@ -87,7 +88,7 @@ function emit(b, out, ev) { out.push({ ...ev, snap: snapOf(b) }); }
 export function previewDamage(att, def, moveId) {
   const m = PET_DEX_MOVES[moveId];
   if (!m || !m.power) return 0;
-  const tm = typeMultiplier(m.type, def.type);
+  const tm = typeMultiplier(m.type, def.type) * resistMultiplier(def.species, damageKindOf(m));
   const stab = m.type === att.type && m.type !== "neutral" ? 1.25 : 1;
   const lvl = 0.18 + att.level * 0.012;
   return m.power * (eff(att, "atk") / Math.max(1, eff(def, "def"))) * lvl * tm * stab;
@@ -111,14 +112,21 @@ function applyMove(b, side, moveId, out) {
     return;
   }
   let dealt = 0;
-  if (m.power > 0 && alive(foe)) {
+  const rm = resistMultiplier(foe?.species, damageKindOf(m));
+  if (m.power > 0 && alive(foe) && rm === 0) {
+    emit(b, out, { side, kind: "immune", target: other(side), text: `${foe.name} è immune: nessun danno!` });
+  } else if (m.power > 0 && alive(foe)) {
     const crit = rnd() < 0.06;
     const raw = previewDamage(att, foe, moveId) * (crit ? 1.5 : 1) * (0.85 + rnd() * 0.15);
     dealt = Math.max(1, Math.round(raw));
     foe.hp = Math.max(0, foe.hp - dealt);
     const tm = typeMultiplier(m.type, foe.type);
-    emit(b, out, { side, kind: "hit", dmg: dealt, crit, tm, target: other(side),
-      text: `${foe.name} perde ${dealt} PF.${crit ? " Colpo critico!" : ""}${tm > 1 ? " È superefficace!" : tm < 1 ? " Non è molto efficace…" : ""}` });
+    const note = [
+      tm > 1 ? " È superefficace!" : tm < 1 ? " Non è molto efficace…" : "",
+      rm > 1 ? ` ${foe.name} è vulnerabile!` : rm < 1 ? ` ${foe.name} resiste.` : "",
+    ].join("");
+    emit(b, out, { side, kind: "hit", dmg: dealt, crit, tm: tm * rm, target: other(side),
+      text: `${foe.name} perde ${dealt} PF.${crit ? " Colpo critico!" : ""}${note}` });
   }
   const chance = (c) => rnd() < (c ?? 1);
   if (e.drain && dealt) {
@@ -150,7 +158,11 @@ function applyMove(b, side, moveId, out) {
     }
     if ((e.burn || e.poison) && !foe.status) {
       const kind = e.burn ? "burn" : "poison";
-      if (chance(e.burn || e.poison)) {
+      // In D&D chi è immune al fuoco/veleno non si scotta e non si avvelena.
+      const immuneTo = resistMultiplier(foe.species, kind === "burn" ? "fire" : "poison") === 0;
+      if (immuneTo) {
+        if (!m.power) emit(b, out, { side, kind: "miss", text: `…ma ${foe.name} è immune.` });
+      } else if (chance(e.burn || e.poison)) {
         foe.status = { kind, turns: kind === "burn" ? 3 : 4 };
         emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} ${kind === "burn" ? "si scotta" : "è avvelenato"}!` });
       } else if (!m.power) emit(b, out, { side, kind: "miss", text: "…ma non ha effetto." });
@@ -320,16 +332,19 @@ function seeded(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-const RARITY_FLOOR = { starter: 6, common: 1, rare: 8, epic: 18, legendary: 30 };
+const RARITY_FLOOR = { starter: 1, common: 1, rare: 8, epic: 18, legendary: 30 };
 
-export function towerFloor(floor) {
+/* leadType = tipo del primo pet in squadra: nei piani 1–3 l'avversario
+   non ha vantaggio di tipo né immunità contro di lui (così nessuno
+   parte svantaggiato). */
+export function towerFloor(floor, leadType = null) {
   const n = Math.max(1, floor | 0);
   const r = seeded(n * 7919);
   const size = n <= 3 ? 1 : n <= 9 ? 2 : 3;
-  // Piani 1–2: solo creature che non hanno vantaggio di tipo su nessun
-  // iniziale, così nessuno parte svantaggiato.
-  const pool = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n
-    && (n > 2 || STARTERS.every((st) => typeMultiplier(PET_DEX[k].type, PET_DEX[st].type) <= 1)));
+  const fair = (k) => !leadType || (typeMultiplier(PET_DEX[k].type, leadType) <= 1 && typeMultiplier(leadType, PET_DEX[k].type) >= 1
+    && resistMultiplier(k, leadType) >= 1);
+  const all = PET_DEX_ORDER.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n);
+  const pool = n <= 3 && all.some(fair) ? all.filter(fair) : all;
   const team = [];
   for (let i = 0; i < size; i++) {
     let k = pool[Math.floor(r() * pool.length)];

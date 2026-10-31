@@ -4,8 +4,9 @@
    data/petEngine.js, scritture in utils/petDen.js). Per ora SOLO il
    Master principale lo vede (isMainMaster): agli altri la pagina dice
    che apre presto e il menu non lo mostra.
-   Pieghe: Squadra · Rifugio (Pet Dex + adozioni) · Torre · Bestiario
-   (Master: pixel art con Gemini, descrizione per il disegno, prove).
+   Hub a piastrelle → sezioni (ognuna con "← Torna all'hub"): Squadra ·
+   Nido · Bottega delle uova · Torre · Pet Dex · Manuale · Bestiario e
+   Giocatori (solo Master: pixel art con Gemini, reset di punti e pet).
    ============================================================ */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -14,24 +15,25 @@ import { collection, deleteField, doc, onSnapshot, updateDoc } from "firebase/fi
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
-  eggChances, hatchRarityOf, strongAgainst, weakAgainst,
+  eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
 } from "../data/petDex";
 import {
   statsAt, movesAt, xpToNext, newBattle, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
-  recordTowerResult, savePetArt, savePetLook, petArtPrompt,
+  recordTowerResult, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
 } from "../utils/petDen";
 import PetFx from "./PetFx";
+import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
+import "./PetDen.css";
 
 // Mosse fisiche: chi attacca fa un balzo verso il bersaglio (classi in PetFx.css).
 const LUNGE_FX = { stomp: "stomp", bite: "lunge", claw: "lunge" };
-import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import "./PetDen.css";
 
 /* ── pezzi comuni ─────────────────────────────────────────── */
 export function PetSprite({ species, art, flip = false, size = 96, fainted = false, hit = false }) {
@@ -90,7 +92,7 @@ export default function PetDen() {
   const master = isMainMaster(currentUser?.email);
   const [char, setChar] = useState(null);
   const [art, setArt] = useState({});
-  const [tab, setTab] = useState("squadra");
+  const [tab, setTab] = useState("hub");
   const [msg, setMsg] = useState("");
   const [battle, setBattle] = useState(null); // { floor, plan, teamIds }
   const giftsTried = useRef(false);
@@ -148,13 +150,16 @@ export default function PetDen() {
   }
   if (!char) return <section className="pd-page"><p className="pd-loading">Il Rifugio si sveglia…</p></section>;
 
+  // Ogni cambio di sezione riparte dall'alto della pagina.
+  const go = (k) => { setTab(k); window.scrollTo({ top: 0, behavior: "smooth" }); };
+
   if (battle) {
     return (
       <section className="pd-page pd-page--battle">
         <PetBattle
           key={battle.key}
           uid={uid} den={den} art={art} plan={battle.plan} teamIds={battle.teamIds}
-          onExit={() => setBattle(null)}
+          onExit={() => { setBattle(null); setTab("torre"); }}
           onRetry={() => setBattle((b) => ({ ...b, key: Date.now() }))}
         />
       </section>
@@ -170,14 +175,18 @@ export default function PetDen() {
     );
   }
 
-  const TABS = [
-    { key: "squadra", label: "Squadra" },
-    { key: "nido", label: den.eggs.length ? `Nido (${den.eggs.length})` : "Nido" },
-    { key: "uova", label: "Bottega delle uova" },
-    { key: "dex", label: "Pet Dex" },
-    { key: "torre", label: "Torre" },
-    ...(master ? [{ key: "bestiario", label: "Bestiario · Master" }] : []),
-  ];
+  const SECTIONS = {
+    squadra: { title: "Squadra e collezione", sub: `${den.pets.length} pet` },
+    nido: { title: "Il nido", sub: `${den.eggs.length}/${MAX_EGGS} uova` },
+    uova: { title: "Bottega delle uova" },
+    torre: { title: "Torre dei Cuccioli" },
+    dex: { title: "Pet Dex" },
+    manuale: { title: "Manuale" },
+    bestiario: { title: "Bestiario del Master" },
+    giocatori: { title: "Giocatori · punti e pet" },
+  };
+  const sec = SECTIONS[tab] && (!["bestiario", "giocatori"].includes(tab) || master) ? tab : "hub";
+  const back = () => go("hub");
 
   return (
     <section className="pd-page">
@@ -195,23 +204,255 @@ export default function PetDen() {
       {master && <p className="pd-master-note">👁 Visibile solo a te: i giocatori vedono "aprirà presto".</p>}
       {msg && <p className="pd-msg" onClick={() => setMsg("")}>{msg}</p>}
 
-      <div className="pd-tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>
-            {t.label}
+      {sec === "hub" ? (
+        <Hub den={den} art={art} points={points} master={master} go={go} />
+      ) : (
+        <>
+          <SectionHead title={SECTIONS[sec].title} sub={SECTIONS[sec].sub} onBack={back} />
+          {sec === "squadra" && <TeamTab uid={uid} den={den} art={art} run={run} />}
+          {sec === "nido" && <NestTab uid={uid} den={den} art={art} goShop={() => go("uova")} />}
+          {sec === "uova" && <EggShopTab uid={uid} den={den} art={art} points={points} run={run} ledger={char.petPointsLedger || []} goNest={() => go("nido")} />}
+          {sec === "dex" && <DexTab den={den} art={art} />}
+          {sec === "manuale" && <Manual />}
+          {sec === "torre" && (
+            <TowerTab den={den} art={art} onFight={(plan) => setBattle({ plan, teamIds: den.team, key: Date.now() })} />
+          )}
+          {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
+          {sec === "giocatori" && <PlayersAdmin run={run} />}
+          <div className="pd-secfoot"><button type="button" className="pd-back" onClick={back}>← Torna all'hub</button></div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ── navigazione: hub e testata di sezione ────────────────── */
+function SectionHead({ title, sub, onBack }) {
+  return (
+    <div className="pd-sechead">
+      <button type="button" className="pd-back" onClick={onBack}>← Torna all'hub</button>
+      <h2 className="pd-sectitle">{title}{sub && <small>{sub}</small>}</h2>
+    </div>
+  );
+}
+
+function Hub({ den, art, points, master, go }) {
+  const mascot = den.pets.find((p) => p.id === den.mascot);
+  const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+  const owned = PET_DEX_ORDER.filter((k) => countOf(den, k) > 0).length;
+  const tiles = [
+    { key: "squadra", icon: "🐾", title: "Squadra e collezione", sub: `${team.length}/${MAX_TEAM} in squadra · ${den.pets.length} pet` },
+    { key: "nido", icon: "🥚", title: "Il nido", sub: den.eggs.length ? `${den.eggs.length} uova da schiudere` : "nessun uovo", hot: den.eggs.length > 0 },
+    { key: "uova", icon: "🛒", title: "Bottega delle uova", sub: `${points} punti pet da spendere` },
+    { key: "torre", icon: "🗼", title: "Torre dei Cuccioli", sub: `piano ${den.tower.floor} · record ${den.tower.best || 0}` },
+    { key: "dex", icon: "📖", title: "Pet Dex", sub: `${owned}/${PET_DEX_ORDER.length} specie scoperte` },
+    { key: "manuale", icon: "📜", title: "Manuale", sub: "regole, elementi, uova, torre" },
+    ...(master ? [
+      { key: "bestiario", icon: "🎨", title: "Bestiario · Master", sub: "pixel art con Gemini", master: true },
+      { key: "giocatori", icon: "🛡", title: "Giocatori · Master", sub: "azzera punti e pet", master: true },
+    ] : []),
+  ];
+  return (
+    <div className="pd-hub">
+      <div className="pd-hub-team">
+        {team.map((p) => (
+          <div key={p.id} className="pd-hub-pet">
+            <PetSprite species={p.species} art={art} size={88} />
+            <span>{p.nick || PET_DEX[p.species].name}{p.id === den.mascot ? " ⭐" : ""}</span>
+            <small>Lv {p.level}</small>
+          </div>
+        ))}
+        {mascot && !den.team.includes(mascot.id) && (
+          <div className="pd-hub-pet is-mascot">
+            <PetSprite species={mascot.species} art={art} size={70} />
+            <span>{mascot.nick || PET_DEX[mascot.species].name} ⭐</span>
+            <small>mascotte</small>
+          </div>
+        )}
+      </div>
+      <div className="pd-hub-grid">
+        {tiles.map((t) => (
+          <button key={t.key} type="button" className={`pd-tile${t.master ? " is-master" : ""}${t.hot ? " is-hot" : ""}`} onClick={() => go(t.key)}>
+            <span className="pd-tile-icon" aria-hidden="true">{t.icon}</span>
+            <strong>{t.title}</strong>
+            <small>{t.sub}</small>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
 
-      {tab === "squadra" && <TeamTab uid={uid} den={den} art={art} run={run} />}
-      {tab === "nido" && <NestTab uid={uid} den={den} art={art} goShop={() => setTab("uova")} />}
-      {tab === "uova" && <EggShopTab uid={uid} den={den} art={art} points={points} run={run} ledger={char.petPointsLedger || []} goNest={() => setTab("nido")} />}
-      {tab === "dex" && <DexTab den={den} art={art} />}
-      {tab === "torre" && (
-        <TowerTab den={den} art={art} onFight={(plan) => setBattle({ plan, teamIds: den.team, key: Date.now() })} />
-      )}
-      {tab === "bestiario" && master && <MasterTools uid={uid} den={den} art={art} run={run} />}
-    </section>
+/* ── resistenze D&D ───────────────────────────────────────── */
+function ResLine({ species, compact = false }) {
+  const r = PET_DEX[species]?.res;
+  const rows = [
+    ["Immune", r?.immune, "imm"], ["Resiste", r?.resist, "res"], ["Vulnerabile", r?.vuln, "vul"],
+  ].filter(([, l]) => l?.length);
+  if (!rows.length) return compact ? null : <p className="pd-res pd-res--none">Nessuna resistenza particolare.</p>;
+  return (
+    <p className={`pd-res${compact ? " is-compact" : ""}`}>
+      {rows.map(([label, list, cls]) => (
+        <span key={cls} className={`pd-res-${cls}`} title={`${label}: ${list.map((k) => DMG_LABEL[k]).join(", ")}`}>
+          {compact ? "" : `${label}: `}{list.map((k) => (compact ? DMG_ICON[k] : `${DMG_ICON[k]} ${DMG_LABEL[k]}`)).join(compact ? "" : ", ")}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/* ── filtri (Pet Dex e Bestiario) ─────────────────────────── */
+const emptyFilter = { q: "", el: "all", rar: "all" };
+const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function filterSpecies(f) {
+  const q = norm(f.q.trim());
+  return PET_DEX_ORDER.filter((k) => {
+    const sp = PET_DEX[k];
+    if (f.el !== "all" && sp.type !== f.el) return false;
+    if (f.rar !== "all" && sp.rarity !== f.rar) return false;
+    return !q || norm(`${sp.name} ${sp.desc} ${TYPE_LABEL[sp.type]} ${RARITY[sp.rarity].label} ${sp.look}`).includes(q);
+  });
+}
+function FilterBar({ f, set }) {
+  return (
+    <div className="pd-filterbar">
+      <input
+        type="search" className="pd-search" placeholder="🔍 Cerca per nome, elemento, descrizione…"
+        value={f.q} onChange={(e) => set({ ...f, q: e.target.value })}
+      />
+      <div className="pd-filters">
+        {["all", ...ELEMENTS].map((t) => (
+          <button key={t} type="button" aria-pressed={f.el === t} className={f.el === t ? "on" : ""} onClick={() => set({ ...f, el: t })}>
+            {t === "all" ? "Tutti gli elementi" : `${TYPE_ICON[t]} ${TYPE_LABEL[t]}`}
+          </button>
+        ))}
+      </div>
+      <div className="pd-filters">
+        {["all", "starter", "common", "rare", "epic", "legendary"].map((r) => (
+          <button key={r} type="button" aria-pressed={f.rar === r} className={f.rar === r ? "on" : ""} onClick={() => set({ ...f, rar: r })}>
+            {r === "all" ? "Tutte le rarità" : RARITY[r].label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── manuale ──────────────────────────────────────────────── */
+function Manual() {
+  const typeList = (arr) => arr.map((t) => `${TYPE_ICON[t]} ${TYPE_LABEL[t]}`).join(", ") || "—";
+  return (
+    <div className="pd-tab pd-manual">
+      <section>
+        <h3>Il Rifugio in breve</h3>
+        <ul>
+          <li>Al primo accesso scegli un compagno fra {STARTERS.length} iniziali, uno per elemento. Una volta sola.</li>
+          <li>Gli altri pet escono dalle <b>uova</b>: si comprano coi punti pet nella Bottega o si vincono all'asta del Mercato Nero, poi si schiudono nel Nido.</li>
+          <li>Ne puoi avere al massimo {MAX_PER_SPECIES} della stessa specie; un doppione in più diventa punti pet.</li>
+          <li>In squadra vanno fino a {MAX_TEAM} pet: il primo entra in campo.</li>
+          <li>La <b>mascotte</b> (⭐, a scelta fra i tuoi pet) prende il {Math.round(MASCOT_XP_BONUS * 100)}% di PE in più e si vede accanto al tuo avatar in alto.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>La lotta</h3>
+        <ul>
+          <li>Combatte un pet per parte. Ogni turno scegli una mossa oppure cambi pet: il cambio consuma il turno.</li>
+          <li>Se il tuo pet va a terra, scegli il prossimo senza perdere il turno. Vince chi resta in piedi.</li>
+          <li>Agisce prima chi è più veloce (alcune mosse rapide passano davanti a tutto).</li>
+          <li>Le mosse hanno potenza, precisione e usi (PP). Le mosse di stato potenziano, curano, avvelenano, scottano o intontiscono.</li>
+          <li>Le mosse dello stesso elemento del pet colpiscono un po' più forte. Il terzo e il quarto attacco si sbloccano al livello 5 e 10.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Elementi</h3>
+        <p>Un attacco forte contro l'elemento del bersaglio fa una volta e mezza i danni; al contrario fa la metà.</p>
+        <table className="pd-chart">
+          <thead><tr><th>Elemento</th><th>Forte contro</th><th>Debole contro</th></tr></thead>
+          <tbody>
+            {ELEMENTS.map((t) => (
+              <tr key={t}><td>{TYPE_ICON[t]} {TYPE_LABEL[t]}</td><td>{typeList(strongAgainst(t))}</td><td>{typeList(weakAgainst(t))}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <section>
+        <h3>Resistenze, immunità e vulnerabilità</h3>
+        <p>Come in D&amp;D, ogni creatura ha le sue: <b>resistenza</b> = metà danni, <b>vulnerabilità</b> = danni doppi, <b>immunità</b> = nessun danno (e niente scottature o veleno se è immune a fuoco o veleno). Gli attacchi fisici sono contundenti (pestoni), perforanti (morsi) o taglienti (artigli). Le trovi nel Pet Dex e nei dettagli di ogni pet.</p>
+      </section>
+      <section>
+        <h3>Uova</h3>
+        <ul>
+          <li>Ogni uovo elementale contiene un pet del suo elemento: Comune {ELEMENT_ODDS.common}%, Raro {ELEMENT_ODDS.rare}%, Epico {String(ELEMENT_ODDS.epic).replace(".", ",")}%, Leggendario {String(ELEMENT_ODDS.legendary).replace(".", ",")}%.</li>
+          <li>L'Uovo Prismatico può contenere qualunque elemento, e le rarità alte escono più spesso ({PRISM_ODDS.common}/{PRISM_ODDS.rare}/{PRISM_ODDS.epic}/{PRISM_ODDS.legendary}).</li>
+          <li>Se un elemento non ha pet di una rarità, la probabilità passa alla rarità più vicina. Nella Bottega vedi la percentuale vera di ogni pet.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Torre dei Cuccioli</h3>
+        <ul>
+          <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
+          <li>Se perdi ritenti lo stesso piano, e la squadra prende comunque un terzo dei PE.</li>
+          <li>Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Punti pet</h3>
+        <ul>
+          <li>Arena: round e tornei vinti, Sfide Libere concluse.</li>
+          <li>Login del giorno · vittoria contro il World Boss · ogni nuovo piano della Torre.</li>
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+/* ── Giocatori (Master): azzera punti e pet ───────────────── */
+function PlayersAdmin({ run }) {
+  const [chars, setChars] = useState([]);
+  const [sel, setSel] = useState({});
+  const [showHidden, setShowHidden] = useState(false);
+  useEffect(() => onSnapshot(collection(db, "characters"), (snap) => {
+    setChars(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => c.name).sort((a, b) => a.name.localeCompare(b.name)));
+  }), []);
+  const list = chars.filter((c) => showHidden || !isHiddenChar(c) || c.petDen || c.petPoints);
+  const picked = list.filter((c) => sel[c.id]);
+  const all = list.length > 0 && picked.length === list.length;
+  const act = (what) => {
+    const ids = picked.map((c) => c.id);
+    if (!ids.length) return;
+    const label = what.points && what.pets ? "punti E pet" : what.points ? "i punti pet" : "i pet (collezione, nido, torre, mascotte)";
+    if (!window.confirm(`Azzerare ${label} di ${ids.length === list.length ? "TUTTI i " + ids.length : ids.length} giocatori?\n${picked.map((c) => c.name).join(", ")}\n\nNon si torna indietro.`)) return;
+    run(() => resetPetPlayers(ids, what), `Fatto: ${ids.length} giocatori azzerati.`).then(() => setSel({}));
+  };
+  return (
+    <div className="pd-tab">
+      <p className="pd-fine">Scegli uno, alcuni o tutti, poi azzera i punti pet, i pet o entrambi. Azzerare i pet toglie anche l'iniziale: al prossimo accesso lo sceglieranno di nuovo.</p>
+      <div className="pd-admin-bar">
+        <label className="pd-check"><input type="checkbox" checked={all} onChange={() => setSel(all ? {} : Object.fromEntries(list.map((c) => [c.id, true])))} /> Tutti ({list.length})</label>
+        <label className="pd-check"><input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> Mostra anche gli inattivi</label>
+        <span className="pd-admin-count">{picked.length} scelti</span>
+        <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ points: true })}>Azzera punti</button>
+        <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ pets: true })}>Azzera pet</button>
+        <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ points: true, pets: true })}>Azzera tutto</button>
+      </div>
+      <ul className="pd-admin-list">
+        {list.map((c) => {
+          const d = denOf(c);
+          return (
+            <li key={c.id} className={sel[c.id] ? "on" : ""}>
+              <label className="pd-check">
+                <input type="checkbox" checked={!!sel[c.id]} onChange={() => setSel((s) => ({ ...s, [c.id]: !s[c.id] }))} />
+                <img src={c.image || "/assets/player/default.png"} alt="" />
+                <span><b>{c.name}</b>{isHiddenChar(c) ? <small> · inattivo</small> : null}</span>
+              </label>
+              <span className="pd-admin-stat">{Number(c.petPoints) || 0} pt</span>
+              <span className="pd-admin-stat">{d.pets.length} pet · {d.eggs.length} uova</span>
+              <span className="pd-admin-stat">{d.starter ? `piano ${d.tower.floor}` : "senza iniziale"}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -222,7 +463,7 @@ function StarterPick({ art, onPick }) {
     <div className="pd-starter">
       <p className="pd-eyebrow">Il primo passo</p>
       <h1>Scegli il tuo primo compagno</h1>
-      <p className="pd-sub">Si sceglie una volta sola. Gli altri quattro possono uscire più avanti dalle uova.</p>
+      <p className="pd-sub">Uno per elemento. Si sceglie una volta sola: gli altri possono uscire più avanti dalle uova.</p>
       <div className="pd-starter-grid">
         {STARTERS.map((k) => {
           const sp = PET_DEX[k];
@@ -233,6 +474,7 @@ function StarterPick({ art, onPick }) {
               <strong>{sp.name}</strong>
               <TypeChip type={sp.type} />
               <p>{sp.desc}</p>
+              <ResLine species={k} compact />
               <dl className="pd-stats">
                 <div><dt>PF</dt><dd>{st.hp}</dd></div>
                 <div><dt>ATK</dt><dd>{st.atk}</dd></div>
@@ -253,18 +495,20 @@ function StarterPick({ art, onPick }) {
 }
 
 /* ── squadra e collezione ─────────────────────────────────── */
-function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd }) {
+function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot }) {
   const sp = PET_DEX[pet.species];
   const st = statsAt(pet.species, pet.level);
   const [open, setOpen] = useState(false);
   const [nick, setNick] = useState(pet.nick || "");
   return (
-    <article className={`pd-card${inTeam ? " is-team" : ""}`}>
+    <article className={`pd-card${inTeam ? " is-team" : ""}${isMascot ? " is-mascot" : ""}`}>
       {inTeam && <span className="pd-slot">#{slot + 1}</span>}
+      {isMascot && <span className="pd-mascot-badge" title="Mascotte">⭐</span>}
       <PetSprite species={pet.species} art={art} size={84} />
       <div className="pd-card-body">
         <h3>{pet.nick || sp.name} <small>Lv {pet.level}</small></h3>
         <div className="pd-chips"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
+        <ResLine species={pet.species} compact />
         <div className="pd-xp"><Bar value={pet.xp} max={xpToNext(pet.level)} kind="xp" /><small>{pet.xp}/{xpToNext(pet.level)} PE</small></div>
         <dl className="pd-stats pd-stats--row">
           <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
@@ -274,10 +518,15 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
           <button type="button" className="pd-btn" onClick={onToggle} disabled={!inTeam && !canAdd}>
             {inTeam ? "Togli dalla squadra" : canAdd ? "In squadra" : "Squadra piena"}
           </button>
+          <button type="button" className={`pd-btn${isMascot ? " pd-btn--star" : " pd-btn--ghost"}`} onClick={onMascot} title={`La mascotte prende il ${Math.round(MASCOT_XP_BONUS * 100)}% di PE in più e si vede accanto al tuo avatar`}>
+            {isMascot ? "⭐ Mascotte" : "☆ Fai mascotte"}
+          </button>
           <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setOpen((o) => !o)}>{open ? "Chiudi" : "Dettagli"}</button>
         </div>
         {open && (
           <div className="pd-card-more">
+            <p className="pd-fine">{sp.desc}</p>
+            <ResLine species={pet.species} />
             <MoveList species={pet.species} level={pet.level} />
             <div className="pd-rename">
               <input value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
@@ -307,10 +556,13 @@ function TeamTab({ uid, den, art, run }) {
       onToggle={() => toggle(p)}
       onRename={(n) => run(() => renamePet(uid, p.id, n), "Nome cambiato.")}
       onRelease={() => window.confirm(`Liberare ${p.nick || PET_DEX[p.species].name}? Non torna più.`) && run(() => releasePet(uid, p.id), "Liberato.")}
+      isMascot={den.mascot === p.id}
+      onMascot={() => run(() => setMascot(uid, den.mascot === p.id ? null : p.id), den.mascot === p.id ? "Niente più mascotte." : `${p.nick || PET_DEX[p.species].name} è la tua mascotte!`)}
     />
   );
   return (
     <div className="pd-tab">
+      <p className="pd-fine">⭐ La mascotte prende il {Math.round(MASCOT_XP_BONUS * 100)}% di PE in più e si vede accanto al tuo avatar in alto.</p>
       <h2 className="pd-h2">In squadra <small>{team.length}/{MAX_TEAM} · il primo entra in campo</small></h2>
       <div className="pd-team">
         {team.map((p, i) => (
@@ -504,25 +756,18 @@ function HatchModal({ hatch, art, onClose }) {
 
 /* ── Pet Dex: il catalogo ─────────────────────────────────── */
 function DexTab({ den, art }) {
-  const [filter, setFilter] = useState("all");
-  const list = PET_DEX_ORDER.filter((k) => filter === "all" || PET_DEX[k].type === filter);
+  const [f, setF] = useState(emptyFilter);
+  const list = filterSpecies(f);
   const owned = PET_DEX_ORDER.filter((k) => countOf(den, k) > 0).length;
   const typeList = (arr) => arr.map((t) => `${TYPE_ICON[t]} ${TYPE_LABEL[t]}`).join(", ") || "—";
   return (
     <div className="pd-tab">
-      <div className="pd-shop-head">
-        <h2 className="pd-h2">Pet Dex <small>{owned}/{PET_DEX_ORDER.length} specie</small></h2>
-        <div className="pd-filters">
-          {["all", ...ELEMENTS].map((t) => (
-            <button key={t} type="button" aria-pressed={filter === t} className={filter === t ? "on" : ""} onClick={() => setFilter(t)}>
-              {t === "all" ? "Tutti" : `${TYPE_ICON[t]} ${TYPE_LABEL[t]}`}
-            </button>
-          ))}
-        </div>
-      </div>
-      {filter !== "all" && (
-        <p className="pd-fine">{TYPE_ICON[filter]} {TYPE_LABEL[filter]}: forte contro {typeList(strongAgainst(filter))} · debole contro {typeList(weakAgainst(filter))}.</p>
+      <p className="pd-fine">{owned}/{PET_DEX_ORDER.length} specie scoperte · {list.length} mostrate</p>
+      <FilterBar f={f} set={setF} />
+      {f.el !== "all" && (
+        <p className="pd-fine">{TYPE_ICON[f.el]} {TYPE_LABEL[f.el]}: forte contro {typeList(strongAgainst(f.el))} · debole contro {typeList(weakAgainst(f.el))}.</p>
       )}
+      {!list.length && <p className="pd-empty">Nessun pet con questi filtri.</p>}
       <div className="pd-dex">
         {list.map((k) => {
           const sp = PET_DEX[k];
@@ -534,6 +779,7 @@ function DexTab({ den, art }) {
               <h3>{sp.name}</h3>
               <div className="pd-chips pd-chips--center"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
               <p>{sp.desc}</p>
+              <ResLine species={k} />
               <p className="pd-dex-own">{n ? `Ne hai ${n}/${MAX_PER_SPECIES}` : "Non ancora tuo"}</p>
               <p className="pd-dex-egg">Esce da: {EGGS[sp.type]?.name} o Prismatico{sp.rarity === "starter" ? " (o come iniziale)" : ""}</p>
             </article>
@@ -547,8 +793,8 @@ function DexTab({ den, art }) {
 /* ── Torre ────────────────────────────────────────────────── */
 function TowerTab({ den, art, onFight }) {
   const floor = den.tower.floor || 1;
-  const plan = towerFloor(floor);
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+  const plan = towerFloor(floor, team[0] ? PET_DEX[team[0].species]?.type : null);
   const upcoming = [floor + 1, floor + 2, floor + 3].map(towerFloor);
   return (
     <div className="pd-tab">
@@ -568,6 +814,7 @@ function TowerTab({ den, art, onFight }) {
                 <PetSprite species={t.species} art={art} size={72} flip />
                 <span>{PET_DEX[t.species].name}</span>
                 <small>Lv {t.level} · {TYPE_ICON[PET_DEX[t.species].type]}</small>
+                <ResLine species={t.species} compact />
               </div>
             ))}
           </div>
@@ -682,7 +929,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
       <div className="pd-field" ref={fieldRef}>
         <div className="pd-hud pd-hud--e">
           <div className="pd-hud-name"><b>{E.f.name}</b><small>Lv {E.f.level}</small></div>
-          <div className="pd-hud-chips"><TypeChip type={E.f.type} />{E.status && <span className="pd-status">{STATUS_TXT[E.status]}</span>}</div>
+          <div className="pd-hud-chips"><TypeChip type={E.f.type} /><ResLine species={E.f.species} compact />{E.status && <span className="pd-status">{STATUS_TXT[E.status]}</span>}</div>
           <Bar value={E.hp} max={E.f.maxHp} />
           <div className="pd-balls">{balls("e")}</div>
         </div>
@@ -698,7 +945,7 @@ function PetBattle({ uid, den, art, plan, teamIds, onExit, onRetry }) {
         </div>
         <div className="pd-hud pd-hud--p">
           <div className="pd-hud-name"><b>{P.f.name}</b><small>Lv {P.f.level}</small></div>
-          <div className="pd-hud-chips"><TypeChip type={P.f.type} />{P.status && <span className="pd-status">{STATUS_TXT[P.status]}</span>}</div>
+          <div className="pd-hud-chips"><TypeChip type={P.f.type} /><ResLine species={P.f.species} compact />{P.status && <span className="pd-status">{STATUS_TXT[P.status]}</span>}</div>
           <Bar value={P.hp} max={P.f.maxHp} />
           <div className="pd-hud-hp">{P.hp}/{P.f.maxHp} PF</div>
           <div className="pd-balls">{balls("p")}</div>
@@ -770,6 +1017,7 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
   const [busy, setBusy] = useState({});
   const [looks, setLooks] = useState({});
   const [err, setErr] = useState("");
+  const [f, setF] = useState(emptyFilter);
   const lookOf = (k) => looks[k] ?? art[k]?.look ?? PET_DEX[k].look;
 
   const generate = async (k) => {
@@ -804,7 +1052,7 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
       <div className="pd-master-head">
         <h2 className="pd-h2">Bestiario del Master <small>pixel art {done}/{PET_DEX_ORDER.length}</small></h2>
         <div className="pd-master-tools">
-          <Link className="pd-btn pd-btn--ghost" to="/dm-admin/pet-points">Punti pet dei giocatori</Link>
+          <Link className="pd-btn pd-btn--ghost" to="/dm-admin/pet-points">Dai punti pet</Link>
           {den.starter && <button type="button" className="pd-btn pd-btn--danger" onClick={resetMine}>Azzera il mio Rifugio</button>}
         </div>
       </div>
@@ -820,8 +1068,9 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
           ))}
         </div>
       )}
+      <FilterBar f={f} set={setF} />
       <div className="pd-art-grid">
-        {PET_DEX_ORDER.map((k) => {
+        {filterSpecies(f).map((k) => {
           const sp = PET_DEX[k];
           return (
             <article key={k} className="pd-art-card">

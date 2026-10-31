@@ -9,11 +9,42 @@ import {
   where,
   onSnapshot,
   doc,
+  getDoc,
 } from "firebase/firestore";
+import { PET_DEX } from "./data/petDex";
 import { classColor, MASTER_COLOR } from "./utils/classColor";
 import { LoginTrack } from "./components/LoginRewards";
 import { loginState, monthLabel, romeMonthKey } from "./data/loginRewards";
 import "./LoginDropdown.css";
+
+// Mascotte del Rifugio dei Pet (2026-10-31): il pet scelto come mascotte
+// (characters.petDen.mascot) respira accanto all'avatar. La pixel art sta
+// in pet_dex/{specie}; finché non c'è si vede l'emoji.
+const mascotArt = {};
+function HeaderMascot({ charData, onOpen }) {
+  const den = charData?.petDen;
+  const pet = den?.mascot ? (den.pets || []).find((p) => p.id === den.mascot) : null;
+  const species = pet?.species;
+  const [img, setImg] = useState(species ? mascotArt[species] : null);
+  useEffect(() => {
+    if (!species) return undefined;
+    if (mascotArt[species] !== undefined) { setImg(mascotArt[species]); return undefined; }
+    let alive = true;
+    getDoc(doc(db, "pet_dex", species))
+      .then((s) => { mascotArt[species] = s.data()?.image || null; if (alive) setImg(mascotArt[species]); })
+      .catch(() => { mascotArt[species] = null; });
+    return () => { alive = false; };
+  }, [species]);
+  if (!pet || !PET_DEX[species]) return null;
+  const name = pet.nick || PET_DEX[species].name;
+  return (
+    <button type="button" className="ld-mascot" onClick={onOpen} title={`${name} · la tua mascotte`} aria-label={`Mascotte: ${name}`}>
+      <span className="ld-mascot-breathe">
+        {img ? <img src={img} alt="" draggable="false" /> : <span className="ld-mascot-emoji">{PET_DEX[species].icon}</span>}
+      </span>
+    </button>
+  );
+}
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -153,6 +184,7 @@ export default function LoginDropdown() {
   // --- LOGGATO ---
   return (
     <div className="ld-container" ref={dropdownRef} style={{ "--cls": cls }}>
+      <HeaderMascot charData={charData} onOpen={() => navigate("/pet")} />
       <button className="ld-avatar-btn" onClick={togglePanel}>
         <img
           src={charData?.image || "/assets/player/default.png"}

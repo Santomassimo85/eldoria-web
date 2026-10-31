@@ -272,3 +272,12 @@
 .ld-login { border-bottom: 1px solid rgba(var(--el-rgb), 0.22); }
 .ld-login-count { font-family: var(--font-num, inherit); font-size: .78rem; color: var(--osso-3); white-space: nowrap; }
 .ld-login-body { padding: 2px 12px 12px; max-width: 300px; }
+
+/* ---- Mascotte del Rifugio dei Pet: respira a sinistra dell'avatar ---- */
+.ld-mascot { position: absolute; right: 100%; bottom: -4px; margin-right: 2px; width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; }
+.ld-mascot-breathe { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 100%; transform-origin: 50% 100%; animation: ld-mascot-breathe 2.8s ease-in-out infinite; }
+.ld-mascot img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); }
+.ld-mascot-emoji { font-size: 26px; line-height: 1; filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); }
+.ld-mascot:hover .ld-mascot-breathe { animation-duration: 1s; }
+@keyframes ld-mascot-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.05, .93); } }
+@media (prefers-reduced-motion: reduce) { .ld-mascot-breathe { animation-duration: 6s; } }
