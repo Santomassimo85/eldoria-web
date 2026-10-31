@@ -29,6 +29,8 @@ export const DICE_SKINS = [
   { id: "bosco",     label: "Bosco Fatato",      kind: "special", glyph: "🍃", desc: "Muschio e lucciole" },
   { id: "abisso",    label: "Abisso Marino",     kind: "special", glyph: "🌊", desc: "Acqua profonda e bolle luminose" },
   { id: "prisma",    label: "Prismatico",        kind: "special", glyph: "🌈", desc: "Ogni faccia un colore" },
+  // dado dell'avversario nella lotta dei pet (non compare nei menu: kind "enemy")
+  { id: "nemico",    label: "Nemico",            kind: "enemy",   glyph: "🟥" },
 ];
 
 const DEFAULT_SKIN = "classic";

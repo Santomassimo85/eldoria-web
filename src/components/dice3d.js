@@ -25,6 +25,8 @@ const SKIN_COLORS = {
   bosco:     ["#1d4a22", "#ffe7a3", { bg2: "#3f8a3a", glow: "#fff3b0", speck: "rgba(255,240,170,.55)" }],
   abisso:    ["#06232e", "#7ff6e6", { bg2: "#0e5566", glow: "#38e8d2", speck: "rgba(180,255,245,.35)" }],
   prisma:    ["#ffffff", "#1b1430", { rainbow: true }],
+  // dado del NEMICO nella lotta dei pet: rosso acceso, non si sceglie
+  nemico:    ["#d01818", "#ffffff", { bg2: "#ff5a4a", glow: "#3a0000" }],
 };
 
 const R = 0.8;                      // raggio del dado (unità di scena)

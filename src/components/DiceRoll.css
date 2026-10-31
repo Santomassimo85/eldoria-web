@@ -540,3 +540,5 @@
 .dice-overlay.normal.skin-abisso .dice-d20-num { color: #7ff6e6; text-shadow: 0 0 12px #38e8d2; }
 .dice-overlay.normal.skin-prisma .dice-d20-face { background: conic-gradient(from 30deg, #ff6b6b, #ffd166, #6be38a, #4fc3ff, #b48cff, #ff6b6b); border-color: #3a2a5a; }
 .dice-overlay.normal.skin-prisma .dice-d20-num { color: #1b1430; text-shadow: 0 0 4px #fff, 0 0 8px #fff; }
+.dice-overlay.normal.skin-nemico .dice-d20-face { background: linear-gradient(135deg, #ff5a4a, #d01818 55%, #6a0606); border-color: #4a0000; }
+.dice-overlay.normal.skin-nemico .dice-d20-num { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5); }

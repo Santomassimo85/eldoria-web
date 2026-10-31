@@ -1227,7 +1227,9 @@ function useLinePlayer(initial = []) {
     const t = setTimeout(async () => {
       const r = next.kind === "move" ? next.roll : null;
       if (r) {
-        await showD20Roll(r.d, { label: diceLabel(r, next), skin: petDiceSkin(),
+        // chi tira: l'attaccante, o il bersaglio se è un tiro salvezza. Il nemico (lato "e") ha il dado rosso.
+        const roller = r.kind === "save" ? (next.side === "p" ? "e" : "p") : next.side;
+        await showD20Roll(r.d, { label: `${roller === "e" ? "🟥 " : ""}${diceLabel(r, next)}`, skin: roller === "e" ? "nemico" : petDiceSkin(),
           dice: r.dis ? [{ value: r.d, name: "tiene" }, { value: r.d2, name: "scarta", dim: true }] : undefined });
       }
       if (!alive) return;
@@ -1294,7 +1296,7 @@ function PetDicePicker({ onClose }) {
           <h3>🎲 I dadi del Rifugio</h3>
           <button type="button" className="pd-btn pd-btn--ghost" onClick={onClose}>Chiudi</button>
         </div>
-        <p className="pd-fine">Il d20 delle lotte dei pet. È una scelta a parte: il dado dell'Arena non cambia. Critico (20) e fallimento (1) restano in oro e rosso.</p>
+        <p className="pd-fine">Il d20 delle lotte dei pet. È una scelta a parte: il dado dell'Arena non cambia. Il dado dell'avversario è sempre rosso, così si capisce chi sta tirando. Critico (20) e fallimento (1) restano in oro e rosso.</p>
         {group("base", "Colori base")}
         {group("special", "Speciali ✦")}
       </div>
