@@ -11,8 +11,8 @@
    ============================================================ */
 
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
-import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor } from "./petEngine";
-import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops } from "./petBag";
+import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek } from "./petEngine";
+import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle } from "./petBag";
 export { LOSS_XP };
 
 const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -296,12 +296,14 @@ function recordTowerResult(den, data, floor, won, teamIds) {
       addLog(den, { k: "tower", f: floor, won: false, xp, team });
       return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1 } };
     }
-    const pts = towerPoints(floor);
-    const drops = towerDrops(floor);
+    // punti e premi solo la prima volta in settimana (dopo un reset si risale per i PE)
+    const first = floor > (den.tower.best || 0);
+    const pts = first ? towerPoints(floor) : 0;
+    const drops = first ? towerDrops(floor) : [];
     addItems(den, drops);
     den.tower = { ...den.tower, att: null, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
-    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team });
-    return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { won: true, xp, pts, ups, drops } };
+    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first });
+    return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first } };
 }
 
 /* Esito di una sfida fra giocatori, ritirato da ciascuno per sé (una volta
@@ -322,6 +324,7 @@ export function recordPvpResult(den, data, match, side) {
   const won = match.winner === side;
   const self = match.a === match.b;
   const teamIds = (match.teams?.[side] || []).map((p) => p.id);
+  spendBattleItems(den, match.used?.[side], teamIds, match.teams?.[side]);
   wearCharms(den, teamIds);
   if (self) return { out: { won, self: true, xp: 0, pts: 0, ups: [], drops: [] } };
   const day = new Date().toISOString().slice(0, 10);
@@ -357,23 +360,77 @@ export function recordPvpResult(den, data, match, side) {
    sconfitta registrata, quindi ritirarsi e riprovare non rifà i dadi).
    A fine lotta il sito manda le azioni scelte; il server rigioca tutto
    con lo stesso seme e decide lui se è vittoria o sconfitta. */
-export function towerSeed(uid, den, floor) {
-  const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
+// Torre della settimana `week`: se è di un'altra settimana riparte da zero
+// (piano 1, record della settimana 0; il record di sempre resta in bestEver).
+export function towerFresh(tower, week = towerWeek()) {
+  // le torri di prima della torre settimanale contano come settimana del 26/10/2026 (si azzerano la sera del 1/11)
+  const t = { ...(tower || {}), week: tower?.week || "2026-10-26" };
+  if (t.week === week) return { floor: 1, best: 0, wins: 0, ...t };
+  return {
+    week, floor: 1, best: 0, wins: 0, losses: 0, att: null, resets: 0, resetDay: t.resetDay || null,
+    bestEver: Math.max(t.bestEver || 0, t.best || 0),
+  };
+}
+const romeDay = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+export const canResetTower = (tower, now = Date.now()) => (tower.floor || 1) > 1 && tower.resetDay !== romeDay(now);
+export function towerSeed(uid, den, floor, week = towerWeek()) {
+  const t = towerFresh(den.tower, week);
+  const att = t.att?.floor === floor ? t.att.n || 0 : 0;
   let h = 2166136261;
-  for (const ch of `${uid}|${floor}|${att}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  for (const ch of `${uid}|${week}|${t.resets || 0}|${floor}|${att}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return h >>> 0;
 }
+/* Reset della torre a mano (2026-11-01): una volta al giorno si riparte dal
+   piano 1 (seme nuovo). Il record della settimana resta; i piani già fatti in
+   settimana danno solo PE. */
+export function resetTower(den) {
+  den.tower = towerFresh(den.tower);
+  if ((den.tower.floor || 1) <= 1) throw new Error("Sei già al piano 1.");
+  const today = romeDay();
+  if (den.tower.resetDay === today) throw new Error("Hai già ricominciato la torre oggi: riprova domani.");
+  addLog(den, { k: "tower_reset", from: den.tower.floor });
+  den.tower = { ...den.tower, floor: 1, att: null, resets: (den.tower.resets || 0) + 1, resetDay: today };
+  return { out: { ok: true } };
+}
+/* Oggetti dati in lotta: si tolgono dalla bisaccia; gli amuleti restano al
+   pet a cui sono stati dati (con tutte le lotte, questa compresa). `team` =
+   i pet nell'ordine della lotta (per sapere a chi è andato l'amuleto). */
+function spendBattleItems(den, used, teamIds, team) {
+  if (!used) return;
+  Object.entries(used).forEach(([id, list]) => {
+    (Array.isArray(list) ? list : []).forEach((idx) => {
+      if (!(den.items[id] > 0) || !usableInBattle(id)) return;
+      den.items[id] -= 1;
+      if (PET_BAG[id].kind === "charm") {
+        const pid = (team?.[idx]?.id) || teamIds[idx];
+        const p = den.pets.find((x) => x.id === pid);
+        if (p) p.charm = { id, left: PET_BAG[id].fights };
+      }
+    });
+  });
+  addLog(den, { k: "battle_items", items: Object.keys(used) });
+}
 export const towerTurnSeed = (seed, i) => (seed + (i + 1) * 7919) >>> 0;
-export function towerStart(den, floor, teamIds, seed) {
+export function towerStart(den, floor, teamIds, seed, week = towerWeek()) {
   const pets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   if (!pets.length || pets.length !== teamIds.length || pets.length > MAX_TEAM) throw new Error("Squadra non valida.");
-  const plan = towerFloor(floor);
+  const plan = towerFloor(floor, week);
   return withSeed(seed, () => newBattle(pets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel }));
 }
 // L'azione del giocatore è lecita? (mosse che il pet ha davvero, con usi; cambi verso pet vivi)
-export function validAction(b, a) {
+export function validAction(b, a, bag = {}) {
   const side = b.sides.p;
   const f = side.team[side.active];
+  if (a?.kind === "item") {
+    if (b.needSwitch && b.needSwitch.includes("p")) return false;
+    const it = PET_BAG[a.item];
+    const t = side.team[a.index];
+    if (!it || !usableInBattle(a.item) || !(bag[a.item] > 0) || !Number.isInteger(a.index) || !t) return false;
+    if (it.use?.revive) return t.hp <= 0;
+    if (t.hp <= 0) return false;
+    if (it.kind === "charm") return !t.charm;
+    return true;
+  }
   if (a?.kind === "switch") {
     const t = side.team[a.index];
     return Number.isInteger(a.index) && !!t && t.hp > 0 && a.index !== side.active;
@@ -384,21 +441,27 @@ export function validAction(b, a) {
   if (a.move === "zampata") return left.every((v) => v === 0);
   return Object.prototype.hasOwnProperty.call(f.pp, a.move) && f.pp[a.move] !== 0;
 }
-export function replayTower(den, uid, floor, teamIds, actions) {
+export function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {
   if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
-  const seed = towerSeed(uid, den, floor);
-  let b = towerStart(den, floor, teamIds, seed);
+  const seed = towerSeed(uid, den, floor, week);
+  let b = towerStart(den, floor, teamIds, seed, week);
+  const bag = { ...den.items };
+  const used = {};
   actions.forEach((a, i) => {
     if (b.over) throw new Error("Lotta non valida (azioni dopo la fine).");
-    if (!validAction(b, a)) throw new Error("Lotta non valida (mossa non permessa).");
+    if (!validAction(b, a, bag)) throw new Error("Lotta non valida (mossa non permessa).");
+    if (a.kind === "item") { bag[a.item] -= 1; (used[a.item] ||= []).push(a.index); }
     b = withSeed(towerTurnSeed(seed, i), () => playTurn(b, a).battle);
   });
   if (!b.over) throw new Error("La lotta non è finita.");
-  return b.over;
+  return { over: b.over, used };
 }
 export function towerFinish(den, data, floor, teamIds, actions, ctx) {
-  if (den.tower.floor !== floor) throw new Error("Questo piano è già stato registrato.");
-  const over = replayTower(den, ctx.uid, floor, teamIds, actions);
+  const week = towerWeek();
+  den.tower = towerFresh(den.tower, week);
+  if (den.tower.floor !== floor) throw new Error(floor > 1 && den.tower.floor === 1 ? "La torre è ricominciata (nuova settimana o reset): riparti dal piano 1." : "Questo piano è già stato registrato.");
+  const { over, used } = replayTower(den, ctx.uid, floor, teamIds, actions, week);
+  spendBattleItems(den, used, teamIds, null);
   return recordTowerResult(den, data, floor, over === "p", teamIds);
 }
 
@@ -421,5 +484,6 @@ export const OPS = {
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },
   towerFinish: { run: towerFinish },
+  resetTower: { run: resetTower },
   recordPvpResult: { run: recordPvpResult, match: true },
 };

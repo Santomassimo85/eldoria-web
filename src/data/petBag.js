@@ -8,6 +8,10 @@
    - xp     = Pietra dell'Esperienza: tanti PE in un colpo.
    - charm  = amuleto da far TENERE a un pet: vale per `fights` lotte
               (Torre o sfide), poi si consuma. Uno per pet.
+   - battle = da usare IN LOTTA (2026-11-01): Pozione, Antidoto, Elisir,
+              Piuma della Fenice. Si danno al pet scelto dalla Bisaccia
+              durante la lotta e consumano il turno. In lotta si possono
+              dare anche gli amuleti: valgono subito e il pet li tiene.
    - scroll = Pergamena: insegna UNA mossa di qualunque elemento (anche
               un incantesimo di gelo a un pet di fuoco), al posto di
               una che il pet dimentica, come le MT di Pokémon. Massimo
@@ -37,6 +41,14 @@ const BASE = {
     desc: "Sotto metà dei PF la mangia e recupera il 35% (una volta per lotta)." },
   quadrifoglio: { name: "Quadrifoglio", icon: "🍀", kind: "charm", rarity: "rare", price: 45, fights: 3, fx: { crit: 19 },
     desc: "Critico anche col 19 naturale." },
+  pozione: { name: "Pozione", icon: "🧪", kind: "battle", rarity: "common", price: 15, use: { heal: 0.4 },
+    desc: "In lotta: cura il 40% dei PF del pet scelto (consuma il turno)." },
+  antidoto: { name: "Antidoto", icon: "🌿", kind: "battle", rarity: "common", price: 10, use: { cure: true },
+    desc: "In lotta: toglie veleno, scottatura e intontimento al pet scelto." },
+  elisir: { name: "Elisir", icon: "⚗️", kind: "battle", rarity: "rare", price: 35, use: { uses: 2 },
+    desc: "In lotta: ridà fino a 2 usi a ogni mossa che non è infinita." },
+  fenice: { name: "Piuma della Fenice", icon: "🪽", kind: "battle", rarity: "epic", price: 80, use: { revive: 0.5 },
+    desc: "In lotta: rianima un pet a terra con metà dei PF." },
   corona: { name: "Coroncina del Campione", icon: "👑", kind: "charm", rarity: "epic", price: 120, fights: 5, fx: { ac: 1, hit: 1, hp: 0.1 },
     desc: "+1 CA, +1 per colpire e +10% PF." },
 };
@@ -58,7 +70,9 @@ export const PET_BAG = { ...BASE, ...TALISMANS, ...SCROLLS };
 export const BAG_ORDER = Object.keys(PET_BAG);
 export const CHARMS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "charm");
 export const SCROLL_IDS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "scroll");
-export const BAG_KIND_LABEL = { level: "Livello", xp: "Esperienza", charm: "Amuleto", scroll: "Pergamena" };
+export const BAG_KIND_LABEL = { level: "Livello", xp: "Esperienza", charm: "Amuleto", battle: "Da lotta", scroll: "Pergamena" };
+// Oggetti che si possono dare in lotta: quelli da lotta e gli amuleti.
+export const usableInBattle = (id) => ["battle", "charm"].includes(PET_BAG[id]?.kind);
 export const charmFx = (pet) => (pet?.charm && PET_BAG[pet.charm.id]?.fx) || null;
 
 // Premi della Torre per un piano vinto (casuale: si tira una volta sola, nella transazione).

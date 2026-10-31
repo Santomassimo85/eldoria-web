@@ -24,17 +24,17 @@ import {
   MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, LOSS_XP, withSeed, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, LOSS_XP, withSeed, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
-  towerFinish, towerSeed, towerTurnSeed, towerStart, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
+  towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
   learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
 } from "../utils/petDen";
 import {
   createChallenge, acceptChallenge, declineChallenge, cancelChallenge, submitAction, forfeit, pendingSide, sidesOf, flipBattle, flipEvent,
 } from "../utils/petPvp";
-import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS } from "../data/petBag";
+import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle } from "../data/petBag";
 import PetFx from "./PetFx";
 import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
@@ -241,7 +241,7 @@ export default function PetDen() {
   if (pvpId) {
     return (
       <section className="pd-page pd-page--battle">
-        <PvpBattle key={pvpId} uid={uid} id={pvpId} art={art} onExit={() => { setPvpId(null); setTab("sfide"); }} />
+        <PvpBattle key={pvpId} uid={uid} id={pvpId} art={art} den={den} onExit={() => { setPvpId(null); setTab("sfide"); }} />
       </section>
     );
   }
@@ -296,7 +296,7 @@ export default function PetDen() {
           {sec === "dex" && <DexTab den={den} art={art} />}
           {sec === "manuale" && <Manual />}
           {sec === "torre" && (
-            <TowerTab uid={uid} den={den} art={art} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
+            <TowerTab uid={uid} den={den} art={art} run={run} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
           )}
           {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={setPvpId} />}
           {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} run={run} />}
@@ -327,7 +327,7 @@ function Hub({ den, art, points, master, go, matches = [], uid }) {
     { key: "squadra", icon: "🐾", title: "Squadra e collezione", sub: `${team.length}/${MAX_TEAM} in squadra · ${den.pets.length} pet` },
     { key: "nido", icon: "🥚", title: "Il nido", sub: den.eggs.length ? `${den.eggs.length} uova da schiudere` : "nessun uovo", hot: den.eggs.length > 0 },
     { key: "uova", icon: "🛒", title: "Bottega delle uova", sub: `${points} punti pet da spendere` },
-    { key: "torre", icon: "🗼", title: "Torre dei Cuccioli", sub: `piano ${den.tower.floor} · record ${den.tower.best || 0}` },
+    { key: "torre", icon: "🗼", title: "Torre dei Cuccioli", sub: (() => { const t = towerFresh(den.tower); return `piano ${t.floor} · record della settimana ${t.best || 0}`; })() },
     (() => {
       const turn = matches.filter((m) => m.status === "active" && pendingSide(m, uid)).length;
       const inc = matches.filter((m) => m.status === "pending" && m.b === uid).length;
@@ -516,8 +516,10 @@ function Manual() {
           <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
           <li>Se perdi ritenti lo stesso piano e la squadra prende solo {LOSS_XP} PE; se ti ritiri non prende niente.</li>
           <li>I dadi di un piano sono fissati: ritirarsi e ricominciare dà gli stessi tiri. Cambiano solo dopo una sconfitta. L'esito lo ricontrolla il server.</li>
-          <li>È infinita e uguale per tutti: il piano 3 è sempre lo stesso piano 3. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
-          <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica mostra fin dove è arrivato ognuno.</li>
+          <li>È infinita e in una settimana uguale per tutti: il piano 3 è lo stesso piano 3 per chiunque. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
+          <li><b>Ogni domenica alle 23:59</b> la torre si azzera per tutti e cambiano i mostri dei piani. In più puoi <b>ricominciare dal piano 1 una volta al giorno</b>: i piani già superati in settimana danno solo PE, niente punti né premi.</li>
+          <li><b>In lotta</b> col tasto 🎒 Oggetti dai al pet che scegli una Pozione, un Antidoto, un Elisir, una Piuma della Fenice o un amuleto (che vale subito e il pet si tiene). Consuma il turno.</li>
+          <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica della settimana mostra fin dove è arrivato ognuno.</li>
         </ul>
       </section>
       <section>
@@ -1019,22 +1021,30 @@ function DexTab({ den, art }) {
 }
 
 /* ── Torre ────────────────────────────────────────────────── */
-function TowerTab({ uid, den, art, onFight }) {
-  const floor = den.tower.floor || 1;
+function TowerTab({ uid, den, art, run, onFight }) {
+  const week = towerWeek();
+  const tw = towerFresh(den.tower, week);
+  const floor = tw.floor || 1;
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
-  const plan = towerFloor(floor);
-  const upcoming = [floor + 1, floor + 2, floor + 3].map(towerFloor);
+  const plan = towerFloor(floor, week);
+  const upcoming = [floor + 1, floor + 2, floor + 3].map((n) => towerFloor(n, week));
+  const left = towerWeekLeftMs();
+  const leftTxt = left > 864e5 ? `${Math.floor(left / 864e5)} g ${Math.floor((left % 864e5) / 36e5)} h` : `${Math.floor(left / 36e5)} h ${Math.floor((left % 36e5) / 6e4)} min`;
+  const canReset = canResetTower(tw);
+  const reset = () => window.confirm(`Ricominciare la torre dal piano 1?\nPuoi farlo una volta al giorno. Il record della settimana (piano ${tw.best || 0}) resta; i piani già superati questa settimana danno solo PE, niente punti né premi.`)
+    && run(() => resetTower(uid), "Torre ricominciata dal piano 1.");
   return (
     <div className="pd-tab">
       <div className="pd-tower">
         <div className="pd-tower-now">
           <p className="pd-eyebrow">Torre dei Cuccioli · piano</p>
           <div className="pd-tower-floor">{floor}</div>
-          <p className="pd-sub">Record: piano {den.tower.best || 0} · {den.tower.wins || 0} vittorie</p>
+          <p className="pd-sub">Record della settimana: piano {tw.best || 0} · {tw.wins || 0} vittorie{tw.bestEver ? ` · record di sempre ${Math.max(tw.bestEver, tw.best || 0)}` : ""}</p>
+          <p className="pd-fine">🔄 La torre cambia fra {leftTxt} (ogni domenica alle 23:59): si riparte tutti dal piano 1 con mostri nuovi.</p>
           {plan.boss && <p className="pd-tower-boss">👑 Piano del Guardiano</p>}
           <dl className="pd-tower-meta">
             <div><dt>Avversario</dt><dd>{AI_LABEL[plan.aiLevel]}</dd></div>
-            <div><dt>Premio</dt><dd>{towerXp(floor)} PE a testa · {towerPoints(floor)} pt</dd></div>
+            <div><dt>Premio</dt><dd>{towerXp(floor)} PE a testa{floor > (tw.best || 0) ? ` · ${towerPoints(floor)} pt` : " · già superato in settimana: solo PE"}</dd></div>
           </dl>
           <div className="pd-tower-foes">
             {plan.team.map((t) => (
@@ -1049,7 +1059,12 @@ function TowerTab({ uid, den, art, onFight }) {
           <button type="button" className="pd-btn pd-btn--main pd-btn--big" disabled={!team.length} onClick={() => onFight(plan)}>
             ⚔ Sali al piano {floor}
           </button>
-          <p className="pd-fine">La torre non finisce mai: ogni piano è sempre uguale per tutti, con avversari diversi e sempre più forti. Vinci e passi al piano dopo; perdi e ritenti lo stesso piano (la squadra prende comunque un po' di PE). Fin dove arrivi lo dice la classifica. Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e 1% a ogni piano).</p>
+          {floor > 1 && (
+            <button type="button" className="pd-btn pd-btn--ghost" disabled={!canReset} onClick={reset}>
+              {canReset ? "↺ Ricomincia dal piano 1 (1 volta al giorno)" : "↺ Già ricominciata oggi: domani di nuovo"}
+            </button>
+          )}
+          <p className="pd-fine">La torre non finisce mai: in una settimana ogni piano è uguale per tutti, con avversari diversi e sempre più forti. Vinci e passi al piano dopo; perdi e ritenti lo stesso piano (la squadra prende comunque un po' di PE). Fin dove arrivi lo dice la classifica. Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e 1% a ogni piano).</p>
         </div>
         <div className="pd-tower-next">
           <h3>Più in alto…</h3>
@@ -1227,7 +1242,7 @@ function BagTab({ uid, den, points, run }) {
     const it = PET_BAG[k];
     if (!it.price) return false;
     if (shopKind === "scroll") return it.kind === "scroll" && (shopEl === "all" || PET_DEX_MOVES[it.move].type === shopEl);
-    return shopKind === "charm" ? it.kind === "charm" : it.kind === "xp";
+    return shopKind === "charm" ? it.kind === "charm" : shopKind === "battle" ? it.kind === "battle" : it.kind === "xp";
   });
   const row = (k, buy) => {
     const it = PET_BAG[k];
@@ -1243,6 +1258,8 @@ function BagTab({ uid, den, points, run }) {
             <button type="button" className="pd-btn" disabled={points < it.price} onClick={() => window.confirm(`Comprare ${it.name} per ${it.price} punti pet?`) && run(() => buyItem(uid, k), `${it.name} nella bisaccia!`)}>Compra · {it.price} pt</button>
           ) : using === k ? (
             <BagUse id={k} den={den} uid={uid} run={run} onDone={() => setUsing(null)} />
+          ) : it.kind === "battle" ? (
+            <small className="pd-fine">Si usa in lotta: tasto 🎒 Oggetti.</small>
           ) : (
             <button type="button" className="pd-btn pd-btn--main" onClick={() => setUsing(k)}>{it.kind === "charm" ? "Fai tenere" : it.kind === "scroll" ? "Insegna" : "Usa"}</button>
           )}
@@ -1265,7 +1282,7 @@ function BagTab({ uid, den, points, run }) {
       )}
       <h2 className="pd-h2">Bottega degli oggetti <small>{points} punti pet</small></h2>
       <div className="pd-filters">
-        {[["charm", "Amuleti"], ["xp", "Esperienza"], ["scroll", "Pergamene"]].map(([k, l]) => (
+        {[["battle", "Da lotta"], ["charm", "Amuleti"], ["xp", "Esperienza"], ["scroll", "Pergamene"]].map(([k, l]) => (
           <button key={k} type="button" className={`pd-chipbtn${shopKind === k ? " is-on" : ""}`} aria-pressed={shopKind === k} onClick={() => setShopKind(k)}>{l}</button>
         ))}
         {shopKind === "scroll" && (
@@ -1284,14 +1301,15 @@ function BagTab({ uid, den, points, run }) {
 function TowerBoard({ uid }) {
   const [rows, setRows] = useState(null);
   useEffect(() => {
-    getDocs(collection(db, "characters")).then((snap) => setRows(snap.docs.map((d) => ({ id: d.id, name: d.data().name, best: d.data().petDen?.tower?.best || 0, hidden: isHiddenChar(d.data()) }))
+    const week = towerWeek();
+    getDocs(collection(db, "characters")).then((snap) => setRows(snap.docs.map((d) => ({ id: d.id, name: d.data().name, best: (d.data().petDen?.tower?.week || "2026-10-26") === week ? d.data().petDen?.tower?.best || 0 : 0, hidden: isHiddenChar(d.data()) }))
       .filter((r) => r.name && r.best > 0 && !r.hidden).sort((a, b) => b.best - a.best).slice(0, 20))).catch(() => setRows([]));
   }, []);
   if (!rows) return null;
   return (
     <div className="pd-board">
-      <h3>🏆 Classifica della Torre</h3>
-      {!rows.length ? <p className="pd-fine">Nessuno ha ancora superato un piano.</p> : (
+      <h3>🏆 Classifica della settimana</h3>
+      {!rows.length ? <p className="pd-fine">Questa settimana nessuno ha ancora superato un piano.</p> : (
         <ol>
           {rows.map((r, i) => <li key={r.id} className={r.id === uid ? "is-me" : ""}><span>{["🥇", "🥈", "🥉"][i] || `${i + 1}.`} {r.name}</span><b>piano {r.best}</b></li>)}
         </ol>
@@ -1504,12 +1522,47 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
 }
 
 // Mosse e cambi del pet in campo (lato "p" della vista).
-function BattleControls({ battle, busy, art, onAct, forced }) {
+function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
   const [view, setView] = useState("main");
+  const [item, setItem] = useState(null);
   const me = activeOf(battle, "p");
   const foe = activeOf(battle, "e");
   const bench = benchAlive(battle, "p");
   const act = (a) => { setView("main"); onAct(a); };
+  const items = BAG_ORDER.filter((k) => usableInBattle(k) && bag[k] > 0);
+  if (!forced && view === "items") {
+    const it = item && PET_BAG[item];
+    const team = battle.sides.p.team;
+    const okFor = (f) => (it.use?.revive ? f.hp <= 0 : f.hp > 0 && (it.kind !== "charm" || !f.charm));
+    return (
+      <div className="pd-switch pd-bagfight">
+        {!it ? (
+          <>
+            <p className="pd-fine">🎒 Dare un oggetto consuma il turno.</p>
+            {items.length ? items.map((k) => (
+              <button key={k} type="button" className="pd-switch-btn" disabled={busy} onClick={() => setItem(k)}>
+                <span className="pd-bagfight-icon" aria-hidden="true">{PET_BAG[k].icon}</span>
+                <span><b>{PET_BAG[k].name}</b> ×{bag[k]}<small className="pd-bagfight-desc">{PET_BAG[k].desc}</small></span>
+              </button>
+            )) : <p className="pd-empty">Niente da usare in lotta: pozioni, antidoti, elisir, piume della fenice e amuleti si comprano nella Bisaccia.</p>}
+            <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setView("main")}>Indietro</button>
+          </>
+        ) : (
+          <>
+            <p className="pd-fine">{it.icon} {it.name}: a chi lo dai?</p>
+            {team.map((f, i) => (
+              <button key={f.id} type="button" className="pd-switch-btn" disabled={busy || !okFor(f)} onClick={() => { setItem(null); act({ kind: "item", item, index: i }); }}>
+                <PetSprite species={f.species} art={art} size={44} fainted={f.hp <= 0} />
+                <span><b>{f.name}</b> Lv {f.level}{i === battle.sides.p.active ? " · in campo" : ""}<Bar value={f.hp} max={f.maxHp} /></span>
+                <small>{f.hp > 0 ? `${f.hp}/${f.maxHp}` : "a terra"}{f.charm ? ` · ${PET_BAG[f.charm]?.icon || ""}` : ""}</small>
+              </button>
+            ))}
+            <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setItem(null)}>Indietro</button>
+          </>
+        )}
+      </div>
+    );
+  }
   if (forced || view === "switch") {
     return (
       <div className="pd-switch">
@@ -1553,6 +1606,9 @@ function BattleControls({ battle, busy, art, onAct, forced }) {
       <button type="button" className="pd-btn pd-switch-open" disabled={busy || !bench.length} onClick={() => setView("switch")}>
         🔄 Cambia pet {bench.length ? `(${bench.length})` : ""}
       </button>
+      <button type="button" className="pd-btn pd-switch-open" disabled={busy} onClick={() => { setItem(null); setView("items"); }}>
+        🎒 Oggetti {items.length ? `(${items.reduce((a, k) => a + bag[k], 0)})` : ""}
+      </button>
     </div>
   );
 }
@@ -1567,7 +1623,8 @@ const dropNames = (ids = []) => ids.map((k) => `${PET_BAG[k]?.icon} ${PET_BAG[k]
    lotta del telefono e quella del server non coinciderebbero. */
 function PetBattle(props) {
   const { den, plan, att } = props;
-  const curAtt = den.tower.att?.floor === plan.floor ? den.tower.att.n || 0 : 0;
+  const tw = towerFresh(den.tower);
+  const curAtt = tw.att?.floor === plan.floor ? tw.att.n || 0 : 0;
   // si controlla solo prima di partire: a lotta iniziata la scheda cambia (esito salvato)
   const started = useRef(false);
   if (!started.current && att != null && curAtt !== att) return <p className="pd-loading">Preparo il piano…</p>;
@@ -1577,6 +1634,7 @@ function PetBattle(props) {
 function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
   const seed = useMemo(() => towerSeed(uid, den, plan.floor), []); // eslint-disable-line react-hooks/exhaustive-deps
   const actions = useRef([]);
+  const [usedItems, setUsedItems] = useState({});
   const [battle, setBattleState] = useState(() => {
     const b = towerStart(den, plan.floor, teamIds, seed);
     return { ...b, log: [{ text: `Piano ${plan.floor}: l'avversario manda in campo ${activeOf(b, "e").name}!` }, { text: `Vai, ${activeOf(b, "p").name}!` }] };
@@ -1612,6 +1670,7 @@ function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     const i = actions.current.length;
     const { battle: nb, events } = withSeed(towerTurnSeed(seed, i), () => playTurn(battle, action));
     actions.current.push(action);
+    if (action.kind === "item") setUsedItems((u) => ({ ...u, [action.item]: (u[action.item] || 0) + 1 }));
     setBattleState(nb);
     player.play(events);
   };
@@ -1650,14 +1709,15 @@ function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
           )}
         </div>
       ) : (
-        <BattleControls battle={battle} busy={busy} art={art} onAct={act} forced={battle.needSwitch === "p" && !busy} />
+        <BattleControls battle={battle} busy={busy} art={art} onAct={act} forced={battle.needSwitch === "p" && !busy}
+          bag={Object.fromEntries(Object.entries(den.items).map(([k, n]) => [k, (Number(n) || 0) - (usedItems[k] || 0)]))} />
       )}
     </BattleScreen>
   );
 }
 
 /* ── Sfida fra giocatori: la lotta letta da pet_matches ───── */
-function PvpBattle({ uid, id, art, onExit }) {
+function PvpBattle({ uid, id, art, den, onExit }) {
   const [m, setM] = useState(null);
   const player = useLinePlayer();
   const lastSeq = useRef(null);
@@ -1749,7 +1809,8 @@ function PvpBattle({ uid, id, art, onExit }) {
       ) : (
         <>
           {self && <p className="pd-fine">Scegli per {viewSide === "p" ? m.aName : m.bName}.</p>}
-          <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere} />
+          <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere}
+            bag={Object.fromEntries(Object.entries(den?.items || {}).map(([k, n]) => [k, (Number(n) || 0) - ((m.used?.[viewSide]?.[k] || []).length) - (m.actions?.[viewSide]?.item === k ? 1 : 0)]))} />
           {!forcedHere && <button type="button" className="pd-link" onClick={giveUp}>Abbandona la sfida</button>}
         </>
       )}

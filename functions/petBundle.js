@@ -31,6 +31,7 @@ __export(petOps_exports, {
   applyGrowthItem: () => applyGrowthItem,
   buyEgg: () => buyEgg,
   buyItem: () => buyItem,
+  canResetTower: () => canResetTower,
   chooseStarter: () => chooseStarter,
   claimGifts: () => claimGifts,
   countOf: () => countOf,
@@ -44,11 +45,13 @@ __export(petOps_exports, {
   releasePet: () => releasePet,
   renamePet: () => renamePet,
   replayTower: () => replayTower,
+  resetTower: () => resetTower,
   setMascot: () => setMascot,
   setMoveset: () => setMoveset,
   setTeam: () => setTeam,
   teachScroll: () => teachScroll,
   towerFinish: () => towerFinish,
+  towerFresh: () => towerFresh,
   towerSeed: () => towerSeed,
   towerStart: () => towerStart,
   towerTurnSeed: () => towerTurnSeed,
@@ -924,6 +927,42 @@ var BASE = {
     fx: { crit: 19 },
     desc: "Critico anche col 19 naturale."
   },
+  pozione: {
+    name: "Pozione",
+    icon: "\u{1F9EA}",
+    kind: "battle",
+    rarity: "common",
+    price: 15,
+    use: { heal: 0.4 },
+    desc: "In lotta: cura il 40% dei PF del pet scelto (consuma il turno)."
+  },
+  antidoto: {
+    name: "Antidoto",
+    icon: "\u{1F33F}",
+    kind: "battle",
+    rarity: "common",
+    price: 10,
+    use: { cure: true },
+    desc: "In lotta: toglie veleno, scottatura e intontimento al pet scelto."
+  },
+  elisir: {
+    name: "Elisir",
+    icon: "\u2697\uFE0F",
+    kind: "battle",
+    rarity: "rare",
+    price: 35,
+    use: { uses: 2 },
+    desc: "In lotta: rid\xE0 fino a 2 usi a ogni mossa che non \xE8 infinita."
+  },
+  fenice: {
+    name: "Piuma della Fenice",
+    icon: "\u{1FABD}",
+    kind: "battle",
+    rarity: "epic",
+    price: 80,
+    use: { revive: 0.5 },
+    desc: "In lotta: rianima un pet a terra con met\xE0 dei PF."
+  },
   corona: {
     name: "Coroncina del Campione",
     icon: "\u{1F451}",
@@ -959,6 +998,7 @@ var PET_BAG = { ...BASE, ...TALISMANS, ...SCROLLS };
 var BAG_ORDER = Object.keys(PET_BAG);
 var CHARMS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "charm");
 var SCROLL_IDS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "scroll");
+var usableInBattle = (id) => ["battle", "charm"].includes(PET_BAG[id]?.kind);
 var charmFx = (pet) => pet?.charm && PET_BAG[pet.charm.id]?.fx || null;
 function towerDrops(floor, rnd2 = Math.random) {
   const out = [];
@@ -1152,6 +1192,58 @@ function berryCheck(b, side, out) {
   f.hp = Math.min(f.maxHp, f.hp + h);
   emit(b, out, { side, kind: "heal", amount: h, text: `${f.name} mangia la Bacca Curativa: +${h} PF!` });
 }
+function giveItemInBattle(b, side, itemId, idx, out) {
+  const it = PET_BAG[itemId];
+  const f = b.sides[side].team[idx];
+  if (!it || !f) return;
+  const who = b.names ? `${b.names[side]} d\xE0` : side === "p" ? "Dai" : "L'avversario d\xE0";
+  const pre = `${who} ${it.icon} ${it.name} a ${f.name}`;
+  const u = it.use || {};
+  if (u.revive) {
+    if (f.hp > 0) return;
+    f.hp = Math.max(1, Math.round(f.maxHp * u.revive));
+    f._fainted = false;
+    f.status = null;
+    f.stunned = false;
+    emit(b, out, { side, kind: "heal", amount: f.hp, item: itemId, text: `${pre}: torna in piedi con ${f.hp} PF!` });
+    return;
+  }
+  if (f.hp <= 0) return;
+  if (u.heal) {
+    const h = Math.min(f.maxHp - f.hp, Math.round(f.maxHp * u.heal));
+    f.hp += h;
+    emit(b, out, { side, kind: "heal", amount: h, item: itemId, text: `${pre}: +${h} PF.` });
+  } else if (u.cure) {
+    f.status = null;
+    f.stunned = false;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: niente pi\xF9 veleno, scottature o intontimento.` });
+  } else if (u.uses) {
+    Object.keys(f.pp).forEach((m) => {
+      if (f.pp[m] !== INFINITE) f.pp[m] = Math.min(usesOf(m) || 0, f.pp[m] + u.uses);
+    });
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: +${u.uses} usi alle sue mosse.` });
+  } else if (it.kind === "charm") {
+    const cf = it.fx || {};
+    if (cf.hp) {
+      const add = Math.round(f.maxHp * cf.hp);
+      f.maxHp += add;
+      f.hp += add;
+    }
+    f.ac += cf.ac || 0;
+    f.toHit += cf.hit || 0;
+    f.dcBase += cf.hit || 0;
+    f.save += cf.save || 0;
+    if (cf.crit) f.critOn = cf.crit;
+    if (cf.resist) f.resist = cf.resist;
+    if (cf.berry) f.berry = cf.berry;
+    if (cf.spd) {
+      f.spd0 = cf.spd;
+      f.stages.spd = Math.max(f.stages.spd || 0, cf.spd);
+    }
+    f.charm = itemId;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: ${it.desc}` });
+  }
+}
 function applyMove(b, side, moveId, out) {
   const att = activeOf(b, side), foe = activeOf(b, other(side));
   const m = PET_DEX_MOVES[moveId];
@@ -1335,7 +1427,7 @@ function playTurn(battle, action, actionE = null) {
   const ai = b.pvp ? actionE : aiChoose(b);
   const acts = [{ side: "p", a: action, who: b.sides.p.active }, { side: "e", a: ai, who: b.sides.e.active }];
   const prio = ({ side, a }) => {
-    if (a.kind === "switch") return [10, 0];
+    if (a.kind === "switch" || a.kind === "item") return [10, 0];
     const f = activeOf(b, side);
     return [PET_DEX_MOVES[a.move]?.prio || 0, eff(f, "spd") + rnd() * 0.01];
   };
@@ -1348,6 +1440,10 @@ function playTurn(battle, action, actionE = null) {
     const me = activeOf(b, side);
     if (a.kind === "switch") {
       doSwitch(b, side, a.index, out);
+      continue;
+    }
+    if (a.kind === "item") {
+      giveItemInBattle(b, side, a.item, a.index, out);
       continue;
     }
     if (b.sides[side].active !== who || !alive(me)) continue;
@@ -1419,8 +1515,10 @@ function seeded(seed) {
   };
 }
 var RARITY_FLOOR = { starter: 1, common: 1, rare: 8, epic: 18, legendary: 30 };
-function rotation() {
-  const r = seeded(424242);
+function rotation(week = "") {
+  let h = 424242;
+  for (const ch of String(week)) h = Math.imul(h, 31) + ch.charCodeAt(0) >>> 0;
+  const r = seeded(h);
   const arr = [...PET_DEX_ORDER];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
@@ -1428,18 +1526,30 @@ function rotation() {
   }
   return arr;
 }
-var ROTATION = null;
-function towerFloor(floor) {
+var ROTATIONS = {};
+var weekHash = (week) => {
+  let h = 0;
+  for (const ch of String(week || "")) h = Math.imul(h, 31) + ch.charCodeAt(0) >>> 0;
+  return h;
+};
+function towerWeek(now = Date.now()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date(now + 6e4)).map((x) => [x.type, x.value]));
+  const back = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(p.weekday);
+  const d = new Date(Date.UTC(+p.year, +p.month - 1, +p.day - back));
+  return d.toISOString().slice(0, 10);
+}
+function towerFloor(floor, week = towerWeek()) {
   const n = Math.max(1, floor | 0);
   const size = n <= 3 ? 1 : n <= 9 ? 2 : 3;
-  ROTATION = ROTATION || rotation();
+  const ROTATION = ROTATIONS[week] ||= rotation(week);
+  const wh = weekHash(week);
   const pool = ROTATION.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n);
   const team = [];
   for (let i = 0; i < size; i++) {
     const k = pool[(n * 3 + i) % pool.length];
     const lead = Math.round(1 + (n - 1) * 0.55);
     const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
-    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31)) });
+    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   const enemyBoost = n <= 3 ? 0.65 + (n - 1) * 0.05 : 1 + Math.floor((n - 1) / 10) * 0.06;
@@ -1701,12 +1811,13 @@ function recordTowerResult(den, data, floor, won, teamIds) {
     addLog(den, { k: "tower", f: floor, won: false, xp, team });
     return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1 } };
   }
-  const pts = towerPoints(floor);
-  const drops = towerDrops(floor);
+  const first = floor > (den.tower.best || 0);
+  const pts = first ? towerPoints(floor) : 0;
+  const drops = first ? towerDrops(floor) : [];
   addItems(den, drops);
   den.tower = { ...den.tower, att: null, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
-  addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team });
-  return { patch: { petPoints: (Number(data.petPoints) || 0) + pts }, out: { won: true, xp, pts, ups, drops } };
+  addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first });
+  return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first } };
 }
 var PVP_POINTS = 3;
 var PVP_DAILY = 3;
@@ -1719,6 +1830,7 @@ function recordPvpResult(den, data, match, side) {
   const won = match.winner === side;
   const self = match.a === match.b;
   const teamIds = (match.teams?.[side] || []).map((p) => p.id);
+  spendBattleItems(den, match.used?.[side], teamIds, match.teams?.[side]);
   wearCharms(den, teamIds);
   if (self) return { out: { won, self: true, xp: 0, pts: 0, ups: [], drops: [] } };
   const day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -1752,25 +1864,77 @@ function recordPvpResult(den, data, match, side) {
   addLog(den, { k: "pvp", won, xp, pts, drops, quit, capped, vs: side === "p" ? match.bName : match.aName });
   return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won, xp, pts, ups, drops, capped, quit } };
 }
-function towerSeed(uid, den, floor) {
-  const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
+function towerFresh(tower, week = towerWeek()) {
+  const t = { ...tower || {}, week: tower?.week || "2026-10-26" };
+  if (t.week === week) return { floor: 1, best: 0, wins: 0, ...t };
+  return {
+    week,
+    floor: 1,
+    best: 0,
+    wins: 0,
+    losses: 0,
+    att: null,
+    resets: 0,
+    resetDay: t.resetDay || null,
+    bestEver: Math.max(t.bestEver || 0, t.best || 0)
+  };
+}
+var romeDay = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+var canResetTower = (tower, now = Date.now()) => (tower.floor || 1) > 1 && tower.resetDay !== romeDay(now);
+function towerSeed(uid, den, floor, week = towerWeek()) {
+  const t = towerFresh(den.tower, week);
+  const att = t.att?.floor === floor ? t.att.n || 0 : 0;
   let h = 2166136261;
-  for (const ch of `${uid}|${floor}|${att}`) {
+  for (const ch of `${uid}|${week}|${t.resets || 0}|${floor}|${att}`) {
     h ^= ch.charCodeAt(0);
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
 }
+function resetTower(den) {
+  den.tower = towerFresh(den.tower);
+  if ((den.tower.floor || 1) <= 1) throw new Error("Sei gi\xE0 al piano 1.");
+  const today = romeDay();
+  if (den.tower.resetDay === today) throw new Error("Hai gi\xE0 ricominciato la torre oggi: riprova domani.");
+  addLog(den, { k: "tower_reset", from: den.tower.floor });
+  den.tower = { ...den.tower, floor: 1, att: null, resets: (den.tower.resets || 0) + 1, resetDay: today };
+  return { out: { ok: true } };
+}
+function spendBattleItems(den, used, teamIds, team) {
+  if (!used) return;
+  Object.entries(used).forEach(([id, list]) => {
+    (Array.isArray(list) ? list : []).forEach((idx) => {
+      if (!(den.items[id] > 0) || !usableInBattle(id)) return;
+      den.items[id] -= 1;
+      if (PET_BAG[id].kind === "charm") {
+        const pid = team?.[idx]?.id || teamIds[idx];
+        const p = den.pets.find((x) => x.id === pid);
+        if (p) p.charm = { id, left: PET_BAG[id].fights };
+      }
+    });
+  });
+  addLog(den, { k: "battle_items", items: Object.keys(used) });
+}
 var towerTurnSeed = (seed, i) => seed + (i + 1) * 7919 >>> 0;
-function towerStart(den, floor, teamIds, seed) {
+function towerStart(den, floor, teamIds, seed, week = towerWeek()) {
   const pets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   if (!pets.length || pets.length !== teamIds.length || pets.length > MAX_TEAM) throw new Error("Squadra non valida.");
-  const plan = towerFloor(floor);
+  const plan = towerFloor(floor, week);
   return withSeed(seed, () => newBattle(pets, plan.team, { enemyBoost: plan.enemyBoost, aiLevel: plan.aiLevel }));
 }
-function validAction(b, a) {
+function validAction(b, a, bag = {}) {
   const side = b.sides.p;
   const f = side.team[side.active];
+  if (a?.kind === "item") {
+    if (b.needSwitch && b.needSwitch.includes("p")) return false;
+    const it = PET_BAG[a.item];
+    const t = side.team[a.index];
+    if (!it || !usableInBattle(a.item) || !(bag[a.item] > 0) || !Number.isInteger(a.index) || !t) return false;
+    if (it.use?.revive) return t.hp <= 0;
+    if (t.hp <= 0) return false;
+    if (it.kind === "charm") return !t.charm;
+    return true;
+  }
   if (a?.kind === "switch") {
     const t = side.team[a.index];
     return Number.isInteger(a.index) && !!t && t.hp > 0 && a.index !== side.active;
@@ -1781,21 +1945,30 @@ function validAction(b, a) {
   if (a.move === "zampata") return left.every((v) => v === 0);
   return Object.prototype.hasOwnProperty.call(f.pp, a.move) && f.pp[a.move] !== 0;
 }
-function replayTower(den, uid, floor, teamIds, actions) {
+function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {
   if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
-  const seed = towerSeed(uid, den, floor);
-  let b = towerStart(den, floor, teamIds, seed);
+  const seed = towerSeed(uid, den, floor, week);
+  let b = towerStart(den, floor, teamIds, seed, week);
+  const bag = { ...den.items };
+  const used = {};
   actions.forEach((a, i) => {
     if (b.over) throw new Error("Lotta non valida (azioni dopo la fine).");
-    if (!validAction(b, a)) throw new Error("Lotta non valida (mossa non permessa).");
+    if (!validAction(b, a, bag)) throw new Error("Lotta non valida (mossa non permessa).");
+    if (a.kind === "item") {
+      bag[a.item] -= 1;
+      (used[a.item] ||= []).push(a.index);
+    }
     b = withSeed(towerTurnSeed(seed, i), () => playTurn(b, a).battle);
   });
   if (!b.over) throw new Error("La lotta non \xE8 finita.");
-  return b.over;
+  return { over: b.over, used };
 }
 function towerFinish(den, data, floor, teamIds, actions, ctx) {
-  if (den.tower.floor !== floor) throw new Error("Questo piano \xE8 gi\xE0 stato registrato.");
-  const over = replayTower(den, ctx.uid, floor, teamIds, actions);
+  const week = towerWeek();
+  den.tower = towerFresh(den.tower, week);
+  if (den.tower.floor !== floor) throw new Error(floor > 1 && den.tower.floor === 1 ? "La torre \xE8 ricominciata (nuova settimana o reset): riparti dal piano 1." : "Questo piano \xE8 gi\xE0 stato registrato.");
+  const { over, used } = replayTower(den, ctx.uid, floor, teamIds, actions, week);
+  spendBattleItems(den, used, teamIds, null);
   return recordTowerResult(den, data, floor, over === "p", teamIds);
 }
 var OPS = {
@@ -1816,6 +1989,7 @@ var OPS = {
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },
   towerFinish: { run: towerFinish },
+  resetTower: { run: resetTower },
   recordPvpResult: { run: recordPvpResult, match: true }
 };
 // Annotate the CommonJS export names for ESM import in node:
@@ -1831,6 +2005,7 @@ var OPS = {
   applyGrowthItem,
   buyEgg,
   buyItem,
+  canResetTower,
   chooseStarter,
   claimGifts,
   countOf,
@@ -1844,11 +2019,13 @@ var OPS = {
   releasePet,
   renamePet,
   replayTower,
+  resetTower,
   setMascot,
   setMoveset,
   setTeam,
   teachScroll,
   towerFinish,
+  towerFresh,
   towerSeed,
   towerStart,
   towerTurnSeed,

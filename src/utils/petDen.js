@@ -18,7 +18,7 @@ import { deleteField, doc, setDoc, serverTimestamp, writeBatch } from "firebase/
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { PET_DEX } from "../data/petDex";
-export { denOf, countOf, MASCOT_XP_BONUS, PVP_POINTS, PVP_DAILY, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, LOSS_XP, towerSeed, towerTurnSeed, towerStart } from "../data/petOps";
+export { denOf, countOf, MASCOT_XP_BONUS, PVP_POINTS, PVP_DAILY, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, LOSS_XP, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower } from "../data/petOps";
 
 const charRef = (uid) => doc(db, "characters", uid);
 let callable = null;
@@ -51,6 +51,8 @@ export const teachScroll = op("teachScroll");
 export const claimGifts = op("claimGifts");
 // Torre: le azioni della lotta, il server la rigioca e decide l'esito.
 export const towerFinish = op("towerFinish");
+// Ricomincia la torre dal piano 1 (una volta al giorno).
+export const resetTower = op("resetTower");
 // Sfide: si manda solo l'id, il server legge la sfida.
 export const recordPvpResult = (_uid, match, side) => petDo("recordPvpResult", [match.id, side]);
 

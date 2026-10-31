@@ -83,7 +83,13 @@ export function submitAction(id, side, action) {
     delete battle.log;
     // cronologia del fight: solo i testi, ultime 150 righe
     const logText = [...(m.logText || []), ...events.filter((e) => e.text).map((e) => e.text)].slice(-150);
-    const patch = { battle, events, logText, seq: m.seq + 1, actions: {}, updatedAt: serverTimestamp() };
+    // oggetti dati in lotta: li toglie dalla bisaccia il server quando ognuno ritira l'esito
+    const used = JSON.parse(JSON.stringify(m.used || {}));
+    ["p", "e"].forEach((sd) => {
+      const a = actions[sd];
+      if (a?.kind === "item") ((used[sd] ||= {})[a.item] ||= []).push(a.index);
+    });
+    const patch = { battle, events, logText, used, seq: m.seq + 1, actions: {}, updatedAt: serverTimestamp() };
     if (battle.over) Object.assign(patch, { status: "done", winner: battle.over });
     tx.update(ref(id), clean(patch));
     return battle.over ? m : null;

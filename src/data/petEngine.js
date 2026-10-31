@@ -22,7 +22,7 @@
    ============================================================ */
 
 import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool, dndOf, accMod, usesOf, DMG_LABEL } from "./petDex";
-import { charmFx } from "./petBag";
+import { charmFx, PET_BAG } from "./petBag";
 
 let rnd = Math.random;
 // Esegue fn con dadi a seme fisso (sfide: lo stesso turno dà lo stesso esito su ogni dispositivo).
@@ -221,6 +221,47 @@ function berryCheck(b, side, out) {
   emit(b, out, { side, kind: "heal", amount: h, text: `${f.name} mangia la Bacca Curativa: +${h} PF!` });
 }
 
+/* Oggetto dato in lotta (2026-11-01) al pet `idx` della squadra: consuma il turno.
+   Da lotta: cura, antidoto, elisir, rianima. Amuleto: vale subito (CA, colpire,
+   PF, velocità, TS, critico, resistenza, bacca) e il pet se lo tiene. */
+export function giveItemInBattle(b, side, itemId, idx, out) {
+  const it = PET_BAG[itemId];
+  const f = b.sides[side].team[idx];
+  if (!it || !f) return;
+  const who = b.names ? `${b.names[side]} dà` : side === "p" ? "Dai" : "L'avversario dà";
+  const pre = `${who} ${it.icon} ${it.name} a ${f.name}`;
+  const u = it.use || {};
+  if (u.revive) {
+    if (f.hp > 0) return;
+    f.hp = Math.max(1, Math.round(f.maxHp * u.revive));
+    f._fainted = false; f.status = null; f.stunned = false;
+    emit(b, out, { side, kind: "heal", amount: f.hp, item: itemId, text: `${pre}: torna in piedi con ${f.hp} PF!` });
+    return;
+  }
+  if (f.hp <= 0) return;
+  if (u.heal) {
+    const h = Math.min(f.maxHp - f.hp, Math.round(f.maxHp * u.heal));
+    f.hp += h;
+    emit(b, out, { side, kind: "heal", amount: h, item: itemId, text: `${pre}: +${h} PF.` });
+  } else if (u.cure) {
+    f.status = null; f.stunned = false;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: niente più veleno, scottature o intontimento.` });
+  } else if (u.uses) {
+    Object.keys(f.pp).forEach((m) => { if (f.pp[m] !== INFINITE) f.pp[m] = Math.min(usesOf(m) || 0, f.pp[m] + u.uses); });
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: +${u.uses} usi alle sue mosse.` });
+  } else if (it.kind === "charm") {
+    const cf = it.fx || {};
+    if (cf.hp) { const add = Math.round(f.maxHp * cf.hp); f.maxHp += add; f.hp += add; }
+    f.ac += cf.ac || 0; f.toHit += cf.hit || 0; f.dcBase += cf.hit || 0; f.save += cf.save || 0;
+    if (cf.crit) f.critOn = cf.crit;
+    if (cf.resist) f.resist = cf.resist;
+    if (cf.berry) f.berry = cf.berry;
+    if (cf.spd) { f.spd0 = cf.spd; f.stages.spd = Math.max(f.stages.spd || 0, cf.spd); }
+    f.charm = itemId;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: ${it.desc}` });
+  }
+}
+
 function applyMove(b, side, moveId, out) {
   const att = activeOf(b, side), foe = activeOf(b, other(side));
   const m = PET_DEX_MOVES[moveId];
@@ -402,7 +443,7 @@ export function playTurn(battle, action, actionE = null) {
   const acts = [{ side: "p", a: action, who: b.sides.p.active }, { side: "e", a: ai, who: b.sides.e.active }];
   // I cambi vanno sempre prima; poi priorità e velocità.
   const prio = ({ side, a }) => {
-    if (a.kind === "switch") return [10, 0];
+    if (a.kind === "switch" || a.kind === "item") return [10, 0];
     const f = activeOf(b, side);
     return [PET_DEX_MOVES[a.move]?.prio || 0, eff(f, "spd") + rnd() * 0.01];
   };
@@ -414,6 +455,7 @@ export function playTurn(battle, action, actionE = null) {
     if (b.over) break;
     const me = activeOf(b, side);
     if (a.kind === "switch") { doSwitch(b, side, a.index, out); continue; }
+    if (a.kind === "item") { giveItemInBattle(b, side, a.item, a.index, out); continue; }
     if (b.sides[side].active !== who || !alive(me)) continue;
     applyMove(b, side, a.move, out);
     checkFaints(b, out);
@@ -500,20 +542,42 @@ const RARITY_FLOOR = { starter: 1, common: 1, rare: 8, epic: 18, legendary: 30 }
 // Ordine fisso (mescolato una volta per tutte) da cui la torre pesca: il piano
 // N prende i pet dalla posizione N×3, così due piani di fila non si ripetono e
 // ogni piano è sempre uguale per tutti.
-function rotation() {
-  const r = seeded(424242);
+function rotation(week = "") {
+  let h = 424242;
+  for (const ch of String(week)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+  const r = seeded(h);
   const arr = [...PET_DEX_ORDER];
   for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
   return arr;
 }
-let ROTATION = null;
+const ROTATIONS = {};
+const weekHash = (week) => { let h = 0; for (const ch of String(week || "")) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0; return h; };
+
+/* Settimana della Torre (2026-11-01): cambia alle 23:59 di ogni domenica
+   (ora di Roma). Ogni settimana la torre si azzera per tutti e i mostri dei
+   piani cambiano (rotazione e mosse dipendono dalla settimana). */
+export function towerWeek(now = Date.now()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })
+    .formatToParts(new Date(now + 60000)).map((x) => [x.type, x.value]));
+  const back = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(p.weekday);
+  const d = new Date(Date.UTC(+p.year, +p.month - 1, +p.day - back));
+  return d.toISOString().slice(0, 10);
+}
+// Quando cambia la torre (prossima domenica 23:59 di Roma), in ms da adesso: per il conto alla rovescia.
+export function towerWeekLeftMs(now = Date.now()) {
+  const cur = towerWeek(now);
+  let lo = now, hi = now + 8 * 864e5;
+  while (hi - lo > 30000) { const mid = (lo + hi) / 2; if (towerWeek(mid) === cur) lo = mid; else hi = mid; }
+  return hi - now;
+}
 
 /* Torre INFINITA e uguale per tutti (2026-10-31): il piano N dipende solo
    da N. Livello, numero di pet, astuzia e bonus salgono per sempre. */
-export function towerFloor(floor) {
+export function towerFloor(floor, week = towerWeek()) {
   const n = Math.max(1, floor | 0);
   const size = n <= 3 ? 1 : n <= 9 ? 2 : 3;
-  ROTATION = ROTATION || rotation();
+  const ROTATION = (ROTATIONS[week] ||= rotation(week));
+  const wh = weekHash(week);
   const pool = ROTATION.filter((k) => RARITY_FLOOR[PET_DEX[k].rarity] <= n);
   const team = [];
   for (let i = 0; i < size; i++) {
@@ -521,7 +585,7 @@ export function towerFloor(floor) {
     const lead = Math.round(1 + (n - 1) * 0.55);
     const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
     // seme a parte: le mosse non cambiano le squadre dei piani
-    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31)) });
+    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   // i primi piani sono un tutorial: avversari più deboli del normale
