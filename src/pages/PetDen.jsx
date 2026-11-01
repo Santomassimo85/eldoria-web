@@ -834,6 +834,7 @@ function logTxt(e) {
     case "gift": return `🏴 Dal ${e.from || "mercato"}: ${e.species ? spName(e.species) : e.egg ? EGGS[e.egg]?.name || e.egg : itName(e.item)}${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
     case "tower": return `🗼 Piano ${e.f} ${e.won ? (e.again ? "rivinto (solo PE)" : "VINTO") : "perso"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}${e.drops?.length ? ` · ${e.drops.map(itName).join(", ")}` : ""}${e.team?.length ? ` · ${e.team.map((x) => { const [s, l] = x.split(":"); return `${spName(s)} Lv ${l}`; }).join(", ")}` : ""}`;
     case "tower_master": return `🛡 Il Master ricomincia la sua torre dal piano 1 (era al ${e.from})${e.full ? ", record della settimana azzerato" : ""}`;
+    case "master_reset": return `🛡 ${e.note || "Reset del Master"}`;
     case "tower_reset": return `↺ Ricomincia la torre dal piano 1 (era al ${e.from})`;
     case "battle_items": return `🎒 Oggetti usati in lotta: ${(e.items || []).map(itName).join(", ")}`;
     case "pvp": return `⚔ Sfida ${e.won ? "vinta" : "persa"} contro ${e.vs || "?"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}`;
