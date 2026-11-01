@@ -21,8 +21,9 @@
      da un seme (withSeed), così il turno si risolve uguale ovunque.
    ============================================================ */
 
-import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool, dndOf, accMod, usesOf, DMG_LABEL } from "./petDex";
+import { PET_DEX, PET_DEX_MOVES, MOVE_UNLOCK, MAX_LEVEL, PET_DEX_ORDER, MAX_MOVES, typeMultiplier, resistMultiplier, damageKindOf, gradeOfLevel, learnPool, dndOf, accMod, usesOf, DMG_LABEL, baseOf } from "./petDex";
 import { charmFx, PET_BAG } from "./petBag";
+import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 
 let rnd = Math.random;
 // Esegue fn con dadi a seme fisso (sfide: lo stesso turno dà lo stesso esito su ogni dispositivo).
@@ -58,8 +59,8 @@ export function addXp(pet, amount) {
   return { ...pet, level, xp, ups };
 }
 
-export function statsAt(speciesKey, level, boost = 1) {
-  const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
+export function statsAt(speciesKey, level, boost = 1, evo = 0) {
+  const b = baseOf(speciesKey, evo);
   const L = clamp(level || 1, 1, MAX_LEVEL);
   const grow = (v, k) => Math.round(v * (1 + (L - 1) * k) * boost);
   // PF ×0,8: coi tiri per colpire (circa 3 su 4 a segno) le lotte durano come prima
@@ -110,34 +111,83 @@ function enemyMoveset(species, level, r) {
   return status ? [...hits.slice(0, MAX_MOVES - 1), status] : hits.slice(0, MAX_MOVES);
 }
 
+/* ── EVOLUZIONI (2026-11-01, dati in petEvo.js) ────────────── */
+// La forma del pet: evoluzione fatta (e ancora valida per la specie).
+export const evoStage = (pet) => ((pet?.evo || 0) >= 1 && EVOLUTIONS[pet?.species] ? 1 : 0);
+export const formName = (pet) => (evoStage(pet) ? EVOLUTIONS[pet.species].name : PET_DEX[pet?.species]?.name || pet?.species);
+export const canEvolve = (pet) => !evoStage(pet) && !!EVOLUTIONS[pet?.species] && (pet.level || 1) >= evoLevelOf(PET_DEX[pet.species]?.rarity);
+// PF in più dell'evoluzione: quelli tirati (pet.evoHp) o la media dei dadi (nemici della torre).
+export const evoHpOf = (pet) => {
+  if (!evoStage(pet)) return 0;
+  if (Number.isFinite(pet.evoHp)) return pet.evoHp;
+  const [n, d] = evoDiceOf(PET_DEX[pet.species]?.rarity);
+  return Math.round((n * (d + 1)) / 2);
+};
+// Statistiche da scheda (senza amuleto): PF, ATK, DIF, VEL, CA, colpire.
+export function petStats(pet) {
+  const evo = evoStage(pet);
+  const st = statsAt(pet.species, pet.level, 1, evo);
+  const d = dndOf(pet.species, pet.level, evo);
+  return { ...st, hp: st.hp + evoHpOf(pet), ac: d.ac, toHit: d.toHit };
+}
+
 /* ── COMBATTENTI ───────────────────────────────────────────── */
 export function makeFighter(pet, boost = 1) {
+  const evo = evoStage(pet);
+  const ev = evo ? EVOLUTIONS[pet.species] : null;
   const sp = PET_DEX[pet.species];
-  const st = statsAt(pet.species, pet.level, boost);
-  const d = dndOf(pet.species, pet.level);
+  const st = statsAt(pet.species, pet.level, boost, evo);
+  const d = dndOf(pet.species, pet.level, evo);
   const cf = charmFx(pet) || {};
-  const hp = Math.round(st.hp * (1 + (cf.hp || 0)));
+  const hp = Math.round((st.hp + Math.round(evoHpOf(pet) * boost)) * (1 + (cf.hp || 0)));
+  const skill = ev?.skill || {};
+  const passive = skill.passive ? { id: skill.passive, v: skill.v ?? null, st: skill.st || null, el: skill.el || null } : null;
+  const pp = Object.fromEntries(battleMoves(pet).map((m) => [m, usesOf(m) ?? INFINITE]));
+  if (skill.move && PET_DEX_MOVES[skill.move]) pp[skill.move] = usesOf(skill.move) ?? 1;
+  const critBase = passive?.id === "critico" ? passive.v : 20;
   return {
-    id: pet.id, species: pet.species, name: pet.nick || sp?.name || pet.species,
+    id: pet.id, species: pet.species, name: pet.nick || formName(pet) || sp?.name, evo, passive, sig: skill.move || null,
+    blur: passive?.id === "sfocatura",
     type: sp?.type || "neutral", level: pet.level || 1,
     maxHp: hp, hp, atk: st.atk, def: st.def, spd: st.spd,
     // D&D: CA, bonus per colpire, CD delle mosse di stato, tiro salvezza (+ amuleto)
     atkMod: d.atkMod, dmgBoost: boost,
     ac: d.ac + (cf.ac || 0), toHit: d.toHit + (cf.hit || 0), dcBase: d.dcBase + (cf.hit || 0), save: d.save + (cf.save || 0),
-    critOn: cf.crit || 20, resist: cf.resist || null, berry: cf.berry || 0, spd0: cf.spd || 0,
-    charm: pet.charm?.id || null,
+    critOn: Math.min(cf.crit || 20, critBase), critBase, resist: cf.resist || null, berry: cf.berry || 0, spd0: cf.spd || 0,
+    charm: pet.charm?.id || null, charmLeft: pet.charm?.left || 0,
     stages: { atk: 0, def: 0, spd: cf.spd || 0, ac: 0 },
     status: null,          // { kind: "burn"|"poison", turns }
     stunned: false,
-    pp: Object.fromEntries(battleMoves(pet).map((m) => [m, usesOf(m) ?? INFINITE])),
+    pp,
   };
 }
+const hasP = (f, id) => f?.passive?.id === id;
+
+/* Effetti attivi del combattente per le icone della lotta (2026-11-01).
+   Le parti che cambiano in lotta viaggiano nelle righe (snap.fx, una
+   stringa "chiave:valore,..." perché Firestore non vuole array annidati):
+   stadi (durano finché resta in campo), stato coi turni rimasti,
+   intontito (salta il prossimo turno), sfocatura, tenacia/leggendaria/
+   bacca già spese. */
+export function fxKey(f) {
+  if (!f) return "";
+  const out = [];
+  Object.entries(f.stages || {}).forEach(([k, v]) => { if (v) out.push(`${k}:${v}`); });
+  if (f.status) out.push(`${f.status.kind}:${f.status.turns}`);
+  if (f.stunned) out.push("stun:1");
+  if (hasP(f, "sfocatura") && f.blur) out.push("blur:1");
+  if (f.tenUsed) out.push("tenUsed:1");
+  if (f.legUsed) out.push("legUsed:1");
+  if (f.berryUsed) out.push("berryUsed:1");
+  return out.join(",");
+}
+export const parseFx = (s) => Object.fromEntries(String(s || "").split(",").filter(Boolean).map((x) => { const [k, v] = x.split(":"); return [k, Number(v)]; }));
 
 const stageMult = (s) => (s >= 0 ? 1 + 0.25 * s : 1 / (1 + 0.25 * -s));
 const eff = (f, stat) => f[stat] * stageMult(f.stages[stat] || 0);
 
 export function newBattle(playerPets, enemyPets, { enemyBoost = 1, aiLevel = 0, pvp = false, names = null } = {}) {
-  return {
+  return startEffects({
     pvp, names,
     sides: {
       p: { team: playerPets.map((p) => makeFighter(p)), active: 0 },
@@ -148,7 +198,13 @@ export function newBattle(playerPets, enemyPets, { enemyBoost = 1, aiLevel = 0, 
     log: [],
     over: null,            // "p" | "e" quando finisce
     needSwitch: null,      // "p" se il giocatore deve mandare un nuovo pet
-  };
+  });
+}
+// Inizio lotta: le passive d'ingresso dei due pet in campo (senza righe: le icone le mostrano).
+function startEffects(b) {
+  intimidate(b, "p", null);
+  intimidate(b, "e", null);
+  return b;
 }
 
 export const activeOf = (b, side) => b.sides[side].team[b.sides[side].active];
@@ -158,16 +214,18 @@ export const benchAlive = (b, side) =>
   b.sides[side].team.map((f, i) => ({ f, i })).filter(({ f, i }) => alive(f) && i !== b.sides[side].active);
 
 export const acOf = (f) => f.ac + (f.stages?.ac || 0);
-// Resistenze D&D della specie + talismano dell'amuleto (metà danni).
+// Resistenze D&D della specie (e della forma evoluta) + talismano dell'amuleto (metà danni)
+// + Assorbimento (i colpi del suo elemento non lo feriscono).
 function resistOf(f, kind) {
-  const rm = resistMultiplier(f?.species, kind);
+  if (hasP(f, "assorbi") && f.passive.el === kind) return 0;
+  const rm = resistMultiplier(f?.species, kind, f?.evo || 0);
   return f?.resist === kind && rm > 0 ? rm * 0.5 : rm;
 }
 
 // Ogni riga porta l'istantanea dei PF: la pagina la mostra passo passo.
 const snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
-  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map((f) => f.status?.kind || (f.stunned ? "stun" : null)) }];
+  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map((f) => f.status?.kind || (f.stunned ? "stun" : null)), fx: s.team.map(fxKey) }];
 }));
 function emit(b, out, ev) { out.push({ ...ev, snap: snapOf(b) }); }
 
@@ -183,8 +241,9 @@ export function previewDamage(att, def, moveId) {
 // Moltiplicatori del danno: stadi di Attacco/Difesa, elemento, resistenze, stesso elemento ×1,25.
 function damageMult(att, def, m) {
   const tm = typeMultiplier(m.type, def.type) * resistOf(def, damageKindOf(m));
-  const stab = m.type === att.type && m.type !== "neutral" ? 1.25 : 1;
-  return (stageMult(att.stages.atk || 0) / stageMult(def.stages.def || 0)) * tm * stab * (att.dmgBoost || 1);
+  const stab = m.type === att.type && m.type !== "neutral" ? (hasP(att, "elemento") ? 1.5 : 1.25) : 1;
+  const rage = hasP(att, "furia") && att.hp > 0 && att.hp <= att.maxHp / 3 ? 1 + att.passive.v : 1;
+  return (stageMult(att.stages.atk || 0) / stageMult(def.stages.def || 0)) * tm * stab * rage * (att.dmgBoost || 1);
 }
 
 // Probabilità che la mossa vada a segno (tiro per colpire o salvezza fallita).
@@ -195,7 +254,7 @@ export function hitChance(att, def, moveId) {
   if (m.power > 0) {
     const need = acOf(def) - (att.toHit + accMod(m.acc));
     const p = clamp((21 - need) / 20, 0.05, 0.95);
-    return att.status?.kind === "poison" ? p * p : p;
+    return att.status?.kind === "poison" || (hasP(def, "sfocatura") && def.blur) ? p * p : p;
   }
   if (e.foe || e.burn || e.poison || e.stun) return clamp((att.dcBase + accMod(m.acc) - def.save - 1) / 20, 0.05, 0.95);
   return 1;
@@ -250,15 +309,27 @@ export function giveItemInBattle(b, side, itemId, idx, out) {
     Object.keys(f.pp).forEach((m) => { if (f.pp[m] !== INFINITE) f.pp[m] = Math.min(usesOf(m) || 0, f.pp[m] + u.uses); });
     emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: +${u.uses} usi alle sue mosse.` });
   } else if (it.kind === "charm") {
+    // un amuleto solo: quello che aveva si toglie (e si perde, come fuori dalla lotta)
+    const old = f.charm && PET_BAG[f.charm];
+    const of = old?.fx || {};
+    if (old) {
+      if (of.hp) { const sub = Math.round((f.maxHp / (1 + of.hp)) * of.hp); f.maxHp -= sub; f.hp = Math.min(f.hp, f.maxHp); }
+      f.ac -= of.ac || 0; f.toHit -= of.hit || 0; f.dcBase -= of.hit || 0; f.save -= of.save || 0;
+      if (of.crit) f.critOn = f.critBase || 20;
+      if (of.resist) f.resist = null;
+      if (of.berry) f.berry = 0;
+      if (of.spd) { f.stages.spd = Math.max(0, (f.stages.spd || 0) - of.spd); f.spd0 = 0; }
+    }
     const cf = it.fx || {};
     if (cf.hp) { const add = Math.round(f.maxHp * cf.hp); f.maxHp += add; f.hp += add; }
     f.ac += cf.ac || 0; f.toHit += cf.hit || 0; f.dcBase += cf.hit || 0; f.save += cf.save || 0;
-    if (cf.crit) f.critOn = cf.crit;
+    if (cf.crit) f.critOn = Math.min(cf.crit, f.critBase || 20);
     if (cf.resist) f.resist = cf.resist;
     if (cf.berry) f.berry = cf.berry;
     if (cf.spd) { f.spd0 = cf.spd; f.stages.spd = Math.max(f.stages.spd || 0, cf.spd); }
     f.charm = itemId;
-    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: ${it.desc}` });
+    f.charmLeft = it.fights || 0;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}${old ? ` (al posto di ${old.icon} ${old.name})` : ""}: ${it.desc}` });
   }
 }
 
@@ -277,7 +348,7 @@ function applyMove(b, side, moveId, out) {
   let roll = null;
   if (targetsFoe && m.power > 0) {
     // tiro per colpire: d20 + bonus contro la CA (avvelenato = svantaggio)
-    const dis = att.status?.kind === "poison";
+    const dis = att.status?.kind === "poison" || (hasP(foe, "sfocatura") && foe.blur);
     const r1 = d20(), r2 = dis ? d20() : r1;
     const d = Math.min(r1, r2);
     const mod = att.toHit + accMod(m.acc);
@@ -288,18 +359,24 @@ function applyMove(b, side, moveId, out) {
     // mossa di stato: il bersaglio tira salvezza contro la CD di chi la lancia
     const d = d20();
     const vs = att.dcBase + accMod(m.acc);
-    const saved = d === 20 || (d !== 1 && d + foe.save >= vs);
-    roll = { kind: "save", d, mod: foe.save, total: d + foe.save, vs, ok: !saved, who: foe.name };
+    let saved = d === 20 || (d !== 1 && d + foe.save >= vs);
+    let legendary = false;
+    if (!saved && hasP(foe, "leggendaria") && !foe.legUsed) { saved = true; legendary = true; foe.legUsed = true; }
+    roll = { kind: "save", d, mod: foe.save, total: d + foe.save, vs, ok: !saved, who: foe.name, legendary };
   }
   emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, fx: m.fx, roll, att: att.name, mname: m.name, text: `${att.name} usa ${m.name}!${rollText(roll)}` });
   if (roll && !roll.ok) {
-    const txt = roll.kind === "save" ? `…${foe.name} resiste all'effetto!` : roll.d === 1 ? "…1 naturale: mancato!" : "…ma manca il bersaglio!";
+    const txt = roll.legendary ? `…👑 Resistenza Leggendaria: ${foe.name} supera il tiro lo stesso!` : roll.kind === "save" ? `…${foe.name} resiste all'effetto!` : roll.d === 1 ? "…1 naturale: mancato!" : "…ma manca il bersaglio!";
     emit(b, out, { side, kind: "miss", text: txt });
     return;
   }
   let dealt = 0, dmgTxt = "";
   const rm = resistOf(foe, damageKindOf(m));
-  if (m.power > 0 && alive(foe) && rm === 0) {
+  if (m.power > 0 && alive(foe) && rm === 0 && hasP(foe, "assorbi") && foe.passive.el === damageKindOf(m)) {
+    const h = Math.min(foe.maxHp - foe.hp, Math.round(foe.maxHp * 0.25));
+    foe.hp += h;
+    emit(b, out, { side: other(side), kind: "heal", amount: h, text: h ? `🌀 ${foe.name} assorbe il colpo: +${h} PF!` : `🌀 ${foe.name} assorbe il colpo: nessun danno.` });
+  } else if (m.power > 0 && alive(foe) && rm === 0) {
     emit(b, out, { side, kind: "immune", target: other(side), text: `${foe.name} è immune: nessun danno!` });
   } else if (m.power > 0 && alive(foe)) {
     const crit = !!roll?.crit;
@@ -312,8 +389,13 @@ function applyMove(b, side, moveId, out) {
     const mult = damageMult(att, foe, m);
     dealt = Math.max(1, Math.round(base * mult));
     const multTxt = Math.abs(mult - 1) > 0.01 ? ` ×${String(Math.round(mult * 100) / 100).replace(".", ",")}` : "";
-    dmgTxt = ` (🎲 ${nd}d${dd.d} ${sign(att.atkMod || 0)} = ${base}${multTxt}, ${DMG_LABEL[damageKindOf(m)].toLowerCase()})`;
+    let armorTxt = "";
+    if (hasP(foe, "corazza")) { const nd2 = Math.max(1, dealt - foe.passive.v); armorTxt = nd2 < dealt ? `, 🛡️ corazza −${dealt - nd2}` : ""; dealt = nd2; }
+    dmgTxt = ` (🎲 ${nd}d${dd.d} ${sign(att.atkMod || 0)} = ${base}${multTxt}, ${DMG_LABEL[damageKindOf(m)].toLowerCase()}${armorTxt})`;
+    let held = false;
+    if (hasP(foe, "tenacia") && !foe.tenUsed && foe.hp > 1 && dealt >= foe.hp) { dealt = foe.hp - 1; foe.tenUsed = true; held = true; }
     foe.hp = Math.max(0, foe.hp - dealt);
+    if (hasP(foe, "sfocatura")) foe.blur = false;
     const tm = typeMultiplier(m.type, foe.type);
     const note = [
       tm > 1 ? " È superefficace!" : tm < 1 ? " Non è molto efficace…" : "",
@@ -321,6 +403,18 @@ function applyMove(b, side, moveId, out) {
     ].join("");
     emit(b, out, { side, kind: "hit", dmg: dealt, crit, tm: tm * rm, target: other(side),
       text: `${foe.name} perde ${dealt} PF${dmgTxt}.${crit ? " Colpo critico: dadi doppi!" : ""}${note}` });
+    if (held) emit(b, out, { side: other(side), kind: "info", text: `🪨 ${foe.name} stringe i denti e resta in piedi a 1 PF!` });
+    if (hasP(foe, "spine") && alive(att)) {
+      const r = Math.max(1, Math.round(dealt * foe.passive.v));
+      att.hp = Math.max(0, att.hp - r);
+      emit(b, out, { side: other(side), kind: "info", text: `🌵 ${att.name} si fa male su ${foe.name} (−${r} PF).` });
+    }
+    if (hasP(att, "succhiavita") && alive(att) && att.hp < att.maxHp) {
+      const h = Math.min(att.maxHp - att.hp, Math.max(1, Math.round(dealt * att.passive.v)));
+      att.hp += h;
+      emit(b, out, { side, kind: "heal", amount: h, text: `🩸 ${att.name} si nutre del colpo: +${h} PF.` });
+    }
+    if (hasP(att, "tocco") && alive(foe) && rnd() < att.passive.v) touchEffect(b, side, att, foe, out);
     berryCheck(b, other(side), out);
   }
   const chance = (c) => rnd() < (c ?? 1);
@@ -341,6 +435,10 @@ function applyMove(b, side, moveId, out) {
     att.hp = Math.min(att.maxHp, att.hp + h);
     emit(b, out, { side, kind: "heal", amount: att.hp - before, text: att.hp > before ? `${att.name} recupera ${att.hp - before} PF.` : `${att.name} è già in piena forma.` });
   }
+  if (e.cure && (att.status || att.stunned)) {
+    att.status = null; att.stunned = false;
+    emit(b, out, { side, kind: "info", text: `${att.name} si libera da veleni e scottature.` });
+  }
   if (e.self) {
     Object.entries(e.self).forEach(([k, v]) => {
       att.stages[k] = clamp((att.stages[k] || 0) + v, k === "ac" ? -4 : -3, k === "ac" ? 4 : 3);
@@ -355,7 +453,7 @@ function applyMove(b, side, moveId, out) {
     if ((e.burn || e.poison) && !foe.status) {
       const kind = e.burn ? "burn" : "poison";
       // In D&D chi è immune al fuoco/veleno non si scotta e non si avvelena.
-      const immuneTo = resistMultiplier(foe.species, kind === "burn" ? "fire" : "poison") === 0;
+      const immuneTo = statusImmune(foe, kind);
       if (immuneTo) {
         if (!m.power) emit(b, out, { side, kind: "miss", text: `…ma ${foe.name} è immune.` });
       } else if (chance(e.burn || e.poison)) {
@@ -363,10 +461,30 @@ function applyMove(b, side, moveId, out) {
         emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} ${kind === "burn" ? "si scotta" : "è avvelenato"}!` });
       } else if (!m.power) emit(b, out, { side, kind: "miss", text: "…ma non ha effetto." });
     }
-    if (e.stun && !foe.stunned && chance(e.stun)) {
+    if (e.stun && !foe.stunned && !hasP(foe, "purezza") && chance(e.stun)) {
       foe.stunned = true;
       emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} è intontito!` });
     }
+  }
+}
+
+// Immune a scottature/veleno: immunità D&D al fuoco/veleno o Corpo Puro.
+function statusImmune(f, kind) {
+  return hasP(f, "purezza") || resistMultiplier(f.species, kind === "burn" ? "fire" : "poison", f.evo || 0) === 0;
+}
+// Tocco (passiva): il colpo scotta, avvelena, intontisce o toglie CA.
+function touchEffect(b, side, att, foe, out) {
+  const st = att.passive.st;
+  if (st === "ac") {
+    foe.stages.ac = clamp((foe.stages.ac || 0) - 1, -4, 4);
+    emit(b, out, { side, kind: "debuff", target: other(side), text: `☣️ ${foe.name}: CA −1.` });
+  } else if (st === "stun") {
+    if (foe.stunned || hasP(foe, "purezza")) return;
+    foe.stunned = true;
+    emit(b, out, { side, kind: "status", target: other(side), text: `❄️ ${foe.name} resta di ghiaccio: è intontito!` });
+  } else if (!foe.status && !statusImmune(foe, st)) {
+    foe.status = { kind: st, turns: st === "burn" ? 3 : 4 };
+    emit(b, out, { side, kind: "status", target: other(side), text: `☣️ ${foe.name} ${st === "burn" ? "si scotta" : "è avvelenato"}!` });
   }
 }
 
@@ -376,7 +494,14 @@ const statWords = (o) => Object.entries(o).map(([k, v]) => (k === "ac" ? `CA ${v
 function endOfTurn(b, out) {
   ["p", "e"].forEach((side) => {
     const f = activeOf(b, side);
-    if (!alive(f) || !f.status) return;
+    if (!alive(f)) return;
+    if (hasP(f, "sfocatura")) f.blur = true;
+    if (hasP(f, "rigenera") && f.hp < f.maxHp) {
+      const h = Math.min(f.maxHp - f.hp, Math.max(1, Math.round(f.maxHp * f.passive.v)));
+      f.hp += h;
+      emit(b, out, { side, kind: "heal", amount: h, text: `🌿 ${f.name} si rigenera: +${h} PF.` });
+    }
+    if (!f.status) return;
     const frac = f.status.kind === "burn" ? 1 / 12 : 1 / 14; // il veleno dà anche svantaggio
     const d = Math.max(1, Math.round(f.maxHp * frac));
     f.hp = Math.max(0, f.hp - d);
@@ -394,6 +519,14 @@ function doSwitch(b, side, idx, out) {
   s.active = idx;
   const name = activeOf(b, side).name;
   emit(b, out, { side, kind: "switch", text: b.names ? `${b.names[side]} manda in campo ${name}!` : side === "p" ? `Vai, ${name}!` : `L'avversario manda in campo ${name}!` });
+  intimidate(b, side, out);
+}
+// Presenza Terrificante: chi entra in campo toglie un grado di Attacco all'avversario.
+function intimidate(b, side, out) {
+  const f = activeOf(b, side), foe = activeOf(b, other(side));
+  if (!hasP(f, "intimidire") || !alive(f) || !alive(foe)) return;
+  foe.stages.atk = clamp((foe.stages.atk || 0) - 1, -3, 3);
+  if (out) emit(b, out, { side, kind: "debuff", target: other(side), text: `😠 ${foe.name} si spaventa davanti a ${f.name}: Attacco ↓.` });
 }
 
 // Dopo i colpi: chi è a terra esce; se non resta nessuno la lotta finisce.
@@ -585,7 +718,8 @@ export function towerFloor(floor, week = towerWeek()) {
     const lead = Math.round(1 + (n - 1) * 0.55);
     const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
     // seme a parte: le mosse non cambiano le squadre dei piani
-    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
+    const evo = EVOLUTIONS[k] && level >= evoLevelOf(PET_DEX[k].rarity) ? 1 : 0;
+    team.push({ id: `tw${n}_${i}`, species: k, level, evo, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   // i primi piani sono un tutorial: avversari più deboli del normale

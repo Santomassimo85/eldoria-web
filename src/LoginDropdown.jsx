@@ -15,6 +15,7 @@ import { PET_DEX } from "./data/petDex";
 import { classColor, MASTER_COLOR } from "./utils/classColor";
 import { LoginTrack } from "./components/LoginRewards";
 import { loginState, monthLabel, romeMonthKey } from "./data/loginRewards";
+import { EVOLUTIONS } from "./data/petEvo";
 import "./LoginDropdown.css";
 
 // Mascotte del Rifugio dei Pet (2026-10-31): il pet scelto come mascotte
@@ -25,22 +26,26 @@ function HeaderMascot({ charData, onOpen }) {
   const den = charData?.petDen;
   const pet = den?.mascot ? (den.pets || []).find((p) => p.id === den.mascot) : null;
   const species = pet?.species;
-  const [img, setImg] = useState(species ? mascotArt[species] : null);
+  // forma evoluta (2026-11-01): pixel art in pet_dex/{specie}__evo1, se manca quella del cucciolo
+  const key = species ? (pet?.evo ? `${species}__evo1` : species) : null;
+  const [img, setImg] = useState(key ? mascotArt[key] : null);
   useEffect(() => {
-    if (!species) return undefined;
-    if (mascotArt[species] !== undefined) { setImg(mascotArt[species]); return undefined; }
+    if (!key) return undefined;
+    if (mascotArt[key] !== undefined) { setImg(mascotArt[key]); return undefined; }
     let alive = true;
-    getDoc(doc(db, "pet_dex", species))
-      .then((s) => { mascotArt[species] = s.data()?.image || null; if (alive) setImg(mascotArt[species]); })
-      .catch(() => { mascotArt[species] = null; });
+    const read = (k) => getDoc(doc(db, "pet_dex", k)).then((s) => s.data()?.image || null);
+    read(key)
+      .then((im) => (im || key === species ? im : read(species)))
+      .then((im) => { mascotArt[key] = im; if (alive) setImg(im); })
+      .catch(() => { mascotArt[key] = null; });
     return () => { alive = false; };
-  }, [species]);
+  }, [key, species]);
   if (!pet || !PET_DEX[species]) return null;
-  const name = pet.nick || PET_DEX[species].name;
+  const name = pet.nick || (pet.evo && EVOLUTIONS[species]?.name) || PET_DEX[species].name;
   return (
     <button type="button" className="ld-mascot" onClick={onOpen} title={`${name} · la tua mascotte`} aria-label={`Mascotte: ${name}`}>
       <span className="ld-mascot-breathe">
-        {img ? <img src={img} alt="" draggable="false" /> : <span className="ld-mascot-emoji">{PET_DEX[species].icon}</span>}
+        {img ? <img src={img} alt="" draggable="false" /> : <span className="ld-mascot-emoji">{(pet.evo && EVOLUTIONS[species]?.icon) || PET_DEX[species].icon}</span>}
       </span>
     </button>
   );

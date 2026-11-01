@@ -568,3 +568,62 @@
 /* ── bisaccia in lotta (2026-11-01) ── */
 .pd-bagfight-icon { font-size: 1.8rem; width: 44px; text-align: center; }
 .pd-bagfight-desc { display: block; color: var(--pd-mute); font-size: .78rem; line-height: 1.3; }
+
+/* ── EVOLUZIONI (2026-11-01) ──────────────────────────────── */
+.pd-sprite.is-evo-raw img { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--pd-acc) 70%, transparent)) drop-shadow(0 4px 0 rgba(0,0,0,.35)) saturate(1.25) contrast(1.1); }
+.pd-evotag { margin-left: 6px; padding: 1px 6px; border-radius: 3px; font-size: .7rem; font-family: var(--font-sc); letter-spacing: .05em; color: #ffe6a8; background: rgba(255, 200, 90, .15); border: 1px solid rgba(255, 200, 90, .5); vertical-align: middle; }
+.pd-btn--evo { background: linear-gradient(135deg, rgba(255, 210, 90, .3), rgba(180, 120, 255, .3)); border-color: rgba(255, 220, 120, .85); color: #fff6dc; font-weight: 700; animation: pd-evo-pulse 1.8s ease-in-out infinite; }
+@keyframes pd-evo-pulse { 50% { box-shadow: 0 0 14px rgba(255, 210, 90, .55); } }
+.pd-evobox { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 8px 10px; border: 1px dashed rgba(255, 210, 90, .45); border-radius: 4px; background: rgba(255, 210, 90, .06); }
+.pd-evobox.is-done { border-style: solid; }
+.pd-evobox > div { display: grid; gap: 3px; min-width: 0; }
+.pd-evobox small { color: var(--pd-mute); font-size: .78rem; }
+.pd-evobox .pd-btn--evo { justify-self: start; margin-top: 4px; }
+.pd-dex-evo { display: flex; gap: 8px; align-items: center; text-align: left; margin: 6px 0; padding: 6px 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.pd-dex-evo p { display: grid; gap: 2px; margin: 0; font-size: .82rem; }
+.pd-dex-evo small { color: var(--pd-mute); font-size: .74rem; }
+.pd-art-card { flex-wrap: wrap; }
+.pd-art-evo { flex: 1 1 100%; display: flex; gap: 12px; padding-top: 10px; border-top: 1px dashed rgba(255, 210, 90, .35); }
+.pd-art-evo textarea { flex: 1; min-width: 0; background: var(--pd-bg); border: 1px solid rgba(255,255,255,.15); color: var(--pd-ink); padding: 6px 8px; border-radius: 3px; font: inherit; font-size: .82rem; resize: vertical; width: 100%; }
+@media (max-width: 760px) { .pd-art-evo { flex-direction: column; } }
+
+.pd-evo-stage .pd-evo-glow { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #fff 0%, color-mix(in srgb, var(--pd-rc) 60%, transparent) 40%, transparent 70%); animation: pd-evo-glow 2.2s ease-in forwards; }
+@keyframes pd-evo-glow { 0% { opacity: .1; transform: scale(.5); } 80% { opacity: 1; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1.6); } }
+.pd-evo-grow { position: relative; display: inline-flex; animation: pd-evo-grow 2.2s steps(12) forwards; }
+@keyframes pd-evo-grow { 0% { transform: scale(1); filter: none; } 30% { transform: scale(1.08); filter: brightness(1.6); } 55% { transform: scale(.95); filter: brightness(3); } 80% { transform: scale(1.25); filter: brightness(6) saturate(0); } 100% { transform: scale(1.35); filter: brightness(10) saturate(0); } }
+.pd-evodice { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0; }
+.pd-evodie { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 8px; background: #f3ead8; color: #2a1d10; font-family: var(--font-num); font-weight: 800; font-size: 1.45rem; border: 3px solid #2a1d10; box-shadow: 0 4px 0 rgba(0,0,0,.4); animation: pd-evo-tumble .28s linear infinite; }
+.pd-evodie.is-stop { animation: pd-evo-land .35s ease-out; background: #fff; border-color: var(--pd-rc); box-shadow: 0 0 14px color-mix(in srgb, var(--pd-rc) 70%, transparent), 0 4px 0 rgba(0,0,0,.4); }
+.pd-evodie[data-max="1"] { background: #ffe08a; }
+@keyframes pd-evo-tumble { 0% { transform: rotate(0) translateY(0); } 25% { transform: rotate(90deg) translateY(-8px); } 50% { transform: rotate(180deg) translateY(0); } 75% { transform: rotate(270deg) translateY(-5px); } 100% { transform: rotate(360deg); } }
+@keyframes pd-evo-land { 0% { transform: scale(1.35); } 100% { transform: none; } }
+.pd-evo-sum { margin: 2px 0; font-family: var(--font-num); font-weight: 700; font-size: 1.1rem; color: #ffe6a8; }
+.pd-evo-stats { grid-template-columns: repeat(5, 1fr); width: 100%; }
+.pd-evo-stats dd b { color: #9fe39a; }
+.pd-evo-skill { margin: 4px 0; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .pd-evodie { animation: none; } }
+
+/* mossa speciale dell'evoluzione */
+.pd-move.is-sig { background: linear-gradient(135deg, var(--pd-s3), color-mix(in srgb, var(--tc) 22%, var(--pd-s3))); border-style: double; border-width: 3px; }
+
+/* forma evoluta in campo: più grande anche su smartphone */
+@media (max-width: 760px) {
+  .pd-spot--e .pd-sprite.is-evo { --pd-size: 122px !important; }
+  .pd-spot--p .pd-sprite.is-evo { --pd-size: 146px !important; }
+}
+
+/* ── BONUS / MALUS IN LOTTA (2026-11-01) ──────────────────── */
+.pd-fxbar { display: grid; gap: 4px; }
+.pd-fxrow { display: flex; flex-wrap: wrap; gap: 3px; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.pd-fxi { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px 1px 3px; border-radius: 3px; font-size: .74rem; line-height: 1.3; border: 1px solid; }
+.pd-fxi i { font-style: normal; }
+.pd-fxi b { font-weight: 800; }
+.pd-fxi small { font-size: .66rem; opacity: .85; font-family: var(--font-num); }
+.pd-fxi.is-good { background: rgba(90, 190, 110, .18); border-color: rgba(110, 210, 130, .6); color: #c9f5cf; }
+.pd-fxi.is-bad { background: rgba(210, 70, 70, .2); border-color: rgba(230, 100, 100, .6); color: #ffd0d0; }
+.pd-fxi.is-spent { opacity: .45; filter: grayscale(.7); }
+.pd-fxlist { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; font-size: .74rem; line-height: 1.35; background: rgba(0,0,0,.5); border-radius: 4px; max-height: 140px; overflow: auto; }
+.pd-fxlist li.is-good { color: #c9f5cf; }
+.pd-fxlist li.is-bad { color: #ffd0d0; }
+.pd-fxlist i { font-style: normal; }
+@media (max-width: 760px) { .pd-fxi { font-size: .68rem; } .pd-fxlist { font-size: .7rem; } }

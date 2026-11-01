@@ -18,6 +18,7 @@ import { deleteField, doc, setDoc, serverTimestamp, writeBatch } from "firebase/
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { PET_DEX } from "../data/petDex";
+import { EVOLUTIONS } from "../data/petEvo";
 export { denOf, countOf, MASCOT_XP_BONUS, PVP_POINTS, PVP_DAILY, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, LOSS_XP, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower } from "../data/petOps";
 
 const charRef = (uid) => doc(db, "characters", uid);
@@ -49,6 +50,7 @@ export const applyGrowthItem = op("applyGrowthItem");
 export const giveCharm = op("giveCharm");
 export const teachScroll = op("teachScroll");
 export const claimGifts = op("claimGifts");
+export const evolvePet = op("evolvePet");
 // Torre: le azioni della lotta, il server la rigioca e decide l'esito.
 export const towerFinish = op("towerFinish");
 // Ricomincia la torre dal piano 1 (una volta al giorno).
@@ -82,6 +84,21 @@ export const savePetLook = (species, look) =>
 /* Prompt per Gemini: creatura pucciosa in pixel art su magenta (lo sfondo
    si toglie poi col chroma key di utils/aiSprite.js). Il pet è rivolto a
    DESTRA: in lotta il nostro sta a sinistra, quello avversario si specchia. */
+/* Prompt della forma evoluta (2026-11-01): stessa pixel art e stesso sfondo
+   magenta, ma creatura adulta, più grande e seria. Si salva in
+   pet_dex/{specie}__evo1. */
+export const evoArtKey = (species, stage = 1) => `${species}__evo${stage}`;
+export function petEvoArtPrompt(species, look) {
+  const ev = EVOLUTIONS[species];
+  const sp = PET_DEX[species];
+  return `Pixel art sprite of a single fantasy creature for a turn-based monster-collecting battle game (like the evolved creature sprites of classic handheld monster-battle RPGs), inspired by Dungeons & Dragons.
+Creature: ${ev?.name || species} — the fully grown, evolved form of the baby "${sp?.name || species}". ${look || ev?.look || ""}.
+Element: ${sp?.type || "neutral"} (use a colour palette that suggests it).
+Style: an ADULT, powerful, serious and imposing creature, bigger and more detailed than a baby form, menacing or majestic, realistic proportions (NOT chibi, NOT cute), recognisable as the D&D monster. Crisp 32-bit-era pixel art, limited rich palette, clean dark outlines, pixel shading, NO anti-aliasing, NO blur.
+Pose: full body, dynamic battle stance, three-quarter view facing toward the RIGHT edge of the image, centered, filling about 85% of the canvas.
+CRITICAL: render the creature ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border.`;
+}
+
 export function petArtPrompt(species, look) {
   const sp = PET_DEX[species];
   return `Pixel art sprite of a single cute baby fantasy creature for a turn-based monster-collecting battle game (like the creature sprites of classic handheld monster-battle RPGs), inspired by Dungeons & Dragons.

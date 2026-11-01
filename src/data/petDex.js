@@ -19,8 +19,9 @@
      res    — resistenze/immunità/vulnerabilità prese dalla scheda D&D del
               mostro: { resist: [], immune: [], vuln: [] } con i tipi qui
               sotto o i danni fisici bludgeoning/piercing/slashing.
-   Le evoluzioni arriveranno più avanti.
+   Evoluzioni (2026-11-01): src/data/petEvo.js (una per specie).
    ============================================================ */
+import { EVOLUTIONS, EVO_MOVES, EVO_MULT } from "./petEvo";
 
 export const MAX_PER_SPECIES = 2;   // copie della stessa specie in collezione
 export const MAX_TEAM = 3;          // pet attivi in squadra
@@ -63,9 +64,18 @@ export const DMG_LABEL = { ...TYPE_LABEL, bludgeoning: "Contundente", piercing: 
 const PHYS_OF_FX = { stomp: "bludgeoning", dash: "bludgeoning", bite: "piercing", sting: "piercing", claw: "slashing", whip: "slashing" };
 export const damageKindOf = (move) => (move?.type && move.type !== "neutral" ? move.type : PHYS_OF_FX[move?.fx] || "bludgeoning");
 
-/* Regole di D&D: resistenza = metà, vulnerabilità = doppio, immunità = zero. */
-export function resistMultiplier(speciesKey, kind) {
-  const r = PET_DEX[speciesKey]?.res;
+/* Regole di D&D: resistenza = metà, vulnerabilità = doppio, immunità = zero.
+   `evo` = evoluzioni fatte: la forma evoluta aggiunge le sue resistenze. */
+export function resOf(speciesKey, evo = 0) {
+  const r = PET_DEX[speciesKey]?.res || null;
+  const x = evo ? EVOLUTIONS[speciesKey]?.res : null;
+  if (!x) return r;
+  const u = (a = [], b = []) => [...new Set([...a, ...b])];
+  const immune = u(r?.immune, x.immune);
+  return { immune, resist: u(r?.resist, x.resist).filter((k) => !immune.includes(k)), vuln: (r?.vuln || []).filter((k) => !immune.includes(k)) };
+}
+export function resistMultiplier(speciesKey, kind, evo = 0) {
+  const r = resOf(speciesKey, evo);
   if (!r) return 1;
   if (r.immune?.includes(kind)) return 0;
   let m = 1;
@@ -311,6 +321,9 @@ export const PET_DEX_MOVES = {
   sferapsionica:M("Sfera Psionica", "psychic", 100, 85, 8, "orb", { lv: 5, effect: { foe: { atk: -1 }, chance: 0.3 } }),
   schiantotele: M("Schianto Telecinetico", "psychic", 120, 85, 5, "stomp", { lv: 6 }),
   tempestapsi:  M("Tempesta Psichica", "psychic", 120, 80, 5, "curse", { lv: 6, effect: { stun: 0.2 } }),
+  // mosse speciali delle evoluzioni (petEvo.js): niente grado, non si imparano
+  ...Object.fromEntries(Object.entries(EVO_MOVES).map(([k, [name, type, power, acc, fx, extra]]) =>
+    [k, M(name, type, power, acc, extra.uses || 1, fx, { ...extra, sig: true })])),
 };
 
 /* ── GRADI DELLE MOSSE (2026-10-31) ─────────────────────────
@@ -349,12 +362,21 @@ export function usesOf(moveId) {
    90% = 0, 75% = −3). */
 export const profOf = (level) => 2 + Math.floor((level || 1) / 12);
 export const accMod = (acc) => Math.round(((acc ?? 90) - 90) / 5);
-export function dndOf(speciesKey, level = 1) {
+// Statistiche base della specie, con l'evoluzione (×EVO_MULT + i `plus` della forma).
+export function baseOf(speciesKey, evo = 0) {
   const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
+  const x = evo ? EVOLUTIONS[speciesKey] : null;
+  if (!x) return b;
+  const p = x.plus || {};
+  return { hp: b.hp, atk: b.atk * EVO_MULT.atk + (p.atk || 0), def: b.def * EVO_MULT.def + (p.def || 0), spd: b.spd * EVO_MULT.spd + (p.spd || 0) };
+}
+export function dndOf(speciesKey, level = 1, evo = 0) {
+  const b = baseOf(speciesKey, evo);
   const prof = profOf(level);
   const atkMod = Math.round((b.atk - 9) / 2);
   const defMod = Math.round((b.def - 10) / 2);
-  const ac = (PET_DEX[speciesKey]?.ac ?? 10 + Math.round((b.def - 8) / 2) + (b.spd >= 14 ? 1 : 0)) + Math.floor((level || 1) / 12);
+  const evoAc = evo && EVOLUTIONS[speciesKey] ? 1 + (EVOLUTIONS[speciesKey].plus?.ac || 0) : 0;
+  const ac = (PET_DEX[speciesKey]?.ac ?? 10 + Math.round((b.def - 8) / 2) + (b.spd >= 14 ? 1 : 0)) + Math.floor((level || 1) / 12) + evoAc;
   return { prof, atkMod, defMod, ac, toHit: prof + atkMod, save: Math.floor(prof / 2) + defMod, dcBase: 12 + prof + atkMod };
 }
 export const MAX_MOVES = 4;

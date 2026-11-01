@@ -13,6 +13,7 @@
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
 import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek } from "./petEngine";
 import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle } from "./petBag";
+import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 export { LOSS_XP };
 
 const newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -194,6 +195,25 @@ export function applyGrowthItem(den, data, petId, id) {
       return { out: { level: p.level, ups: n.ups } };
     }
     throw new Error("Oggetto non adatto.");
+}
+
+/* Evoluzione (2026-11-01): dal livello della rarità il pet cambia forma.
+   I PF in più li tira il server coi dadi della rarità (EVO_HP_DICE) e
+   restano sul pet (evoHp + i dadi usciti in evoRolls). */
+export function evolvePet(den, data, petId) {
+    const p = petOf(den, petId);
+    const ev = EVOLUTIONS[p.species];
+    if (!ev) throw new Error("Questo pet non ha ancora un'evoluzione.");
+    if ((p.evo || 0) >= 1) throw new Error("È già evoluto.");
+    const rar = PET_DEX[p.species]?.rarity;
+    const need = evoLevelOf(rar);
+    if ((p.level || 1) < need) throw new Error(`Si evolve al livello ${need}.`);
+    const [n, d] = evoDiceOf(rar);
+    const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * d));
+    const hp = rolls.reduce((a, x) => a + x, 0);
+    p.evo = 1; p.evoHp = hp; p.evoRolls = rolls; p.evoAt = p.level || 1; p.evoTs = Date.now();
+    addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls });
+    return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp } };
 }
 
 // Amuleto: il pet lo tiene per `fights` lotte. Uno solo: quello vecchio si perde.
@@ -428,7 +448,7 @@ export function validAction(b, a, bag = {}) {
     if (!it || !usableInBattle(a.item) || !(bag[a.item] > 0) || !Number.isInteger(a.index) || !t) return false;
     if (it.use?.revive) return t.hp <= 0;
     if (t.hp <= 0) return false;
-    if (it.kind === "charm") return !t.charm;
+    if (it.kind === "charm") return true; // sostituisce quello che ha
     return true;
   }
   if (a?.kind === "switch") {
@@ -480,6 +500,7 @@ export const OPS = {
   buyItem: { run: buyItem },
   giveItems: { run: giveItems, master: true },
   applyGrowthItem: { run: applyGrowthItem },
+  evolvePet: { run: evolvePet },
   giveCharm: { run: giveCharm },
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },

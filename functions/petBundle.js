@@ -36,6 +36,7 @@ __export(petOps_exports, {
   claimGifts: () => claimGifts,
   countOf: () => countOf,
   denOf: () => denOf,
+  evolvePet: () => evolvePet,
   giveCharm: () => giveCharm,
   giveItems: () => giveItems,
   givePet: () => givePet,
@@ -58,6 +59,309 @@ __export(petOps_exports, {
   validAction: () => validAction
 });
 module.exports = __toCommonJS(petOps_exports);
+
+// src/data/petEvo.js
+var EVO_LEVEL = { starter: 15, common: 15, rare: 18, epic: 22, legendary: 26 };
+var EVO_HP_DICE = { starter: [3, 8], common: [3, 8], rare: [3, 10], epic: [3, 12], legendary: [4, 12] };
+var EVO_MULT = { atk: 1.12, def: 1.12, spd: 1.08 };
+var EVO_MOVES = {
+  soffiorosso: ["Soffio del Drago Rosso", "fire", 130, 90, "breath", { uses: 1, effect: { burn: 0.5 } }],
+  pungiviverna: ["Pungiglione di Viverna", "poison", 110, 90, "sting", { uses: 2, effect: { poison: 0.6 } }],
+  inglobare: ["Inglobare", "acid", 95, 90, "bite", { uses: 2, effect: { drain: 0.4, stun: 0.2 } }],
+  balzolampo: ["Balzo Intermittente", "radiant", 85, 100, "dash", { uses: 3, prio: 1 }],
+  morsoadesivo: ["Morso Adesivo", "acid", 90, 95, "bite", { uses: 2, effect: { stun: 0.3 } }],
+  tenaglia: ["Tenaglia d'Acciaio", "water", 100, 95, "claw", { uses: 2, effect: { foe: { def: -1, ac: -1 }, chance: 0.5 } }],
+  fulminebehir: ["Fulmine del Behir", "lightning", 125, 90, "bolt", { uses: 1, effect: { stun: 0.25 } }],
+  tentacoli: ["Stretta dei Tentacoli", "water", 110, 90, "whip", { uses: 2, effect: { foe: { spd: -1 }, chance: 1, stun: 0.2 } }],
+  raggioocchio: ["Raggio dell'Occhio", "psychic", 125, 85, "beam", { uses: 1, effect: { stun: 0.3 } }],
+  cornoguaritore: ["Corno Guaritore", "radiant", 0, 100, "heal", { uses: 1, effect: { heal: 0.5, cure: true } }],
+  soffioinverno: ["Soffio Invernale", "cold", 110, 90, "breath", { uses: 2, effect: { foe: { spd: -1 }, chance: 1 } }],
+  morsoputrido: ["Morso Putrido", "poison", 100, 90, "bite", { uses: 2, effect: { poison: 0.5, foe: { def: -1 }, chance: 0.4 } }],
+  lamento: ["Lamento dello Spettro", "necrotic", 95, 95, "wave", { uses: 2, effect: { foe: { atk: -1 }, chance: 0.6 } }],
+  balzomortale: ["Balzo Mortale", "earth", 130, 85, "stomp", { uses: 1, effect: { stun: 0.3 } }],
+  soffiobianco: ["Soffio del Drago Bianco", "cold", 130, 90, "breath", { uses: 1, effect: { stun: 0.3 } }],
+  soffioblu: ["Soffio del Drago Blu", "lightning", 130, 90, "beam", { uses: 1, effect: { foe: { ac: -1 }, chance: 1 } }],
+  esplosionementale: ["Esplosione Mentale", "psychic", 110, 90, "wave", { uses: 1, effect: { stun: 0.5 } }]
+};
+var E = (name, icon, desc, look, skill, extra = {}) => ({ name, icon, desc, look, skill, ...extra });
+var EVOLUTIONS = {
+  brace: E(
+    "Dragone Rosso",
+    "\u{1F409}",
+    "Un giovane drago rosso: superbo, avido, e ogni respiro sa di incendio.",
+    "a young red dragon, large powerful crimson-scaled dragon with big swept-back horns, wide leathery wings half open, fierce golden eyes, fiery maw with embers and smoke",
+    { move: "soffiorosso" },
+    { plus: { atk: 1 } }
+  ),
+  tartadrago: E(
+    "Dragartaruga",
+    "\u{1F422}",
+    "La tartaruga-drago adulta: un'isola che nuota e affonda le navi per noia.",
+    "an adult dragon turtle, massive armored sea dragon turtle with a huge spiked emerald shell, long draconic neck and head with fins, steam rising, stern ancient eyes",
+    { passive: "corazza", v: 3 },
+    { res: { resist: ["cold"] } }
+  ),
+  gufurso: E(
+    "Gufurso Adulto",
+    "\u{1F989}",
+    "Un gufurso cresciuto: due metri e mezzo di piume, artigli e cattivo umore.",
+    "an adult owlbear, huge hulking bear body with brown feathers and fur, fierce owl face with a sharp hooked beak and glaring eyes, massive clawed paws raised",
+    { passive: "furia", v: 0.5 },
+    { plus: { atk: 1 } }
+  ),
+  pseudodrago: E(
+    "Viverna",
+    "\u{1F409}",
+    "Lo pseudodrago \xE8 diventato una viverna: due zampe, due ali e una coda che uccide.",
+    "a wyvern, lean dark-red two-legged dragon with large bat-like wings, long whip tail ending in a huge dripping venomous stinger, predatory yellow eyes",
+    { move: "pungiviverna" },
+    { res: { immune: ["poison"] } }
+  ),
+  gattombra: E(
+    "Belva Distorcente",
+    "\u{1F406}",
+    "Una belva distorcente adulta: vedi sei zampe e due tentacoli, ma mai dove sono davvero.",
+    "an adult displacer beast, sleek large blue-black six-legged panther with two long barbed tentacles on its back, glowing violet eyes, shimmering displaced afterimage",
+    { passive: "sfocatura" }
+  ),
+  mefitino: E(
+    "Elementale del Magma",
+    "\u{1F30B}",
+    "Il mefite \xE8 cresciuto in un ammasso di roccia fusa: toccarlo fa male a chi tocca.",
+    "a magma elemental, large hulking humanoid of black cooling rock with glowing orange lava cracks, molten fists dripping lava, burning eyes, heat haze",
+    { passive: "spine", v: 0.2 }
+  ),
+  cubetto: E(
+    "Cubo Gelatinoso",
+    "\u{1F7E9}",
+    "Un cubo gelatinoso vero: riempie un corridoio e dentro ha l'armatura dell'ultimo eroe.",
+    "a large gelatinous cube, huge translucent lime-green acidic jelly cube filling the frame, a skeleton, a sword and coins suspended inside, menacing faint glow, acid drips",
+    { move: "inglobare" },
+    { res: { resist: ["acid"] } }
+  ),
+  funghetto: E(
+    "Sovrano Miconide",
+    "\u{1F344}",
+    "Il re dei miconidi: un fungo alto come un albero che guarisce chi lo segue.",
+    "a myconid sovereign, tall regal mushroom humanoid with a broad spotted purple cap like a crown, long fungal robes, glowing spore clouds, wise solemn face",
+    { passive: "rigenera", v: 1 / 12 },
+    { res: { resist: ["poison"] } }
+  ),
+  saltello: E(
+    "Cane Intermittente",
+    "\u{1F415}",
+    "Un cane intermittente adulto: c'\xE8, non c'\xE8, ti morde da dietro.",
+    "an adult blink dog, sleek tall golden fey hound with long ears, alert noble face, radiant sparkles and a teleport flash around its body",
+    { move: "balzolampo" },
+    { plus: { spd: 1 } }
+  ),
+  diavoletto: E(
+    "Diavolo Spinato",
+    "\u{1F608}",
+    "Il diavoletto \xE8 salito di grado: ora \xE8 un diavolo spinato, e le spine le lancia.",
+    "a spined devil, wiry red devil with a body covered in long sharp spines, bat wings, a spiny tail, cruel grin, dark smoke",
+    { passive: "spine", v: 0.25 }
+  ),
+  scrignetto: E(
+    "Mimic Antico",
+    "\u{1F9F0}",
+    "Un mimic vecchio come il dungeon: un forziere enorme che si incolla a chi lo apre.",
+    "an ancient mimic, huge iron-bound treasure chest monster with rows of jagged teeth, a long sticky tongue, adhesive goo dripping, beady eyes on the lid",
+    { move: "morsoadesivo" }
+  ),
+  yetino: E(
+    "Yeti Abominevole",
+    "\u{1F98D}",
+    "Lo yeti adulto: quando ruggisce le valanghe si spostano per educazione.",
+    "an abominable yeti, towering muscular white-furred yeti with icy blue skin, curved horns, huge clawed hands, roaring mouth with fangs, swirling snow",
+    { passive: "intimidire" },
+    { res: { resist: ["bludgeoning"] } }
+  ),
+  brinello: E(
+    "Spirito della Bufera",
+    "\u2744\uFE0F",
+    "Il mefite del ghiaccio si \xE8 fatto tempesta: chi lo sfiora resta di ghiaccio.",
+    "a frost storm spirit, tall elegant elemental of jagged blue ice crystals and swirling blizzard winds, cold glowing eyes, icicle crown",
+    { passive: "tocco", v: 0.15, st: "stun" }
+  ),
+  granchietto: E(
+    "Granchio Gigante",
+    "\u{1F980}",
+    "Il granchio gigante, finalmente gigante. Le chele tagliano l'acciaio.",
+    "a giant crab, huge armored crimson and steel-blue crab with massive serrated claws, spiked shell, eyes on stalks, sea foam",
+    { move: "tenaglia" },
+    { plus: { ac: 1 } }
+  ),
+  ragnetto: E(
+    "Ragno Gigante",
+    "\u{1F577}\uFE0F",
+    "Un ragno gigante adulto: il suo veleno ti lascia sveglio, ma fermo.",
+    "an adult giant spider, large hairy black and purple spider with long legs, eight glowing red eyes, huge fangs dripping green venom, webs",
+    { passive: "tocco", v: 0.25, st: "poison" }
+  ),
+  scheletrino: E(
+    "Mastino Scheletrico",
+    "\u{1F480}",
+    "Il cucciolo d'ossa \xE8 un mastino non morto: non sente dolore, n\xE9 veleno.",
+    "a skeletal war hound, large undead mastiff made of cracked bones with an armored skull, ghostly green fire in the eye sockets and ribcage, chain collar",
+    { passive: "purezza" }
+  ),
+  behirino: E(
+    "Behir",
+    "\u{1F40D}",
+    "Un behir adulto: venti metri di serpente con dodici zampe e il fulmine in gola.",
+    "an adult behir, long massive blue serpentine reptile with many clawed legs, curved horns, armored scales, crackling lightning from its open jaws",
+    { move: "fulminebehir" }
+  ),
+  flumphino: E(
+    "Flumph Anziano",
+    "\u{1FABC}",
+    "Un flumph anziano: galleggia sereno e la sua calma guarisce le ferite.",
+    "an elder flumph, large floating jellyfish-like disc creature with long glowing tendrils, two tall eyestalks, calm wise expression, soft pink psychic aura",
+    { passive: "rigenera", v: 1 / 14 },
+    { res: { resist: ["psychic"] } }
+  ),
+  salamandrina: E(
+    "Salamandra",
+    "\u{1F98E}",
+    "Una salamandra di fuoco adulta: dove striscia, il terreno resta nero.",
+    "an adult fire salamander, long large serpentine lizard of red-orange scales with a crest of flames along its back and a burning tail, fierce face, embers",
+    { passive: "tocco", v: 0.3, st: "burn" }
+  ),
+  krakino: E(
+    "Kraken Giovane",
+    "\u{1F419}",
+    "Il kraken non \xE8 pi\xF9 neonato: i suoi tentacoli stringono navi e pet.",
+    "a young kraken, huge dark teal and purple squid monster with many thick tentacles lashing, one enormous glaring eye, sharp beak, crashing waves",
+    { move: "tentacoli" }
+  ),
+  ruggine: E(
+    "Mostro della Ruggine",
+    "\u{1F41C}",
+    "Un mostro della ruggine adulto: le armature gli si sbriciolano addosso.",
+    "an adult rust monster, large armored insectoid beast with rusty orange carapace, two long feathery antennae, flaking metal debris, determined face",
+    { passive: "tocco", v: 0.3, st: "ac" },
+    { res: { resist: ["slashing"] } }
+  ),
+  turbino: E(
+    "Elementale dell'Aria",
+    "\u{1F32A}\uFE0F",
+    "Il mulinello \xE8 diventato tempesta: un elementale dell'aria che urla fulmini.",
+    "an air elemental, towering roaring tornado of pale blue wind with a vague fierce face, crackling lightning inside, debris swirling",
+    { passive: "elemento" }
+  ),
+  occhietto: E(
+    "Beholder",
+    "\u{1F441}\uFE0F",
+    "Lo spettatore \xE8 diventato un beholder: un occhio, dieci raggi, nessuna piet\xE0.",
+    "a beholder, large floating spherical aberration with one huge central eye, ten writhing eyestalks, wide mouth full of teeth, purple hide, menacing glare",
+    { move: "raggioocchio" }
+  ),
+  cornina: E(
+    "Unicorno",
+    "\u{1F984}",
+    "Un unicorno adulto: il suo corno chiude le ferite e scaccia i veleni.",
+    "an adult unicorn, tall majestic white horse with a long glowing golden spiral horn, flowing silver mane, noble serious eyes, holy light",
+    { move: "cornoguaritore" },
+    { res: { resist: ["radiant"] } }
+  ),
+  cerberino: E(
+    "Segugio Infernale",
+    "\u{1F415}\u200D\u{1F9BA}",
+    "Un segugio infernale adulto: fiuta la paura e morde dove fa pi\xF9 male.",
+    "an adult hell hound, large black-furred demonic dog with a mane of fire, glowing red eyes, smoking jaws full of fangs, burning paw prints",
+    { passive: "critico", v: 18 }
+  ),
+  lupogelo: E(
+    "Lupo Invernale",
+    "\u{1F43A}",
+    "Il lupo invernale adulto: il suo fiato congela le gambe di chi scappa.",
+    "an adult winter wolf, huge snow-white wolf with icy blue eyes, frost covering its thick fur, freezing mist breath, snarling",
+    { move: "soffioinverno" }
+  ),
+  gocciolo: E(
+    "Stranezza delle Acque",
+    "\u{1F4A7}",
+    "La goccia \xE8 diventata una stranezza delle acque: l'acqua la nutre.",
+    "a water weird, tall serpentine creature made of living clear blue water rising from a pool, translucent body, cold glowing eyes, splashes",
+    { passive: "assorbi", el: "water" }
+  ),
+  fuocofatuo: E(
+    "Fuoco Fatuo Antico",
+    "\u{1F506}",
+    "Un fuoco fatuo che ha bevuto mille paure: si nutre di chi colpisce.",
+    "an ancient will-o'-wisp, large sinister floating orb of pale blue-white electric light with a ghostly skull-like face inside, crackling tendrils",
+    { passive: "succhiavita", v: 0.25 }
+  ),
+  otyughino: E(
+    "Otyugh",
+    "\u{1F5D1}\uFE0F",
+    "Un otyugh adulto: tre zampe, due tentacoli e un morso che porta la febbre.",
+    "an adult otyugh, large bloated greenish-brown aberration on three thick legs, two long tentacles with spiked tips, an eye stalk, huge toothy maw, filth",
+    { move: "morsoputrido" },
+    { res: { immune: ["poison"] } }
+  ),
+  fantasmino: E(
+    "Spettro",
+    "\u{1F47B}",
+    "Il fantasmino non chiede pi\xF9 scusa: il suo lamento svuota il coraggio.",
+    "a wraith-like spectre, tall dark translucent ghost in tattered shroud, hollow glowing eyes, long clawed spectral hands, cold mist",
+    { move: "lamento" }
+  ),
+  squalterra: E(
+    "Bulette",
+    "\u{1F988}",
+    "La bulette adulta: salta fuori dalla terra e ricade addosso a tutto.",
+    "an adult bulette (landshark), huge armored blue-grey beast with a shark-like head, a tall dorsal crest, powerful clawed legs, leaping out of cracked earth",
+    { move: "balzomortale" },
+    { plus: { def: 1 } }
+  ),
+  piumaserpe: E(
+    "Couatl",
+    "\u{1FAB6}",
+    "Il couatl adulto: serpente piumato e guardiano, la sua volont\xE0 non si piega.",
+    "an adult couatl, long majestic golden feathered serpent with wide rainbow feathered wings, wise serious eyes, radiant holy aura",
+    { passive: "leggendaria" },
+    { res: { resist: ["psychic"] } }
+  ),
+  nevischio: E(
+    "Drago Bianco",
+    "\u{1F409}",
+    "Un giovane drago bianco: feroce, affamato, e il suo soffio ferma il cuore.",
+    "a young white dragon, large icy-white dragon with jagged frost frills, wide wings, cruel pale blue eyes, freezing breath mist, ice crystals",
+    { move: "soffiobianco" }
+  ),
+  saettino: E(
+    "Drago Blu",
+    "\u{1F409}",
+    "Un giovane drago blu: il grande corno sul naso chiama i fulmini del deserto.",
+    "a young blue dragon, large sapphire-blue dragon with one big horn on its nose, wide wings, arrogant golden eyes, lightning crackling from its jaws",
+    { move: "soffioblu" }
+  ),
+  girino: E(
+    "Mind Flayer",
+    "\u{1F991}",
+    "Il girino \xE8 diventato un mind flayer: buono non lo dice pi\xF9.",
+    "a mind flayer (illithid), tall humanoid with purple skin and an octopus head with four face tentacles, white pupil-less eyes, high-collared dark robes, psychic aura",
+    { move: "esplosionementale" }
+  ),
+  tarrasquino: E(
+    "Tarrasque",
+    "\u{1F996}",
+    "Il Tarrasque. Non pi\xF9 in miniatura. Che gli dei vi aiutino.",
+    "the tarrasque, colossal reptilian kaiju with a massive spiked carapace, two huge forward horns, gaping jaws full of teeth, earth shaking, apocalyptic",
+    { passive: "corazza", v: 4 }
+  ),
+  lichetto: E(
+    "Lich",
+    "\u2620\uFE0F",
+    "Un lich vero: finch\xE9 il filatterio esiste, non va mai gi\xF9 davvero.",
+    "a lich, tall skeletal undead sorcerer in ornate tattered purple and black robes with a golden crown, glowing green eyes, holding a phylactery, necrotic green flames",
+    { passive: "tenacia" }
+  )
+};
+var evoLevelOf = (rarity) => EVO_LEVEL[rarity] || 15;
+var evoDiceOf = (rarity) => EVO_HP_DICE[rarity] || [3, 8];
 
 // src/data/petDex.js
 var MAX_PER_SPECIES = 2;
@@ -97,8 +401,16 @@ var DMG_ICON = { ...TYPE_ICON, bludgeoning: "\u{1F528}", piercing: "\u{1F9B7}", 
 var DMG_LABEL = { ...TYPE_LABEL, bludgeoning: "Contundente", piercing: "Perforante", slashing: "Tagliente" };
 var PHYS_OF_FX = { stomp: "bludgeoning", dash: "bludgeoning", bite: "piercing", sting: "piercing", claw: "slashing", whip: "slashing" };
 var damageKindOf = (move) => move?.type && move.type !== "neutral" ? move.type : PHYS_OF_FX[move?.fx] || "bludgeoning";
-function resistMultiplier(speciesKey, kind) {
-  const r = PET_DEX[speciesKey]?.res;
+function resOf(speciesKey, evo = 0) {
+  const r = PET_DEX[speciesKey]?.res || null;
+  const x = evo ? EVOLUTIONS[speciesKey]?.res : null;
+  if (!x) return r;
+  const u = (a = [], b = []) => [.../* @__PURE__ */ new Set([...a, ...b])];
+  const immune = u(r?.immune, x.immune);
+  return { immune, resist: u(r?.resist, x.resist).filter((k) => !immune.includes(k)), vuln: (r?.vuln || []).filter((k) => !immune.includes(k)) };
+}
+function resistMultiplier(speciesKey, kind, evo = 0) {
+  const r = resOf(speciesKey, evo);
   if (!r) return 1;
   if (r.immune?.includes(kind)) return 0;
   let m = 1;
@@ -301,7 +613,9 @@ var PET_DEX_MOVES = {
   frustamentale: M("Frusta Mentale", "psychic", 100, 85, 8, "whip", { lv: 5, effect: { stun: 0.2 } }),
   sferapsionica: M("Sfera Psionica", "psychic", 100, 85, 8, "orb", { lv: 5, effect: { foe: { atk: -1 }, chance: 0.3 } }),
   schiantotele: M("Schianto Telecinetico", "psychic", 120, 85, 5, "stomp", { lv: 6 }),
-  tempestapsi: M("Tempesta Psichica", "psychic", 120, 80, 5, "curse", { lv: 6, effect: { stun: 0.2 } })
+  tempestapsi: M("Tempesta Psichica", "psychic", 120, 80, 5, "curse", { lv: 6, effect: { stun: 0.2 } }),
+  // mosse speciali delle evoluzioni (petEvo.js): niente grado, non si imparano
+  ...Object.fromEntries(Object.entries(EVO_MOVES).map(([k, [name, type, power, acc, fx, extra]]) => [k, M(name, type, power, acc, extra.uses || 1, fx, { ...extra, sig: true })]))
 };
 var MOVE_GRADES = [1, 4, 8, 14, 22, 32];
 var USES_BY_GRADE = [null, null, 6, 4, 3, 2, 1];
@@ -316,12 +630,20 @@ function usesOf(moveId) {
 }
 var profOf = (level) => 2 + Math.floor((level || 1) / 12);
 var accMod = (acc) => Math.round(((acc ?? 90) - 90) / 5);
-function dndOf(speciesKey, level = 1) {
+function baseOf(speciesKey, evo = 0) {
   const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
+  const x = evo ? EVOLUTIONS[speciesKey] : null;
+  if (!x) return b;
+  const p = x.plus || {};
+  return { hp: b.hp, atk: b.atk * EVO_MULT.atk + (p.atk || 0), def: b.def * EVO_MULT.def + (p.def || 0), spd: b.spd * EVO_MULT.spd + (p.spd || 0) };
+}
+function dndOf(speciesKey, level = 1, evo = 0) {
+  const b = baseOf(speciesKey, evo);
   const prof = profOf(level);
   const atkMod = Math.round((b.atk - 9) / 2);
   const defMod = Math.round((b.def - 10) / 2);
-  const ac = (PET_DEX[speciesKey]?.ac ?? 10 + Math.round((b.def - 8) / 2) + (b.spd >= 14 ? 1 : 0)) + Math.floor((level || 1) / 12);
+  const evoAc = evo && EVOLUTIONS[speciesKey] ? 1 + (EVOLUTIONS[speciesKey].plus?.ac || 0) : 0;
+  const ac = (PET_DEX[speciesKey]?.ac ?? 10 + Math.round((b.def - 8) / 2) + (b.spd >= 14 ? 1 : 0)) + Math.floor((level || 1) / 12) + evoAc;
   return { prof, atkMod, defMod, ac, toHit: prof + atkMod, save: Math.floor(prof / 2) + defMod, dcBase: 12 + prof + atkMod };
 }
 var MAX_MOVES = 4;
@@ -1044,8 +1366,8 @@ function addXp(pet, amount) {
   if (level >= MAX_LEVEL) xp = 0;
   return { ...pet, level, xp, ups };
 }
-function statsAt(speciesKey, level, boost = 1) {
-  const b = PET_DEX[speciesKey]?.base || { hp: 40, atk: 10, def: 10, spd: 10 };
+function statsAt(speciesKey, level, boost = 1, evo = 0) {
+  const b = baseOf(speciesKey, evo);
   const L = clamp(level || 1, 1, MAX_LEVEL);
   const grow = (v, k) => Math.round(v * (1 + (L - 1) * k) * boost);
   return { hp: Math.round(grow(b.hp, 0.08) * 0.8), atk: grow(b.atk, 0.06), def: grow(b.def, 0.06), spd: grow(b.spd, 0.05) };
@@ -1080,16 +1402,35 @@ function enemyMoveset(species, level, r) {
   const hits = known.filter((m) => pow(m)).sort((a, b) => pow(b) - pow(a));
   return status ? [...hits.slice(0, MAX_MOVES - 1), status] : hits.slice(0, MAX_MOVES);
 }
+var evoStage = (pet) => (pet?.evo || 0) >= 1 && EVOLUTIONS[pet?.species] ? 1 : 0;
+var formName = (pet) => evoStage(pet) ? EVOLUTIONS[pet.species].name : PET_DEX[pet?.species]?.name || pet?.species;
+var evoHpOf = (pet) => {
+  if (!evoStage(pet)) return 0;
+  if (Number.isFinite(pet.evoHp)) return pet.evoHp;
+  const [n, d] = evoDiceOf(PET_DEX[pet.species]?.rarity);
+  return Math.round(n * (d + 1) / 2);
+};
 function makeFighter(pet, boost = 1) {
+  const evo = evoStage(pet);
+  const ev = evo ? EVOLUTIONS[pet.species] : null;
   const sp = PET_DEX[pet.species];
-  const st = statsAt(pet.species, pet.level, boost);
-  const d = dndOf(pet.species, pet.level);
+  const st = statsAt(pet.species, pet.level, boost, evo);
+  const d = dndOf(pet.species, pet.level, evo);
   const cf = charmFx(pet) || {};
-  const hp = Math.round(st.hp * (1 + (cf.hp || 0)));
+  const hp = Math.round((st.hp + Math.round(evoHpOf(pet) * boost)) * (1 + (cf.hp || 0)));
+  const skill = ev?.skill || {};
+  const passive = skill.passive ? { id: skill.passive, v: skill.v ?? null, st: skill.st || null, el: skill.el || null } : null;
+  const pp = Object.fromEntries(battleMoves(pet).map((m) => [m, usesOf(m) ?? INFINITE]));
+  if (skill.move && PET_DEX_MOVES[skill.move]) pp[skill.move] = usesOf(skill.move) ?? 1;
+  const critBase = passive?.id === "critico" ? passive.v : 20;
   return {
     id: pet.id,
     species: pet.species,
-    name: pet.nick || sp?.name || pet.species,
+    name: pet.nick || formName(pet) || sp?.name,
+    evo,
+    passive,
+    sig: skill.move || null,
+    blur: passive?.id === "sfocatura",
     type: sp?.type || "neutral",
     level: pet.level || 1,
     maxHp: hp,
@@ -1104,22 +1445,39 @@ function makeFighter(pet, boost = 1) {
     toHit: d.toHit + (cf.hit || 0),
     dcBase: d.dcBase + (cf.hit || 0),
     save: d.save + (cf.save || 0),
-    critOn: cf.crit || 20,
+    critOn: Math.min(cf.crit || 20, critBase),
+    critBase,
     resist: cf.resist || null,
     berry: cf.berry || 0,
     spd0: cf.spd || 0,
     charm: pet.charm?.id || null,
+    charmLeft: pet.charm?.left || 0,
     stages: { atk: 0, def: 0, spd: cf.spd || 0, ac: 0 },
     status: null,
     // { kind: "burn"|"poison", turns }
     stunned: false,
-    pp: Object.fromEntries(battleMoves(pet).map((m) => [m, usesOf(m) ?? INFINITE]))
+    pp
   };
+}
+var hasP = (f, id) => f?.passive?.id === id;
+function fxKey(f) {
+  if (!f) return "";
+  const out = [];
+  Object.entries(f.stages || {}).forEach(([k, v]) => {
+    if (v) out.push(`${k}:${v}`);
+  });
+  if (f.status) out.push(`${f.status.kind}:${f.status.turns}`);
+  if (f.stunned) out.push("stun:1");
+  if (hasP(f, "sfocatura") && f.blur) out.push("blur:1");
+  if (f.tenUsed) out.push("tenUsed:1");
+  if (f.legUsed) out.push("legUsed:1");
+  if (f.berryUsed) out.push("berryUsed:1");
+  return out.join(",");
 }
 var stageMult = (s) => s >= 0 ? 1 + 0.25 * s : 1 / (1 + 0.25 * -s);
 var eff = (f, stat) => f[stat] * stageMult(f.stages[stat] || 0);
 function newBattle(playerPets, enemyPets, { enemyBoost = 1, aiLevel = 0, pvp = false, names = null } = {}) {
-  return {
+  return startEffects({
     pvp,
     names,
     sides: {
@@ -1133,7 +1491,12 @@ function newBattle(playerPets, enemyPets, { enemyBoost = 1, aiLevel = 0, pvp = f
     // "p" | "e" quando finisce
     needSwitch: null
     // "p" se il giocatore deve mandare un nuovo pet
-  };
+  });
+}
+function startEffects(b) {
+  intimidate(b, "p", null);
+  intimidate(b, "e", null);
+  return b;
 }
 var activeOf = (b, side) => b.sides[side].team[b.sides[side].active];
 var other = (side) => side === "p" ? "e" : "p";
@@ -1141,12 +1504,13 @@ var alive = (f) => f && f.hp > 0;
 var benchAlive = (b, side) => b.sides[side].team.map((f, i) => ({ f, i })).filter(({ f, i }) => alive(f) && i !== b.sides[side].active);
 var acOf = (f) => f.ac + (f.stages?.ac || 0);
 function resistOf(f, kind) {
-  const rm = resistMultiplier(f?.species, kind);
+  if (hasP(f, "assorbi") && f.passive.el === kind) return 0;
+  const rm = resistMultiplier(f?.species, kind, f?.evo || 0);
   return f?.resist === kind && rm > 0 ? rm * 0.5 : rm;
 }
 var snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
-  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map((f) => f.status?.kind || (f.stunned ? "stun" : null)) }];
+  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map((f) => f.status?.kind || (f.stunned ? "stun" : null)), fx: s.team.map(fxKey) }];
 }));
 function emit(b, out, ev) {
   out.push({ ...ev, snap: snapOf(b) });
@@ -1160,8 +1524,9 @@ function previewDamage(att, def, moveId) {
 }
 function damageMult(att, def, m) {
   const tm = typeMultiplier(m.type, def.type) * resistOf(def, damageKindOf(m));
-  const stab = m.type === att.type && m.type !== "neutral" ? 1.25 : 1;
-  return stageMult(att.stages.atk || 0) / stageMult(def.stages.def || 0) * tm * stab * (att.dmgBoost || 1);
+  const stab = m.type === att.type && m.type !== "neutral" ? hasP(att, "elemento") ? 1.5 : 1.25 : 1;
+  const rage = hasP(att, "furia") && att.hp > 0 && att.hp <= att.maxHp / 3 ? 1 + att.passive.v : 1;
+  return stageMult(att.stages.atk || 0) / stageMult(def.stages.def || 0) * tm * stab * rage * (att.dmgBoost || 1);
 }
 function hitChance(att, def, moveId) {
   const m = PET_DEX_MOVES[moveId];
@@ -1170,7 +1535,7 @@ function hitChance(att, def, moveId) {
   if (m.power > 0) {
     const need = acOf(def) - (att.toHit + accMod(m.acc));
     const p = clamp((21 - need) / 20, 0.05, 0.95);
-    return att.status?.kind === "poison" ? p * p : p;
+    return att.status?.kind === "poison" || hasP(def, "sfocatura") && def.blur ? p * p : p;
   }
   if (e.foe || e.burn || e.poison || e.stun) return clamp((att.dcBase + accMod(m.acc) - def.save - 1) / 20, 0.05, 0.95);
   return 1;
@@ -1223,6 +1588,26 @@ function giveItemInBattle(b, side, itemId, idx, out) {
     });
     emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: +${u.uses} usi alle sue mosse.` });
   } else if (it.kind === "charm") {
+    const old = f.charm && PET_BAG[f.charm];
+    const of = old?.fx || {};
+    if (old) {
+      if (of.hp) {
+        const sub = Math.round(f.maxHp / (1 + of.hp) * of.hp);
+        f.maxHp -= sub;
+        f.hp = Math.min(f.hp, f.maxHp);
+      }
+      f.ac -= of.ac || 0;
+      f.toHit -= of.hit || 0;
+      f.dcBase -= of.hit || 0;
+      f.save -= of.save || 0;
+      if (of.crit) f.critOn = f.critBase || 20;
+      if (of.resist) f.resist = null;
+      if (of.berry) f.berry = 0;
+      if (of.spd) {
+        f.stages.spd = Math.max(0, (f.stages.spd || 0) - of.spd);
+        f.spd0 = 0;
+      }
+    }
     const cf = it.fx || {};
     if (cf.hp) {
       const add = Math.round(f.maxHp * cf.hp);
@@ -1233,7 +1618,7 @@ function giveItemInBattle(b, side, itemId, idx, out) {
     f.toHit += cf.hit || 0;
     f.dcBase += cf.hit || 0;
     f.save += cf.save || 0;
-    if (cf.crit) f.critOn = cf.crit;
+    if (cf.crit) f.critOn = Math.min(cf.crit, f.critBase || 20);
     if (cf.resist) f.resist = cf.resist;
     if (cf.berry) f.berry = cf.berry;
     if (cf.spd) {
@@ -1241,7 +1626,8 @@ function giveItemInBattle(b, side, itemId, idx, out) {
       f.stages.spd = Math.max(f.stages.spd || 0, cf.spd);
     }
     f.charm = itemId;
-    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: ${it.desc}` });
+    f.charmLeft = it.fights || 0;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}${old ? ` (al posto di ${old.icon} ${old.name})` : ""}: ${it.desc}` });
   }
 }
 function applyMove(b, side, moveId, out) {
@@ -1258,7 +1644,7 @@ function applyMove(b, side, moveId, out) {
   const targetsFoe = alive(foe) && (m.power > 0 || e.foe || e.burn || e.poison || e.stun);
   let roll = null;
   if (targetsFoe && m.power > 0) {
-    const dis = att.status?.kind === "poison";
+    const dis = att.status?.kind === "poison" || hasP(foe, "sfocatura") && foe.blur;
     const r1 = d20(), r2 = dis ? d20() : r1;
     const d = Math.min(r1, r2);
     const mod = att.toHit + accMod(m.acc);
@@ -1268,18 +1654,28 @@ function applyMove(b, side, moveId, out) {
   } else if (targetsFoe) {
     const d = d20();
     const vs = att.dcBase + accMod(m.acc);
-    const saved = d === 20 || d !== 1 && d + foe.save >= vs;
-    roll = { kind: "save", d, mod: foe.save, total: d + foe.save, vs, ok: !saved, who: foe.name };
+    let saved = d === 20 || d !== 1 && d + foe.save >= vs;
+    let legendary = false;
+    if (!saved && hasP(foe, "leggendaria") && !foe.legUsed) {
+      saved = true;
+      legendary = true;
+      foe.legUsed = true;
+    }
+    roll = { kind: "save", d, mod: foe.save, total: d + foe.save, vs, ok: !saved, who: foe.name, legendary };
   }
   emit(b, out, { side, kind: "move", move: moveId, mtype: m.type, fx: m.fx, roll, att: att.name, mname: m.name, text: `${att.name} usa ${m.name}!${rollText(roll)}` });
   if (roll && !roll.ok) {
-    const txt = roll.kind === "save" ? `\u2026${foe.name} resiste all'effetto!` : roll.d === 1 ? "\u20261 naturale: mancato!" : "\u2026ma manca il bersaglio!";
+    const txt = roll.legendary ? `\u2026\u{1F451} Resistenza Leggendaria: ${foe.name} supera il tiro lo stesso!` : roll.kind === "save" ? `\u2026${foe.name} resiste all'effetto!` : roll.d === 1 ? "\u20261 naturale: mancato!" : "\u2026ma manca il bersaglio!";
     emit(b, out, { side, kind: "miss", text: txt });
     return;
   }
   let dealt = 0, dmgTxt = "";
   const rm = resistOf(foe, damageKindOf(m));
-  if (m.power > 0 && alive(foe) && rm === 0) {
+  if (m.power > 0 && alive(foe) && rm === 0 && hasP(foe, "assorbi") && foe.passive.el === damageKindOf(m)) {
+    const h = Math.min(foe.maxHp - foe.hp, Math.round(foe.maxHp * 0.25));
+    foe.hp += h;
+    emit(b, out, { side: other(side), kind: "heal", amount: h, text: h ? `\u{1F300} ${foe.name} assorbe il colpo: +${h} PF!` : `\u{1F300} ${foe.name} assorbe il colpo: nessun danno.` });
+  } else if (m.power > 0 && alive(foe) && rm === 0) {
     emit(b, out, { side, kind: "immune", target: other(side), text: `${foe.name} \xE8 immune: nessun danno!` });
   } else if (m.power > 0 && alive(foe)) {
     const crit = !!roll?.crit;
@@ -1291,8 +1687,21 @@ function applyMove(b, side, moveId, out) {
     const mult = damageMult(att, foe, m);
     dealt = Math.max(1, Math.round(base * mult));
     const multTxt = Math.abs(mult - 1) > 0.01 ? ` \xD7${String(Math.round(mult * 100) / 100).replace(".", ",")}` : "";
-    dmgTxt = ` (\u{1F3B2} ${nd}d${dd.d} ${sign(att.atkMod || 0)} = ${base}${multTxt}, ${DMG_LABEL[damageKindOf(m)].toLowerCase()})`;
+    let armorTxt = "";
+    if (hasP(foe, "corazza")) {
+      const nd2 = Math.max(1, dealt - foe.passive.v);
+      armorTxt = nd2 < dealt ? `, \u{1F6E1}\uFE0F corazza \u2212${dealt - nd2}` : "";
+      dealt = nd2;
+    }
+    dmgTxt = ` (\u{1F3B2} ${nd}d${dd.d} ${sign(att.atkMod || 0)} = ${base}${multTxt}, ${DMG_LABEL[damageKindOf(m)].toLowerCase()}${armorTxt})`;
+    let held = false;
+    if (hasP(foe, "tenacia") && !foe.tenUsed && foe.hp > 1 && dealt >= foe.hp) {
+      dealt = foe.hp - 1;
+      foe.tenUsed = true;
+      held = true;
+    }
     foe.hp = Math.max(0, foe.hp - dealt);
+    if (hasP(foe, "sfocatura")) foe.blur = false;
     const tm = typeMultiplier(m.type, foe.type);
     const note = [
       tm > 1 ? " \xC8 superefficace!" : tm < 1 ? " Non \xE8 molto efficace\u2026" : "",
@@ -1307,6 +1716,18 @@ function applyMove(b, side, moveId, out) {
       target: other(side),
       text: `${foe.name} perde ${dealt} PF${dmgTxt}.${crit ? " Colpo critico: dadi doppi!" : ""}${note}`
     });
+    if (held) emit(b, out, { side: other(side), kind: "info", text: `\u{1FAA8} ${foe.name} stringe i denti e resta in piedi a 1 PF!` });
+    if (hasP(foe, "spine") && alive(att)) {
+      const r = Math.max(1, Math.round(dealt * foe.passive.v));
+      att.hp = Math.max(0, att.hp - r);
+      emit(b, out, { side: other(side), kind: "info", text: `\u{1F335} ${att.name} si fa male su ${foe.name} (\u2212${r} PF).` });
+    }
+    if (hasP(att, "succhiavita") && alive(att) && att.hp < att.maxHp) {
+      const h = Math.min(att.maxHp - att.hp, Math.max(1, Math.round(dealt * att.passive.v)));
+      att.hp += h;
+      emit(b, out, { side, kind: "heal", amount: h, text: `\u{1FA78} ${att.name} si nutre del colpo: +${h} PF.` });
+    }
+    if (hasP(att, "tocco") && alive(foe) && rnd() < att.passive.v) touchEffect(b, side, att, foe, out);
     berryCheck(b, other(side), out);
   }
   const chance = (c) => rnd() < (c ?? 1);
@@ -1327,6 +1748,11 @@ function applyMove(b, side, moveId, out) {
     att.hp = Math.min(att.maxHp, att.hp + h);
     emit(b, out, { side, kind: "heal", amount: att.hp - before, text: att.hp > before ? `${att.name} recupera ${att.hp - before} PF.` : `${att.name} \xE8 gi\xE0 in piena forma.` });
   }
+  if (e.cure && (att.status || att.stunned)) {
+    att.status = null;
+    att.stunned = false;
+    emit(b, out, { side, kind: "info", text: `${att.name} si libera da veleni e scottature.` });
+  }
   if (e.self) {
     Object.entries(e.self).forEach(([k, v]) => {
       att.stages[k] = clamp((att.stages[k] || 0) + v, k === "ac" ? -4 : -3, k === "ac" ? 4 : 3);
@@ -1342,7 +1768,7 @@ function applyMove(b, side, moveId, out) {
     }
     if ((e.burn || e.poison) && !foe.status) {
       const kind = e.burn ? "burn" : "poison";
-      const immuneTo = resistMultiplier(foe.species, kind === "burn" ? "fire" : "poison") === 0;
+      const immuneTo = statusImmune(foe, kind);
       if (immuneTo) {
         if (!m.power) emit(b, out, { side, kind: "miss", text: `\u2026ma ${foe.name} \xE8 immune.` });
       } else if (chance(e.burn || e.poison)) {
@@ -1350,10 +1776,27 @@ function applyMove(b, side, moveId, out) {
         emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} ${kind === "burn" ? "si scotta" : "\xE8 avvelenato"}!` });
       } else if (!m.power) emit(b, out, { side, kind: "miss", text: "\u2026ma non ha effetto." });
     }
-    if (e.stun && !foe.stunned && chance(e.stun)) {
+    if (e.stun && !foe.stunned && !hasP(foe, "purezza") && chance(e.stun)) {
       foe.stunned = true;
       emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} \xE8 intontito!` });
     }
+  }
+}
+function statusImmune(f, kind) {
+  return hasP(f, "purezza") || resistMultiplier(f.species, kind === "burn" ? "fire" : "poison", f.evo || 0) === 0;
+}
+function touchEffect(b, side, att, foe, out) {
+  const st = att.passive.st;
+  if (st === "ac") {
+    foe.stages.ac = clamp((foe.stages.ac || 0) - 1, -4, 4);
+    emit(b, out, { side, kind: "debuff", target: other(side), text: `\u2623\uFE0F ${foe.name}: CA \u22121.` });
+  } else if (st === "stun") {
+    if (foe.stunned || hasP(foe, "purezza")) return;
+    foe.stunned = true;
+    emit(b, out, { side, kind: "status", target: other(side), text: `\u2744\uFE0F ${foe.name} resta di ghiaccio: \xE8 intontito!` });
+  } else if (!foe.status && !statusImmune(foe, st)) {
+    foe.status = { kind: st, turns: st === "burn" ? 3 : 4 };
+    emit(b, out, { side, kind: "status", target: other(side), text: `\u2623\uFE0F ${foe.name} ${st === "burn" ? "si scotta" : "\xE8 avvelenato"}!` });
   }
 }
 var STAT_IT = { atk: "Attacco", def: "Difesa", spd: "Velocit\xE0" };
@@ -1361,7 +1804,14 @@ var statWords = (o) => Object.entries(o).map(([k, v]) => k === "ac" ? `CA ${v > 
 function endOfTurn(b, out) {
   ["p", "e"].forEach((side) => {
     const f = activeOf(b, side);
-    if (!alive(f) || !f.status) return;
+    if (!alive(f)) return;
+    if (hasP(f, "sfocatura")) f.blur = true;
+    if (hasP(f, "rigenera") && f.hp < f.maxHp) {
+      const h = Math.min(f.maxHp - f.hp, Math.max(1, Math.round(f.maxHp * f.passive.v)));
+      f.hp += h;
+      emit(b, out, { side, kind: "heal", amount: h, text: `\u{1F33F} ${f.name} si rigenera: +${h} PF.` });
+    }
+    if (!f.status) return;
     const frac = f.status.kind === "burn" ? 1 / 12 : 1 / 14;
     const d = Math.max(1, Math.round(f.maxHp * frac));
     f.hp = Math.max(0, f.hp - d);
@@ -1384,6 +1834,13 @@ function doSwitch(b, side, idx, out) {
   s.active = idx;
   const name = activeOf(b, side).name;
   emit(b, out, { side, kind: "switch", text: b.names ? `${b.names[side]} manda in campo ${name}!` : side === "p" ? `Vai, ${name}!` : `L'avversario manda in campo ${name}!` });
+  intimidate(b, side, out);
+}
+function intimidate(b, side, out) {
+  const f = activeOf(b, side), foe = activeOf(b, other(side));
+  if (!hasP(f, "intimidire") || !alive(f) || !alive(foe)) return;
+  foe.stages.atk = clamp((foe.stages.atk || 0) - 1, -3, 3);
+  if (out) emit(b, out, { side, kind: "debuff", target: other(side), text: `\u{1F620} ${foe.name} si spaventa davanti a ${f.name}: Attacco \u2193.` });
 }
 function checkFaints(b, out) {
   ["e", "p"].forEach((side) => {
@@ -1549,7 +2006,8 @@ function towerFloor(floor, week = towerWeek()) {
     const k = pool[(n * 3 + i) % pool.length];
     const lead = Math.round(1 + (n - 1) * 0.55);
     const level = clamp(lead + (i === size - 1 && n % 5 === 0 ? 1 : 0) - (size - 1 - i), 1, MAX_LEVEL);
-    team.push({ id: `tw${n}_${i}`, species: k, level, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
+    const evo = EVOLUTIONS[k] && level >= evoLevelOf(PET_DEX[k].rarity) ? 1 : 0;
+    team.push({ id: `tw${n}_${i}`, species: k, level, evo, moveset: enemyMoveset(k, level, seeded(n * 104729 + i * 31 + wh)) });
   }
   const aiLevel = n < 4 ? 0 : n < 10 ? 1 : n < 20 ? 2 : 3;
   const enemyBoost = n <= 3 ? 0.65 + (n - 1) * 0.05 : 1 + Math.floor((n - 1) / 10) * 0.06;
@@ -1719,6 +2177,25 @@ function applyGrowthItem(den, data, petId, id) {
     return { out: { level: p.level, ups: n.ups } };
   }
   throw new Error("Oggetto non adatto.");
+}
+function evolvePet(den, data, petId) {
+  const p = petOf(den, petId);
+  const ev = EVOLUTIONS[p.species];
+  if (!ev) throw new Error("Questo pet non ha ancora un'evoluzione.");
+  if ((p.evo || 0) >= 1) throw new Error("\xC8 gi\xE0 evoluto.");
+  const rar = PET_DEX[p.species]?.rarity;
+  const need = evoLevelOf(rar);
+  if ((p.level || 1) < need) throw new Error(`Si evolve al livello ${need}.`);
+  const [n, d] = evoDiceOf(rar);
+  const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * d));
+  const hp = rolls.reduce((a, x) => a + x, 0);
+  p.evo = 1;
+  p.evoHp = hp;
+  p.evoRolls = rolls;
+  p.evoAt = p.level || 1;
+  p.evoTs = Date.now();
+  addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls });
+  return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp } };
 }
 function giveCharm(den, data, petId, id) {
   const it = PET_BAG[id];
@@ -1932,7 +2409,7 @@ function validAction(b, a, bag = {}) {
     if (!it || !usableInBattle(a.item) || !(bag[a.item] > 0) || !Number.isInteger(a.index) || !t) return false;
     if (it.use?.revive) return t.hp <= 0;
     if (t.hp <= 0) return false;
-    if (it.kind === "charm") return !t.charm;
+    if (it.kind === "charm") return true;
     return true;
   }
   if (a?.kind === "switch") {
@@ -1985,6 +2462,7 @@ var OPS = {
   buyItem: { run: buyItem },
   giveItems: { run: giveItems, master: true },
   applyGrowthItem: { run: applyGrowthItem },
+  evolvePet: { run: evolvePet },
   giveCharm: { run: giveCharm },
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },
@@ -2010,6 +2488,7 @@ var OPS = {
   claimGifts,
   countOf,
   denOf,
+  evolvePet,
   giveCharm,
   giveItems,
   givePet,

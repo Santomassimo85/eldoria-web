@@ -21,16 +21,19 @@ import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
   eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
-  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod,
+  MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod, resOf,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, LOSS_XP, withSeed, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, LOSS_XP, withSeed, petStats, formName, canEvolve, evoStage, parseFx, fxKey, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
   towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
   learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
+  evolvePet, evoArtKey, petEvoArtPrompt,
 } from "../utils/petDen";
+import { EVOLUTIONS, EVO_PASSIVES, EVO_LEVEL, evoLevelOf, evoDiceOf } from "../data/petEvo";
+import { playDiceRoll } from "../components/diceSound";
 import {
   createChallenge, acceptChallenge, declineChallenge, cancelChallenge, submitAction, forfeit, pendingSide, sidesOf, flipBattle, flipEvent,
 } from "../utils/petPvp";
@@ -45,18 +48,23 @@ import "./PetDen.css";
 const LUNGE_FX = { stomp: "stomp", bite: "lunge", claw: "lunge", whip: "lunge", sting: "lunge", dash: "dash" };
 
 /* ── pezzi comuni ─────────────────────────────────────────── */
-export function PetSprite({ species, art, flip = false, size = 96, fainted = false, hit = false }) {
+// evo = forma evoluta (2026-11-01): pixel art in pet_dex/{specie}__evo1, più grande;
+// finché non è disegnata si usa quella del cucciolo con un alone.
+export function PetSprite({ species, art, flip = false, size = 96, fainted = false, hit = false, evo = 0 }) {
   const sp = PET_DEX[species];
-  const img = art?.[species]?.image;
+  const ev = evo ? EVOLUTIONS[species] : null;
+  const evoImg = ev ? art?.[evoArtKey(species)]?.image : null;
+  const img = evoImg || art?.[species]?.image;
+  const name = ev?.name || sp?.name || species;
   return (
     <span
-      className={`pd-sprite${flip ? " is-flip" : ""}${fainted ? " is-down" : ""}${hit ? " is-hit" : ""}`}
-      style={{ "--pd-size": `${size}px` }}
+      className={`pd-sprite${flip ? " is-flip" : ""}${fainted ? " is-down" : ""}${hit ? " is-hit" : ""}${ev ? " is-evo" : ""}${ev && !evoImg ? " is-evo-raw" : ""}`}
+      style={{ "--pd-size": `${ev ? Math.round(size * 1.18) : size}px` }}
     >
       <span className="pd-breathe">
         {img
-          ? <img src={img} alt={sp?.name || species} draggable="false" />
-          : <span className="pd-emoji" aria-label={sp?.name}>{sp?.icon || "❔"}</span>}
+          ? <img src={img} alt={name} draggable="false" />
+          : <span className="pd-emoji" aria-label={name}>{ev?.icon || sp?.icon || "❔"}</span>}
       </span>
     </span>
   );
@@ -346,15 +354,15 @@ function Hub({ den, art, points, master, go, matches = [], uid }) {
       <div className="pd-hub-team">
         {team.map((p) => (
           <div key={p.id} className="pd-hub-pet">
-            <PetSprite species={p.species} art={art} size={88} />
-            <span>{p.nick || PET_DEX[p.species].name}{p.id === den.mascot ? " ⭐" : ""}</span>
+            <PetSprite species={p.species} evo={evoStage(p)} art={art} size={88} />
+            <span>{p.nick || formName(p)}{p.id === den.mascot ? " ⭐" : ""}</span>
             <small>Lv {p.level}</small>
           </div>
         ))}
         {mascot && !den.team.includes(mascot.id) && (
           <div className="pd-hub-pet is-mascot">
-            <PetSprite species={mascot.species} art={art} size={70} />
-            <span>{mascot.nick || PET_DEX[mascot.species].name} ⭐</span>
+            <PetSprite species={mascot.species} evo={evoStage(mascot)} art={art} size={70} />
+            <span>{mascot.nick || formName(mascot)} ⭐</span>
             <small>mascotte</small>
           </div>
         )}
@@ -373,8 +381,8 @@ function Hub({ den, art, points, master, go, matches = [], uid }) {
 }
 
 /* ── resistenze D&D ───────────────────────────────────────── */
-function ResLine({ species, compact = false }) {
-  const r = PET_DEX[species]?.res;
+function ResLine({ species, compact = false, evo = 0 }) {
+  const r = resOf(species, evo);
   const rows = [
     ["Immune", r?.immune, "imm"], ["Resiste", r?.resist, "res"], ["Vulnerabile", r?.vuln, "vul"],
   ].filter(([, l]) => l?.length);
@@ -387,6 +395,178 @@ function ResLine({ species, compact = false }) {
         </span>
       ))}
     </p>
+  );
+}
+
+/* ── evoluzioni (2026-11-01) ──────────────────────────────── */
+// Abilità speciale della forma evoluta, in una riga.
+function skillLine(species) {
+  const s = EVOLUTIONS[species]?.skill || {};
+  if (s.passive) {
+    const p = EVO_PASSIVES[s.passive];
+    return p ? `${p.icon} ${p.name} (passiva): ${p.text(s.v, s.st, s.el)}` : "";
+  }
+  const mv = PET_DEX_MOVES[s.move];
+  if (!mv) return "";
+  const n = usesOf(s.move) || 1;
+  return `✦ ${mv.name} (mossa speciale, ${TYPE_ICON[mv.type]} ${mv.power ? `${mv.dice} ` : ""}${n} ${n === 1 ? "uso" : "usi"} per lotta, in più alle 4 mosse)`;
+}
+const resWords = (r) => [
+  r?.immune?.length ? `immune a ${r.immune.map((k) => DMG_LABEL[k].toLowerCase()).join(", ")}` : "",
+  r?.resist?.length ? `resiste a ${r.resist.map((k) => DMG_LABEL[k].toLowerCase()).join(", ")}` : "",
+].filter(Boolean).join(" · ");
+
+// Riquadro nei Dettagli del pet: cosa diventa, quando, cosa prende.
+function EvoBox({ pet, art, onEvolve }) {
+  const ev = EVOLUTIONS[pet.species];
+  if (!ev) return null;
+  const evo = evoStage(pet);
+  const need = evoLevelOf(PET_DEX[pet.species].rarity);
+  const [n, d] = evoDiceOf(PET_DEX[pet.species].rarity);
+  return (
+    <div className={`pd-evobox${evo ? " is-done" : ""}`}>
+      <PetSprite species={pet.species} evo={1} art={art} size={60} />
+      <div>
+        <b>{evo ? `✨ Forma evoluta: ${ev.name}` : `✨ Evoluzione: ${ev.name} (Lv ${need})`}</b>
+        <small>{skillLine(pet.species)}</small>
+        {ev.res && <small>Nuove difese: {resWords(ev.res)}</small>}
+        <small>{evo
+          ? `Evoluto al Lv ${pet.evoAt || "?"}: +${pet.evoHp ?? "?"} PF${pet.evoRolls ? ` (🎲 ${pet.evoRolls.join(" + ")})` : ""}, ATK/DIF +12%, VEL +8%, CA +${1 + (ev.plus?.ac || 0)}.`
+          : `Prende ATK/DIF +12%, VEL +8%, CA +${1 + (ev.plus?.ac || 0)} e ${n}d${d} PF in più (si tirano i dadi).`}</small>
+        {!evo && canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={onEvolve}>✨ Evolvi ora</button>}
+        {!evo && !canEvolve(pet) && <small>Manca{need - pet.level === 1 ? "" : "no"} {need - pet.level} livell{need - pet.level === 1 ? "o" : "i"}.</small>}
+      </div>
+    </div>
+  );
+}
+
+/* Evoluzione: luce → il pet cresce → dadi dei PF (li ha già tirati il
+   server, qui rotolano e si fermano uno alla volta) → la forma nuova. */
+function EvolveModal({ evo, art, onPhase, onClose }) {
+  const { pet, phase, result } = evo;
+  const ev = EVOLUTIONS[pet.species];
+  const [faces, setFaces] = useState([]);
+  const [stopped, setStopped] = useState(0);
+  const rolls = useMemo(() => result?.rolls || [], [result]);
+  const die = Number(String(result?.dice || "d8").split("d")[1]) || 8;
+  useEffect(() => {
+    if (phase !== "dice" || !rolls.length) return undefined;
+    const total = 900 + rolls.length * 450;
+    playDiceRoll(total, rolls.length);
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const el = Date.now() - t0;
+      const done = rolls.filter((_, i) => el >= 900 + i * 450).length;
+      setStopped(done);
+      setFaces(rolls.map((r, i) => (i < done ? r : 1 + Math.floor(Math.random() * die))));
+      if (done >= rolls.length) { clearInterval(iv); setTimeout(() => onPhase("reveal"), 900); }
+    }, 70);
+    return () => clearInterval(iv);
+  }, [phase, rolls, die]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = petStats(pet);
+  const after = petStats({ ...pet, evo: 1, evoHp: result?.hp || 0 });
+  const rows = [["PF", "hp"], ["ATK", "atk"], ["DIF", "def"], ["VEL", "spd"], ["CA", "ac"]];
+  return (
+    <div className="pd-hatch pd-evolve" role="dialog" aria-label="Evoluzione">
+      <div className={`pd-hatch-box${phase === "reveal" ? " is-reveal" : ""}`} style={{ "--pd-rc": TYPE_COLORS[PET_DEX[pet.species].type][1] }}>
+        {phase === "error" ? (
+          <>
+            <p>{evo.error}</p>
+            <button type="button" className="pd-btn" onClick={onClose}>Chiudi</button>
+          </>
+        ) : phase === "glow" ? (
+          <>
+            <div className="pd-hatch-stage pd-evo-stage">
+              <span className="pd-evo-glow" />
+              <span className="pd-evo-grow"><PetSprite species={pet.species} art={art} size={130} /></span>
+            </div>
+            <p className="pd-hatch-txt">{pet.nick || formName(pet)} si sta evolvendo…</p>
+          </>
+        ) : phase === "dice" ? (
+          <>
+            <div className="pd-hatch-stage pd-evo-stage">
+              <span className="pd-hatch-rays" />
+              <PetSprite species={pet.species} evo={1} art={art} size={150} />
+            </div>
+            <p className="pd-hatch-txt">Punti Ferita in più: {result?.dice}</p>
+            <div className="pd-evodice">
+              {rolls.map((r, i) => (
+                <span key={i} className={`pd-evodie${i < stopped ? " is-stop" : ""}`} data-max={i < stopped && r === die ? "1" : undefined}>{faces[i] ?? "?"}</span>
+              ))}
+            </div>
+            <p className="pd-evo-sum">{stopped >= rolls.length ? `= +${result?.hp} PF` : "🎲 …"}</p>
+          </>
+        ) : (
+          <>
+            <div className="pd-hatch-stage pd-evo-stage">
+              <span className="pd-hatch-rays" />
+              <PetSprite species={pet.species} evo={1} art={art} size={150} />
+            </div>
+            <p className="pd-hatch-rar">Evoluzione</p>
+            <h2>{ev.name}</h2>
+            <p className="pd-fine">{ev.desc}</p>
+            <p className="pd-evo-sum">🎲 {result.dice}: {rolls.join(" + ")} = +{result.hp} PF</p>
+            <dl className="pd-stats pd-evo-stats">
+              {rows.map(([l, k]) => (
+                <div key={k}><dt>{l}</dt><dd>{before[k]} → <b>{after[k]}</b></dd></div>
+              ))}
+            </dl>
+            <p className="pd-evo-skill">{skillLine(pet.species)}</p>
+            {ev.res && <p className="pd-fine">Nuove difese: {resWords(ev.res)}</p>}
+            <button type="button" className="pd-btn pd-btn--main" onClick={onClose}>Fantastico!</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── icone di bonus e malus in lotta (2026-11-01) ──────────── */
+const STAGE_FX = { atk: ["⚔️", "Attacco"], def: ["🛡", "Difesa"], spd: ["💨", "Velocità"], ac: ["🧱", "CA"] };
+function fxList(f, fx) {
+  const L = [];
+  Object.entries(STAGE_FX).forEach(([k, [icon, name]]) => {
+    const v = fx[k];
+    if (!v) return;
+    const isAc = k === "ac";
+    const val = isAc ? `${v > 0 ? "+" : "−"}${Math.abs(v)}` : (v > 0 ? "↑" : "↓").repeat(Math.abs(v));
+    L.push({ k, icon, val, good: v > 0, dur: "↺", text: `${name} ${val}${isAc ? "" : ` (${v > 0 ? "+" : "−"}${Math.abs(v) * 25}%)`}: dura finché resta in campo (si azzera col cambio).` });
+  });
+  if (fx.burn) L.push({ k: "burn", icon: "🔥", good: false, dur: `${fx.burn}t`, text: `Scottato: perde 1/12 dei PF a fine turno, ancora ${fx.burn} turn${fx.burn === 1 ? "o" : "i"}.` });
+  if (fx.poison) L.push({ k: "poison", icon: "☠", good: false, dur: `${fx.poison}t`, text: `Avvelenato: svantaggio ai tiri per colpire e 1/14 dei PF a fine turno, ancora ${fx.poison} turn${fx.poison === 1 ? "o" : "i"}.` });
+  if (fx.stun) L.push({ k: "stun", icon: "💫", good: false, dur: "1t", text: "Intontito: salta la prossima azione." });
+  if (fx.blur) L.push({ k: "blur", icon: "🌫️", good: true, dur: "⟳", text: "Sfocatura: chi lo attacca tira con svantaggio, finché non lo colpisce (torna a fine turno)." });
+  if (f.charm && PET_BAG[f.charm]) {
+    const it = PET_BAG[f.charm];
+    L.push({ k: "charm", icon: it.icon, good: true, dur: "lotta", text: `${it.name}: ${it.desc} Dura tutta la lotta${f.charmLeft ? ` (lo tiene ancora per ${f.charmLeft} lott${f.charmLeft === 1 ? "a" : "e"}, questa compresa)` : ""}.` });
+  }
+  if (f.berry && !fx.berryUsed) L.push({ k: "berry", icon: "🍒", good: true, dur: "1×", text: "Bacca Curativa: la mangia da solo sotto metà PF, una volta." });
+  if (f.passive && EVO_PASSIVES[f.passive.id]) {
+    const p = EVO_PASSIVES[f.passive.id];
+    const spent = (f.passive.id === "tenacia" && fx.tenUsed) || (f.passive.id === "leggendaria" && fx.legUsed);
+    const once = ["tenacia", "leggendaria"].includes(f.passive.id);
+    L.push({ k: "passive", icon: p.icon, good: true, spent, dur: spent ? "usata" : once ? "1×" : "∞", text: `${p.name} (evoluzione): ${p.text(f.passive.v, f.passive.st, f.passive.el)}${spent ? " Già usata in questa lotta." : ""}` });
+  }
+  return L;
+}
+function FxIcons({ f, fx, open, onToggle }) {
+  const L = fxList(f, fx);
+  if (!L.length) return null;
+  return (
+    <div className="pd-fxbar">
+      <button type="button" className="pd-fxrow" onClick={onToggle} aria-expanded={open} title="Bonus e malus attivi: tocca per i dettagli">
+        {L.map((x) => (
+          <span key={x.k} className={`pd-fxi ${x.good ? "is-good" : "is-bad"}${x.spent ? " is-spent" : ""}`}>
+            <i aria-hidden="true">{x.icon}</i>{x.val && <b>{x.val}</b>}<small>{x.dur}</small>
+          </span>
+        ))}
+      </button>
+      {open && (
+        <ul className="pd-fxlist">
+          {L.map((x) => <li key={x.k} className={x.good ? "is-good" : "is-bad"}><i aria-hidden="true">{x.icon}</i> {x.text}</li>)}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -470,6 +650,22 @@ function Manual() {
         </ul>
       </section>
       <section>
+        <h3>Evoluzioni</h3>
+        <ul>
+          <li>Ogni pet ha un'evoluzione: una forma adulta, più grande e più seria. Si sblocca al <b>Lv {EVO_LEVEL.common}</b> (comuni e iniziali), <b>{EVO_LEVEL.rare}</b> (rari), <b>{EVO_LEVEL.epic}</b> (epici), <b>{EVO_LEVEL.legendary}</b> (leggendari). Decidi tu quando: Squadra → "✨ Può evolvere". Non si torna indietro.</li>
+          <li>Prende ATK e DIF +12%, VEL +8%, CA +1 e Punti Ferita in più tirati coi dadi: {["common", "rare", "epic", "legendary"].map((r) => `${evoDiceOf(r).join("d")} ${RARITY[r].label.toLowerCase()}`).join(", ")}. Il tiro lo fa il server e resta per sempre.</li>
+          <li>Alcune forme prendono resistenze o immunità nuove, e ognuna ha un'<b>abilità speciale</b>: una mossa in più (✦, pochi usi per lotta, si aggiunge alle {MAX_MOVES}) o una passiva (rigenerazione, spine, furia, tenacia, sfocatura, corazza…). La vedi nel Pet Dex e nei Dettagli.</li>
+          <li>Anche i nemici della Torre si evolvono quando arrivano al loro livello.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Bonus e malus in lotta</h3>
+        <ul>
+          <li>Sotto il nome del pet in campo ci sono le icone degli effetti attivi: verdi i bonus, rosse i malus. Toccale per leggere cosa fanno e quanto durano.</li>
+          <li>↺ = gradi di Attacco/Difesa/Velocità/CA: durano finché il pet resta in campo. 3t = turni rimasti (scottatura, veleno). 1t = intontito, salta la prossima azione. "lotta" = amuleto, vale tutta la lotta. ∞ = passiva dell'evoluzione, 1× = vale una volta.</li>
+        </ul>
+      </section>
+      <section>
         <h3>Elementi</h3>
         <p>Un attacco forte contro l'elemento del bersaglio fa una volta e mezza i danni; al contrario fa la metà.</p>
         <table className="pd-chart">
@@ -518,7 +714,7 @@ function Manual() {
           <li>I dadi di un piano sono fissati: ritirarsi e ricominciare dà gli stessi tiri. Cambiano solo dopo una sconfitta. L'esito lo ricontrolla il server.</li>
           <li>È infinita e in una settimana uguale per tutti: il piano 3 è lo stesso piano 3 per chiunque. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
           <li><b>Ogni domenica alle 23:59</b> la torre si azzera per tutti e cambiano i mostri dei piani. In più puoi <b>ricominciare dal piano 1 una volta al giorno</b>: i piani già superati in settimana danno solo PE, niente punti né premi.</li>
-          <li><b>In lotta</b> col tasto 🎒 Oggetti dai al pet che scegli una Pozione, un Antidoto, un Elisir, una Piuma della Fenice o un amuleto (che vale subito e il pet si tiene). Consuma il turno.</li>
+          <li><b>In lotta</b> col tasto 🎒 Oggetti dai al pet che scegli, anche quello in campo, una Pozione, un Antidoto, un Elisir, una Piuma della Fenice o un amuleto (che vale subito e il pet si tiene: se ne aveva già uno, lo sostituisce). Consuma il turno.</li>
           <li>Premi: ogni 5 piani un amuleto, ogni 10 una pergamena, ogni 25 una Caramella Rara (e una piccola probabilità a ogni piano). La classifica della settimana mostra fin dove è arrivato ognuno.</li>
         </ul>
       </section>
@@ -626,6 +822,7 @@ function logTxt(e) {
     case "item_buy": return `🎒 Compra ${itName(e.item)} (−${e.cost} pt)`;
     case "item_give": return `🎁 Il Master gli dà ${(e.items || []).length} oggetti`;
     case "item_use": return `✨ Usa ${itName(e.item)} su ${spName(e.species)} → Lv ${e.level}`;
+    case "evolve": return `✨ ${spName(e.species)} si evolve in ${EVOLUTIONS[e.species]?.name || "?"} (Lv ${e.level}) · +${e.hp} PF${e.rolls ? ` (${e.rolls.join(" + ")})` : ""}`;
     case "scroll": return `📜 ${itName(e.item)} a ${spName(e.species)} (dimentica ${PET_DEX_MOVES[e.forget]?.name || e.forget})`;
     default: return e.k;
   }
@@ -650,9 +847,9 @@ function TamerDetail({ c, d, art }) {
           const much = winsXp > 0 && tot > winsXp * 1.6;
           return (
             <li key={p.id}>
-              <PetSprite species={p.species} art={art} size={52} />
+              <PetSprite species={p.species} evo={evoStage(p)} art={art} size={52} />
               <div>
-                <b>{p.nick || spName(p.species)}</b>{p.nick ? <small> ({spName(p.species)})</small> : null}
+                <b>{p.nick || formName(p)}</b>{p.nick ? <small> ({formName(p)})</small> : null}{evoStage(p) ? <em className="pd-tamer-tag">✨ evoluto{p.evoRolls ? ` · +${p.evoHp} PF (${p.evoRolls.join("+")})` : ""}</em> : null}
                 {d.team.includes(p.id) && <em className="pd-tamer-tag">in squadra</em>}
                 {d.mascot === p.id && <em className="pd-tamer-tag">⭐ mascotte</em>}
                 <small>Lv {p.level} · {tot} PE in tutto{much ? ` ⚠ più di quanti ne danno i piani vinti (${winsXp})` : ""}</small>
@@ -721,27 +918,29 @@ function StarterPick({ art, onPick }) {
 }
 
 /* ── squadra e collezione ─────────────────────────────────── */
-function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset }) {
+function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset, onEvolve }) {
   const sp = PET_DEX[pet.species];
-  const st = statsAt(pet.species, pet.level);
+  const st = petStats(pet);
+  const evo = evoStage(pet);
   const [open, setOpen] = useState(false);
   const [nick, setNick] = useState(pet.nick || "");
   return (
     <article className={`pd-card${inTeam ? " is-team" : ""}${isMascot ? " is-mascot" : ""}`}>
       {inTeam && <span className="pd-slot">#{slot + 1}</span>}
       {isMascot && <span className="pd-mascot-badge" title="Mascotte">⭐</span>}
-      <PetSprite species={pet.species} art={art} size={84} />
+      <PetSprite species={pet.species} evo={evo} art={art} size={84} />
       <div className="pd-card-body">
-        <h3>{pet.nick || sp.name} <small>Lv {pet.level}</small>
+        <h3>{pet.nick || formName(pet)} <small>Lv {pet.level}</small>{evo ? <span className="pd-evotag" title="Forma evoluta">✨ evoluto</span> : null}
           {gradeOfLevel(pet.level) > Object.keys(pet.learned || {}).filter((k) => k <= gradeOfLevel(pet.level)).length && <span className="pd-newmove" title="Ha un grado di mosse da scegliere (Dettagli)">✨ mossa nuova</span>}
         </h3>
         <div className="pd-chips"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
-        <ResLine species={pet.species} compact />
+        <ResLine species={pet.species} evo={evo} compact />
+        {canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={onEvolve}>✨ Può evolvere in {EVOLUTIONS[pet.species].name}!</button>}
         <div className="pd-xp"><Bar value={pet.xp} max={xpToNext(pet.level)} kind="xp" /><small>{pet.xp}/{xpToNext(pet.level)} PE</small></div>
         <dl className="pd-stats pd-stats--row">
           <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
           <div><dt>DIF</dt><dd>{st.def}</dd></div><div><dt>VEL</dt><dd>{st.spd}</dd></div>
-          <div><dt>CA</dt><dd>{dndOf(pet.species, pet.level).ac}</dd></div><div><dt>Colpire</dt><dd>+{dndOf(pet.species, pet.level).toHit}</dd></div>
+          <div><dt>CA</dt><dd>{st.ac}</dd></div><div><dt>Colpire</dt><dd>+{st.toHit}</dd></div>
         </dl>
         {pet.charm && PET_BAG[pet.charm.id] && <p className="pd-holding">{PET_BAG[pet.charm.id].icon} Tiene {PET_BAG[pet.charm.id].name} · {pet.charm.left} lotte</p>}
         <div className="pd-card-actions">
@@ -755,8 +954,9 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         </div>
         {open && (
           <div className="pd-card-more">
-            <p className="pd-fine">{sp.desc}</p>
-            <ResLine species={pet.species} />
+            <p className="pd-fine">{evo ? EVOLUTIONS[pet.species].desc : sp.desc}</p>
+            <ResLine species={pet.species} evo={evo} />
+            <EvoBox pet={pet} art={art} onEvolve={onEvolve} />
             <MovePanel pet={pet} onLearn={onLearn} onMoveset={onMoveset} />
             <div className="pd-rename">
               <input value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
@@ -771,25 +971,36 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
 }
 
 function TeamTab({ uid, den, art, run }) {
+  const [evoing, setEvoing] = useState(null);
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
+  const evolve = (p) => {
+    if (!window.confirm(`Far evolvere ${p.nick || formName(p)} in ${EVOLUTIONS[p.species].name}? Non si torna indietro.`)) return;
+    unlockAudio();
+    const t0 = Date.now();
+    setEvoing({ pet: p, phase: "glow" });
+    evolvePet(uid, p.id)
+      .then((r) => setTimeout(() => setEvoing({ pet: p, phase: "dice", result: r }), Math.max(0, 2200 - (Date.now() - t0))))
+      .catch((e) => setEvoing({ pet: p, phase: "error", error: e.message || String(e) }));
+  };
   const rest = den.pets.filter((p) => !den.team.includes(p.id));
   const toggle = (p) => {
     const next = den.team.includes(p.id) ? den.team.filter((x) => x !== p.id) : [...den.team, p.id];
     if (!next.length) return run(async () => { throw new Error("Serve almeno un pet in squadra."); });
     return run(() => setTeam(uid, next));
   };
-  const lead = (p) => run(() => setTeam(uid, [p.id, ...den.team.filter((x) => x !== p.id)]), `${p.nick || PET_DEX[p.species].name} entra in campo per primo.`);
+  const lead = (p) => run(() => setTeam(uid, [p.id, ...den.team.filter((x) => x !== p.id)]), `${p.nick || formName(p)} entra in campo per primo.`);
   const card = (p, i) => (
     <PetCard
       key={p.id} pet={p} art={art} inTeam={den.team.includes(p.id)} slot={i}
       canAdd={den.team.length < MAX_TEAM}
       onToggle={() => toggle(p)}
       onRename={(n) => run(() => renamePet(uid, p.id, n), "Nome cambiato.")}
-      onRelease={() => window.confirm(`Liberare ${p.nick || PET_DEX[p.species].name}? Non torna più.`) && run(() => releasePet(uid, p.id), "Liberato.")}
-      onLearn={(g, m) => run(() => learnMove(uid, p.id, g, m), `${p.nick || PET_DEX[p.species].name} impara ${PET_DEX_MOVES[m].name}!`)}
+      onRelease={() => window.confirm(`Liberare ${p.nick || formName(p)}? Non torna più.`) && run(() => releasePet(uid, p.id), "Liberato.")}
+      onLearn={(g, m) => run(() => learnMove(uid, p.id, g, m), `${p.nick || formName(p)} impara ${PET_DEX_MOVES[m].name}!`)}
       onMoveset={(list) => run(() => setMoveset(uid, p.id, list))}
+      onEvolve={() => evolve(p)}
       isMascot={den.mascot === p.id}
-      onMascot={() => run(() => setMascot(uid, den.mascot === p.id ? null : p.id), den.mascot === p.id ? "Niente più mascotte." : `${p.nick || PET_DEX[p.species].name} è la tua mascotte!`)}
+      onMascot={() => run(() => setMascot(uid, den.mascot === p.id ? null : p.id), den.mascot === p.id ? "Niente più mascotte." : `${p.nick || formName(p)} è la tua mascotte!`)}
     />
   );
   return (
@@ -810,6 +1021,7 @@ function TeamTab({ uid, den, art, run }) {
       <h2 className="pd-h2">Collezione <small>{den.pets.length} pet</small></h2>
       {rest.length ? <div className="pd-grid">{rest.map((p) => card(p, -1))}</div>
         : <p className="pd-empty">Tutti i tuoi pet sono in squadra. Altri escono dalle uova.</p>}
+      {evoing && <EvolveModal evo={evoing} art={art} onPhase={(phase) => setEvoing((e) => ({ ...e, phase }))} onClose={() => setEvoing(null)} />}
     </div>
   );
 }
@@ -1012,6 +1224,12 @@ function DexTab({ den, art }) {
               <div className="pd-chips pd-chips--center"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
               <p>{sp.desc}</p>
               <ResLine species={k} />
+              {EVOLUTIONS[k] && (
+                <div className="pd-dex-evo">
+                  <PetSprite species={k} evo={1} art={art} size={54} />
+                  <p><b>✨ Lv {evoLevelOf(sp.rarity)} → {EVOLUTIONS[k].name}</b><small>{skillLine(k)}</small></p>
+                </div>
+              )}
               <p className="pd-dex-own">{n ? `Ne hai ${n}/${MAX_PER_SPECIES}` : "Non ancora tuo"}</p>
               <p className="pd-dex-egg">Esce da: {EGGS[sp.type]?.name} o Prismatico{sp.rarity === "starter" ? " (o come iniziale)" : ""}</p>
             </article>
@@ -1077,7 +1295,7 @@ function TowerTab({ uid, den, art, run, onFight }) {
               <small>{AI_LABEL[u.aiLevel]}{u.boss ? " · 👑" : ""}</small>
             </div>
           ))}
-          <p className="pd-fine">I tuoi in squadra: {team.map((p) => `${p.nick || PET_DEX[p.species].name} Lv ${p.level}`).join(", ") || "nessuno"}</p>
+          <p className="pd-fine">I tuoi in squadra: {team.map((p) => `${p.nick || formName(p)} Lv ${p.level}`).join(", ") || "nessuno"}</p>
           <TowerBoard uid={uid} />
         </div>
       </div>
@@ -1152,7 +1370,7 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
           </div>
         </>
       )}
-      <h2 className="pd-h2">Lancia una sfida <small>la tua squadra: {team.map((p) => `${p.nick || PET_DEX[p.species].name} Lv ${p.level}`).join(", ") || "vuota"}</small></h2>
+      <h2 className="pd-h2">Lancia una sfida <small>la tua squadra: {team.map((p) => `${p.nick || formName(p)} Lv ${p.level}`).join(", ") || "vuota"}</small></h2>
       {players === null ? <p className="pd-loading">Cerco i domatori…</p> : !players.length ? <p className="pd-empty">Nessun altro domatore ha ancora una squadra.</p> : (
         <div className="pd-mlist">
           {players.map((c) => {
@@ -1215,7 +1433,7 @@ function BagUse({ id, den, onDone, run, uid }) {
     <div className="pd-baguse">
       <label>Su quale pet?
         <select value={petId} onChange={(e) => { setPetId(e.target.value); setForget(""); }}>
-          {den.pets.map((p) => <option key={p.id} value={p.id}>{p.nick || PET_DEX[p.species].name} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
+          {den.pets.map((p) => <option key={p.id} value={p.id}>{p.nick || formName(p)} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
         </select>
       </label>
       {it.kind === "scroll" && pet && (
@@ -1278,7 +1496,7 @@ function BagTab({ uid, den, points, run }) {
         <>
           <h2 className="pd-h2">Amuleti in uso</h2>
           <ul className="pd-ledger">
-            {holders.map((p) => <li key={p.id}><span>{PET_BAG[p.charm.id].icon} {p.nick || PET_DEX[p.species].name} tiene {PET_BAG[p.charm.id].name}</span><b>{p.charm.left}</b><small>lotte</small></li>)}
+            {holders.map((p) => <li key={p.id}><span>{PET_BAG[p.charm.id].icon} {p.nick || formName(p)} tiene {PET_BAG[p.charm.id].name}</span><b>{p.charm.left}</b><small>lotte</small></li>)}
           </ul>
         </>
       )}
@@ -1444,6 +1662,7 @@ function AudioToggles() {
 function BattleScreen({ battle, player, art, top, children, labels = {} }) {
   const { shown, seq, busy, history } = player;
   const [histOpen, setHistOpen] = useState(false);
+  const [fxOpen, setFxOpen] = useState(null);
   const fieldRef = useRef(null);
   const spotP = useRef(null), spotE = useRef(null);
   const snap = busy ? (shown?.snap || null) : null;
@@ -1453,7 +1672,8 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
     const f = s.team[idx];
     const hp = snap ? snap[side].hp[idx] : f.hp;
     const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.stunned ? "stun" : null));
-    return { f, hp, status, idx };
+    const fx = parseFx(snap && snap[side].fx ? snap[side].fx[idx] : fxKey(f));
+    return { f, hp, status, idx, fx };
   };
   const P = sideView("p"), E = sideView("e");
   const hitSide = shown?.kind === "hit" ? shown.target : null;
@@ -1475,10 +1695,9 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
       <div className="pd-hud-chips">
         <TypeChip type={V.f.type} />
         <span className="pd-ac" title="Classe Armatura">🛡 CA {acOf(V.f)}</span>
-        <ResLine species={V.f.species} compact />
-        {V.f.charm && PET_BAG[V.f.charm] && <span className="pd-charmchip" title={PET_BAG[V.f.charm].name}>{PET_BAG[V.f.charm].icon}</span>}
-        {V.status && <span className="pd-status">{STATUS_TXT[V.status]}</span>}
+        <ResLine species={V.f.species} evo={V.f.evo} compact />
       </div>
+      <FxIcons f={V.f} fx={V.fx} open={fxOpen === side} onToggle={() => setFxOpen((o) => (o === side ? null : side))} />
       <Bar value={V.hp} max={V.f.maxHp} />
       {side === "p" && <div className="pd-hud-hp">{V.hp}/{V.f.maxHp} PF</div>}
       <div className="pd-balls">{balls(side)}</div>
@@ -1492,12 +1711,12 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
         {hud("e", E)}
         <div className="pd-spot pd-spot--e" ref={spotE}>
           <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")}`}>
-            <PetSprite key={`e${E.idx}`} species={E.f.species} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
+            <PetSprite key={`e${E.idx}`} species={E.f.species} evo={E.f.evo} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
           </div>
         </div>
         <div className="pd-spot pd-spot--p" ref={spotP}>
           <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")}`}>
-            <PetSprite key={`p${P.idx}`} species={P.f.species} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
+            <PetSprite key={`p${P.idx}`} species={P.f.species} evo={P.f.evo} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
           </div>
         </div>
         {hud("p", P)}
@@ -1535,7 +1754,7 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
   if (!forced && view === "items") {
     const it = item && PET_BAG[item];
     const team = battle.sides.p.team;
-    const okFor = (f) => (it.use?.revive ? f.hp <= 0 : f.hp > 0 && (it.kind !== "charm" || !f.charm));
+    const okFor = (f) => (it.use?.revive ? f.hp <= 0 : f.hp > 0);
     return (
       <div className="pd-switch pd-bagfight">
         {!it ? (
@@ -1556,7 +1775,7 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
               <button key={f.id} type="button" className="pd-switch-btn" disabled={busy || !okFor(f)} onClick={() => { setItem(null); act({ kind: "item", item, index: i }); }}>
                 <PetSprite species={f.species} art={art} size={44} fainted={f.hp <= 0} />
                 <span><b>{f.name}</b> Lv {f.level}{i === battle.sides.p.active ? " · in campo" : ""}<Bar value={f.hp} max={f.maxHp} /></span>
-                <small>{f.hp > 0 ? `${f.hp}/${f.maxHp}` : "a terra"}{f.charm ? ` · ${PET_BAG[f.charm]?.icon || ""}` : ""}</small>
+                <small>{f.hp > 0 ? `${f.hp}/${f.maxHp}` : "a terra"}{f.charm ? ` · ${PET_BAG[f.charm]?.icon || ""}${it.kind === "charm" ? " (lo sostituisce)" : ""}` : ""}</small>
               </button>
             ))}
             <button type="button" className="pd-btn pd-btn--ghost" onClick={() => setItem(null)}>Indietro</button>
@@ -1592,8 +1811,8 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
           const left = me.pp[m];
           const max = usesOf(m);
           return (
-            <button key={m} type="button" className={`pd-move${left === 0 ? " is-spent" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || left === 0} onClick={() => act({ kind: "move", move: m })}>
-              <span className="pd-move-top"><b>{mv.name}</b><em className={`pd-uses${left === INFINITE ? " is-inf" : ""}`}>{left === INFINITE ? "∞" : `${left}/${max}`}</em></span>
+            <button key={m} type="button" className={`pd-move${left === 0 ? " is-spent" : ""}${mv.sig ? " is-sig" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || left === 0} onClick={() => act({ kind: "move", move: m })}>
+              <span className="pd-move-top"><b>{mv.sig ? "✦ " : ""}{mv.name}</b><em className={`pd-uses${left === INFINITE ? " is-inf" : ""}`}>{left === INFINITE ? "∞" : `${left}/${max}`}</em></span>
               <small>
                 {TYPE_ICON[mv.type]} {mv.power ? `${diceText(m, me.level)}${me.atkMod ? sgn(me.atkMod) : ""} ${DMG_LABEL[damageKindOf(mv)].toLowerCase()}` : "stato"}
                 {mv.power ? ` · 🎯 d20 ${sgn(toHit)} vs CA ${foe ? acOf(foe) : "?"}` : self ? "" : ` · TS CD ${dc}`}
@@ -1826,39 +2045,44 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
   const [looks, setLooks] = useState({});
   const [err, setErr] = useState("");
   const [f, setF] = useState(emptyFilter);
-  const lookOf = (k) => looks[k] ?? art[k]?.look ?? PET_DEX[k].look;
+  // `key` = specie o forma evoluta (specie__evo1, 2026-11-01)
+  const evoSp = (key) => (key.includes("__evo") ? key.split("__evo")[0] : null);
+  const lookOf = (key) => looks[key] ?? art[key]?.look ?? (evoSp(key) ? EVOLUTIONS[evoSp(key)].look : PET_DEX[key].look);
+  const nameOf = (key) => (evoSp(key) ? EVOLUTIONS[evoSp(key)].name : PET_DEX[key].name);
 
-  const generate = async (k) => {
-    if (busy[k]) return;
-    if (art[k]?.image && !window.confirm(`Rifare la pixel art di ${PET_DEX[k].name}?`)) return;
-    setBusy((b) => ({ ...b, [k]: true }));
+  const generate = async (key) => {
+    if (busy[key]) return;
+    if (art[key]?.image && !window.confirm(`Rifare la pixel art di ${nameOf(key)}?`)) return;
+    setBusy((b) => ({ ...b, [key]: true }));
     setErr("");
     try {
-      const look = lookOf(k);
+      const look = lookOf(key);
+      const sp = evoSp(key);
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: petArtPrompt(k, look), qualita: true }),
+        body: JSON.stringify({ prompt: sp ? petEvoArtPrompt(sp, look) : petArtPrompt(key, look), qualita: true }),
       });
       const data = await r.json();
       if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
-      const png = await dataUrlToTransparentDataUrl(data.immagine, 256);
-      await savePetArt(k, png, look);
+      const png = await dataUrlToTransparentDataUrl(data.immagine, sp ? 320 : 256);
+      await savePetArt(key, png, look);
     } catch (e) {
-      setErr(`${PET_DEX[k].name}: ${e.message || e}`);
+      setErr(`${nameOf(key)}: ${e.message || e}`);
     } finally {
-      setBusy((b) => ({ ...b, [k]: false }));
+      setBusy((b) => ({ ...b, [key]: false }));
     }
   };
 
   const resetMine = () => window.confirm("Azzerare il TUO Rifugio (pet, squadra, torre) per riprovare la scelta iniziale?")
     && run(() => updateDoc(doc(db, "characters", uid), { petDen: deleteField() }), "Rifugio azzerato.");
   const done = PET_DEX_ORDER.filter((k) => art[k]?.image).length;
+  const evoDone = PET_DEX_ORDER.filter((k) => EVOLUTIONS[k] && art[evoArtKey(k)]?.image).length;
 
   return (
     <div className={`pd-tab pd-master${compact ? " is-compact" : ""}`}>
       <div className="pd-master-head">
-        <h2 className="pd-h2">Bestiario del Master <small>pixel art {done}/{PET_DEX_ORDER.length}</small></h2>
+        <h2 className="pd-h2">Bestiario del Master <small>pixel art {done}/{PET_DEX_ORDER.length} · evoluzioni {evoDone}/{Object.keys(EVOLUTIONS).length}</small></h2>
         <div className="pd-master-tools">
           <Link className="pd-btn pd-btn--ghost" to="/dm-admin/pet-points">Dai punti pet</Link>
           {den.starter && <button type="button" className="pd-btn pd-btn--danger" onClick={resetMine}>Azzera il mio Rifugio</button>}
@@ -1904,6 +2128,27 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
                   )}
                 </div>
               </div>
+              {EVOLUTIONS[k] && (() => {
+                const ek = evoArtKey(k);
+                return (
+                  <div className="pd-art-evo">
+                    <div className="pd-art-preview"><PetSprite species={k} evo={1} art={art} size={96} /></div>
+                    <div className="pd-art-body">
+                      <h3>✨ {EVOLUTIONS[k].name} <small>Lv {evoLevelOf(sp.rarity)}</small></h3>
+                      <p className="pd-fine">{skillLine(k)}</p>
+                      <textarea rows={3} value={lookOf(ek)} onChange={(e) => setLooks((l) => ({ ...l, [ek]: e.target.value }))} />
+                      <div className="pd-art-actions">
+                        <button type="button" className="pd-btn pd-btn--main" disabled={busy[ek]} onClick={() => generate(ek)}>
+                          {busy[ek] ? "Gemini disegna…" : art[ek]?.image ? "↻ Rifai l'evoluzione" : "✨ Genera l'evoluzione"}
+                        </button>
+                        {looks[ek] != null && looks[ek] !== (art[ek]?.look ?? EVOLUTIONS[k].look) && (
+                          <button type="button" className="pd-btn pd-btn--ghost" onClick={() => run(() => savePetLook(ek, looks[ek]), "Descrizione salvata.")}>Salva descrizione</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </article>
           );
         })}
