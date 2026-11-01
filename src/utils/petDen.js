@@ -19,6 +19,8 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { PET_DEX } from "../data/petDex";
 import { EVOLUTIONS } from "../data/petEvo";
+import { towerFresh as freshTower } from "../data/petOps";
+import { towerWeek } from "../data/petEngine";
 export { denOf, countOf, MASCOT_XP_BONUS, PVP_POINTS, PVP_DAILY, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, LOSS_XP, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower } from "../data/petOps";
 
 const charRef = (uid) => doc(db, "characters", uid);
@@ -74,6 +76,31 @@ export async function resetPetPlayers(uids, { points = false, pets = false } = {
     await batch.commit();
   }
   return uids.length;
+}
+
+/* Reset della torre deciso dal Master (2026-11-01), per uno, alcuni o tutti.
+   `full` = anche il record della settimana: i piani ridanno punti e premi;
+   senza, si riparte dal piano 1 e i piani già fatti danno solo PE (come il
+   reset giornaliero del giocatore). Il record di sempre (bestEver) resta.
+   `chars` = i documenti characters già letti (serve petDen per la storia). */
+export async function resetPetTowers(chars, { full = false } = {}) {
+  const week = towerWeek();
+  const list = chars.filter((c) => c.petDen);
+  for (let i = 0; i < list.length; i += 400) {
+    const batch = writeBatch(db);
+    list.slice(i, i + 400).forEach((c) => {
+      const t = freshTower(c.petDen.tower, week);
+      const tower = {
+        ...t, floor: 1, att: null, resetDay: null,
+        bestEver: Math.max(t.bestEver || 0, t.best || 0),
+        ...(full ? { best: 0, wins: 0, losses: 0, resets: (t.resets || 0) + 1 } : { resets: (t.resets || 0) + 1 }),
+      };
+      const log = [...(Array.isArray(c.petDen.log) ? c.petDen.log : []), { t: new Date().toISOString(), k: "tower_master", from: t.floor || 1, full }].slice(-150);
+      batch.update(charRef(c.id), { "petDen.tower": tower, "petDen.log": log });
+    });
+    await batch.commit();
+  }
+  return list.length;
 }
 
 export const savePetArt = (species, image, look) =>

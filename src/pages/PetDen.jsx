@@ -28,7 +28,7 @@ import {
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
-  towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, MASCOT_XP_BONUS,
+  towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, resetPetTowers, MASCOT_XP_BONUS,
   learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
   evolvePet, evoArtKey, petEvoArtPrompt,
 } from "../utils/petDen";
@@ -748,9 +748,21 @@ function PlayersAdmin({ run, art }) {
     if (!window.confirm(`Azzerare ${label} di ${ids.length === list.length ? "TUTTI i " + ids.length : ids.length} giocatori?\n${picked.map((c) => c.name).join(", ")}\n\nNon si torna indietro.`)) return;
     run(() => resetPetPlayers(ids, what), `Fatto: ${ids.length} giocatori azzerati.`).then(() => setSel({}));
   };
+  const actTower = (full) => {
+    const withDen = picked.filter((c) => c.petDen);
+    if (!withDen.length) return;
+    const how = full
+      ? "dal piano 1 E record della settimana a zero: i piani ridanno punti e premi"
+      : "dal piano 1, record della settimana tenuto: i piani già fatti danno solo PE";
+    if (!window.confirm(`Torre di ${withDen.length === list.filter((c) => c.petDen).length ? "TUTTI i " + withDen.length : withDen.length} giocatori: ${how}.
+${withDen.map((c) => `${c.name} (piano ${towerFresh(c.petDen.tower).floor || 1})`).join(", ")}
+
+Il record di sempre resta. Procedo?`)) return;
+    run(() => resetPetTowers(withDen, { full }), `Fatto: torre ricominciata per ${withDen.length} giocatori.`).then(() => setSel({}));
+  };
   return (
     <div className="pd-tab">
-      <p className="pd-fine">Scegli uno, alcuni o tutti, poi azzera i punti pet, i pet o entrambi. Azzerare i pet toglie anche l'iniziale: al prossimo accesso lo sceglieranno di nuovo.</p>
+      <p className="pd-fine">Scegli uno, alcuni o tutti, poi azzera i punti pet, i pet o entrambi, oppure fai ricominciare la loro torre. Azzerare i pet toglie anche l'iniziale: al prossimo accesso lo sceglieranno di nuovo.</p>
       <div className="pd-admin-bar">
         <label className="pd-check"><input type="checkbox" checked={all} onChange={() => setSel(all ? {} : Object.fromEntries(list.map((c) => [c.id, true])))} /> Tutti ({list.length})</label>
         <label className="pd-check"><input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> Mostra anche gli inattivi</label>
@@ -758,6 +770,11 @@ function PlayersAdmin({ run, art }) {
         <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ points: true })}>Azzera punti</button>
         <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ pets: true })}>Azzera pet</button>
         <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.length} onClick={() => act({ points: true, pets: true })}>Azzera tutto</button>
+      </div>
+      <div className="pd-admin-bar">
+        <span className="pd-fine">🗼 Torre dei scelti:</span>
+        <button type="button" className="pd-btn" disabled={!picked.some((c) => c.petDen)} onClick={() => actTower(false)} title="Piano 1, il record della settimana resta: i piani già superati danno solo PE">↺ Ricomincia dal piano 1</button>
+        <button type="button" className="pd-btn pd-btn--danger" disabled={!picked.some((c) => c.petDen)} onClick={() => actTower(true)} title="Piano 1 e record della settimana a zero: i piani ridanno punti e premi">↺ Torre da zero (anche il record)</button>
       </div>
       <ul className="pd-admin-list">
         {list.map((c) => {
@@ -771,7 +788,7 @@ function PlayersAdmin({ run, art }) {
               </label>
               <span className="pd-admin-stat">{Number(c.petPoints) || 0} pt</span>
               <span className="pd-admin-stat">{d.pets.length} pet · {d.eggs.length} uova</span>
-              <span className="pd-admin-stat">{d.starter ? `piano ${d.tower.floor}` : "senza iniziale"}</span>
+              <span className="pd-admin-stat">{d.starter ? `piano ${towerFresh(d.tower).floor || 1}` : "senza iniziale"}</span>
               {d.starter && (
                 <button type="button" className="pd-btn pd-btn--ghost pd-admin-open" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)}>
                   {open === c.id ? "Chiudi" : "👁 Pet e storia"}
@@ -816,6 +833,7 @@ function logTxt(e) {
     case "hatch": return `🥚 Schiude ${EGGS[e.egg]?.name || e.egg} → ${spName(e.species)} (${RARITY[e.rarity]?.label || e.rarity})${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
     case "gift": return `🏴 Dal ${e.from || "mercato"}: ${e.species ? spName(e.species) : e.egg ? EGGS[e.egg]?.name || e.egg : itName(e.item)}${e.refunded ? ` · doppione, +${e.refunded} pt` : ""}`;
     case "tower": return `🗼 Piano ${e.f} ${e.won ? (e.again ? "rivinto (solo PE)" : "VINTO") : "perso"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}${e.drops?.length ? ` · ${e.drops.map(itName).join(", ")}` : ""}${e.team?.length ? ` · ${e.team.map((x) => { const [s, l] = x.split(":"); return `${spName(s)} Lv ${l}`; }).join(", ")}` : ""}`;
+    case "tower_master": return `🛡 Il Master ricomincia la sua torre dal piano 1 (era al ${e.from})${e.full ? ", record della settimana azzerato" : ""}`;
     case "tower_reset": return `↺ Ricomincia la torre dal piano 1 (era al ${e.from})`;
     case "battle_items": return `🎒 Oggetti usati in lotta: ${(e.items || []).map(itName).join(", ")}`;
     case "pvp": return `⚔ Sfida ${e.won ? "vinta" : "persa"} contro ${e.vs || "?"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}`;
