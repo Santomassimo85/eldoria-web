@@ -17,6 +17,7 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { PETS_PUBLIC } from "../data/petReads";
 import {
   PET_DEX, PET_DEX_ORDER, PET_DEX_MOVES, STARTERS, RARITY, MAX_TEAM, MAX_PER_SPECIES, MAX_EGGS,
   MOVE_UNLOCK, TYPE_ICON, TYPE_LABEL, TYPE_COLORS, ELEMENTS, EGGS, EGG_ORDER, HATCH_RARITIES,
@@ -226,6 +227,9 @@ export default function PetDen() {
 
   if (!currentUser) {
     return <section className="pd-page"><div className="pd-closed"><h1>Il Rifugio dei Pet</h1><p>Accedi per entrare.</p></div></section>;
+  }
+  if (!PETS_PUBLIC && !master) {
+    return <section className="pd-page"><div className="pd-closed"><h1>Il Rifugio dei Pet</h1><p>Il Rifugio è chiuso per qualche giorno: il Master sta sistemando i pet. Torna presto!</p></div></section>;
   }
   if (!char) return <section className="pd-page"><p className="pd-loading">Il Rifugio si sveglia…</p></section>;
 

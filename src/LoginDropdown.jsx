@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { isAdminEmail } from "./utils/roles";
+import { isAdminEmail, isMainMaster } from "./utils/roles";
+import { PETS_PUBLIC } from "./data/petReads";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { db } from "./firebase";
@@ -189,7 +190,7 @@ export default function LoginDropdown() {
   // --- LOGGATO ---
   return (
     <div className="ld-container" ref={dropdownRef} style={{ "--cls": cls }}>
-      <HeaderMascot charData={charData} onOpen={() => navigate("/pet")} />
+      {(PETS_PUBLIC || isMainMaster(currentUser?.email)) && <HeaderMascot charData={charData} onOpen={() => navigate("/pet")} />}
       <button className="ld-avatar-btn" onClick={togglePanel}>
         <img
           src={charData?.image || "/assets/player/default.png"}

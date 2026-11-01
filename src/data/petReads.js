@@ -52,4 +52,6 @@ export function readNeedMs(kind, words = 0) {
 
 // Rifugio dei Pet aperto a tutti (2026-10-31): indicatore di lettura e
 // parte "punti" del Resoconto visibili a ogni giocatore.
-export const PETS_PUBLIC = true;
+// 2026-11-01: richiuso (false) mentre si ribilancia: /pet, voce del menu,
+// mascotte nell'header e punti tornano del solo Master. true = riapre tutto.
+export const PETS_PUBLIC = false;

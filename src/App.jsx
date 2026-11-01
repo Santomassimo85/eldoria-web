@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { isMainMaster } from "./utils/roles";
+import { PETS_PUBLIC } from "./data/petReads";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import "./style.css";
 
@@ -263,6 +265,7 @@ const PageVisitReward = () => {
 const PetNavLink = ({ onClick, className }) => {
   const { currentUser } = useAuth();
   if (!currentUser) return null;
+  if (!PETS_PUBLIC && !isMainMaster(currentUser.email)) return null; // Rifugio chiuso ai giocatori
   return <NavLink to="/pet" onClick={onClick} className={className}>🐾 Pet</NavLink>;
 };
 
