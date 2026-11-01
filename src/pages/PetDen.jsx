@@ -25,7 +25,7 @@ import {
   MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod, resOf,
 } from "../data/petDex";
 import {
-  statsAt, xpToNext, LOSS_XP, withSeed, petStats, formName, canEvolve, evoStage, parseFx, fxKey, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
+  statsAt, xpToNext, LOSS_XP, withSeed, DAILY_XP_CAP, xpTodayOf, petStats, formName, canEvolve, evoStage, parseFx, fxKey, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
@@ -656,7 +656,7 @@ function Manual() {
       <section>
         <h3>Evoluzioni</h3>
         <ul>
-          <li>Ogni pet ha un'evoluzione: una forma adulta, più grande e più seria. Si sblocca al <b>Lv {EVO_LEVEL.common}</b> (comuni e iniziali), <b>{EVO_LEVEL.rare}</b> (rari), <b>{EVO_LEVEL.epic}</b> (epici), <b>{EVO_LEVEL.legendary}</b> (leggendari). Decidi tu quando: Squadra → "✨ Può evolvere". Non si torna indietro.</li>
+          <li>Ogni pet ha un'evoluzione: una forma adulta, più grande e più seria. Si sblocca al <b>Lv {EVO_LEVEL.common}</b> (comuni e iniziali), <b>{EVO_LEVEL.rare}</b> (rari), <b>{EVO_LEVEL.epic}</b> (epici), <b>{EVO_LEVEL.legendary}</b> (leggendari). Decidi tu quando: Squadra → "✨ Può evolvere". Non si torna indietro. Col tetto di {DAILY_XP_CAP} PE al giorno servono almeno ~17 giorni per un comune, ~25 per un raro, ~40 per un epico e ~2 mesi per un leggendario.</li>
           <li>Prende ATK e DIF +12%, VEL +8%, CA +1 e Punti Ferita in più tirati coi dadi: {["common", "rare", "epic", "legendary"].map((r) => `${evoDiceOf(r).join("d")} ${RARITY[r].label.toLowerCase()}`).join(", ")}. Il tiro lo fa il server e resta per sempre.</li>
           <li>Alcune forme prendono resistenze o immunità nuove, e ognuna ha un'<b>abilità speciale</b>: una mossa in più (✦, pochi usi per lotta, si aggiunge alle {MAX_MOVES}) o una passiva (rigenerazione, spine, furia, tenacia, sfocatura, corazza…). La vedi nel Pet Dex e nei Dettagli.</li>
           <li>Anche i nemici della Torre si evolvono quando arrivano al loro livello.</li>
@@ -713,7 +713,8 @@ function Manual() {
       <section>
         <h3>Torre dei Cuccioli</h3>
         <ul>
-          <li>Vinci un piano e sali al successivo: PE a tutta la squadra e punti pet.</li>
+          <li>Vinci un piano e sali al successivo: PE a tutta la squadra ({towerXp(1)} al piano 1, +5 a ogni piano) e punti pet.</li>
+          <li><b>Ogni pet prende al massimo {DAILY_XP_CAP} PE al giorno</b> (torre, sfide e Pietra dell'Esperienza insieme): il resto si perde. Crescere e far evolvere un pet richiede settimane, non un pomeriggio. Sulla carta del pet vedi quanti PE ha già preso oggi.</li>
           <li>Se perdi ritenti lo stesso piano e la squadra prende solo {LOSS_XP} PE; se ti ritiri non prende niente.</li>
           <li>I dadi di un piano sono fissati: ritirarsi e ricominciare dà gli stessi tiri. Cambiano solo dopo una sconfitta. L'esito lo ricontrolla il server.</li>
           <li>È infinita e in una settimana uguale per tutti: il piano 3 è lo stesso piano 3 per chiunque. Salendo gli avversari crescono di livello, diventano due e poi tre, e sono sempre più furbi. Ogni 5 piani c'è un Guardiano.</li>
@@ -960,6 +961,9 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         <ResLine species={pet.species} evo={evo} compact />
         {canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={onEvolve}>✨ Può evolvere in {EVOLUTIONS[pet.species].name}!</button>}
         <div className="pd-xp"><Bar value={pet.xp} max={xpToNext(pet.level)} kind="xp" /><small>{pet.xp}/{xpToNext(pet.level)} PE</small></div>
+        <p className={`pd-xpday${xpTodayOf(pet) >= DAILY_XP_CAP ? " is-full" : ""}`} title={`Ogni pet prende al massimo ${DAILY_XP_CAP} PE al giorno`}>
+          PE di oggi {xpTodayOf(pet)}/{DAILY_XP_CAP}{xpTodayOf(pet) >= DAILY_XP_CAP ? " · pieno, domani riparte" : ""}
+        </p>
         <dl className="pd-stats pd-stats--row">
           <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
           <div><dt>DIF</dt><dd>{st.def}</dd></div><div><dt>VEL</dt><dd>{st.spd}</dd></div>
@@ -1939,6 +1943,7 @@ function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
               {result.error ? <p className="pd-fine">{result.error}</p> : (
                 <p>
                   +{result.xp} PE a ogni pet della squadra{result.won ? ` · +${result.pts} punti pet` : ""}.
+                  {result.capped ? ` Qualche pet ha raggiunto i ${DAILY_XP_CAP} PE di oggi: il resto si perde.` : ""}
                   {(result.ups || []).map((u) => ` ${PET_DEX[u.species].name} sale al Lv ${u.level}!`).join("")}
                   {result.drops?.length ? ` Trovato: ${dropNames(result.drops)}!` : ""}
                 </p>

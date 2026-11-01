@@ -11,7 +11,7 @@
    ============================================================ */
 
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
-import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek } from "./petEngine";
+import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
 import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle } from "./petBag";
 import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 export { LOSS_XP };
@@ -96,6 +96,19 @@ export function hatchEgg(den, data, eggId) {
 }
 
 export const MASCOT_XP_BONUS = 0.05;
+
+/* PE con il tetto giornaliero (2026-11-01): ogni pet prende al massimo
+   DAILY_XP_CAP PE al giorno (giorno di Roma) fra torre, sfide e Pietra
+   dell'Esperienza; il resto si perde. Restituisce il pet aggiornato,
+   i livelli presi (ups) e i PE presi davvero (gained). */
+function gainXp(p, amount) {
+    const today = xpDayKey();
+    const done = xpTodayOf(p);
+    const gained = Math.max(0, Math.min(amount, DAILY_XP_CAP - done));
+    const n = addXp(p, gained);
+    const { ups, ...rest } = n;
+    return { pet: { ...rest, xpDay: { d: today, n: done + gained } }, ups, gained };
+}
 
 // Mascotte: un pet a scelta (o nessuno con petId null).
 export function setMascot(den, data, petId) {
@@ -188,11 +201,12 @@ export function applyGrowthItem(den, data, petId, id) {
     }
     if (it?.kind === "xp") {
       if ((p.level || 1) >= MAX_LEVEL) throw new Error("È già al livello massimo.");
+      if (xpTodayOf(p) >= DAILY_XP_CAP) throw new Error(`Oggi ha già preso tutti i suoi ${DAILY_XP_CAP} PE: riprova domani.`);
       takeItem(den, id);
-      const n = addXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
-      p.level = n.level; p.xp = n.xp;
-      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
-      return { out: { level: p.level, ups: n.ups } };
+      const g = gainXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
+      Object.assign(p, g.pet);
+      addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level, xp: g.gained });
+      return { out: { level: p.level, ups: g.ups, gained: g.gained } };
     }
     throw new Error("Oggetto non adatto.");
 }
@@ -301,20 +315,22 @@ function recordTowerResult(den, data, floor, won, teamIds) {
     if (den.tower.floor !== floor) throw new Error("Questo piano è già stato registrato.");
     const xp = won ? towerXp(floor) : towerLossXp(floor);
     const ups = [];
+    const gained = {};
     den.pets = den.pets.map((p) => {
       if (!teamIds.includes(p.id)) return p;
-      const n = addXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
-      if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
-      const { ups: _u, ...rest } = n;
-      return rest;
+      const g = gainXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
+      gained[p.id] = g.gained;
+      if (g.ups) ups.push({ id: p.id, species: p.species, level: g.pet.level });
+      return g.pet;
     });
+    const capped = Object.values(gained).some((v) => v < xp);
     wearCharms(den, teamIds);
     const team = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.species}:${p.level}`);
     if (!won) {
       const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
       den.tower = { ...den.tower, losses: (den.tower.losses || 0) + 1, att: { floor, n: att + 1 } };
-      addLog(den, { k: "tower", f: floor, won: false, xp, team });
-      return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1 } };
+      addLog(den, { k: "tower", f: floor, won: false, xp, team, capped });
+      return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1, gained, capped } };
     }
     // punti e premi solo la prima volta in settimana (dopo un reset si risale per i PE)
     const first = floor > (den.tower.best || 0);
@@ -322,8 +338,8 @@ function recordTowerResult(den, data, floor, won, teamIds) {
     const drops = first ? towerDrops(floor) : [];
     addItems(den, drops);
     den.tower = { ...den.tower, att: null, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
-    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first });
-    return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first } };
+    addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first, capped });
+    return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first, gained, capped } };
 }
 
 /* Esito di una sfida fra giocatori, ritirato da ciascuno per sé (una volta
@@ -356,10 +372,9 @@ export function recordPvpResult(den, data, match, side) {
   const ups = [];
   den.pets = den.pets.map((p) => {
     if (!teamIds.includes(p.id) || !xp) return p;
-    const n = addXp(p, xp);
-    if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
-    const { ups: _u, ...rest } = n;
-    return rest;
+    const g = gainXp(p, xp);
+    if (g.ups) ups.push({ id: p.id, species: p.species, level: g.pet.level });
+    return g.pet;
   });
   if (won) den.pvp.wins += 1; else den.pvp.losses += 1;
   let pts = 0;

@@ -1177,7 +1177,7 @@ var BASE = {
     kind: "xp",
     rarity: "rare",
     price: 70,
-    desc: "D\xE0 al pet PE pari a met\xE0 del suo livello attuale (minimo 60)."
+    desc: "D\xE0 al pet PE pari a met\xE0 del suo livello attuale (minimo 60), dentro il tetto di PE del giorno."
   },
   amuleto_scudo: {
     name: "Amuleto dello Scudo",
@@ -1355,7 +1355,11 @@ function diceAt(moveId, level) {
 var INFINITE = -1;
 var pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 var clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-var xpToNext = (level) => 30 + level * 20;
+var xpToNext = (level) => 40 + level * 25 + level * level;
+var DAILY_XP_CAP = 250;
+var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+var xpTodayOf = (pet, now = Date.now()) => pet?.xpDay?.d === romeDayKey(now) ? pet.xpDay.n || 0 : 0;
+var xpDayKey = romeDayKey;
 function addXp(pet, amount) {
   let level = pet.level || 1, xp = (pet.xp || 0) + Math.max(0, amount), ups = 0;
   while (level < MAX_LEVEL && xp >= xpToNext(level)) {
@@ -2014,7 +2018,7 @@ function towerFloor(floor, week = towerWeek()) {
   const boss = n % 5 === 0;
   return { floor: n, team, aiLevel, enemyBoost, boss };
 }
-var towerXp = (floor) => 25 + floor * 10;
+var towerXp = (floor) => 20 + floor * 5;
 var LOSS_XP = 5;
 var towerLossXp = () => LOSS_XP;
 var towerPoints = (floor) => 2 + Math.floor(floor / 5) * 2 + (floor % 5 === 0 ? 5 : 0);
@@ -2089,6 +2093,14 @@ function hatchEgg(den, data, eggId) {
   return { out: { species, rarity, petId: p.id, joined } };
 }
 var MASCOT_XP_BONUS = 0.05;
+function gainXp(p, amount) {
+  const today = xpDayKey();
+  const done = xpTodayOf(p);
+  const gained = Math.max(0, Math.min(amount, DAILY_XP_CAP - done));
+  const n = addXp(p, gained);
+  const { ups, ...rest } = n;
+  return { pet: { ...rest, xpDay: { d: today, n: done + gained } }, ups, gained };
+}
 function setMascot(den, data, petId) {
   if (petId && !den.pets.some((p) => p.id === petId)) throw new Error("Pet non trovato.");
   den.mascot = petId || null;
@@ -2169,12 +2181,12 @@ function applyGrowthItem(den, data, petId, id) {
   }
   if (it?.kind === "xp") {
     if ((p.level || 1) >= MAX_LEVEL) throw new Error("\xC8 gi\xE0 al livello massimo.");
+    if (xpTodayOf(p) >= DAILY_XP_CAP) throw new Error(`Oggi ha gi\xE0 preso tutti i suoi ${DAILY_XP_CAP} PE: riprova domani.`);
     takeItem(den, id);
-    const n = addXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
-    p.level = n.level;
-    p.xp = n.xp;
-    addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level });
-    return { out: { level: p.level, ups: n.ups } };
+    const g = gainXp(p, Math.max(60, Math.round(xpToNext(p.level || 1) / 2)));
+    Object.assign(p, g.pet);
+    addLog(den, { k: "item_use", item: id, pet: p.id, species: p.species, level: p.level, xp: g.gained });
+    return { out: { level: p.level, ups: g.ups, gained: g.gained } };
   }
   throw new Error("Oggetto non adatto.");
 }
@@ -2273,28 +2285,30 @@ function recordTowerResult(den, data, floor, won, teamIds) {
   if (den.tower.floor !== floor) throw new Error("Questo piano \xE8 gi\xE0 stato registrato.");
   const xp = won ? towerXp(floor) : towerLossXp(floor);
   const ups = [];
+  const gained = {};
   den.pets = den.pets.map((p) => {
     if (!teamIds.includes(p.id)) return p;
-    const n = addXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
-    if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
-    const { ups: _u, ...rest } = n;
-    return rest;
+    const g = gainXp(p, p.id === den.mascot ? Math.round(xp * (1 + MASCOT_XP_BONUS)) : xp);
+    gained[p.id] = g.gained;
+    if (g.ups) ups.push({ id: p.id, species: p.species, level: g.pet.level });
+    return g.pet;
   });
+  const capped = Object.values(gained).some((v) => v < xp);
   wearCharms(den, teamIds);
   const team = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.species}:${p.level}`);
   if (!won) {
     const att = den.tower.att?.floor === floor ? den.tower.att.n || 0 : 0;
     den.tower = { ...den.tower, losses: (den.tower.losses || 0) + 1, att: { floor, n: att + 1 } };
-    addLog(den, { k: "tower", f: floor, won: false, xp, team });
-    return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1 } };
+    addLog(den, { k: "tower", f: floor, won: false, xp, team, capped });
+    return { out: { won: false, xp, pts: 0, ups, drops: [], att: att + 1, gained, capped } };
   }
   const first = floor > (den.tower.best || 0);
   const pts = first ? towerPoints(floor) : 0;
   const drops = first ? towerDrops(floor) : [];
   addItems(den, drops);
   den.tower = { ...den.tower, att: null, floor: floor + 1, best: Math.max(den.tower.best || 0, floor), wins: (den.tower.wins || 0) + 1 };
-  addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first });
-  return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first } };
+  addLog(den, { k: "tower", f: floor, won: true, xp, pts, drops, team, again: !first, capped });
+  return { patch: pts ? { petPoints: (Number(data.petPoints) || 0) + pts } : {}, out: { won: true, xp, pts, ups, drops, again: !first, gained, capped } };
 }
 var PVP_POINTS = 3;
 var PVP_DAILY = 3;
@@ -2323,10 +2337,9 @@ function recordPvpResult(den, data, match, side) {
   const ups = [];
   den.pets = den.pets.map((p) => {
     if (!teamIds.includes(p.id) || !xp) return p;
-    const n = addXp(p, xp);
-    if (n.ups) ups.push({ id: p.id, species: p.species, level: n.level });
-    const { ups: _u, ...rest } = n;
-    return rest;
+    const g = gainXp(p, xp);
+    if (g.ups) ups.push({ id: p.id, species: p.species, level: g.pet.level });
+    return g.pet;
   });
   if (won) den.pvp.wins += 1;
   else den.pvp.losses += 1;

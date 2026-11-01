@@ -627,3 +627,7 @@
 .pd-fxlist li.is-bad { color: #ffd0d0; }
 .pd-fxlist i { font-style: normal; }
 @media (max-width: 760px) { .pd-fxi { font-size: .68rem; } .pd-fxlist { font-size: .7rem; } }
+
+/* tetto di PE al giorno (2026-11-01) */
+.pd-xpday { margin: 2px 0 0; font-size: .74rem; color: var(--pd-mute); }
+.pd-xpday.is-full { color: #ffd27a; }

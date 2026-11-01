@@ -26,7 +26,7 @@ const BASE = {
   caramella: { name: "Caramella Rara", icon: "🍬", kind: "level", rarity: "legendary", price: null,
     desc: "Il pet sale subito di un livello. Rarissima: esce solo dalla Torre." },
   pietra: { name: "Pietra dell'Esperienza", icon: "💎", kind: "xp", rarity: "rare", price: 70,
-    desc: "Dà al pet PE pari a metà del suo livello attuale (minimo 60)." },
+    desc: "Dà al pet PE pari a metà del suo livello attuale (minimo 60), dentro il tetto di PE del giorno." },
   amuleto_scudo: { name: "Amuleto dello Scudo", icon: "🛡️", kind: "charm", rarity: "common", price: 30, fights: 3, fx: { ac: 2 },
     desc: "+2 alla Classe Armatura." },
   zanna: { name: "Zanna Affilata", icon: "🦷", kind: "charm", rarity: "common", price: 30, fights: 3, fx: { hit: 2 },

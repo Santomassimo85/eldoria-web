@@ -49,7 +49,16 @@ const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ── LIVELLI ───────────────────────────────────────────────── */
-export const xpToNext = (level) => 30 + level * 20;
+/* Bilanciamento (2026-11-01): curva più ripida (prima 30 + 20×Lv) e tetto
+   di PE al giorno per pet (DAILY_XP_CAP, applicato dal server in petOps.js):
+   giocando al massimo ogni giorno l'evoluzione arriva in ~17 giorni
+   (comuni, Lv 15), ~25 (rari, 18), ~40 (epici, 22), ~2 mesi (leggendari, 26). */
+export const xpToNext = (level) => 40 + level * 25 + level * level;
+export const DAILY_XP_CAP = 250;
+const romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+// PE già presi oggi dal pet (giorno di Roma).
+export const xpTodayOf = (pet, now = Date.now()) => (pet?.xpDay?.d === romeDayKey(now) ? pet.xpDay.n || 0 : 0);
+export const xpDayKey = romeDayKey;
 
 // Aggiunge PE a un pet ({level, xp}) e restituisce il nuovo stato + livelli presi.
 export function addXp(pet, amount) {
@@ -731,7 +740,7 @@ export function towerFloor(floor, week = towerWeek()) {
 export const AI_LABEL = ["Novellino", "Sveglio", "Astuto", "Stratega"];
 
 // PE a ogni pet della squadra per un piano vinto.
-export const towerXp = (floor) => 25 + floor * 10;
+export const towerXp = (floor) => 20 + floor * 5;
 // Sconfitta = PE minimi (2026-10-31): prima era un terzo e si saliva di
 // livello perdendo apposta. Ritirarsi = niente PE (non si registra nulla).
 export const LOSS_XP = 5;
