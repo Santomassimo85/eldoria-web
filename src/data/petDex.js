@@ -134,6 +134,7 @@ export const hatchRarityOf = (key) => (PET_DEX[key]?.rarity === "starter" ? "com
    effect:
      { burn|poison: chance }           stato a turni sul bersaglio
      { stun: chance }                  il bersaglio salta il prossimo turno
+     { sleep: chance }                 il bersaglio dorme: salta i prossimi SLEEP_TURNS (2) turni
      { self: {atk|def|spd: +n} }       potenzia chi la usa (stadi -3..+3)
      { self: {ac: +n} }                +n alla Classe Armatura (da -4 a +4)
      { foe:  {atk|def|spd|ac: -n}, chance }  indebolisce il bersaglio
@@ -230,7 +231,7 @@ export const PET_DEX_MOVES = {
   // ── terra ──
   rametto:      M("Frusta di Rami", "earth", 40, 100, 25, "whip", { lv: 1 }),
   sassi:        M("Lancio di Sassi", "earth", 40, 100, 25, "orb", { lv: 1 }),
-  spore:        M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { stun: 1 } }),
+  spore:        M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { sleep: 1 } }),
   linfa:        M("Succhia-linfa", "earth", 55, 100, 15, "drain", { lv: 2, effect: { drain: 0.5 } }),
   zampapietra:  M("Zampata di Pietra", "earth", 55, 100, 20, "stomp", { lv: 2 }),
   pellepietra:  M("Pelle di Pietra", "earth", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 2, def: 1 } } }),
@@ -312,7 +313,7 @@ export const PET_DEX_MOVES = {
   concentrazione: M("Concentrazione", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
   scudomentale: M("Scudo Mentale", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   morsoillusorio: M("Morso Illusorio", "psychic", 55, 100, 20, "bite", { lv: 2 }),
-  ipnosi:       M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { stun: 1 } }),
+  ipnosi:       M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { sleep: 1 } }),
   urlopsichico: M("Urlo Psichico", "psychic", 65, 95, 15, "wave", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.3 } }),
   artiglifantasma: M("Artigli Fantasma", "psychic", 70, 95, 15, "claw", { lv: 3 }),
   telecinesi:   M("Carica Telecinetica", "psychic", 85, 90, 10, "dash", { lv: 4 }),

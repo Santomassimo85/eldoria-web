@@ -529,7 +529,7 @@ var PET_DEX_MOVES = {
   // ── terra ──
   rametto: M("Frusta di Rami", "earth", 40, 100, 25, "whip", { lv: 1 }),
   sassi: M("Lancio di Sassi", "earth", 40, 100, 25, "orb", { lv: 1 }),
-  spore: M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { stun: 1 } }),
+  spore: M("Spore Sonnifere", "earth", 0, 75, 10, "cloud", { lv: 2, effect: { sleep: 1 } }),
   linfa: M("Succhia-linfa", "earth", 55, 100, 15, "drain", { lv: 2, effect: { drain: 0.5 } }),
   zampapietra: M("Zampata di Pietra", "earth", 55, 100, 20, "stomp", { lv: 2 }),
   pellepietra: M("Pelle di Pietra", "earth", 0, 100, 10, "aura", { lv: 3, effect: { self: { ac: 2, def: 1 } } }),
@@ -606,7 +606,7 @@ var PET_DEX_MOVES = {
   concentrazione: M("Concentrazione", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { atk: 2 } } }),
   scudomentale: M("Scudo Mentale", "psychic", 0, 100, 10, "aura", { lv: 2, effect: { self: { ac: 2 } } }),
   morsoillusorio: M("Morso Illusorio", "psychic", 55, 100, 20, "bite", { lv: 2 }),
-  ipnosi: M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { stun: 1 } }),
+  ipnosi: M("Ipnosi", "psychic", 0, 75, 10, "curse", { lv: 3, effect: { sleep: 1 } }),
   urlopsichico: M("Urlo Psichico", "psychic", 65, 95, 15, "wave", { lv: 3, effect: { foe: { atk: -1 }, chance: 0.3 } }),
   artiglifantasma: M("Artigli Fantasma", "psychic", 70, 95, 15, "claw", { lv: 3 }),
   telecinesi: M("Carica Telecinetica", "psychic", 85, 90, 10, "dash", { lv: 4 }),
@@ -1461,6 +1461,11 @@ function makeFighter(pet, boost = 1) {
     status: null,
     // { kind: "burn"|"poison", turns }
     stunned: false,
+    // salta la prossima azione: "daze" | "freeze" | "shock" (solo l'aspetto)
+    sleep: 0,
+    // azioni che salta ancora dormendo
+    wake: 0,
+    // appena sveglio: niente sonno per questi turni
     pp
   };
 }
@@ -1472,13 +1477,30 @@ function fxKey(f) {
     if (v) out.push(`${k}:${v}`);
   });
   if (f.status) out.push(`${f.status.kind}:${f.status.turns}`);
-  if (f.stunned) out.push("stun:1");
+  if (f.stunned) out.push(`stun:${STUN_CODE[f.stunned] || 1}`);
+  if (f.sleep) out.push(`sleep:${f.sleep}`);
+  if (f.wake) out.push(`wake:${f.wake}`);
   if (hasP(f, "sfocatura") && f.blur) out.push("blur:1");
   if (f.tenUsed) out.push("tenUsed:1");
   if (f.legUsed) out.push("legUsed:1");
   if (f.berryUsed) out.push("berryUsed:1");
   return out.join(",");
 }
+var STUN_CODE = { daze: 1, freeze: 2, shock: 3 };
+var stunOf = (type) => type === "cold" ? "freeze" : type === "lightning" ? "shock" : "daze";
+var STUN_TXT = {
+  daze: (n) => `\u{1F4AB} ${n} vede le stelline: salta il prossimo turno!`,
+  freeze: (n) => `\u{1F9CA} ${n} diventa un ghiacciolo: salta il prossimo turno!`,
+  shock: (n) => `\u26A1 ${n} \xE8 tutto folgorato, coi peli dritti: salta il prossimo turno!`
+};
+var STUN_SKIP = {
+  daze: (n) => `\u{1F4AB} ${n} gira su s\xE9 stesso, stordito\u2026 e il turno passa!`,
+  freeze: (n) => `\u{1F9CA} ${n} \xE8 ancora un blocco di ghiaccio: non si muove!`,
+  shock: (n) => `\u26A1 ${n} sfrigola tutto e non riesce a muoversi!`
+};
+var SLEEP_TURNS = 2;
+var WAKE_GUARD = 2;
+var statusKey = (f) => f.status?.kind || (f.sleep ? "sleep" : f.stunned ? f.stunned === true ? "daze" : f.stunned : null);
 var stageMult = (s) => s >= 0 ? 1 + 0.25 * s : 1 / (1 + 0.25 * -s);
 var eff = (f, stat) => f[stat] * stageMult(f.stages[stat] || 0);
 function newBattle(playerPets, enemyPets, { enemyBoost = 1, aiLevel = 0, pvp = false, names = null } = {}) {
@@ -1515,7 +1537,7 @@ function resistOf(f, kind) {
 }
 var snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
-  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map((f) => f.status?.kind || (f.stunned ? "stun" : null)), fx: s.team.map(fxKey) }];
+  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey) }];
 }));
 function emit(b, out, ev) {
   out.push({ ...ev, snap: snapOf(b) });
@@ -1542,7 +1564,7 @@ function hitChance(att, def, moveId) {
     const p = clamp((21 - need) / 20, 0.05, 0.95);
     return att.status?.kind === "poison" || hasP(def, "sfocatura") && def.blur ? p * p : p;
   }
-  if (e.foe || e.burn || e.poison || e.stun) return clamp((att.dcBase + accMod(m.acc) - def.save - 1) / 20, 0.05, 0.95);
+  if (e.foe || e.burn || e.poison || e.stun || e.sleep) return clamp((att.dcBase + accMod(m.acc) - def.save - 1) / 20, 0.05, 0.95);
   return 1;
 }
 var sign = (n) => n >= 0 ? `+ ${n}` : `\u2212 ${-n}`;
@@ -1575,6 +1597,7 @@ function giveItemInBattle(b, side, itemId, idx, out) {
     f._fainted = false;
     f.status = null;
     f.stunned = false;
+    f.sleep = 0;
     emit(b, out, { side, kind: "heal", amount: f.hp, item: itemId, text: `${pre}: torna in piedi con ${f.hp} PF!` });
     return;
   }
@@ -1584,9 +1607,12 @@ function giveItemInBattle(b, side, itemId, idx, out) {
     f.hp += h;
     emit(b, out, { side, kind: "heal", amount: h, item: itemId, text: `${pre}: +${h} PF.` });
   } else if (u.cure) {
+    const was = f.sleep;
     f.status = null;
     f.stunned = false;
-    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: niente pi\xF9 veleno, scottature o intontimento.` });
+    f.sleep = 0;
+    if (was) f.wake = WAKE_GUARD;
+    emit(b, out, { side, kind: "info", item: itemId, text: `${pre}: niente pi\xF9 veleno, scottature, stelline${was ? " e via il sonno: si sveglia di colpo" : ""}!` });
   } else if (u.uses) {
     Object.keys(f.pp).forEach((m) => {
       if (f.pp[m] !== INFINITE) f.pp[m] = Math.min(usesOf(m) || 0, f.pp[m] + u.uses);
@@ -1639,14 +1665,26 @@ function applyMove(b, side, moveId, out) {
   const att = activeOf(b, side), foe = activeOf(b, other(side));
   const m = PET_DEX_MOVES[moveId];
   if (!att || !alive(att) || !m) return;
-  if (att.stunned) {
+  if (att.sleep > 0) {
+    att.sleep -= 1;
     att.stunned = false;
-    emit(b, out, { side, kind: "stun", text: `${att.name} \xE8 intontito e non riesce a muoversi!` });
+    if (att.sleep > 0) {
+      emit(b, out, { side, kind: "sleep", text: `\u{1F4A4} ${att.name} dorme della grossa\u2026 zzz (ancora ${att.sleep} turn${att.sleep === 1 ? "o" : "i"}).` });
+    } else {
+      att.wake = WAKE_GUARD;
+      emit(b, out, { side, kind: "sleep", text: `\u{1F4A4} ${att.name} russa per l'ultima volta\u2026 e si sveglia con uno sbadiglio! \u2600\uFE0F` });
+    }
+    return;
+  }
+  if (att.stunned) {
+    const k = att.stunned === true ? "daze" : att.stunned;
+    att.stunned = false;
+    emit(b, out, { side, kind: "stun", text: STUN_SKIP[k](att.name) });
     return;
   }
   if (att.pp[moveId] > 0) att.pp[moveId] -= 1;
   const e = m.effect || {};
-  const targetsFoe = alive(foe) && (m.power > 0 || e.foe || e.burn || e.poison || e.stun);
+  const targetsFoe = alive(foe) && (m.power > 0 || e.foe || e.burn || e.poison || e.stun || e.sleep);
   let roll = null;
   if (targetsFoe && m.power > 0) {
     const dis = att.status?.kind === "poison" || hasP(foe, "sfocatura") && foe.blur;
@@ -1756,7 +1794,7 @@ function applyMove(b, side, moveId, out) {
   if (e.cure && (att.status || att.stunned)) {
     att.status = null;
     att.stunned = false;
-    emit(b, out, { side, kind: "info", text: `${att.name} si libera da veleni e scottature.` });
+    emit(b, out, { side, kind: "info", text: `\u2728 ${att.name} si scrolla di dosso veleni, scottature e stelline!` });
   }
   if (e.self) {
     Object.entries(e.self).forEach(([k, v]) => {
@@ -1777,15 +1815,33 @@ function applyMove(b, side, moveId, out) {
       if (immuneTo) {
         if (!m.power) emit(b, out, { side, kind: "miss", text: `\u2026ma ${foe.name} \xE8 immune.` });
       } else if (chance(e.burn || e.poison)) {
-        foe.status = { kind, turns: kind === "burn" ? 3 : 4 };
-        emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} ${kind === "burn" ? "si scotta" : "\xE8 avvelenato"}!` });
+        setStatus(b, side, foe, kind, out);
       } else if (!m.power) emit(b, out, { side, kind: "miss", text: "\u2026ma non ha effetto." });
     }
-    if (e.stun && !foe.stunned && !hasP(foe, "purezza") && chance(e.stun)) {
-      foe.stunned = true;
-      emit(b, out, { side, kind: "status", target: other(side), text: `${foe.name} \xE8 intontito!` });
+    if (e.sleep) {
+      if (foe.sleep) {
+        if (!m.power) emit(b, out, { side, kind: "miss", text: `\u2026ma ${foe.name} dorme gi\xE0 come un sasso.` });
+      } else if (foe.wake) {
+        if (!m.power) emit(b, out, { side, kind: "miss", text: `\u2026ma ${foe.name} si \xE8 appena svegliato ed \xE8 bello arzillo: niente sonno! \u2615` });
+      } else if (hasP(foe, "purezza")) {
+        if (!m.power) emit(b, out, { side, kind: "miss", text: `\u2026ma ${foe.name} \xE8 immune.` });
+      } else if (chance(e.sleep)) {
+        foe.sleep = SLEEP_TURNS;
+        foe.stunned = false;
+        emit(b, out, { side, kind: "status", st: "sleep", target: other(side), text: `\u{1F4A4} ${foe.name} sbadiglia, si acciambella e si addormenta! Dormir\xE0 per ${SLEEP_TURNS} turni.` });
+      }
     }
+    if (e.stun && !foe.stunned && !foe.sleep && !hasP(foe, "purezza") && chance(e.stun)) stunFoe(b, side, foe, stunOf(m.type), out);
   }
+}
+function setStatus(b, side, foe, kind, out) {
+  foe.status = { kind, turns: kind === "burn" ? 3 : 4 };
+  const text = kind === "burn" ? `\u{1F525} ${foe.name} si scotta! Ahi ahi, brucer\xE0 per 3 turni.` : `\u2620\uFE0F ${foe.name} \xE8 avvelenato: diventa verdino, tira con svantaggio e soffre per 4 turni.`;
+  emit(b, out, { side, kind: "status", st: kind, target: other(side), text });
+}
+function stunFoe(b, side, foe, k, out) {
+  foe.stunned = k;
+  emit(b, out, { side, kind: "status", st: k, target: other(side), text: STUN_TXT[k](foe.name) });
 }
 function statusImmune(f, kind) {
   return hasP(f, "purezza") || resistMultiplier(f.species, kind === "burn" ? "fire" : "poison", f.evo || 0) === 0;
@@ -1796,12 +1852,10 @@ function touchEffect(b, side, att, foe, out) {
     foe.stages.ac = clamp((foe.stages.ac || 0) - 1, -4, 4);
     emit(b, out, { side, kind: "debuff", target: other(side), text: `\u2623\uFE0F ${foe.name}: CA \u22121.` });
   } else if (st === "stun") {
-    if (foe.stunned || hasP(foe, "purezza")) return;
-    foe.stunned = true;
-    emit(b, out, { side, kind: "status", target: other(side), text: `\u2744\uFE0F ${foe.name} resta di ghiaccio: \xE8 intontito!` });
+    if (foe.stunned || foe.sleep || hasP(foe, "purezza")) return;
+    stunFoe(b, side, foe, stunOf(att.type), out);
   } else if (!foe.status && !statusImmune(foe, st)) {
-    foe.status = { kind: st, turns: st === "burn" ? 3 : 4 };
-    emit(b, out, { side, kind: "status", target: other(side), text: `\u2623\uFE0F ${foe.name} ${st === "burn" ? "si scotta" : "\xE8 avvelenato"}!` });
+    setStatus(b, side, foe, st, out);
   }
 }
 var STAT_IT = { atk: "Attacco", def: "Difesa", spd: "Velocit\xE0" };
@@ -1811,6 +1865,7 @@ function endOfTurn(b, out) {
     const f = activeOf(b, side);
     if (!alive(f)) return;
     if (hasP(f, "sfocatura")) f.blur = true;
+    if (f.wake) f.wake -= 1;
     if (hasP(f, "rigenera") && f.hp < f.maxHp) {
       const h = Math.min(f.maxHp - f.hp, Math.max(1, Math.round(f.maxHp * f.passive.v)));
       f.hp += h;
@@ -1820,11 +1875,13 @@ function endOfTurn(b, out) {
     const frac = f.status.kind === "burn" ? 1 / 12 : 1 / 14;
     const d = Math.max(1, Math.round(f.maxHp * frac));
     f.hp = Math.max(0, f.hp - d);
-    emit(b, out, { side, kind: "dot", text: `${f.name} ${f.status.kind === "burn" ? "brucia" : "soffre il veleno"} (\u2212${d} PF).` });
     f.status.turns -= 1;
+    const left = f.status.turns > 0 ? ` \xB7 ancora ${f.status.turns}` : "";
+    emit(b, out, { side, kind: "dot", st: f.status.kind, text: f.status.kind === "burn" ? `\u{1F525} ${f.name} saltella sul posto: scotta! (\u2212${d} PF${left})` : `\u2620\uFE0F ${f.name} ha il mal di pancia per il veleno (\u2212${d} PF${left})` });
     if (f.status.turns <= 0) {
+      const was = f.status.kind;
       f.status = null;
-      emit(b, out, { side, kind: "info", text: `${f.name} si riprende.` });
+      emit(b, out, { side, kind: "info", text: was === "burn" ? `\u{1F9EF} Le fiamme si spengono: ${f.name} tira un sospiro di sollievo.` : `\u{1F33F} Il veleno passa: ${f.name} torna del suo colore.` });
     }
     berryCheck(b, side, out);
   });
@@ -1936,6 +1993,7 @@ function scoreMove(b, me, foe, m) {
   if (e.foe && !mv.power) s = Math.max(s, foe.hp / foe.maxHp > 0.6 ? 9 * hc : 2);
   if ((e.burn || e.poison) && !mv.power) s = foe.status ? 0 : 16 * hc;
   if (e.stun && !mv.power) s = foe.stunned ? 0 : 15 * hc;
+  if (e.sleep && !mv.power) s = foe.sleep || foe.wake || foe.stunned ? 0 : 24 * hc;
   if (mv.power && previewDamage(me, foe, m) * 0.85 >= foe.hp) s += 50;
   return s;
 }

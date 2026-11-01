@@ -536,9 +536,15 @@ function fxList(f, fx) {
     const val = isAc ? `${v > 0 ? "+" : "−"}${Math.abs(v)}` : (v > 0 ? "↑" : "↓").repeat(Math.abs(v));
     L.push({ k, icon, val, good: v > 0, dur: "↺", text: `${name} ${val}${isAc ? "" : ` (${v > 0 ? "+" : "−"}${Math.abs(v) * 25}%)`}: dura finché resta in campo (si azzera col cambio).` });
   });
-  if (fx.burn) L.push({ k: "burn", icon: "🔥", good: false, dur: `${fx.burn}t`, text: `Scottato: perde 1/12 dei PF a fine turno, ancora ${fx.burn} turn${fx.burn === 1 ? "o" : "i"}.` });
-  if (fx.poison) L.push({ k: "poison", icon: "☠", good: false, dur: `${fx.poison}t`, text: `Avvelenato: svantaggio ai tiri per colpire e 1/14 dei PF a fine turno, ancora ${fx.poison} turn${fx.poison === 1 ? "o" : "i"}.` });
-  if (fx.stun) L.push({ k: "stun", icon: "💫", good: false, dur: "1t", text: "Intontito: salta la prossima azione." });
+  const tt = (n) => `${n} turn${n === 1 ? "o" : "i"}`;
+  if (fx.sleep) L.push({ k: "sleep", icon: "💤", lab: "Dorme", good: false, dur: `${fx.sleep}t`, text: `Addormentato: russa e salta le sue azioni per ${tt(fx.sleep)} ancora. Si sveglia da solo (o con un Antidoto).` });
+  if (fx.wake) L.push({ k: "wake", icon: "☕", lab: "Sveglio", good: true, dur: `${fx.wake}t`, text: `Appena sveglio e bello arzillo: non si riaddormenta per ${tt(fx.wake)}.` });
+  if (fx.burn) L.push({ k: "burn", icon: "🔥", lab: "Scotta", good: false, dur: `${fx.burn}t`, text: `Scottato: a fine turno perde 1/12 dei PF, ancora per ${tt(fx.burn)}.` });
+  if (fx.poison) L.push({ k: "poison", icon: "☠️", lab: "Veleno", good: false, dur: `${fx.poison}t`, text: `Avvelenato: tira con svantaggio (due d20, tiene il peggiore) e a fine turno perde 1/14 dei PF, ancora per ${tt(fx.poison)}.` });
+  if (fx.stun) {
+    const [icon, lab, what] = STUN_LOOK[fx.stun] || STUN_LOOK[1];
+    L.push({ k: "stun", icon, lab, good: false, dur: "1t", text: `${what}: salta la sua prossima azione.` });
+  }
   if (fx.blur) L.push({ k: "blur", icon: "🌫️", good: true, dur: "⟳", text: "Sfocatura: chi lo attacca tira con svantaggio, finché non lo colpisce (torna a fine turno)." });
   if (f.charm && PET_BAG[f.charm]) {
     const it = PET_BAG[f.charm];
@@ -553,6 +559,31 @@ function fxList(f, fx) {
   }
   return L;
 }
+// Intontito: 1 = stordito, 2 = ghiacciato (gelo), 3 = folgorato (fulmine). Stesse regole, faccia diversa.
+const STUN_LOOK = { 1: ["💫", "Stelline", "Stordito, vede le stelline"], 2: ["🧊", "Ghiacciolo", "Ghiacciato"], 3: ["⚡", "Folgorato", "Folgorato, coi peli dritti"] };
+// Il fumetto sopra il pet: lo stato si vede anche senza leggere le icone.
+const BUBBLE = {
+  sleep: (fx) => ({ icon: "💤", lab: `Dorme · ${fx.sleep || 1}` }),
+  burn: (fx) => ({ icon: "🔥", lab: `Scotta · ${fx.burn || 1}` }),
+  poison: (fx) => ({ icon: "☠️", lab: `Veleno · ${fx.poison || 1}` }),
+  daze: () => ({ icon: "💫", lab: "Stordito" }),
+  freeze: () => ({ icon: "🧊", lab: "Ghiacciato" }),
+  shock: () => ({ icon: "⚡", lab: "Folgorato" }),
+};
+function StatusBubble({ st, fx }) {
+  const k = st === "stun" ? "daze" : st;
+  if (!k || !BUBBLE[k]) return null;
+  const b = BUBBLE[k](fx);
+  return (
+    <div className={`pd-stb pd-stb--${k}`} aria-label={b.lab}>
+      <span className="pd-stb-ic" aria-hidden="true">{b.icon}</span>
+      {k === "sleep" && <span className="pd-stb-z" aria-hidden="true"><i>z</i><i>Z</i><i>z</i></span>}
+      {k === "daze" && <span className="pd-stb-orbit" aria-hidden="true"><i>⭐</i><i>✨</i><i>⭐</i></span>}
+      {k === "poison" && <span className="pd-stb-bub" aria-hidden="true"><i /><i /><i /></span>}
+      <b className="pd-stb-lab">{b.lab}</b>
+    </div>
+  );
+}
 function FxIcons({ f, fx, open, onToggle }) {
   const L = fxList(f, fx);
   if (!L.length) return null;
@@ -561,7 +592,7 @@ function FxIcons({ f, fx, open, onToggle }) {
       <button type="button" className="pd-fxrow" onClick={onToggle} aria-expanded={open} title="Bonus e malus attivi: tocca per i dettagli">
         {L.map((x) => (
           <span key={x.k} className={`pd-fxi ${x.good ? "is-good" : "is-bad"}${x.spent ? " is-spent" : ""}`}>
-            <i aria-hidden="true">{x.icon}</i>{x.val && <b>{x.val}</b>}<small>{x.dur}</small>
+            <i aria-hidden="true">{x.icon}</i>{x.val && <b>{x.val}</b>}{x.lab && <em>{x.lab}</em>}<small>{x.dur}</small>
           </span>
         ))}
       </button>
@@ -666,7 +697,9 @@ function Manual() {
         <h3>Bonus e malus in lotta</h3>
         <ul>
           <li>Sotto il nome del pet in campo ci sono le icone degli effetti attivi: verdi i bonus, rosse i malus. Toccale per leggere cosa fanno e quanto durano.</li>
-          <li>↺ = gradi di Attacco/Difesa/Velocità/CA: durano finché il pet resta in campo. 3t = turni rimasti (scottatura, veleno). 1t = intontito, salta la prossima azione. "lotta" = amuleto, vale tutta la lotta. ∞ = passiva dell'evoluzione, 1× = vale una volta.</li>
+          <li>↺ = gradi di Attacco/Difesa/Velocità/CA: durano finché il pet resta in campo. 3t = turni rimasti. "lotta" e "∞" più sotto.</li>
+          <li><b>Gli stati</b> (si vedono anche nel fumetto sopra il pet): 💤 <b>Addormentato</b> = salta le sue prossime 2 azioni, poi si sveglia e per 2 turni (☕) non si può riaddormentare · 🔥 <b>Scottato</b> = 1/12 dei PF a fine turno per 3 turni · ☠️ <b>Avvelenato</b> = svantaggio ai tiri per colpire e 1/14 dei PF a fine turno per 4 turni · 💫 <b>Stordito</b>, 🧊 <b>Ghiacciato</b> (mosse di gelo), ⚡ <b>Folgorato</b> (mosse di fulmine) = salta la prossima azione. L'Antidoto li toglie tutti; chi è immune al fuoco o al veleno non si scotta e non si avvelena.</li>
+          <li> "lotta" = amuleto, vale tutta la lotta. ∞ = passiva dell'evoluzione, 1× = vale una volta.</li>
         </ul>
       </section>
       <section>
@@ -1567,7 +1600,6 @@ function TowerBoard({ uid }) {
 
 /* ── LOTTA ────────────────────────────────────────────────── */
 const STEP_MS = 850;
-const STATUS_TXT = { burn: "🔥 Scottato", poison: "☠ Avvelenato (svantaggio)", stun: "💫 Intontito" };
 const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
 
 // Mostra le righe di un turno una alla volta (con il loro suono).
@@ -1698,7 +1730,7 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
     const idx = snap ? snap[side].active : s.active;
     const f = s.team[idx];
     const hp = snap ? snap[side].hp[idx] : f.hp;
-    const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.stunned ? "stun" : null));
+    const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.sleep ? "sleep" : f.stunned ? (f.stunned === true ? "daze" : f.stunned) : null));
     const fx = parseFx(snap && snap[side].fx ? snap[side].fx[idx] : fxKey(f));
     return { f, hp, status, idx, fx };
   };
@@ -1736,12 +1768,14 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
       <div className={`pd-field${art.__arena?.bg ? " has-bg" : ""}`} ref={fieldRef}
         style={art.__arena?.bg ? { "--pd-bg-img": `url("${art.__arena.bg}")` } : undefined}>
         {hud("e", E)}
-        <div className="pd-spot pd-spot--e" ref={spotE}>
+        <div className={`pd-spot pd-spot--e${E.status && E.hp > 0 ? ` pd-st-${E.status}` : ""}`} ref={spotE}>
+          {E.hp > 0 && <StatusBubble st={E.status} fx={E.fx} />}
           <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")}`}>
             <PetSprite key={`e${E.idx}`} species={E.f.species} evo={E.f.evo} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
           </div>
         </div>
-        <div className="pd-spot pd-spot--p" ref={spotP}>
+        <div className={`pd-spot pd-spot--p${P.status && P.hp > 0 ? ` pd-st-${P.status}` : ""}`} ref={spotP}>
+          {P.hp > 0 && <StatusBubble st={P.status} fx={P.fx} />}
           <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")}`}>
             <PetSprite key={`p${P.idx}`} species={P.f.species} evo={P.f.evo} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
           </div>
@@ -1832,7 +1866,7 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
       <div className="pd-movegrid">
         {Object.keys(me.pp).map((m) => {
           const mv = PET_DEX_MOVES[m];
-          const self = !mv.power && !(mv.effect?.foe || mv.effect?.burn || mv.effect?.poison || mv.effect?.stun);
+          const self = !mv.power && !(mv.effect?.foe || mv.effect?.burn || mv.effect?.poison || mv.effect?.stun || mv.effect?.sleep);
           const toHit = me.toHit + accMod(mv.acc);
           const dc = me.dcBase + accMod(mv.acc);
           const left = me.pp[m];

@@ -167,6 +167,7 @@ export function sfx(ev) {
     case "debuff": [587, 494, 392].forEach((f, i) => tone(t + i * 0.08, { f, type: "triangle", vol: 0.1, dur: 0.15 })); break;
     case "status": tone(t, { f: 400, to: 250, vol: 0.1, dur: 0.25, vib: 20 }); break;
     case "stun": tone(t, { f: 700, type: "sine", vol: 0.1, dur: 0.5, vib: 120 }); break;
+    case "sleep": SHAPES.sleep(t); break; // russa
     case "dot": hiss(t, { f: 800, vol: 0.15, dur: 0.2 }); tone(t, { f: 220, to: 160, vol: 0.08, dur: 0.15 }); break;
     case "recoil": thud(t, 0.3); break;
     case "switch": tone(t, { f: 440, to: 880, type: "triangle", vol: 0.14, dur: 0.12 }); tone(t + 0.1, { f: 660, type: "triangle", vol: 0.12, dur: 0.1 }); break;

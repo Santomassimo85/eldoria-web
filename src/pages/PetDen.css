@@ -631,3 +631,57 @@
 /* tetto di PE al giorno (2026-11-01) */
 .pd-xpday { margin: 2px 0 0; font-size: .74rem; color: var(--pd-mute); }
 .pd-xpday.is-full { color: #ffd27a; }
+
+/* ── STATI IN LOTTA (2026-11-01): fumetto sopra il pet + tinta dello sprite ── */
+.pd-fxi em { font-style: normal; font-weight: 700; font-size: .68rem; }
+.pd-stb { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); z-index: 4; display: flex; flex-direction: column; align-items: center; pointer-events: none; animation: pd-stb-bob 1.6s ease-in-out infinite; }
+.pd-stb-ic { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,.7)); }
+.pd-stb-lab { margin-top: 2px; padding: 1px 7px; border-radius: 999px; font-size: .7rem; font-weight: 800; white-space: nowrap; color: #fff; background: rgba(20,16,24,.85); border: 1px solid currentColor; text-shadow: 0 1px 0 #000; font-family: var(--font-num); letter-spacing: .02em; }
+.pd-stb--sleep .pd-stb-lab { color: #b9c8ff; }
+.pd-stb--burn .pd-stb-lab { color: #ffb070; }
+.pd-stb--poison .pd-stb-lab { color: #b6f07a; }
+.pd-stb--daze .pd-stb-lab { color: #ffe27a; }
+.pd-stb--freeze .pd-stb-lab { color: #9fe6ff; }
+.pd-stb--shock .pd-stb-lab { color: #fff36b; }
+@keyframes pd-stb-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -5px); } }
+/* zzz che salgono */
+.pd-stb-z { position: absolute; left: 70%; top: -4px; width: 40px; height: 40px; }
+.pd-stb-z i { position: absolute; left: 0; bottom: 0; font-style: normal; font-weight: 900; color: #cdd8ff; text-shadow: 0 1px 2px #000; opacity: 0; animation: pd-z 2.4s ease-out infinite; font-family: var(--font-num); }
+.pd-stb-z i:nth-child(2) { animation-delay: .8s; font-size: 1.15em; }
+.pd-stb-z i:nth-child(3) { animation-delay: 1.6s; font-size: .85em; }
+@keyframes pd-z { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(18px, -30px) scale(1.2); } }
+/* stelline che girano */
+.pd-stb-orbit { position: absolute; left: 50%; top: 14px; width: 0; height: 0; animation: pd-orbit 1.4s linear infinite; }
+.pd-stb-orbit i { position: absolute; font-style: normal; font-size: .9rem; }
+.pd-stb-orbit i:nth-child(1) { transform: translate(24px, -6px); }
+.pd-stb-orbit i:nth-child(2) { transform: translate(-30px, -6px); }
+.pd-stb-orbit i:nth-child(3) { transform: translate(-4px, 10px); }
+@keyframes pd-orbit { to { transform: rotate(360deg); } }
+.pd-stb--daze .pd-stb-ic { animation: pd-wobble 1s ease-in-out infinite; }
+@keyframes pd-wobble { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+/* bollicine del veleno */
+.pd-stb-bub { position: absolute; left: 50%; top: 10px; width: 40px; height: 30px; transform: translateX(-50%); }
+.pd-stb-bub i { position: absolute; bottom: 0; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #c9ff8a; background: rgba(140,220,70,.45); opacity: 0; animation: pd-bub 1.8s ease-out infinite; }
+.pd-stb-bub i:nth-child(1) { left: 4px; }
+.pd-stb-bub i:nth-child(2) { left: 18px; animation-delay: .6s; width: 5px; height: 5px; }
+.pd-stb-bub i:nth-child(3) { left: 30px; animation-delay: 1.2s; }
+@keyframes pd-bub { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px); } }
+.pd-stb--burn .pd-stb-ic { animation: pd-flick .35s steps(2) infinite; }
+@keyframes pd-flick { 50% { transform: scale(1.12) rotate(-6deg); } }
+.pd-stb--shock .pd-stb-ic { animation: pd-zap .5s steps(2) infinite; }
+@keyframes pd-zap { 50% { transform: translateX(3px) rotate(10deg); filter: drop-shadow(0 0 6px #fff36b); } }
+/* tinta dello sprite */
+.pd-spot.pd-st-sleep .pd-act { filter: saturate(.6) brightness(.85); }
+.pd-spot.pd-st-sleep .pd-act:not([class*="is-"]) { animation: pd-snore 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes pd-snore { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.95) translateY(3px); } }
+.pd-spot.pd-st-burn .pd-act { filter: sepia(.4) saturate(1.8) hue-rotate(-20deg) drop-shadow(0 0 6px rgba(255,120,40,.7)); }
+.pd-spot.pd-st-poison .pd-act { filter: sepia(.35) saturate(1.6) hue-rotate(50deg) drop-shadow(0 0 6px rgba(140,220,70,.6)); }
+.pd-spot.pd-st-freeze .pd-act { filter: saturate(.4) brightness(1.15) hue-rotate(170deg) drop-shadow(0 0 8px rgba(150,220,255,.9)); }
+.pd-spot.pd-st-shock .pd-act { filter: drop-shadow(0 0 7px rgba(255,240,100,.9)); }
+.pd-spot.pd-st-shock .pd-act:not([class*="is-"]) { animation: pd-zap-body .3s steps(2) infinite; }
+@keyframes pd-zap-body { 50% { transform: translateX(2px); } }
+.pd-spot.pd-st-daze .pd-act:not([class*="is-"]) { transform-origin: 50% 100%; animation: pd-wobble-body 1.2s ease-in-out infinite; }
+@keyframes pd-wobble-body { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.pd-spot--e .pd-stb { top: -16px; }
+@media (max-width: 760px) { .pd-stb-ic { font-size: 1.5rem; } .pd-stb-lab { font-size: .62rem; } }
+@media (prefers-reduced-motion: reduce) { .pd-stb, .pd-stb *, .pd-spot[class*="pd-st-"] .pd-act { animation: none !important; } }
