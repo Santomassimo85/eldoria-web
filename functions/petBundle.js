@@ -82,7 +82,22 @@ var EVO_MOVES = {
   balzomortale: ["Balzo Mortale", "earth", 130, 85, "stomp", { uses: 1, effect: { stun: 0.3 } }],
   soffiobianco: ["Soffio del Drago Bianco", "cold", 130, 90, "breath", { uses: 1, effect: { stun: 0.3 } }],
   soffioblu: ["Soffio del Drago Blu", "lightning", 130, 90, "beam", { uses: 1, effect: { foe: { ac: -1 }, chance: 1 } }],
-  esplosionementale: ["Esplosione Mentale", "psychic", 110, 90, "wave", { uses: 1, effect: { stun: 0.5 } }]
+  esplosionementale: ["Esplosione Mentale", "psychic", 110, 90, "wave", { uses: 1, effect: { stun: 0.5 } }],
+  // nuovi pet e draghi (2026-11-01)
+  polverefatata: ["Polvere Fatata", "psychic", 0, 90, "cloud", { uses: 2, effect: { sleep: 1 } }],
+  galoppoceleste: ["Galoppo Celeste", "radiant", 100, 100, "dash", { uses: 2, prio: 1 }],
+  soffioverde: ["Soffio del Drago Verde", "poison", 130, 90, "cloud", { uses: 1, effect: { poison: 0.6 } }],
+  soffionero: ["Soffio del Drago Nero", "acid", 130, 90, "beam", { uses: 1, effect: { foe: { def: -1 }, chance: 1 } }],
+  soffiooro: ["Soffio del Drago d'Oro", "fire", 135, 90, "breath", { uses: 1, effect: { burn: 0.4 } }],
+  soffioargento: ["Soffio del Drago d'Argento", "cold", 125, 90, "breath", { uses: 1, effect: { foe: { spd: -1 }, chance: 1, stun: 0.2 } }],
+  soffiobronzo: ["Soffio del Drago di Bronzo", "lightning", 125, 90, "beam", { uses: 1, effect: { stun: 0.3 } }],
+  soffiorame: ["Soffio del Drago di Rame", "acid", 120, 90, "beam", { uses: 1, effect: { foe: { spd: -1 }, chance: 1 } }],
+  soffioottone: ["Soffio Soporifero d'Ottone", "fire", 115, 90, "breath", { uses: 1, effect: { sleep: 0.35 } }],
+  soffioametista: ["Soffio d'Ametista", "psychic", 125, 90, "wave", { uses: 1, effect: { foe: { def: -1 }, chance: 0.6 } }],
+  soffiocristallo: ["Soffio di Cristallo", "radiant", 125, 90, "burst", { uses: 1, effect: { stun: 0.25 } }],
+  soffiosmeraldo: ["Soffio di Smeraldo", "psychic", 120, 90, "wave", { uses: 1, effect: { foe: { atk: -1 }, chance: 0.6 } }],
+  soffiozaffiro: ["Soffio di Zaffiro", "lightning", 125, 90, "wave", { uses: 1, effect: { stun: 0.3 } }],
+  soffiotopazio: ["Soffio di Topazio", "necrotic", 125, 90, "breath", { uses: 1, effect: { drain: 0.3 } }]
 };
 var E = (name, icon, desc, look, skill, extra = {}) => ({ name, icon, desc, look, skill, ...extra });
 var EVOLUTIONS = {
@@ -359,6 +374,164 @@ var EVOLUTIONS = {
     "Un lich vero: finch\xE9 il filatterio esiste, non va mai gi\xF9 davvero.",
     "a lich, tall skeletal undead sorcerer in ornate tattered purple and black robes with a golden crown, glowing green eyes, holding a phylactery, necrotic green flames",
     { passive: "tenacia" }
+  ),
+  // ── nuovi pet (2026-11-01) ──
+  magmino: E(
+    "Azer",
+    "\u{1F525}",
+    "Il mefite \xE8 diventato un azer: un fabbro di bronzo con la barba di fuoco. Toccarlo scotta.",
+    "an azer, sturdy dwarf-like humanoid with bronze metallic skin, hair and beard made of living flames, holding a smith hammer, glowing hot body",
+    { passive: "tocco", v: 0.25, st: "burn" }
+  ),
+  ranocchietto: E(
+    "Capotrib\xF9 Bullywug",
+    "\u{1F438}",
+    "Il ranocchio ora comanda la palude: si mimetizza fra le canne e gracida ordini.",
+    "a bullywug chieftain, large muscular frog-man with mottled green skin, a crown of reeds, spear in hand, wide mouth, swamp mist and reeds",
+    { passive: "sfocatura" }
+  ),
+  sassolino: E(
+    "Galeb Duhr",
+    "\u{1FAA8}",
+    "Un galeb duhr adulto: una roccia saggia che chiama i massi a rotolare.",
+    "an adult galeb duhr, large boulder-shaped earth creature with thick rocky limbs, mossy cracks, deep glowing eyes, small stones floating around it",
+    { passive: "corazza", v: 2 }
+  ),
+  stirgetta: E(
+    "Stirge Regina",
+    "\u{1F99F}",
+    "La regina delle stirge: grossa come un falco, beve finch\xE9 non \xE8 sazia.",
+    "a stirge queen, large bat-mosquito monster with leathery wings, long blood-red proboscis, swollen abdomen, four clawed legs, red glowing eyes",
+    { passive: "succhiavita", v: 0.3 }
+  ),
+  folletta: E(
+    "Nobile Fatata",
+    "\u{1F9DA}",
+    "La pixie \xE8 diventata una nobile della corte fatata: una pizzicata di polvere e dormi.",
+    "a fey noble, elegant fairy lady with large shimmering butterfly wings, a delicate flower crown, flowing petal gown, swirling glittering fairy dust",
+    { move: "polverefatata" }
+  ),
+  lanternino: E(
+    "Deva",
+    "\u{1F607}",
+    "La lucina \xE8 cresciuta in un deva: un angelo guerriero, puro come la luce.",
+    "a deva angel, tall serene celestial warrior with silver skin, feathered white wings, golden armor, radiant halo, holy mace",
+    { passive: "purezza" },
+    { res: { resist: ["radiant"] } }
+  ),
+  scossino: E(
+    "Scossauro",
+    "\u{1F98E}",
+    "La lucertola \xE8 diventata un rettile della tempesta: i fulmini la nutrono.",
+    "a large storm lizard, big pale blue reptile with a tall crackling frilled crest, lightning arcs running across its spines, fierce eyes",
+    { passive: "assorbi", el: "lightning" }
+  ),
+  gargolino: E(
+    "Gargoyle",
+    "\u{1F5FF}",
+    "Un gargoyle vero: veglia sui tetti per secoli e non si stanca mai.",
+    "a gargoyle, menacing grey stone winged demon with horns, clawed hands and feet, cracked stone skin, crouched on a cathedral ledge",
+    { passive: "tenacia" }
+  ),
+  budino: E(
+    "Budino Nero",
+    "\u{1F36E}",
+    "Un budino nero adulto: scioglie armi e armature come burro.",
+    "an adult black pudding, huge glossy black amorphous ooze, bubbling corrosive surface dissolving a sword and shield, dripping acid",
+    { passive: "tocco", v: 0.35, st: "ac" }
+  ),
+  pegasino: E(
+    "Pegaso",
+    "\u{1F434}",
+    "Il pegaso adulto: galoppa sulle nuvole pi\xF9 veloce del vento.",
+    "a pegasus, majestic white winged horse with large feathered wings spread, flowing silver mane, golden hooves, galloping on clouds, holy light",
+    { move: "galoppoceleste" }
+  ),
+  // ── draghi (2026-11-01) ──
+  verdino: E(
+    "Drago Verde",
+    "\u{1F409}",
+    "Un giovane drago verde: manipolatore, crudele, e il suo soffio \xE8 una nube di veleno.",
+    "a young green dragon, large emerald-green dragon with a tall leafy crest, wide wings, cunning yellow eyes, thick green poisonous gas from its jaws, forest",
+    { move: "soffioverde" }
+  ),
+  nerolino: E(
+    "Drago Nero",
+    "\u{1F409}",
+    "Un giovane drago nero: il signore della palude, il suo soffio scioglie la carne.",
+    "a young black dragon, large glossy black dragon with forward-curving horns and a skeletal face, wide wings, a stream of green acid from its jaws, swamp",
+    { move: "soffionero" }
+  ),
+  dorino: E(
+    "Drago d'Oro",
+    "\u{1F409}",
+    "Un giovane drago d'oro: nobile, saggio, il pi\xF9 potente dei draghi metallici.",
+    "a young gold dragon, majestic shining golden dragon with long whiskers and frilled head, large elegant wings, wise noble eyes, golden flames",
+    { move: "soffiooro" },
+    { plus: { def: 1 } }
+  ),
+  argentino: E(
+    "Drago d'Argento",
+    "\u{1F409}",
+    "Un giovane drago d'argento: protettore dei deboli, soffia vento gelido che paralizza.",
+    "a young silver dragon, elegant shining silver dragon with smooth frilled head, large wings, kind blue eyes, freezing breath, among clouds",
+    { move: "soffioargento" }
+  ),
+  bronzino: E(
+    "Drago di Bronzo",
+    "\u{1F409}",
+    "Un giovane drago di bronzo: guardiano delle coste, chiama i fulmini sulle onde.",
+    "a young bronze dragon, large bronze-scaled dragon with ridged horns and webbed claws, wide wings, brave eyes, lightning bolt from its jaws, stormy sea",
+    { move: "soffiobronzo" }
+  ),
+  ramino: E(
+    "Drago di Rame",
+    "\u{1F409}",
+    "Un giovane drago di rame: burlone, ma il suo soffio rallenta chiunque.",
+    "a young copper dragon, large shiny copper-red dragon with flat backswept horns, wide wings, mischievous grin, acid breath, rocky hills",
+    { move: "soffiorame" }
+  ),
+  ottonino: E(
+    "Drago d'Ottone",
+    "\u{1F409}",
+    "Un giovane drago d'ottone: parla, parla, parla\u2026 e chi non ascolta si addormenta.",
+    "a young brass dragon, large brass-yellow dragon with a huge shield-like head crest, wide wings, talkative face, fire breath, desert sands",
+    { move: "soffioottone" }
+  ),
+  ametistino: E(
+    "Drago d'Ametista",
+    "\u{1F409}",
+    "Un giovane drago d'ametista: la sua mente spinge come un'onda di forza pura.",
+    "a young amethyst gem dragon, large dragon with translucent purple crystal scales, faceted gem horns, crystalline wings, violet psychic force wave",
+    { move: "soffioametista" }
+  ),
+  cristallino: E(
+    "Drago di Cristallo",
+    "\u{1F409}",
+    "Un giovane drago di cristallo: risplende come una stella e acceca chi lo sfida.",
+    "a young crystal gem dragon, large dragon with clear sparkling crystal scales refracting rainbows, faceted horns, glassy wings, blinding radiant breath",
+    { move: "soffiocristallo" }
+  ),
+  smeraldino: E(
+    "Drago di Smeraldo",
+    "\u{1F409}",
+    "Un giovane drago di smeraldo: paranoico, sfuggente, ti confonde le idee.",
+    "a young emerald gem dragon, large dragon with deep green gemstone scales, faceted crest, crystal wings, shimmering illusions and psychic distortion",
+    { move: "soffiosmeraldo" }
+  ),
+  zaffirino: E(
+    "Drago di Zaffiro",
+    "\u{1F409}",
+    "Un giovane drago di zaffiro: un ruggito e il tuono rimbomba nelle caverne.",
+    "a young sapphire gem dragon, large dragon with brilliant blue gemstone scales, faceted horns, crystal wings, booming thunder shockwave from its jaws",
+    { move: "soffiozaffiro" }
+  ),
+  topazino: E(
+    "Drago di Topazio",
+    "\u{1F409}",
+    "Un giovane drago di topazio: il suo soffio secca e avvizzisce ogni cosa viva.",
+    "a young topaz gem dragon, large dragon with golden-orange gemstone scales, faceted crest, crystal wings, dark withering necrotic breath, lonely shore",
+    { move: "soffiotopazio" }
   )
 };
 var evoLevelOf = (rarity) => EVO_LEVEL[rarity] || 15;
@@ -1098,6 +1271,269 @@ var PET_DEX = {
     { hp: 56, atk: 19, def: 14, spd: 13 },
     ["raggiosinistro", "maledizione", "toccotetro", "mietitura"],
     R(["cold", "lightning", "necrotic"], ["poison"])
+  ),
+  // ── NUOVI PET (2026-11-01): un comune per gli elementi che non ne avevano, tre rari ──
+  magmino: S(
+    "magmino",
+    "Magmino",
+    "\u{1F30B}",
+    "fire",
+    "common",
+    "Mefite del magma: si scioglie quando \xE8 triste e si rapprende quando \xE8 contento.",
+    "a tiny magma mephit, small impish creature made of glowing molten rock with dark cooling crust, little lava wings, dripping lava, mischievous grin",
+    { hp: 42, atk: 12, def: 10, spd: 11 },
+    ["scintilla", "graffio", "sbuffo", "morsofuoco"],
+    R([], ["fire", "poison"], ["cold"])
+  ),
+  ranocchietto: S(
+    "ranocchietto",
+    "Ranocchietto",
+    "\u{1F438}",
+    "water",
+    "common",
+    "Cucciolo di bullywug: gracida canzoni d'amore alle pozzanghere.",
+    "a baby bullywug, small chubby green frog-person with a big wide mouth, huge golden eyes, tiny loincloth, sitting on a lily pad, water droplets",
+    { hp: 46, atk: 11, def: 10, spd: 12 },
+    ["spruzzo", "zampata", "bolla", "codaspuma"]
+  ),
+  sassolino: S(
+    "sassolino",
+    "Sassolino",
+    "\u{1FAA8}",
+    "earth",
+    "common",
+    "Galeb duhr bambino: un sasso con le gambette che canta per far rotolare le pietre.",
+    "a baby galeb duhr, small round boulder creature with stubby rock arms and legs, mossy top, two little glowing eyes and a tiny smile",
+    { hp: 52, atk: 11, def: 14, spd: 5 },
+    ["sassi", "zampapietra", "pellepietra", "frana"],
+    R([], ["poison"])
+  ),
+  stirgetta: S(
+    "stirgetta",
+    "Stirgetta",
+    "\u{1F99F}",
+    "poison",
+    "common",
+    "Stirge cucciola: vuole solo un abbraccio. E un po' di sangue.",
+    "a baby stirge, tiny round furry bat-mosquito creature with leathery wings, a long thin proboscis, big red eyes, four little clawed legs",
+    { hp: 38, atk: 12, def: 8, spd: 16 },
+    ["spruzzotossico", "scattino", "zannevelenose", "codapungente"]
+  ),
+  folletta: S(
+    "folletta",
+    "Folletta",
+    "\u{1F9DA}",
+    "psychic",
+    "common",
+    "Pixie dispettosa: ti fa vedere draghi dove ci sono solo galline.",
+    "a tiny pixie, small fairy girl with iridescent butterfly wings, pointed ears, flower-petal dress, sparkling pink fairy dust trail, cheeky smile",
+    { hp: 38, atk: 12, def: 9, spd: 15 },
+    ["zampapsichica", "ondamentale", "scudomentale", "ipnosi"],
+    R([], [], ["necrotic"])
+  ),
+  lanternino: S(
+    "lanternino",
+    "Lanternino",
+    "\u{1F3EE}",
+    "radiant",
+    "common",
+    "Arconte lanterna: una pallina di luce celeste che fa da lumino ai bambini.",
+    "a lantern archon, small floating ball of warm golden holy light with a tiny cute face, soft halo glow, little light sparkles around",
+    { hp: 40, atk: 12, def: 10, spd: 12 },
+    ["luccichio", "artigliluce", "aureola", "cornosplendente"],
+    R(["lightning"], ["necrotic"])
+  ),
+  scossino: S(
+    "scossino",
+    "Scossino",
+    "\u{1F98E}",
+    "lightning",
+    "common",
+    "Lucertola scossa: se l'accarezzi ti si drizzano i capelli.",
+    "a baby shocker lizard, small pale blue lizard with a frilled crest, tiny sparks of electricity jumping between its spines, big bright eyes",
+    { hp: 42, atk: 12, def: 9, spd: 14 },
+    ["graffioelettrico", "scarica", "saetta", "morsovoltaico"],
+    R([], ["lightning"])
+  ),
+  gargolino: S(
+    "gargolino",
+    "Gargolino",
+    "\u{1F5FF}",
+    "earth",
+    "rare",
+    "Gargoyle cucciolo: fa la statua quando lo guardi, ti fa le smorfie quando ti giri.",
+    "a baby gargoyle, small grey stone winged imp with little horns, cracked stone skin, crouching like a statue, mischievous glowing eyes",
+    { hp: 54, atk: 14, def: 16, spd: 8 },
+    ["sassi", "graffio", "pellepietra", "cornoroccia"],
+    R(["bludgeoning", "piercing", "slashing"], ["poison"])
+  ),
+  budino: S(
+    "budino",
+    "Budino",
+    "\u{1F36E}",
+    "acid",
+    "rare",
+    "Budino nero cucciolo: se lo tagli diventano due. Non tagliarlo.",
+    "a baby black pudding, small glossy black blob of ooze with two big cute white eyes, bubbling acid surface, little drips",
+    { hp: 62, atk: 14, def: 11, spd: 6 },
+    ["sputoacido", "morsoacido", "melma", "bollacorrosiva"],
+    R([], ["acid", "cold", "lightning"])
+  ),
+  pegasino: S(
+    "pegasino",
+    "Pegasino",
+    "\u{1F434}",
+    "radiant",
+    "rare",
+    "Puledro di pegaso: prova a volare, inciampa sulle nuvole, riprova.",
+    "a pegasus foal, small white horse foal with fluffy feathered wings, golden hooves, big sparkling blue eyes, soft holy glow",
+    { hp: 48, atk: 14, def: 11, spd: 16 },
+    ["scattino", "artigliluce", "benedizione", "raggio"]
+  ),
+  // ── DRAGHI CUCCIOLI (2026-11-01): cromatici e metallici che mancavano + draghi gemma ──
+  verdino: S(
+    "verdino",
+    "Verdino",
+    "\u{1F432}",
+    "poison",
+    "epic",
+    "Cucciolo di drago verde: dice bugie bellissime e sputa nebbia velenosa.",
+    "a baby green dragon wyrmling, chubby emerald-green dragon with a tall leafy crest along its head and back, small wings, sly yellow eyes, puffs of green toxic mist",
+    { hp: 52, atk: 16, def: 13, spd: 14 },
+    ["veleno", "morsetto", "zannevelenose", "fiotto"],
+    R([], ["poison"])
+  ),
+  nerolino: S(
+    "nerolino",
+    "Nerolino",
+    "\u{1F432}",
+    "acid",
+    "epic",
+    "Cucciolo di drago nero: ama le paludi e sbava acido sulle scarpe.",
+    "a baby black dragon wyrmling, chubby glossy black dragon with forward-curving horns and a skull-like face, small wings, acid dripping from its jaws",
+    { hp: 54, atk: 16, def: 13, spd: 13 },
+    ["sputoacido", "morsetto", "spruzzoacido", "bagnoacido"],
+    R([], ["acid"])
+  ),
+  dorino: S(
+    "dorino",
+    "Dorino",
+    "\u{1F432}",
+    "fire",
+    "legendary",
+    "Cucciolo di drago d'oro: saggio fin dall'uovo, ma ruba ancora i biscotti.",
+    "a baby gold dragon wyrmling, chubby shining golden dragon with long whiskers and a frilled head, small elegant wings, wise warm eyes, gentle flames",
+    { hp: 62, atk: 18, def: 15, spd: 13 },
+    ["scintilla", "morsofuoco", "scudofuoco", "vampata"],
+    R([], ["fire"])
+  ),
+  argentino: S(
+    "argentino",
+    "Argentino",
+    "\u{1F432}",
+    "cold",
+    "epic",
+    "Cucciolo di drago d'argento: gentile con tutti, si trasforma in bambino per giocare.",
+    "a baby silver dragon wyrmling, chubby shiny silver dragon with a smooth frilled head, small wings, kind blue eyes, sparkling frost breath",
+    { hp: 56, atk: 15, def: 14, spd: 13 },
+    ["brina", "morsogelo", "mantobrina", "grandine"],
+    R([], ["cold"])
+  ),
+  bronzino: S(
+    "bronzino",
+    "Bronzino",
+    "\u{1F432}",
+    "lightning",
+    "epic",
+    "Cucciolo di drago di bronzo: adora il mare e i fulmini sulle onde.",
+    "a baby bronze dragon wyrmling, chubby bronze-scaled dragon with ridged horns and webbed feet, small wings, brave eyes, little sparks of lightning",
+    { hp: 56, atk: 16, def: 14, spd: 12 },
+    ["scarica", "morsovoltaico", "scossa", "fulmine"],
+    R([], ["lightning"])
+  ),
+  ramino: S(
+    "ramino",
+    "Ramino",
+    "\u{1F432}",
+    "acid",
+    "epic",
+    "Cucciolo di drago di rame: racconta barzellette e si offende se non ridi.",
+    "a baby copper dragon wyrmling, chubby shiny copper-red dragon with flat backswept horns, small wings, playful grin, tiny acid drops",
+    { hp: 52, atk: 16, def: 12, spd: 15 },
+    ["artiglicorrosivi", "scattino", "morsoacido", "bagnoacido"],
+    R([], ["acid"])
+  ),
+  ottonino: S(
+    "ottonino",
+    "Ottonino",
+    "\u{1F432}",
+    "fire",
+    "epic",
+    "Cucciolo di drago d'ottone: chiacchierone; il suo soffio fa venire sonno.",
+    "a baby brass dragon wyrmling, chubby brass-yellow dragon with a large shield-like head crest, small wings, chatty smiling face, warm desert haze",
+    { hp: 54, atk: 15, def: 13, spd: 14 },
+    ["scintilla", "morsetto", "sbuffo", "vampata"],
+    R([], ["fire"])
+  ),
+  ametistino: S(
+    "ametistino",
+    "Ametistino",
+    "\u{1F49C}",
+    "psychic",
+    "epic",
+    "Cucciolo di drago d'ametista: pensa cos\xEC forte che le cose si spostano.",
+    "a baby amethyst gem dragon wyrmling, chubby dragon with translucent purple crystal scales, faceted gem horns, small crystalline wings, soft violet psychic glow",
+    { hp: 54, atk: 16, def: 13, spd: 13 },
+    ["zampapsichica", "morsoillusorio", "urlopsichico", "telecinesi"],
+    R(["psychic"])
+  ),
+  cristallino: S(
+    "cristallino",
+    "Cristallino",
+    "\u{1F48E}",
+    "radiant",
+    "epic",
+    "Cucciolo di drago di cristallo: brilla al buio e ride quando lo guardi.",
+    "a baby crystal gem dragon wyrmling, chubby dragon with clear sparkling crystal scales refracting rainbow light, faceted horns, small glassy wings, bright glow",
+    { hp: 52, atk: 15, def: 14, spd: 14 },
+    ["luccichio", "morsetto", "scudofede", "lucesplosione"],
+    R(["cold", "radiant"])
+  ),
+  smeraldino: S(
+    "smeraldino",
+    "Smeraldino",
+    "\u{1F49A}",
+    "psychic",
+    "epic",
+    "Cucciolo di drago di smeraldo: timido, si fa invisibile e ti guarda da vicino.",
+    "a baby emerald gem dragon wyrmling, chubby dragon with deep green gemstone scales, faceted crest, small crystal wings, shy curious eyes, shimmering illusion haze",
+    { hp: 52, atk: 15, def: 12, spd: 16 },
+    ["ondamentale", "morsetto", "concentrazione", "sguardo"],
+    R(["psychic"])
+  ),
+  zaffirino: S(
+    "zaffirino",
+    "Zaffirino",
+    "\u{1F499}",
+    "lightning",
+    "epic",
+    "Cucciolo di drago di zaffiro: il suo ruggito \xE8 un tuono in miniatura.",
+    "a baby sapphire gem dragon wyrmling, chubby dragon with brilliant blue gemstone scales, faceted horns, small crystal wings, crackling thunder rings around it",
+    { hp: 54, atk: 16, def: 13, spd: 13 },
+    ["scarica", "morsovoltaico", "caricastatica", "fulmine"],
+    R(["psychic", "lightning"])
+  ),
+  topazino: S(
+    "topazino",
+    "Topazino",
+    "\u{1F9E1}",
+    "necrotic",
+    "epic",
+    "Cucciolo di drago di topazio: brontolone, ama la solitudine e le spiagge deserte.",
+    "a baby topaz gem dragon wyrmling, chubby dragon with golden-orange gemstone scales, faceted crest, small crystal wings, grumpy face, dark withering mist",
+    { hp: 54, atk: 16, def: 13, spd: 13 },
+    ["luminotetro", "morsetto", "toccotetro", "frustaombra"],
+    R(["necrotic", "psychic"])
   )
 };
 var PET_DEX_ORDER = Object.keys(PET_DEX);
