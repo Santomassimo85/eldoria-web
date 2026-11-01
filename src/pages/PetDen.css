@@ -685,3 +685,38 @@
 .pd-spot--e .pd-stb { top: -16px; }
 @media (max-width: 760px) { .pd-stb-ic { font-size: 1.5rem; } .pd-stb-lab { font-size: .62rem; } }
 @media (prefers-reduced-motion: reduce) { .pd-stb, .pd-stb *, .pd-spot[class*="pd-st-"] .pd-act { animation: none !important; } }
+
+/* ── EVOLUZIONE (2026-11-01): sagoma nei Dettagli, popup che spiega, scambio di sagome ── */
+.pd-shadow { display: inline-flex; }
+.pd-shadow .pd-sprite img, .pd-shadow .pd-emoji { filter: brightness(0) drop-shadow(0 0 1px rgba(255,255,255,.55)) drop-shadow(0 0 6px rgba(255,210,90,.25)); }
+.pd-shadow .pd-sprite.is-evo-raw::before, .pd-shadow .pd-sprite.is-evo-raw::after { display: none; }
+.pd-evo-intro { position: relative; }
+.pd-evo-halo { position: absolute; inset: 8% 14%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--pd-rc) 55%, transparent) 0%, transparent 70%); animation: pd-evo-pulse 1.4s ease-in-out infinite; }
+@keyframes pd-evo-pulse { 0%, 100% { opacity: .45; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
+.pd-evo-intro .pd-sprite { animation: pd-evo-shiver .18s steps(2) infinite; }
+@keyframes pd-evo-shiver { 50% { transform: translateX(2px) rotate(1deg); } }
+.pd-evo-sparkles i { position: absolute; font-style: normal; color: #fff3c4; text-shadow: 0 0 8px #ffd56a; animation: pd-evo-twinkle 1.6s ease-in-out infinite; }
+.pd-evo-sparkles i:nth-child(1) { left: 18%; top: 18%; }
+.pd-evo-sparkles i:nth-child(2) { right: 18%; top: 28%; animation-delay: .4s; }
+.pd-evo-sparkles i:nth-child(3) { left: 26%; bottom: 14%; animation-delay: .8s; }
+.pd-evo-sparkles i:nth-child(4) { right: 24%; bottom: 20%; animation-delay: 1.2s; }
+@keyframes pd-evo-twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: 1; transform: scale(1.2); } }
+.pd-evo-msg { margin: 4px 0 6px; line-height: 1.45; }
+.pd-evo-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; text-align: left; font-size: .86rem; color: var(--pd-mute); }
+.pd-evo-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+/* scambio di sagome bianche, sempre più veloce */
+.pd-morph { position: relative; }
+.pd-morph-a, .pd-morph-b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; }
+.pd-morph-a .pd-sprite img, .pd-morph-a .pd-emoji, .pd-morph-b .pd-sprite img, .pd-morph-b .pd-emoji { filter: brightness(0) invert(1) drop-shadow(0 0 10px #fff) drop-shadow(0 0 18px var(--pd-rc)); }
+.pd-morph-a { animation: pd-morph-a var(--pd-morph-ms, 4600ms) linear forwards; }
+.pd-morph-b { opacity: 0; animation: pd-morph-b var(--pd-morph-ms, 4600ms) linear forwards; }
+@keyframes pd-morph-a { 0%, 13.10% { opacity: 1; } 13.11%, 24.24% { opacity: 0; } 24.25%, 33.71% { opacity: 1; } 33.72%, 41.76% { opacity: 0; } 41.77%, 48.60% { opacity: 1; } 48.61%, 54.42% { opacity: 0; } 54.43%, 59.36% { opacity: 1; } 59.37%, 63.56% { opacity: 0; } 63.57%, 67.14% { opacity: 1; } 67.15%, 70.17% { opacity: 0; } 70.18%, 72.75% { opacity: 1; } 72.76%, 74.95% { opacity: 0; } 74.96%, 76.81% { opacity: 1; } 76.82%, 78.40% { opacity: 0; } 78.41%, 79.74% { opacity: 1; } 79.75%, 80.89% { opacity: 0; } 80.9%, 81.86% { opacity: 1; } 81.87%, 82.69% { opacity: 0; } 82.7%, 83.39% { opacity: 1; } 83.4%, 83.99% { opacity: 0; } 84%, 100% { opacity: 0; } }
+@keyframes pd-morph-b { 0%, 13.10% { opacity: 0; } 13.11%, 24.24% { opacity: 1; } 24.25%, 33.71% { opacity: 0; } 33.72%, 41.76% { opacity: 1; } 41.77%, 48.60% { opacity: 0; } 48.61%, 54.42% { opacity: 1; } 54.43%, 59.36% { opacity: 0; } 59.37%, 63.56% { opacity: 1; } 63.57%, 67.14% { opacity: 0; } 67.15%, 70.17% { opacity: 1; } 70.18%, 72.75% { opacity: 0; } 72.76%, 74.95% { opacity: 1; } 74.96%, 76.81% { opacity: 0; } 76.82%, 78.40% { opacity: 1; } 78.41%, 79.74% { opacity: 0; } 79.75%, 80.89% { opacity: 1; } 80.9%, 81.86% { opacity: 0; } 81.87%, 82.69% { opacity: 1; } 82.7%, 83.39% { opacity: 0; } 83.4%, 83.99% { opacity: 1; } 84%, 100% { opacity: 1; } }
+.pd-morph-halo { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #fff 0%, color-mix(in srgb, var(--pd-rc) 60%, transparent) 38%, transparent 70%); animation: pd-morph-halo var(--pd-morph-ms, 4600ms) ease-in forwards; }
+@keyframes pd-morph-halo { 0% { opacity: .2; transform: scale(.6); } 84% { opacity: 1; transform: scale(1.35); } 100% { opacity: .6; transform: scale(1.5); } }
+.pd-morph-flash { position: absolute; inset: -40%; background: radial-gradient(circle, #fff 0%, rgba(255,255,255,.85) 35%, transparent 70%); opacity: 0; pointer-events: none; animation: pd-morph-flash var(--pd-morph-ms, 4600ms) ease-out forwards; }
+@keyframes pd-morph-flash { 0%, 82% { opacity: 0; } 88% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pd-evo-intro .pd-sprite, .pd-evo-sparkles i, .pd-evo-halo { animation: none; } }
+.pd-evolve { overflow-y: auto; }
+.pd-evolve .pd-hatch-box { margin: auto 0; }
+.pd-morph { width: 220px; height: 220px; }

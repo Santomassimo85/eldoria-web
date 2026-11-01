@@ -5,7 +5,13 @@
    Tipi:
    - level  = Caramella Rara: +1 livello. RARISSIMA: non si compra,
               esce solo dalla Torre (1% a piano, sicura ogni 25 piani).
+              Torta della Crescita (2026-11-01): +1 livello, si compra ma
+              costa tanto (TORTA_PRICE) e salta il tetto di PE del giorno.
    - xp     = Pietra dell'Esperienza: tanti PE in un colpo.
+   - evo    = Pietra dell'Evoluzione (2026-11-01): fa evolvere SUBITO un
+              pet che ha un'evoluzione, a qualunque livello. Carissima
+              (EVO_STONE_PRICE). Si usa dall'evoluzione (op evolvePet con
+              stone = true): se il pet ha già il livello non si consuma.
    - charm  = amuleto da far TENERE a un pet: vale per `fights` lotte
      (2026-11-01: da 3 a 10 lotte, ~un giorno di torre)
               (Torre o sfide), poi si consuma. Uno per pet.
@@ -22,12 +28,19 @@
 import { PET_DEX_MOVES, ELEMENTS, TYPE_ICON, TYPE_LABEL } from "./petDex";
 
 export const SCROLL_SLOTS = 2;
+export const EVO_STONE = "pietra_evo";
+export const EVO_STONE_PRICE = 1500;
+export const TORTA_PRICE = 400;
 
 const BASE = {
   caramella: { name: "Caramella Rara", icon: "🍬", kind: "level", rarity: "legendary", price: null,
     desc: "Il pet sale subito di un livello. Rarissima: esce solo dalla Torre." },
   pietra: { name: "Pietra dell'Esperienza", icon: "💎", kind: "xp", rarity: "rare", price: 70,
     desc: "Dà al pet PE pari a metà del suo livello attuale (minimo 60), dentro il tetto di PE del giorno." },
+  torta: { name: "Torta della Crescita", icon: "🎂", kind: "level", rarity: "epic", price: TORTA_PRICE,
+    desc: "Il pet sale subito di un livello, anche se oggi ha già preso tutti i suoi PE. Costa cara." },
+  pietra_evo: { name: "Pietra dell'Evoluzione", icon: "🌟", kind: "evo", rarity: "legendary", price: EVO_STONE_PRICE,
+    desc: "Fa evolvere subito qualunque pet che ha un'evoluzione, a qualsiasi livello. Rarissima e carissima." },
   amuleto_scudo: { name: "Amuleto dello Scudo", icon: "🛡️", kind: "charm", rarity: "common", price: 30, fights: 10, fx: { ac: 2 },
     desc: "+2 alla Classe Armatura." },
   zanna: { name: "Zanna Affilata", icon: "🦷", kind: "charm", rarity: "common", price: 30, fights: 10, fx: { hit: 2 },
@@ -71,7 +84,7 @@ export const PET_BAG = { ...BASE, ...TALISMANS, ...SCROLLS };
 export const BAG_ORDER = Object.keys(PET_BAG);
 export const CHARMS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "charm");
 export const SCROLL_IDS = BAG_ORDER.filter((k) => PET_BAG[k].kind === "scroll");
-export const BAG_KIND_LABEL = { level: "Livello", xp: "Esperienza", charm: "Amuleto", battle: "Da lotta", scroll: "Pergamena" };
+export const BAG_KIND_LABEL = { evo: "Evoluzione", level: "Livello", xp: "Esperienza", charm: "Amuleto", battle: "Da lotta", scroll: "Pergamena" };
 // Oggetti che si possono dare in lotta: quelli da lotta e gli amuleti.
 export const usableInBattle = (id) => ["battle", "charm"].includes(PET_BAG[id]?.kind);
 export const charmFx = (pet) => (pet?.charm && PET_BAG[pet.charm.id]?.fx) || null;

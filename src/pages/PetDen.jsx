@@ -38,7 +38,7 @@ import { playDiceRoll } from "../components/diceSound";
 import {
   createChallenge, acceptChallenge, declineChallenge, cancelChallenge, submitAction, forfeit, pendingSide, sidesOf, flipBattle, flipEvent,
 } from "../utils/petPvp";
-import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle } from "../data/petBag";
+import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle, EVO_STONE, EVO_STONE_PRICE } from "../data/petBag";
 import PetFx from "./PetFx";
 import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
@@ -311,7 +311,7 @@ export default function PetDen() {
             <TowerTab uid={uid} den={den} art={art} run={run} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
           )}
           {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={setPvpId} />}
-          {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} run={run} />}
+          {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} art={art} run={run} />}
           {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
           {sec === "giocatori" && <PlayersAdmin run={run} art={art} />}
           <div className="pd-secfoot"><button type="button" className="pd-back" onClick={back}>← Torna all'hub</button></div>
@@ -421,7 +421,7 @@ const resWords = (r) => [
 ].filter(Boolean).join(" · ");
 
 // Riquadro nei Dettagli del pet: cosa diventa, quando, cosa prende.
-function EvoBox({ pet, art, onEvolve }) {
+function EvoBox({ pet, art, onEvolve, stones = 0 }) {
   const ev = EVOLUTIONS[pet.species];
   if (!ev) return null;
   const evo = evoStage(pet);
@@ -429,7 +429,7 @@ function EvoBox({ pet, art, onEvolve }) {
   const [n, d] = evoDiceOf(PET_DEX[pet.species].rarity);
   return (
     <div className={`pd-evobox${evo ? " is-done" : ""}`}>
-      <PetSprite species={pet.species} evo={1} art={art} size={60} />
+      <span className={evo ? "" : "pd-shadow"} title={evo ? undefined : "Forma ancora da scoprire"}><PetSprite species={pet.species} evo={1} art={art} size={60} /></span>
       <div>
         <b>{evo ? `✨ Forma evoluta: ${ev.name}` : `✨ Evoluzione: ${ev.name} (Lv ${need})`}</b>
         <small>{skillLine(pet.species)}</small>
@@ -439,15 +439,37 @@ function EvoBox({ pet, art, onEvolve }) {
           : `Prende ATK/DIF +12%, VEL +8%, CA +${1 + (ev.plus?.ac || 0)} e ${n}d${d} PF in più (si tirano i dadi).`}</small>
         {!evo && canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={onEvolve}>✨ Evolvi ora</button>}
         {!evo && !canEvolve(pet) && <small>Manca{need - pet.level === 1 ? "" : "no"} {need - pet.level} livell{need - pet.level === 1 ? "o" : "i"}.</small>}
+        {!evo && !canEvolve(pet) && stones > 0 && <button type="button" className="pd-btn pd-btn--evo" onClick={() => onEvolve(true)}>🌟 Usa la Pietra dell'Evoluzione (ne hai {stones})</button>}
       </div>
     </div>
   );
 }
 
-/* Evoluzione: luce → il pet cresce → dadi dei PF (li ha già tirati il
-   server, qui rotolano e si fermano uno alla volta) → la forma nuova. */
-function EvolveModal({ evo, art, onPhase, onClose }) {
-  const { pet, phase, result } = evo;
+/* Il giro dell'evoluzione, uguale da Squadra e dalla Bisaccia (2026-11-01):
+   popup che spiega (col disegno del pet) → conferma → le due sagome bianche
+   si scambiano sempre più veloci finché resta la nuova → dadi dei PF →
+   la forma nuova a colori. */
+const MORPH_MS = 4600;
+function useEvolve(uid) {
+  const [evoing, setEvoing] = useState(null);
+  const start = (pet, stone = false) => setEvoing({ pet, stone, phase: "intro" });
+  const go = () => {
+    const { pet, stone } = evoing;
+    unlockAudio();
+    const t0 = Date.now();
+    setEvoing({ pet, stone, phase: "morph" });
+    evolvePet(uid, pet.id, stone)
+      .then((r) => setTimeout(() => setEvoing({ pet, stone, phase: "dice", result: r }), Math.max(0, MORPH_MS - (Date.now() - t0))))
+      .catch((e) => setEvoing({ pet, stone, phase: "error", error: e.message || String(e) }));
+  };
+  const modal = (art) => evoing && (
+    <EvolveModal evo={evoing} art={art} onGo={go} onPhase={(phase) => setEvoing((e) => ({ ...e, phase }))} onClose={() => setEvoing(null)} />
+  );
+  return { start, modal };
+}
+
+function EvolveModal({ evo, art, onGo, onPhase, onClose }) {
+  const { pet, phase, result, stone } = evo;
   const ev = EVOLUTIONS[pet.species];
   const [faces, setFaces] = useState([]);
   const [stopped, setStopped] = useState(0);
@@ -478,13 +500,40 @@ function EvolveModal({ evo, art, onPhase, onClose }) {
             <p>{evo.error}</p>
             <button type="button" className="pd-btn" onClick={onClose}>Chiudi</button>
           </>
-        ) : phase === "glow" ? (
+        ) : phase === "intro" ? (
           <>
-            <div className="pd-hatch-stage pd-evo-stage">
-              <span className="pd-evo-glow" />
-              <span className="pd-evo-grow"><PetSprite species={pet.species} art={art} size={130} /></span>
+            <p className="pd-hatch-rar">Evoluzione</p>
+            <div className="pd-hatch-stage pd-evo-stage pd-evo-intro">
+              <span className="pd-evo-halo" />
+              <PetSprite species={pet.species} art={art} size={140} />
+              <span className="pd-evo-sparkles" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i></span>
             </div>
-            <p className="pd-hatch-txt">{pet.nick || formName(pet)} si sta evolvendo…</p>
+            <h2>Che succede a {pet.nick || formName(pet)}?!</h2>
+            <p className="pd-evo-msg">
+              {stone
+                ? <>Appoggi la 🌟 <b>Pietra dell'Evoluzione</b> su {pet.nick || formName(pet)}: la pietra si scalda, brilla… e il pet comincia a vibrare. È pronto a crescere anche se è solo al Lv {pet.level}!</>
+                : <>{pet.nick || formName(pet)} ha raggiunto il <b>Lv {pet.level}</b>: ha fatto abbastanza esperienza e il suo corpo sta per cambiare. Brilla tutto e non sta più fermo!</>}
+            </p>
+            <ul className="pd-evo-list">
+              <li>✨ Diventa una <b>forma adulta</b>, più grande e più seria (com'è fatta lo scopri adesso).</li>
+              <li>💪 ATK e DIF +12%, VEL +8%, CA +{1 + (ev.plus?.ac || 0)} e Punti Ferita in più, tirati coi dadi.</li>
+              <li>🎁 Prende la sua <b>abilità speciale</b>{ev.res ? " e difese nuove" : ""}.</li>
+              <li>⚠️ È per sempre: non si torna indietro.{stone ? " La pietra si consuma." : ""}</li>
+            </ul>
+            <div className="pd-evo-btns">
+              <button type="button" className="pd-btn pd-btn--evo" onClick={onGo}>✨ Sì, evolvi!</button>
+              <button type="button" className="pd-btn pd-btn--ghost" onClick={onClose}>Non ancora</button>
+            </div>
+          </>
+        ) : phase === "morph" ? (
+          <>
+            <div className="pd-hatch-stage pd-evo-stage pd-morph" style={{ "--pd-morph-ms": `${MORPH_MS}ms` }}>
+              <span className="pd-morph-halo" />
+              <span className="pd-morph-a"><PetSprite species={pet.species} art={art} size={130} /></span>
+              <span className="pd-morph-b"><PetSprite species={pet.species} evo={1} art={art} size={130} /></span>
+              <span className="pd-morph-flash" />
+            </div>
+            <p className="pd-hatch-txt">Oh?! {pet.nick || formName(pet)} sta cambiando forma…</p>
           </>
         ) : phase === "dice" ? (
           <>
@@ -975,7 +1024,7 @@ function StarterPick({ art, onPick }) {
 }
 
 /* ── squadra e collezione ─────────────────────────────────── */
-function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset, onEvolve }) {
+function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset, onEvolve, stones = 0 }) {
   const sp = PET_DEX[pet.species];
   const st = petStats(pet);
   const evo = evoStage(pet);
@@ -992,7 +1041,7 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         </h3>
         <div className="pd-chips"><TypeChip type={sp.type} /><RarityChip rarity={sp.rarity} /></div>
         <ResLine species={pet.species} evo={evo} compact />
-        {canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={onEvolve}>✨ Può evolvere in {EVOLUTIONS[pet.species].name}!</button>}
+        {canEvolve(pet) && <button type="button" className="pd-btn pd-btn--evo" onClick={() => onEvolve(false)}>✨ Può evolvere in {EVOLUTIONS[pet.species].name}!</button>}
         <div className="pd-xp"><Bar value={pet.xp} max={xpToNext(pet.level)} kind="xp" /><small>{pet.xp}/{xpToNext(pet.level)} PE</small></div>
         <p className={`pd-xpday${xpTodayOf(pet) >= DAILY_XP_CAP ? " is-full" : ""}`} title={`Ogni pet prende al massimo ${DAILY_XP_CAP} PE al giorno`}>
           PE di oggi {xpTodayOf(pet)}/{DAILY_XP_CAP}{xpTodayOf(pet) >= DAILY_XP_CAP ? " · pieno, domani riparte" : ""}
@@ -1016,7 +1065,7 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
           <div className="pd-card-more">
             <p className="pd-fine">{evo ? EVOLUTIONS[pet.species].desc : sp.desc}</p>
             <ResLine species={pet.species} evo={evo} />
-            <EvoBox pet={pet} art={art} onEvolve={onEvolve} />
+            <EvoBox pet={pet} art={art} onEvolve={onEvolve} stones={stones} />
             <MovePanel pet={pet} onLearn={onLearn} onMoveset={onMoveset} />
             <div className="pd-rename">
               <input value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
@@ -1031,17 +1080,9 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
 }
 
 function TeamTab({ uid, den, art, run }) {
-  const [evoing, setEvoing] = useState(null);
+  const evoFlow = useEvolve(uid);
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
-  const evolve = (p) => {
-    if (!window.confirm(`Far evolvere ${p.nick || formName(p)} in ${EVOLUTIONS[p.species].name}? Non si torna indietro.`)) return;
-    unlockAudio();
-    const t0 = Date.now();
-    setEvoing({ pet: p, phase: "glow" });
-    evolvePet(uid, p.id)
-      .then((r) => setTimeout(() => setEvoing({ pet: p, phase: "dice", result: r }), Math.max(0, 2200 - (Date.now() - t0))))
-      .catch((e) => setEvoing({ pet: p, phase: "error", error: e.message || String(e) }));
-  };
+  const evolve = (p, stone = false) => evoFlow.start(p, stone === true);
   const rest = den.pets.filter((p) => !den.team.includes(p.id));
   const toggle = (p) => {
     const next = den.team.includes(p.id) ? den.team.filter((x) => x !== p.id) : [...den.team, p.id];
@@ -1058,7 +1099,8 @@ function TeamTab({ uid, den, art, run }) {
       onRelease={() => window.confirm(`Liberare ${p.nick || formName(p)}? Non torna più.`) && run(() => releasePet(uid, p.id), "Liberato.")}
       onLearn={(g, m) => run(() => learnMove(uid, p.id, g, m), `${p.nick || formName(p)} impara ${PET_DEX_MOVES[m].name}!`)}
       onMoveset={(list) => run(() => setMoveset(uid, p.id, list))}
-      onEvolve={() => evolve(p)}
+      onEvolve={(stone) => evolve(p, stone)}
+      stones={den.items?.[EVO_STONE] || 0}
       isMascot={den.mascot === p.id}
       onMascot={() => run(() => setMascot(uid, den.mascot === p.id ? null : p.id), den.mascot === p.id ? "Niente più mascotte." : `${p.nick || formName(p)} è la tua mascotte!`)}
     />
@@ -1081,7 +1123,7 @@ function TeamTab({ uid, den, art, run }) {
       <h2 className="pd-h2">Collezione <small>{den.pets.length} pet</small></h2>
       {rest.length ? <div className="pd-grid">{rest.map((p) => card(p, -1))}</div>
         : <p className="pd-empty">Tutti i tuoi pet sono in squadra. Altri escono dalle uova.</p>}
-      {evoing && <EvolveModal evo={evoing} art={art} onPhase={(phase) => setEvoing((e) => ({ ...e, phase }))} onClose={() => setEvoing(null)} />}
+      {evoFlow.modal(art)}
     </div>
   );
 }
@@ -1470,15 +1512,17 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
 }
 
 /* ── Bisaccia del Domatore: oggetti posseduti e bottega ──── */
-function BagUse({ id, den, onDone, run, uid }) {
+function BagUse({ id, den, onDone, run, uid, onEvolve }) {
   const it = PET_BAG[id];
-  const [petId, setPetId] = useState(den.pets[0]?.id || "");
+  const pets = it.kind === "evo" ? den.pets.filter((p) => EVOLUTIONS[p.species] && !evoStage(p)) : den.pets;
+  const [petId, setPetId] = useState(pets[0]?.id || "");
   const [forget, setForget] = useState("");
   const pet = den.pets.find((p) => p.id === petId);
   const known = pet ? knownMoves(pet) : [];
   const go = () => {
     if (!pet) return;
     const name = pet.nick || PET_DEX[pet.species].name;
+    if (it.kind === "evo") { onEvolve(pet, !canEvolve(pet)); onDone(); return; }
     if (it.kind === "charm") {
       if (pet.charm && !window.confirm(`${name} tiene già ${PET_BAG[pet.charm.id]?.name}: si perde. Continuare?`)) return;
       return run(() => giveCharm(uid, pet.id, id), `${name} tiene ${it.name}.`).then(onDone);
@@ -1493,9 +1537,11 @@ function BagUse({ id, den, onDone, run, uid }) {
     <div className="pd-baguse">
       <label>Su quale pet?
         <select value={petId} onChange={(e) => { setPetId(e.target.value); setForget(""); }}>
-          {den.pets.map((p) => <option key={p.id} value={p.id}>{p.nick || formName(p)} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
+          {pets.map((p) => <option key={p.id} value={p.id}>{p.nick || formName(p)} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
         </select>
       </label>
+      {it.kind === "evo" && !pets.length && <p className="pd-fine">Nessun pet da far evolvere: sono tutti già evoluti.</p>}
+      {it.kind === "evo" && pet && canEvolve(pet) && <p className="pd-fine">Ha già il livello per evolversi: la pietra non si consuma.</p>}
       {it.kind === "scroll" && pet && (
         known.includes(it.move) ? <p className="pd-fine">La conosce già.</p> : (
           <label>Quale mossa dimentica?
@@ -1512,8 +1558,9 @@ function BagUse({ id, den, onDone, run, uid }) {
   );
 }
 
-function BagTab({ uid, den, points, run }) {
+function BagTab({ uid, den, points, art, run }) {
   const [using, setUsing] = useState(null);
+  const evoFlow = useEvolve(uid);
   const [shopKind, setShopKind] = useState("charm");
   const [shopEl, setShopEl] = useState("all");
   const owned = BAG_ORDER.filter((k) => den.items[k] > 0);
@@ -1522,7 +1569,7 @@ function BagTab({ uid, den, points, run }) {
     const it = PET_BAG[k];
     if (!it.price) return false;
     if (shopKind === "scroll") return it.kind === "scroll" && (shopEl === "all" || PET_DEX_MOVES[it.move].type === shopEl);
-    return shopKind === "charm" ? it.kind === "charm" : shopKind === "battle" ? it.kind === "battle" : it.kind === "xp";
+    return shopKind === "charm" ? it.kind === "charm" : shopKind === "battle" ? it.kind === "battle" : ["xp", "level", "evo"].includes(it.kind);
   });
   const row = (k, buy) => {
     const it = PET_BAG[k];
@@ -1537,11 +1584,11 @@ function BagTab({ uid, den, points, run }) {
           {buy ? (
             <button type="button" className="pd-btn" disabled={points < it.price} onClick={() => window.confirm(`Comprare ${it.name} per ${it.price} punti pet?`) && run(() => buyItem(uid, k), `${it.name} nella bisaccia!`)}>Compra · {it.price} pt</button>
           ) : using === k ? (
-            <BagUse id={k} den={den} uid={uid} run={run} onDone={() => setUsing(null)} />
+            <BagUse id={k} den={den} uid={uid} run={run} onDone={() => setUsing(null)} onEvolve={evoFlow.start} />
           ) : it.kind === "battle" ? (
             <small className="pd-fine">Si usa in lotta: tasto 🎒 Oggetti.</small>
           ) : (
-            <button type="button" className="pd-btn pd-btn--main" onClick={() => setUsing(k)}>{it.kind === "charm" ? "Fai tenere" : it.kind === "scroll" ? "Insegna" : "Usa"}</button>
+            <button type="button" className="pd-btn pd-btn--main" onClick={() => setUsing(k)}>{it.kind === "charm" ? "Fai tenere" : it.kind === "scroll" ? "Insegna" : it.kind === "evo" ? "✨ Evolvi un pet" : "Usa"}</button>
           )}
         </div>
       </article>
@@ -1549,7 +1596,7 @@ function BagTab({ uid, den, points, run }) {
   };
   return (
     <div className="pd-tab">
-      <p className="pd-fine">Amuleti da far tenere ai pet (valgono per alcune lotte, Torre o sfide), pietre e caramelle per crescere, pergamene per insegnare mosse di QUALUNQUE elemento al posto di un'altra (massimo {SCROLL_SLOTS} per pet). La Caramella Rara non si compra: esce solo dalla Torre.</p>
+      <p className="pd-fine">Amuleti da far tenere ai pet (valgono per alcune lotte, Torre o sfide), pietre e caramelle per crescere, pergamene per insegnare mosse di QUALUNQUE elemento al posto di un'altra (massimo {SCROLL_SLOTS} per pet). La Caramella Rara non si compra (esce solo dalla Torre); la 🎂 Torta della Crescita sì, ma costa cara, e la 🌟 Pietra dell'Evoluzione ({EVO_STONE_PRICE} punti) fa evolvere subito un pet a qualunque livello.</p>
       <h2 className="pd-h2">Nella bisaccia <small>{owned.reduce((a, k) => a + den.items[k], 0)} oggetti</small></h2>
       {owned.length ? <div className="pd-items">{owned.map((k) => row(k, false))}</div> : <p className="pd-empty">La bisaccia è vuota. Gli oggetti escono dalla Torre (Guardiani, ogni 10 piani), dalle sfide vinte e dalla bottega qui sotto.</p>}
       {holders.length > 0 && (
@@ -1562,7 +1609,7 @@ function BagTab({ uid, den, points, run }) {
       )}
       <h2 className="pd-h2">Bottega degli oggetti <small>{points} punti pet</small></h2>
       <div className="pd-filters">
-        {[["battle", "Da lotta"], ["charm", "Amuleti"], ["xp", "Esperienza"], ["scroll", "Pergamene"]].map(([k, l]) => (
+        {[["battle", "Da lotta"], ["charm", "Amuleti"], ["xp", "Crescita"], ["scroll", "Pergamene"]].map(([k, l]) => (
           <button key={k} type="button" className={`pd-chipbtn${shopKind === k ? " is-on" : ""}`} aria-pressed={shopKind === k} onClick={() => setShopKind(k)}>{l}</button>
         ))}
         {shopKind === "scroll" && (
@@ -1573,6 +1620,7 @@ function BagTab({ uid, den, points, run }) {
         )}
       </div>
       <div className="pd-items">{shop.map((k) => row(k, true))}</div>
+      {evoFlow.modal(art)}
     </div>
   );
 }
@@ -2155,7 +2203,7 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
       {den.starter && (
         <div className="pd-master-eggs">
           <span>Oggetti gratis per provare la bisaccia:</span>
-          <button type="button" className="pd-btn" onClick={() => run(() => giveItems(uid, ["caramella", "pietra", ...CHARMS.slice(0, 7), SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)], SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)]]), "Oggetti nella bisaccia (prova).")}>🎒 Riempi la bisaccia</button>
+          <button type="button" className="pd-btn" onClick={() => run(() => giveItems(uid, ["caramella", "pietra", "torta", EVO_STONE, ...CHARMS.slice(0, 7), SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)], SCROLL_IDS[Math.floor(Math.random() * SCROLL_IDS.length)]]), "Oggetti nella bisaccia (prova).")}>🎒 Riempi la bisaccia</button>
         </div>
       )}
       {den.starter && (

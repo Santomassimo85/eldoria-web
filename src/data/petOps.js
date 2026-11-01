@@ -12,7 +12,7 @@
 
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
 import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
-import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle } from "./petBag";
+import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle, EVO_STONE } from "./petBag";
 import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 export { LOSS_XP };
 
@@ -218,20 +218,26 @@ export function applyGrowthItem(den, data, petId, id) {
 /* Evoluzione (2026-11-01): dal livello della rarità il pet cambia forma.
    I PF in più li tira il server coi dadi della rarità (EVO_HP_DICE) e
    restano sul pet (evoHp + i dadi usciti in evoRolls). */
-export function evolvePet(den, data, petId) {
+// stone = true: Pietra dell'Evoluzione (si consuma solo se il livello non basta).
+export function evolvePet(den, data, petId, stone = false) {
     const p = petOf(den, petId);
     const ev = EVOLUTIONS[p.species];
     if (!ev) throw new Error("Questo pet non ha ancora un'evoluzione.");
     if ((p.evo || 0) >= 1) throw new Error("È già evoluto.");
     const rar = PET_DEX[p.species]?.rarity;
     const need = evoLevelOf(rar);
-    if ((p.level || 1) < need) throw new Error(`Si evolve al livello ${need}.`);
+    let usedStone = false;
+    if ((p.level || 1) < need) {
+      if (stone !== true) throw new Error(`Si evolve al livello ${need}.`);
+      takeItem(den, EVO_STONE);
+      usedStone = true;
+    }
     const [n, d] = evoDiceOf(rar);
     const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * d));
     const hp = rolls.reduce((a, x) => a + x, 0);
     p.evo = 1; p.evoHp = hp; p.evoRolls = rolls; p.evoAt = p.level || 1; p.evoTs = Date.now();
-    addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls });
-    return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp } };
+    addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls, ...(usedStone ? { item: EVO_STONE } : {}) });
+    return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp, usedStone } };
 }
 
 // Amuleto: il pet lo tiene per `fights` lotte. Uno solo: quello vecchio si perde.

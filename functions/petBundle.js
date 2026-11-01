@@ -1163,6 +1163,9 @@ var refundOf = (key) => Math.floor(valueOf(key) / 2);
 
 // src/data/petBag.js
 var SCROLL_SLOTS = 2;
+var EVO_STONE = "pietra_evo";
+var EVO_STONE_PRICE = 1500;
+var TORTA_PRICE = 400;
 var BASE = {
   caramella: {
     name: "Caramella Rara",
@@ -1179,6 +1182,22 @@ var BASE = {
     rarity: "rare",
     price: 70,
     desc: "D\xE0 al pet PE pari a met\xE0 del suo livello attuale (minimo 60), dentro il tetto di PE del giorno."
+  },
+  torta: {
+    name: "Torta della Crescita",
+    icon: "\u{1F382}",
+    kind: "level",
+    rarity: "epic",
+    price: TORTA_PRICE,
+    desc: "Il pet sale subito di un livello, anche se oggi ha gi\xE0 preso tutti i suoi PE. Costa cara."
+  },
+  pietra_evo: {
+    name: "Pietra dell'Evoluzione",
+    icon: "\u{1F31F}",
+    kind: "evo",
+    rarity: "legendary",
+    price: EVO_STONE_PRICE,
+    desc: "Fa evolvere subito qualunque pet che ha un'evoluzione, a qualsiasi livello. Rarissima e carissima."
   },
   amuleto_scudo: {
     name: "Amuleto dello Scudo",
@@ -2252,14 +2271,19 @@ function applyGrowthItem(den, data, petId, id) {
   }
   throw new Error("Oggetto non adatto.");
 }
-function evolvePet(den, data, petId) {
+function evolvePet(den, data, petId, stone = false) {
   const p = petOf(den, petId);
   const ev = EVOLUTIONS[p.species];
   if (!ev) throw new Error("Questo pet non ha ancora un'evoluzione.");
   if ((p.evo || 0) >= 1) throw new Error("\xC8 gi\xE0 evoluto.");
   const rar = PET_DEX[p.species]?.rarity;
   const need = evoLevelOf(rar);
-  if ((p.level || 1) < need) throw new Error(`Si evolve al livello ${need}.`);
+  let usedStone = false;
+  if ((p.level || 1) < need) {
+    if (stone !== true) throw new Error(`Si evolve al livello ${need}.`);
+    takeItem(den, EVO_STONE);
+    usedStone = true;
+  }
   const [n, d] = evoDiceOf(rar);
   const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * d));
   const hp = rolls.reduce((a, x) => a + x, 0);
@@ -2268,8 +2292,8 @@ function evolvePet(den, data, petId) {
   p.evoRolls = rolls;
   p.evoAt = p.level || 1;
   p.evoTs = Date.now();
-  addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls });
-  return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp } };
+  addLog(den, { k: "evolve", pet: p.id, species: p.species, level: p.level, hp, rolls, ...usedStone ? { item: EVO_STONE } : {} });
+  return { out: { name: ev.name, rolls, dice: `${n}d${d}`, hp, usedStone } };
 }
 function giveCharm(den, data, petId, id) {
   const it = PET_BAG[id];
