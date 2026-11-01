@@ -1328,7 +1328,8 @@ function DexTab({ den, art }) {
               <ResLine species={k} />
               {EVOLUTIONS[k] && (
                 <div className="pd-dex-evo">
-                  <PetSprite species={k} evo={1} art={art} size={54} />
+                  {/* sagoma nera finché non hai evoluto un pet di questa specie */}
+                  <span className={den.pets.some((p) => p.species === k && evoStage(p)) ? "" : "pd-shadow"}><PetSprite species={k} evo={1} art={art} size={54} /></span>
                   <p><b>✨ Lv {evoLevelOf(sp.rarity)} → {EVOLUTIONS[k].name}</b><small>{skillLine(k)}</small></p>
                 </div>
               )}
