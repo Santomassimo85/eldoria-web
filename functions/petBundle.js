@@ -28,6 +28,7 @@ __export(petOps_exports, {
   PVP_POINTS: () => PVP_POINTS,
   PVP_WIN_XP: () => PVP_WIN_XP,
   PVP_XP_FIGHTS: () => PVP_XP_FIGHTS,
+  STARTER_GIFT: () => STARTER_GIFT,
   applyGrowthItem: () => applyGrowthItem,
   buyEgg: () => buyEgg,
   buyItem: () => buyItem,
@@ -1185,7 +1186,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 30,
-    fights: 3,
+    fights: 10,
     fx: { ac: 2 },
     desc: "+2 alla Classe Armatura."
   },
@@ -1195,7 +1196,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 30,
-    fights: 3,
+    fights: 10,
     fx: { hit: 2 },
     desc: "+2 ai tiri per colpire e alla CD delle sue mosse."
   },
@@ -1205,7 +1206,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 30,
-    fights: 3,
+    fights: 10,
     fx: { hp: 0.15 },
     desc: "+15% di Punti Ferita massimi."
   },
@@ -1215,7 +1216,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 25,
-    fights: 3,
+    fights: 10,
     fx: { spd: 1 },
     desc: "Entra in campo con la Velocit\xE0 gi\xE0 aumentata."
   },
@@ -1225,7 +1226,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 25,
-    fights: 3,
+    fights: 10,
     fx: { save: 3 },
     desc: "+3 ai tiri salvezza contro veleni, sonni e maledizioni."
   },
@@ -1235,7 +1236,7 @@ var BASE = {
     kind: "charm",
     rarity: "common",
     price: 20,
-    fights: 2,
+    fights: 6,
     fx: { berry: 0.35 },
     desc: "Sotto met\xE0 dei PF la mangia e recupera il 35% (una volta per lotta)."
   },
@@ -1245,7 +1246,7 @@ var BASE = {
     kind: "charm",
     rarity: "rare",
     price: 45,
-    fights: 3,
+    fights: 10,
     fx: { crit: 19 },
     desc: "Critico anche col 19 naturale."
   },
@@ -1291,7 +1292,7 @@ var BASE = {
     kind: "charm",
     rarity: "epic",
     price: 120,
-    fights: 5,
+    fights: 15,
     fx: { ac: 1, hit: 1, hp: 0.1 },
     desc: "+1 CA, +1 per colpire e +10% PF."
   }
@@ -1302,7 +1303,7 @@ var TALISMANS = Object.fromEntries(ELEMENTS.map((el) => [`talismano_${el}`, {
   kind: "charm",
   rarity: "common",
   price: 30,
-  fights: 3,
+  fights: 10,
   fx: { resist: el },
   desc: `Resistenza ai danni da ${TYPE_LABEL[el].toLowerCase()} (met\xE0 danni).`
 }]));
@@ -2021,7 +2022,7 @@ function towerFloor(floor, week = towerWeek()) {
 var towerXp = (floor) => 20 + floor * 5;
 var LOSS_XP = 5;
 var towerLossXp = () => LOSS_XP;
-var towerPoints = (floor) => 2 + Math.floor(floor / 5) * 2 + (floor % 5 === 0 ? 5 : 0);
+var towerPoints = (floor) => 4 + (floor % 5 === 0 ? 6 : 0);
 
 // src/data/petOps.js
 var newId = () => `pet_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -2045,6 +2046,7 @@ var addLog = (den, entry) => {
 };
 var countOf = (den, species) => den.pets.filter((p) => p.species === species).length;
 var makePet = (species, from) => ({ id: newId(), species, level: 1, xp: 0, nick: "", from, at: (/* @__PURE__ */ new Date()).toISOString() });
+var STARTER_GIFT = 120;
 function chooseStarter(den, data, species) {
   if (den.starter || den.pets.length) throw new Error("Hai gi\xE0 scelto il tuo primo compagno.");
   if (!STARTERS.includes(species)) throw new Error("Non \xE8 un pet iniziale.");
@@ -2053,6 +2055,8 @@ function chooseStarter(den, data, species) {
   den.pets.push(p);
   den.team = [p.id];
   addLog(den, { k: "starter", species });
+  const ledger = [{ source: "starter_gift", label: "Regalo di benvenuto del Rifugio", amount: STARTER_GIFT, ts: (/* @__PURE__ */ new Date()).toISOString() }, ...(data.petPointsLedger || []).slice(0, 29)];
+  return { patch: { petPoints: (Number(data.petPoints) || 0) + STARTER_GIFT, petPointsLedger: ledger }, out: { gift: STARTER_GIFT } };
 }
 function givePet(den, data, species) {
   if (!PET_DEX[species]) throw new Error("Specie sconosciuta.");
@@ -2493,6 +2497,7 @@ var OPS = {
   PVP_POINTS,
   PVP_WIN_XP,
   PVP_XP_FIGHTS,
+  STARTER_GIFT,
   applyGrowthItem,
   buyEgg,
   buyItem,

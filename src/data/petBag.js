@@ -7,6 +7,7 @@
               esce solo dalla Torre (1% a piano, sicura ogni 25 piani).
    - xp     = Pietra dell'Esperienza: tanti PE in un colpo.
    - charm  = amuleto da far TENERE a un pet: vale per `fights` lotte
+     (2026-11-01: da 3 a 10 lotte, ~un giorno di torre)
               (Torre o sfide), poi si consuma. Uno per pet.
    - battle = da usare IN LOTTA (2026-11-01): Pozione, Antidoto, Elisir,
               Piuma della Fenice. Si danno al pet scelto dalla Bisaccia
@@ -27,19 +28,19 @@ const BASE = {
     desc: "Il pet sale subito di un livello. Rarissima: esce solo dalla Torre." },
   pietra: { name: "Pietra dell'Esperienza", icon: "💎", kind: "xp", rarity: "rare", price: 70,
     desc: "Dà al pet PE pari a metà del suo livello attuale (minimo 60), dentro il tetto di PE del giorno." },
-  amuleto_scudo: { name: "Amuleto dello Scudo", icon: "🛡️", kind: "charm", rarity: "common", price: 30, fights: 3, fx: { ac: 2 },
+  amuleto_scudo: { name: "Amuleto dello Scudo", icon: "🛡️", kind: "charm", rarity: "common", price: 30, fights: 10, fx: { ac: 2 },
     desc: "+2 alla Classe Armatura." },
-  zanna: { name: "Zanna Affilata", icon: "🦷", kind: "charm", rarity: "common", price: 30, fights: 3, fx: { hit: 2 },
+  zanna: { name: "Zanna Affilata", icon: "🦷", kind: "charm", rarity: "common", price: 30, fights: 10, fx: { hit: 2 },
     desc: "+2 ai tiri per colpire e alla CD delle sue mosse." },
-  ghianda: { name: "Ghianda Robusta", icon: "🌰", kind: "charm", rarity: "common", price: 30, fights: 3, fx: { hp: 0.15 },
+  ghianda: { name: "Ghianda Robusta", icon: "🌰", kind: "charm", rarity: "common", price: 30, fights: 10, fx: { hp: 0.15 },
     desc: "+15% di Punti Ferita massimi." },
-  piuma: { name: "Piuma del Vento", icon: "🪶", kind: "charm", rarity: "common", price: 25, fights: 3, fx: { spd: 1 },
+  piuma: { name: "Piuma del Vento", icon: "🪶", kind: "charm", rarity: "common", price: 25, fights: 10, fx: { spd: 1 },
     desc: "Entra in campo con la Velocità già aumentata." },
-  occhio: { name: "Occhio di Gufo", icon: "🦉", kind: "charm", rarity: "common", price: 25, fights: 3, fx: { save: 3 },
+  occhio: { name: "Occhio di Gufo", icon: "🦉", kind: "charm", rarity: "common", price: 25, fights: 10, fx: { save: 3 },
     desc: "+3 ai tiri salvezza contro veleni, sonni e maledizioni." },
-  bacca: { name: "Bacca Curativa", icon: "🫐", kind: "charm", rarity: "common", price: 20, fights: 2, fx: { berry: 0.35 },
+  bacca: { name: "Bacca Curativa", icon: "🫐", kind: "charm", rarity: "common", price: 20, fights: 6, fx: { berry: 0.35 },
     desc: "Sotto metà dei PF la mangia e recupera il 35% (una volta per lotta)." },
-  quadrifoglio: { name: "Quadrifoglio", icon: "🍀", kind: "charm", rarity: "rare", price: 45, fights: 3, fx: { crit: 19 },
+  quadrifoglio: { name: "Quadrifoglio", icon: "🍀", kind: "charm", rarity: "rare", price: 45, fights: 10, fx: { crit: 19 },
     desc: "Critico anche col 19 naturale." },
   pozione: { name: "Pozione", icon: "🧪", kind: "battle", rarity: "common", price: 15, use: { heal: 0.4 },
     desc: "In lotta: cura il 40% dei PF del pet scelto (consuma il turno)." },
@@ -49,14 +50,14 @@ const BASE = {
     desc: "In lotta: ridà fino a 2 usi a ogni mossa che non è infinita." },
   fenice: { name: "Piuma della Fenice", icon: "🪽", kind: "battle", rarity: "epic", price: 80, use: { revive: 0.5 },
     desc: "In lotta: rianima un pet a terra con metà dei PF." },
-  corona: { name: "Coroncina del Campione", icon: "👑", kind: "charm", rarity: "epic", price: 120, fights: 5, fx: { ac: 1, hit: 1, hp: 0.1 },
+  corona: { name: "Coroncina del Campione", icon: "👑", kind: "charm", rarity: "epic", price: 120, fights: 15, fx: { ac: 1, hit: 1, hp: 0.1 },
     desc: "+1 CA, +1 per colpire e +10% PF." },
 };
 
 // Un talismano di resistenza per ogni elemento.
 const TALISMANS = Object.fromEntries(ELEMENTS.map((el) => [`talismano_${el}`, {
   name: `Talismano ${TYPE_LABEL[el] === "Fuoco" ? "del Fuoco" : `di ${TYPE_LABEL[el]}`}`, icon: TYPE_ICON[el], kind: "charm", rarity: "common",
-  price: 30, fights: 3, fx: { resist: el }, desc: `Resistenza ai danni da ${TYPE_LABEL[el].toLowerCase()} (metà danni).`,
+  price: 30, fights: 10, fx: { resist: el }, desc: `Resistenza ai danni da ${TYPE_LABEL[el].toLowerCase()} (metà danni).`,
 }]));
 
 // Una pergamena per ogni mossa imparabile (gradi I–VI).

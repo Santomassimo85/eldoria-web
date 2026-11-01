@@ -40,6 +40,7 @@ export const countOf = (den, species) => den.pets.filter((p) => p.species === sp
 
 const makePet = (species, from) => ({ id: newId(), species, level: 1, xp: 0, nick: "", from, at: new Date().toISOString() });
 
+export const STARTER_GIFT = 120;
 export function chooseStarter(den, data, species) {
     if (den.starter || den.pets.length) throw new Error("Hai già scelto il tuo primo compagno.");
     if (!STARTERS.includes(species)) throw new Error("Non è un pet iniziale.");
@@ -48,6 +49,9 @@ export function chooseStarter(den, data, species) {
     den.pets.push(p);
     den.team = [p.id];
     addLog(den, { k: "starter", species });
+    // Regalo di benvenuto (2026-11-01): due uova, squadra di 3 già dalla prima settimana.
+    const ledger = [{ source: "starter_gift", label: "Regalo di benvenuto del Rifugio", amount: STARTER_GIFT, ts: new Date().toISOString() }, ...((data.petPointsLedger || []).slice(0, 29))];
+    return { patch: { petPoints: (Number(data.petPoints) || 0) + STARTER_GIFT, petPointsLedger: ledger }, out: { gift: STARTER_GIFT } };
 }
 
 // Pet dato a mano (Master, per le prove): niente punti.

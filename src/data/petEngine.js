@@ -745,5 +745,7 @@ export const towerXp = (floor) => 20 + floor * 5;
 // livello perdendo apposta. Ritirarsi = niente PE (non si registra nulla).
 export const LOSS_XP = 5;
 export const towerLossXp = () => LOSS_XP;
-// Punti pet per un piano vinto (solo la prima volta: il piano sale).
-export const towerPoints = (floor) => 2 + Math.floor(floor / 5) * 2 + (floor % 5 === 0 ? 5 : 0);
+// Punti pet per un piano vinto (solo la prima volta in settimana).
+// Bilanciamento (2026-11-01): fissi, 4 a piano + 6 ai Guardiani (ogni 5),
+// prima crescevano col piano e dal mese 2 i punti esplodevano.
+export const towerPoints = (floor) => 4 + (floor % 5 === 0 ? 6 : 0);

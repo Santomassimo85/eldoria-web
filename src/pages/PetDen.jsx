@@ -261,7 +261,7 @@ export default function PetDen() {
   if (!den.starter) {
     return (
       <section className="pd-page">
-        <StarterPick art={art} onPick={(k) => run(() => chooseStarter(uid, k), `${PET_DEX[k].name} è il tuo primo compagno!`)} />
+        <StarterPick art={art} onPick={(k) => run(() => chooseStarter(uid, k), `${PET_DEX[k].name} è il tuo primo compagno! +120 punti pet in regalo: due uova nella Bottega.`)} />
         {master && <MasterTools uid={uid} den={den} art={art} compact />}
       </section>
     );
@@ -713,7 +713,7 @@ function Manual() {
       <section>
         <h3>Torre dei Cuccioli</h3>
         <ul>
-          <li>Vinci un piano e sali al successivo: PE a tutta la squadra ({towerXp(1)} al piano 1, +5 a ogni piano) e punti pet.</li>
+          <li>Vinci un piano e sali al successivo: PE a tutta la squadra ({towerXp(1)} al piano 1, +5 a ogni piano) e punti pet ({towerPoints(1)} a piano, {towerPoints(5)} ai Guardiani ogni 5 piani: solo la prima volta nella settimana).</li>
           <li><b>Ogni pet prende al massimo {DAILY_XP_CAP} PE al giorno</b> (torre, sfide e Pietra dell'Esperienza insieme): il resto si perde. Crescere e far evolvere un pet richiede settimane, non un pomeriggio. Sulla carta del pet vedi quanti PE ha già preso oggi.</li>
           <li>Se perdi ritenti lo stesso piano e la squadra prende solo {LOSS_XP} PE; se ti ritiri non prende niente.</li>
           <li>I dadi di un piano sono fissati: ritirarsi e ricominciare dà gli stessi tiri. Cambiano solo dopo una sconfitta. L'esito lo ricontrolla il server.</li>
@@ -910,7 +910,7 @@ function StarterPick({ art, onPick }) {
     <div className="pd-starter">
       <p className="pd-eyebrow">Il primo passo</p>
       <h1>Scegli il tuo primo compagno</h1>
-      <p className="pd-sub">Uno per elemento. Si sceglie una volta sola: gli altri possono uscire più avanti dalle uova.</p>
+      <p className="pd-sub">Uno per elemento. Si sceglie una volta sola: gli altri possono uscire più avanti dalle uova. In regalo 120 punti pet, quanto basta per due uova.</p>
       <div className="pd-starter-grid">
         {STARTERS.map((k) => {
           const sp = PET_DEX[k];
