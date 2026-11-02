@@ -27,13 +27,14 @@ import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibi
 import "./ArenaScontro.css";       // scontro leggibile: cronaca a paragrafi, su PC sotto il campo (per ULTIMO)
 import "./ArenaPalco.css";        // Vista Palco: scontro 1v1 come la lotta dei pet (per ULTIMISSIMO)
 import { useFightMode } from "../utils/fightMode";
+import { ARENA_CLASSES, arenaClassKey, classSpriteDocId } from "../data/arenaClassSprites";
 import { ArenaModal } from "./arena/ArenaModal";
 import { ArenaGestaView, CLASS_ICONS, CLASS_IT, FunArenaClassStats, HallOfChampions, TournamentClassStats, classColor } from "./arena/ArenaStats";
 import { BET_MATCH_AMOUNTS, BET_MATCH_MULT, BET_TOURNAMENT_AMOUNTS, BET_TOURNAMENT_MULT, BettingPanel } from "./arena/BettingPanel";
 import { MasterTitleEditor } from "./arena/MasterEditors";
 import { AI_BOT_PREFIX, makeAiSnapshotAndPlayer } from "./arena/arenaAi";
 import { ARTIFICER_CONSTRUCTS, RANGER_PETS, WARLOCK_DEMONS } from "./arena/arenaClassActions";
-import { ARENA_ARCHETYPE_BY_CLASS, ARENA_EXPIRY_GRACE_MS, ARENA_INITIATIVE_DURATION, ARENA_SHOP_DURATION, ARENA_TURN_DURATION, FUN_MATCH_PRUNE_GRACE_MS, MASTER_ALT_MAX, MASTER_RESERVE_SLOTS, SAVED_ARENA_SLOTS, arenaNow, isAwaitingReady, isMasterAltId, masterEntryIds, matchSig, reloadoutBlockReason, setArenaClockOffset, withReadyCheck } from "./arena/arenaCore";
+import { ARENA_ARCHETYPE_BY_CLASS, ARENA_EXPIRY_GRACE_MS, ARENA_INITIATIVE_DURATION, ARENA_SHOP_DURATION, ARENA_TURN_DURATION, FUN_MATCH_PRUNE_GRACE_MS, MASTER_ALT_MAX, MASTER_RESERVE_SLOTS, SAVED_ARENA_SLOTS, arenaNow, isArenaBotId, isAwaitingReady, isMasterAltId, masterEntryIds, matchSig, reloadoutBlockReason, setArenaClockOffset, withReadyCheck } from "./arena/arenaCore";
 import { ARENA_ARMORS, ARENA_KITE_MAX, GOOD_STATUS_CLS, IS_TWO_HANDED_MELEE, PLAYER_HAS_RANGED_WEAPON, WEAPON_IS_RANGED, WILD_SHAPES, getDisplayAc, resolveMonkUnarmed, resolveWeaponRider, targetAcNow } from "./arena/arenaGear";
 import { ARENA_ITEMS, applySlotLoss, describeMarketPurchase, formatPrizeConfig, prizeTierToStr, resolveMarketGear, scrollSlotLossFor, trimSpellsToLimits } from "./arena/arenaMarketGear";
 import { finalizeArenaMatch, processWsKnockouts } from "./arena/arenaMatchFlow";
@@ -127,6 +128,7 @@ export default function Arena() {
   // VISTA PALCO (2026-11-02): menu delle azioni dentro il campo, aperto/chiuso a mano
   const [palcoOpen, setPalcoOpen] = useState(false);
   const [arenaSprites, setArenaSprites] = useState({}); // uid -> { sprite, dead }
+  const [classSprites, setClassSprites] = useState(null); // classe -> png (PG del Master e IA)
   const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
   const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
   // ── VFX pixelati sulle card dei combattenti (riuso effetti World Boss) ──
@@ -314,6 +316,17 @@ export default function Arena() {
       }).catch(() => {});
     });
   }, [spriteIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // sprite di classe: letti una volta, alla prima apertura di uno scontro
+  useEffect(() => {
+    if (!combatModalOpen || classSprites) return;
+    setClassSprites({});
+    ARENA_CLASSES.forEach((c) => {
+      getDoc(doc(db, "arena_meta", classSpriteDocId(c.key))).then((snap) => {
+        const img = snap.data()?.image;
+        if (img) setClassSprites((prev) => ({ ...(prev || {}), [c.key]: img }));
+      }).catch(() => {});
+    });
+  }, [combatModalOpen, classSprites]);
 
   // PG del Master con un fight vivo (iniziativa, «Iniziamo» o turni): servono al
   // selettore in cima al combattimento. Per i giocatori resta vuoto.
@@ -10194,8 +10207,12 @@ export default function Arena() {
                   const char = snapshots[p.id] || {};
                   const sp = arenaSprites[p.id];
                   const dead = p.hp <= 0;
-                  const src = dead ? (sp?.dead || sp?.sprite || char.image) : (sp?.sprite || char.image);
-                  const isSprite = !!sp?.sprite;
+                  // PG del Master (anche i __ALT) e bot dell'IA: sprite della classe, sempre lo stesso
+                  const clsSprite = classSprites?.[arenaClassKey(char.class)] || "";
+                  const byClass = isArenaBotId(p.id) || isMasterAltId(p.id) || (canActAs && p.id === authUser?.uid);
+                  const own = byClass ? (clsSprite || sp?.sprite) : sp?.sprite;
+                  const src = dead ? (sp?.dead && !byClass ? sp.dead : own || char.image || clsSprite) : (own || char.image || clsSprite);
+                  const isSprite = !!own || (!char.image && !!clsSprite);
                   const side = i === 0 ? "p" : "e";
                   return (
                     <div key={p.id} className={`cv-spot cv-spot--${side}${dead ? " is-dead" : ""}${m.turn === p.id && m.status === "active" ? " is-turn" : ""}`} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>

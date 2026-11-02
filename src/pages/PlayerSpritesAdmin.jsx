@@ -11,6 +11,7 @@ import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 
 import { isAdminEmail, isMainMaster } from "../utils/roles";
+import { ARENA_CLASSES, classSpriteDocId, classSpritePrompt } from "../data/arenaClassSprites";
 
 // Avatar del PG → data URL ridotto (max 640px, jpeg): è il riferimento visivo che
 // passiamo a Gemini così lo sprite somiglia davvero al personaggio.
@@ -223,6 +224,47 @@ export default function PlayerSpritesAdmin() {
       title="Specchia lo sprite: se guarda a destra lo fa guardare a sinistra, e viceversa"
       onClick={() => flipSprite(col, id, field, src)}>{flipBusy[`${id}:${field}`] ? "⏳" : "⇆ Gira"}</button>
   ) : null;
+
+  // ── Sprite di classe per l'Arena (PG del Master e bot dell'IA) ──
+  const [classSprites, setClassSprites] = useState({});
+  const [classBusy, setClassBusy] = useState({});
+  const classFileRefs = useRef({});
+  useEffect(() => {
+    const unsubs = ARENA_CLASSES.map((c) => onSnapshot(doc(db, "arena_meta", classSpriteDocId(c.key)),
+      (snap) => setClassSprites((s) => ({ ...s, [c.key]: snap.data()?.image || "" })), () => {}));
+    return () => unsubs.forEach((u) => u());
+  }, []);
+  const saveClassSprite = (key, image) => setDoc(doc(db, "arena_meta", classSpriteDocId(key)), { image, updatedAt: new Date().toISOString() }, { merge: true });
+  const generateClassSprite = async (c, ask = true) => {
+    if (classBusy[c.key]) return;
+    if (ask && classSprites[c.key] && !window.confirm(`Sostituire lo sprite di classe del ${c.it}?`)) return;
+    setClassBusy((b) => ({ ...b, [c.key]: true }));
+    try {
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: classSpritePrompt(c), qualita: true }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      await saveClassSprite(c.key, await dataUrlToTransparentDataUrl(data.immagine, 256));
+    } catch (e) {
+      alert(`Sprite del ${c.it} non generato: ` + (e.message || e));
+    } finally {
+      setClassBusy((b) => ({ ...b, [c.key]: false }));
+    }
+  };
+  const generateMissingClassSprites = async () => {
+    const missing = ARENA_CLASSES.filter((c) => !classSprites[c.key]);
+    if (!missing.length || !window.confirm(`Generare con l'IA gli sprite delle ${missing.length} classi che non ce l'hanno? (uno alla volta, ~20 s l'uno)`)) return;
+    for (const c of missing) await generateClassSprite(c, false); // eslint-disable-line no-await-in-loop
+  };
+  const loadClassSprite = (file, key) => {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = async (e) => { try { await saveClassSprite(key, await dataUrlToTransparentDataUrl(e.target.result, 256)); } catch (err) { alert(err.message); } };
+    r.readAsDataURL(file);
+  };
 
   const removeSprite = async (charId) => {
     await updateDoc(doc(db, "characters", charId), { spriteUrl: "" });
@@ -615,6 +657,42 @@ EMPTY SCENE: no characters, no people, no creatures, no weapons on the ground, n
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── Sprite di classe (Arena: PG del Master e IA) ── */}
+      <div className="adm-panel">
+        <div className="adm-panel-head"><h2 className="adm-panel-title">🎭 Sprite di classe · Arena</h2></div>
+        <small className="wb-ai-hint">Nella Vista Palco dell'Arena i tuoi PG da Master e i bot dell'IA usano lo sprite della <strong>loro classe</strong> (sempre lo stesso per classe). Anche chi non ha né sprite né avatar usa questo. Rivolti a <strong>sinistra</strong> come gli sprite degli eroi.</small>
+        <div className="adm-btn-row" style={{ margin: "8px 0" }}>
+          <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={Object.values(classBusy).some(Boolean) || ARENA_CLASSES.every((c) => classSprites[c.key])}
+            onClick={generateMissingClassSprites}>✨ Genera tutte le mancanti ({ARENA_CLASSES.filter((c) => !classSprites[c.key]).length})</button>
+        </div>
+        <div className="wbs-grid">
+          {ARENA_CLASSES.map((c) => (
+            <div key={c.key} className="wbs-card">
+              <div className="wbs-card-head">
+                <span className="wbs-avatar wbs-avatar--none" aria-hidden="true">{c.icon}</span>
+                <h3 className="wbs-card-name">{c.it}</h3>
+                <span className="wbs-card-tag">{c.key}</span>
+              </div>
+              <div className="wbs-slots">
+                <div className="wbs-slot">
+                  {classSprites[c.key]
+                    ? <img src={classSprites[c.key]} alt={c.it} className="wbs-sprite" />
+                    : <div className="wbs-sprite-ph">{c.icon}</div>}
+                  <input ref={(el) => { classFileRefs.current[c.key] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => loadClassSprite(e.target.files[0], c.key)} />
+                  <div className="adm-btn-row">
+                    <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={!!classBusy[c.key]} onClick={() => generateClassSprite(c)}>{classBusy[c.key] ? "⏳ Disegno…" : "✨ Genera"}</button>
+                    <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => classFileRefs.current[c.key]?.click()}>📁</button>
+                    <FlipBtn col="arena_meta" id={classSpriteDocId(c.key)} field="image" src={classSprites[c.key]} />
+                    {classSprites[c.key] && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => saveClassSprite(c.key, "")}>✖</button>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Sprite eroi ── */}
