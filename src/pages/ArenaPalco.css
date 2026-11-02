@@ -243,3 +243,10 @@ body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-rad
   .cv-field .cv-spot--e { left: 70%; bottom: 51%; height: 25%; }
   .cv-field .cv-sprite { max-width: 60vw; }
 }
+/* gli sprite sono quadrati con margini trasparenti: niente tetto in larghezza,
+   così l'altezza conta davvero (prima il tuo restava piccolo sul telefono) */
+.cv-field .cv-spot--p .cv-sprite, .cv-field .cv-spot--e .cv-sprite { max-width: none; }
+@media (max-width: 760px) {
+  .cv-field .cv-spot--p { left: 27%; height: 42%; }
+  .cv-field .cv-spot--e { height: 26%; }
+}
