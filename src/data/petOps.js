@@ -483,9 +483,13 @@ export function validAction(b, a, bag = {}) {
   }
   if (b.needSwitch && b.needSwitch.includes("p")) return false;
   if (a?.kind !== "move") return false;
-  const left = Object.values(f.pp);
-  if (a.move === "zampata") return left.every((v) => v === 0);
-  return Object.prototype.hasOwnProperty.call(f.pp, a.move) && f.pp[a.move] !== 0;
+  // "zampata" è ANCHE una mossa vera di grado I (Zampata, usi infiniti): se il pet la
+  // conosce vale come le altre. Solo se NON la conosce è la "Zampata disperata",
+  // permessa quando tutte le mosse hanno finito gli usi. (Bug 2026-11-02: Palar non
+  // passava la torre perché usava la sua Zampata e il server la rifiutava.)
+  if (Object.prototype.hasOwnProperty.call(f.pp, a.move)) return f.pp[a.move] !== 0;
+  if (a.move === "zampata") return Object.values(f.pp).every((v) => v === 0);
+  return false;
 }
 export function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {
   if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
