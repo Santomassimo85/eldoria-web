@@ -4,7 +4,14 @@
      { tid, name, status: registration|groups|final|done|cancelled, maxLevel,
        openedAt, startedAt, endedAt, groupA, groupB, names {uid: nome},
        round (round dei gironi avviato, 0 = nessuno), rounds,
-       final: { a, b, id } | null, winner, winnerName }
+       final: { a, b, id } | null, winner, winnerName,
+       prizes: { gold, corone, winXp, joinXp }, prizesDelivered }
+   Premi (scelti dal Master): al campione monete d'oro (foundry_inbox → zaino
+   su Foundry, le porta "Fetch admin") e Corone (characters.platinum), date
+   alla proclamazione; PE ai pet iscritti (joinXp a tutti, winXp in più al
+   campione) che ognuno ritira da sé (op del server claimTournamentXp).
+   «Iniziamo» (2026-11-02): ogni lotta nasce con readyCheck = true; si gioca
+   solo quando i due hanno premuto Iniziamo (o il Master ha forzato).
    pet_tournament_entries/{tid}_{uid} = iscrizione: { tid, uid, name, team: [pet…], at }
      la scrive il giocatore solo a iscrizioni aperte (regole), il Master sempre.
    Le lotte sono normali pet_matches (id pt_{tid}_{chiave}, campi tournament,
@@ -16,7 +23,7 @@
    massimo gioca AL livello massimo.
    ============================================================ */
 
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, where, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { newBattle } from "../data/petEngine";
 import { MAX_TEAM } from "../data/petDex";
@@ -32,6 +39,47 @@ const notify = (userId, title, message) =>
 export const LIVE = ["registration", "groups", "final"];
 export const isLive = (t) => !!t && LIVE.includes(t.status);
 export const MAX_LEVEL_CAP = 60;
+
+/* Premi: numeri interi nei limiti, 0 = niente. */
+export const PRIZE_LIMITS = { gold: 100000, corone: 1000, winXp: 20000, joinXp: 5000 };
+export function cleanPrizes(p = {}) {
+  return Object.fromEntries(Object.entries(PRIZE_LIMITS).map(([k, max]) => [k, Math.max(0, Math.min(max, Math.round(Number(p[k]) || 0)))]));
+}
+export function prizeText(p) {
+  const x = cleanPrizes(p);
+  const win = [x.gold && `${x.gold} mo`, x.corone && `${x.corone} Corone`, x.winXp && `+${x.winXp} PE ai suoi pet`].filter(Boolean);
+  return { win: win.length ? win.join(" · ") : "solo la gloria", join: x.joinXp ? `+${x.joinXp} PE a ogni pet iscritto` : "" };
+}
+export const updatePrizes = (prizes) => updateDoc(TOURNEY_REF(), { prizes: cleanPrizes(prizes) });
+
+/* Chi deve ancora premere «Iniziamo» in questa lotta. */
+export const awaitingReady = (m) => !!m?.readyCheck && m.status === "active";
+export const needsMyReady = (m, uid) => awaitingReady(m) && (m.a === uid || m.b === uid) && !m.ready?.[uid];
+export function confirmReady(matchId, uid, { force = false } = {}) {
+  return runTransaction(db, async (tx) => {
+    const r = doc(db, "pet_matches", matchId);
+    const s = await tx.get(r);
+    const m = s.data();
+    if (!m || m.status !== "active" || !m.readyCheck) return null;
+    if (!force && m.a !== uid && m.b !== uid) throw new Error("Non è una tua lotta.");
+    const ready = { ...(m.ready || {}), ...(force ? {} : { [uid]: true }) };
+    const go = force || (ready[m.a] && ready[m.b]);
+    const text = force ? "Il Master dà il via!" : go ? "Tutti e due pronti: si comincia!" : null;
+    tx.update(r, {
+      ready, ...(go ? { readyCheck: false, readyAt: serverTimestamp() } : {}),
+      ...(text ? { logText: [...(m.logText || []), text].slice(-150) } : {}),
+      updatedAt: serverTimestamp(),
+    });
+    return { m, go, other: m.a === uid ? m.b : m.a, otherName: m.a === uid ? m.aName : m.bName };
+  }).then((res) => {
+    if (!res) return null;
+    const { m, go } = res;
+    const who = m.a === uid ? m.aName : m.bName;
+    if (go) [m.a, m.b].filter((u) => u !== uid || force).forEach((u) => notify(u, "🏆 Torneo dei Pet: si comincia!", `La lotta fra ${m.aName} e ${m.bName} è partita: scegli la tua mossa.`));
+    else notify(res.other, "🏆 Torneo dei Pet: pronto!", `${who} ha premuto Iniziamo: tocca a te dare il via alla lotta.`);
+    return res;
+  });
+}
 
 /* Calendario all'italiana (come l'Arena): con un numero dispari uno riposa. */
 export function roundRobin(ids) {
@@ -115,7 +163,7 @@ export function tournamentTeam(den, ids = [], maxLevel) {
 }
 
 /* ── Master: apre le iscrizioni e avvisa tutti ─────────────── */
-export async function openTournament({ name, maxLevel, masterUid }) {
+export async function openTournament({ name, maxLevel, masterUid, prizes = {} }) {
   const lv = Math.max(1, Math.min(MAX_LEVEL_CAP, Math.round(Number(maxLevel) || 0)));
   if (!lv) throw new Error("Scegli il livello massimo.");
   const title = String(name || "").trim().slice(0, 60) || "Torneo dei Pet";
@@ -126,9 +174,10 @@ export async function openTournament({ name, maxLevel, masterUid }) {
     tx.set(TOURNEY_REF(), {
       tid, name: title, status: "registration", maxLevel: lv, openedAt: serverTimestamp(), openedBy: masterUid,
       groupA: [], groupB: [], names: {}, round: 0, rounds: 0, final: null, winner: null, winnerName: null,
-      startedAt: null, endedAt: null,
+      startedAt: null, endedAt: null, prizes: cleanPrizes(prizes), prizesDelivered: null,
     });
   });
+  const pz = prizeText(prizes);
   const chars = await getDocs(collection(db, "characters"));
   const batch = writeBatch(db);
   let n = 0;
@@ -137,7 +186,7 @@ export async function openTournament({ name, maxLevel, masterUid }) {
     if (!c?.name || isHiddenChar({ id: d.id, ...c }) || d.id === masterUid) return;
     batch.set(doc(collection(db, "notifications")), {
       userId: d.id, title: "🏆 Torneo dei Pet: iscrizioni aperte!",
-      message: `${title}: pet fino al livello ${lv}. Iscriviti dal Rifugio dei Pet → Torneo.`,
+      message: `${title}: pet fino al livello ${lv}. Al campione: ${pz.win}${pz.join ? `; a chi partecipa ${pz.join}` : ""}. Iscriviti dal Rifugio dei Pet → Torneo.`,
       read: false, timestamp: serverTimestamp(),
     });
     n += 1;
@@ -183,7 +232,7 @@ function buildMatch(t, key, group, round, A, B, dens, entries) {
     { kind: "info", text: `${aName} manda in campo ${battle.sides.p.team[0].name}!` },
     { kind: "info", text: `${bName} manda in campo ${battle.sides.e.team[0].name}!` },
   ];
-  return { ...base, status: "active", teams: { p: ta, e: tb }, battle, events: start, logText: start.map((e) => e.text) };
+  return { ...base, status: "active", readyCheck: true, ready: {}, teams: { p: ta, e: tb }, battle, events: start, logText: start.map((e) => e.text) };
 }
 
 async function loadEntries(tid) {
@@ -211,8 +260,8 @@ async function createMatches(t, list, entries) {
   made.forEach(({ m }) => {
     if (m.status !== "active") return;
     const what = m.tGroup === "F" ? "la FINALE" : `il round ${m.tRound} (girone ${m.tGroup})`;
-    notify(m.a, "🏆 Torneo dei Pet: tocca a te!", `${m.tName}: ${what} contro ${m.bName}. Entra dal Rifugio → Torneo.`);
-    notify(m.b, "🏆 Torneo dei Pet: tocca a te!", `${m.tName}: ${what} contro ${m.aName}. Entra dal Rifugio → Torneo.`);
+    notify(m.a, "🏆 Torneo dei Pet: tocca a te!", `${m.tName}: ${what} contro ${m.bName}. Entra dal Rifugio → Torneo e premi Iniziamo.`);
+    notify(m.b, "🏆 Torneo dei Pet: tocca a te!", `${m.tName}: ${what} contro ${m.aName}. Entra dal Rifugio → Torneo e premi Iniziamo.`);
   });
   return made.length;
 }
@@ -295,14 +344,32 @@ export async function closeTournament(t, finalMatch) {
   const winner = finalMatch.winner === "p" ? finalMatch.a : finalMatch.b;
   const winnerName = finalMatch.winner === "p" ? finalMatch.aName : finalMatch.bName;
   const runnerName = finalMatch.winner === "p" ? finalMatch.bName : finalMatch.aName;
-  await runTransaction(db, async (tx) => {
+  const delivered = await runTransaction(db, async (tx) => {
     const s = await tx.get(TOURNEY_REF());
-    if (s.data()?.tid !== t.tid || s.data()?.status !== "final") throw new Error("Il torneo è già chiuso.");
-    tx.update(TOURNEY_REF(), { status: "done", winner, winnerName, runnerName, endedAt: serverTimestamp() });
+    const cur = s.data();
+    if (cur?.tid !== t.tid || cur?.status !== "final") throw new Error("Il torneo è già chiuso.");
+    const pz = cleanPrizes(cur.prizes);
+    const why = `Vittoria al ${cur.name || "Torneo dei Pet"}`;
+    // monete d'oro: nello zaino del personaggio su Foundry (le porta "Fetch admin")
+    if (pz.gold > 0) {
+      tx.set(doc(collection(db, "foundry_inbox")), {
+        status: "pending", origin: "pet_tournament", tournament: t.tid, kind: "gold", op: "add", currency: "gp", amount: pz.gold,
+        name: `+${pz.gold} mo · ${why}`, reason: why, target: "player", targetUid: winner, targetName: winnerName, createdAt: serverTimestamp(),
+      });
+    }
+    // Corone del Mercato Nero
+    if (pz.corone > 0) tx.update(doc(db, "characters", winner), { platinum: increment(pz.corone) });
+    const done = { gold: pz.gold, corone: pz.corone, winXp: pz.winXp, joinXp: pz.joinXp, at: new Date().toISOString() };
+    tx.update(TOURNEY_REF(), { status: "done", winner, winnerName, runnerName, endedAt: serverTimestamp(), prizesDelivered: done });
+    return done;
   });
   const entries = await loadEntries(t.tid);
-  Object.keys(entries).forEach((u) => notify(u, "🏆 Torneo dei Pet concluso", `${winnerName} vince il ${t.name}! Secondo posto: ${runnerName}.`));
-  return { winnerName, runnerName };
+  const pz = prizeText(delivered);
+  Object.keys(entries).forEach((u) => notify(u, "🏆 Torneo dei Pet concluso",
+    u === winner
+      ? `Hai vinto il ${t.name}! Premio: ${pz.win}.${delivered.gold ? " Le monete arrivano nello zaino alla prossima sincronizzazione con Foundry." : ""}${delivered.winXp || delivered.joinXp ? " I PE ai pet arrivano appena apri il Rifugio." : ""}`
+      : `${winnerName} vince il ${t.name}! Secondo posto: ${runnerName}.${delivered.joinXp ? ` Ai tuoi pet iscritti: +${delivered.joinXp} PE, appena apri il Rifugio.` : ""}`));
+  return { winnerName, runnerName, delivered };
 }
 
 /* Annulla: le lotte ancora aperte si chiudono senza vincitore. */

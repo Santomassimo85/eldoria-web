@@ -25,7 +25,7 @@ const notify = (userId, title, message) =>
 
 // Lati che devono ancora scegliere in questo momento.
 export function neededSides(m) {
-  if (m?.status !== "active" || !m.battle || m.battle.over) return [];
+  if (m?.status !== "active" || !m.battle || m.battle.over || m.readyCheck) return [];
   return m.battle.needSwitch ? m.battle.needSwitch.split("") : ["p", "e"];
 }
 export const sidesOf = (m, uid) => [m.a === uid && "p", m.b === uid && "e"].filter(Boolean);

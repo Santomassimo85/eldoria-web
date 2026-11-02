@@ -10,6 +10,7 @@ import { pendingSide } from "../utils/petPvp";
 import {
   isLive, MAX_LEVEL_CAP, eligible, standings, finalists, openTournament, joinTournament, leaveTournament,
   startTournament, nextRound, startFinal, assignWin, closeTournament, cancelTournament, removeEntry,
+  PRIZE_LIMITS, cleanPrizes, prizeText, updatePrizes, confirmReady, awaitingReady, needsMyReady,
 } from "../utils/petTournament";
 
 const STATUS = {
@@ -43,7 +44,7 @@ export function useMyEntry(t, uid) {
 
 export function tournamentTile(t, uid, matches, entered) {
   if (t === undefined) return null;
-  const myTurn = matches.filter((m) => m.tournament && m.tournament === t?.tid && m.status === "active" && pendingSide(m, uid)).length;
+  const myTurn = matches.filter((m) => m.tournament && m.tournament === t?.tid && m.status === "active" && (pendingSide(m, uid) || needsMyReady(m, uid))).length;
   let sub = "nessun torneo in corso";
   if (t?.status === "registration") sub = `iscrizioni aperte · max Lv ${t.maxLevel}${entered ? " · sei iscritto" : ""}`;
   else if (t?.status === "groups") sub = `gironi · round ${t.round}/${t.rounds}`;
@@ -79,6 +80,7 @@ export default function TournamentTab({ t, uid, char, den, master, art, PetSprit
           <div>
             <h2>{t.name}</h2>
             <p className="pd-fine">{STATUS[t.status] || t.status} · pet fino al <b>Lv {t.maxLevel}</b> · {entries.length} iscritti</p>
+            <p className="pd-tn-prize">🎁 Al campione: <b>{prizeText(t.prizesDelivered || t.prizes).win}</b>{prizeText(t.prizesDelivered || t.prizes).join ? ` · a chi partecipa: ${prizeText(t.prizesDelivered || t.prizes).join}` : ""}</p>
           </div>
           {t.status === "done" && <div className="pd-tn-champ">👑 {t.winnerName}<small>2° {t.runnerName}</small></div>}
         </div>
@@ -87,6 +89,8 @@ export default function TournamentTab({ t, uid, char, den, master, art, PetSprit
       {!live && (master
         ? <OpenForm run={run} uid={uid} last={t} />
         : <p className="pd-empty">{t?.status === "done" ? `Il torneo è finito: ha vinto ${t.winnerName}. ` : ""}Nessun torneo aperto per ora: quando il Master lo apre ti arriva una notifica.</p>)}
+
+      {master && live && <PrizeEditor t={t} run={run} />}
 
       {t?.status === "registration" && (
         <>
@@ -114,11 +118,12 @@ function OpenForm({ run, uid, last }) {
   const [name, setName] = useState("");
   const [lv, setLv] = useState(last?.maxLevel || 10);
   const [busy, setBusy] = useState(false);
+  const [prizes, setPrizes] = useState(() => cleanPrizes(last?.prizes || { gold: 100, corone: 5, winXp: 200, joinXp: 40 }));
   const go = () => {
-    if (!window.confirm(`Aprire le iscrizioni (pet fino al Lv ${lv}) e mandare la notifica a tutti i giocatori?`)) return;
+    if (!window.confirm(`Aprire le iscrizioni (pet fino al Lv ${lv}) e mandare la notifica a tutti i giocatori?\nAl campione: ${prizeText(prizes).win}${prizeText(prizes).join ? `\nA chi partecipa: ${prizeText(prizes).join}` : ""}`)) return;
     setBusy(true);
     run(async () => {
-      const r = await openTournament({ name, maxLevel: lv, masterUid: uid });
+      const r = await openTournament({ name, maxLevel: lv, masterUid: uid, prizes });
       return r;
     }, "Iscrizioni aperte: notifica mandata a tutti i giocatori attivi.").finally(() => setBusy(false));
   };
@@ -138,9 +143,50 @@ function OpenForm({ run, uid, last }) {
           ))}
         </span>
       </label>
+      <PrizeFields prizes={prizes} set={setPrizes} />
       <p className="pd-fine">Si gioca a gironi come l'Arena: da 4 iscritti due gironi a sorte, ognuno contro tutti un round alla volta, poi la finale fra i primi dei due gironi (con 3 iscritti un girone e finale fra i primi due, con 2 si va dritti in finale). Le lotte sono come le sfide fra domatori, con le squadre dell'iscrizione.</p>
       <button type="button" className="pd-btn pd-btn--main pd-btn--big" disabled={busy} onClick={go}>📣 Apri le iscrizioni e avvisa tutti</button>
     </div>
+  );
+}
+
+/* ── Premi ────────────────────────────────────────────────── */
+const PRIZE_FIELDS = [
+  { k: "gold", icon: "🪙", label: "Monete d'oro al campione", hint: "vanno nello zaino del suo personaggio su Foundry (con Fetch admin)", unit: "mo" },
+  { k: "corone", icon: "👑", label: "Corone al campione", hint: "per il Mercato Nero, subito", unit: "Corone" },
+  { k: "winXp", icon: "✨", label: "PE ai pet del campione", hint: "a ognuno dei pet con cui si è iscritto", unit: "PE" },
+  { k: "joinXp", icon: "🐾", label: "PE a chi partecipa", hint: "a ogni pet iscritto, di tutti (campione compreso)", unit: "PE" },
+];
+function PrizeFields({ prizes, set }) {
+  return (
+    <div className="pd-tn-prizes">
+      {PRIZE_FIELDS.map((f) => (
+        <label key={f.k} className="pd-tn-field">
+          <span>{f.icon} {f.label}</span>
+          <span className="pd-tn-lv">
+            <input className="pd-search" type="number" min={0} max={PRIZE_LIMITS[f.k]} value={prizes[f.k]}
+              onChange={(e) => set((p) => cleanPrizes({ ...p, [f.k]: e.target.value }))} />
+            <small>{f.unit}</small>
+          </span>
+          <small>{f.hint}</small>
+        </label>
+      ))}
+      <p className="pd-fine">I PE dei pet non contano nel tetto giornaliero: sono un premio. Monete e Corone si consegnano quando proclami il campione; i PE li prende ognuno appena apre il Rifugio. 0 = niente.</p>
+    </div>
+  );
+}
+function PrizeEditor({ t, run }) {
+  const [open, setOpen] = useState(false);
+  const [prizes, setPrizes] = useState(() => cleanPrizes(t.prizes));
+  useEffect(() => setPrizes(cleanPrizes(t.prizes)), [t.tid, t.prizes?.gold, t.prizes?.corone, t.prizes?.winXp, t.prizes?.joinXp]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <details className="pd-tn-box pd-tn-fold" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>🛡 Premi del torneo · modifica</summary>
+      <PrizeFields prizes={prizes} set={setPrizes} />
+      <div className="pd-tn-actions">
+        <button type="button" className="pd-btn pd-btn--main" onClick={() => run(() => updatePrizes(prizes), "Premi aggiornati.")}>Salva i premi</button>
+      </div>
+    </details>
   );
 }
 
@@ -236,10 +282,12 @@ function EntrantsPanel({ t, entries, master, run, uid }) {
 /* ── Gironi, round e finale ───────────────────────────────── */
 function MatchRow({ m, uid, master, run, openMatch }) {
   const mine = m.a === uid || m.b === uid;
-  const myTurn = !!pendingSide(m, uid);
+  const rw = awaitingReady(m);
+  const myTurn = !!pendingSide(m, uid) || needsMyReady(m, uid);
   const winName = m.winner === "p" ? m.aName : m.winner === "e" ? m.bName : null;
   let state = "";
-  if (m.status === "active") state = mine ? (myTurn ? "✨ tocca a te" : "aspetti l'altro") : `turno ${(m.seq || 0) + 1}`;
+  if (rw) state = `✋ Iniziamo: ${m.aName} ${m.ready?.[m.a] ? "✅" : "⏳"} · ${m.bName} ${m.ready?.[m.b] ? "✅" : "⏳"}${needsMyReady(m, uid) ? " · ✨ premi Iniziamo" : ""}`;
+  else if (m.status === "active") state = mine ? (myTurn ? "✨ tocca a te" : "aspetti l'altro") : `turno ${(m.seq || 0) + 1}`;
   else if (m.status === "done") state = `✓ vince ${winName}${m.byMaster ? " (Master)" : m.forfeit ? " (a tavolino/abbandono)" : ""}`;
   else if (m.status === "cancelled") state = "annullata";
   return (
@@ -249,7 +297,8 @@ function MatchRow({ m, uid, master, run, openMatch }) {
         <small>{state}</small>
       </span>
       <span className="pd-mrow-actions">
-        {mine && m.battle && m.status !== "cancelled" && <button type="button" className={`pd-btn${myTurn ? " pd-btn--main" : ""}`} onClick={() => openMatch(m.id)}>{m.status === "active" ? "Entra" : "Rivedi"}</button>}
+        {mine && m.battle && m.status !== "cancelled" && <button type="button" className={`pd-btn${myTurn ? " pd-btn--main" : ""}`} onClick={() => openMatch(m.id)}>{m.status === "active" ? (needsMyReady(m, uid) ? "✋ Iniziamo" : "Entra") : "Rivedi"}</button>}
+        {master && rw && <button type="button" className="pd-btn" onClick={() => run(() => confirmReady(m.id, uid, { force: true }), "Lotta avviata.")}>▶ Avvia</button>}
         {master && m.status === "active" && (
           <>
             <button type="button" className="pd-btn pd-btn--ghost" onClick={() => window.confirm(`Assegnare la vittoria a ${m.aName}?`) && run(() => assignWin(m.id, "p"), `Vittoria assegnata a ${m.aName}.`)}>Vince {m.aName}</button>

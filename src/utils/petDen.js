@@ -59,6 +59,7 @@ export const towerFinish = op("towerFinish");
 export const resetTower = op("resetTower");
 // Sfide: si manda solo l'id, il server legge la sfida.
 export const recordPvpResult = (_uid, match, side) => petDo("recordPvpResult", [match.id, side]);
+export const claimTournamentXp = () => petDo("claimTournamentXp", []);
 
 /* Reset del Master (2026-10-31): per i personaggi scelti azzera i punti
    pet (e il loro registro) e/o i pet (Rifugio intero: collezione,

@@ -29,6 +29,7 @@ export const denOf = (data) => {
     mascot: d.mascot || null,
     items: d.items && typeof d.items === "object" ? { ...d.items } : {},
     pvp: { wins: 0, losses: 0, day: "", rewarded: 0, claimed: [], ...(d.pvp || {}) },
+    tourney: { claimed: [], wins: 0, ...(d.tourney || {}) },
     log: Array.isArray(d.log) ? d.log : [],
   };
 };
@@ -510,6 +511,38 @@ export function towerFinish(den, data, floor, teamIds, actions, ctx) {
   return recordTowerResult(den, data, floor, over === "p", teamIds);
 }
 
+/* ── TORNEO DEI PET (2026-11-02): PE del torneo ─────────────────────
+   Ognuno li ritira per sé (in automatico all'apertura del Rifugio) una
+   volta per torneo: il server legge il torneo vero (pet_meta/tournament,
+   concluso) e l'iscrizione vera di chi chiama. A tutti i pet iscritti
+   `prizes.joinXp`, ai pet del campione anche `prizes.winXp`. Fuori dal
+   tetto giornaliero dei PE: è un premio del Master. */
+export function claimTournamentXp(den, data, t, entry) {
+  if (!t || t.status !== "done" || !entry || entry.tid !== t.tid) throw new Error("Nessun premio del torneo da ritirare.");
+  if (den.tourney.claimed.includes(t.tid)) return { out: { already: true } };
+  den.tourney.claimed = [t.tid, ...den.tourney.claimed].slice(0, 30);
+  const won = t.winner === entry.uid;
+  const joinXp = Math.max(0, Math.min(5000, Math.round(Number(t.prizes?.joinXp) || 0)));
+  const winXp = won ? Math.max(0, Math.min(20000, Math.round(Number(t.prizes?.winXp) || 0))) : 0;
+  const xp = joinXp + winXp;
+  const ids = (entry.team || []).map((p) => p.id);
+  const ups = [];
+  let pets = 0;
+  if (xp > 0) {
+    den.pets = den.pets.map((p) => {
+      if (!ids.includes(p.id)) return p;
+      pets += 1;
+      const n = addXp(p, xp);
+      const { ups: up, ...rest } = n;
+      if (up) ups.push({ id: p.id, species: p.species, level: rest.level });
+      return rest;
+    });
+  }
+  if (won) den.tourney.wins = (den.tourney.wins || 0) + 1;
+  addLog(den, { k: "tourney", name: t.name, won, xp, pets });
+  return { out: { won, xp, joinXp, winXp, pets, ups, name: t.name } };
+}
+
 /* Operazioni che il server accetta (petDo). master = solo il Master. */
 export const OPS = {
   chooseStarter: { run: chooseStarter },
@@ -532,4 +565,5 @@ export const OPS = {
   towerFinish: { run: towerFinish },
   resetTower: { run: resetTower },
   recordPvpResult: { run: recordPvpResult, match: true },
+  claimTournamentXp: { run: claimTournamentXp, tourney: true },
 };

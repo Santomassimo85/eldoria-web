@@ -30,7 +30,7 @@ import {
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
   towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, resetPetTowers, MASCOT_XP_BONUS,
-  learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, PVP_POINTS, PVP_DAILY,
+  learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, claimTournamentXp, PVP_POINTS, PVP_DAILY,
   evolvePet, evoArtKey, petEvoArtPrompt,
 } from "../utils/petDen";
 import { EVOLUTIONS, EVO_PASSIVES, EVO_LEVEL, evoLevelOf, evoDiceOf } from "../data/petEvo";
@@ -38,6 +38,7 @@ import { playDiceRoll } from "../components/diceSound";
 import {
   createChallenge, acceptChallenge, declineChallenge, cancelChallenge, submitAction, forfeit, pendingSide, sidesOf, flipBattle, flipEvent,
 } from "../utils/petPvp";
+import { confirmReady, awaitingReady } from "../utils/petTournament";
 import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle, EVO_STONE, EVO_STONE_PRICE } from "../data/petBag";
 import PetFx from "./PetFx";
 import TournamentTab, { useTournament, useMyEntry, tournamentTile } from "./PetTournament";
@@ -206,6 +207,18 @@ export default function PetDen() {
   const den = useMemo(() => denOf(char), [char]);
   const tourney = useTournament(uid);
   const entered = useMyEntry(tourney, uid);
+  // PE del torneo concluso: si ritirano da soli all'apertura (una volta, decide il server)
+  const tourneyTried = useRef(null);
+  useEffect(() => {
+    if (!uid || !char || !tourney || tourney.status !== "done" || !entered) return;
+    if (den.tourney?.claimed?.includes(tourney.tid) || tourneyTried.current === tourney.tid) return;
+    tourneyTried.current = tourney.tid;
+    claimTournamentXp().then((r) => {
+      if (!r || r.already) return;
+      const ups = (r.ups || []).map((u) => `${PET_DEX[u.species]?.name} sale al Lv ${u.level}`).join(", ");
+      setMsg(`🏆 ${r.won ? `Hai vinto il ${r.name}!` : `Premio di partecipazione al ${r.name}.`}${r.xp ? ` +${r.xp} PE a ${r.pets} pet.` : ""}${ups ? ` ${ups}!` : ""}`);
+    }).catch(() => { tourneyTried.current = null; });
+  }, [uid, char, tourney, entered, den.tourney]);
   const points = Number(char?.petPoints) || 0;
 
   // Pet arrivati dal Mercato: si ritirano all'apertura (solo dopo l'iniziale).
@@ -942,6 +955,7 @@ function logTxt(e) {
     case "master_reset": return `🛡 ${e.note || "Reset del Master"}`;
     case "tower_reset": return `↺ Ricomincia la torre dal piano 1 (era al ${e.from})`;
     case "battle_items": return `🎒 Oggetti usati in lotta: ${(e.items || []).map(itName).join(", ")}`;
+    case "tourney": return `🏆 ${e.won ? "VINCE" : "Partecipa a"} ${e.name || "il torneo"} · +${e.xp} PE a ${e.pets} pet`;
     case "pvp": return `⚔ Sfida ${e.won ? "vinta" : "persa"} contro ${e.vs || "?"} · +${e.xp} PE${e.pts ? ` · +${e.pts} pt` : ""}`;
     case "item_buy": return `🎒 Compra ${itName(e.item)} (−${e.cost} pt)`;
     case "item_give": return `🎁 Il Master gli dà ${(e.items || []).length} oggetti`;
@@ -2140,11 +2154,14 @@ function PvpBattle({ uid, id, art, den, onExit }) {
       <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Esci</button>
     </>
   );
-  const waiting = m.status === "active" && !pend;
+  // Torneo: prima del via tutti e due premono «Iniziamo»
+  const readyWait = awaitingReady(m);
+  const imReady = !!m.ready?.[uid];
+  const waiting = m.status === "active" && !pend && !readyWait;
   const forcedHere = !!pend && !!m.battle.needSwitch;
   return (
     <BattleScreen battle={battle} player={player} art={art} top={top} labels={{ p: flip ? m.bName : m.aName, e: foeName }}
-      controls={done || waiting ? null : (
+      controls={done || waiting || readyWait ? null : (
         <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere}
           bag={Object.fromEntries(Object.entries(den?.items || {}).map(([k, n]) => [k, (Number(n) || 0) - ((m.used?.[viewSide]?.[k] || []).length) - (m.actions?.[viewSide]?.item === k ? 1 : 0)]))} />
       )}>
@@ -2161,6 +2178,20 @@ function PvpBattle({ uid, id, art, den, onExit }) {
           {result?.self && <p className="pd-fine">Sfida di prova contro te stesso: niente premi.</p>}
           {result?.error && <p className="pd-fine">{result.error}</p>}
           <div className="pd-result-actions"><button type="button" className="pd-btn pd-btn--main" onClick={onExit}>Alle sfide</button></div>
+        </div>
+      ) : readyWait ? (
+        <div className="pd-wait pd-ready">
+          <p><b>{m.aName}</b> {m.ready?.[m.a] ? "✅ pronto" : "⏳ non ancora"} · <b>{m.bName}</b> {m.ready?.[m.b] ? "✅ pronto" : "⏳ non ancora"}</p>
+          <div className="pd-ready-teams">
+            {[["p", m.aName], ["e", m.bName]].map(([sd, nm]) => (
+              <div key={sd}><small>{nm}</small><span>{(m.teams?.[sd] || []).map((p) => `${PET_DEX[p.species]?.icon || "🐾"} Lv ${p.level}`).join(" · ")}</span></div>
+            ))}
+          </div>
+          {mine.length > 0 && !imReady && (
+            <button type="button" className="pd-btn pd-btn--main pd-btn--big" disabled={sending}
+              onClick={() => { unlockAudio(); setSending(true); confirmReady(id, uid).catch((e) => setErr(e.message)).finally(() => setSending(false)); }}>✋ Iniziamo</button>
+          )}
+          {imReady && <small>Hai premuto Iniziamo: la lotta parte quando lo preme anche {m.a === uid ? m.bName : m.aName}. Ti arriva una notifica.</small>}
         </div>
       ) : waiting ? (
         <div className="pd-wait">

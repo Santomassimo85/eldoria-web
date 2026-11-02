@@ -1836,6 +1836,13 @@ exports.petDo = onCall(
           if (!mine.includes(side)) throw new Error("Non è una tua sfida.");
           runArgs = [m, side];
         }
+        if (def.tourney) {
+          // Torneo dei Pet: si leggono il torneo vero e l'iscrizione vera di chi chiama
+          const ts = await tx.get(db.collection("pet_meta").doc("tournament"));
+          const t = ts.exists ? ts.data() : null;
+          const es = t?.tid ? await tx.get(db.collection("pet_tournament_entries").doc(`${t.tid}_${uid}`)) : null;
+          runArgs = [t, es && es.exists ? es.data() : null];
+        }
         const snap = await tx.get(ref);
         if (!snap.exists) throw new Error("Scheda del personaggio non trovata.");
         const data = snap.data();
