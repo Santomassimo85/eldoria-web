@@ -1991,6 +1991,15 @@ function resistOf(f, kind) {
   const rm = resistMultiplier(f?.species, kind, f?.evo || 0);
   return f?.resist === kind && rm > 0 ? rm * 0.5 : rm;
 }
+function desperateOk(f, foe) {
+  const left = Object.keys(f?.pp || {}).filter((m) => f.pp[m] !== 0);
+  if (!left.length) return true;
+  if (!foe || foe.hp <= 0) return false;
+  return !left.some((m) => {
+    const mv = PET_DEX_MOVES[m];
+    return mv?.power > 0 && resistOf(foe, damageKindOf(mv)) > 0;
+  });
+}
 var snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
   return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey) }];
@@ -2434,9 +2443,10 @@ function playTurn(battle, action, actionE = null) {
   b.log = [...b.log, ...out].slice(-80);
   return { battle: b, events: out };
 }
-function usableMoves(f) {
+function usableMoves(f, foe) {
   const list = Object.keys(f.pp).filter((m) => f.pp[m] !== 0);
-  return list.length ? list : ["zampata"];
+  if (!list.length) return ["zampata"];
+  return desperateOk(f, foe) && !list.includes("zampata") ? ["zampata", ...list] : list;
 }
 function scoreMove(b, me, foe, m) {
   const mv = PET_DEX_MOVES[m];
@@ -2455,7 +2465,7 @@ function scoreMove(b, me, foe, m) {
 }
 function bestMove(b, side) {
   const me = activeOf(b, side), foe = activeOf(b, other(side));
-  const moves = usableMoves(me);
+  const moves = usableMoves(me, foe);
   return moves.map((m) => ({ m, s: scoreMove(b, me, foe, m) })).sort((x, y) => y.s - x.s)[0].m;
 }
 function matchup(attType, defType) {
@@ -2471,8 +2481,10 @@ function aiChoose(b) {
       if (better) return { kind: "switch", index: better.i };
     }
   }
-  if (lvl === 0) return { kind: "move", move: pick(usableMoves(me)) };
-  if (lvl === 1 && rnd() < 0.45) return { kind: "move", move: pick(usableMoves(me)) };
+  const foeNow = foe;
+  if (desperateOk(me, foeNow) && !Object.prototype.hasOwnProperty.call(me.pp, "zampata")) return { kind: "move", move: "zampata" };
+  if (lvl === 0) return { kind: "move", move: pick(usableMoves(me, foeNow)) };
+  if (lvl === 1 && rnd() < 0.45) return { kind: "move", move: pick(usableMoves(me, foeNow)) };
   return { kind: "move", move: bestMove(b, "e") };
 }
 function aiPickReplacement(b) {
@@ -2956,7 +2968,7 @@ function validAction(b, a, bag = {}) {
   if (b.needSwitch && b.needSwitch.includes("p")) return false;
   if (a?.kind !== "move") return false;
   if (Object.prototype.hasOwnProperty.call(f.pp, a.move)) return f.pp[a.move] !== 0;
-  if (a.move === "zampata") return Object.values(f.pp).every((v) => v === 0);
+  if (a.move === "zampata") return desperateOk(f, b.sides.e.team[b.sides.e.active]);
   return false;
 }
 function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {

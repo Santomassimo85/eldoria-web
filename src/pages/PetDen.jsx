@@ -25,7 +25,7 @@ import {
   eggChances, hatchRarityOf, strongAgainst, weakAgainst, DMG_ICON, DMG_LABEL, ELEMENT_ODDS, PRISM_ODDS,
   MOVE_GRADES, MAX_MOVES, GRADE_ROMAN, gradeOfLevel, learnPool, moveCat, damageKindOf, dndOf, usesOf, accMod, resOf,
 } from "../data/petDex";
-import {
+import { desperateOk,
   statsAt, xpToNext, LOSS_XP, withSeed, DAILY_XP_CAP, xpTodayOf, petStats, formName, canEvolve, evoStage, parseFx, fxKey, towerWeek, towerWeekLeftMs, battleMoves, learnedMoves, knownMoves, acOf, diceText, INFINITE, playTurn, activeOf, benchAlive, towerFloor, towerXp, towerPoints, AI_LABEL,
 } from "../data/petEngine";
 import {
@@ -1970,8 +1970,8 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
           );
         })}
       </div>
-      {Object.values(me.pp).every((v) => v === 0) && (
-        <button type="button" className="pd-move pd-move--desperate" disabled={busy} onClick={() => act({ kind: "move", move: "zampata" })}><b>✊ Zampata disperata</b><small>usi finiti</small></button>
+      {desperateOk(me, foe) && !Object.prototype.hasOwnProperty.call(me.pp, "zampata") && (
+        <button type="button" className="pd-move pd-move--desperate" disabled={busy} onClick={() => act({ kind: "move", move: "zampata" })}><b>✊ Zampata disperata</b><small>{Object.values(me.pp).every((v) => v === 0) ? "usi finiti" : "le tue mosse non lo feriscono"}</small></button>
       )}
       <div className="pd-actbar">
         <button type="button" className="pd-actbtn" disabled={busy || !bench.length} onClick={() => setView("switch")}>

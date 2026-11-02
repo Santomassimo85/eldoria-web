@@ -11,7 +11,7 @@
    ============================================================ */
 
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
-import { addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
+import { desperateOk, addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
 import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle, EVO_STONE } from "./petBag";
 import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 export { LOSS_XP };
@@ -488,7 +488,7 @@ export function validAction(b, a, bag = {}) {
   // permessa quando tutte le mosse hanno finito gli usi. (Bug 2026-11-02: Palar non
   // passava la torre perché usava la sua Zampata e il server la rifiutava.)
   if (Object.prototype.hasOwnProperty.call(f.pp, a.move)) return f.pp[a.move] !== 0;
-  if (a.move === "zampata") return Object.values(f.pp).every((v) => v === 0);
+  if (a.move === "zampata") return desperateOk(f, b.sides.e.team[b.sides.e.active]);
   return false;
 }
 export function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {

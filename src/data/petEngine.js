@@ -251,6 +251,20 @@ function resistOf(f, kind) {
   return f?.resist === kind && rm > 0 ? rm * 0.5 : rm;
 }
 
+// Zampata disperata (anti-stallo, 2026-11-02): si può usare quando le mosse hanno
+// finito gli usi OPPURE nessun attacco rimasto può ferire l'avversario in campo
+// (immune: es. due pet del fulmine immuni al fulmine con solo Scarica infinita →
+// prima la lotta non finiva mai). Le mosse di stato non sbloccano lo stallo.
+export function desperateOk(f, foe) {
+  const left = Object.keys(f?.pp || {}).filter((m) => f.pp[m] !== 0);
+  if (!left.length) return true;
+  if (!foe || foe.hp <= 0) return false;
+  return !left.some((m) => {
+    const mv = PET_DEX_MOVES[m];
+    return mv?.power > 0 && resistOf(foe, damageKindOf(mv)) > 0;
+  });
+}
+
 // Ogni riga porta l'istantanea dei PF: la pagina la mostra passo passo.
 const snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
@@ -672,9 +686,11 @@ export function playTurn(battle, action, actionE = null) {
    aiLevel 0 = mosse a caso · 1 = spesso la più forte · 2 = sempre la
    migliore, si cura quando è bassa · 3 = come 2 e cambia pet quando il
    confronto di tipo è sfavorevole. */
-function usableMoves(f) {
+function usableMoves(f, foe) {
   const list = Object.keys(f.pp).filter((m) => f.pp[m] !== 0);
-  return list.length ? list : ["zampata"];
+  if (!list.length) return ["zampata"];
+  // bloccato da un'immunità: la Zampata disperata entra fra le scelte (e vince il punteggio)
+  return desperateOk(f, foe) && !list.includes("zampata") ? ["zampata", ...list] : list;
 }
 
 function scoreMove(b, me, foe, m) {
@@ -695,7 +711,7 @@ function scoreMove(b, me, foe, m) {
 
 function bestMove(b, side) {
   const me = activeOf(b, side), foe = activeOf(b, other(side));
-  const moves = usableMoves(me);
+  const moves = usableMoves(me, foe);
   return moves.map((m) => ({ m, s: scoreMove(b, me, foe, m) })).sort((x, y) => y.s - x.s)[0].m;
 }
 
@@ -713,8 +729,10 @@ function aiChoose(b) {
       if (better) return { kind: "switch", index: better.i };
     }
   }
-  if (lvl === 0) return { kind: "move", move: pick(usableMoves(me)) };
-  if (lvl === 1 && rnd() < 0.45) return { kind: "move", move: pick(usableMoves(me)) };
+  const foeNow = foe;
+  if (desperateOk(me, foeNow) && !Object.prototype.hasOwnProperty.call(me.pp, "zampata")) return { kind: "move", move: "zampata" };
+  if (lvl === 0) return { kind: "move", move: pick(usableMoves(me, foeNow)) };
+  if (lvl === 1 && rnd() < 0.45) return { kind: "move", move: pick(usableMoves(me, foeNow)) };
   return { kind: "move", move: bestMove(b, "e") };
 }
 
