@@ -1917,7 +1917,8 @@ export default function Arena() {
         // ── SFIDA L'IA: crea un match già pronto al lancio (initiative).
         const matchId = `FUN_AI_${Date.now()}_${currentUser.uid}`;
         const { aiUid, snapshot: aiSnap, playerObj: aiPlayerObj, archetype } = makeAiSnapshotAndPlayer(matchId);
-        const newMatch = withReadyCheck({
+        // Contro l'IA niente «Iniziamo» (2026-11-02): si parte subito dall'iniziativa.
+        const newMatch = ({
           matchId,
           kind: "fun",
           ai: true,
