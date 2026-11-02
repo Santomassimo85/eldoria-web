@@ -179,3 +179,14 @@
   .cv-sprite, .cv-spot.is-turn::after { animation: none; }
   .cv-spot { transition: none; }
 }
+
+/* ── ritocchi dopo la prova dal vivo (2026-11-02) ── */
+.cv-field .cdt-tab .cdt-ico { display: block !important; }
+/* "Salta turno" sta sopra le schede: il tuo riquadro sale per non coprirsi */
+.cv-field .fighter-card.side-you { bottom: calc(var(--cvp-tabs) + 42px) !important; }
+.cv-field .cv-spot--p { bottom: calc(var(--cvp-tabs) + 14px); }
+.cv-sprite--emoji { font-size: clamp(4.5rem, 14vw, 7.5rem) !important; line-height: 1; filter: drop-shadow(3px 3px 0 #000); }
+@media (max-width: 760px) {
+  .arena-page .cv-field, .arena-combat-dialog .cv-field, .cv-field { --cvp-h: max(460px, min(calc(100svh - 190px), 620px)); }
+  .cv-field .cv-spot--p { bottom: calc(var(--cvp-tabs) + 40px); }
+}
