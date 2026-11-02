@@ -40,6 +40,7 @@ import {
 } from "../utils/petPvp";
 import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle, EVO_STONE, EVO_STONE_PRICE } from "../data/petBag";
 import PetFx from "./PetFx";
+import TournamentTab, { useTournament, useMyEntry, tournamentTile } from "./PetTournament";
 import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
@@ -171,6 +172,7 @@ export default function PetDen() {
   const [msg, setMsg] = useState("");
   const [battle, setBattle] = useState(null); // { floor, plan, teamIds }
   const [pvpId, setPvpId] = useState(null);   // sfida aperta
+  const [pvpBack, setPvpBack] = useState("sfide"); // dove si torna uscendo dalla lotta
   const [mA, setMA] = useState([]);
   const [mB, setMB] = useState([]);
   const giftsTried = useRef(false);
@@ -202,6 +204,8 @@ export default function PetDen() {
   }, [mA, mB]);
 
   const den = useMemo(() => denOf(char), [char]);
+  const tourney = useTournament(uid);
+  const entered = useMyEntry(tourney, uid);
   const points = Number(char?.petPoints) || 0;
 
   // Pet arrivati dal Mercato: si ritirano all'apertura (solo dopo l'iniziale).
@@ -253,7 +257,7 @@ export default function PetDen() {
   if (pvpId) {
     return (
       <section className="pd-page pd-page--battle">
-        <PvpBattle key={pvpId} uid={uid} id={pvpId} art={art} den={den} onExit={() => { setPvpId(null); setTab("sfide"); }} />
+        <PvpBattle key={pvpId} uid={uid} id={pvpId} art={art} den={den} onExit={() => { setPvpId(null); setTab(pvpBack); }} />
       </section>
     );
   }
@@ -273,6 +277,7 @@ export default function PetDen() {
     uova: { title: "Bottega delle uova" },
     torre: { title: "Torre dei Cuccioli", sub: "infinita" },
     sfide: { title: "Sfide fra domatori" },
+    torneo: { title: "Torneo dei Pet" },
     bisaccia: { title: "Bisaccia del Domatore", sub: "oggetti dei pet" },
     dex: { title: "Pet Dex" },
     manuale: { title: "Manuale" },
@@ -298,7 +303,7 @@ export default function PetDen() {
       {msg && <p className="pd-msg" onClick={() => setMsg("")}>{msg}</p>}
 
       {sec === "hub" ? (
-        <Hub den={den} art={art} points={points} master={master} go={go} matches={matches} uid={uid} />
+        <Hub den={den} art={art} points={points} master={master} go={go} matches={matches} uid={uid} tourneyTile={tournamentTile(tourney, uid, matches, entered)} />
       ) : (
         <>
           <SectionHead title={SECTIONS[sec].title} sub={SECTIONS[sec].sub} onBack={back} />
@@ -310,7 +315,11 @@ export default function PetDen() {
           {sec === "torre" && (
             <TowerTab uid={uid} den={den} art={art} run={run} onFight={(plan) => { unlockAudio(); setBattle({ plan, teamIds: den.team, key: Date.now() }); }} />
           )}
-          {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={setPvpId} />}
+          {sec === "sfide" && <ChallengesTab uid={uid} char={char} den={den} matches={matches} master={master} run={run} openMatch={(id) => { unlockAudio(); setPvpBack("sfide"); setPvpId(id); }} />}
+          {sec === "torneo" && (
+            <TournamentTab t={tourney} uid={uid} char={char} den={den} master={master} art={art} PetSprite={PetSprite} run={run}
+              openMatch={(id) => { unlockAudio(); setPvpBack("torneo"); setPvpId(id); }} />
+          )}
           {sec === "bisaccia" && <BagTab uid={uid} den={den} points={points} art={art} run={run} />}
           {sec === "bestiario" && <MasterTools uid={uid} den={den} art={art} run={run} />}
           {sec === "giocatori" && <PlayersAdmin run={run} art={art} />}
@@ -331,7 +340,7 @@ function SectionHead({ title, sub, onBack }) {
   );
 }
 
-function Hub({ den, art, points, master, go, matches = [], uid }) {
+function Hub({ den, art, points, master, go, matches = [], uid, tourneyTile = null }) {
   const mascot = den.pets.find((p) => p.id === den.mascot);
   const team = den.team.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   const owned = PET_DEX_ORDER.filter((k) => countOf(den, k) > 0).length;
@@ -345,6 +354,7 @@ function Hub({ den, art, points, master, go, matches = [], uid }) {
       const inc = matches.filter((m) => m.status === "pending" && m.b === uid).length;
       return { key: "sfide", icon: "⚔", title: "Sfide fra domatori", sub: turn || inc ? [turn && `${turn} tocca a te`, inc && `${inc} nuove sfide`].filter(Boolean).join(" · ") : `${den.pvp.wins} vinte · ${den.pvp.losses} perse`, hot: turn + inc > 0 };
     })(),
+    ...(tourneyTile ? [tourneyTile] : []),
     { key: "bisaccia", icon: "🎒", title: "Bisaccia del Domatore", sub: `${Object.values(den.items).reduce((a, n) => a + n, 0)} oggetti · amuleti, pergamene` },
     { key: "dex", icon: "📖", title: "Pet Dex", sub: `${owned}/${PET_DEX_ORDER.length} specie scoperte` },
     { key: "manuale", icon: "📜", title: "Manuale", sub: "regole, elementi, uova, torre" },
@@ -773,6 +783,14 @@ function Manual() {
           <li>Dal Rifugio → Sfide scegli un altro domatore e lo sfidi con la tua squadra; lui accetta con la sua.</li>
           <li>Si gioca a turni anche a distanza: ognuno sceglie la mossa quando può, il turno parte quando avete scelto tutti e due. Arriva una notifica per la sfida, l'accettazione e la fine.</li>
           <li>Vittoria: PE alla squadra e +{PVP_POINTS} punti pet (prime {PVP_DAILY} vittorie del giorno), a volte un amuleto. PE fissi: {PVP_WIN_XP} a chi vince, {PVP_LOSS_XP} a chi perde, solo per le prime {PVP_XP_FIGHTS} sfide del giorno. Abbandonare conta come sconfitta e non dà PE.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Torneo dei Pet</h3>
+        <ul>
+          <li>Lo apre il Master con un livello massimo: arriva una notifica a tutti e dal Rifugio → Torneo ti iscrivi con fino a {MAX_TEAM} pet entro quel livello (il primo scelto scende in campo per primo).</li>
+          <li>Si gioca a gironi come l'Arena: da 4 iscritti due gironi a sorte, ognuno contro tutti un round alla volta; poi la finale fra i primi dei due gironi. A pari vittorie conta lo scontro diretto.</li>
+          <li>Ogni lotta è come una sfida fra domatori (stessi premi). Se un tuo pet sale oltre il livello massimo durante il torneo, nel torneo combatte al livello massimo. Chi non ha più nessun pet iscritto perde a tavolino.</li>
         </ul>
       </section>
       <section>
@@ -1452,7 +1470,7 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
               const mineTurn = !!pendingSide(m, uid);
               return (
                 <div key={m.id} className={`pd-mrow${mineTurn ? " is-hot" : ""}`}>
-                  <span>contro <b>{foeOf(m)}</b> · turno {(m.seq || 0) + 1} · {mineTurn ? "✨ tocca a te" : "aspetti l'altro"}</span>
+                  <span>{m.tournament ? "🏆 " : ""}contro <b>{foeOf(m)}</b> · turno {(m.seq || 0) + 1} · {mineTurn ? "✨ tocca a te" : "aspetti l'altro"}</span>
                   <button type="button" className="pd-btn pd-btn--main" onClick={() => { unlockAudio(); openMatch(m.id); }}>Entra</button>
                 </div>
               );
@@ -2117,7 +2135,7 @@ function PvpBattle({ uid, id, art, den, onExit }) {
   const self = m.a === m.b;
   const top = (
     <>
-      <span>⚔ {m.aName} contro {m.bName}{self ? " · prova" : ""} · turno {(m.seq || 0) + 1}</span>
+      <span>{m.tournament ? `🏆 ${m.tGroup === "F" ? "Finale" : `Girone ${m.tGroup}`} · ` : "⚔ "}{m.aName} contro {m.bName}{self ? " · prova" : ""} · turno {(m.seq || 0) + 1}</span>
       <AudioToggles />
       <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>Esci</button>
     </>

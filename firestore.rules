@@ -278,9 +278,34 @@ service cloud.firestore {
     // aggiornano solo i due giocatori (azioni, turni risolti in transazione) o il Master.
     match /pet_matches/{matchId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && request.resource.data.a == request.auth.uid && request.resource.data.status == "pending";
+      // le lotte del Torneo dei Pet le crea il Master già "active"
+      allow create: if isLoggedIn() && ((request.resource.data.a == request.auth.uid && request.resource.data.status == "pending") || isMaster());
       allow update: if isLoggedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid || isMaster());
       allow delete: if isMaster();
+    }
+
+    // ── Torneo dei Pet (2026-11-02) ─────────────────────────────────────────
+    // pet_meta/tournament: il torneo in corso, lo scrive solo il Master.
+    match /pet_meta/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+    // Iscrizioni: ognuno la sua, solo a iscrizioni aperte del torneo in corso.
+    match /pet_tournament_entries/{entryId} {
+      allow read: if isLoggedIn();
+      allow create, update: if isMaster() || (
+        isLoggedIn()
+        && request.resource.data.uid == request.auth.uid
+        && entryId == request.resource.data.tid + "_" + request.auth.uid
+        && get(/databases/$(database)/documents/pet_meta/tournament).data.status == "registration"
+        && get(/databases/$(database)/documents/pet_meta/tournament).data.tid == request.resource.data.tid
+        && request.resource.data.team.size() <= 3
+      );
+      allow delete: if isMaster() || (
+        isLoggedIn()
+        && resource.data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/pet_meta/tournament).data.status == "registration"
+      );
     }
 
     // ── Pet Arena (companion system) ─────────────────────────────────────────
