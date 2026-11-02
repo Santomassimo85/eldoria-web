@@ -44,7 +44,7 @@ import PetFx from "./PetFx";
 import TournamentTab, { useTournament, useMyEntry, tournamentTile } from "./PetTournament";
 import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
-import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
+import { dataUrlToTransparentDataUrl, cleanSpriteDataUrl } from "../utils/aiSprite";
 import "./PetDen.css";
 
 // Mosse fisiche: chi attacca fa un balzo verso il bersaglio (classi in PetFx.css).
@@ -2244,6 +2244,29 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
     }
   };
 
+  // Ripulisce gli sprite già salvati dagli aloni magenta (2026-11-02)
+  const [cleaning, setCleaning] = useState(null);
+  const cleanOne = async (key) => {
+    const src = art[key]?.image;
+    if (!src) return false;
+    const png = await cleanSpriteDataUrl(src);
+    if (png === src) return false;
+    await savePetArt(key, png, art[key]?.look || lookOf(key));
+    return true;
+  };
+  const cleanAll = async () => {
+    const keys = Object.keys(art).filter((k) => k !== "__arena" && art[k]?.image && (PET_DEX[k] || evoSp(k)));
+    if (!keys.length || !window.confirm(`Ripulire dagli aloni viola tutti i ${keys.length} sprite già fatti? Si sovrascrivono (il disegno resta, sparisce solo il magenta rimasto sui bordi).`)) return;
+    setErr("");
+    let n = 0;
+    for (let i = 0; i < keys.length; i++) {
+      setCleaning(`${i + 1}/${keys.length}`);
+      try { if (await cleanOne(keys[i])) n += 1; } catch (e) { setErr(`${nameOf(keys[i])}: ${e.message || e}`); }
+    }
+    setCleaning(null);
+    run(async () => {}, `Ripuliti ${n} sprite su ${keys.length}.`);
+  };
+
   const resetMine = () => window.confirm("Azzerare il TUO Rifugio (pet, squadra, torre) per riprovare la scelta iniziale?")
     && run(() => updateDoc(doc(db, "characters", uid), { petDen: deleteField() }), "Rifugio azzerato.");
   const done = PET_DEX_ORDER.filter((k) => art[k]?.image).length;
@@ -2255,10 +2278,13 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
         <h2 className="pd-h2">Bestiario del Master <small>pixel art {done}/{PET_DEX_ORDER.length} · evoluzioni {evoDone}/{Object.keys(EVOLUTIONS).length}</small></h2>
         <div className="pd-master-tools">
           <Link className="pd-btn pd-btn--ghost" to="/dm-admin/pet-points">Dai punti pet</Link>
+          <button type="button" className="pd-btn" disabled={!!cleaning} onClick={cleanAll} title="Toglie gli aloni magenta rimasti sui bordi degli sprite già salvati">
+            {cleaning ? `🧽 Ripulisco ${cleaning}…` : "🧽 Ripulisci tutti gli sprite"}
+          </button>
           {den.starter && <button type="button" className="pd-btn pd-btn--danger" onClick={resetMine}>Azzera il mio Rifugio</button>}
         </div>
       </div>
-      <p className="pd-fine">"Genera pixel art" chiede a Gemini UNA creatura alla volta (la descrizione qui sotto dice cosa disegnare, in inglese; si può ritoccare e resta salvata). Lo sfondo magenta si toglie da solo e il respiro è un'animazione del sito.</p>
+      <p className="pd-fine">"Genera pixel art" chiede a Gemini UNA creatura alla volta (la descrizione qui sotto dice cosa disegnare, in inglese; si può ritoccare e resta salvata). Lo sfondo magenta si toglie da solo (anche gli aloni sui bordi e il fondo chiuso fra zampe e coda) e il respiro è un'animazione del sito. "🧽 Ripulisci" ripassa la pulizia su uno sprite già fatto.</p>
       {err && <p className="pd-msg">{err}</p>}
       {den.starter && (
         <div className="pd-master-eggs">
@@ -2290,6 +2316,10 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
                   <button type="button" className="pd-btn pd-btn--main" disabled={busy[k]} onClick={() => generate(k)}>
                     {busy[k] ? "Gemini disegna…" : art[k]?.image ? "↻ Rifai pixel art" : "✨ Genera pixel art"}
                   </button>
+                  {art[k]?.image && (
+                    <button type="button" className="pd-btn pd-btn--ghost" disabled={busy[k]} title="Toglie l'alone magenta dai bordi"
+                      onClick={() => run(() => cleanOne(k).then((ch) => { if (!ch) throw new Error("Era già pulito."); }), `${sp.name} ripulito.`)}>🧽 Ripulisci</button>
+                  )}
                   {looks[k] != null && looks[k] !== (art[k]?.look ?? sp.look) && (
                     <button type="button" className="pd-btn pd-btn--ghost" onClick={() => run(() => savePetLook(k, looks[k]), "Descrizione salvata.")}>Salva descrizione</button>
                   )}
@@ -2311,6 +2341,10 @@ function MasterTools({ uid, den, art, run = async (f) => f(), compact = false })
                         <button type="button" className="pd-btn pd-btn--main" disabled={busy[ek]} onClick={() => generate(ek)}>
                           {busy[ek] ? "Gemini disegna…" : art[ek]?.image ? "↻ Rifai l'evoluzione" : "✨ Genera l'evoluzione"}
                         </button>
+                        {art[ek]?.image && (
+                          <button type="button" className="pd-btn pd-btn--ghost" disabled={busy[ek]} title="Toglie l'alone magenta dai bordi"
+                            onClick={() => run(() => cleanOne(ek).then((ch) => { if (!ch) throw new Error("Era già pulito."); }), `${EVOLUTIONS[k].name} ripulito.`)}>🧽 Ripulisci</button>
+                        )}
                         {looks[ek] != null && looks[ek] !== (art[ek]?.look ?? EVOLUTIONS[k].look) && (
                           <button type="button" className="pd-btn pd-btn--ghost" onClick={() => run(() => savePetLook(ek, looks[ek]), "Descrizione salvata.")}>Salva descrizione</button>
                         )}

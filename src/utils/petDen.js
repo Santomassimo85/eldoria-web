@@ -124,7 +124,8 @@ Creature: ${ev?.name || species} — the fully grown, evolved form of the baby "
 Element: ${sp?.type || "neutral"} (use a colour palette that suggests it).
 Style: an ADULT, powerful, serious and imposing creature, bigger and more detailed than a baby form, menacing or majestic, realistic proportions (NOT chibi, NOT cute), recognisable as the D&D monster. Crisp 32-bit-era pixel art, limited rich palette, clean dark outlines, pixel shading, NO anti-aliasing, NO blur.
 Pose: full body, dynamic battle stance, three-quarter view facing toward the RIGHT edge of the image, centered, filling about 85% of the canvas.
-CRITICAL: render the creature ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border.`;
+CRITICAL: render the creature ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border.
+EDGES: hard pixel edges directly against the magenta — a solid dark outline all around, NO glow, NO aura, NO halo, NO sparkles or particles floating around, NO soft light bleeding into the background. Do not use magenta or hot pink on the creature itself.`;
 }
 
 export function petArtPrompt(species, look) {
@@ -134,5 +135,6 @@ Creature: ${sp?.name || species} — ${look || sp?.look || ""}.
 Element: ${sp?.type || "neutral"} (use a colour palette that suggests it).
 Style: adorable, chubby, "pucci" chibi proportions with a big head and big expressive shiny eyes, friendly and cuddly but still recognisable as the D&D monster. Crisp 32-bit-era pixel art, limited rich palette, clean dark outlines, soft pixel shading, NO anti-aliasing, NO blur.
 Pose: full body, standing in an idle stance, three-quarter view facing toward the RIGHT edge of the image, centered, filling about 75% of the canvas.
-CRITICAL: render the creature ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border.`;
+CRITICAL: render the creature ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border.
+EDGES: hard pixel edges directly against the magenta — a solid dark outline all around, NO glow, NO aura, NO halo, NO sparkles or particles floating around, NO soft light bleeding into the background. Do not use magenta or hot pink on the creature itself.`;
 }
