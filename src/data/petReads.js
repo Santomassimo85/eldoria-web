@@ -54,4 +54,5 @@ export function readNeedMs(kind, words = 0) {
 // parte "punti" del Resoconto visibili a ogni giocatore.
 // 2026-11-01: richiuso (false) mentre si ribilancia: /pet, voce del menu,
 // mascotte nell'header e punti tornano del solo Master. true = riapre tutto.
-export const PETS_PUBLIC = false;
+// 2026-11-02: riaperto a tutti (true).
+export const PETS_PUBLIC = true;
