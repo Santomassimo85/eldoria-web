@@ -16,6 +16,7 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import { VfxLayer } from "./WorldBossVfx";
+import { useFightMode } from "../utils/fightMode";
 import "./ArenaLab.css";
 
 /* ── Dadi ─────────────────────────────────────────────────────────────────── */
@@ -220,6 +221,7 @@ export default function ArenaLab() {
 }
 
 function Battle({ me, foe, meCls, foeCls, bg, uid }) {
+  useFightMode(true);
   const [st, setSt] = useState(() => ({
     p: makeFighter(meCls, me), e: makeFighter(foeCls, foe),
     turn: "p", round: 1, actions: CLASSES[meCls].actions, bonus: 1, close: false, busy: false, over: null, sneakUsed: false,

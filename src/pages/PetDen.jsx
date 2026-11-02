@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { collection, deleteField, doc, getDocs, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
+import { useFightMode } from "../utils/fightMode";
 import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { PETS_PUBLIC } from "../data/petReads";
@@ -1800,6 +1801,7 @@ function AudioToggles() {
 
 // Campo di lotta: HUD (con CA), sprite, effetti, dado del tiro e testo.
 function BattleScreen({ battle, player, art, top, children, controls = null, labels = {} }) {
+  useFightMode(true); // lotta aperta: via testata, d20 e flottanti del sito
   const { shown, seq, busy, history } = player;
   const [histOpen, setHistOpen] = useState(false);
   const [fxOpen, setFxOpen] = useState(null);

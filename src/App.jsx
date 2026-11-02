@@ -8,13 +8,6 @@ import "./style.css";
 import { AuthProvider, useAuth } from "./AuthContext";
 import LoginDropdown from "./LoginDropdown";
 
-// FIREBASE
-import { db } from "./firebase";
-import {
-  doc, updateDoc, setDoc, onSnapshot, collection,
-  serverTimestamp,
-} from "firebase/firestore";
-import { isHiddenChar } from "./data/hiddenPlayers";
 
 // PAGES
 
@@ -59,6 +52,7 @@ import Concilio from "./pages/Concilio";
 // Rifugio dei Pet (/pet) per ora lo vede solo il Master principale.
 import PetDen from "./pages/PetDen";
 import ArenaLab from "./pages/ArenaLab"; // mockup Vista Palco (solo Master)
+import { useInFight } from "./utils/fightMode";
 import Tcg from "./pages/Tcg";
 import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
@@ -451,125 +445,6 @@ function NessoNav({ openMenu }) {
   );
 }
 
-// ── PRESENZA ONLINE ───────────────────────────────────────────────────────────
-function relTime(ms) {
-  const sec = Math.floor((Date.now() - ms) / 1000);
-  if (sec < 60)   return `${sec}s fa`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}min fa`;
-  return `${Math.floor(sec / 3600)}h fa`;
-}
-
-function OnlinePresence() {
-  const { currentUser } = useAuth();
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [open, setOpen]               = useState(false);
-  const [, setTick]                   = useState(0);
-  const lastWriteRef                  = useRef(0);
-  const isMaster = isAdminEmail(currentUser?.email);
-
-  // Scrivi lastSeen in characters/{uid} — usa la collection che ha già le regole
-  const writePresence = useRef(null);
-  writePresence.current = async () => {
-    if (!currentUser) return;
-    const now = Date.now();
-    if (now - lastWriteRef.current < 8000) return; // debounce 8s
-    lastWriteRef.current = now;
-    try {
-      await setDoc(doc(db, "characters", currentUser.uid), {
-        lastSeen: serverTimestamp(),
-      }, { merge: true });
-    } catch (_) {
-      // ignora silenziosamente
-    }
-  };
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const init = setTimeout(() => writePresence.current?.(), 1500);
-    const hb   = setInterval(() => writePresence.current?.(), 30000);
-    const act  = () => writePresence.current?.();
-    window.addEventListener("click",      act);
-    window.addEventListener("keydown",    act);
-    window.addEventListener("touchstart", act);
-    window.addEventListener("scroll",     act, { passive: true });
-    const onVis = () => { if (document.visibilityState === "visible") writePresence.current?.(); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      clearTimeout(init); clearInterval(hb);
-      window.removeEventListener("click",      act);
-      window.removeEventListener("keydown",    act);
-      window.removeEventListener("touchstart", act);
-      window.removeEventListener("scroll",     act);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [currentUser]);
-
-  // Solo master: ascolta characters collection
-  useEffect(() => {
-    if (!isMaster) return;
-    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
-      const now = Date.now();
-      const active = snap.docs
-        .map(d => ({ uid: d.id, ...d.data() }))
-        .filter(p => !isHiddenChar(p))
-        .filter(p => {
-          if (!p.lastSeen) return false;
-          const ms = p.lastSeen.toMillis ? p.lastSeen.toMillis() : new Date(p.lastSeen).getTime();
-          return now - ms < 15 * 60 * 1000; // ultimi 15 minuti
-        });
-      setOnlineUsers(active);
-    });
-    return () => unsub();
-  }, [isMaster]);
-
-  // Tick per aggiornare i tempi relativi ogni 5s
-  useEffect(() => {
-    if (!isMaster) return;
-    const t = setInterval(() => setTick(v => v + 1), 5000);
-    return () => clearInterval(t);
-  }, [isMaster]);
-
-  if (!isMaster) return null;
-
-  return (
-    <>
-      {/* Pallino fluttuante */}
-      <button
-        className={`online-fab${open ? " open" : ""}`}
-        onClick={() => setOpen(v => !v)}
-        title="Giocatori online"
-      >
-        <span className="online-fab-dot" />
-        {onlineUsers.length > 0 && (
-          <span className="online-fab-count">{onlineUsers.length}</span>
-        )}
-      </button>
-
-      {/* Popup */}
-      {open && (
-        <div className="online-popup">
-          <div className="online-popup-title">
-            <span className="online-dot-sm" /> Giocatori online
-          </div>
-          {onlineUsers.length === 0 ? (
-            <div className="online-popup-empty">Nessuno attivo di recente</div>
-          ) : (
-            onlineUsers.map(u => {
-              const ms = u.lastSeen?.toMillis ? u.lastSeen.toMillis() : new Date(u.lastSeen || 0).getTime();
-              return (
-                <div key={u.uid} className="online-popup-row">
-                  <span className="online-popup-name">{u.name || "Eroe"}</span>
-                  <span className="online-popup-time">{relTime(ms)}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [forceShowNav, setForceShowNav] = useState(false);
@@ -596,7 +471,12 @@ export default function App() {
   // Fullscreen battle pages hide the top nav to give the fight more room.
   // (nessuna rotta a tutto schermo dal 2026-09-14: il World Boss è tornato alla scena testo + sprite con la testata)
   const FULLSCREEN_ROUTES = [];
-  const hideChrome = FULLSCREEN_ROUTES.includes(location.pathname);
+  // Modalità fight (Arena, Pet, /arena-lab): via testata, d20, footer; resta il ☰
+  const inFight = useInFight();
+  const hideChrome = FULLSCREEN_ROUTES.includes(location.pathname) || inFight;
+  useEffect(() => { document.body.classList.toggle("in-fight", inFight); if (!inFight) setForceShowNav(false); }, [inFight]);
+  // nel fight il ☰ apre direttamente il menu; chiuso il menu, la testata sparisce di nuovo
+  useEffect(() => { if (inFight && !menuOpen) setForceShowNav(false); }, [inFight, menuOpen]);
   // Nella pagina Arena (e sottosezioni: fight, tabellone, ecc.) nascondi la chat globale.
   const isArenaPage = location.pathname.startsWith("/arena");
   // Reset the temporary "reveal nav" whenever the route changes.
@@ -674,7 +554,7 @@ export default function App() {
       <RuotaPopup />
       <PageVisitReward />
       {hideChrome && !forceShowNav && (
-        <button className="battle-nav-reopen" onClick={() => setForceShowNav(true)} aria-label="Apri menu">
+        <button type="button" className="battle-nav-reopen" onClick={() => { setForceShowNav(true); if (inFight) setMenuOpen(true); }} aria-label="Apri menu">
           ☰
         </button>
       )}
@@ -817,13 +697,13 @@ export default function App() {
       </main>
 
       <DiceRollHost />
-      {!hideChrome && <OnlinePresence />}
+      {/* Pallino verde "chi è online" del Master: tolto su richiesta (2026-11-02) */}
       <FirestoreErrorGuard />
       <CovoOverlay />
 
       {!hideChrome && <NessoNav openMenu={() => setMenuOpen(true)} />}
 
-      <footer>
+      {!inFight && <footer>
         <a
           className="footer-yt"
           href="https://www.youtube.com/@Crit_Happens-p9e"
@@ -840,7 +720,7 @@ export default function App() {
             <a href="https://designbyorpheus.it/" target="_blank" rel="noreferrer">OrpheusDesign</a>
           </strong>
         </p>
-      </footer>
+      </footer>}
     </AuthProvider>
   );
 }

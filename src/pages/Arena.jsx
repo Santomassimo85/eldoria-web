@@ -25,6 +25,7 @@ import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura,
 import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi con icona, righe compatte, mobile
 import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
 import "./ArenaScontro.css";       // scontro leggibile: cronaca a paragrafi, su PC sotto il campo (per ULTIMO)
+import { useFightMode } from "../utils/fightMode";
 import { ArenaModal } from "./arena/ArenaModal";
 import { ArenaGestaView, CLASS_ICONS, CLASS_IT, FunArenaClassStats, HallOfChampions, TournamentClassStats, classColor } from "./arena/ArenaStats";
 import { BET_MATCH_AMOUNTS, BET_MATCH_MULT, BET_TOURNAMENT_AMOUNTS, BET_TOURNAMENT_MULT, BettingPanel } from "./arena/BettingPanel";
@@ -286,6 +287,8 @@ export default function Arena() {
     );
     return m?.matchId || null;
   }, [arenaMeta, currentUser]);
+  // Modalità fight (2026-11-02): col combattimento aperto il sito nasconde testata, d20 e flottanti
+  useFightMode(combatModalOpen && !!myActiveMatchId);
 
   // PG del Master con un fight vivo (iniziativa, «Iniziamo» o turni): servono al
   // selettore in cima al combattimento. Per i giocatori resta vuoto.

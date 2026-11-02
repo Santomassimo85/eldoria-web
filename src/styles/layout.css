@@ -322,3 +322,29 @@ body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
   box-shadow: 0 0 26px var(--rune, var(--el-2));
 }
 .nesso-sat.on .nesso-sat-g, .nesso-sat.active .nesso-sat-g { color: var(--ossidiana); text-shadow: none; }
+
+/* ── MODALITÀ FIGHT (2026-11-02) ──
+   Combattimento aperto (Arena, Pet, /arena-lab): testata, d20 del menu, footer e
+   flottanti spariscono (App.jsx: hideChrome + body.in-fight). Resta il ☰ in alto
+   a destra che apre il menu sopra al fight. */
+.battle-nav-reopen {
+  position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); right: 8px; z-index: 10060;
+  width: 40px; height: 40px; display: grid; place-items: center; padding: 0;
+  border: 1px solid rgba(var(--osso-rgb, 236, 229, 214), .35); border-radius: 3px;
+  background: rgba(12, 10, 18, .62); color: var(--osso, #ece5d6); font-size: 1.25rem; line-height: 1;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); cursor: pointer;
+}
+.battle-nav-reopen:hover { background: rgba(40, 32, 52, .8); }
+.battle-nav-reopen:focus-visible { outline: 2px solid var(--el, #f2c14e); outline-offset: 2px; }
+body.in-fight header.app-nav { z-index: 10040; }
+body.in-fight nav.active { z-index: 10050 !important; }
+body.in-fight .nav-backdrop { z-index: 10045; }
+body.in-fight .arena-bet-fab,
+body.in-fight .arena-shop-fab,
+body.in-fight .nesso-nav,
+body.in-fight .mobile-bottom-nav { display: none !important; }
+/* senza testata il fight usa tutta l'altezza */
+body.in-fight .arena-combat-overlay,
+body.in-fight .arena-modal-overlay { padding-top: 0 !important; }
+body.in-fight .arena-combat-dialog .arena-modal-header { padding-right: 56px; }
+body.in-fight .pd-sechead { top: 0; padding-right: 52px; }
