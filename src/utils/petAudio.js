@@ -247,3 +247,84 @@ export function setSfxOn(v) {
 }
 export const audioPrefs = () => ({ musicOn, sfxOn });
 export function onAudioPrefs(f) { listeners.add(f); return () => listeners.delete(f); }
+
+
+/* ── SUONI DEGLI INCANTESIMI per Arena e World Boss (2026-11-02) ──
+   Prima c'erano 4 mp3 (taglio, freccia, magia, cura) uguali per ogni spell. Ora il
+   suono si compone da FORMA dell'effetto (bolt · aoe · buff · shield · debuff ·
+   slash · arrow · hit) + ELEMENTO (fire · frost · lightning · poison · darkness ·
+   radiant · arcane · physical): Dardo di Fuoco, Raggio di Gelo, Fulmine, Palla di
+   Fuoco, Tocco Necrotico… suonano tutti diversi. Non dipende dall'interruttore
+   "Effetti" del Rifugio. `impact` = secondi dopo cui l'effetto arriva sul bersaglio. */
+const SPELL_EL = {
+  // firma dell'elemento mentre parte l'incantesimo
+  cast: {
+    fire: (t) => { hiss(t, { f: 300, to: 1600, kind: "lowpass", vol: 0.28, dur: 0.35, attack: 0.08 }); for (let i = 0; i < 4; i++) hiss(t + Math.random() * 0.3, { f: 3000, kind: "highpass", vol: 0.08, dur: 0.03 }); },
+    frost: (t) => { [1568, 2093, 2637].forEach((f, i) => tone(t + i * 0.04, { f, type: "sine", vol: 0.06, dur: 0.25 })); hiss(t, { f: 6000, kind: "highpass", vol: 0.08, dur: 0.3, attack: 0.05 }); },
+    lightning: (t) => { tone(t, { f: 80, to: 160, type: "sawtooth", vol: 0.08, dur: 0.25, vib: 70 }); hiss(t + 0.1, { f: 5000, kind: "highpass", vol: 0.15, dur: 0.06, attack: 0.001 }); },
+    poison: (t) => { for (let i = 0; i < 4; i++) tone(t + i * 0.06, { f: 220 + Math.random() * 100, to: 480, type: "sine", vol: 0.07, dur: 0.06 }); },
+    darkness: (t) => { tone(t, { f: 140, to: 90, type: "triangle", vol: 0.14, dur: 0.45, vib: 8 }); tone(t, { f: 147, to: 95, type: "sine", vol: 0.08, dur: 0.45 }); },
+    radiant: (t) => [784, 988, 1175].forEach((f, i) => tone(t + i * 0.03, { f, type: "sine", vol: 0.06, dur: 0.45, attack: 0.08 })),
+    arcane: (t) => { tone(t, { f: 600, to: 1500, type: "triangle", vol: 0.08, dur: 0.3, vib: 25 }); [1200, 1600, 2000].forEach((f, i) => tone(t + 0.05 + i * 0.05, { f, type: "sine", vol: 0.04, dur: 0.12 })); },
+    physical: () => {},
+  },
+  // all'impatto
+  hit: {
+    fire: (t) => { hiss(t, { f: 1800, to: 120, kind: "lowpass", vol: 0.45, dur: 0.5, attack: 0.003 }); tone(t, { f: 110, to: 45, type: "sine", vol: 0.3, dur: 0.35 }); for (let i = 0; i < 6; i++) hiss(t + 0.05 + Math.random() * 0.4, { f: 2600, kind: "highpass", vol: 0.1, dur: 0.03 }); },
+    frost: (t) => { hiss(t, { f: 4000, kind: "highpass", vol: 0.3, dur: 0.08, attack: 0.001 }); [2637, 3136, 3951, 2349].forEach((f, i) => tone(t + 0.02 + i * 0.045, { f, type: "sine", vol: 0.07, dur: 0.22 })); },
+    lightning: (t) => { hiss(t, { f: 4500, kind: "highpass", vol: 0.5, dur: 0.12, attack: 0.001 }); tone(t, { f: 55, type: "sawtooth", vol: 0.14, dur: 0.4, vib: 45 }); hiss(t + 0.12, { f: 300, kind: "lowpass", vol: 0.3, dur: 0.6 }); },
+    poison: (t) => { hiss(t, { f: 900, q: 3, vol: 0.18, dur: 0.25 }); for (let i = 0; i < 6; i++) tone(t + i * 0.05, { f: 160 + Math.random() * 160, to: 420, type: "sine", vol: 0.07, dur: 0.06 }); },
+    darkness: (t) => { tone(t, { f: 90, to: 50, type: "sawtooth", vol: 0.12, dur: 0.6, vib: 5 }); hiss(t, { f: 400, to: 120, kind: "lowpass", vol: 0.25, dur: 0.6 }); tone(t + 0.05, { f: 233, to: 116, type: "sine", vol: 0.06, dur: 0.6 }); },
+    radiant: (t) => { [1046, 1318, 1568, 2093].forEach((f, i) => tone(t + i * 0.025, { f, type: "sine", vol: 0.07, dur: 0.6 })); hiss(t, { f: 7000, kind: "highpass", vol: 0.08, dur: 0.4, attack: 0.05 }); },
+    arcane: (t) => { tone(t, { f: 1400, to: 500, type: "triangle", vol: 0.12, dur: 0.25 }); hiss(t, { f: 2000, q: 2, vol: 0.18, dur: 0.15 }); [880, 1320].forEach((f, i) => tone(t + 0.08 + i * 0.06, { f, type: "sine", vol: 0.05, dur: 0.2 })); },
+    physical: (t) => thud(t, 0.45),
+  },
+};
+const SPELL_IMPACT = { bolt: 0.4, arrow: 0.32, slash: 0.12, aoe: 0.15, hit: 0, debuff: 0.2 };
+
+export function spellSound({ kind, el = "arcane", miss = false, kill = false } = {}) {
+  const c = getCtx();
+  if (!c) return;
+  if (c.state !== "running") c.resume().catch(() => {});
+  const t = c.currentTime + 0.02;
+  const E = SPELL_EL.hit[el] ? el : "arcane";
+  const at = t + (SPELL_IMPACT[kind] ?? 0.3);
+  switch (kind) {
+    case "bolt":
+      SPELL_EL.cast[E](t);
+      if (E === "lightning") SHAPES.bolt(at - 0.05);
+      else if (E === "frost") SHAPES.beam(t + 0.05);
+      else swish(t + 0.1, 600, 2400, 0.12);
+      break;
+    case "aoe":
+      SPELL_EL.cast[E](t);
+      SHAPES.burst(at);
+      break;
+    case "arrow":
+      hiss(t, { f: 1200, to: 3500, q: 3, vol: 0.18, dur: 0.25, attack: 0.03 });
+      if (!miss) hiss(at, { f: 900, kind: "lowpass", vol: 0.35, dur: 0.08 });
+      break;
+    case "slash":
+      swish(t, 4200, 800, 0.24);
+      break;
+    case "buff":
+      SPELL_EL.cast[E](t);
+      [392, 494, 587, 784, 988].forEach((f, i) => tone(t + 0.05 + i * 0.07, { f, type: "triangle", vol: 0.09, dur: 0.25 }));
+      return;
+    case "shield":
+      [523, 784, 1046].forEach((f) => tone(t, { f, type: "sine", vol: 0.07, dur: 0.7, attack: 0.1, vib: 4 }));
+      tone(t + 0.1, { f: 2093, to: 1568, type: "sine", vol: 0.05, dur: 0.4 });
+      hiss(t, { f: 3000, q: 4, vol: 0.06, dur: 0.6, attack: 0.15 });
+      return;
+    case "debuff":
+      SHAPES.curse(t);
+      if (E !== "darkness" && E !== "arcane" && E !== "physical") SPELL_EL.cast[E](t + 0.1);
+      return;
+    case "heal": SHAPES.heal(t); return;
+    default: break;
+  }
+  if (miss) { swish(at, 2000, 400, 0.18); return; }
+  if (kind !== "arrow") SPELL_EL.hit[E](at);
+  else if (E !== "physical") SPELL_EL.hit[E](at);
+  if (kill) tone(at + 0.25, { f: 400, to: 60, type: "triangle", vol: 0.16, dur: 0.6 });
+}

@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./WorldBossVfx.css";
+import { spellSound } from "../utils/petAudio";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
 const VFX_SOUNDS = {
@@ -222,7 +223,13 @@ export function VfxLayer({ messages, selfUid = null }) {
         const ids = new Set(spawned.map((s) => s.id));
         const ttl = Math.max(...spawned.map((s) => s.delay + s.dur)) + 150;
         setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
-        playSound(normalizeEffect(msg).kind);
+        // Suono: i colpi d'arma fisici restano gli mp3; incantesimi ed elementi sono
+        // sintetizzati per forma + elemento (ogni spell ha la sua voce).
+        const ne = normalizeEffect(msg);
+        const missAll = targets.length && (msg.effectMissTargets || []).length >= targets.length;
+        if (ne.kind === "heal") playSound("heal");
+        else if ((ne.kind === "slash" || ne.kind === "arrow" || ne.kind === "hit") && (ne.el === "physical" || !msg.effectEl)) playSound(ne.kind);
+        else spellSound({ kind: ne.kind, el: ne.el, miss: !!missAll, kill: (msg.effectKill || []).length > 0 });
       };
       if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(play, DICE_LAND_MS);
       else play();
