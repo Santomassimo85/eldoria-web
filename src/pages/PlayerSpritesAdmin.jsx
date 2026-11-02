@@ -112,6 +112,8 @@ export default function PlayerSpritesAdmin() {
   const [arenaBg, setArenaBg] = useState(null);
   const bgInputRef = useRef(null);
   const arenaBgInputRef = useRef(null);
+  const [arenaBgIdea, setArenaBgIdea] = useState("");
+  const [arenaBgBusy, setArenaBgBusy] = useState(false);
   const fileRefs     = useRef({});
   const deadFileRefs = useRef({});
   const [minions, setMinions] = useState([]);
@@ -443,6 +445,34 @@ EMPTY SCENE: no creatures, no monsters, no characters, no people, no text, no UI
     reader.readAsDataURL(file);
   };
 
+  // Sfondo dell'Arena generato dall'IA (2026-11-02): campo della Vista Palco,
+  // tu in basso a sinistra e l'avversario in alto a destra, come nella lotta dei pet.
+  const generateArenaBg = async () => {
+    if (arenaBgBusy) return;
+    if (arenaBg && !window.confirm("Sostituire lo sfondo dell'Arena con uno nuovo dell'IA?")) return;
+    setArenaBgBusy(true);
+    try {
+      const prompt = `Wide 16:9 background scene for a turn-based one-on-one duel between two fantasy heroes, high-quality SERIOUS dark-fantasy pixel art like a polished modern 2D RPG: detailed 32-bit-era shading, rich but limited palette, crisp pixels, no anti-aliasing, no blur.
+Setting: ${arenaBgIdea.trim() || "the sand floor of a grand gladiator arena of a Dungeons & Dragons world, weathered stone stands and banners in the background, torches, dramatic evening sky"}.
+Composition (IMPORTANT): two flat open spots on the ground where the fighters will stand: one larger in the LOWER-LEFT foreground and one smaller in the UPPER-RIGHT middle ground, further away. Keep those two areas clear, flat and simple, because two characters will be drawn on top of them. Scenery and details around the edges and in the sky; the lower part of the image stays fairly calm because a menu will cover it.
+EMPTY SCENE: no characters, no people, no creatures, no weapons on the ground, no text, no UI, no frame, no border.`;
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt, aspectRatio: "16:9", tono: getImageTone() }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      const jpeg = await toJpeg(data.immagine);
+      await setDoc(doc(db, "arena_meta", "global"), { battleBg: jpeg }, { merge: true });
+      setArenaBg(jpeg);
+    } catch (e) {
+      alert("Generazione sfondo fallita: " + (e.message || e));
+    } finally {
+      setArenaBgBusy(false);
+    }
+  };
+
   const removeArenaBg = async () => {
     await setDoc(doc(db, "arena_meta", "global"), { battleBg: "" }, { merge: true });
     setArenaBg(null);
@@ -499,8 +529,13 @@ EMPTY SCENE: no creatures, no monsters, no characters, no people, no text, no UI
             <input ref={arenaBgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => loadArenaBg(e.target.files[0])} />
             <div className="adm-btn-row">
               <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => arenaBgInputRef.current?.click()}>📁 {arenaBg ? "Cambia" : "Carica"}</button>
+              <button className="adm-btn wbs-mini-btn wbs-ai-btn" disabled={arenaBgBusy} onClick={generateArenaBg}
+                title="Gemini disegna il campo dell'Arena">{arenaBgBusy ? "⏳ Disegno…" : "✨ Genera con l'IA"}</button>
               {arenaBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={removeArenaBg}>✖ Rimuovi</button>}
             </div>
+            <textarea className="wbs-in wbs-bg-idea" rows={2} value={arenaBgIdea} onChange={(e) => setArenaBgIdea(e.target.value)}
+              placeholder={'Idea (facoltativa): es. "arena nel vulcano", "cortile di un castello sotto la neve", "rovine nella giungla"'} />
+            <small className="wb-ai-hint">Esce panoramico, in pixel art seria come gli sprite degli eroi, con due spazi liberi: in basso a sinistra chi gioca, in alto a destra l'avversario. Lo usa la Vista Palco degli scontri 1 contro 1.</small>
           </div>
           {/* Lotta dei Pet: per ora il Rifugio è solo del Master */}
           {isMainMaster(currentUser?.email) && (
