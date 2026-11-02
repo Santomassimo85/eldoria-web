@@ -250,3 +250,8 @@ body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-rad
   .cv-field .cv-spot--p { left: 27%; height: 42%; }
   .cv-field .cv-spot--e { height: 26%; }
 }
+.cv-field .cv-spot--e { height: 24%; }
+@media (max-width: 760px) {
+  .cv-field .cv-spot--p { left: 31%; height: 40%; }
+  .cv-field .cv-spot--e { left: 71%; height: 20%; bottom: 53%; }
+}
