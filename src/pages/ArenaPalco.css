@@ -255,3 +255,18 @@ body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-rad
   .cv-field .cv-spot--p { left: 31%; height: 40%; }
   .cv-field .cv-spot--e { left: 71%; height: 20%; bottom: 53%; }
 }
+
+/* icone degli stati sopra la testa (2026-11-02): verdi i bonus, rosse i malus, saltellano */
+.cv-st-bubbles { position: absolute; z-index: 3; left: 50%; top: -6px; translate: -50% -100%; display: flex; gap: 3px; pointer-events: auto; }
+.cv-st-bubbles i {
+  display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 3px; font-style: normal; font-size: 15px; line-height: 1;
+  background: rgba(12,10,18,.75); border: 2px solid; box-shadow: 2px 2px 0 #000; animation: cvp-bubble 1.6s steps(4) infinite;
+}
+.cv-st-bubbles i.is-good { border-color: #5fd16b; }
+.cv-st-bubbles i.is-bad { border-color: #e0624f; }
+.cv-st-bubbles i.is-more { font: 600 .7rem "Pixelify Sans", var(--font-num); color: #fff7e6; border-color: rgba(243,234,216,.5); }
+@keyframes cvp-bubble { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+.cv-spot.is-turn .cv-st-bubbles { top: -24px; }
+.cv-field .arena-react-bar, .cv-field .arena-fight-react { display: none !important; }
+@media (max-width: 760px) { .cv-st-bubbles i { min-width: 22px; height: 22px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .cv-st-bubbles i { animation: none; } }

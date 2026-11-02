@@ -62,8 +62,49 @@ if (typeof window !== "undefined") {
   window.addEventListener("click", onFirstGesture);
   window.addEventListener("keydown", onFirstGesture);
 }
+// Cura (2026-11-02): il vecchio heal.mp3 sembrava un colpo. Ora è sintetizzata:
+// arpeggio maggiore cristallino che sale (campanelle) + un velo luminoso che sfuma.
+function playHealChime(ctx) {
+  const t0 = ctx.currentTime + 0.01;
+  const out = ctx.createGain();
+  out.gain.value = VFX_VOLUME * 0.9;
+  out.connect(ctx.destination);
+  // campanelle: Do5 Mi5 Sol5 Do6 Mi6
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+    const t = t0 + i * 0.075;
+    [1, 2.01].forEach((mult, j) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = j ? "sine" : "triangle";
+      o.frequency.value = f * mult;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(j ? 0.06 : 0.22, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9 - i * 0.05);
+      o.connect(g).connect(out);
+      o.start(t); o.stop(t + 1);
+    });
+  });
+  // velo: accordo morbido che si apre e sfuma
+  [523.25, 659.25, 783.99].forEach((f) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(f, t0);
+    o.frequency.linearRampToValueAtTime(f * 1.005, t0 + 1.2);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.07, t0 + 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+    o.connect(g).connect(out);
+    o.start(t0); o.stop(t0 + 1.5);
+  });
+}
 function playSound(kind) {
   const ctx = getCtx();
+  if (kind === "heal" && ctx) {
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    try { playHealChime(ctx); } catch { /* ignora */ }
+    return;
+  }
   const buf = audioBuffers[SOUND_OF[kind] || "spell"];
   if (!ctx || !buf) return;
   if (ctx.state === "suspended") ctx.resume().catch(() => {});

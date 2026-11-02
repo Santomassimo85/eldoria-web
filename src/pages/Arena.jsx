@@ -10219,6 +10219,18 @@ export default function Arena() {
                   const side = i === 0 ? "p" : "e";
                   return (
                     <div key={p.id} className={`cv-spot cv-spot--${side}${dead ? " is-dead" : ""}${m.turn === p.id && m.status === "active" ? " is-turn" : ""}`} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                      {!dead && (() => {
+                        const sts = getFighterStatuses(p);
+                        if (!sts.length) return null;
+                        return (
+                          <span className="cv-st-bubbles" aria-label={sts.map((x) => x.text).join(", ")}>
+                            {sts.slice(0, 5).map((x, k) => (
+                              <i key={x.key} className={GOOD_STATUS_CLS.has(x.cls) ? "is-good" : "is-bad"} style={{ animationDelay: `${k * 0.18}s` }} title={x.tip || x.text}>{x.icon}</i>
+                            ))}
+                            {sts.length > 5 && <i className="is-more">+{sts.length - 5}</i>}
+                          </span>
+                        );
+                      })()}
                       {src
                         ? <img src={src} alt={p.name} className={`cv-sprite${isSprite ? "" : " is-portrait"}`} draggable="false" />
                         : <span className="cv-sprite cv-sprite--emoji" aria-hidden="true">{CLASS_ICONS[(char.class || "").toLowerCase()] || "⚔"}</span>}
@@ -10388,40 +10400,7 @@ export default function Arena() {
                   </div>
                 )}
 
-                {/* Barra reazioni — i due sfidanti possono inviare emoji (cooldown 20s) */}
-                {isMyMatch && m.status !== "finished" && (() => {
-                  const onCd = Date.now() < reactCooldownUntil;
-                  const cdLeft = Math.max(0, Math.ceil((reactCooldownUntil - Date.now()) / 1000));
-                  const open = reactPickerMatch === m.matchId;
-                  return (
-                    <div className="arena-react-bar">
-                      <button
-                        type="button"
-                        className={`arena-react-toggle${onCd ? " is-cd" : ""}`}
-                        onClick={() => { if (!onCd) setReactPickerMatch(open ? null : m.matchId); }}
-                        disabled={onCd}
-                        title={onCd ? `Aspetta ${cdLeft}s prima di reagire di nuovo` : "Invia una reazione"}
-                      >
-                        {onCd ? `⏳ ${cdLeft}s` : "😄 Reagisci"}
-                      </button>
-                      {open && !onCd && (
-                        <div className="arena-react-row" role="menu" aria-label="Reazioni">
-                          {ARENA_REACTIONS.map(e => (
-                            <button
-                              key={e}
-                              type="button"
-                              className="arena-react-emo"
-                              onClick={() => sendArenaReaction(m.matchId, e)}
-                              aria-label={`Reagisci con ${e}`}
-                            >
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {/* Barra reazioni emoji: tolta su richiesta (2026-11-02) */}
 
                 {/* Action panel */}
                 {isMyMatch && isMyTurn && m.status === "active" && (
