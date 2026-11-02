@@ -10147,8 +10147,10 @@ export default function Arena() {
             const equipHas2H       = currentEquipSel.some(n => myWeaponActions.find(w => w.name === n)?.twoHanded);
             const isMatchPaused    = arenaMeta.timerPaused && m.kind !== "fun" && m.status !== "finished";
             // il menu resta aperto da solo quando serve una scelta obbligata (armi, TS, forma)
-            const palcoForced = needsEquip || hasPendingSave || isEntangled || showWildPicker;
-            const palcoCollapsed = palco && !(palcoOpen === m.matchId + ":" + (m.logs || []).length) && !palcoForced;
+            // il pannello delle azioni c'è solo nel mio turno: fuori dal turno il campo resta "chiuso"
+            const palcoPanel = isMyMatch && isMyTurn && m.status === "active";
+            const palcoForced = palcoPanel && (needsEquip || hasPendingSave || isEntangled || showWildPicker);
+            const palcoCollapsed = palco && (!palcoPanel || (!(palcoOpen === m.matchId + ":" + (m.logs || []).length) && !palcoForced));
 
             return (
               <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""} ${m.kind === "fun" ? "match-fun" : ""} ${isMatchPaused ? "match-paused" : ""} ${combatLogExpanded ? "cv-logmode" : ""}`}>

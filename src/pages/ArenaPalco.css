@@ -190,3 +190,48 @@
   .arena-page .cv-field, .arena-combat-dialog .cv-field, .cv-field { --cvp-h: max(460px, min(calc(100svh - 190px), 620px)); }
   .cv-field .cv-spot--p { bottom: calc(var(--cvp-tabs) + 40px); }
 }
+
+/* ── POSIZIONI DEFINITIVE + FIGHT A TUTTO SCHERMO (2026-11-02, dopo le foto dal telefono) ──
+   Gli sprite si centrano su un punto (non più ancorati al bordo destro: gli sprite
+   larghi scivolavano verso il centro). Tu: piedi in basso a sinistra; avversario:
+   piedi a metà campo a destra, più piccolo. Col menu aperto salgono entrambi. */
+.cv-field .cv-spot { left: auto; right: auto; top: auto; translate: -50% 0; width: auto; }
+.cv-field .cv-spot--p { left: 27%; bottom: calc(var(--cvp-tabs) + 6%); height: 44%; }
+.cv-field .cv-spot--e { left: 73%; bottom: 47%; height: 31%; }
+.cv-field .cv-sprite { max-width: 44vw; max-height: 100%; }
+.cv-field.is-menu .cv-spot--p { left: 24%; bottom: calc(var(--cvp-h) * .42 + var(--cvp-tabs) + 4px); height: 30%; top: auto; }
+.cv-field.is-menu .cv-spot--e { left: 74%; bottom: auto; top: 6%; height: 26%; }
+@media (max-width: 760px) {
+  .cv-field .cv-spot--p { left: 28%; bottom: calc(var(--cvp-tabs) + 9%); height: 38%; }
+  .cv-field .cv-spot--e { left: 72%; bottom: 50%; height: 27%; }
+  .cv-field .cv-sprite { max-width: 52vw; }
+  .cv-field.is-menu .cv-spot--e { top: 12%; height: 24%; }
+}
+@media (min-width: 761px) and (max-aspect-ratio: 4/5) {
+  .cv-field .cv-spot--e { bottom: 52%; }
+}
+
+/* fight aperto = a tutto schermo: niente pagina dietro, niente "In corso/Storico",
+   niente intestazione del popup. Restano la barra del fight (timer, ⚑/🗑, ✕ = torna
+   all'hub), il campo che riempie lo schermo e, scorrendo, la cronaca. */
+body.in-fight .arena-combat-dialog,
+body.in-fight .arena-combat-dialog.arena-combat-inline {
+  position: fixed !important; inset: 0 !important; z-index: 9990 !important;
+  width: 100vw !important; max-width: none !important; height: 100dvh !important; max-height: none !important; min-height: 0 !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  overflow-y: auto !important; overscroll-behavior: contain; background: #0c0a10 !important;
+}
+body.in-fight .arena-combat-overlay { padding: 0 !important; }
+body.in-fight .arena-combat-dialog > .arena-modal-header,
+body.in-fight .arena-combat-dialog .combat-tabs,
+body.in-fight .arena-combat-dialog .arena-combat-fx { display: none !important; }
+body.in-fight .arena-combat-dialog .arena-modal-body,
+body.in-fight .arena-combat-dialog .matches-container,
+body.in-fight .arena-combat-dialog .match-card { margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; max-width: none !important; width: 100% !important; box-shadow: none !important; background: transparent !important; gap: 0 !important; }
+body.in-fight .arena-combat-dialog .cv-topbar { position: sticky; top: 0; z-index: 8; margin: 0 !important; border-radius: 0 !important; padding-right: 58px !important; min-height: 56px; }
+body.in-fight .cv-field { --cvp-h: max(420px, calc(100dvh - 56px)) !important; outline-offset: -3px; border-left: 0; border-right: 0; }
+body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-radius: 0 !important; }
+@media (min-width: 1100px) {
+  /* su schermi larghi il campo resta in proporzione e centrato */
+  body.in-fight .arena-combat-dialog .match-card { max-width: 1280px !important; margin: 0 auto !important; }
+}
