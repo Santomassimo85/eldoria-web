@@ -1767,7 +1767,7 @@ function AudioToggles() {
 }
 
 // Campo di lotta: HUD (con CA), sprite, effetti, dado del tiro e testo.
-function BattleScreen({ battle, player, art, top, children, labels = {} }) {
+function BattleScreen({ battle, player, art, top, children, controls = null, labels = {} }) {
   const { shown, seq, busy, history } = player;
   const [histOpen, setHistOpen] = useState(false);
   const [fxOpen, setFxOpen] = useState(null);
@@ -1829,7 +1829,12 @@ function BattleScreen({ battle, player, art, top, children, labels = {} }) {
             <PetSprite key={`p${P.idx}`} species={P.f.species} evo={P.f.evo} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
           </div>
         </div>
-        {hud("p", P)}
+        {/* il nostro riquadro + le mosse DENTRO il campo (2026-11-02): si attacca
+            guardando gli effetti, senza scorrere */}
+        <div className={`pd-dock${controls ? " has-ctl" : ""}`}>
+          {hud("p", P)}
+          {controls}
+        </div>
         <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
       </div>
       <div className="pd-console">
@@ -1866,7 +1871,7 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
     const team = battle.sides.p.team;
     const okFor = (f) => (it.use?.revive ? f.hp <= 0 : f.hp > 0);
     return (
-      <div className="pd-switch pd-bagfight">
+      <div className="pd-switch pd-bagfight pd-panel">
         {!it ? (
           <>
             <p className="pd-fine">🎒 Dare un oggetto consuma il turno.</p>
@@ -1896,7 +1901,7 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
   }
   if (forced || view === "switch") {
     return (
-      <div className="pd-switch">
+      <div className="pd-switch pd-panel">
         <p className="pd-fine">{forced ? "Chi mandi in campo?" : "Cambiare pet consuma il turno."}</p>
         {bench.map(({ f, i }) => (
           <button key={f.id} type="button" className="pd-switch-btn" disabled={busy} onClick={() => act({ kind: "switch", index: i })}>
@@ -1911,7 +1916,6 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
   }
   return (
     <div className="pd-actions">
-      <p className="pd-fine pd-uses-head">Usi rimasti in questa lotta · gli attacchi base sono infiniti (∞)</p>
       <div className="pd-movegrid">
         {Object.keys(me.pp).map((m) => {
           const mv = PET_DEX_MOVES[m];
@@ -1920,26 +1924,29 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
           const dc = me.dcBase + accMod(mv.acc);
           const left = me.pp[m];
           const max = usesOf(m);
+          const dmg = mv.power ? `${diceText(m, me.level)}${me.atkMod ? sgn(me.atkMod) : ""}` : "stato";
+          const roll = mv.power ? `🎯${sgn(toHit)}` : self ? "" : `TS ${dc}`;
+          const full = `${mv.name} · ${TYPE_LABEL[mv.type]} · ${mv.power ? `${dmg} ${DMG_LABEL[damageKindOf(mv)].toLowerCase()} · d20 ${sgn(toHit)} contro CA ${foe ? acOf(foe) : "?"}` : self ? "su di sé" : `tiro salvezza CD ${dc}`} · usi ${left === INFINITE ? "infiniti" : `${left}/${max}`}`;
           return (
-            <button key={m} type="button" className={`pd-move${left === 0 ? " is-spent" : ""}${mv.sig ? " is-sig" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }} disabled={busy || left === 0} onClick={() => act({ kind: "move", move: m })}>
+            <button key={m} type="button" className={`pd-move${left === 0 ? " is-spent" : ""}${mv.sig ? " is-sig" : ""}`} style={{ "--tc": TYPE_COLORS[mv.type][1] }}
+              disabled={busy || left === 0} onClick={() => act({ kind: "move", move: m })} title={full} aria-label={full}>
               <span className="pd-move-top"><b>{mv.sig ? "✦ " : ""}{mv.name}</b><em className={`pd-uses${left === INFINITE ? " is-inf" : ""}`}>{left === INFINITE ? "∞" : `${left}/${max}`}</em></span>
-              <small>
-                {TYPE_ICON[mv.type]} {mv.power ? `${diceText(m, me.level)}${me.atkMod ? sgn(me.atkMod) : ""} ${DMG_LABEL[damageKindOf(mv)].toLowerCase()}` : "stato"}
-                {mv.power ? ` · 🎯 d20 ${sgn(toHit)} vs CA ${foe ? acOf(foe) : "?"}` : self ? "" : ` · TS CD ${dc}`}
-              </small>
+              <small><span>{TYPE_ICON[mv.type]} {dmg}</span>{roll && <span>{roll}</span>}</small>
             </button>
           );
         })}
       </div>
       {Object.values(me.pp).every((v) => v === 0) && (
-        <button type="button" className="pd-btn" disabled={busy} onClick={() => act({ kind: "move", move: "zampata" })}>✊ Zampata disperata (usi finiti)</button>
+        <button type="button" className="pd-move pd-move--desperate" disabled={busy} onClick={() => act({ kind: "move", move: "zampata" })}><b>✊ Zampata disperata</b><small>usi finiti</small></button>
       )}
-      <button type="button" className="pd-btn pd-switch-open" disabled={busy || !bench.length} onClick={() => setView("switch")}>
-        🔄 Cambia pet {bench.length ? `(${bench.length})` : ""}
-      </button>
-      <button type="button" className="pd-btn pd-switch-open" disabled={busy} onClick={() => { setItem(null); setView("items"); }}>
-        🎒 Oggetti {items.length ? `(${items.reduce((a, k) => a + bag[k], 0)})` : ""}
-      </button>
+      <div className="pd-actbar">
+        <button type="button" className="pd-actbtn" disabled={busy || !bench.length} onClick={() => setView("switch")}>
+          🔄 Cambia{bench.length ? ` (${bench.length})` : ""}
+        </button>
+        <button type="button" className="pd-actbtn" disabled={busy} onClick={() => { setItem(null); setView("items"); }}>
+          🎒 Oggetti{items.length ? ` (${items.reduce((a, k) => a + bag[k], 0)})` : ""}
+        </button>
+      </div>
     </div>
   );
 }
@@ -2016,7 +2023,11 @@ function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
     </>
   );
   return (
-    <BattleScreen battle={battle} player={player} art={art} top={top}>
+    <BattleScreen battle={battle} player={player} art={art} top={top}
+      controls={battle.over ? null : (
+        <BattleControls battle={battle} busy={busy} art={art} onAct={act} forced={battle.needSwitch === "p" && !busy}
+          bag={Object.fromEntries(Object.entries(den.items).map(([k, n]) => [k, (Number(n) || 0) - (usedItems[k] || 0)]))} />
+      )}>
       {battle.over && !busy ? (
         <div className="pd-result">
           {saving && <p>Salvo l'esito…</p>}
@@ -2040,10 +2051,7 @@ function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
             </>
           )}
         </div>
-      ) : (
-        <BattleControls battle={battle} busy={busy} art={art} onAct={act} forced={battle.needSwitch === "p" && !busy}
-          bag={Object.fromEntries(Object.entries(den.items).map(([k, n]) => [k, (Number(n) || 0) - (usedItems[k] || 0)]))} />
-      )}
+      ) : null}
     </BattleScreen>
   );
 }
@@ -2117,7 +2125,11 @@ function PvpBattle({ uid, id, art, den, onExit }) {
   const waiting = m.status === "active" && !pend;
   const forcedHere = !!pend && !!m.battle.needSwitch;
   return (
-    <BattleScreen battle={battle} player={player} art={art} top={top} labels={{ p: flip ? m.bName : m.aName, e: foeName }}>
+    <BattleScreen battle={battle} player={player} art={art} top={top} labels={{ p: flip ? m.bName : m.aName, e: foeName }}
+      controls={done || waiting ? null : (
+        <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere}
+          bag={Object.fromEntries(Object.entries(den?.items || {}).map(([k, n]) => [k, (Number(n) || 0) - ((m.used?.[viewSide]?.[k] || []).length) - (m.actions?.[viewSide]?.item === k ? 1 : 0)]))} />
+      )}>
       {err && <p className="pd-msg">{err}</p>}
       {done ? (
         <div className="pd-result">
@@ -2141,8 +2153,6 @@ function PvpBattle({ uid, id, art, den, onExit }) {
       ) : (
         <>
           {self && <p className="pd-fine">Scegli per {viewSide === "p" ? m.aName : m.bName}.</p>}
-          <BattleControls battle={battle} busy={player.busy || sending} art={art} onAct={send} forced={forcedHere}
-            bag={Object.fromEntries(Object.entries(den?.items || {}).map(([k, n]) => [k, (Number(n) || 0) - ((m.used?.[viewSide]?.[k] || []).length) - (m.actions?.[viewSide]?.item === k ? 1 : 0)]))} />
           {!forcedHere && <button type="button" className="pd-link" onClick={giveUp}>Abbandona la sfida</button>}
         </>
       )}
