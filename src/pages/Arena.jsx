@@ -25,6 +25,7 @@ import "./ArenaCovo.css";         // "R · Il Covo del Drago": stessa struttura,
 import "./ArenaLizza.css";        // "Entra in Lizza" leggibile: passi, classi con icona, righe compatte, mobile
 import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibile: iscritti in cima, due leve, pieghe, mobile (per ULTIMO)
 import "./ArenaScontro.css";       // scontro leggibile: cronaca a paragrafi, su PC sotto il campo (per ULTIMO)
+import "./ArenaPalco.css";        // Vista Palco: scontro 1v1 come la lotta dei pet (per ULTIMISSIMO)
 import { useFightMode } from "../utils/fightMode";
 import { ArenaModal } from "./arena/ArenaModal";
 import { ArenaGestaView, CLASS_ICONS, CLASS_IT, FunArenaClassStats, HallOfChampions, TournamentClassStats, classColor } from "./arena/ArenaStats";
@@ -123,6 +124,9 @@ export default function Arena() {
   const [combatDock, setCombatDock] = useState("attacchi"); // attacchi | magie | abilita | oggetti
   const [abilitaSub, setAbilitaSub] = useState("skill"); // sotto-tab dentro "abilita": skill | pet (Ranger)
   const [combatStatsOpen, setCombatStatsOpen] = useState(false); // sezione [3] stat collassabile
+  // VISTA PALCO (2026-11-02): menu delle azioni dentro il campo, aperto/chiuso a mano
+  const [palcoOpen, setPalcoOpen] = useState(false);
+  const [arenaSprites, setArenaSprites] = useState({}); // uid -> { sprite, dead }
   const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
   const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
   // ── VFX pixelati sulle card dei combattenti (riuso effetti World Boss) ──
@@ -289,6 +293,27 @@ export default function Arena() {
   }, [arenaMeta, currentUser]);
   // Modalità fight (2026-11-02): col combattimento aperto il sito nasconde testata, d20 e flottanti
   useFightMode(combatModalOpen && !!myActiveMatchId);
+  // Vista Palco: sprite di battaglia dei PG (characters.spriteUrl / deadSpriteUrl), letti una volta
+  const spriteIdsKey = useMemo(() => {
+    const ids = new Set();
+    (arenaMeta?.matches || []).forEach((mm) => {
+      if (mm.status === "finished" || !mm.players?.some((p) => p.id === currentUser?.uid)) return;
+      mm.players.forEach((p) => { if (p.id && !String(p.id).startsWith("AI_BOT") && !String(p.id).includes("__ALT")) ids.add(p.id); });
+    });
+    return [...ids].sort().join("|");
+  }, [arenaMeta, currentUser]);
+  useEffect(() => {
+    if (!spriteIdsKey) return;
+    const missing = spriteIdsKey.split("|").filter((id) => !(id in arenaSprites));
+    if (!missing.length) return;
+    setArenaSprites((prev) => { const n = { ...prev }; missing.forEach((id) => { n[id] = null; }); return n; });
+    missing.forEach((id) => {
+      getDoc(doc(db, "characters", id)).then((snap) => {
+        const d = snap.data() || {};
+        setArenaSprites((prev) => ({ ...prev, [id]: { sprite: d.spriteUrl || "", dead: d.deadSpriteUrl || "" } }));
+      }).catch(() => {});
+    });
+  }, [spriteIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // PG del Master con un fight vivo (iniziativa, «Iniziamo» o turni): servono al
   // selettore in cima al combattimento. Per i giocatori resta vuoto.
@@ -10093,7 +10118,10 @@ export default function Arena() {
             // Scheda "Magie" nascosta se il personaggio non ha incantesimi (non occupa spazio).
             const hasSpells = currentActions.some(a => a.type === "spell");
             // Scheda attiva effettiva: se "magie" è nascosta ricado su "attacchi".
-            const dock = (combatDock === "magie" && !hasSpells) ? "attacchi" : combatDock;
+            const palco = !isFFA; // Vista Palco: 1 contro 1 (i tutti-contro-tutti restano com'erano)
+            const dock = (combatDock === "magie" && !hasSpells) || (!palco && (combatDock === "passive" || combatDock === "info")) ? "attacchi" : combatDock;
+            const palcoPassives = currentActions.filter((a) => a.type === "passive");
+            const palcoOrder = palco ? [...m.players].sort((a, b) => (a.id === currentUser?.uid ? -1 : b.id === currentUser?.uid ? 1 : 0)) : [];
 
             // Sistema impugnatura armi
             const myWeaponActions  = myActions.filter(a => a.type === "weapon");
@@ -10104,6 +10132,9 @@ export default function Arena() {
             const currentEquipSel  = rawEquipSel !== undefined ? rawEquipSel : [];
             const equipHas2H       = currentEquipSel.some(n => myWeaponActions.find(w => w.name === n)?.twoHanded);
             const isMatchPaused    = arenaMeta.timerPaused && m.kind !== "fun" && m.status !== "finished";
+            // il menu resta aperto da solo quando serve una scelta obbligata (armi, TS, forma)
+            const palcoForced = needsEquip || hasPendingSave || isEntangled || showWildPicker;
+            const palcoCollapsed = palco && !(palcoOpen === m.matchId + ":" + (m.logs || []).length) && !palcoForced;
 
             return (
               <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""} ${m.kind === "fun" ? "match-fun" : ""} ${isMatchPaused ? "match-paused" : ""} ${combatLogExpanded ? "cv-logmode" : ""}`}>
@@ -10158,6 +10189,22 @@ export default function Arena() {
                   </div>
                 </div>
 
+                <div className={palco ? `cv-field${arenaMeta.battleBg ? " has-bg" : ""}${palcoCollapsed ? "" : " is-menu"}` : "cv-field-off"} style={palco && arenaMeta.battleBg ? { backgroundImage: `url(${arenaMeta.battleBg})` } : undefined}>
+                {palco && palcoOrder.map((p, i) => {
+                  const char = snapshots[p.id] || {};
+                  const sp = arenaSprites[p.id];
+                  const dead = p.hp <= 0;
+                  const src = dead ? (sp?.dead || sp?.sprite || char.image) : (sp?.sprite || char.image);
+                  const isSprite = !!sp?.sprite;
+                  const side = i === 0 ? "p" : "e";
+                  return (
+                    <div key={p.id} className={`cv-spot cv-spot--${side}${dead ? " is-dead" : ""}${m.turn === p.id && m.status === "active" ? " is-turn" : ""}`} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                      {src
+                        ? <img src={src} alt={p.name} className={`cv-sprite${isSprite ? "" : " is-portrait"}`} draggable="false" />
+                        : <span className="cv-sprite cv-sprite--emoji" aria-hidden="true">{CLASS_ICONS[(char.class || "").toLowerCase()] || "⚔"}</span>}
+                    </div>
+                  );
+                })}
                 {/* Fighters — [2] ZONA SCONTRO: TU a sinistra, avversario a destra */}
                 <div className="fighters-row">
                   {(isFFA ? m.players : [...m.players].sort((a, b) => (a.id === currentUser?.uid ? -1 : b.id === currentUser?.uid ? 1 : 0))).map((p, idx) => {
@@ -10200,13 +10247,13 @@ export default function Arena() {
                             </div>
                           ))}
                           {char.image ? (
-                            <div className={`cv-avatar-wrap${isControlled ? " is-controlled" : ""}`} style={{ "--hp": `${hpPct}%`, "--hpcol": hpColor }} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                            <div className={`cv-avatar-wrap${isControlled ? " is-controlled" : ""}`} style={{ "--hp": `${hpPct}%`, "--hpcol": hpColor }} data-vfx-target={palco ? undefined : `arena-fx:${m.matchId}:${p.id}`}>
                               <span className="cv-hp-ring" aria-hidden="true" />
                               <img src={char.image} alt={p.name} className="fighter-avatar" />
                               {isControlled && <span className="cv-control-aura" aria-hidden="true" />}
                             </div>
                           ) : (
-                            <div className={`cv-noavatar${isControlled ? " is-controlled" : ""}`} aria-hidden="true" data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                            <div className={`cv-noavatar${isControlled ? " is-controlled" : ""}`} aria-hidden="true" data-vfx-target={palco ? undefined : `arena-fx:${m.matchId}:${p.id}`}>
                               {CLASS_ICONS[(char.class || "").toLowerCase()] || CLASS_ICONS[char.class] || "⚔"}
                               {isControlled && <span className="cv-control-aura" aria-hidden="true" />}
                             </div>
@@ -10222,6 +10269,7 @@ export default function Arena() {
                             </div>
                           )}
 
+                          {palco && char.image && <span className="cv-hudbar" aria-hidden="true"><span style={{ width: `${hpPct}%`, background: hpColor }} /></span>}
                           {/* 3 mini-stat: CA · Init · Livello */}
                           <div className="fighter-ministats">
                             {(() => {
@@ -10386,19 +10434,26 @@ export default function Arena() {
                           ...(hasSpells ? [["magie","✨","Magie"]] : []),
                           ["abilita","⭐","Abilità"],
                           ["oggetti","🧪","Oggetti"],
-                        ].map(([key,ico,lab]) => (
+                          ...(palco ? [["passive","🛡","Passive"], ["info","ℹ","Info"]] : []),
+                        ].map(([key,ico,lab]) => {
+                          const on = palco ? !palcoCollapsed && dock === key : dock === key;
+                          return (
                           <button
                             key={key}
                             type="button"
                             role="tab"
-                            aria-selected={dock === key}
-                            className={`cdt-tab${dock === key ? " active" : ""}`}
-                            onClick={() => setCombatDock(key)}
+                            aria-selected={on}
+                            className={`cdt-tab${on ? " active" : ""}`}
+                            onClick={() => {
+                              if (palco && on) { setPalcoOpen(false); return; }
+                              setCombatDock(key); setPalcoOpen(m.matchId + ":" + (m.logs || []).length);
+                            }}
                           >
                             <span className="cdt-ico" aria-hidden="true">{ico}</span>
                             <span className="cdt-lab">{lab}</span>
                           </button>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -10866,7 +10921,7 @@ export default function Arena() {
                         // Il Ranger ha un compagno: le sue azioni (pet_*) vanno in una sotto-tab dedicata.
                         const isPetAction   = (a) => typeof a.special === "string" && a.special.startsWith("pet_");
                         const petActions    = allSkillActions.filter(isPetAction);
-                        const skillActions  = allSkillActions.filter(a => !isPetAction(a));
+                        const skillActions  = allSkillActions.filter(a => !isPetAction(a) && !(palco && a.type === "passive"));
                         const hasPet        = petActions.length > 0;
                         // Se non c'è pet, la sotto-tab attiva ricade sempre su "skill".
                         const abSub = (abilitaSub === "pet" && hasPet) ? "pet" : "skill";
@@ -11782,6 +11837,61 @@ export default function Arena() {
                       </div>
                     )}
 
+                    {/* ── VISTA PALCO: passive e informazioni ── */}
+                    {palco && dock === "passive" && !palcoCollapsed && (
+                      <div className="action-groups">
+                        <div className="action-group">
+                          <div className="action-group-label skill">🛡 Passive</div>
+                          {palcoPassives.length || mySnap?.subclassName ? (
+                            <div className="cv-passives">
+                              {mySnap?.subclassName && (
+                                <div className="cv-passive"><span aria-hidden="true">{mySnap.subclassIcon || "✦"}</span><div><b>{mySnap.subclassName}</b><small>Sottoclasse della settimana</small></div></div>
+                              )}
+                              {palcoPassives.map((a) => (
+                                <div key={a.name} className="cv-passive"><span aria-hidden="true">{a.icon}</span><div><b>{a.name}</b><small>{a.info || a.desc || "Sempre attiva."}</small></div></div>
+                              ))}
+                            </div>
+                          ) : <div className="combat-dock-empty">Nessuna passiva.</div>}
+                        </div>
+                      </div>
+                    )}
+                    {palco && dock === "info" && !palcoCollapsed && (
+                      <div className="action-groups cv-info">
+                        {palcoOrder.map((pl) => {
+                          const ch = snapshots[pl.id] || {};
+                          const _ac = getDisplayAc(pl, ch);
+                          const lv = Object.values(ch.classLevels || {}).reduce((a, b) => a + (b || 0), 0) || 1;
+                          const sts = getFighterStatuses(pl);
+                          return (
+                            <div key={pl.id} className="action-group">
+                              <div className="action-group-label skill">{pl.id === currentUser?.uid ? "Tu" : "Avversario"} · {pl.name}</div>
+                              <div className="cv-info-grid">
+                                <span><small>PF</small><b>{pl.hp}/{ch.stats?.maxHp ?? 70}</b></span>
+                                <span><small>CA</small><b>{_ac.ac}{_ac.ac !== _ac.base ? ` (base ${_ac.base})` : ""}</b></span>
+                                <span><small>Iniziativa</small><b>{pl.init > 0 ? pl.init : "—"}</b></span>
+                                <span><small>Livello</small><b>{lv}</b></span>
+                                <span><small>Classe</small><b>{ch.class || "—"}{ch.subclassName ? ` · ${ch.subclassName}` : ""}</b></span>
+                              </div>
+                              {pl.id === currentUser?.uid && mySnap?.stats && (
+                                <div className="cv-stats-pills">
+                                  {[["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]].map(([k, lbl]) => {
+                                    const v = mySnap.stats[k] ?? 0;
+                                    return <span key={k} className="cv-stat-pill">{lbl} <strong>{v >= 0 ? "+" : ""}{v}</strong></span>;
+                                  })}
+                                </div>
+                              )}
+                              {sts.length ? (
+                                <ul className="cv-info-st">{sts.map((st) => <li key={st.key} className={GOOD_STATUS_CLS.has(st.cls) ? "is-good" : "is-bad"}>{st.icon} <b>{st.text}</b>{st.tip ? ` · ${st.tip}` : ""}</li>)}</ul>
+                              ) : <div className="combat-dock-empty">Nessun bonus o malus attivo.</div>}
+                            </div>
+                          );
+                        })}
+                        {m.players.some((pl) => PLAYER_HAS_RANGED_WEAPON(pl, snapshots[pl.id])) && (
+                          <div className="combat-dock-empty">{m.distanceClosed ? "⚔ Siete in mischia: gli attacchi ravvicinati sono normali." : "🏹 Siete a distanza: chi attacca in mischia tira a svantaggio finché non chiude la distanza."}</div>
+                        )}
+                      </div>
+                    )}
+
                     {/* ── Oggetti (Azione Gratuita · 1/turno) — scheda "Oggetti" del dock ── */}
                     {dock === "oggetti" && !needsEquip && !hasPendingSave && !isEntangled && !showWildPicker && (() => {
                       const myItemKeys = arenaMeta.characterSnapshots?.[currentUser?.uid]?.selectedItemKeys || [];
@@ -11839,6 +11949,8 @@ export default function Arena() {
                     })()}
                   </div>
                 )}
+
+                </div>{/* /cv-field */}
 
                 <div className={`match-log${combatLogExpanded ? " cv-log-expanded" : ""}`}>
                   <button type="button" className="match-log-head" onClick={() => setCombatLogExpanded(v => !v)} aria-expanded={combatLogExpanded} title={combatLogExpanded ? "Riduci la cronaca" : "Ingrandisci la cronaca"}>

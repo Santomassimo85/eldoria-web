@@ -1,0 +1,181 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   ARENA · VISTA PALCO (2026-11-02) — lo scontro 1 contro 1 come la lotta dei pet
+   (mockup approvato in /arena-lab). Stesso markup e stessa logica di prima: qui
+   cambia solo dove stanno le cose. `.cv-field` contiene sprite, riquadri dei
+   combattenti e il pannello delle azioni, che si apre dal fondo (max 42%).
+   I tutti-contro-tutti restano col vecchio layout (`.cv-field-off` = contents).
+   Caricato per ULTIMO in Arena.jsx: batte i !important degli strati precedenti.
+   ───────────────────────────────────────────────────────────────────────────── */
+.cv-field-off { display: contents; }
+
+.arena-page .cv-field, .arena-combat-dialog .cv-field, .cv-field {
+  --cvp-tabs: 54px; --cvp-h: clamp(460px, 56vw, 600px); --cvp-line: rgba(243, 234, 216, .55);
+  --cvp-glass: rgba(12, 10, 18, .62); --cvp-glass-2: rgba(12, 10, 18, .82);
+  position: relative; overflow: hidden; height: var(--cvp-h); flex: 0 0 auto;
+  border: 3px solid #000; outline: 2px solid var(--cvp-line); outline-offset: -5px;
+  background: linear-gradient(180deg, #2b3a5c 0%, #4a5d7c 38%, #6b6a4a 39%, #4e5a33 100%);
+  background-size: cover; background-position: center; image-rendering: pixelated;
+}
+.cv-field::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; background: linear-gradient(180deg, rgba(0,0,0,.22), transparent 30%, transparent 62%, rgba(0,0,0,.42)); }
+.cv-field, .cv-field button { font-family: "Pixelify Sans", var(--font-ui); }
+
+/* angoli a gradino */
+.cv-field .fighter-card, .cv-field .action-panel, .cv-field .cdt-tab, .cv-field .btn-action, .cv-field .btn-item, .cv-field .vs-divider > span[title] {
+  --n: 4px;
+  clip-path: polygon(0 var(--n), var(--n) var(--n), var(--n) 0, calc(100% - var(--n)) 0, calc(100% - var(--n)) var(--n), 100% var(--n), 100% calc(100% - var(--n)), calc(100% - var(--n)) calc(100% - var(--n)), calc(100% - var(--n)) 100%, var(--n) 100%, var(--n) calc(100% - var(--n)), 0 calc(100% - var(--n)));
+}
+
+/* ── sprite ── */
+.cv-spot { position: absolute; z-index: 1; display: flex; justify-content: center; align-items: flex-end; transition: bottom .35s steps(6), top .35s steps(6), height .35s steps(6); pointer-events: none; }
+.cv-spot::before { content: ""; position: absolute; bottom: -8px; left: 50%; width: 110%; height: 22px; transform: translateX(-50%); border-radius: 50%; background: rgba(0,0,0,.38); box-shadow: 0 0 0 3px rgba(0,0,0,.18); z-index: -1; }
+.cv-spot--e { right: 9%; top: 9%; height: 36%; }
+.cv-spot--p { left: 6%; bottom: calc(var(--cvp-tabs) + 8px); height: 50%; }
+.cv-sprite { height: 100%; width: auto; max-width: 42vw; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000); animation: cvp-breathe 2.6s steps(4) infinite; transform-origin: 50% 100%; user-select: none; }
+/* gli sprite dei PG sono disegnati rivolti a sinistra: il tuo si specchia */
+.cv-spot--p .cv-sprite:not(.is-portrait) { transform: scaleX(-1); }
+.cv-sprite.is-portrait { height: 62%; aspect-ratio: 1; object-fit: cover; border: 3px solid #000; outline: 2px solid var(--cvp-line); filter: none; image-rendering: auto; }
+.cv-sprite--emoji { display: grid; place-items: center; height: auto; font-size: clamp(3rem, 10vw, 6rem); }
+@keyframes cvp-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.02 .975; } }
+.cv-spot.is-dead .cv-sprite:not(.is-portrait) { filter: grayscale(1) brightness(.6) drop-shadow(2px 0 0 #000); animation: none; opacity: .85; }
+.cv-spot.is-dead .cv-sprite.is-portrait { filter: grayscale(1) brightness(.6); }
+.cv-spot.is-turn::after { content: "▼"; position: absolute; top: -18px; left: 50%; translate: -50% 0; color: #f2c14e; font-size: 14px; text-shadow: 2px 2px 0 #000; animation: cvp-bob .8s steps(2) infinite; }
+@keyframes cvp-bob { 50% { translate: -50% 4px; } }
+
+/* ── riquadri dei combattenti ── */
+.arena-combat-dialog .cv-field .fighters-row, .cv-field .fighters-row {
+  position: absolute !important; inset: 0 !important; display: block !important; padding: 0 !important; margin: 0 !important; gap: 0 !important;
+  background: none !important; border: 0 !important; box-shadow: none !important; z-index: 2; pointer-events: none;
+}
+.arena-combat-dialog .cv-field .fighter-card, .cv-field .fighter-card {
+  position: absolute !important; pointer-events: auto; display: grid !important; gap: 3px !important; justify-items: stretch !important; text-align: left !important;
+  width: min(46%, 310px) !important; max-width: none !important; flex: none !important; min-height: 0 !important; padding: 7px 10px 8px !important; margin: 0 !important;
+  background: var(--cvp-glass) !important; border: 2px solid var(--cvp-line) !important; border-radius: 0 !important;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,.08), inset -2px -2px 0 rgba(0,0,0,.4) !important;
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); text-shadow: 1px 1px 0 #000; color: #fff7e6; animation: none !important; transform: none !important;
+}
+.cv-field .fighter-card.side-foe { left: 10px; top: 10px; }
+.cv-field .fighter-card.side-you { right: 10px; bottom: calc(var(--cvp-tabs) + 10px); }
+.cv-field .fighter-card.active-turn { border-color: #f2c14e !important; }
+.cv-field .fighter-card::before, .cv-field .fighter-card::after { display: none !important; }
+.cv-field .fighter-card .cv-avatar-wrap, .cv-field .fighter-card .cv-noavatar, .cv-field .fighter-card .turn-indicator { display: none !important; }
+.cv-field .fighter-card .fighter-name { font: 600 1rem "Pixelify Sans", var(--font-ui) !important; letter-spacing: 0 !important; text-transform: none !important; margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff7e6 !important; }
+.cv-field .fighter-card .fighter-class { font: .72rem "Pixelify Sans", var(--font-ui) !important; color: #d8ccb4 !important; margin: 0 !important; }
+.cv-field .fighter-card .fighter-title-badge { justify-self: start; font-size: .64rem !important; padding: 0 5px !important; margin: 0 !important; }
+.cv-field .fighter-card .cv-hp-text { order: 0; font: 600 .82rem "Pixelify Sans", var(--font-num) !important; justify-self: start; margin: 0 !important; }
+.cv-hudbar { display: block; height: 9px; border: 2px solid #000; background: #2a2230; }
+.cv-hudbar > span { display: block; height: 100%; transition: width .5s steps(10, end); box-shadow: inset 0 2px 0 rgba(255,255,255,.3); }
+.cv-field .fighter-card .hp-bar-wrap { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.cv-field .fighter-card .fighter-ministats { justify-content: flex-start !important; gap: 4px !important; margin: 0 !important; }
+.cv-field .fighter-card .ministat { font-size: .7rem !important; padding: 1px 6px !important; border-radius: 0 !important; }
+.cv-field .fighter-card .fighter-statuses { justify-content: flex-start !important; gap: 3px !important; margin: 0 !important; }
+.cv-field .fighter-card .fighter-status { border-radius: 0 !important; font-size: .66rem !important; padding: 1px 5px !important; }
+.cv-field .fighter-card .defeated-banner { position: static !important; transform: none !important; margin: 0 !important; font-size: .78rem !important; }
+.cv-field .fighter-card .btn-init { margin-top: 4px !important; border-radius: 0 !important; }
+/* menu aperto: il tuo riquadro si toglie, i combattenti salgono */
+.cv-field.is-menu .fighter-card.side-you { display: none !important; }
+.cv-field.is-menu .cv-spot--p { bottom: calc(var(--cvp-h) * .42 + var(--cvp-tabs) + 4px); height: 34%; }
+.cv-field.is-menu .cv-spot--e { top: 5%; height: 28%; }
+
+/* distanza: resta solo il chip, in alto al centro */
+.arena-combat-dialog .cv-field .vs-divider, .cv-field .vs-divider { position: absolute !important; top: 10px; left: 50%; translate: -50% 0; z-index: 3; margin: 0 !important; padding: 0 !important; width: auto !important; min-width: 0 !important; background: none !important; border: 0 !important; pointer-events: auto; }
+.cv-field .vs-divider .cv-vs-core, .cv-field .vs-divider .cv-orbit { display: none !important; }
+.cv-field .vs-divider > span[title] { margin: 0 !important; border-radius: 0 !important; background: var(--cvp-glass) !important; border: 2px solid var(--cvp-line); }
+
+/* statistiche → scheda Info; reazioni in basso a sinistra */
+.cv-field .cv-stats { display: none !important; }
+.arena-combat-dialog .cv-field .arena-react-bar, .cv-field .arena-react-bar { position: absolute; z-index: 3; left: 8px; bottom: calc(var(--cvp-tabs) + 8px); padding: 0 !important; background: none !important; border: 0 !important; }
+.cv-field.is-menu .arena-react-bar { display: none !important; }
+.cv-field .target-1v1-label { display: none !important; }
+
+/* ── pannello delle azioni: dal fondo, max 42% del campo ── */
+.arena-combat-dialog .cv-field .action-panel, .arena-page .arena-combat-inline .cv-field .action-panel, .cv-field .action-panel {
+  position: absolute !important; z-index: 5; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; margin: 0 !important;
+  display: flex !important; flex-direction: column; gap: 6px; max-height: calc(var(--cvp-h) * .42 + var(--cvp-tabs)) !important; overflow-y: auto; overscroll-behavior: contain;
+  padding: 8px 8px 0 !important; border: 0 !important; border-top: 2px solid var(--cvp-line) !important; border-radius: 0 !important;
+  background: var(--cvp-glass-2) !important; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); box-shadow: none !important; clip-path: none;
+}
+.cv-field .action-panel > * { flex: 0 0 auto; }
+.cv-field .combat-dock-tabs {
+  order: 99; position: sticky; bottom: 0; z-index: 2; display: flex !important; gap: 3px !important; height: var(--cvp-tabs); margin: 0 -8px !important; padding: 4px 6px 6px !important;
+  background: linear-gradient(180deg, rgba(8,6,12,.6), rgba(8,6,12,.92)) !important; border: 0 !important; overflow: visible !important;
+}
+.cv-field .cdt-tab { flex: 1 1 0 !important; min-width: 0 !important; display: grid !important; place-items: center; align-content: center; gap: 1px !important; padding: 2px !important; border: 2px solid rgba(243,234,216,.4) !important; background: rgba(12,10,18,.6) !important; color: #fff7e6 !important; border-radius: 0 !important; box-shadow: inset 2px 2px 0 rgba(255,255,255,.08), inset -2px -2px 0 rgba(0,0,0,.45) !important; text-shadow: 1px 1px 0 #000; --n: 3px; }
+.cv-field .cdt-tab .cdt-ico { font-size: 1rem; line-height: 1; }
+.cv-field .cdt-tab .cdt-lab { font-size: .66rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; letter-spacing: 0 !important; text-transform: none !important; }
+.cv-field .cdt-tab.active { background: #f2c14e !important; color: #1d1406 !important; text-shadow: none; border-color: #000 !important; }
+/* chiuso: restano le schede (e Salta turno), il campo si vede tutto */
+.cv-field:not(.is-menu) .action-panel { background: transparent !important; border-top: 0 !important; backdrop-filter: none; -webkit-backdrop-filter: none; overflow: visible; padding-top: 0 !important; pointer-events: none; }
+.cv-field:not(.is-menu) .action-panel > * { pointer-events: auto; }
+.cv-field:not(.is-menu) .action-panel > :not(.combat-dock-tabs):not(.dual-action-row) { display: none !important; }
+.cv-field:not(.is-menu) .dual-action-row { align-self: flex-end; margin: 0 8px 4px 0 !important; }
+.cv-field .dual-action-row { order: 98; display: flex !important; justify-content: flex-end; gap: 6px; margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; }
+.cv-field .btn-end-dual-turn { border-radius: 0 !important; background: var(--cvp-glass) !important; border: 2px solid rgba(242,193,78,.7) !important; color: #fff7e6 !important; font: 600 .76rem "Pixelify Sans", var(--font-ui) !important; padding: 4px 10px !important; }
+.cv-field .dual-action-label { font-size: .74rem; color: #f2c14e; text-shadow: 1px 1px 0 #000; align-self: center; }
+
+/* tasti delle azioni in stile pixel */
+.cv-field .action-groups { display: grid; gap: 6px; }
+.cv-field .action-group { margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; }
+.cv-field .action-group-label { font: 600 .72rem "Pixelify Sans", var(--font-ui) !important; letter-spacing: .06em !important; text-transform: uppercase; color: #f2c14e !important; background: none !important; border: 0 !important; padding: 0 0 4px !important; margin: 0 !important; text-shadow: 1px 1px 0 #000; }
+.cv-field .action-group-hint { font-size: .74rem !important; color: #e9dcc4 !important; margin: 0 0 4px !important; }
+.arena-combat-dialog .cv-field .action-buttons, .arena-combat-dialog .cv-field .items-row, .cv-field .action-buttons, .cv-field .items-row { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)) !important; gap: 6px !important; }
+.cv-field .btn-action, .cv-field .btn-item {
+  border-radius: 0 !important; min-height: 50px; margin: 0 !important; text-align: left !important;
+  background: linear-gradient(180deg, rgba(224,168,90,.18), rgba(12,10,18,.65)) !important; border: 2px solid rgba(224,168,90,.75) !important;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,.1), inset -2px -2px 0 rgba(0,0,0,.45) !important; color: #fff7e6 !important; text-shadow: 1px 1px 0 #000;
+}
+.cv-field .btn-action.spell, .cv-field .btn-action.heal { background: linear-gradient(180deg, rgba(192,139,255,.2), rgba(12,10,18,.65)) !important; border-color: rgba(192,139,255,.75) !important; }
+.cv-field .btn-action.heal { background: linear-gradient(180deg, rgba(95,209,107,.2), rgba(12,10,18,.65)) !important; border-color: rgba(95,209,107,.75) !important; }
+.cv-field .btn-action.skill { background: linear-gradient(180deg, rgba(127,211,255,.18), rgba(12,10,18,.65)) !important; border-color: rgba(127,211,255,.7) !important; }
+.cv-field .btn-action:disabled, .cv-field .btn-item:disabled, .cv-field .btn-action.no-uses { opacity: .45; filter: grayscale(.6); }
+.cv-field .btn-action .action-name, .cv-field .btn-item .item-name { font: 600 .86rem "Pixelify Sans", var(--font-ui) !important; color: #fff7e6 !important; }
+.cv-field .btn-action .action-dice { font: .72rem "Pixelify Sans", var(--font-num) !important; color: #e9dcc4 !important; }
+.cv-field .combat-dock-empty, .cv-field .no-target-msg { font-size: .84rem; color: #e9dcc4 !important; background: none !important; border: 0 !important; padding: 4px 0 !important; }
+
+/* passive e info */
+.cv-passives { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 6px; }
+.cv-passive { display: flex; gap: 8px; align-items: flex-start; padding: 7px 9px; border: 2px solid rgba(243,234,216,.3); background: rgba(0,0,0,.35); color: #fff7e6; }
+.cv-passive > span { font-size: 1.2rem; }
+.cv-passive b { display: block; font-size: .86rem; font-weight: 600; }
+.cv-passive small { display: block; font-size: .76rem; color: #e9dcc4; line-height: 1.3; }
+.cv-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 5px; margin-bottom: 6px; }
+.cv-info-grid > span { display: grid; padding: 5px 7px; background: rgba(0,0,0,.35); border: 1px solid rgba(243,234,216,.2); color: #fff7e6; }
+.cv-info-grid small { font-size: .64rem; color: #d8ccb4; text-transform: uppercase; letter-spacing: .06em; }
+.cv-info-grid b { font-size: .92rem; font-weight: 600; }
+.cv-info .cv-stats-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.cv-info-st { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: .78rem; color: #fff7e6; }
+.cv-info-st li { padding: 3px 7px; border-left: 3px solid; background: rgba(0,0,0,.3); }
+.cv-info-st li.is-good { border-color: #5fd16b; } .cv-info-st li.is-bad { border-color: #e0624f; }
+
+/* reazioni emoji sopra il riquadro */
+.cv-field .arena-fight-react { z-index: 4; }
+
+/* nel popup e nel palco dell'hub: via il banner decorativo sopra lo scontro */
+.arena-combat-dialog .matches-container .my-arena-banner { display: none; }
+
+/* ── telefono ── */
+@media (max-width: 760px) {
+  .arena-page .cv-field, .arena-combat-dialog .cv-field, .cv-field { --cvp-h: max(480px, min(calc(100svh - 130px), 640px)); border-left: 0; border-right: 0; }
+  .cv-field .fighter-card.side-foe { width: 56% !important; left: 6px; top: 6px; padding: 5px 7px 6px !important; }
+  .cv-field .fighter-card.side-you { width: 58% !important; right: 6px; padding: 5px 7px 6px !important; }
+  .cv-field .fighter-card .fighter-name { font-size: .88rem !important; }
+  .cv-field .fighter-card .fighter-title-badge { display: none !important; }
+  .cv-field .vs-divider { top: auto !important; bottom: calc(var(--cvp-tabs) + 8px); left: 8px !important; translate: 0 !important; }
+  .cv-field .arena-react-bar { bottom: calc(var(--cvp-tabs) + 40px); }
+  .cv-field.is-menu .vs-divider { display: none !important; }
+  .cv-spot--e { right: 4%; top: 15%; height: 28%; }
+  .cv-spot--p { left: 0; bottom: calc(var(--cvp-tabs) + 34px); height: 40%; }
+  .cv-sprite { max-width: 50vw; }
+  .cv-field .combat-dock-tabs { gap: 2px !important; padding: 3px 3px 5px !important; }
+  .cv-field .cdt-tab .cdt-lab { font-size: .56rem !important; }
+  .arena-combat-dialog .cv-field .action-buttons, .arena-combat-dialog .cv-field .items-row, .cv-field .action-buttons, .cv-field .items-row { grid-template-columns: 1fr 1fr !important; gap: 5px !important; }
+  .cv-field .btn-action, .cv-field .btn-item { min-height: 46px; padding: 5px 6px !important; }
+  .cv-field .btn-action .action-name, .cv-field .btn-item .item-name { font-size: .76rem !important; }
+  .cv-field .btn-action .action-dice { font-size: .64rem !important; }
+}
+@media (max-width: 360px) {
+  .arena-combat-dialog .cv-field .action-buttons, .cv-field .action-buttons, .cv-field .items-row { grid-template-columns: 1fr !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-sprite, .cv-spot.is-turn::after { animation: none; }
+  .cv-spot { transition: none; }
+}
