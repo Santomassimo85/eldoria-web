@@ -822,3 +822,11 @@
   .pd-dock .pd-move small span + span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .pd-dock .pd-move, .pd-actbtn { transition: none; } }
+/* nomi delle mosse su due righe invece di troncarli; PF e pet rimasti sulla stessa riga */
+.pd-dock .pd-move b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pd-dock .pd-hud { grid-template-columns: 1fr auto; grid-auto-flow: row dense; }
+.pd-dock .pd-hud > * { grid-column: 1 / -1; }
+.pd-dock .pd-hud > .pd-hud-hp { grid-column: 2; }
+.pd-dock .pd-hud > .pd-balls { grid-column: 1; align-self: center; }
+@media (max-width: 760px) { .pd-dock .pd-move b { font-size: .76rem; } }
+@media (max-width: 360px) { .pd-dock .pd-move small span + span { display: inline; } .pd-dock .pd-move small { font-size: .62rem; } }
