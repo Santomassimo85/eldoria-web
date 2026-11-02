@@ -235,3 +235,11 @@ body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-rad
   /* su schermi larghi il campo resta in proporzione e centrato */
   body.in-fight .arena-combat-dialog .match-card { max-width: 1280px !important; margin: 0 auto !important; }
 }
+/* tu più grande (in primo piano) e più in basso; l'avversario più piccolo e lontano */
+.cv-field .cv-spot--p { left: 28%; bottom: calc(var(--cvp-tabs) + 2%); height: 52%; }
+.cv-field .cv-spot--e { height: 29%; }
+@media (max-width: 760px) {
+  .cv-field .cv-spot--p { left: 30%; bottom: calc(var(--cvp-tabs) + 3%); height: 47%; }
+  .cv-field .cv-spot--e { left: 70%; bottom: 51%; height: 25%; }
+  .cv-field .cv-sprite { max-width: 60vw; }
+}
