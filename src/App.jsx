@@ -58,6 +58,7 @@ import Concilio from "./pages/Concilio";
 // PET SYSTEM (2026-10-31): il vecchio PetHub/PetArena resta spento; il nuovo
 // Rifugio dei Pet (/pet) per ora lo vede solo il Master principale.
 import PetDen from "./pages/PetDen";
+import ArenaLab from "./pages/ArenaLab"; // mockup Vista Palco (solo Master)
 import Tcg from "./pages/Tcg";
 import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
@@ -627,7 +628,7 @@ export default function App() {
     document.body.classList.toggle("covo-admin", isAdminPage);
     // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
     // Il World Boss (scena testo + sprite) veste il Covo come l'Arena: squame e respiro accesi
-    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega" || p === "/world-boss-fight");
+    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega" || p === "/arena-lab" || p === "/world-boss-fight");
     document.documentElement.dataset.theme = soffio === "bianco" ? "light" : "dark";
     document.documentElement.dataset.soffio = soffio;
     return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
@@ -779,6 +780,7 @@ export default function App() {
           <Route path="/mercato" element={<PageTabs group="mercato"><Mercato /></PageTabs>} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
+          <Route path="/arena-lab" element={<ArenaLab />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
           <Route path="/pet" element={<PetDen />} />
           <Route path="/tcg" element={<Tcg />} />
