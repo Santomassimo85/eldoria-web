@@ -270,3 +270,21 @@ body.in-fight .arena-combat-dialog .match-log { margin: 0 !important; border-rad
 .cv-field .arena-react-bar, .cv-field .arena-fight-react { display: none !important; }
 @media (max-width: 760px) { .cv-st-bubbles i { min-width: 22px; height: 22px; font-size: 13px; } }
 @media (prefers-reduced-motion: reduce) { .cv-st-bubbles i { animation: none; } }
+
+/* Fight a tutto schermo sui telefoni (2026-11-03): l'altezza del campo la misura
+   `useFitFightField` (utils/fitFightField.js) = lo spazio che resta sotto la barra
+   del timer e "I tuoi fight", così le azioni in fondo al campo si vedono su ogni
+   telefono. "I tuoi fight" del Master in fight = una riga sola, bassa. */
+body.in-fight .arena-combat-dialog .master-fight-switch { margin: 0 !important; padding: 6px 8px !important; border-radius: 0 !important; border-left: 0; border-right: 0; }
+body.in-fight .arena-combat-dialog .master-fight-switch-label { display: none; }
+body.in-fight .arena-combat-dialog .master-fight-switch-row { gap: 6px; }
+body.in-fight .arena-combat-dialog .master-fight-chip { min-width: 0; min-height: 40px; padding: 4px 10px; gap: 0; }
+body.in-fight .arena-combat-dialog .master-fight-chip-name { font-size: .86rem; }
+body.in-fight .arena-combat-dialog .master-fight-chip-vs { display: none; }
+body.in-fight .arena-combat-dialog .master-fight-chip-tag { font-size: .72rem; }
+/* telefoni bassi: sprite e riquadri un po' più piccoli per lasciare spazio */
+@media (max-width: 760px) and (max-height: 720px) {
+  .cv-field .fighter-card .fighter-sub, .cv-field .fighter-card .fighter-class { font-size: .7rem !important; }
+  .cv-field .cv-spot--p { height: 36%; }
+  .cv-field .cv-spot--e { height: 18%; }
+}

@@ -27,6 +27,7 @@ import "./ArenaLanista.css";      // Registro del Lanista (vista master) leggibi
 import "./ArenaScontro.css";       // scontro leggibile: cronaca a paragrafi, su PC sotto il campo (per ULTIMO)
 import "./ArenaPalco.css";        // Vista Palco: scontro 1v1 come la lotta dei pet (per ULTIMISSIMO)
 import { useFightMode } from "../utils/fightMode";
+import { useFitFightField } from "../utils/fitFightField";
 import { ARENA_CLASSES, arenaClassKey, classSpriteDocId } from "../data/arenaClassSprites";
 import { ArenaModal } from "./arena/ArenaModal";
 import { ArenaGestaView, CLASS_ICONS, CLASS_IT, FunArenaClassStats, HallOfChampions, TournamentClassStats, classColor } from "./arena/ArenaStats";
@@ -295,6 +296,7 @@ export default function Arena() {
   }, [arenaMeta, currentUser]);
   // Modalità fight (2026-11-02): col combattimento aperto il sito nasconde testata, d20 e flottanti
   useFightMode(combatModalOpen && !!myActiveMatchId);
+  useFitFightField(combatModalOpen && !!myActiveMatchId);
   // Vista Palco: sprite di battaglia dei PG (characters.spriteUrl / deadSpriteUrl), letti una volta
   const spriteIdsKey = useMemo(() => {
     const ids = new Set();
