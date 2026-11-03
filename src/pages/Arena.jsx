@@ -506,6 +506,35 @@ export default function Arena() {
   // agli altri match. `extraFields` per eventuali campi top-level (es. fine torneo).
   // baseOverride: i match da cui l'azione è stata costruita, quando NON sono
   // quelli di questo render (l'IA parte da arenaMetaRef, più recente).
+  // Scatto d'Azione / Azione Scaltra (2026-11-03): molte azioni (Disarmare, Secondo
+  // Respiro, oggetti, abilità…) passano il turno da sole senza guardare le azioni
+  // extra. Con lo Scatto attivo il turno finiva lo stesso (azione extra persa) e lo
+  // Scatto restava acceso fino al turno DOPO (azione extra regalata, tasto "Attivo").
+  // Qui, se un'azione del giocatore ha passato il turno con lo Scatto ancora acceso,
+  // la si conta come una delle sue azioni: se gliene restano, il turno resta suo;
+  // altrimenti il turno passa e lo Scatto si spegne.
+  const keepSurgeAction = (bm, m) => {
+    const uid = currentUser?.uid;
+    if (!uid || m.status === "finished" || bm.turn !== uid || m.turn === uid) return m;
+    const prev = (bm.players || []).find(p => p.id === uid);
+    const now = (m.players || []).find(p => p.id === uid);
+    if (!prev?.actionSurgeActive || !now?.actionSurgeActive) return m; // l'azione ha già gestito lo Scatto
+    const snap = (arenaMeta?.characterSnapshots || {})[uid];
+    const used = prev.multiActionsUsed ?? 0;
+    const max = getMaxActionsPerTurn(snap, prev);
+    if (now.hp > 0 && used + 1 < max) {
+      return {
+        ...m,
+        turn: uid,
+        turnExpiry: bm.turnExpiry || m.turnExpiry,
+        players: m.players.map(p => p.id === uid
+          ? { ...p, multiActionsUsed: used + 1, bonusActionUsed: !!prev.bonusActionUsed || !!p.bonusActionUsed, itemUsedThisTurn: !!prev.itemUsedThisTurn || !!p.itemUsedThisTurn }
+          : p),
+      };
+    }
+    return { ...m, players: m.players.map(p => p.id === uid ? { ...p, actionSurgeActive: false, multiActionsUsed: 0 } : p) };
+  };
+
   const commitArenaMatches = async (nextMatches, extraFields = null, baseOverride = null) => {
     const ref = doc(db, "arena_meta", "global");
     const base = baseOverride || arenaMeta?.matches || [];
@@ -515,9 +544,10 @@ export default function Arena() {
     // dell'azione, o una riga apposta se l'azione non ne ha scritte), i PF NaN
     // tornano al valore di prima, e chi va a 0 chiude il match / perde il turno.
     const closedHere = [];
-    nextMatches = nextMatches.map(m => {
-      const bm = baseById.get(m.matchId);
-      if (!bm || bm === m || baseStr.get(m.matchId) === JSON.stringify(m)) return m;
+    nextMatches = nextMatches.map(m0 => {
+      const bm = baseById.get(m0.matchId);
+      if (!bm || bm === m0 || baseStr.get(m0.matchId) === JSON.stringify(m0)) return m0;
+      const m = keepSurgeAction(bm, m0);
       const audited = auditArenaMatch(bm, m);
       const fin = finalizeArenaMatch(audited);
       if (fin.status === "finished" && m.status !== "finished" && bm.status !== "finished") closedHere.push(fin);
@@ -4987,6 +5017,10 @@ export default function Arena() {
         return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: m.turnExpiry || expiry, logs: [...m.logs, log] };
       });
       await commitArenaMatches(updatedMatches);
+      // Vista Palco: il menu si chiude a ogni riga nuova; dopo lo Scatto resta aperto
+      // (sennò sembra che non sia successo niente) per scegliere subito l'attacco.
+      const after = updatedMatches.find(x => x.matchId === matchId);
+      if (after) setPalcoOpen(matchId + ":" + (after.logs || []).length);
     } finally {
       actionInFlightRef.current = false;
     }
