@@ -130,7 +130,8 @@ export default function Arena() {
   const [palcoOpen, setPalcoOpen] = useState(false);
   const [arenaSprites, setArenaSprites] = useState({}); // uid -> { sprite, dead }
   const [classSprites, setClassSprites] = useState(null); // classe -> png (PG del Master e IA)
-  const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
+  const [combatLogExpanded, setCombatLogExpanded] = useState(false);
+  const [palcoLogOpen, setPalcoLogOpen] = useState(false); // Vista Palco: riga dell'ultima azione aperta in elenco // cronaca a schermo intero (mobile)
   const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
   // ── VFX pixelati sulle card dei combattenti (riuso effetti World Boss) ──
   const [vfxMessages, setVfxMessages] = useState([]);
@@ -10241,6 +10242,39 @@ export default function Arena() {
                   </div>
                 </div>
 
+                {/* Vista Palco: come nei pet, una riga con l'ultima azione sopra il campo;
+                    un tocco apre la cronaca intera (più recente in alto) sopra il campo. */}
+                {palco && (() => {
+                  const logs = m.logs || [];
+                  const last = logs[logs.length - 1];
+                  return (
+                    <div className={`cv-lastlog${palcoLogOpen ? " is-open" : ""}`}>
+                      <button type="button" className="cv-lastlog-btn" onClick={() => setPalcoLogOpen(o => !o)} aria-expanded={palcoLogOpen} title={palcoLogOpen ? "Chiudi la cronaca" : "Apri la cronaca"}>
+                        <span className="cv-lastlog-ico" aria-hidden="true">📜</span>
+                        <span key={logs.length} className="cv-lastlog-text">
+                          {last ? renderLogWithDice(displayLog(last, currentUser?.uid)) : "Il combattimento non è ancora iniziato"}
+                        </span>
+                        <span className="cv-lastlog-n">{logs.length}</span>
+                        <span className="cv-lastlog-caret" aria-hidden="true">{palcoLogOpen ? "▴" : "▾"}</span>
+                      </button>
+                      {palcoLogOpen && (
+                        <ol className="cv-lastlog-list">
+                          {[...logs].reverse().map((l, i) => {
+                            const ts = typeof l === "object" && l.ts ? new Date(l.ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : null;
+                            const mine = typeof l === "object" && (l.attId === currentUser?.uid ? "is-att" : l.defId === currentUser?.uid ? "is-def" : "");
+                            return (
+                              <li key={logs.length - i} className={`${i === 0 ? "is-latest " : ""}${mine || ""}`}>
+                                {ts && <span className="log-ts">{ts}</span>}
+                                {renderLogWithDice(displayLog(l, currentUser?.uid))}
+                                <HpTrace entry={l} players={m.players} />
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className={palco ? `cv-field${arenaMeta.battleBg ? " has-bg" : ""}${palcoCollapsed ? "" : " is-menu"}` : "cv-field-off"} style={palco && arenaMeta.battleBg ? { backgroundImage: `url(${arenaMeta.battleBg})` } : undefined}>
                 {palco && palcoOrder.map((p, i) => {
                   const char = snapshots[p.id] || {};
