@@ -1799,12 +1799,102 @@ function AudioToggles() {
   );
 }
 
+
+/* ── scheda del pet in lotta (2026-11-04): tieni premuto (o tasto destro) su uno
+   sprite → elemento, forte/debole contro, resistenze, CA, PF, statistiche, mosse
+   coi dadi e gli usi rimasti, effetti attivi. Come la scheda del nemico delle Segrete. */
+function usePress(onLong) {
+  const lp = useRef({ t: null, x: 0, y: 0 });
+  const cancel = () => clearTimeout(lp.current.t);
+  return {
+    onPointerDown: (e) => { lp.current.x = e.clientX; lp.current.y = e.clientY; cancel(); lp.current.t = setTimeout(onLong, 450); },
+    onPointerUp: cancel, onPointerLeave: cancel, onPointerCancel: cancel,
+    onPointerMove: (e) => { if (Math.hypot(e.clientX - lp.current.x, e.clientY - lp.current.y) > 12) cancel(); },
+    onContextMenu: (e) => { e.preventDefault(); cancel(); onLong(); },
+  };
+}
+const tList = (arr) => arr.map((t) => `${TYPE_ICON[t]} ${TYPE_LABEL[t]}`).join(", ") || "nessuno";
+function PetBattleCard({ V, art, mine, onClose }) {
+  const f = V.f;
+  const sp = PET_DEX[f.species] || {};
+  const r = resOf(f.species, f.evo) || {};
+  const strong = strongAgainst(f.type), weak = weakAgainst(f.type);
+  const dmgList = (l) => (l || []).map((k) => `${DMG_ICON[k]} ${DMG_LABEL[k]}`).join(", ");
+  const moves = Object.entries(f.pp || {}).filter(([m]) => PET_DEX_MOVES[m]);
+  const fx = fxList(f, V.fx);
+  const stat = (k) => f[k] ?? "—";
+  const noRes = !r.immune?.length && !r.resist?.length && !r.vuln?.length && !f.resist;
+  return createPortal(
+    <div className="pd-card-back" onClick={onClose} role="presentation">
+      <div className="pd-card" role="dialog" aria-modal="true" aria-label={`Scheda di ${f.name}`} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="pd-card-x" onClick={onClose} aria-label="Chiudi">✕</button>
+        <div className="pd-card-head">
+          <PetSprite species={f.species} evo={f.evo} art={art} size={72} flip={!mine} fainted={V.hp <= 0} />
+          <div>
+            <b>{f.name}</b>
+            <small>{sp.name && sp.name !== f.name ? `${sp.name} · ` : ""}Lv {f.level}{f.evo ? " · ✨ evoluto" : ""}</small>
+            <TypeChip type={f.type} />
+          </div>
+        </div>
+        <dl className="pd-card-stats">
+          <div><dt>PF</dt><dd>{V.hp}/{f.maxHp}</dd></div>
+          <div><dt>CA</dt><dd>{acOf(f)}</dd></div>
+          <div><dt>Attacco</dt><dd>{stat("atk")}</dd></div>
+          <div><dt>Difesa</dt><dd>{stat("def")}</dd></div>
+          <div><dt>Velocità</dt><dd>{stat("spd")}</dd></div>
+          <div><dt>Colpire · TS</dt><dd>+{f.toHit ?? 0} · +{f.save ?? 0}</dd></div>
+        </dl>
+        <p className="pd-card-h">⚔ Elemento {TYPE_ICON[f.type]} {TYPE_LABEL[f.type]}</p>
+        <ul className="pd-card-list">
+          <li className="is-good"><span>Forte contro</span>{tList(strong)} <em>(le sue mosse di questo elemento fanno ×1,5)</em></li>
+          <li className="is-bad"><span>Debole contro</span>{tList(weak)} <em>(quegli elementi gli fanno ×1,5; i suoi colpi contro di loro ×0,5)</em></li>
+        </ul>
+        <p className="pd-card-h">🛡 Resistenze</p>
+        <ul className="pd-card-list">
+          {r.immune?.length > 0 && <li className="is-good"><span>Immune</span>{dmgList(r.immune)}</li>}
+          {r.resist?.length > 0 && <li className="is-good"><span>Resiste (½)</span>{dmgList(r.resist)}</li>}
+          {r.vuln?.length > 0 && <li className="is-bad"><span>Vulnerabile (×2)</span>{dmgList(r.vuln)}</li>}
+          {f.resist && <li className="is-good"><span>Amuleto</span>resiste a {TYPE_ICON[f.resist] || DMG_ICON[f.resist] || ""} {TYPE_LABEL[f.resist] || DMG_LABEL[f.resist] || f.resist}</li>}
+          {noRes && <li><span>—</span>nessuna resistenza particolare</li>}
+        </ul>
+        {moves.length > 0 && (<>
+          <p className="pd-card-h">✦ Mosse</p>
+          <ul className="pd-card-list">
+            {moves.map(([m, left]) => {
+              const mv = PET_DEX_MOVES[m];
+              const dice = diceText(m, f.level);
+              return (
+                <li key={m}>
+                  <span>{TYPE_ICON[mv.type]} {mv.name}</span>
+                  {dice ? `${dice} + ${f.atkMod ?? 0}` : "di stato"} · {moveCat(m) === "atk" ? "attacco" : "incantesimo"}
+                  {" · "}{left === INFINITE ? "∞" : `${left} ${left === 1 ? "uso" : "usi"}`}{m === f.sig ? " · ✨ speciale" : ""}
+                </li>
+              );
+            })}
+          </ul>
+        </>)}
+        {fx.length > 0 && (<>
+          <p className="pd-card-h">⏳ Effetti attivi</p>
+          <ul className="pd-card-list">
+            {fx.map((x) => <li key={x.k} className={x.good ? "is-good" : "is-bad"}><span>{x.icon} {x.dur}</span>{x.text}</li>)}
+          </ul>
+        </>)}
+        <p className="pd-card-hint">Tieni premuto su un pet in campo per vedere la sua scheda.</p>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // Campo di lotta: HUD (con CA), sprite, effetti, dado del tiro e testo.
 function BattleScreen({ battle, player, art, top, children, controls = null, labels = {} }) {
   useFightMode(true); // lotta aperta: via testata, d20 e flottanti del sito
   const { shown, seq, busy, history } = player;
   const [histOpen, setHistOpen] = useState(false);
   const [fxOpen, setFxOpen] = useState(null);
+  const [card, setCard] = useState(null); // "p" | "e" = scheda aperta
+  const pressE = usePress(() => setCard("e"));
+  const pressP = usePress(() => setCard("p"));
   const fieldRef = useRef(null);
   const spotP = useRef(null), spotE = useRef(null);
   const snap = busy ? (shown?.snap || null) : null;
@@ -1853,13 +1943,13 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
         {hud("e", E)}
         <div className={`pd-spot pd-spot--e${E.status && E.hp > 0 ? ` pd-st-${E.status}` : ""}`} ref={spotE}>
           {E.hp > 0 && <StatusBubble st={E.status} fx={E.fx} />}
-          <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")}`}>
+          <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")} pd-pressable`} {...pressE} title="Tieni premuto per la scheda">
             <PetSprite key={`e${E.idx}`} species={E.f.species} evo={E.f.evo} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
           </div>
         </div>
         <div className={`pd-spot pd-spot--p${P.status && P.hp > 0 ? ` pd-st-${P.status}` : ""}`} ref={spotP}>
           {P.hp > 0 && <StatusBubble st={P.status} fx={P.fx} />}
-          <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")}`}>
+          <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")} pd-pressable`} {...pressP} title="Tieni premuto per la scheda">
             <PetSprite key={`p${P.idx}`} species={P.f.species} evo={P.f.evo} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
           </div>
         </div>
@@ -1871,6 +1961,7 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
         </div>
         <PetFx ev={shown} seq={seq} fieldRef={fieldRef} spotRefs={{ p: spotP, e: spotE }} />
       </div>
+      {card && <PetBattleCard V={card === "e" ? E : P} art={art} mine={card === "p"} onClose={() => setCard(null)} />}
       <div className="pd-console">
         <p className="pd-text" aria-live="polite">{shown?.text || history[history.length - 1] || ""}</p>
         {history.length > 1 && (

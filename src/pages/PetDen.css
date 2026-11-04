@@ -889,3 +889,24 @@
 .pd-ready-teams > div { display: grid; gap: 2px; padding: 6px 8px; background: rgba(0,0,0,.25); border-radius: 4px; }
 .pd-ready-teams span { font-family: var(--font-num); font-size: .85rem; }
 @media (max-width: 520px) { .pd-ready-teams { grid-template-columns: 1fr; } }
+
+/* scheda del pet in lotta (pressione lunga, 2026-11-04) */
+.pd-pressable { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; cursor: help; }
+.pd-card-back { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.65); }
+.pd-card { position: relative; width: min(440px, 100%); max-height: 86vh; overflow-y: auto; padding: 16px; background: #15111c; border: 2px solid #f2c14e; color: #f3ead8; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.pd-card-x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 1rem; cursor: pointer; }
+.pd-card-head { display: flex; gap: 12px; align-items: center; padding-right: 36px; }
+.pd-card-head b { display: block; font-size: 1.15rem; color: #fff; }
+.pd-card-head small { display: block; margin-bottom: 4px; font-size: .82rem; color: #d8ccb4; }
+.pd-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 14px 0 4px; }
+.pd-card-stats div { padding: 6px 8px; background: rgba(0,0,0,.35); border: 1px solid rgba(243,234,216,.15); }
+.pd-card-stats dt { font-size: .7rem; color: #d8ccb4; text-transform: uppercase; letter-spacing: .06em; }
+.pd-card-stats dd { margin: 2px 0 0; font-size: 1.05rem; font-weight: 800; color: #fff; }
+.pd-card .pd-card-h { margin: 12px 0 4px; font-weight: 800; color: #f2c14e; font-size: .9rem; }
+.pd-card-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: .88rem; }
+.pd-card-list li { padding: 5px 8px; background: rgba(0,0,0,.25); color: #f3ead8; border-left: 3px solid transparent; }
+.pd-card-list li.is-good { border-left-color: #6fd17c; }
+.pd-card-list li.is-bad { border-left-color: #e5675a; }
+.pd-card-list li span { display: inline-block; min-width: 8.5em; margin-right: 6px; color: #d8ccb4; font-weight: 700; }
+.pd-card-list li em { color: #b9ad97; font-style: normal; font-size: .8rem; }
+.pd-card .pd-card-hint { margin: 12px 0 0; font-size: .8rem; color: #b9ad97; }
