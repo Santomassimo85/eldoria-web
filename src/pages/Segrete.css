@@ -123,3 +123,13 @@
 .sgr-page .sgb-turn, .sgr-page .sgb-end p, .sgr-page .sgb-pickmsg { color: #f3ead8; }
 .sgr-page .sgb-turn--wait { color: #e9dcc4; }
 .sgr-page .sgb-result { color: #f2c14e; }
+
+/* inviti (2026-11-04) */
+.sgr-invite { margin-top: 14px; }
+.sgr-invite-box { margin-top: 8px; padding: 10px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .18); border-radius: 3px; background: var(--roccia-1, #17141b); }
+.sgr-invite-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: 6px; margin: 8px 0; }
+.sgr-invite-p { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .2); border-radius: 3px; color: var(--osso, #ece5d6); }
+.sgr-invite-p.is-on { border-color: var(--el, #e0a85a); background: rgba(var(--el-rgb, 224,168,90), .12); }
+.sgr-invite-p small { margin-left: auto; color: #8ee69a; font-size: .76rem; }
+.sgr-page .sgr-invited { margin: 0 0 6px; color: #f2c14e; font-weight: 700; }
+.sgr-room.is-invited { border-color: #f2c14e; box-shadow: inset 0 0 0 1px #f2c14e; }

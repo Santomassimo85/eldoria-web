@@ -5,17 +5,18 @@
    Il combattimento (motore sul server + IA dei nemici) arriva nella fase 3. */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
   MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, runsOf, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
-  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom,
+  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers,
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
@@ -82,9 +83,10 @@ export default function Segrete() {
   const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
   const inFight = !!myRoom && (myRoom.status === "running" || myRoom.status === "done");
   const now = Date.now();
+  const invitedTo = (r) => (r.invited || []).find((i) => i.uid === uid) || null;
   const openRooms = rooms
     .filter((r) => r.status === "open" && r.id !== myRoom?.id)
-    .sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
+    .sort((a, b) => Number(invitedTo(b)) - Number(invitedTo(a)) || tsMs(b.updatedAt) - tsMs(a.updatedAt));
   const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id);
 
   const run = async (fn) => {
@@ -159,7 +161,8 @@ export default function Segrete() {
               {openRooms.map((r) => {
                 const idle = now - tsMs(r.updatedAt) > ROOM_IDLE_MS;
                 return (
-                  <li key={r.id} className="sgr-room">
+                  <li key={r.id} className={`sgr-room${invitedTo(r) ? " is-invited" : ""}`}>
+                    {invitedTo(r) && <p className="sgr-invited">📨 {invitedTo(r).by || "Il gruppo"} ti ha invitato!</p>}
                     <div className="sgr-room-top">
                       <b className="sgr-room-name">{r.name}</b>
                       <DungeonBadge d={dungeonOf(r.type)} />
@@ -278,10 +281,62 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun
         <span className="sgr-start-n">{readyN}/{room.members.length} pronti{allReady(room) ? "" : room.members.length > 1 ? " · si parte quando premono tutti" : ""}</span>
       </div>
 
+      {room.members.length < MAX_PARTY && <InvitePanel room={room} uid={uid} myName={me?.name || charData?.name} busy={busy} run={run} />}
+
       <div className="sgr-room-actions">
         <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => leaveRoom(room.id, uid))}>Esci dal gruppo</button>
         {master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => forceStart(room.id))}>▶ Avvia comunque (Master)</button>}
       </div>
     </section>
+  );
+}
+
+/* Invita giocatori (2026-11-04): elenco dei personaggi attivi (non nascosti, non già
+   nel gruppo), si spuntano e parte una notifica a ognuno. */
+function InvitePanel({ room, uid, myName, busy, run }) {
+  const [open, setOpen] = useState(false);
+  const [players, setPlayers] = useState(null);
+  const [sel, setSel] = useState([]);
+  const [done, setDone] = useState("");
+  useEffect(() => {
+    if (!open || players) return;
+    getDocs(collection(db, "characters")).then((s) => {
+      setPlayers(s.docs.map((d) => ({ uid: d.id, ...d.data() }))
+        .filter((c) => c.name && !isHiddenChar({ id: c.uid, name: c.name }) && c.uid !== uid && !String(c.name).toLowerCase().includes("master"))
+        .sort((a, b) => String(a.name).localeCompare(b.name)));
+    }).catch(() => setPlayers([]));
+  }, [open, players, uid]);
+  const invited = new Set((room.invited || []).map((i) => i.uid));
+  const list = (players || []).filter((p) => !(room.memberIds || []).includes(p.uid));
+  const free = MAX_PARTY - room.members.length;
+  const toggle = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const send = () => run(async () => {
+    const targets = list.filter((p) => sel.includes(p.uid)).map((p) => ({ uid: p.uid, name: p.name }));
+    const n = await invitePlayers(room.id, uid, myName, targets);
+    setSel([]); setDone(`📨 ${n === 1 ? "Invito mandato" : `${n} inviti mandati`}: riceveranno una notifica.`);
+  });
+  return (
+    <div className="sgr-invite">
+      <button type="button" className="sgr-btn sgr-btn--ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        📨 Invita giocatori {open ? "▴" : "▾"}
+      </button>
+      {open && (
+        <div className="sgr-invite-box">
+          <p className="sgr-hint">Posti liberi: {free}. Scegli chi invitare: riceve una notifica e trova il gruppo in cima alla lista.</p>
+          {!players && <p className="sgr-hint">Carico i giocatori…</p>}
+          <div className="sgr-invite-list">
+            {list.map((p) => (
+              <label key={p.uid} className={`sgr-invite-p${sel.includes(p.uid) ? " is-on" : ""}`}>
+                <input type="checkbox" checked={sel.includes(p.uid)} onChange={() => toggle(p.uid)} />
+                <span>{p.name}</span>
+                {invited.has(p.uid) && <small>✓ già invitato</small>}
+              </label>
+            ))}
+          </div>
+          {done && <p className="sgr-hint">{done}</p>}
+          <button type="button" className="sgr-btn" disabled={busy || !sel.length} onClick={send}>📨 Invita {sel.length ? `(${sel.length})` : ""}</button>
+        </div>
+      )}
+    </div>
   );
 }

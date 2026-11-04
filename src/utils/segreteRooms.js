@@ -4,7 +4,7 @@
           updatedAt, startedAt }
    Tutto in transazione: due giocatori che entrano insieme nell'ultimo posto
    non sforano mai i 4; l'ultimo che preme Avvia fa partire il dungeon. */
-import { collection, doc, runTransaction, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, serverTimestamp, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
 import { MAX_PARTY, allReady } from "../data/segrete";
@@ -53,7 +53,7 @@ export const joinRoom = (roomId, uid, char, cls, level) => editRoom(roomId, (roo
   if (room.members.length >= MAX_PARTY) throw new Error(`Il gruppo è pieno (${MAX_PARTY} su ${MAX_PARTY}).`);
   // chi entra toglie le spunte: il gruppo è cambiato, tutti riconfermano
   const members = room.members.map((m) => ({ ...m, ready: false })).concat(memberFrom(uid, char, cls, level));
-  return { members, memberIds: members.map((m) => m.uid) };
+  return { members, memberIds: members.map((m) => m.uid), invited: (room.invited || []).filter((i) => i.uid !== uid) };
 });
 
 export const leaveRoom = (roomId, uid) => editRoom(roomId, (room) => {
@@ -98,3 +98,28 @@ export const forceStart = (roomId) => editRoom(roomId, (room) => (room.status ==
 export const reopenRoom = (roomId) => editRoom(roomId, (room) => ({ status: "open", startedAt: null, members: room.members.map((m) => ({ ...m, ready: false })) }));
 
 export const deleteRoom = (roomId) => deleteDoc(doc(db, "dungeon_rooms", roomId));
+
+/* Inviti (2026-11-04): chi è nel gruppo sceglie chi invitare. La stanza tiene
+   `invited: [{uid, name, by}]` (nella lobby l'invitato la vede in cima con
+   "Ti hanno invitato") e a ognuno parte una notifica (campanella + push) che
+   porta alle Segrete. Entrare resta libero come per tutti i gruppi aperti. */
+export async function invitePlayers(roomId, byUid, byName, targets) {
+  const list = (targets || []).filter((t) => t?.uid && t.uid !== byUid);
+  if (!list.length) return 0;
+  let roomName = "";
+  await editRoom(roomId, (room) => {
+    if (room.status !== "open") throw new Error("Il gruppo è già partito.");
+    if (!(room.memberIds || []).includes(byUid)) throw new Error("Puoi invitare solo dal tuo gruppo.");
+    roomName = room.name;
+    const prev = (room.invited || []).filter((i) => !list.some((t) => t.uid === i.uid));
+    return { invited: [...prev, ...list.map((t) => ({ uid: t.uid, name: t.name || "", by: byName || "" }))].slice(-40) };
+  });
+  await Promise.all(list.map((t) => addDoc(collection(db, "notifications"), {
+    userId: t.uid,
+    title: "🗝 Invito nelle Segrete",
+    message: `${byName || "Un compagno"} ti invita nel gruppo «${roomName}». Entra da Sala della Gloria → Le Segrete (serve l'eroe della classe con cui vuoi entrare).`,
+    link: "/segrete",
+    read: false, timestamp: serverTimestamp(),
+  })));
+  return list.length;
+}
