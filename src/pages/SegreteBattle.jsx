@@ -210,7 +210,7 @@ export default function SegreteBattle({ room, uid }) {
 
   return (
     <div className="sgb">
-      <VfxLayer messages={vfxMsgs} selfUid={uid} />
+      <VfxLayer messages={vfxMsgs} selfUid={uid} canvas />
       {inspect && (() => {
         const f = run.foes.find((x) => x.id === inspect);
         return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;

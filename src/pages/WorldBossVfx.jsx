@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./WorldBossVfx.css";
 import { spellSound } from "../utils/petAudio";
+import { playSpell } from "../fx/spellFx";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
 const VFX_SOUNDS = {
@@ -185,7 +186,9 @@ function domePixels(Rx, Ry, P) {
 // `selfUid`: i tiri degli altri arrivano col d20 3D a schermo (msg.dice): l effetto parte
 // quando il dado si è fermato, come per chi ha tirato.
 const DICE_LAND_MS = 1400;
-export function VfxLayer({ messages, selfUid = null }) {
+// `canvas` (2026-11-04): gli effetti li disegna il motore "RPG old style" di src/fx/spellFx.js
+// (luce, fumo, fiamme, scariche) invece dei pixel in DOM. Lo usano Arena e Segrete; il World Boss no.
+export function VfxLayer({ messages, selfUid = null, canvas = false }) {
   const seenRef = useRef(new Set());
   const mountedAtRef = useRef(Date.now());
   const [items, setItems] = useState([]);
@@ -217,24 +220,19 @@ export function VfxLayer({ messages, selfUid = null }) {
       if (ts && ts < mountedAtRef.current - 5000) { seenRef.current.add(msg.id); continue; }
       seenRef.current.add(msg.id);
       const play = () => {
+        if (canvas) { if (playCanvas(msg, targets)) soundFor(msg, targets); return; }
         const spawned = spawnFor(msg, targets);
         if (!spawned.length) return;
         setItems((prev) => [...prev, ...spawned]);
         const ids = new Set(spawned.map((s) => s.id));
         const ttl = Math.max(...spawned.map((s) => s.delay + s.dur)) + 150;
         setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
-        // Suono: i colpi d'arma fisici restano gli mp3; incantesimi ed elementi sono
-        // sintetizzati per forma + elemento (ogni spell ha la sua voce).
-        const ne = normalizeEffect(msg);
-        const missAll = targets.length && (msg.effectMissTargets || []).length >= targets.length;
-        if (ne.kind === "heal") playSound("heal");
-        else if ((ne.kind === "slash" || ne.kind === "arrow" || ne.kind === "hit") && (ne.el === "physical" || !msg.effectEl)) playSound(ne.kind);
-        else spellSound({ kind: ne.kind, el: ne.el, miss: !!missAll, kill: (msg.effectKill || []).length > 0 });
+        soundFor(msg, targets);
       };
       if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(play, DICE_LAND_MS);
       else play();
     }
-  }, [messages, selfUid]);
+  }, [messages, selfUid, canvas]);
 
   if (typeof document === "undefined") return null;
   return createPortal(
@@ -243,6 +241,35 @@ export function VfxLayer({ messages, selfUid = null }) {
     </div>,
     document.body,
   );
+}
+
+// Suono: i colpi d'arma fisici restano gli mp3; incantesimi ed elementi sono
+// sintetizzati per forma + elemento (ogni spell ha la sua voce).
+function soundFor(msg, targets) {
+  const ne = normalizeEffect(msg);
+  const missAll = targets.length && (msg.effectMissTargets || []).length >= targets.length;
+  if (ne.kind === "heal") playSound("heal");
+  else if ((ne.kind === "slash" || ne.kind === "arrow" || ne.kind === "hit") && (ne.el === "physical" || !msg.effectEl)) playSound(ne.kind);
+  else spellSound({ kind: ne.kind, el: ne.el, miss: !!missAll, kill: (msg.effectKill || []).length > 0 });
+}
+
+// Modalità canvas: un effetto del motore per ogni bersaglio, sfalsati come i pezzi DOM.
+function playCanvas(msg, targets) {
+  const { kind, el } = normalizeEffect(msg);
+  const missSet = new Set(Array.isArray(msg.effectMissTargets) ? msg.effectMissTargets : (msg.effectMiss ? targets : []));
+  const killSet = new Set(Array.isArray(msg.effectKill) ? msg.effectKill : []);
+  const anchors = targets.map((t) => ({ key: t, a: anchorOf(t) })).filter((x) => x.a);
+  if (!anchors.length) return false;
+  const pt = (a) => ({ x: a.x, y: a.y, size: a.size, bottom: a.bottom });
+  anchors.forEach(({ key, a }, i) => {
+    const o = { el, to: pt(a), miss: missSet.has(key), kill: killSet.has(key) };
+    if (kind === "bolt" || kind === "arrow") playSpell({ ...o, kind, from: pt(sourceOf(msg.effectFrom, a)), delay: i * 110 });
+    else if (kind === "aoe") playSpell({ ...o, kind: "aoe", delay: i * 130 });
+    else if (kind === "slash") playSpell({ ...o, kind: "slash", delay: i * 90 });
+    else if (kind === "hit") playSpell({ ...o, kind: "impact", delay: i * 90, scale: 0.85 });
+    else playSpell({ ...o, kind, miss: false, kill: false, delay: i * 60 }); // heal · buff · shield · debuff
+  });
+  return true;
 }
 
 let seq = 0;

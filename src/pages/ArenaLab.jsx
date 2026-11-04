@@ -579,7 +579,7 @@ function Battle({ me, foe, meCls, foeCls, bg, uid }) {
         <summary>📜 Cronologia del fight ({log.length}) · round {st.round}</summary>
         <ol>{log.map((l) => <li key={l.id} className={l.kind}>{l.text}</li>)}</ol>
       </details>
-      <VfxLayer messages={msgs} selfUid={uid} />
+      <VfxLayer messages={msgs} selfUid={uid} canvas />
     </section>
   );
 }

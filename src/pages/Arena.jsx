@@ -7281,7 +7281,7 @@ export default function Arena() {
     <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}${arenaView === "join" ? " arena-page--lizza" : arenaView === "master" ? " arena-page--lanista" : ""}`}>
 
       {/* ── VFX pixelati (stile World Boss isometrico): overlay sopra le card ── */}
-      <VfxLayer messages={vfxMessages} />
+      <VfxLayer messages={vfxMessages} canvas />
 
       {/* ── Floating Fight Button — sempre visibile durante un match attivo.
             Più epico quando è il tuo turno (pulsa rosso). ── */}
