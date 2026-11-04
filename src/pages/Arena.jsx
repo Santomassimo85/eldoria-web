@@ -3,10 +3,12 @@ import { createPortal } from "react-dom";
 import { db } from "../firebase";
 import { doc, getDoc, getDocs, onSnapshot, updateDoc, deleteDoc, arrayUnion, arrayRemove, addDoc, collection, serverTimestamp, runTransaction, increment, query, where, writeBatch } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import { showD20Roll, DICE_SKINS, setDiceSkin, preloadDice3D } from "../components/DiceRoll";
+import { showD20Roll, DICE_SKINS, setDiceSkin, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import TimerDisplay from "../components/TimerDisplay";
 import { VfxLayer } from "./WorldBossVfx";   // effetti pixel del World Boss (forma + elemento), condivisi con l'Arena
+import { popAt } from "../fx/hitNumbers";
+import StatusPips from "../components/StatusPips";
 import { awardPetPoints } from "../utils/pet";
 import { getSubclassDef, subclassToMount } from "../data/arenaSubclasses";
 import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
@@ -393,7 +395,18 @@ export default function Arena() {
       for (const entry of logs) {
         if (!entry || typeof entry !== "object" || !entry.ts) continue;
         const fx = classifyArenaVfx(entry);
-        if (!fx) continue;
+        // 2026-11-04: numeri dei PF sugli sprite, dalla traccia `hp: {uid: [prima, dopo]}` della riga
+        const nums = Object.entries(entry.hp || {})
+          .map(([uid, pair]) => ({ t: key(uid), v: Array.isArray(pair) ? (Number(pair[1]) || 0) - (Number(pair[0]) || 0) : 0, crit: /CRITICO/i.test(entry.pub || "") }))
+          .filter((n) => n.v);
+        if (!fx) {
+          const nid = `n:${m.matchId}:${entry.ts}`;
+          if (nums.length && !vfxSeenRef.current.has(nid)) {
+            vfxSeenRef.current.add(nid);
+            if (baselined) whenDiceIdle().then(() => nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, delay: 120 })));
+          }
+          continue;
+        }
         const id = `${m.matchId}:${entry.ts}`;
         if (vfxSeenRef.current.has(id)) continue;
         vfxSeenRef.current.add(id);
@@ -411,6 +424,7 @@ export default function Arena() {
           ...(offensive && entry.attId ? { effectFrom: key(entry.attId) } : {}),
           ...(fx.miss ? { effectMissTargets: [key(targetId)] } : {}),
           ...(killed ? { effectKill: [key(targetId)] } : {}),
+          ...(nums.length ? { effectNums: nums } : {}),
         });
       }
       // Effetti dal campo parallelo lastFx (pet/demoni/costrutti/cure/IA)
@@ -10298,12 +10312,8 @@ export default function Arena() {
                         const sts = getFighterStatuses(p);
                         if (!sts.length) return null;
                         return (
-                          <span className="cv-st-bubbles" aria-label={sts.map((x) => x.text).join(", ")}>
-                            {sts.slice(0, 5).map((x, k) => (
-                              <i key={x.key} className={GOOD_STATUS_CLS.has(x.cls) ? "is-good" : "is-bad"} style={{ animationDelay: `${k * 0.18}s` }} title={x.tip || x.text}>{x.icon}</i>
-                            ))}
-                            {sts.length > 5 && <i className="is-more">+{sts.length - 5}</i>}
-                          </span>
+                          <StatusPips className="cv-st-pips"
+                            items={sts.map((x) => ({ k: x.key, icon: x.icon, tag: x.tag, dur: x.dur, good: GOOD_STATUS_CLS.has(x.cls), tip: x.tip || x.text }))} />
                         );
                       })()}
                       {src

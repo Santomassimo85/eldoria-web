@@ -1131,7 +1131,47 @@ export function getFighterStatuses(p) {
     push("wild", ws?.icon || "🐾", ws?.name || "Forma Selvatica", "is-wild");
   }
 
+  // 2026-11-04: effetto in breve e durata per le icone sullo sprite (StatusPips)
+  out.forEach((x) => Object.assign(x, statusShort(x.key, p)));
   return out;
+}
+
+// effetto corto (tag) e durata (dur) di ogni stato dell'Arena
+function statusShort(key, p) {
+  const n = (v) => (v == null ? "" : String(v));
+  switch (key) {
+    case "poison": return { tag: p.poisonDoTDice ? `${p.poisonDoTDice}/t` : "danni/t", dur: n(p.poisonDoTTurns ?? 1) };
+    case "bleed": return { tag: p.bleedDoTDice ? `${p.bleedDoTDice}/t` : "danni/t", dur: n(p.bleedDoTTurns ?? 1) };
+    case "savedot": return { tag: "deve TS", dur: "" };
+    case "entangled": return { tag: "bloccato", dur: "" };
+    case "control": return { tag: "salta", dur: n(p.controlLostTurns) };
+    case "wlock": return { tag: "no arma", dur: n(p.weaponLockTurns) };
+    case "disadv": return { tag: "svant.", dur: n(p.attackDisadvantageTurns) };
+    case "blind": return { tag: "−3 colp.", dur: n(p.eagleDebuffTurns || "") };
+    case "shield": return { tag: `+${p.shieldSkillBonus ?? 3} CA`, dur: n(p.shieldSkillTurns) };
+    case "def": return { tag: `+${p.defensiveBonus} CA`, dur: "1" };
+    case "savebuff": return { tag: `+${p.saveBuffBonus ?? 0} TS`, dur: `${p.saveBuffAttacks}×` };
+    case "savefaith": return { tag: `+${p.saveFaithBonus ?? 2} TS`, dur: n(p.saveFaithTurns) };
+    case "absorb": return { tag: "difesa", dur: "1×" };
+    case "selfadv": return { tag: "vant.", dur: n(p.selfAdvTurns) };
+    case "stealth": return { tag: "vant.", dur: n(readStealthAdvTurns(p)) };
+    case "invis": return { tag: "invisib.", dur: "" };
+    case "wpoison": return { tag: "+1d12", dur: "1×" };
+    case "aid": return { tag: `+${readActiveBonus(p.aidBuff, 4)} colp.`, dur: "1×" };
+    case "aiddmg": return { tag: `+${p.aidDmgBonus ?? 1} danni`, dur: n(p.aidDmgTurns) };
+    case "frenzy-tired": return { tag: "svant.", dur: "1" };
+    case "mighty": return { tag: "vant.", dur: "1×" };
+    case "frenzy": return { tag: "+1 att.", dur: "1" };
+    case "rage": return { tag: `+${p.rageBonus ?? 2} danni`, dur: n(p.rageTurns) };
+    case "mark": return { tag: "+3 colp.", dur: n(p.hunterMarkTurns) };
+    case "surge": return { tag: "+1 az.", dur: "1" };
+    case "extra": return { tag: "+1 az.", dur: "1" };
+    case "bard": return { tag: "+1d6", dur: "1×" };
+    case "md": return { tag: `+${readActiveBonus(p.magicDetectActive, 3)} colp.`, dur: `${p.magicDetectAttacks ?? 1}×` };
+    case "conc": return { tag: "concentr.", dur: n(p.concentrationTurns) };
+    case "wild": return { tag: "forma", dur: "" };
+    default: return { tag: "", dur: "" };
+  }
 }
 
 export function getArmorConfig(cls) {

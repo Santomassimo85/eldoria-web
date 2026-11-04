@@ -28,6 +28,7 @@ import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
+import StatusPips from "../components/StatusPips";
 import { VfxLayer } from "./WorldBossVfx";
 import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
@@ -50,6 +51,28 @@ function SceneHp({ hp, max, shield, variant, title, label, style }) {
 
 // Contenitore di uno sprite quadrato (eroi, servi) che conosce dove stanno i piedi e il
 // centro della figura (--feet, --cx): il CSS ci aggancia nome e barra dei PF.
+// Icone di stato sugli sprite (2026-11-04): effetto in breve + turni rimasti.
+// hero = scheda del PG (selfAcBonus = per tutta la battaglia), altrimenti boss/minion (acBuffs a turni).
+function wbStatusItems(e, turn, hero = false) {
+  if (!e) return [];
+  const L = [];
+  const shield = hero ? e.stats?.shield : e.shield;
+  if ((shield ?? 0) > 0) L.push({ k: "shield", icon: "🛡", tag: `${shield} scudo`, dur: "", good: true, tip: `Scudo: assorbe ${shield} danni` });
+  if (hero && (e.selfAcBonus ?? 0) > 0) L.push({ k: "ac", icon: "🧱", tag: `+${e.selfAcBonus} CA`, dur: "∞", good: true, tip: `${e.selfAcSource || "Buff CA"}: +${e.selfAcBonus} CA per tutta la battaglia` });
+  if (!hero) activeAcBuffs(e, turn).forEach((b, i) => {
+    const left = Number(b.untilTurn) - Number(turn) + 1;
+    L.push({ k: `ac${i}`, icon: "🧱", tag: `+${b.bonus} CA`, dur: String(left), good: true, tip: `${b.source || "Buff"}: +${b.bonus} CA per ${left} turn${left === 1 ? "o" : "i"}` });
+  });
+  const c = activeCond(e, turn);
+  if (c) {
+    const left = condTurnsLeft(e, turn);
+    const adv = c === "advantage";
+    L.push({ k: "cond", icon: adv ? "🎯" : "🌫", tag: adv ? "vant." : "svant.", dur: left ? String(left) : "1×", good: adv,
+      tip: `${adv ? "Vantaggio" : "Svantaggio"} ${left ? `per ${left} turn${left === 1 ? "o" : "i"}` : "al prossimo tiro"}${e.debuffSource ? ` (${e.debuffSource})` : ""}` });
+  }
+  return L;
+}
+
 function SpriteFrame({ url, mirrored, style, children, ...rest }) {
   const box = useSpriteBox(url, mirrored);
   return <div {...rest} style={{ ...style, ...spriteVars(box) }}>{children}</div>;
@@ -119,9 +142,12 @@ function masterActionMeta(a) {
 }
 
 // `kind` forza la forma (heal/buff/shield/debuff); altrimenti la decide l'azione.
-const fxFields = (action, targets, { kind = null, from = null, miss = [], kill = [] } = {}) => {
+// nums = [{ t: chiave vfx, v: PF (−danno / +cura), crit }] → numeri sugli sprite (2026-11-04)
+const fxFields = (action, targets, { kind = null, from = null, miss = [], kill = [], nums = [] } = {}) => {
   const fx = pickEffectForAction(action, kind);
   const out = { effect: fx.kind, effectEl: fx.el, effectTargets: targets };
+  const n = nums.filter((x) => x && x.t && Number(x.v));
+  if (n.length) out.effectNums = n.map((x) => ({ t: x.t, v: Number(x.v), ...(x.crit ? { crit: true } : {}) }));
   if (from) out.effectFrom = from;
   if (miss.length) out.effectMissTargets = miss;
   if (kill.length) out.effectKill = kill;
@@ -761,6 +787,7 @@ export default function WorldBoss() {
     const formula = resolveSkillFormula(skill);
     const { total, detail } = rollDetail(formula);
     const rows = [];
+    const healNums = [];
     try {
       const batch = writeBatch(db);
       for (const id of targetIds) {
@@ -771,6 +798,7 @@ export default function WorldBoss() {
         const nh = Math.min(max, cur + total);
         batch.update(doc(db, "characters", id), { "stats.hp": nh });
         rows.push(`${(t.name || "alleato").split(" ")[0]} +${nh - cur} (${cur}→${nh})`);
+        healNums.push({ t: `player-${id}`, v: nh - cur });
       }
       await batch.commit();
       await addDoc(collection(db, "world_boss_chat"), {
@@ -778,6 +806,7 @@ export default function WorldBoss() {
         actionName: `${action.name} (Cura)`,
         damageRoll: `💚 ${rows.join(" · ")}`,
         description: `Tiro cura: ${detail || formula} = ${total}`,
+        effectNums: healNums.filter((x) => x.v > 0),
         uid: currentUser.uid, category: action.category || "Abilità",
         timestamp: serverTimestamp(),
         effect: "heal", effectEl: "radiant", effectTargets: targetIds.map((id) => `player-${id}`),
@@ -934,6 +963,7 @@ export default function WorldBoss() {
     const cleanFormula = String(formula).replace(/@mod/g, spellMod);
     const healRoll = rollDice(cleanFormula);
     const rows = [];
+    const healNums = [];
     try {
       const batch = writeBatch(db);
       for (const t of targets) {
@@ -942,11 +972,13 @@ export default function WorldBoss() {
         const nh = Math.min(max, cur + healRoll);
         batch.update(doc(db, "characters", t.id), { "stats.hp": nh });
         rows.push(`${(t.name || "alleato").split(" ")[0]} +${nh - cur} (${cur}→${nh})`);
+        healNums.push({ t: `player-${t.id}`, v: nh - cur });
       }
       await batch.commit();
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
         actionName: `${action.name} (Cura)`,
+        effectNums: healNums.filter((x) => x.v > 0),
         damageRoll: `💚 ${rows.join(" · ")}`,
         description: `Tiro cura: ${cleanFormula} = ${healRoll}${spellMod !== 0 ? ` (incl. mod magia +${spellMod})` : ""}`,
         uid: currentUser.uid, category: action.category || "Incantesimo",
@@ -1100,6 +1132,7 @@ export default function WorldBoss() {
           kind: enemiesArg?.length === 1 ? "bolt" : "aoe", from: `player-${myUid}`,
           miss: results.filter((r) => r.dmg === 0).map((r) => r.enemy.vfxKey),
           kill: results.filter((r) => r.killed).map((r) => r.enemy.vfxKey),
+          nums: results.map((r) => ({ t: r.enemy.vfxKey, v: -r.dmg })),
         }),
       });
       if (activeBosses[0]?.id) {
@@ -1146,7 +1179,7 @@ export default function WorldBoss() {
         damageRoll,
         uid: currentUser.uid, category: action.category,
         timestamp: serverTimestamp(),
-        ...fxFields(action, [boss.vfxKey], { kind: "bolt", from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }),
+        ...fxFields(action, [boss.vfxKey], { kind: "bolt", from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [], nums: [{ t: boss.vfxKey, v: -totalDamage }] }),
       });
       if (activeBosses[0]?.id) {
         await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
@@ -1363,7 +1396,7 @@ export default function WorldBoss() {
         actionData.damageRoll = `${damageString} = ${resNote ? `${rolledTotal}${resNote} → ` : ""}💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
         if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
-        Object.assign(actionData, fxFields(fxAction, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [] }));
+        Object.assign(actionData, fxFields(fxAction, [boss.vfxKey], { from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [], nums: [{ t: boss.vfxKey, v: -totalDamage, crit: isCritical }] }));
         // uso limitato speso solo a colpo andato a segno (lo smite si decide dopo il colpo)
         await markSkillUsed(rider, riderSkill);
         await markSkillUsed(action, skill);
@@ -1410,7 +1443,7 @@ export default function WorldBoss() {
         uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Cura Boss",
         actionName: action.name,
         description: `${who} invoca ${action.name} e si cura di 💖 ${healed} HP (${formula}). HP: ${newHp}/${boss.maxHp ?? "?"}.`,
-        ...fxFields(action, [boss.vfxKey], { kind: "heal" }),
+        ...fxFields(action, [boss.vfxKey], { kind: "heal", nums: [{ t: boss.vfxKey, v: newHp - (boss.hp || 0) }] }),
         timestamp: serverTimestamp(),
       });
       return true;
@@ -1528,6 +1561,7 @@ export default function WorldBoss() {
           kind: bossAoe.area ? "aoe" : null, from: boss.vfxKey,
           miss: results.filter((r) => r.dmg === 0).map((r) => `player-${r.id}`),
           kill: results.filter((r) => r.killed).map((r) => `player-${r.id}`),
+          nums: results.map((r) => ({ t: `player-${r.id}`, v: -r.dmg })),
         }),
       });
       setSelectedTargets([]);
@@ -1595,7 +1629,7 @@ export default function WorldBoss() {
       actionName: action.name,
       description: `${who} scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
       masterDetails: results, timestamp: serverTimestamp(), dice: diceMsg,
-      ...fxFields(action, allTargetIds, { from: boss.vfxKey, miss: missTargetIds, kill: killTargetIds }),
+      ...fxFields(action, allTargetIds, { from: boss.vfxKey, miss: missTargetIds, kill: killTargetIds, nums: results.map((r) => ({ t: `player-${r.id}`, v: -r.dmg, crit: d20 === 20 })) }),
     });
     setSelectedTargets([]);
     return true;
@@ -1923,6 +1957,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
               title={canPickTarget && !isBossDefeated ? `Bersaglio: ${boss.name}` : undefined}
             >
               {canPickTarget && currentTarget?.id === boss.id && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
+              {!isBossDefeated && <StatusPips className="rpg-st-pips rpg-st-pips--boss" items={wbStatusItems(boss, turnState.turnNumber)} />}
               <img
                 ref={bossImgRef}
                 className={`rpg-boss-sprite${boss.facing === "right" ? " faces-right" : ""}`}
@@ -1959,6 +1994,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     title={pickable ? `Bersaglio: ${m.name}` : m.name}
                   >
                     {isTgt && <span className="rpg-target-arrow" aria-hidden="true">▼</span>}
+                    {!dead && <StatusPips className="rpg-st-pips" items={wbStatusItems(m, turnState.turnNumber)} />}
                     {sprite
                       ? <img className={`rpg-minion-sprite${m.facing === "right" ? " faces-right" : ""}`} src={sprite} alt={m.name} />
                       : <div className="rpg-minion-placeholder">{dead ? "☠" : "🪓"}</div>}
@@ -2000,6 +2036,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                   data-has-dead-sprite={isDead && p.deadSpriteUrl ? "1" : undefined}
                   style={{ position: "absolute", left: `${leftPct}%`, bottom: `${bottomPx}px` }}
                 >
+                  {!isDead && <StatusPips className="rpg-st-pips" max={4} items={wbStatusItems(p, turnState.turnNumber, true)} />}
                   {sprite
                     ? <img className="rpg-char-sprite" src={sprite} alt={p.name}
                         style={!isDead ? { animationDelay: breathDelay } : undefined} />

@@ -190,6 +190,18 @@ function log(s, txt, extra = {}) {
     const dead = row.targets.filter((id) => (byId(s, id)?.hp ?? 1) <= 0);
     if (dead.length) row.kill = dead;
   }
+  // 2026-11-04: PF cambiati per bersaglio da questa riga (numeri che saltano sugli sprite).
+  // s.hpSeen = PF di tutti all'ultima riga: quello che cambia senza bersagli si assorbe in silenzio.
+  const seen = s.hpSeen || {};
+  const all = [...(s.heroes || []), ...(s.foes || [])];
+  if (row.targets) {
+    const nums = {};
+    row.targets.forEach((id) => { const f = byId(s, id); if (f && seen[id] != null && f.hp !== seen[id]) nums[id] = f.hp - seen[id]; });
+    if (Object.keys(nums).length) row.nums = nums;
+  }
+  const nextSeen = {};
+  all.forEach((f) => { nextSeen[f.id] = f.hp; });
+  s.hpSeen = nextSeen;
   s.log = [...(s.log || []), row].slice(-LOG_MAX);
 }
 const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };

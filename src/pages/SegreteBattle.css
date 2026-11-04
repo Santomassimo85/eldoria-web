@@ -115,3 +115,6 @@
 .sgb-card-list li span { display: inline-block; min-width: 9.5em; color: #d8ccb4; }
 .sgb-card .sgb-card-q { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: .2em; color: #8a7f6f; }
 .sgb-card .sgb-card-hint { margin: 12px 0 0; font-size: .85rem; color: #d8ccb4; }
+
+/* 2026-11-04: icone di stato con effetto e durata (StatusPips) sopra lo sprite */
+.sgb-st-pips { position: absolute; top: -10px; left: 50%; translate: -50% -60%; z-index: 2; width: max-content; }

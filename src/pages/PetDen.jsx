@@ -44,6 +44,8 @@ import { PET_BAG, BAG_ORDER, CHARMS, SCROLL_IDS, SCROLL_SLOTS, usableInBattle, E
 import PetFx from "./PetFx";
 import TournamentTab, { useTournament, useMyEntry, tournamentTile } from "./PetTournament";
 import { showD20Roll, preloadDice3D, DICE_SKINS } from "../components/DiceRoll";
+import StatusPips from "../components/StatusPips";
+import { popOnEl } from "../fx/hitNumbers";
 import { unlock as unlockAudio, sfx, jingle, battleMusic, setMusicOn, setSfxOn, audioPrefs, onAudioPrefs } from "../utils/petAudio";
 import { dataUrlToTransparentDataUrl, cleanSpriteDataUrl } from "../utils/aiSprite";
 import "./PetDen.css";
@@ -599,6 +601,7 @@ function EvolveModal({ evo, art, onGo, onPhase, onClose }) {
 }
 
 /* ── icone di bonus e malus in lotta (2026-11-01) ──────────── */
+const STAGE_SHORT = { atk: "ATK", def: "DIF", spd: "VEL" };
 const STAGE_FX = { atk: ["⚔️", "Attacco"], def: ["🛡", "Difesa"], spd: ["💨", "Velocità"], ac: ["🧱", "CA"] };
 function fxList(f, fx) {
   const L = [];
@@ -1910,6 +1913,31 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
     return { f, hp, status, idx, fx, ac };
   };
   const P = sideView("p"), E = sideView("e");
+  // 2026-11-04: numeri dei PF che saltano fuori dal pet quando cambiano fra una riga e l'altra
+  // (colpi, scottature, veleno, cure, risucchi), colorati con l'elemento della mossa.
+  const hpSeen = useRef(null);
+  const lastType = useRef("neutral");
+  useEffect(() => {
+    if (shown?.kind === "move") lastType.current = shown.mtype || "neutral";
+    const now = { p: { idx: P.idx, hp: P.hp }, e: { idx: E.idx, hp: E.hp } };
+    const prev = hpSeen.current;
+    hpSeen.current = now;
+    if (!prev || !shown) return;
+    ["p", "e"].forEach((side) => {
+      if (prev[side].idx !== now[side].idx) return;
+      const d = now[side].hp - prev[side].hp;
+      if (!d) return;
+      const t = String(shown.text || "").toLowerCase();
+      const el = shown.kind === "hit" ? lastType.current : /scott|brucia/.test(t) ? "fire" : /velen/.test(t) ? "poison" : lastType.current;
+      const sprite = (side === "p" ? spotP : spotE).current?.querySelector(".pd-sprite");
+      popOnEl(sprite, { value: d, kind: d > 0 ? "heal" : "dmg", el, crit: shown.kind === "hit" && !!shown.crit, delay: 40 });
+    });
+  }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pips = (V) => fxList(V.f, V.fx).map((x) => ({
+    k: x.k, icon: x.icon, good: x.good, spent: x.spent, tip: x.text,
+    dur: String(x.dur || "").replace(/^(\d+)t$/, "$1").replace("lotta", "∞").replace("usata", ""),
+    tag: x.k === "ac" ? `${x.val} CA` : x.val ? `${STAGE_SHORT[x.k] || ""}${x.val}` : (x.lab || ""),
+  }));
   const hitSide = shown?.kind === "hit" ? shown.target : null;
   const lunge = shown?.kind === "move" ? LUNGE_FX[shown.fx] : null;
   const actCls = (side) => {
@@ -1945,12 +1973,14 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
         {hud("e", E)}
         <div className={`pd-spot pd-spot--e${E.status && E.hp > 0 ? ` pd-st-${E.status}` : ""}`} ref={spotE}>
           {E.hp > 0 && <StatusBubble st={E.status} fx={E.fx} />}
+          {E.hp > 0 && <StatusPips className="pd-st-pips" max={4} items={pips(E)} />}
           <div key={actCls("e") ? `e${seq}` : "e"} className={`pd-act side-e${actCls("e")} pd-pressable`} {...pressE} title="Tieni premuto per la scheda">
             <PetSprite key={`e${E.idx}`} species={E.f.species} evo={E.f.evo} art={art} size={150} flip fainted={E.hp <= 0} hit={hitSide === "e"} />
           </div>
         </div>
         <div className={`pd-spot pd-spot--p${P.status && P.hp > 0 ? ` pd-st-${P.status}` : ""}`} ref={spotP}>
           {P.hp > 0 && <StatusBubble st={P.status} fx={P.fx} />}
+          {P.hp > 0 && <StatusPips className="pd-st-pips" max={4} items={pips(P)} />}
           <div key={actCls("p") ? `p${seq}` : "p"} className={`pd-act side-p${actCls("p")} pd-pressable`} {...pressP} title="Tieni premuto per la scheda">
             <PetSprite key={`p${P.idx}`} species={P.f.species} evo={P.f.evo} art={art} size={170} fainted={P.hp <= 0} hit={hitSide === "p"} />
           </div>

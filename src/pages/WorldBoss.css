@@ -1028,3 +1028,8 @@
   .rpg-boss-zone.has-minions .rpg-boss-sprite { height: clamp(90px, 22svh, 190px); }
   .rpg-scene-actions { top: 6px; right: 6px; font-size: .7rem; padding: 4px 8px; }
 }
+
+/* 2026-11-04: icone di stato con effetto e durata (StatusPips) sopra gli sprite */
+.rpg-char-wrap { position: absolute; }
+.rpg-st-pips { position: absolute; left: 50%; top: 0; translate: -50% -85%; z-index: 4; width: max-content; }
+.rpg-st-pips--boss { top: 8%; }

@@ -917,3 +917,8 @@
 .pd-card-list li span { display: inline-block; min-width: 8.5em; margin-right: 6px; color: #d8ccb4; font-weight: 700; }
 .pd-card-list li em { color: #b9ad97; font-style: normal; font-size: .8rem; }
 .pd-card .pd-card-hint { margin: 12px 0 0; font-size: .8rem; color: #b9ad97; }
+
+/* 2026-11-04: icone di stato con effetto e durata (StatusPips) sullo sprite del pet;
+   il fumetto dello stato (StatusBubble) resta sopra di loro */
+.pd-st-pips { position: absolute; left: 50%; top: 4px; translate: -50% -100%; z-index: 4; width: max-content; }
+.pd-spot:has(.pd-stb) .pd-st-pips { top: -44px; }

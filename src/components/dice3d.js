@@ -250,7 +250,8 @@ export function roll3D(host, { value, dice = null, skin = "classic", durationMs 
     const span = 2 * Math.tan((camera.fov * Math.PI) / 360);
     const needH = (rows * S * 1.15 + R) / (span * 0.6);
     const needW = (cols * S + R) / (span * aspect * 0.9);
-    const dist = Math.max(w < h ? 10.5 : 8, n > 1 ? Math.max(needH, needW) : 0);
+    // 2026-11-04: dado grande la metà (lascia vedere il campo): camera due volte più lontana
+    const dist = 2 * Math.max(w < h ? 10.5 : 8, n > 1 ? Math.max(needH, needW) : 0);
     camera.position.set(0, -1.6 * (dist / 8), dist);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();

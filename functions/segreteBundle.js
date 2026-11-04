@@ -539,6 +539,21 @@ function log(s, txt, extra = {}) {
     const dead = row.targets.filter((id) => (byId(s, id)?.hp ?? 1) <= 0);
     if (dead.length) row.kill = dead;
   }
+  const seen = s.hpSeen || {};
+  const all = [...s.heroes || [], ...s.foes || []];
+  if (row.targets) {
+    const nums = {};
+    row.targets.forEach((id) => {
+      const f = byId(s, id);
+      if (f && seen[id] != null && f.hp !== seen[id]) nums[id] = f.hp - seen[id];
+    });
+    if (Object.keys(nums).length) row.nums = nums;
+  }
+  const nextSeen = {};
+  all.forEach((f) => {
+    nextSeen[f.id] = f.hp;
+  });
+  s.hpSeen = nextSeen;
   s.log = [...s.log || [], row].slice(-LOG_MAX);
 }
 var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };

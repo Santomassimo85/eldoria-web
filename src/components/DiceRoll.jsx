@@ -76,6 +76,20 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.
  * bersaglio, col nome sotto). `value` resta il dado che decide (CRITICO/FALLIMENTO);
  * con più dadi senza un dado decisivo passare null.
  */
+// 2026-11-04: gli effetti dei fight aspettano che il dado sia SPARITO (whenDiceIdle).
+let diceBusy = false;
+let idleWaiters = [];
+function setDiceBusy(b) {
+  diceBusy = b;
+  if (!b) { const w = idleWaiters; idleWaiters = []; w.forEach((f) => f()); }
+}
+/** Promessa che si risolve quando non c'è nessun dado a schermo (subito se è già libero). */
+export function whenDiceIdle() {
+  return diceBusy ? new Promise((r) => idleWaiters.push(r)) : Promise.resolve();
+}
+/** C'è un dado a schermo adesso? */
+export function isDiceBusy() { return diceBusy; }
+
 export function showD20Roll(value, opts = {}) {
   if (!trigger) return Promise.resolve();
   return trigger(value, opts);
@@ -84,6 +98,8 @@ export function showD20Roll(value, opts = {}) {
 /* ── Host ───────────────────────────────────────────────────── */
 export default function DiceRollHost() {
   const [roll, setRoll] = useState(null);
+  useEffect(() => { setDiceBusy(!!roll); }, [roll]);
+  useEffect(() => () => setDiceBusy(false), []);
 
   useEffect(() => {
     trigger = (value, opts) =>
@@ -91,6 +107,7 @@ export default function DiceRollHost() {
         if (pendingResolve) { const prev = pendingResolve; pendingResolve = null; prev(); }
         const done = () => { if (pendingResolve === done) pendingResolve = null; resolve(); };
         pendingResolve = done;
+        setDiceBusy(true); // subito: chi chiama whenDiceIdle() subito dopo deve già aspettare
         setRoll({
           id: Math.random().toString(36).slice(2),
           value,
@@ -111,16 +128,18 @@ export default function DiceRollHost() {
   }, []);
 
   // Animation timing
-  const TUMBLE_MS = 750;   // chaotic spin
-  const SETTLE_MS = 450;   // settle / reveal
-  const HOLD_MS   = 550;   // pause showing the result
-  const FADE_MS   = 280;   // fade out
+  const TUMBLE_MS = 520;   // chaotic spin
+  const SETTLE_MS = 300;   // settle / reveal
+  const HOLD_MS   = 400;   // pause showing the result
+  const FADE_MS   = 180;   // fade out
   // Lancio 3D: dalla mano al dado fermo. Con "riduci animazioni" (su molti Android
   // si accende anche col risparmio energetico) il dado resta 3D ma rotola meno.
-  const ROLL3D_MS = reducedMotion() ? 700 : 1350;
-  const HOLD3D_MS = 900;   // il dado 3D resta fermo un po' di più: si legge la faccia
+  // 2026-11-04: più rapido (richiesta dell'utente) e la promessa si risolve quando il dado
+  // è SPARITO, così gli effetti del colpo partono a schermo libero.
+  const ROLL3D_MS = reducedMotion() ? 600 : 800;
+  const HOLD3D_MS = 420;   // fermo quanto basta per leggere la faccia
   // con più dadi (e i nomi sotto) ci vuole più tempo per leggerli tutti
-  const holdFor = (r) => (r?.dice?.length > 1 ? 1500 + 120 * Math.min(r.dice.length, 8) : HOLD3D_MS);
+  const holdFor = (r) => (r?.dice?.length > 1 ? 900 + 90 * Math.min(r.dice.length, 8) : HOLD3D_MS);
 
   // Lancio 3D: si decide se usarlo PRIMA di montare l'overlay (mode "3d" | "css").
   const host3d = useRef(null);
@@ -147,8 +166,7 @@ export default function DiceRollHost() {
     load3D().then((m) => {
       if (!alive || !m) return;
       try {
-        m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent, pixel: roll.pixel })
-          .then(() => roll.resolve());
+        m.roll3D(host3d.current, { value: roll.value, dice, skin: roll.skin, durationMs: ROLL3D_MS, accent, pixel: roll.pixel });
         playDiceRoll(ROLL3D_MS, dice?.length || 1);
       } catch (err) {
         // WebGL che non parte: questo tiro col dado disegnato, e niente 3D finché non si ricarica
@@ -157,7 +175,7 @@ export default function DiceRollHost() {
         setModeFor({ id: roll.id, mode: "css" });
       }
     });
-    const tEnd = setTimeout(() => setRoll(null), ROLL3D_MS + holdFor(roll) + FADE_MS);
+    const tEnd = setTimeout(() => { setRoll(null); roll.resolve(); }, ROLL3D_MS + holdFor(roll) + FADE_MS);
     return () => { alive = false; clearTimeout(tEnd); dice3dMod?.then((m) => m?.stop3D()); roll.resolve(); };
   }, [roll, mode]);
 
@@ -169,9 +187,8 @@ export default function DiceRollHost() {
     const revealAt = TUMBLE_MS + SETTLE_MS;
     playDiceRoll(revealAt, 1);
     const total    = revealAt + HOLD_MS + FADE_MS;
-    const tReveal = setTimeout(() => roll.resolve(), revealAt);
-    const tEnd    = setTimeout(() => setRoll(null), total);
-    return () => { clearTimeout(tReveal); clearTimeout(tEnd); };
+    const tEnd    = setTimeout(() => { setRoll(null); roll.resolve(); }, total);
+    return () => { clearTimeout(tEnd); roll.resolve(); };
   }, [roll, mode]);
 
   if (!roll || !mode) return null;

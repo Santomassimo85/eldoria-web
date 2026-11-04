@@ -10,7 +10,9 @@ import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
-import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
+import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
+import { popAt } from "../fx/hitNumbers";
+import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom } from "../utils/segreteRooms";
@@ -30,14 +32,14 @@ function statusIcons(c, round) {
   const on = (u) => !!u && round < untilOf(u);
   const left = (u) => Math.max(1, untilOf(u) - round);
   const out = [];
-  (fx.ac || []).filter(on).forEach((e, i) => out.push({ k: `ac${i}`, ico: "🛡", n: left(e), good: true, t: `+${e.v} CA` }));
-  if (fx.dodge) out.push({ k: "dodge", ico: "🌀", n: null, good: true, t: "In difesa: +4 CA fino al prossimo round" });
-  if (on(fx.adv)) out.push({ k: "adv", ico: "🎯", n: left(fx.adv), good: true, t: "Vantaggio agli attacchi" });
-  if (on(fx.dmg)) out.push({ k: "dmg", ico: "⚔", n: left(fx.dmg), good: true, t: `+${fx.dmg.v} ai danni` });
-  if (on(fx.rage)) out.push({ k: "rage", ico: "💢", n: left(fx.rage), good: true, t: `Furia: +${fx.rage.v} danni, danni fisici dimezzati` });
-  if (on(fx.dis)) out.push({ k: "dis", ico: "🌫", n: left(fx.dis), good: false, t: "Svantaggio agli attacchi" });
-  if (on(fx.reckless)) out.push({ k: "reck", ico: "😤", n: left(fx.reckless), good: false, t: "Irruento: −2 CA" });
-  if (fx.stun) out.push({ k: "stun", ico: "💫", n: 1, good: false, t: "Stordito: salta il prossimo turno" });
+  (fx.ac || []).filter(on).forEach((e, i) => out.push({ k: `ac${i}`, ico: "🛡", n: left(e), good: true, tag: `+${e.v} CA`, t: `+${e.v} CA` }));
+  if (fx.dodge) out.push({ k: "dodge", ico: "🌀", n: 1, good: true, tag: "+4 CA", t: "In difesa: +4 CA fino al prossimo round" });
+  if (on(fx.adv)) out.push({ k: "adv", ico: "🎯", n: left(fx.adv), good: true, tag: "vant.", t: "Vantaggio agli attacchi" });
+  if (on(fx.dmg)) out.push({ k: "dmg", ico: "⚔", n: left(fx.dmg), good: true, tag: `+${fx.dmg.v} danni`, t: `+${fx.dmg.v} ai danni` });
+  if (on(fx.rage)) out.push({ k: "rage", ico: "💢", n: left(fx.rage), good: true, tag: `+${fx.rage.v} furia`, t: `Furia: +${fx.rage.v} danni, danni fisici dimezzati` });
+  if (on(fx.dis)) out.push({ k: "dis", ico: "🌫", n: left(fx.dis), good: false, tag: "svant.", t: "Svantaggio agli attacchi" });
+  if (on(fx.reckless)) out.push({ k: "reck", ico: "😤", n: left(fx.reckless), good: false, tag: "−2 CA", t: "Irruento: −2 CA" });
+  if (fx.stun) out.push({ k: "stun", ico: "💫", n: 1, good: false, tag: "salta", t: "Stordito: salta il prossimo turno" });
   return out;
 }
 
@@ -65,13 +67,8 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       onContextMenu={(e) => { if (onInspect) { e.preventDefault(); onInspect(c.id); } }}>
       {flash && <span key={flash.k} className={`sgb-pop sgb-pop--${flash.kind}`}>{flash.txt}</span>}
       {!!icons.length && (
-        <span className="sgb-st" aria-label={icons.map((i) => i.t).join(", ")}>
-          {icons.slice(0, 6).map((i) => (
-            <i key={i.k} className={i.good ? "is-good" : "is-bad"} title={`${i.t}${i.n ? ` · ${i.n} round` : ""}`}>
-              {i.ico}{i.n ? <sub>{i.n}</sub> : null}
-            </i>
-          ))}
-        </span>
+        <StatusPips className="sgb-st-pips" max={6}
+          items={icons.map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }))} />
       )}
       <span className="sgb-sprite" data-vfx-target={vfxKey(c.id)}>
         {img ? <img src={img} alt="" className={mirror ? "mirror" : ""} draggable="false" />
@@ -133,34 +130,41 @@ export default function SegreteBattle({ room, uid }) {
   // Righe nuove della cronaca → effetti pixel + suoni (VfxLayer del World Boss) e numeri che
   // saltano, UNA RIGA ALLA VOLTA (la fase dei mostri arriva tutta insieme dal server).
   const timers = useRef([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const sendP = useRef(Promise.resolve());
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; timers.current.forEach(clearTimeout); }; }, []);
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
     if (!seenSeq.current) { seenSeq.current = last; return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
     seenSeq.current = last;
-    fresh.forEach((l, idx) => {
-      const t = setTimeout(() => {
-        const targets = l.targets || [];
-        if (l.fx && targets.length) {
-          setVfxMsgs((m) => [...m.slice(-20), {
-            id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
-            effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
-            effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
-          }]);
-        }
-        const next = {};
-        targets.forEach((id) => {
-          const kind = l.kind === "heal" ? "heal" : l.kind === "miss" ? "miss" : l.kind === "buff" || l.kind === "debuff" ? "buff" : "hit";
-          next[id] = { k: `${l.i}-${id}`, kind, txt: kind === "miss" ? "mancato" : kind === "heal" ? "💚" : kind === "buff" ? "✨" : l.dmg ? `−${l.dmg}` : "💥" };
-        });
-        if (Object.keys(next).length) setFlashes(next);
-      }, idx * STAGGER_MS);
-      timers.current.push(t);
+    // 2026-11-04: si parte quando il proprio tiro è finito e il dado è sparito
+    // (il dado si mostra quando risponde il server, a volte dopo che la cronaca è già arrivata).
+    sendP.current.catch(() => {}).then(() => whenDiceIdle()).then(() => {
+      if (!mounted.current) return;
+      fresh.forEach((l, idx) => {
+        const t = setTimeout(() => {
+          const targets = l.targets || [];
+          // numeri sugli sprite: PF cambiati per bersaglio (l.nums dal server; righe vecchie: l.dmg)
+          const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit" }))
+            : l.dmg && targets.length === 1 ? [{ t: vfxKey(targets[0]), v: -l.dmg, crit: l.kind === "crit" }] : [];
+          if (l.fx && targets.length) {
+            setVfxMsgs((m) => [...m.slice(-20), {
+              id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
+              effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
+              effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
+              effectNums: nums,
+            }]);
+          } else nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, el: l.el }));
+          const next = {};
+          targets.forEach((id) => { if (l.kind === "buff" || l.kind === "debuff") next[id] = { k: `${l.i}-${id}`, kind: "buff", txt: "✨" }; });
+          if (Object.keys(next).length) setFlashes(next);
+        }, idx * STAGGER_MS);
+        timers.current.push(t);
+      });
+      timers.current.push(setTimeout(() => setFlashes({}), fresh.length * STAGGER_MS + 1400));
     });
-    const end = setTimeout(() => setFlashes({}), fresh.length * STAGGER_MS + 1400);
-    timers.current.push(end);
     return undefined;
   }, [run?.log, room.id]);
 
@@ -183,12 +187,15 @@ export default function SegreteBattle({ room, uid }) {
 
   useEffect(() => { if (!myTurn) setChosen(null); }, [myTurn]);
 
+  const diceOf = (r) => showD20Roll(r.ev.roll.nat, { label: "Il tuo tiro", dice: r.ev.roll.dice.length > 1 ? r.ev.roll.dice.map((v) => ({ value: v, dim: v !== r.ev.roll.nat })) : undefined });
   const send = async (data) => {
     if (busy) return;
     setBusy(true); setErr("");
     try {
-      const r = await segreteDo({ roomId: room.id, ...data });
-      if (r?.ev?.roll?.nat) showD20Roll(r.ev.roll.nat, { label: "Il tuo tiro", dice: r.ev.roll.dice.length > 1 ? r.ev.roll.dice.map((v) => ({ value: v, dim: v !== r.ev.roll.nat })) : undefined });
+      const p = segreteDo({ roomId: room.id, ...data });
+      // la cronaca nuova aspetta questa promessa (e il dado) prima di animarsi
+      sendP.current = p.then((r) => { if (r?.ev?.roll?.nat) diceOf(r); });
+      await p;
     } catch (e) { setErr(e.message || "Azione non riuscita."); }
     finally { setBusy(false); setChosen(null); }
   };

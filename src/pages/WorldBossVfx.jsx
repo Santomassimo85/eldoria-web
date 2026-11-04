@@ -14,6 +14,8 @@ import { createPortal } from "react-dom";
 import "./WorldBossVfx.css";
 import { spellSound } from "../utils/petAudio";
 import { playSpell } from "../fx/spellFx";
+import { popNumber } from "../fx/hitNumbers";
+import { whenDiceIdle } from "../components/DiceRoll";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
 const VFX_SOUNDS = {
@@ -185,7 +187,6 @@ function domePixels(Rx, Ry, P) {
 // ── Layer ────────────────────────────────────────────────────────────────────
 // `selfUid`: i tiri degli altri arrivano col d20 3D a schermo (msg.dice): l effetto parte
 // quando il dado si è fermato, come per chi ha tirato.
-const DICE_LAND_MS = 1400;
 // `canvas` (2026-11-04): gli effetti li disegna il motore "RPG old style" di src/fx/spellFx.js
 // (luce, fumo, fiamme, scariche) invece dei pixel in DOM. Lo usano Arena e Segrete; il World Boss no.
 export function VfxLayer({ messages, selfUid = null, canvas = false }) {
@@ -229,8 +230,11 @@ export function VfxLayer({ messages, selfUid = null, canvas = false }) {
         setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
         soundFor(msg, targets);
       };
-      if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(play, DICE_LAND_MS);
-      else play();
+      // 2026-11-04: l'effetto parte quando il dado è SPARITO (anche quello degli altri, che
+      // compare un attimo dopo il messaggio: si aspetta che parta e poi che finisca).
+      const afterDice = () => whenDiceIdle().then(() => { play(); popNums(msg, targets, canvas); });
+      if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(afterDice, 250);
+      else afterDice();
     }
   }, [messages, selfUid, canvas]);
 
@@ -251,6 +255,39 @@ function soundFor(msg, targets) {
   if (ne.kind === "heal") playSound("heal");
   else if ((ne.kind === "slash" || ne.kind === "arrow" || ne.kind === "hit") && (ne.el === "physical" || !msg.effectEl)) playSound(ne.kind);
   else spellSound({ kind: ne.kind, el: ne.el, miss: !!missAll, kill: (msg.effectKill || []).length > 0 });
+}
+
+// Numeri dei colpi (2026-11-04): msg.effectNums = [{ t: chiave del bersaglio, v: PF (−danno / +cura),
+// crit, miss }] → "−12" colorato per elemento che salta fuori dallo sprite all'impatto.
+function impactDelay(kind, i, canvas) {
+  if (kind === "bolt") return (canvas ? 460 : 400) + i * 110;
+  if (kind === "arrow") return (canvas ? 300 : 400) + i * 110;
+  if (kind === "aoe") return 380 + i * 130;
+  if (kind === "slash") return (canvas ? 120 : 140) + i * 90;
+  if (kind === "hit") return i * 90;
+  return 260 + i * 60;
+}
+function popNums(msg, targets, canvas) {
+  const nums = Array.isArray(msg.effectNums) ? msg.effectNums : [];
+  const { kind, el } = normalizeEffect(msg);
+  const missSet = new Set(Array.isArray(msg.effectMissTargets) ? msg.effectMissTargets : (msg.effectMiss ? targets : []));
+  const done = new Set();
+  nums.forEach((n) => {
+    const a = anchorOf(n.t);
+    if (!a) return;
+    done.add(n.t);
+    const i = Math.max(0, targets.indexOf(n.t));
+    const v = Number(n.v) || 0;
+    const miss = n.miss || (missSet.has(n.t) && !v);
+    if (!miss && !v) return;
+    popNumber({ x: a.x, y: a.y - a.h * 0.15, value: v, kind: miss ? "miss" : v > 0 ? "heal" : "dmg", el: n.el || el, crit: !!n.crit, delay: impactDelay(kind, i, canvas) + 40 });
+  });
+  // mancati senza numero: la scritta MANCATO
+  targets.forEach((t, i) => {
+    if (done.has(t) || !missSet.has(t)) return;
+    const a = anchorOf(t);
+    if (a) popNumber({ x: a.x, y: a.y - a.h * 0.15, kind: "miss", delay: impactDelay(kind, i, canvas) + 40 });
+  });
 }
 
 // Modalità canvas: un effetto del motore per ogni bersaglio, sfalsati come i pezzi DOM.

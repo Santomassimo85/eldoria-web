@@ -378,3 +378,7 @@ body.in-fight .arena-combat-dialog .master-fight-chip-tag { font-size: .72rem; }
   .cv-field .cdt-tab .cdt-lab { font-size: .66rem !important; }
   .cv-lastlog-btn { font-size: .86rem !important; }
 }
+
+/* 2026-11-04: icone di stato con effetto e durata (StatusPips), sopra lo sprite */
+.cv-st-pips { position: absolute; z-index: 3; left: 50%; top: -4px; translate: -50% -100%; width: max-content; }
+.cv-spot.is-turn .cv-st-pips { top: -22px; }

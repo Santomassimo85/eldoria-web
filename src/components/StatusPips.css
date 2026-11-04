@@ -1,0 +1,23 @@
+/* Icone di stato sullo sprite (2026-11-04): niente cornice, solo il simbolo che
+   saltella, l'effetto sotto e i turni nell'angolo, in pixel con contorno pieno. */
+.stp { display: inline-flex; align-items: flex-end; justify-content: center; gap: 2px 5px; flex-wrap: wrap; pointer-events: auto; max-width: 260px; }
+.stp-i { position: relative; display: inline-flex; flex-direction: column; align-items: center; min-width: 30px; line-height: 1; cursor: help; }
+.stp-i > i { font-style: normal; font-size: 25px; line-height: 1; display: block; transform-origin: 50% 100%;
+  animation: stp-hop 2.6s ease-in-out infinite; animation-delay: var(--stp-d, 0s); }
+.stp-i.is-good > i { filter: drop-shadow(0 0 3px rgba(110, 230, 140, .95)) drop-shadow(0 1px 0 rgba(0, 0, 0, .7)); }
+.stp-i.is-bad > i { filter: drop-shadow(0 0 3px rgba(255, 90, 90, .95)) drop-shadow(0 1px 0 rgba(0, 0, 0, .7)); }
+.stp-i > em, .stp-i > small, .stp-more {
+  font: 800 11px/1 system-ui, "Segoe UI", Roboto, sans-serif; font-style: normal; letter-spacing: .02em; white-space: nowrap;
+  text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000;
+}
+.stp-i > em { margin-top: 1px; }
+.stp-i.is-good > em { color: #b9ffc8; }
+.stp-i.is-bad > em { color: #ffc4bc; }
+/* durata nell'angolo in alto a destra */
+.stp-i > small { position: absolute; top: -4px; right: -6px; font-size: 12px; color: #fff3c4; }
+.stp-i.is-spent { opacity: .5; }
+.stp-i.is-spent > i { animation: none; }
+.stp-more { align-self: center; color: #fff7e6; font-size: 11px; }
+@keyframes stp-hop { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-4px) scale(1.08, .94); } 86% { transform: translateY(0) scale(.94, 1.06); } 92% { transform: scale(1.03, .97); } }
+@media (max-width: 760px) { .stp-i > i { font-size: 20px; } .stp-i { min-width: 25px; } .stp-i > em, .stp-i > small { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .stp-i > i { animation: none; } }
