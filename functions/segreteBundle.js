@@ -25,6 +25,7 @@ __export(segreteServer_exports, {
   DEFAULT_FLOORS: () => DEFAULT_FLOORS,
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
+  RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
   STAT_KEYS: () => STAT_KEYS,
   STAT_MAX: () => STAT_MAX,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
@@ -995,15 +996,16 @@ function mergeDungeons(custom = []) {
 var DEFAULT_FLOORS = 3;
 var DAILY_RUNS = 1;
 var WEEKLY_RUNS = 3;
+var RUN_COUNTS_AFTER = 2;
 var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
-function runsOf(charData, week = currentWeekKey(), day = romeDayKey()) {
-  const r = charData?.storyRuns;
+function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
   const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
   return { weekCount, dayCount, canRun: weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
-function nextRunsPatch(charData, week = currentWeekKey(), day = romeDayKey()) {
-  const { weekCount, dayCount } = runsOf(charData, week, day);
+function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const { weekCount, dayCount } = runsOf(charData, cls, week, day);
   return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
 }
 
@@ -1080,6 +1082,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   DEFAULT_FLOORS,
   KITS,
   MAX_STORY_LEVEL,
+  RUN_COUNTS_AFTER,
   STAT_KEYS,
   STAT_MAX,
   WEEKLY_RUNS,

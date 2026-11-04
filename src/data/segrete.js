@@ -63,20 +63,24 @@ export const roleInfo = (k) => MONSTER_ROLES.find((r) => r.key === k) || MONSTER
 export const dungeonSlug = (name) => String(name || "").toLowerCase()
   .normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
-/* ── LIMITI (2026-11-04): 1 dungeon al giorno (giorno di Roma) e 3 a settimana
-   (settimana dell'Arena, chiude domenica 23:00). Conta il SERVER quando la
-   partita parte (op init di segreteDo), per ogni membro del gruppo; il Master
-   principale è esente (prove). characters.storyRuns = { weekKey, count, day, dayCount }. */
+/* ── LIMITI (2026-11-04, rifatti): PER CLASSE, 1 dungeon al giorno (giorno di Roma)
+   e 3 a settimana (settimana dell'Arena). Chi ha fatto il Mago oggi può giocare col
+   Guerriero. Un dungeon CONTA solo dopo almeno RUN_COUNTS_AFTER sale ripulite (o la
+   vittoria): chi cade prima può riprovare. Lo conta il SERVER (segreteDo), il
+   Master principale è esente.
+   characters.storyClassRuns[cls] = { weekKey, count, day, dayCount }
+   (il vecchio characters.storyRuns, per giocatore, non si usa più). */
 export const DAILY_RUNS = 1;
 export const WEEKLY_RUNS = 3;
+export const RUN_COUNTS_AFTER = 2;
 export const romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
-export function runsOf(charData, week = currentWeekKey(), day = romeDayKey()) {
-  const r = charData?.storyRuns;
+export function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
   const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
   return { weekCount, dayCount, canRun: weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
-export function nextRunsPatch(charData, week = currentWeekKey(), day = romeDayKey()) {
-  const { weekCount, dayCount } = runsOf(charData, week, day);
+export function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const { weekCount, dayCount } = runsOf(charData, cls, week, day);
   return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
 }

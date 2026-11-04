@@ -13,7 +13,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, runsOf, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, RUN_COUNTS_AFTER, runsOf, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers,
@@ -33,6 +33,7 @@ function ClassPicker({ value, onChange, charData, disabled }) {
           <span aria-hidden="true">{c.icon}</span>
           <b>{c.it}</b>
           <small>{heroOf(charData, c.key) ? `Lv ${storyLevelOf(charData, c.key)}` : "da creare"}</small>
+          {heroOf(charData, c.key) && !runsOf(charData, c.key).canRun && <small className="sgr-class-done">{runsOf(charData, c.key).weekCount >= WEEKLY_RUNS ? "✓ settimana fatta" : "✓ fatto oggi"}</small>}
         </button>
       ))}
     </div>
@@ -53,7 +54,6 @@ export default function Segrete() {
   const [charData, setCharData] = useState(null);
   const [custom, setCustom] = useState([]);
   const [rooms, setRooms] = useState([]);
-  const runs = runsOf(charData);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [cls, setCls] = useState(null);
@@ -81,6 +81,8 @@ export default function Segrete() {
   const dungeons = useMemo(() => mergeDungeons(custom), [custom]);
   const dungeonOf = (key) => dungeons.find((d) => d.key === key) || { key, name: key, icon: "🗝" };
   const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
+  const runCls = myRoom?.members?.find((m) => m.uid === uid)?.cls || cls;
+  const runs = runsOf(charData, runCls);
   const inFight = !!myRoom && (myRoom.status === "running" || myRoom.status === "done");
   const now = Date.now();
   const invitedTo = (r) => (r.invited || []).find((i) => i.uid === uid) || null;
@@ -115,7 +117,8 @@ export default function Segrete() {
         <p className="sgr-kicker">Storia · gruppi da 1 a {MAX_PARTY}</p>
         <h1 className="sgr-title">Le Segrete</h1>
         <p className="sgr-lead">Ogni classe ha il suo eroe, che resta tuo e cresce di livello vincendo i dungeon. I dungeon della settimana si contano fino a {weekEndLabel()}. Se il gruppo cade, si perde tutto.</p>
-        <p className="sgr-runs">🗝 Dungeon: oggi <b>{runs.dayCount}/{DAILY_RUNS}</b> · questa settimana <b>{runs.weekCount}/{WEEKLY_RUNS}</b>{master ? " · tu sei il Master: nessun limite" : !runs.canRun ? (runs.weekCount >= WEEKLY_RUNS ? " · hai finito quelli della settimana" : " · torna domani") : ""}</p>
+        <p className="sgr-runs">🗝 Dungeon {runCls ? `col ${classInfo(runCls)?.it}` : ""}: oggi <b>{runs.dayCount}/{DAILY_RUNS}</b> · questa settimana <b>{runs.weekCount}/{WEEKLY_RUNS}</b>{master ? " · tu sei il Master: nessun limite" : !runs.canRun ? (runs.weekCount >= WEEKLY_RUNS ? " · finiti per questa classe: prova un'altra classe" : " · fatto oggi con questa classe: puoi usarne un'altra") : ""}
+          <br /><small>Il limite vale per classe. Un dungeon conta solo dopo aver ripulito {RUN_COUNTS_AFTER} sale (o vinto): se cadete prima, potete riprovare.</small></p>
       </header>
 
         </>
@@ -272,7 +275,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun
       <SegreteHero cls={me?.cls} charData={charData} />
 
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
-      {!canRun && <p className="sgr-err">⛔ Hai già fatto {runsOf(charData).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: puoi restare nel gruppo ma non partire.</p>}
+      {!canRun && <p className="sgr-err">⛔ Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto {runsOf(charData, me?.cls).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: scegli un'altra classe qui sopra per partire.</p>}
       <div className="sgr-start">
         <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!canRun || !heroOf(charData, me?.cls)))}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
