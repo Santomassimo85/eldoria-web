@@ -83,3 +83,11 @@
 @media (prefers-reduced-motion: reduce) { .sgb-pop, .sgb-log-text, .sgb-f.is-pick .sgb-sprite { animation: none; } }
 .sgb-loot { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #f2c14e; background: rgba(242,193,78,.12); }
 .sgb-loot img { width: 54px; height: 54px; object-fit: contain; }
+
+/* icone di stato sopra lo sprite: solo il simbolo (niente riquadro), numero dei round, alone verde/rosso */
+.sgb-st { position: absolute; top: -6px; left: 50%; translate: -50% 0; z-index: 2; display: flex; gap: 2px; pointer-events: auto; }
+.sgb-st i { position: relative; font-style: normal; font-size: 1.15rem; line-height: 1; cursor: help; }
+.sgb-st i.is-good { filter: drop-shadow(0 0 2px #5fd16b) drop-shadow(1px 1px 0 #000); }
+.sgb-st i.is-bad { filter: drop-shadow(0 0 2px #ff5a45) drop-shadow(1px 1px 0 #000); }
+.sgb-st sub { position: absolute; right: -3px; bottom: -4px; font: 800 .62rem/1 system-ui, sans-serif; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+@media (max-width: 760px) { .sgb-st i { font-size: 1rem; } }

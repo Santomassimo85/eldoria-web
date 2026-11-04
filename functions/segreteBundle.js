@@ -495,9 +495,39 @@ function acOf(s, c) {
   if (fxOn(s, c.fx.reckless)) ac -= 2;
   return ac;
 }
+var curVfx = null;
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
-  s.log = [...s.log || [], { i: s.seq, txt, ...extra }].slice(-LOG_MAX);
+  const row = { i: s.seq, txt, ...curVfx && extra.targets ? curVfx : {}, ...extra };
+  if (row.fx && row.targets && row.kind !== "miss") {
+    const dead = row.targets.filter((id) => (byId(s, id)?.hp ?? 1) <= 0);
+    if (dead.length) row.kill = dead;
+  }
+  s.log = [...s.log || [], row].slice(-LOG_MAX);
+}
+var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };
+var elOf = (type) => EL_OF[type] || "physical";
+var RANGED = /* @__PURE__ */ new Set(["arco", "doppio", "lancio"]);
+function heroVfx(a) {
+  if (a.kind === "defend") return { fx: "shield", el: "arcane" };
+  if (a.kind === "weapon") return { fx: RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
+  if (a.kind === "spell" || a.kind === "missile") return { fx: "bolt", el: elOf(a.dmg) };
+  if (a.kind === "save") return { fx: a.area ? "aoe" : "bolt", el: elOf(a.dmg) };
+  if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
+  if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
+  if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
+  return null;
+}
+function foeVfx(a, type) {
+  if (a.type === "heal") return { fx: "heal", el: "radiant" };
+  if (a.type === "buff_ca") return { fx: "shield", el: "arcane" };
+  if (a.type === "buff_adv") return { fx: "buff", el: "fire" };
+  if (a.type === "debuff_dis") return { fx: "debuff", el: "darkness" };
+  const area = a.aoeShape && a.aoeShape !== "single";
+  const el = elOf(type);
+  if (area) return { fx: "aoe", el };
+  if (el === "physical" && a.hitMode !== "save") return { fx: /arco|frecc|balest|giavell|fionda|lancio/i.test(a.name || "") ? "arrow" : "slash", el };
+  return { fx: "bolt", el };
 }
 function rollInitiative(s) {
   const all = s.foes.filter(alive).map((c) => ({ id: c.id, v: d20() + (c.init || 0) + rnd() }));
@@ -762,6 +792,7 @@ function foeAct(s, f) {
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   const turns = Math.max(1, Number(a.durationTurns) || 2);
+  curVfx = { ...foeVfx(a, wbDmgType(a)), from: f.id };
   if (a.type === "heal") {
     const t = hurt || f;
     const amt = roll(Number(a.diceNum) || 1, parseDice(`1${a.diceType || "d8"}`)[1]).t + (Number(a.bonus) || 0);
@@ -852,6 +883,7 @@ function monsterPhase(s, now) {
       continue;
     }
     foeAct(s, f);
+    curVfx = null;
   }
   if (checkEnd(s)) return;
   s.round += 1;
@@ -884,7 +916,13 @@ function act(s, uid, { actionId, targetId }, now) {
     if (!target || target.side !== "h" || target.fled || !heal && !alive(target)) throw new Error("Scegli un alleato.");
   }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
-  const ev = heroAct(s, h, a, target);
+  curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
+  let ev;
+  try {
+    ev = heroAct(s, h, a, target);
+  } finally {
+    curVfx = null;
+  }
   if (target && target.side === "f") target.lastHitBy = h.id;
   s.acted = { ...s.acted, [h.id]: true };
   afterHeroAction(s, now);

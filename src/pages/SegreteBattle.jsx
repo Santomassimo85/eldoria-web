@@ -12,14 +12,37 @@ import { classInfo } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import { useFightMode } from "../utils/fightMode";
+import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom } from "../utils/segreteRooms";
 import "./SegreteBattle.css";
 
+const STAGGER_MS = 750;
+const vfxKey = (id) => `seg-${id}`;
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
-function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash }) {
+/* Icone di stato sopra lo sprite (senza riquadro): solo il simbolo, il numero dei
+   round che restano, alone verde = bonus, rosso = malus. Effetti attivi finché round < until. */
+function statusIcons(c, round) {
+  const fx = c.fx || {};
+  const untilOf = (u) => (typeof u === "number" ? u : u?.until || 0);
+  const on = (u) => !!u && round < untilOf(u);
+  const left = (u) => Math.max(1, untilOf(u) - round);
+  const out = [];
+  (fx.ac || []).filter(on).forEach((e, i) => out.push({ k: `ac${i}`, ico: "🛡", n: left(e), good: true, t: `+${e.v} CA` }));
+  if (fx.dodge) out.push({ k: "dodge", ico: "🌀", n: null, good: true, t: "In difesa: +4 CA fino al prossimo round" });
+  if (on(fx.adv)) out.push({ k: "adv", ico: "🎯", n: left(fx.adv), good: true, t: "Vantaggio agli attacchi" });
+  if (on(fx.dmg)) out.push({ k: "dmg", ico: "⚔", n: left(fx.dmg), good: true, t: `+${fx.dmg.v} ai danni` });
+  if (on(fx.rage)) out.push({ k: "rage", ico: "💢", n: left(fx.rage), good: true, t: `Furia: +${fx.rage.v} danni, danni fisici dimezzati` });
+  if (on(fx.dis)) out.push({ k: "dis", ico: "🌫", n: left(fx.dis), good: false, t: "Svantaggio agli attacchi" });
+  if (on(fx.reckless)) out.push({ k: "reck", ico: "😤", n: left(fx.reckless), good: false, t: "Irruento: −2 CA" });
+  if (fx.stun) out.push({ k: "stun", ico: "💫", n: 1, good: false, t: "Stordito: salta il prossimo turno" });
+  return out;
+}
+
+function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash, round }) {
+  const icons = c.hp > 0 ? statusIcons(c, round || 1) : [];
   const dead = c.hp <= 0;
   const img = dead && c.deadImg ? c.deadImg : c.img || (c.side === "h" ? classSprite : "");
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
@@ -28,7 +51,16 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
     <button type="button" className={`sgb-f sgb-f--${c.side}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
       disabled={!selectable} onClick={() => selectable && onPick(c.id)} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF`}>
       {flash && <span key={flash.k} className={`sgb-pop sgb-pop--${flash.kind}`}>{flash.txt}</span>}
-      <span className="sgb-sprite">
+      {!!icons.length && (
+        <span className="sgb-st" aria-label={icons.map((i) => i.t).join(", ")}>
+          {icons.slice(0, 6).map((i) => (
+            <i key={i.k} className={i.good ? "is-good" : "is-bad"} title={`${i.t}${i.n ? ` · ${i.n} round` : ""}`}>
+              {i.ico}{i.n ? <sub>{i.n}</sub> : null}
+            </i>
+          ))}
+        </span>
+      )}
+      <span className="sgb-sprite" data-vfx-target={vfxKey(c.id)}>
         {img ? <img src={img} alt="" className={mirror ? "mirror" : ""} draggable="false" />
           : <span className="sgb-emoji" aria-hidden="true">{c.side === "h" ? classInfo(c.cls)?.icon : c.icon || (c.role === "boss" ? "👑" : "👹")}</span>}
       </span>
@@ -51,6 +83,7 @@ export default function SegreteBattle({ room, uid }) {
   const [now, setNow] = useState(Date.now());
   const [sprites, setSprites] = useState({});
   const [flashes, setFlashes] = useState({});
+  const [vfxMsgs, setVfxMsgs] = useState([]);
   const initAsked = useRef("");
   const seenSeq = useRef(0);
   const timeoutAsked = useRef("");
@@ -79,25 +112,39 @@ export default function SegreteBattle({ room, uid }) {
     });
   }, [clsList]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // numeri che saltano sui colpiti per le righe nuove
+  // Righe nuove della cronaca → effetti pixel + suoni (VfxLayer del World Boss) e numeri che
+  // saltano, UNA RIGA ALLA VOLTA (la fase dei mostri arriva tutta insieme dal server).
+  const timers = useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
     if (!seenSeq.current) { seenSeq.current = last; return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
     seenSeq.current = last;
-    const next = {};
-    fresh.forEach((l) => (l.targets || []).forEach((id) => {
-      const kind = l.kind === "heal" ? "heal" : l.kind === "miss" ? "miss" : l.kind === "buff" || l.kind === "debuff" ? "buff" : "hit";
-      next[id] = { k: `${l.i}-${id}`, kind, txt: kind === "miss" ? "mancato" : kind === "heal" ? "💚" : kind === "buff" ? "✨" : l.dmg ? `−${l.dmg}` : "💥" };
-    }));
-    if (Object.keys(next).length) {
-      setFlashes(next);
-      const t = setTimeout(() => setFlashes({}), 1400);
-      return () => clearTimeout(t);
-    }
+    fresh.forEach((l, idx) => {
+      const t = setTimeout(() => {
+        const targets = l.targets || [];
+        if (l.fx && targets.length) {
+          setVfxMsgs((m) => [...m.slice(-20), {
+            id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
+            effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
+            effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
+          }]);
+        }
+        const next = {};
+        targets.forEach((id) => {
+          const kind = l.kind === "heal" ? "heal" : l.kind === "miss" ? "miss" : l.kind === "buff" || l.kind === "debuff" ? "buff" : "hit";
+          next[id] = { k: `${l.i}-${id}`, kind, txt: kind === "miss" ? "mancato" : kind === "heal" ? "💚" : kind === "buff" ? "✨" : l.dmg ? `−${l.dmg}` : "💥" };
+        });
+        if (Object.keys(next).length) setFlashes(next);
+      }, idx * STAGGER_MS);
+      timers.current.push(t);
+    });
+    const end = setTimeout(() => setFlashes({}), fresh.length * STAGGER_MS + 1400);
+    timers.current.push(end);
     return undefined;
-  }, [run?.log]);
+  }, [run?.log, room.id]);
 
   // Turni a fasi: tutti gli eroi insieme, poi i mostri. pending = eroi vivi che devono ancora agire.
   const fighting = run?.status === "fight";
@@ -145,6 +192,7 @@ export default function SegreteBattle({ room, uid }) {
 
   return (
     <div className="sgb">
+      <VfxLayer messages={vfxMsgs} selfUid={uid} />
       <div className="sgb-top">
         <span className="sgb-where">{run.dungeonIcon} {run.dungeonName} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
@@ -162,13 +210,13 @@ export default function SegreteBattle({ room, uid }) {
       <div className={`sgb-field${run.bg ? " has-bg" : ""}`} style={run.bg ? { backgroundImage: `url(${run.bg})` } : undefined}>
         <div className="sgb-foes">
           {run.foes.map((f) => (
-            <Fighter key={f.id} c={f} isTurn={false} flash={flashes[f.id]}
+            <Fighter key={f.id} c={f} round={run.round} isTurn={false} flash={flashes[f.id]}
               selectable={!!(tk === "foe" && f.hp > 0)} onPick={pickTarget} />
           ))}
         </div>
         <div className="sgb-heroes">
           {run.heroes.map((h) => (
-            <Fighter key={h.id} c={h} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
+            <Fighter key={h.id} c={h} round={run.round} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
               selectable={!!(tk === "ally" && !h.fled && (h.hp > 0 || chosen?.kind === "heal"))} onPick={pickTarget} />
           ))}
         </div>

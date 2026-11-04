@@ -143,9 +143,42 @@ function acOf(s, c) {
   if (fxOn(s, c.fx.reckless)) ac -= 2;
   return ac;
 }
+// Ogni riga porta (se c'è un effetto) fx = forma (slash·arrow·bolt·aoe·heal·buff·shield·debuff),
+// el = elemento (fire·frost·lightning·poison·darkness·radiant·arcane·physical), from = chi agisce
+// e kill = chi è caduto: il sito ci disegna sopra gli effetti pixel e i suoni (VfxLayer).
+let curVfx = null;
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
-  s.log = [...(s.log || []), { i: s.seq, txt, ...extra }].slice(-LOG_MAX);
+  const row = { i: s.seq, txt, ...(curVfx && extra.targets ? curVfx : {}), ...extra };
+  if (row.fx && row.targets && row.kind !== "miss") {
+    const dead = row.targets.filter((id) => (byId(s, id)?.hp ?? 1) <= 0);
+    if (dead.length) row.kill = dead;
+  }
+  s.log = [...(s.log || []), row].slice(-LOG_MAX);
+}
+const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };
+export const elOf = (type) => EL_OF[type] || "physical";
+const RANGED = new Set(["arco", "doppio", "lancio"]);
+function heroVfx(a) {
+  if (a.kind === "defend") return { fx: "shield", el: "arcane" };
+  if (a.kind === "weapon") return { fx: RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
+  if (a.kind === "spell" || a.kind === "missile") return { fx: "bolt", el: elOf(a.dmg) };
+  if (a.kind === "save") return { fx: a.area ? "aoe" : "bolt", el: elOf(a.dmg) };
+  if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
+  if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
+  if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
+  return null;
+}
+function foeVfx(a, type) {
+  if (a.type === "heal") return { fx: "heal", el: "radiant" };
+  if (a.type === "buff_ca") return { fx: "shield", el: "arcane" };
+  if (a.type === "buff_adv") return { fx: "buff", el: "fire" };
+  if (a.type === "debuff_dis") return { fx: "debuff", el: "darkness" };
+  const area = a.aoeShape && a.aoeShape !== "single";
+  const el = elOf(type);
+  if (area) return { fx: "aoe", el };
+  if (el === "physical" && a.hitMode !== "save") return { fx: /arco|frecc|balest|giavell|fionda|lancio/i.test(a.name || "") ? "arrow" : "slash", el };
+  return { fx: "bolt", el };
 }
 // TURNI A FASI (2026-11-04): prima TUTTI gli eroi insieme (un'azione a testa, in
 // qualsiasi ordine, max AFK_MS), poi tutti i mostri nell'ordine d'iniziativa.
@@ -363,6 +396,7 @@ function foeAct(s, f) {
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   const turns = Math.max(1, Number(a.durationTurns) || 2);
+  curVfx = { ...foeVfx(a, wbDmgType(a)), from: f.id };
 
   if (a.type === "heal") {
     const t = hurt || f;
@@ -429,6 +463,7 @@ function monsterPhase(s, now) {
     if (!alive(f) || f.side !== "f") continue; // le partite di prima del cambio avevano anche gli eroi in order
     if (f.fx.stun) { f.fx.stun = false; log(s, `💫 ${f.name} è stordito e salta il turno.`, { kind: "debuff", actor: f.id }); continue; }
     foeAct(s, f);
+    curVfx = null;
   }
   if (checkEnd(s)) return;
   s.round += 1;
@@ -461,7 +496,9 @@ export function act(s, uid, { actionId, targetId }, now) {
     if (!target || target.side !== "h" || target.fled || (!heal && !alive(target))) throw new Error("Scegli un alleato.");
   }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
-  const ev = heroAct(s, h, a, target);
+  curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
+  let ev;
+  try { ev = heroAct(s, h, a, target); } finally { curVfx = null; }
   if (target && target.side === "f") target.lastHitBy = h.id;
   s.acted = { ...s.acted, [h.id]: true };
   afterHeroAction(s, now);
