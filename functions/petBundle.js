@@ -2022,7 +2022,7 @@ function desperateOk(f, foe) {
 }
 var snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
-  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey) }];
+  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey), ac: s.team.map(acOf) }];
 }));
 function emit(b, out, ev) {
   out.push({ ...ev, snap: snapOf(b) });
@@ -2059,7 +2059,7 @@ function rollText(r) {
     const dice = r.dis ? `${r.d} (svantaggio: ${r.d} e ${r.d2})` : `${r.d}`;
     return ` \u{1F3B2} ${dice} ${sign(r.mod)} = ${r.total} contro CA ${r.vs}${r.d === 20 ? " \xB7 20 naturale!" : ""}`;
   }
-  return ` ${r.who} tira salvezza: \u{1F3B2} ${r.d} ${sign(r.mod)} = ${r.total} contro CD ${r.vs}`;
+  return ` ${r.who} prova a resistere (tiro salvezza): \u{1F3B2} ${r.d} ${sign(r.mod)} = ${r.total} contro CD ${r.vs}${r.ok ? " \xB7 non ce la fa!" : ""}`;
 }
 function berryCheck(b, side, out) {
   const f = activeOf(b, side);

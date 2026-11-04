@@ -1688,7 +1688,7 @@ const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
 // Come in Arena: prima di ogni tiro per colpire o tiro salvezza rotola il
 // d20 3D, poi si vede la riga con l'effetto.
 const diceLabel = (r, ev) => (r.kind === "save"
-  ? `${r.who}: tiro salvezza ${sgn(r.mod)} contro CD ${r.vs}`
+  ? `🛡 ${r.who} prova a resistere a ${ev.mname}: TS ${sgn(r.mod)} contro CD ${r.vs}`
   : `${ev.att} · ${ev.mname}: d20 ${sgn(r.mod)} contro CA ${r.vs}${r.dis ? " (svantaggio)" : ""}`);
 // history = righe già mostrate (la cronologia del fight, senza anticipare quelle in coda).
 function useLinePlayer(initial = []) {
@@ -1838,7 +1838,7 @@ function PetBattleCard({ V, art, mine, onClose }) {
         </div>
         <dl className="pd-card-stats">
           <div><dt>PF</dt><dd>{V.hp}/{f.maxHp}</dd></div>
-          <div><dt>CA</dt><dd>{acOf(f)}</dd></div>
+          <div><dt>CA</dt><dd>{V.ac ?? acOf(f)}</dd></div>
           <div><dt>Attacco</dt><dd>{stat("atk")}</dd></div>
           <div><dt>Difesa</dt><dd>{stat("def")}</dd></div>
           <div><dt>Velocità</dt><dd>{stat("spd")}</dd></div>
@@ -1905,7 +1905,9 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
     const hp = snap ? snap[side].hp[idx] : f.hp;
     const status = snap ? snap[side].status[idx] : (f.status?.kind || (f.sleep ? "sleep" : f.stunned ? (f.stunned === true ? "daze" : f.stunned) : null));
     const fx = parseFx(snap && snap[side].fx ? snap[side].fx[idx] : fxKey(f));
-    return { f, hp, status, idx, fx };
+    // la CA del momento che si sta guardando, non quella di fine turno
+    const ac = snap && snap[side].ac ? snap[side].ac[idx] : acOf(f);
+    return { f, hp, status, idx, fx, ac };
   };
   const P = sideView("p"), E = sideView("e");
   const hitSide = shown?.kind === "hit" ? shown.target : null;
@@ -1926,7 +1928,7 @@ function BattleScreen({ battle, player, art, top, children, controls = null, lab
       {labels[side] && <div className="pd-hud-owner">{labels[side]}</div>}
       <div className="pd-hud-chips">
         <TypeChip type={V.f.type} />
-        <span className="pd-ac" title="Classe Armatura">🛡 CA {acOf(V.f)}</span>
+        <span className="pd-ac" title="Classe Armatura">🛡 CA {V.ac}</span>
         <ResLine species={V.f.species} evo={V.f.evo} compact />
       </div>
       <FxIcons f={V.f} fx={V.fx} open={fxOpen === side} onToggle={() => setFxOpen((o) => (o === side ? null : side))} />

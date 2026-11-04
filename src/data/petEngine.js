@@ -290,7 +290,7 @@ export function desperateOk(f, foe) {
 // Ogni riga porta l'istantanea dei PF: la pagina la mostra passo passo.
 const snapOf = (b) => Object.fromEntries(["p", "e"].map((side) => {
   const s = b.sides[side];
-  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey) }];
+  return [side, { active: s.active, hp: s.team.map((f) => f.hp), status: s.team.map(statusKey), fx: s.team.map(fxKey), ac: s.team.map(acOf) }];  // ac: la CA di QUEL momento (2026-11-04: il riquadro mostrava quella di fine turno)
 }));
 function emit(b, out, ev) { out.push({ ...ev, snap: snapOf(b) }); }
 
@@ -332,7 +332,8 @@ function rollText(r) {
     const dice = r.dis ? `${r.d} (svantaggio: ${r.d} e ${r.d2})` : `${r.d}`;
     return ` 🎲 ${dice} ${sign(r.mod)} = ${r.total} contro CA ${r.vs}${r.d === 20 ? " · 20 naturale!" : ""}`;
   }
-  return ` ${r.who} tira salvezza: 🎲 ${r.d} ${sign(r.mod)} = ${r.total} contro CD ${r.vs}`;
+  // il dado lo tira il BERSAGLIO: sotto la CD l'effetto passa (2026-11-04: si scambiava per il tiro di chi attacca)
+  return ` ${r.who} prova a resistere (tiro salvezza): 🎲 ${r.d} ${sign(r.mod)} = ${r.total} contro CD ${r.vs}${r.ok ? " · non ce la fa!" : ""}`;
 }
 
 // Bacca Curativa: sotto metà PF la mangia (una volta per lotta).
