@@ -50,3 +50,6 @@ android/local.properties
 tools/.orecchio.env
 
 tools/.orecchio-usage.json
+
+# Graphify (grafo del codice, generato localmente)
+graphify-out/
