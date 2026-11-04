@@ -1960,6 +1960,13 @@ exports.petAward = onCall(
 // classe a ogni eroe rimasto (characters.storyWeekly, settimana dell'Arena).
 const segreteBundle = require("./segreteBundle");
 const segreteRng = () => crypto.randomInt(0, 2 ** 31) / 2 ** 31;
+// Il Master principale non ha i limiti dei dungeon (1 al giorno, 3 a settimana): uid letto una volta.
+let segreteMasterUid = null;
+async function getSegreteMasterUid() {
+  if (segreteMasterUid) return segreteMasterUid;
+  try { segreteMasterUid = (await admin.auth().getUserByEmail("santomassimo85@gmail.com")).uid; } catch { segreteMasterUid = "__none__"; }
+  return segreteMasterUid;
+}
 
 exports.segreteDo = onCall(
   { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
@@ -1973,6 +1980,7 @@ exports.segreteDo = onCall(
     const roomRef = db.collection("dungeon_rooms").doc(roomId);
     const runRef = db.collection("dungeon_runs").doc(roomId);
     const now = Date.now();
+    const masterUid = op === "init" ? await getSegreteMasterUid() : null;
     try {
       return await db.runTransaction(async (tx) => {
         const roomSnap = await tx.get(roomRef);
@@ -1997,11 +2005,28 @@ exports.segreteDo = onCall(
             .find((d) => d.key === room.type) || { key: room.type, name: "Le Segrete", icon: "🗝" };
           const bestiary = await loadBestiary();
           const week = segreteBundle.currentWeekKey();
+          const day = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
           const heroes = [];
+          const charSnaps = [];
           for (const m of room.members || []) {
             const cs = await tx.get(db.collection("characters").doc(m.uid));
+            charSnaps.push([m, cs]);
             heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", level: segreteBundle.storyLevelOf(cs.exists ? cs.data() : {}, m.cls, week) });
           }
+          // limiti: 1 al giorno, 3 a settimana per ogni membro (il Master no)
+          const blocked = charSnaps.filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, week, day).canRun);
+          if (blocked.length) {
+            const msg = blocked.map(([m, cs]) => {
+              const r = segreteBundle.runsOf(cs.exists ? cs.data() : {}, week, day);
+              return `${m.name} ${r.weekCount >= segreteBundle.WEEKLY_RUNS ? `ha già fatto ${segreteBundle.WEEKLY_RUNS} dungeon questa settimana` : "ha già fatto il dungeon di oggi"}`;
+            }).join(" · ");
+            tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
+            return { ok: false, blocked: msg };
+          }
+          charSnaps.forEach(([m, cs]) => {
+            if (m.uid === masterUid || !cs.exists) return;
+            tx.update(cs.ref, { storyRuns: segreteBundle.nextRunsPatch(cs.data(), week, day) });
+          });
           const fresh = segreteBundle.withRng(segreteRng, () => segreteBundle.newRun({
             room: { ...room, startKey }, heroes, bestiary, dungeon: { ...dungeon, floors: dungeon.floors || segreteBundle.DEFAULT_FLOORS }, now,
           }));

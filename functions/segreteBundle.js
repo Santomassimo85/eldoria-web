@@ -21,14 +21,18 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var segreteServer_exports = {};
 __export(segreteServer_exports, {
   AFK_MS: () => AFK_MS,
+  DAILY_RUNS: () => DAILY_RUNS,
   DEFAULT_FLOORS: () => DEFAULT_FLOORS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
+  WEEKLY_RUNS: () => WEEKLY_RUNS,
   act: () => act,
   currentWeekKey: () => currentWeekKey,
   flee: () => flee,
   mergeDungeons: () => mergeDungeons,
   newRun: () => newRun,
   nextFloor: () => nextFloor,
+  nextRunsPatch: () => nextRunsPatch,
+  runsOf: () => runsOf,
   storyLevelOf: () => storyLevelOf,
   timeout: () => timeout,
   withRng: () => withRng,
@@ -761,6 +765,19 @@ function mergeDungeons(custom = []) {
   return [...map.values()].filter((d) => !d.hidden);
 }
 var DEFAULT_FLOORS = 3;
+var DAILY_RUNS = 1;
+var WEEKLY_RUNS = 3;
+var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+function runsOf(charData, week = currentWeekKey(), day = romeDayKey()) {
+  const r = charData?.storyRuns;
+  const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
+  const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
+  return { weekCount, dayCount, canRun: weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+}
+function nextRunsPatch(charData, week = currentWeekKey(), day = romeDayKey()) {
+  const { weekCount, dayCount } = runsOf(charData, week, day);
+  return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
+}
 
 // src/utils/foundryMap.js
 var TYPE_TO_FOUNDRY = {
@@ -831,14 +848,18 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AFK_MS,
+  DAILY_RUNS,
   DEFAULT_FLOORS,
   MAX_STORY_LEVEL,
+  WEEKLY_RUNS,
   act,
   currentWeekKey,
   flee,
   mergeDungeons,
   newRun,
   nextFloor,
+  nextRunsPatch,
+  runsOf,
   storyLevelOf,
   timeout,
   withRng,

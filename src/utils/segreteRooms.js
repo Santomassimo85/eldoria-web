@@ -88,7 +88,7 @@ export const setReady = (roomId, uid, ready) => editRoom(roomId, (room) => {
   if (room.status !== "open") return null;
   const members = room.members.map((m) => (m.uid === uid ? { ...m, ready: !!ready } : m));
   const next = { ...room, members };
-  return allReady(next) ? { members, status: "running", startedAt: serverTimestamp() } : { members };
+  return allReady(next) ? { members, status: "running", startedAt: serverTimestamp(), blocked: null } : { members, blocked: null };
 });
 
 // Il Master fa partire comunque (prova o gruppo bloccato).

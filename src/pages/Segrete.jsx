@@ -12,7 +12,7 @@ import { isMainMaster } from "../utils/roles";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, STORY_CLASSES, classInfo, storyLevelOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, runsOf, STORY_CLASSES, classInfo, storyLevelOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom,
@@ -51,6 +51,7 @@ export default function Segrete() {
   const [charData, setCharData] = useState(null);
   const [custom, setCustom] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const runs = runsOf(charData);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [cls, setCls] = useState(null);
@@ -111,6 +112,7 @@ export default function Segrete() {
         <p className="sgr-kicker">Storia · gruppi da 1 a {MAX_PARTY}</p>
         <h1 className="sgr-title">Le Segrete</h1>
         <p className="sgr-lead">Livelli e dungeon valgono fino a {weekEndLabel()}: poi si riparte tutti dal livello 1. Se il gruppo cade, si perde tutto.</p>
+        <p className="sgr-runs">🗝 Dungeon: oggi <b>{runs.dayCount}/{DAILY_RUNS}</b> · questa settimana <b>{runs.weekCount}/{WEEKLY_RUNS}</b>{master ? " · tu sei il Master: nessun limite" : !runs.canRun ? (runs.weekCount >= WEEKLY_RUNS ? " · hai finito quelli della settimana" : " · torna domani") : ""}</p>
       </header>
 
         </>
@@ -119,7 +121,7 @@ export default function Segrete() {
 
       {myRoom ? (
         <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-          dungeon={dungeonOf(myRoom.type)} level={level} />
+          dungeon={dungeonOf(myRoom.type)} level={level} canRun={master || runs.canRun} />
       ) : (
         <>
           <section className="sgr-block">
@@ -210,7 +212,7 @@ export default function Segrete() {
   );
 }
 
-function MyRoom({ room, uid, master, charData, busy, run, dungeon, level }) {
+function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
@@ -262,8 +264,10 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level }) {
       <ClassPicker value={me?.cls} charData={charData} disabled={busy}
         onChange={(k) => k !== me?.cls && run(() => setMemberClass(room.id, uid, k, level(k)))} />
 
+      {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
+      {!canRun && <p className="sgr-err">⛔ Hai già fatto {runsOf(charData).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: puoi restare nel gruppo ma non partire.</p>}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!canRun && !me?.ready)}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
           {me?.ready ? "✓ Pronto — annulla" : "▶ Avvia"}
         </button>

@@ -71,3 +71,5 @@
   .sgr-classes { grid-template-columns: repeat(3, 1fr); }
   .sgr-cta { width: 100%; }
 }
+
+.sgr-runs { margin: 8px 0 0; padding: 6px 10px; display: inline-block; border: 1px solid rgba(var(--el-rgb, 224,168,90), .45); border-radius: 3px; font-size: .95rem; }
