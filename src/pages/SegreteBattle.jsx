@@ -19,7 +19,7 @@ let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
-function Fighter({ c, isTurn, selectable, picked, onPick, classSprite, flash }) {
+function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash }) {
   const dead = c.hp <= 0;
   const img = dead && c.deadImg ? c.deadImg : c.img || (c.side === "h" ? classSprite : "");
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
@@ -33,7 +33,7 @@ function Fighter({ c, isTurn, selectable, picked, onPick, classSprite, flash }) 
           : <span className="sgb-emoji" aria-hidden="true">{c.side === "h" ? classInfo(c.cls)?.icon : c.icon || (c.role === "boss" ? "👑" : "👹")}</span>}
       </span>
       <span className="sgb-hud">
-        <b>{c.name}</b>
+        <b>{done ? "✓ " : ""}{c.name}</b>
         <span className="sgb-bar"><i style={{ width: `${pct}%` }} className={pct < 30 ? "low" : ""} /></span>
         <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`}{c.side === "h" ? ` · Lv ${c.level}` : ""}</small>
       </span>
@@ -99,19 +99,22 @@ export default function SegreteBattle({ room, uid }) {
     return undefined;
   }, [run?.log]);
 
-  const cur = run && run.status === "fight" ? [...run.heroes, ...run.foes].find((c) => c.id === run.order[run.turn]) : null;
+  // Turni a fasi: tutti gli eroi insieme, poi i mostri. pending = eroi vivi che devono ancora agire.
+  const fighting = run?.status === "fight";
+  const acted = run?.acted || {};
+  const pending = fighting ? run.heroes.filter((h) => h.hp > 0 && !acted[h.id]) : [];
   const me = run?.heroes.find((h) => h.uid === uid) || null;
-  const myTurn = !!(cur && cur.side === "h" && cur.uid === uid);
-  const afkLeft = cur && cur.side === "h" ? AFK_MS - (now - (run.turnAt || now)) : null;
+  const myTurn = !!(fighting && me && me.hp > 0 && !acted[me.id]);
+  const afkLeft = fighting && pending.length ? AFK_MS - (now - (run.phaseAt || run.turnAt || now)) : null;
 
   // tempo scaduto: chiunque del gruppo fa difendere chi è sparito (una volta per turno)
   useEffect(() => {
-    if (!cur || cur.side !== "h" || cur.uid === uid || afkLeft == null || afkLeft > 0) return;
-    const k = `${run.seq}:${cur.id}`;
+    if (!pending.length || afkLeft == null || afkLeft > 0) return;
+    const k = `${run.floor}:${run.round}`;
     if (timeoutAsked.current === k) return;
     timeoutAsked.current = k;
     segreteDo({ op: "timeout", roomId: room.id }).catch(() => {});
-  }, [afkLeft, cur, uid, run?.seq, room.id]);
+  }, [afkLeft, pending.length, run?.floor, run?.round, room.id]);
 
   useEffect(() => { if (!myTurn) setChosen(null); }, [myTurn]);
 
@@ -159,13 +162,13 @@ export default function SegreteBattle({ room, uid }) {
       <div className={`sgb-field${run.bg ? " has-bg" : ""}`} style={run.bg ? { backgroundImage: `url(${run.bg})` } : undefined}>
         <div className="sgb-foes">
           {run.foes.map((f) => (
-            <Fighter key={f.id} c={f} isTurn={cur?.id === f.id} flash={flashes[f.id]}
+            <Fighter key={f.id} c={f} isTurn={false} flash={flashes[f.id]}
               selectable={!!(tk === "foe" && f.hp > 0)} onPick={pickTarget} />
           ))}
         </div>
         <div className="sgb-heroes">
           {run.heroes.map((h) => (
-            <Fighter key={h.id} c={h} isTurn={cur?.id === h.id} flash={flashes[h.id]} classSprite={sprites[h.cls]}
+            <Fighter key={h.id} c={h} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
               selectable={!!(tk === "ally" && !h.fled && (h.hp > 0 || chosen?.kind === "heal"))} onPick={pickTarget} />
           ))}
         </div>
@@ -181,7 +184,7 @@ export default function SegreteBattle({ room, uid }) {
             </div>
           ) : (
             <>
-              <p className="sgb-turn">⚔ Tocca a te{afkLeft != null ? ` · ${fmtLeft(afkLeft)}` : ""}</p>
+              <p className="sgb-turn">⚔ Tocca al gruppo: scegli la tua azione{afkLeft != null ? ` · ⏳ ${fmtLeft(afkLeft)}` : ""}{pending.length > 1 ? ` · mancano ${pending.length}` : ""}</p>
               <div className="sgb-acts">
                 {acts.map((a) => (
                   <button key={a.id} type="button" className={`sgb-act k-${a.kind}`} disabled={busy || (a.left != null && a.left <= 0)} onClick={() => pickAction(a)}>
@@ -196,7 +199,9 @@ export default function SegreteBattle({ room, uid }) {
           )
         ) : (
           <p className="sgb-turn sgb-turn--wait">
-            {cur?.side === "h" ? <>⏳ Tocca a <b>{cur.name}</b>{afkLeft != null ? ` · ${afkLeft > 0 ? `si difende da solo tra ${fmtLeft(afkLeft)}` : "lo faccio difendere…"}` : ""}</> : "👹 I mostri si muovono…"}
+            {pending.length
+              ? <>{me && acted[me.id] ? "✓ Hai agito. " : ""}⏳ Aspettiamo <b>{pending.map((h) => h.name).join(", ")}</b>{afkLeft != null ? ` · ${afkLeft > 0 ? `poi tocca ai mostri (chi manca si difende da solo tra ${fmtLeft(afkLeft)})` : "faccio difendere chi manca…"}` : ""}</>
+              : "👹 I mostri si muovono…"}
             {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
           </p>
         ))}

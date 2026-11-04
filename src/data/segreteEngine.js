@@ -4,7 +4,8 @@
    `npm run build:segrete`) con dadi crypto; il sito lo usa solo per i testi.
    Stato della partita = dungeon_runs/{roomId}:
      { type, bg, floor, floors, boss, status fight|cleared|won|lost, round,
-       order: [id], turn, turnAt, heroes: [c], foes: [c], log: [...], seq }
+       order: [id mostri], acted: {idEroe: true}, phaseAt, heroes: [c], foes: [c], log, seq }
+   Turni a fasi: tutti gli eroi insieme (max AFK_MS), poi tutti i mostri.
    Combattente c = { id, side h|f, name, level, hp, maxHp, ac, init, save,
      fx: {ac:[{v,until}], adv, dis, dmg:{v,until}, rage, stun, dodge}, uses,
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
@@ -79,7 +80,7 @@ export function xpGain(level, floors) {
 /* Il mostro si adatta al livello del gruppo (2026-11-04, simulato): più debole del
    gruppo = più PF e colpi più forti; più forte = un po' meno. Élite e boss
    crescono anche col numero di eroi; i gregari crescono di numero. */
-export const ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.45, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.12 };
+export const ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const diff = partyLv - (Number(src.level) || 1);
   const lvScale = diff >= 0 ? 1 + ADAPT.hpUp * diff : Math.max(ADAPT.hpMin, 1 + ADAPT.hpDown * diff);
@@ -133,7 +134,7 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize 
 const alive = (c) => c && c.hp > 0;
 const everyone = (s) => [...s.heroes, ...s.foes];
 export const byId = (s, id) => everyone(s).find((c) => c.id === id) || null;
-export const current = (s) => byId(s, s.order[s.turn]);
+export const current = (s) => pendingHeroes(s)[0] || null; // (compatibilità) un eroe che deve ancora agire
 const fxOn = (s, e) => !!e && (typeof e === "number" ? s.round < e : s.round < e.until);
 function acOf(s, c) {
   let ac = c.ac;
@@ -146,8 +147,11 @@ function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
   s.log = [...(s.log || []), { i: s.seq, txt, ...extra }].slice(-LOG_MAX);
 }
+// TURNI A FASI (2026-11-04): prima TUTTI gli eroi insieme (un'azione a testa, in
+// qualsiasi ordine, max AFK_MS), poi tutti i mostri nell'ordine d'iniziativa.
+// s.order = solo i mostri; s.acted = {idEroe: true} della fase in corso.
 function rollInitiative(s) {
-  const all = everyone(s).filter(alive).map((c) => ({ id: c.id, v: d20() + (c.init || 0) + rnd() }));
+  const all = s.foes.filter(alive).map((c) => ({ id: c.id, v: d20() + (c.init || 0) + rnd() }));
   all.sort((a, b) => b.v - a.v);
   s.order = all.map((x) => x.id);
   s.turn = 0;
@@ -177,8 +181,7 @@ function startFloor(s, bestiary, now) {
   log(s, s.boss
     ? `👑 Sala del boss! Davanti a voi: ${s.foes.map((f) => f.name).join(", ")}.`
     : `🚪 Sala ${s.floor} di ${s.floors}: ${s.foes.map((f) => f.name).join(", ")}.`, { kind: "room" });
-  s.turnAt = now;
-  advanceToActor(s, now, true);
+  startHeroPhase(s, now);
 }
 
 /* ── danni ───────────────────────────────────────────── */
@@ -411,31 +414,41 @@ function checkEnd(s) {
   }
   return false;
 }
-function nextIndex(s) {
-  s.turn += 1;
-  if (s.turn >= s.order.length) { s.turn = 0; s.round += 1; }
+export const pendingHeroes = (s) => s.heroes.filter((h) => alive(h) && !(s.acted || {})[h.id]);
+function startHeroPhase(s, now) {
+  s.acted = {};
+  s.phaseAt = now;
+  s.turnAt = now;
+  s.heroes.forEach((h) => { h.fx.dodge = false; });
 }
-// Passa al prossimo che può agire; fa agire i mostri; si ferma su un eroe vivo.
-function advanceToActor(s, now, fresh = false) {
-  let guard = 0;
-  if (!fresh) nextIndex(s);
-  while (guard++ < 200) {
+// Tutti i mostri, uno dopo l'altro; poi nuovo round e di nuovo tocca agli eroi.
+function monsterPhase(s, now) {
+  for (const id of s.order) {
     if (checkEnd(s)) return;
-    const c = current(s);
-    if (!alive(c)) { nextIndex(s); continue; }
-    c.fx.dodge = false;
-    if (c.fx.stun) { c.fx.stun = false; log(s, `💫 ${c.name} è stordito e salta il turno.`, { kind: "debuff", actor: c.id }); nextIndex(s); continue; }
-    if (c.side === "h") { s.turnAt = now; return; }
-    foeAct(s, c);
-    nextIndex(s);
+    const f = byId(s, id);
+    if (!alive(f) || f.side !== "f") continue; // le partite di prima del cambio avevano anche gli eroi in order
+    if (f.fx.stun) { f.fx.stun = false; log(s, `💫 ${f.name} è stordito e salta il turno.`, { kind: "debuff", actor: f.id }); continue; }
+    foeAct(s, f);
   }
+  if (checkEnd(s)) return;
+  s.round += 1;
+  startHeroPhase(s, now);
+}
+// Dopo ogni azione di un eroe: se hanno agito tutti i vivi, tocca ai mostri.
+function afterHeroAction(s, now) {
+  if (checkEnd(s)) return;
+  if (pendingHeroes(s).length) return;
+  monsterPhase(s, now);
 }
 
 /* ── operazioni (le chiama il server) ────────────────── */
 export function act(s, uid, { actionId, targetId }, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
-  const h = current(s);
-  if (!h || h.side !== "h" || h.uid !== uid) throw new Error("Non è il tuo turno.");
+  s.acted = s.acted || {};
+  const h = s.heroes.find((x) => x.uid === uid);
+  if (!h) throw new Error("Non sei in questa partita.");
+  if (!alive(h)) throw new Error("Sei a terra: aspetta che un alleato ti curi.");
+  if (s.acted[h.id]) throw new Error("Hai già agito in questo round: aspetta gli altri e i mostri.");
   const a = actionId === DEFEND.id ? DEFEND : heroActionList(h).find((x) => x.id === actionId);
   if (!a) throw new Error("Azione non disponibile.");
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
@@ -450,18 +463,19 @@ export function act(s, uid, { actionId, targetId }, now) {
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
   const ev = heroAct(s, h, a, target);
   if (target && target.side === "f") target.lastHitBy = h.id;
-  advanceToActor(s, now);
+  s.acted = { ...s.acted, [h.id]: true };
+  afterHeroAction(s, now);
   return ev;
 }
 // Chi sparisce per AFK_MS: si difende da solo (lo chiede chiunque del gruppo).
 export function timeout(s, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
-  const h = current(s);
-  if (!h || h.side !== "h") throw new Error("Tocca ai mostri.");
-  if (now - (s.turnAt || 0) < AFK_MS) throw new Error("Il suo tempo non è ancora finito.");
-  log(s, `⏰ ${h.name} non risponde da 10 minuti: si difende da solo.`, { kind: "buff", actor: h.id });
-  h.fx.dodge = true;
-  advanceToActor(s, now);
+  const late = pendingHeroes(s);
+  if (!late.length) throw new Error("Hanno già agito tutti.");
+  if (now - (s.phaseAt || s.turnAt || 0) < AFK_MS) throw new Error("I 10 minuti non sono ancora finiti.");
+  late.forEach((h) => { h.fx.dodge = true; s.acted = { ...(s.acted || {}), [h.id]: true }; });
+  log(s, `⏰ Tempo scaduto: ${late.map((h) => h.name).join(", ")} si ${late.length === 1 ? "difende" : "difendono"} da ${late.length === 1 ? "solo" : "soli"}.`, { kind: "buff", targets: late.map((h) => h.id) });
+  afterHeroAction(s, now);
 }
 // Sala ripulita → la prossima (breve riposo: +30% PF, chi era a terra si rialza al 25%, usi ricaricati).
 export function nextFloor(s, bestiary, now) {
@@ -481,6 +495,6 @@ export function flee(s, uid, now) {
   const h = s.heroes.find((x) => x.uid === uid);
   if (!h) throw new Error("Non sei in questa partita.");
   if (h.hp > 0) { h.hp = 0; h.fled = true; log(s, `🏃 ${h.name} fugge dalle Segrete.`, { kind: "down", actor: h.id }); }
-  if (s.status === "fight") { if (current(s)?.id === h.id) advanceToActor(s, now); else checkEnd(s); }
+  if (s.status === "fight") afterHeroAction(s, now);
   else if (!s.heroes.some(alive) && s.status === "cleared") { s.status = "lost"; log(s, "☠ Non resta nessuno a proseguire: tutto è perduto.", { kind: "end" }); }
 }
