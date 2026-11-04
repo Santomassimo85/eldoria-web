@@ -1931,3 +1931,113 @@ exports.petAward = onCall(
     });
   },
 );
+
+// ── LE SEGRETE (story mode, 2026-11-04) ─────────────────────────────────────
+// Il combattimento dei dungeon gira QUI: dadi con crypto, IA dei mostri, turni.
+// Le regole sono src/data/segreteEngine.js (+ segreteKits.js) impacchettate in
+// functions/segreteBundle.js con `npm run build:segrete` (da rifare a ogni modifica).
+// Stato della partita in dungeon_runs/{roomId} (regole: lettura loggati, scrittura
+// solo da qui). Operazioni: init (crea la partita quando la stanza è partita),
+// act (azione dell'eroe di turno), timeout (chi sparisce da 10 minuti si difende),
+// next (sala successiva), flee (abbandona). Vittoria = +1 livello di storia della
+// classe a ogni eroe rimasto (characters.storyWeekly, settimana dell'Arena).
+const segreteBundle = require("./segreteBundle");
+const segreteRng = () => crypto.randomInt(0, 2 ** 31) / 2 ** 31;
+
+exports.segreteDo = onCall(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const op = String(request.data?.op || "");
+    const roomId = String(request.data?.roomId || "");
+    if (!roomId || roomId.includes("/")) throw new HttpsError("invalid-argument", "Stanza non valida.");
+    const db = admin.firestore();
+    const roomRef = db.collection("dungeon_rooms").doc(roomId);
+    const runRef = db.collection("dungeon_runs").doc(roomId);
+    const now = Date.now();
+    try {
+      return await db.runTransaction(async (tx) => {
+        const roomSnap = await tx.get(roomRef);
+        if (!roomSnap.exists) throw new Error("La stanza non esiste più.");
+        const room = { id: roomId, ...roomSnap.data() };
+        if (!(room.memberIds || []).includes(uid)) throw new Error("Non sei in questo gruppo.");
+        const startKey = room.startedAt?.toMillis ? room.startedAt.toMillis() : 0;
+        const runSnap = await tx.get(runRef);
+        let run = runSnap.exists ? runSnap.data() : null;
+        if (run && run.startKey !== startKey) run = null; // stanza ripartita: partita nuova
+
+        const loadBestiary = async () => {
+          const q = await tx.get(db.collection("dungeon_monsters").where("dungeons", "array-contains", room.type));
+          return q.docs.map((d) => ({ id: d.id, ...d.data() }));
+        };
+
+        if (op === "init") {
+          if (room.status !== "running") throw new Error("Il gruppo non è ancora partito.");
+          if (run) return { ok: true, already: true };
+          const typeSnap = await tx.get(db.collection("dungeon_types").doc(room.type));
+          const dungeon = segreteBundle.mergeDungeons(typeSnap.exists ? [{ key: room.type, ...typeSnap.data() }] : [])
+            .find((d) => d.key === room.type) || { key: room.type, name: "Le Segrete", icon: "🗝" };
+          const bestiary = await loadBestiary();
+          const week = segreteBundle.currentWeekKey();
+          const heroes = [];
+          for (const m of room.members || []) {
+            const cs = await tx.get(db.collection("characters").doc(m.uid));
+            heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", level: segreteBundle.storyLevelOf(cs.exists ? cs.data() : {}, m.cls, week) });
+          }
+          const fresh = segreteBundle.withRng(segreteRng, () => segreteBundle.newRun({
+            room: { ...room, startKey }, heroes, bestiary, dungeon: { ...dungeon, floors: dungeon.floors || segreteBundle.DEFAULT_FLOORS }, now,
+          }));
+          tx.set(runRef, { ...fresh, members: room.memberIds, updatedAt: now });
+          return { ok: true };
+        }
+
+        if (!run) throw new Error("La partita non è ancora iniziata.");
+        const before = run.seq || 0;
+        let ev = null;
+        if (op === "act") {
+          ev = segreteBundle.withRng(segreteRng, () => segreteBundle.act(run, uid, { actionId: String(request.data?.actionId || ""), targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
+        } else if (op === "timeout") {
+          segreteBundle.withRng(segreteRng, () => segreteBundle.timeout(run, now));
+        } else if (op === "next") {
+          const bestiary = await loadBestiary();
+          segreteBundle.withRng(segreteRng, () => segreteBundle.nextFloor(run, bestiary, now));
+        } else if (op === "flee") {
+          segreteBundle.withRng(segreteRng, () => segreteBundle.flee(run, uid, now));
+        } else {
+          throw new Error("Operazione sconosciuta.");
+        }
+
+        // fine del dungeon: premi (vittoria = +1 livello alla classe) e stanza chiusa
+        if ((run.status === "won" || run.status === "lost") && !run.closed) {
+          run.closed = true;
+          if (run.status === "won") {
+            const week = segreteBundle.currentWeekKey();
+            const winners = run.heroes.filter((h) => !h.fled);
+            const snaps = [];
+            for (const h of winners) snaps.push([h, await tx.get(db.collection("characters").doc(h.uid))]);
+            run.levelUps = [];
+            for (const [h, cs] of snaps) {
+              const sw = cs.exists ? cs.data().storyWeekly : null;
+              const levels = sw && sw.weekKey === week ? { ...(sw.levels || {}) } : {};
+              const cur = Math.max(1, Number(levels[h.cls]) || 1);
+              const next = Math.min(segreteBundle.MAX_STORY_LEVEL, cur + 1);
+              levels[h.cls] = next;
+              const runs = sw && sw.weekKey === week ? (Number(sw.wins) || 0) + 1 : 1;
+              // update (non set+merge): il campo si sostituisce intero, così i livelli della settimana vecchia spariscono
+              if (cs.exists) tx.update(db.collection("characters").doc(h.uid), { storyWeekly: { weekKey: week, levels, wins: runs } });
+              run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, from: cur, to: next });
+            }
+          }
+          tx.update(roomRef, { status: "done", result: run.status, endedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        run.updatedAt = now;
+        tx.set(runRef, run);
+        return { ok: true, ev, seq: run.seq, from: before };
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      throw new HttpsError("failed-precondition", e?.message || "Operazione non riuscita.");
+    }
+  },
+);

@@ -17,6 +17,7 @@ import {
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom,
 } from "../utils/segreteRooms";
+import SegreteBattle from "./SegreteBattle";
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
@@ -77,6 +78,7 @@ export default function Segrete() {
   const dungeons = useMemo(() => mergeDungeons(custom), [custom]);
   const dungeonOf = (key) => dungeons.find((d) => d.key === key) || { key, name: key, icon: "🗝" };
   const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
+  const inFight = !!myRoom && (myRoom.status === "running" || myRoom.status === "done");
   const now = Date.now();
   const openRooms = rooms
     .filter((r) => r.status === "open" && r.id !== myRoom?.id)
@@ -102,6 +104,8 @@ export default function Segrete() {
 
   return (
     <section className="sgr-page">
+      {!inFight && (
+        <>
       <Link to="/sala-della-gloria" className="sgr-back">← Sala della Gloria</Link>
       <header className="sgr-head">
         <p className="sgr-kicker">Storia · gruppi da 1 a {MAX_PARTY}</p>
@@ -109,6 +113,8 @@ export default function Segrete() {
         <p className="sgr-lead">Livelli e dungeon valgono fino a {weekEndLabel()}: poi si riparte tutti dal livello 1. Se il gruppo cade, si perde tutto.</p>
       </header>
 
+        </>
+      )}
       {err && <p className="sgr-err" role="alert">{err}</p>}
 
       {myRoom ? (
@@ -210,18 +216,16 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level }) {
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
   const readyN = room.members.filter((m) => m.ready).length;
 
-  if (room.status === "running") {
+  if (room.status === "running" || room.status === "done") {
     return (
-      <section className="sgr-block sgr-myroom is-running">
-        <p className="sgr-kicker">Il tuo gruppo</p>
-        <h2 className="sgr-h2">{room.name} <DungeonBadge d={dungeon} /></h2>
-        <p className="sgr-run-title">🗝 Il gruppo è sceso nelle Segrete!</p>
-        <p className="sgr-lead">Il combattimento contro i mostri del dungeon è in costruzione: arriva con la prossima fase. Per ora la stanza resta qui.</p>
-        <p className="sgr-room-line">{room.members.map((m) => `${classInfo(m.cls)?.icon || ""} ${m.name} (Lv ${m.level})`).join(" · ")}</p>
-        {(host || master) && (
-          <button type="button" className="sgr-btn" disabled={busy} onClick={() => run(() => reopenRoom(room.id))}>↺ Torna alla stanza</button>
+      <>
+        <SegreteBattle room={room} uid={uid} />
+        {master && (
+          <div className="sgr-room-actions">
+            <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => reopenRoom(room.id))}>↺ Riporta in stanza (Master)</button>
+          </div>
         )}
-      </section>
+      </>
     );
   }
 

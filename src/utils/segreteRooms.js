@@ -57,7 +57,12 @@ export const joinRoom = (roomId, uid, char, cls, level) => editRoom(roomId, (roo
 });
 
 export const leaveRoom = (roomId, uid) => editRoom(roomId, (room) => {
-  if (room.status !== "open") throw new Error("Il dungeon è partito: non puoi più uscire.");
+  if (room.status === "running") throw new Error("Il dungeon è in corso: prima abbandona la partita.");
+  if (room.status === "done") {
+    // partita finita: chi esce se ne va, l'ultimo chiude la stanza
+    const left = room.members.filter((m) => m.uid !== uid);
+    return left.length ? { members: left, memberIds: left.map((m) => m.uid) } : "delete";
+  }
   const members = room.members.filter((m) => m.uid !== uid).map((m) => ({ ...m, ready: false }));
   if (!members.length) return "delete";
   return { members, memberIds: members.map((m) => m.uid), hostUid: room.hostUid === uid ? members[0].uid : room.hostUid };

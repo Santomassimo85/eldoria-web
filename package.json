@@ -11,7 +11,8 @@
     "changelog": "node scripts/changelog.mjs",
     "build:pets": "esbuild src/data/petOps.js --bundle --platform=node --format=cjs --target=node22 --outfile=functions/petBundle.js --banner:js=\"// GENERATO da src/data/petOps.js con npm run build:pets: non modificare a mano.\"",
     "android:sync": "cap sync android",
-    "android:apk": "cap sync android && cd android && gradlew.bat assembleRelease && cd .. && node scripts/copy-apk.mjs"
+    "android:apk": "cap sync android && cd android && gradlew.bat assembleRelease && cd .. && node scripts/copy-apk.mjs",
+    "build:segrete": "esbuild src/data/segreteServer.js --bundle --platform=node --format=cjs --target=node22 --outfile=functions/segreteBundle.js --banner:js=\"// GENERATO da src/data/segreteServer.js con npm run build:segrete: non modificare a mano.\""
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
