@@ -1,0 +1,32 @@
+/* Sala della Gloria — due porte ad arco (token del Covo, pagina scura di gioco) */
+.sg-page { max-width: 1100px; margin: 0 auto; padding: 32px 16px 120px; color: var(--osso, #ece5d6); }
+.sg-head { text-align: center; margin-bottom: 28px; }
+.sg-kicker { margin: 0; font: 600 .78rem var(--font-sc, serif); letter-spacing: .2em; text-transform: uppercase; color: var(--el, #e0a85a); }
+.sg-title { margin: 6px 0 8px; font-family: var(--font-title, serif); font-size: clamp(2.4rem, 7vw, 4.2rem); line-height: 1; color: var(--osso, #ece5d6); }
+.sg-lead { margin: 0 auto; max-width: 52ch; font-family: var(--font-text, serif); font-size: 1.05rem; color: var(--osso-2, #d8ccb4); }
+
+.sg-doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 20px; }
+.sg-door {
+  position: relative; display: grid; align-content: end; gap: 8px; min-height: 360px; padding: 120px 24px 26px;
+  text-decoration: none; color: inherit; overflow: hidden;
+  border: 1px solid rgba(var(--el-rgb, 224,168,90), .45); border-top: 3px solid var(--el, #e0a85a);
+  border-radius: 160px 160px 3px 3px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(var(--el-rgb, 224,168,90), .22), transparent 60%),
+    linear-gradient(180deg, var(--roccia-2, #221f27), var(--roccia-1, #17141b));
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.sg-door:hover, .sg-door:focus-visible { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 0 1px var(--el, #e0a85a); outline: none; }
+.sg-door-rune { position: absolute; top: 34px; left: 50%; translate: -50% 0; font-size: 3.6rem; line-height: 1; filter: drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
+.sg-door-kicker { font: 600 .74rem var(--font-sc, serif); letter-spacing: .16em; text-transform: uppercase; color: var(--el, #e0a85a); }
+.sg-door-title { font-family: var(--font-title, serif); font-size: 2rem; line-height: 1.05; color: var(--osso, #ece5d6); }
+.sg-door-text { font-family: var(--font-text, serif); font-size: 1rem; line-height: 1.45; color: var(--osso-2, #d8ccb4); }
+.sg-door-cta { margin-top: 6px; font: 600 .9rem var(--font-num, serif); letter-spacing: .06em; color: var(--el, #e0a85a); }
+
+@media (max-width: 640px) {
+  .sg-page { padding-top: 20px; }
+  .sg-door { min-height: 300px; padding: 100px 18px 22px; border-radius: 120px 120px 3px 3px; }
+  .sg-door-rune { top: 26px; font-size: 3rem; }
+  .sg-door-title { font-size: 1.7rem; }
+}
+@media (prefers-reduced-motion: reduce) { .sg-door { transition: none; } .sg-door:hover { transform: none; } }

@@ -236,6 +236,19 @@ service cloud.firestore {
     }
 
     // Cronache complete dei match (si conservano per gli ultimi 8 match di ogni giocatore).
+    // Le Segrete (2026-11-04): stanze dei gruppi (lobby) e tipi di dungeon del Master
+    match /dungeon_rooms/{roomId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.memberIds.size() <= 4;
+      allow update: if isLoggedIn() && request.resource.data.memberIds.size() <= 4;
+      allow delete: if isLoggedIn(); // anche chi trova una stanza ferma da ore la può sciogliere
+    }
+    match /dungeon_types/{typeId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
     match /arena_chronicles/{matchId} {
       allow read: if isLoggedIn();
       allow create, update: if isLoggedIn();
