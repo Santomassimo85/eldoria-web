@@ -110,3 +110,16 @@
 /* testi chiari espliciti: la regola globale dei <p>/<b> del sito li scuriva */
 .sgh, .sgh p, .sgh b, .sgh-title, .sgh-act b, .sgr-slot-main b, .sgr-room-name, .sgr-room-members li { color: var(--osso, #ece5d6); }
 .sgh-title { color: #fff7e6; }
+
+/* Testi scuri su fondo scuro (segnalato dal telefono, 2026-11-04): il sito colora i <p> da solo,
+   qui ogni paragrafo delle Segrete ha il suo colore chiaro esplicito. */
+.sgr-page .sgr-runs, .sgr-page .sgr-runs b { color: var(--osso, #ece5d6); }
+.sgr-page .sgr-runs { background: rgba(0, 0, 0, .25); }
+.sgr-page .sgr-err { color: #fff; }
+.sgr-page .sgr-lead { color: var(--osso-2, #d8ccb4); }
+.sgr-page .sgr-hint, .sgr-page .sgr-empty, .sgr-page .sgr-room-line { color: var(--osso-2, #d8ccb4); }
+.sgr-page .sgh p, .sgr-page .sgh-sub { color: var(--osso, #ece5d6); }
+.sgr-page .sgh-hint { color: var(--osso-2, #d8ccb4); }
+.sgr-page .sgb-turn, .sgr-page .sgb-end p, .sgr-page .sgb-pickmsg { color: #f3ead8; }
+.sgr-page .sgb-turn--wait { color: #e9dcc4; }
+.sgr-page .sgb-result { color: #f2c14e; }
