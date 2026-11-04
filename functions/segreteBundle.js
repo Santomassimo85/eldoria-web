@@ -31,7 +31,8 @@ __export(segreteServer_exports, {
   nextFloor: () => nextFloor,
   storyLevelOf: () => storyLevelOf,
   timeout: () => timeout,
-  withRng: () => withRng
+  withRng: () => withRng,
+  wonItemInboxDoc: () => wonItemInboxDoc
 });
 module.exports = __toCommonJS(segreteServer_exports);
 
@@ -316,6 +317,8 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     floors: dungeon.floors || 3,
     floor: 1,
     status: "fight",
+    corone: Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5,
+    lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35,
     round: 1,
     order: [],
     turn: 0,
@@ -758,6 +761,73 @@ function mergeDungeons(custom = []) {
   return [...map.values()].filter((d) => !d.hidden);
 }
 var DEFAULT_FLOORS = 3;
+
+// src/utils/foundryMap.js
+var TYPE_TO_FOUNDRY = {
+  "Arma": "weapon",
+  "Armatura": "equipment",
+  "Accessori": "equipment",
+  "Artefatto Magico": "equipment",
+  "Pozioni": "consumable",
+  "Pergamene": "consumable",
+  "Reagenti": "loot",
+  "Varie": "loot",
+  "Pacchetto Carte": "loot",
+  "Carta TCG": "loot"
+};
+var RARITY_TO_FOUNDRY = {
+  "Comune": "common",
+  "Non comune": "uncommon",
+  "Rara": "rare",
+  "Molto rara": "veryRare",
+  "Leggendaria": "legendary",
+  "Artefatto": "artifact"
+};
+var resolveFoundryType = (item) => item?.foundry?.foundryType || TYPE_TO_FOUNDRY[item?.type] || "loot";
+var resolveFoundryRarity = (item) => RARITY_TO_FOUNDRY[item?.class] || "common";
+var marketItemToFoundryPayload = (item, dest = {}) => {
+  const f = item?.foundry || {};
+  const ftype = resolveFoundryType(item);
+  const target = dest.target || "world";
+  return {
+    name: (item?.name || "").trim(),
+    foundryType: ftype,
+    rarity: resolveFoundryRarity(item),
+    description: item?.description || "",
+    img: (item?.img || "").trim(),
+    price: Number(item?.startingBid ?? item?.price ?? 0) || 0,
+    weight: Number(f.weight) || 0,
+    quantity: Number(f.quantity) || 1,
+    target,
+    targetUid: target === "player" ? dest.targetUid || "" : "",
+    targetName: target === "player" ? dest.targetName || "" : "",
+    actionType: ftype === "weapon" || ftype === "consumable" ? f.actionType || "" : "",
+    damageFormula: (f.damageFormula || "").trim(),
+    damageType: f.damageType || "slashing",
+    damage2Formula: (f.damage2Formula || "").trim(),
+    damage2Type: f.damage2Type || "",
+    versatileFormula: (f.versatileFormula || "").trim(),
+    attackBonus: f.attackBonus === "" || f.attackBonus == null ? 0 : Number(f.attackBonus) || 0,
+    proficient: f.proficient !== false,
+    properties: ftype === "weapon" ? Array.isArray(f.properties) ? f.properties : [] : [],
+    armorType: ftype === "equipment" ? f.armorType || "" : "",
+    armorValue: ftype === "equipment" ? Number(f.armorValue) || 0 : 0,
+    saveAbility: f.saveAbility || "",
+    saveDC: f.saveDC === "" || f.saveDC == null ? 0 : Number(f.saveDC) || 0
+  };
+};
+var wonItemInboxDoc = (item, winnerUid, winnerName, createdBy = "") => {
+  const p = marketItemToFoundryPayload(item, { target: "player", targetUid: winnerUid, targetName: winnerName || "" });
+  const set = item?.setPayload;
+  if (set?.name) {
+    const bonus = (set.bonuses || []).map((b) => `${b.pieces} pezzi: ${b.effect}`).join(" \xB7 ");
+    p.description = `${p.description || ""}
+
+Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` : ""}`.trim();
+  }
+  if (item?.finalPrice) p.price = Number(item.finalPrice) || p.price;
+  return { status: "pending", ...p, origin: "market", marketItemId: item?.id || "", createdBy };
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AFK_MS,
@@ -771,5 +841,6 @@ var DEFAULT_FLOORS = 3;
   nextFloor,
   storyLevelOf,
   timeout,
-  withRng
+  withRng,
+  wonItemInboxDoc
 });

@@ -150,7 +150,9 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey,
     dungeonName: dungeon.name, dungeonIcon: dungeon.icon || "🗝",
     bg: (dungeon.backgrounds || []).length ? pick(dungeon.backgrounds) : "",
-    floors: dungeon.floors || 3, floor: 1, status: "fight", round: 1, order: [], turn: 0, turnAt: now,
+    floors: dungeon.floors || 3, floor: 1, status: "fight",
+    corone: Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5,
+    lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
   startFloor(s, bestiary, now);

@@ -252,6 +252,10 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if false; // la partita la scrive solo la funzione segreteDo
     }
+    match /segrete_loot/{lootId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster(); // il server (segreteDo) lo segna vinto con l'admin SDK
+    }
     match /dungeon_types/{typeId} {
       allow read: if isLoggedIn();
       allow write: if isMaster();

@@ -3,7 +3,8 @@ import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import { db, storage } from "../firebase";
 import "./admin.css";
-import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { mergeDungeons } from "../data/segrete";
 import { ref as storageRef, uploadBytes, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
@@ -166,6 +167,10 @@ const initialFormData = {
   setBonuses: [], // [{ pieces: 2, effect: "STR +1" }, ...]
   // FOUNDRY — dati di combattimento facoltativi per l'import su Foundry
   foundry: { ...EMPTY_FOUNDRY },
+  // DESTINAZIONE (2026-11-04): "mercato" = asta al Mercato Nero; "segrete" = bottino
+  // dello story mode (segrete_loot), si vince nei dungeon; segreteDungeons vuoto = tutti.
+  destination: "mercato",
+  segreteDungeons: [],
 };
 
 // ISO → "YYYY-MM-DDTHH:mm" nell'ora LOCALE (quella che leggono gli input data/ora).
@@ -326,6 +331,9 @@ export default function MarketAdmin() {
   const { currentUser } = useAuth();
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState(initialFormData);
+  const [segreteTypes, setSegreteTypes] = useState([]);
+  useEffect(() => onSnapshot(collection(db, "dungeon_types"), (s) => setSegreteTypes(s.docs.map((d) => ({ key: d.id, ...d.data() }))), () => {}), []);
+  const segreteDungeonList = useMemo(() => mergeDungeons(segreteTypes), [segreteTypes]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [globalCountdown, setGlobalCountdown] = useState("");
@@ -1056,6 +1064,23 @@ export default function MarketAdmin() {
     delete dataToSubmit.setName;
     delete dataToSubmit.setSize;
     delete dataToSubmit.setBonuses;
+    const toSegrete = !editId && formData.destination === "segrete";
+    delete dataToSubmit.destination;
+    delete dataToSubmit.segreteDungeons;
+
+    // Bottino delle Segrete: niente asta, va nel forziere dello story mode
+    if (toSegrete) {
+      const { saleType, startingBid, endDate, price, ...loot } = dataToSubmit; // eslint-disable-line no-unused-vars
+      try {
+        await addDoc(collection(db, "segrete_loot"), {
+          ...loot, dungeons: formData.segreteDungeons || [], status: "pool", createdAt: serverTimestamp(),
+        });
+        alert(`«${loot.name}» è nel forziere delle Segrete: si vince vincendo un dungeon.`);
+        setFormData(initialFormData);
+      } catch (err) { alert("Salvataggio non riuscito: " + err.message); }
+      setLoading(false);
+      return;
+    }
 
     // I bonus del set sono UGUALI per tutti i pezzi: gli altri pezzi con regole
     // diverse (nome, pezzi totali, bonus) si riallineano a queste.
@@ -1448,6 +1473,36 @@ export default function MarketAdmin() {
           </div>
 
           <form onSubmit={handleSubmit} className="mkadm-form">
+            {!editId && (
+              <div className="mkadm-field mkadm-dest">
+                <label>Dove va a finire</label>
+                <div className="mkadm-dest-row">
+                  {[["mercato", "🏪 Mercato Nero", "all'asta come sempre"], ["segrete", "🗝 Le Segrete", "bottino dello story mode"]].map(([k, l, h]) => (
+                    <button key={k} type="button" aria-pressed={formData.destination === k}
+                      className={`mkadm-dest-btn${formData.destination === k ? " is-on" : ""}`}
+                      onClick={() => setFormData({ ...formData, destination: k })}>
+                      <b>{l}</b><small>{h}</small>
+                    </button>
+                  ))}
+                </div>
+                {formData.destination === "segrete" && (
+                  <>
+                    <small className="mkadm-dest-hint">Esce in (nessuno scelto = in tutti i dungeon). Lo vince un eroe del gruppo che conquista il dungeon e arriva su Foundry come le aste.</small>
+                    <div className="mkadm-dest-row">
+                      {segreteDungeonList.map((d) => {
+                        const on = (formData.segreteDungeons || []).includes(d.key);
+                        return (
+                          <button key={d.key} type="button" aria-pressed={on} className={`mkadm-dest-chip${on ? " is-on" : ""}`}
+                            onClick={() => setFormData({ ...formData, segreteDungeons: on ? formData.segreteDungeons.filter((k) => k !== d.key) : [...(formData.segreteDungeons || []), d.key] })}>
+                            {d.icon} {d.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div className="mkadm-field">
               <div className="mkadm-label-row">
                 <label>Nome oggetto</label>

@@ -210,6 +210,11 @@ export default function SegreteBattle({ room, uid }) {
           <div className="sgb-end">
             <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
             {(run.levelUps || []).map((l) => <p key={l.uid}>⬆ {l.name}: {classInfo(l.cls)?.it} Lv {l.from} → <b>Lv {l.to}</b></p>)}
+            {run.status === "won" && !!run.corone && <p>🪙 +{run.corone} Corone a ogni eroe rimasto fino alla fine.</p>}
+            {run.loot && (
+              <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}
+                <span>🎁 Nel forziere del boss: <b>{run.loot.name}</b>, va a <b>{run.loot.winner}</b>{run.loot.uid === uid ? " (a te!)" : ""}. Arriverà nella scheda su Foundry.</span></p>
+            )}
             <button type="button" className="sgb-btn" disabled={busy} onClick={() => leaveRoom(room.id, uid).catch((e) => setErr(e.message))}>Torna alla lobby</button>
           </div>
         )}

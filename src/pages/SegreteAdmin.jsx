@@ -129,14 +129,14 @@ export default function SegreteAdmin() {
       </div>
 
       <div className="sga-tabs">
-        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"]].map(([k, l]) => (
+        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["bottino", "🎁 Bottino"]].map(([k, l]) => (
           <button key={k} type="button" aria-pressed={tab === k} className={tab === k ? "is-on" : ""} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
 
-      {tab === "dungeon"
-        ? <DungeonsTab dungeons={dungeons} monsters={monsters} />
-        : <BestiaryTab dungeons={dungeons} monsters={monsters} wbMinions={wbMinions} wbBosses={wbBosses} />}
+      {tab === "dungeon" && <DungeonsTab dungeons={dungeons} monsters={monsters} />}
+      {tab === "bestiario" && <BestiaryTab dungeons={dungeons} monsters={monsters} wbMinions={wbMinions} wbBosses={wbBosses} />}
+      {tab === "bottino" && <LootTab dungeons={dungeons} />}
     </section>
   );
 }
@@ -162,6 +162,7 @@ function DungeonsTab({ dungeons, monsters }) {
       await setDoc(doc(db, "dungeon_types", key), {
         name: draft.name.trim().slice(0, 40), icon: (draft.icon || "🗝").slice(0, 4), desc: String(draft.desc || "").slice(0, 300),
         floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), backgrounds: draft.backgrounds || [], hidden: !!draft.hidden,
+        corone: num(draft.corone, 0, 100, 5), lootChance: num(draft.lootChance, 0, 100, 35),
         updatedAt: serverTimestamp(),
       }, { merge: true });
       close();
@@ -207,6 +208,12 @@ function DungeonsTab({ dungeons, monsters }) {
             <input className="admin-field-input" value={draft.name} placeholder="es. Caverna di Cristallo" onChange={(e) => set({ name: e.target.value })} /></label>
           <label className="sga-field sga-field--s" title="Quante sale con gregari/élite prima della sala del boss"><span>Sale prima del boss</span>
             <input className="admin-field-input" type="number" min="1" max="10" value={draft.floors} onChange={(e) => set({ floors: e.target.value })} /></label>
+        </div>
+        <div className="sga-row">
+          <label className="sga-field sga-field--s" title="Corone a ogni eroe che vince il dungeon"><span>Corone a testa (vittoria)</span>
+            <input className="admin-field-input" type="number" min="0" max="100" value={draft.corone ?? 5} onChange={(e) => set({ corone: e.target.value })} /></label>
+          <label className="sga-field sga-field--s" title="Probabilità che il gruppo trovi un oggetto del forziere (lo prende un eroe a caso)"><span>Probabilità oggetto %</span>
+            <input className="admin-field-input" type="number" min="0" max="100" value={draft.lootChance ?? 35} onChange={(e) => set({ lootChance: e.target.value })} /></label>
         </div>
         <label className="sga-field"><span>Descrizione (la leggono i giocatori nella lobby)</span>
           <textarea className="admin-field-input" rows={2} value={draft.desc || ""} onChange={(e) => set({ desc: e.target.value })} /></label>
@@ -255,6 +262,7 @@ function DungeonsTab({ dungeons, monsters }) {
               </div>
               <b>{d.icon} {d.name}{d.hidden ? " · nascosto" : ""}</b>
               <small>{d.floors || DEFAULT_FLOORS} sale + boss · {(d.backgrounds || []).length} sfondi · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
+              <small>🪙 {d.corone ?? 5} Corone a testa · 🎁 {d.lootChance ?? 35}% oggetto</small>
             </button>
           );
         })}
@@ -467,6 +475,58 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
           </button>
         ))}
       </div>
+    </>
+  );
+}
+
+/* ── BOTTINO (fase 4) ─────────────────────────────────────────
+   segrete_loot = oggetti creati dalla Forgia del Mercato Nero con destinazione
+   "Le Segrete". status "pool" = in palio, "won" = vinto (wonBy, wonByName, wonAt):
+   alla vittoria di un dungeon il server lo dà a un eroe a caso e lo manda in
+   foundry_inbox come le aste vinte. Qui si sceglie dove esce, si rimette in palio o si toglie. */
+function LootTab({ dungeons }) {
+  const [loot, setLoot] = useState([]);
+  useEffect(() => onSnapshot(collection(db, "segrete_loot"), (s) => setLoot(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}), []);
+  const pool = loot.filter((l) => l.status !== "won");
+  const won = loot.filter((l) => l.status === "won").sort((a, b) => (b.wonAt || 0) - (a.wonAt || 0));
+  const toggle = (l, key) => {
+    const ds = l.dungeons || [];
+    updateDoc(doc(db, "segrete_loot", l.id), { dungeons: ds.includes(key) ? ds.filter((k) => k !== key) : [...ds, key] }).catch((e) => alert(e.message));
+  };
+  const card = (l) => (
+    <div key={l.id} className="sga-card sga-loot">
+      <div className="sga-mcard-img">{l.img ? <img src={l.img} alt="" /> : <span aria-hidden="true">🎁</span>}</div>
+      <div className="sga-mcard-main">
+        <b>{l.name}</b>
+        <small>{l.type} · {l.class}</small>
+        {l.status === "won"
+          ? <small>🏆 vinto da <b>{l.wonByName || "?"}</b>{l.wonAt ? ` il ${new Date(l.wonAt).toLocaleDateString("it-IT")}` : ""}{l.dungeon ? ` · ${dungeons.find((d) => d.key === l.dungeon)?.name || l.dungeon}` : ""}</small>
+          : (
+            <div className="sga-chips sga-loot-chips">
+              {dungeons.map((d) => {
+                const on = (l.dungeons || []).includes(d.key);
+                return <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""} onClick={() => toggle(l, d.key)}>{d.icon} {d.name}</button>;
+              })}
+              <small>{(l.dungeons || []).length ? "" : "esce in tutti i dungeon"}</small>
+            </div>
+          )}
+        <div className="sga-btns">
+          {l.status === "won" && (
+            <button type="button" className="adm-btn" onClick={() => updateDoc(doc(db, "segrete_loot", l.id), { status: "pool", wonBy: null, wonByName: null, wonAt: null }).catch((e) => alert(e.message))}>↺ Rimetti in palio</button>
+          )}
+          <button type="button" className="adm-btn adm-btn--danger" onClick={() => window.confirm(`Togliere «${l.name}» dal forziere?`) && deleteDoc(doc(db, "segrete_loot", l.id))}>🗑 Togli</button>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <>
+      <p className="sga-hint">Gli oggetti si creano dalla <Link to="/dm-admin/market">Forgia del Mercato Nero</Link> scegliendo «🗝 Le Segrete» come destinazione. Alla vittoria di un dungeon, con la probabilità scelta nel dungeon, uno di questi va a un eroe a caso del gruppo e arriva su Foundry (Fetch admin) come un'asta vinta.</p>
+      <h3 className="sga-h3">In palio <small>{pool.length}</small></h3>
+      {!pool.length && <p className="sga-hint">Il forziere è vuoto: i gruppi vincono solo Corone e livelli.</p>}
+      <div className="sga-grid">{pool.map(card)}</div>
+      <h3 className="sga-h3">Già vinti <small>{won.length}</small></h3>
+      <div className="sga-grid">{won.map(card)}</div>
     </>
   );
 }

@@ -274,6 +274,23 @@ exports.arenaWeeklyReset = onSchedule(
         } catch (err) {
             console.error("❌ arenaWeeklyReset (scommesse) fallita:", err);
         }
+        // 2b) Le Segrete (story mode): stanze e partite della settimana spariscono.
+        //     I livelli di storia si azzerano da soli (storyWeekly.weekKey della settimana vecchia).
+        try {
+            let gone = 0;
+            for (const col of ["dungeon_rooms", "dungeon_runs"]) {
+                const s = await dbAdmin.collection(col).get();
+                for (let i = 0; i < s.docs.length; i += 400) {
+                    const b = dbAdmin.batch();
+                    s.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
+                    await b.commit();
+                }
+                gone += s.size;
+            }
+            if (gone) console.log(`🗝 arenaWeeklyReset: ${gone} stanze/partite delle Segrete cancellate.`);
+        } catch (err) {
+            console.error("❌ arenaWeeklyReset (Segrete) fallita:", err);
+        }
         // 3) Monete e acquisti di ogni personaggio.
         try {
             const snap = await dbAdmin.collection("characters").get();
@@ -2016,6 +2033,23 @@ exports.segreteDo = onCall(
             const winners = run.heroes.filter((h) => !h.fled);
             const snaps = [];
             for (const h of winners) snaps.push([h, await tx.get(db.collection("characters").doc(h.uid))]);
+            // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
+            const lootQ = await tx.get(db.collection("segrete_loot").where("status", "==", "pool"));
+            const lootPool = lootQ.docs.filter((d) => { const ds = d.data().dungeons || []; return !ds.length || ds.includes(run.type); });
+            const corone = Math.max(0, Math.min(100, Number(run.corone ?? 5)));
+            const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35)));
+            if (lootPool.length && winners.length && crypto.randomInt(0, 100) < chance) {
+              const item = lootPool[crypto.randomInt(0, lootPool.length)];
+              const w = winners[crypto.randomInt(0, winners.length)];
+              const data = { id: item.id, ...item.data() };
+              tx.update(item.ref, { status: "won", wonBy: w.uid, wonByName: w.name, wonAt: now, roomId, dungeon: run.type });
+              tx.set(db.collection("foundry_inbox").doc(), {
+                ...segreteBundle.wonItemInboxDoc(data, w.uid, w.name), origin: "segrete", segreteLootId: item.id,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+              run.loot = { name: data.name || "Oggetto", img: data.img || "", uid: w.uid, winner: w.name };
+            }
+            run.corone = corone;
             run.levelUps = [];
             for (const [h, cs] of snaps) {
               const sw = cs.exists ? cs.data().storyWeekly : null;
@@ -2025,7 +2059,10 @@ exports.segreteDo = onCall(
               levels[h.cls] = next;
               const runs = sw && sw.weekKey === week ? (Number(sw.wins) || 0) + 1 : 1;
               // update (non set+merge): il campo si sostituisce intero, così i livelli della settimana vecchia spariscono
-              if (cs.exists) tx.update(db.collection("characters").doc(h.uid), { storyWeekly: { weekKey: week, levels, wins: runs } });
+              if (cs.exists) tx.update(db.collection("characters").doc(h.uid), {
+                storyWeekly: { weekKey: week, levels, wins: runs },
+                ...(corone ? { platinum: admin.firestore.FieldValue.increment(corone) } : {}),
+              });
               run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, from: cur, to: next });
             }
           }

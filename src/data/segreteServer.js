@@ -5,3 +5,4 @@ export { newRun, act, timeout, nextFloor, flee, withRng, AFK_MS } from "./segret
 export { mergeDungeons, DEFAULT_FLOORS, storyLevelOf } from "./segrete";
 export { MAX_STORY_LEVEL } from "./segreteKits";
 export { currentWeekKey } from "./arenaWeek";
+export { wonItemInboxDoc } from "../utils/foundryMap";

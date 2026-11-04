@@ -58,3 +58,8 @@ button.sga-card:hover { border-color: var(--el); }
   .sga-field--s, .sga-field--xs { flex: 1 1 45%; }
   .sga-savebar .adm-btn { flex: 1 1 auto; }
 }
+
+.sga-loot { display: flex; gap: 12px; align-items: flex-start; }
+.sga-loot .sga-mcard-img img { image-rendering: auto; object-fit: contain; }
+.sga-loot-chips button { min-height: 30px; font-size: .8rem; }
+.sga-loot-chips small { align-self: center; color: var(--osso-2); }
