@@ -22,6 +22,7 @@ var segreteServer_exports = {};
 __export(segreteServer_exports, {
   AFK_MS: () => AFK_MS,
   DAILY_RUNS: () => DAILY_RUNS,
+  DAILY_TOTAL: () => DAILY_TOTAL,
   DEFAULT_FLOORS: () => DEFAULT_FLOORS,
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
@@ -39,6 +40,7 @@ __export(segreteServer_exports, {
   levelOfXp: () => levelOfXp,
   mergeDungeons: () => mergeDungeons,
   newRun: () => newRun,
+  nextDailyPatch: () => nextDailyPatch,
   nextFloor: () => nextFloor,
   nextRunsPatch: () => nextRunsPatch,
   poolFor: () => poolFor,
@@ -1109,6 +1111,9 @@ function mergeDungeons(custom = []) {
 }
 var DEFAULT_FLOORS = 3;
 var DAILY_RUNS = 1;
+var DAILY_TOTAL = 3;
+var dailyTotalOf = (charData, day = romeDayKey()) => charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0;
+var nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
 var WEEKLY_RUNS = 3;
 var RUN_COUNTS_AFTER = 2;
 var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
@@ -1116,7 +1121,9 @@ function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
   const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
-  return { weekCount, dayCount, canRun: weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+  const total = dailyTotalOf(charData, day);
+  const totalFull = total >= DAILY_TOTAL;
+  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
 function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);
@@ -1193,6 +1200,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
 0 && (module.exports = {
   AFK_MS,
   DAILY_RUNS,
+  DAILY_TOTAL,
   DEFAULT_FLOORS,
   KITS,
   MAX_STORY_LEVEL,
@@ -1210,6 +1218,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   levelOfXp,
   mergeDungeons,
   newRun,
+  nextDailyPatch,
   nextFloor,
   nextRunsPatch,
   poolFor,

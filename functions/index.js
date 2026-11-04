@@ -2077,6 +2077,7 @@ exports.segreteDo = onCall(
           if (blocked.length) {
             const msg = blocked.map(([m, cs]) => {
               const r = segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day);
+              if (r.totalFull) return `${m.name} ha già finito ${segreteBundle.DAILY_TOTAL} dungeon oggi (si riparte domani)`;
               return `${m.name} ${r.weekCount >= segreteBundle.WEEKLY_RUNS ? `ha già fatto ${segreteBundle.WEEKLY_RUNS} dungeon questa settimana con questa classe` : "ha già fatto il dungeon di oggi con questa classe"} (può cambiare classe)`;
             }).join(" · ");
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
@@ -2121,7 +2122,7 @@ exports.segreteDo = onCall(
           || (run.status === "cleared" && run.floor >= segreteBundle.RUN_COUNTS_AFTER));
         const needEnd = (run.status === "won" || run.status === "lost") && !run.closed;
         const charMap = {};
-        if (needCount || (needEnd && run.status === "won")) {
+        if (needCount || needEnd) {
           for (const h of run.heroes) charMap[h.uid] = await tx.get(db.collection("characters").doc(h.uid));
         }
         const lootQ = needEnd && run.status === "won" ? await tx.get(db.collection("segrete_loot").where("status", "==", "pool")) : null;
@@ -2140,6 +2141,15 @@ exports.segreteDo = onCall(
         // fine del dungeon: premi e stanza chiusa
         if (needEnd) {
           run.closed = true;
+          // tetto giornaliero per giocatore: conta i dungeon FINITI (dopo la 2ª sala)
+          if (run.counted) {
+            const endDay = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+            run.heroes.forEach((h) => {
+              const cs = charMap[h.uid];
+              if (h.uid === masterUid || !cs?.exists) return;
+              tx.update(cs.ref, { storyDaily: segreteBundle.nextDailyPatch(cs.data(), endDay) });
+            });
+          }
           if (run.status === "won") {
             const winners = run.heroes.filter((h) => !h.fled);
             const snaps = winners.map((h) => [h, charMap[h.uid]]);

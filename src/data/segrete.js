@@ -71,6 +71,12 @@ export const dungeonSlug = (name) => String(name || "").toLowerCase()
    characters.storyClassRuns[cls] = { weekKey, count, day, dayCount }
    (il vecchio characters.storyRuns, per giocatore, non si usa più). */
 export const DAILY_RUNS = 1;
+/* TETTO PER GIOCATORE (2026-11-04 sera): oltre a 1 per classe, al massimo DAILY_TOTAL
+   dungeon FINITI al giorno in tutto (vinti o persi dopo la 2ª sala), contati alla fine
+   della partita in characters.storyDaily = { day, count }. */
+export const DAILY_TOTAL = 3;
+export const dailyTotalOf = (charData, day = romeDayKey()) => (charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0);
+export const nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
 export const WEEKLY_RUNS = 3;
 export const RUN_COUNTS_AFTER = 2;
 export const romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
@@ -78,7 +84,9 @@ export function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey(
   const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
   const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
-  return { weekCount, dayCount, canRun: weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+  const total = dailyTotalOf(charData, day);
+  const totalFull = total >= DAILY_TOTAL;
+  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
 export function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);
