@@ -62,7 +62,7 @@ export function makeHero(m) {
   const lv = levelOfXp(hero.xp);
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
-  const maxHp = heroMaxHp(m.cls, lv, st);
+  const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
   const uses = {};
   heroActions(m.cls, lv, picks).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
@@ -90,7 +90,7 @@ export const ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitP
 export const CAPS = {
   minion: { hit: 3, dc: 11, dmg: 4, hp: 9, ac: 13, save: 1 },
   elite: { hit: 4, dc: 12, dmg: 6.5, hp: 18, ac: 14, save: 2 },
-  boss: { hit: 5, dc: 13, dmg: 8, hp: 30, ac: 15, save: 3 },
+  boss: { hit: 5, dc: 13, dmg: 8, hp: 30, ac: 14, save: 3 },
   perLevel: { dmg: 0.32, hp: 0.42 },
 };
 export function capsFor(role, partyLv, partySize) {
@@ -117,7 +117,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const maxHp = Math.max(1, Math.min(cap.hp, Math.round((Number(src.hp) || 10) * scale)));
   return {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
-    level: Number(src.level) || 1, hp: maxHp, maxHp, ac: Math.min(cap.ac, Math.max(8, (Number(src.ac) || 12) + (diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3)))), init: Number(src.init) || 0, save: Math.min(cap.save, (Number(src.save) || 0) + Math.round(diff * ADAPT.hitPer)),
+    level: Number(src.level) || 1, hp: maxHp, maxHp, ac: cap.ac, init: Number(src.init) || 0, save: cap.save,
     img: src.imageUrl || "", deadImg: src.deadImageUrl || "", icon: src.icon || "", facing: src.facing || "left",
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
@@ -147,7 +147,7 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize 
     let mins = fit("minion", partyLevel + 1);
     const elites = fit("elite", partyLevel + 2);
     if (!mins.length) mins = elites.length ? elites : FALLBACK_MONSTERS.filter((m) => m.role === "minion");
-    let count = Math.min(6, partySize + (floor >= 2 && partySize >= 2 ? 1 : 0) + (partySize >= 3 ? 1 : 0));
+    let count = Math.min(5, partySize + (floor >= 2 ? 1 : 0));
     if (floor >= 2 && elites.length && rnd() < 0.45) { picks.push(pick(elites)); count = Math.max(partySize >= 2 ? 1 : 0, count - 2); }
     for (let i = 0; i < count; i++) picks.push(pick(mins));
   }
@@ -235,9 +235,43 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
   return s;
 }
 function partyLevel(s) { return Math.round(s.heroes.reduce((t, h) => t + h.level, 0) / Math.max(1, s.heroes.length)); }
+/* BUDGET DELLA SALA (2026-11-04): segnalato "4 eroi Lv 1 da ~13 PF contro 5 nemici da 27".
+   I PF e il danno dei mostri si ricavano dagli EROI VERI della partita (quanti sono e i loro
+   PF massimi): PF totali dei mostri = PF degli eroi × BUDGET.hp, danno medio per round di
+   tutti i mostri insieme = PF degli eroi × BUDGET.dmg; si dividono fra i mostri in base al
+   ruolo (gregario 1, élite 2,5, boss 5). Il mostro tiene i suoi dadi e le sue mosse: i
+   numeri si scalano in proporzione (f.cap.dmg = suo danno medio massimo a colpo). */
+export const BUDGET = {
+  normal: { hp: 1, dmg: 0.15 },
+  elite: { hp: 1.1, dmg: 0.16 },
+  boss: { hp: 1.3, dmg: 0.16 },
+  weight: { minion: 1, elite: 2.5, boss: 5 },
+  // PF dei mostri per ogni eroe = forza d'attacco di un eroe di quel livello
+  hpPerHero: 19, hpPerLevel: 0.2,
+  // in gruppo gli eroi si coprono a vicenda (cure, focus): ogni eroe in più vale un po' di più
+  groupHp: 0.12, groupDmg: 0.1,
+};
+// Forza d'attacco di un eroe (≈ PF di mostri che "regge" una sala): cresce col livello,
+// con un salto all'attacco extra / incantesimi più forti del Lv 5.
+const heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.max(1, lv) - 1) + (lv >= 5 ? 0.25 : 0));
+export function balanceFoes(foes, heroes, isBoss) {
+  const live = heroes.filter((h) => !h.fled);
+  const heroHp = live.reduce((t, h) => t + (h.maxHp || 10), 0) || 10;
+  const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
+  const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
+  const w = (f) => BUDGET.weight[f.role] || 1;
+  const sumW = foes.reduce((t, f) => t + w(f), 0) || 1;
+  foes.forEach((f) => {
+    const share = w(f) / sumW;
+    const g = live.length - 1;
+    f.maxHp = f.hp = Math.max(3, Math.round(heroOff * kind.hp * (1 + BUDGET.groupHp * g) * share));
+    f.cap = { ...(f.cap || {}), dmg: Math.max(1.5, heroHp * kind.dmg * (1 + BUDGET.groupDmg * g) * share * (foes.length > 1 ? 1.15 : 1)) };
+  });
+  return foes;
+}
 function startFloor(s, bestiary, now) {
   s.boss = s.floor > s.floors;
-  s.foes = buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.length });
+  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length }), s.heroes, s.boss);
   s.heroes.forEach((h) => { h.fx = {}; });
   s.status = "fight";
   rollInitiative(s);
@@ -426,9 +460,10 @@ function foeAct(s, f) {
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   // danno medio oltre il tetto del gruppo → si riduce in proporzione
-  const capMult = (n, sides, area) => {
+  // targets = quanti eroi colpisce: un'area divide il budget del mostro fra tutti (×1,4)
+  const capMult = (n, sides, targets = 1) => {
     const avg = (avgDice(n, sides) + lvlBonus) * (f.adapt?.mult || 1);
-    const max = (f.cap?.dmg || 99) * (area ? 0.5 : 1);
+    const max = (f.cap?.dmg || 99) * (targets > 1 ? Math.min(1, 1.1 / targets) : 1);
     return avg > max ? max / avg : 1;
   };
   const turns = Math.max(1, Number(a.durationTurns) || 2);
@@ -459,8 +494,8 @@ function foeAct(s, f) {
   const isSave = a.hitMode === "save" || (a.aoeShape && a.aoeShape !== "single");
   if (isSave) {
     const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
-    const dc = Math.min(f.cap?.dc ?? 99, (Number(a.saveDC) || 12) + (f.adapt?.hit || 0));
-    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length > 1)));
+    const dc = f.cap?.dc ?? ((Number(a.saveDC) || 12) + (f.adapt?.hit || 0));
+    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length)));
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
@@ -470,10 +505,10 @@ function foeAct(s, f) {
     log(s, `🌀 ${f.name} → ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
     return;
   }
-  const bonus = Math.min(f.cap?.hit ?? 99, (Number(a.bonus) || 3) + (f.adapt?.hit || 0));
+  const bonus = f.cap?.hit ?? ((Number(a.bonus) || 3) + (f.adapt?.hit || 0));
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) { log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id] }); return; }
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, false))), type, []);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
   log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg });
 }
 

@@ -20,6 +20,9 @@ import {
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
+import { hpPending } from "../data/segreteKits";
+// eroe pronto a giocare: creato e con i PF tirati
+const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
@@ -150,8 +153,8 @@ export default function Segrete() {
             <p className="sgr-label">La tua classe</p>
             <ClassPicker value={cls} onChange={setCls} charData={charData} />
             <SegreteHero cls={cls} charData={charData} />
-            <button type="button" className="sgr-cta" disabled={busy || !cls || !heroOf(charData, cls)}
-              title={heroOf(charData, cls) ? "" : "Crea prima l'eroe di questa classe"}
+            <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls)}
+              title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
               onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls) }))}>
               Crea il gruppo
             </button>
@@ -177,9 +180,9 @@ export default function Segrete() {
                       ))}
                     </ul>
                     <div className="sgr-room-actions">
-                      <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroOf(charData, cls)}
+                      <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
                         onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                        {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : `Entra come ${classInfo(cls)?.it || "…"} Lv ${level(cls)}`}
+                        {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !heroReady(charData, cls) ? "Tira prima i PF" : `Entra come ${classInfo(cls)?.it || "…"} Lv ${level(cls)}`}
                       </button>
                       {(master || idle) && (
                         <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
@@ -277,7 +280,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && <p className="sgr-err">⛔ Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto {runsOf(charData, me?.cls).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: scegli un'altra classe qui sopra per partire.</p>}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!canRun || !heroOf(charData, me?.cls)))}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!canRun || !heroReady(charData, me?.cls)))}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
           {me?.ready ? "✓ Pronto — annulla" : "▶ Avvia"}
         </button>

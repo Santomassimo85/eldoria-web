@@ -150,3 +150,6 @@
 .sgr-page .sgb-top, .sgr-page .sgb-where { color: #fff7e6 !important; }
 .sgr-page .sgb-hud b { color: #fff !important; }
 .sgr-page .sgb-hud small { color: #e9dcc4 !important; }
+
+.sgr-page .sgh-hp { border-color: #e0624f; background: rgba(224,98,79,.1); }
+.sgr-page .sgh-hpmsg { margin: 8px 0 0; font-weight: 700; color: #f2c14e; }

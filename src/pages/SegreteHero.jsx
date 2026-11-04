@@ -6,9 +6,10 @@
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
+import { playDiceRoll } from "../components/diceSound";
 import { classInfo, heroOf } from "../data/segrete";
 import {
-  kitOf, poolFor, heroActions, heroStats, heroPending, heroMaxHp, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, heroStats, heroPending, hpPending, heroMaxHp, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
 } from "../data/segreteKits";
 
@@ -40,10 +41,17 @@ export default function SegreteHero({ cls, charData }) {
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [hpMsg, setHpMsg] = useState("");
   const send = async (data) => {
-    if (busy) return;
+    if (busy) return null;
     setBusy(true); setErr("");
-    try { await segreteDo(data); } catch (e) { setErr(e.message || "Non riuscito."); } finally { setBusy(false); }
+    try { return await segreteDo(data); } catch (e) { setErr(e.message || "Non riuscito."); return null; } finally { setBusy(false); }
+  };
+  const rollHp = async () => {
+    setHpMsg("🎲 Il dado rotola…");
+    playDiceRoll(900, 1);
+    const r = await send({ op: "heroHp", cls });
+    setHpMsg(r?.roll ? `🎲 d${r.die} = ${r.roll}${r.level === 1 ? ` · al livello 1 si aggiunge il dado pieno (${r.die})` : ""} · PF aggiornati!` : "");
   };
 
   if (!cls) return null;
@@ -100,6 +108,7 @@ export default function SegreteHero({ cls, charData }) {
   }
 
   const pend = heroPending(hero);
+  const hpLeft = hpPending(hero);
   const lv = pend.level;
   const st = heroStats(hero);
   const curXp = Number(hero.xp) || 0;
@@ -117,7 +126,7 @@ export default function SegreteHero({ cls, charData }) {
         <span className="sgh-ico" aria-hidden="true">{info?.icon}</span>
         <div>
           <p className="sgh-title">{info?.it} · Livello {lv}</p>
-          <small>{heroMaxHp(cls, lv, st)} PF · CA {heroAc(cls, st)} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE`}</small>
+          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || [])} PF · CA {heroAc(cls, st)} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE`}</small>
         </div>
       </div>
       <div className="sgh-xp"><i style={{ width: `${pct}%` }} /></div>
@@ -125,6 +134,13 @@ export default function SegreteHero({ cls, charData }) {
         {STAT_KEYS.map((k) => <span key={k} className={kit.rec.includes(k) ? "is-rec" : ""}><b>{STAT_LABEL[k]}</b> {st[k] >= 0 ? "+" : ""}{st[k]}</span>)}
       </div>
 
+      {hpLeft > 0 && (
+        <div className="sgh-pending sgh-hp">
+          <p>❤ {(hero.hpRolls || []).length ? `Hai ${hpLeft} ${hpLeft === 1 ? "tiro" : "tiri"} dei PF da fare (livelli nuovi)` : "Tira i tuoi punti ferita"}: dado vita <b>d{kit.hitDie}</b> + COS. Finché non tiri non puoi partire.</p>
+          <button type="button" className="sgr-cta" disabled={busy} onClick={rollHp}>🎲 Tira i PF (d{kit.hitDie})</button>
+        </div>
+      )}
+      {hpMsg && <p className="sgh-hpmsg">{hpMsg}</p>}
       {pend.asi > 0 && (
         <div className="sgh-pending">
           <p>⭐ Hai <b>{pend.asi}</b> {pend.asi === 1 ? "punto caratteristica" : "punti caratteristica"} da spendere (massimo +{STAT_MAX}):</p>

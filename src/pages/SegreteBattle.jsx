@@ -80,7 +80,9 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       <span className="sgb-hud">
         <b>{done ? "✓ " : ""}{c.name}</b>
         <span className="sgb-bar"><i style={{ width: `${pct}%` }} className={pct < 30 ? "low" : ""} /></span>
-        <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`}{c.side === "h" ? ` · Lv ${c.level}` : ""}</small>
+        {c.side === "h"
+          ? <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`} · Lv {c.level}</small>
+          : dead ? <small>sconfitto</small> : null}
       </span>
     </button>
   );

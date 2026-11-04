@@ -1978,7 +1978,7 @@ exports.segreteDo = onCall(
     const db = admin.firestore();
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -1998,6 +1998,14 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          if (op === "heroHp") {
+            // tiro del dado vita (livello 1 alla creazione, poi uno per livello): crypto, una volta sola
+            if (segreteBundle.hpPending(hero) <= 0) throw new Error("Hai già tirato i PF di tutti i tuoi livelli.");
+            const die = segreteBundle.KITS[cls].hitDie;
+            const roll = crypto.randomInt(1, die + 1);
+            tx.update(ref, { [`storyChars.${cls}.hpRolls`]: [...(hero.hpRolls || []), roll] });
+            return { ok: true, roll, die, level: (hero.hpRolls || []).length + 1 };
+          }
           const pend = segreteBundle.heroPending(hero);
           if (op === "heroAsi") {
             const stat = String(request.data?.stat || "");
@@ -2057,9 +2065,9 @@ exports.segreteDo = onCall(
             charSnaps.push([m, cs]);
             heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", hero: segreteBundle.heroOf(cs.exists ? cs.data() : {}, m.cls) });
           }
-          const noHero = heroes.filter((h) => !h.hero);
+          const noHero = heroes.filter((h) => !h.hero || segreteBundle.hpPending(h.hero) > 0);
           if (noHero.length) {
-            const msg = noHero.map((h) => `${h.name} non ha ancora creato l'eroe di quella classe`).join(" · ");
+            const msg = noHero.map((h) => (h.hero ? `${h.name} deve ancora tirare i PF del suo eroe` : `${h.name} non ha ancora creato l'eroe di quella classe`)).join(" · ");
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
             return { ok: false, blocked: msg };
           }

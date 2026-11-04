@@ -35,6 +35,7 @@ __export(segreteServer_exports, {
   heroOf: () => heroOf,
   heroPending: () => heroPending,
   heroStats: () => heroStats,
+  hpPending: () => hpPending,
   levelOfXp: () => levelOfXp,
   mergeDungeons: () => mergeDungeons,
   newRun: () => newRun,
@@ -53,7 +54,7 @@ module.exports = __toCommonJS(segreteServer_exports);
 
 // src/data/segreteKits.js
 var MAX_STORY_LEVEL = 20;
-var HERO_HP_MULT = 1.25;
+var HERO_HP_MULT = 1.1;
 var XP_TABLE = [0, 300, 900, 2700, 6500, 14e3, 23e3, 34e3, 48e3, 64e3, 85e3, 1e5, 12e4, 14e4, 165e3, 195e3, 225e3, 265e3, 305e3, 355e3];
 var STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 var STAT_BUDGET = 10;
@@ -290,10 +291,17 @@ function heroStats(hero) {
   return out;
 }
 var mainMod = (cls, st) => st[kitOf(cls).stat] || 0;
-function heroMaxHp(cls, lv, st) {
+var hpPending = (hero) => Math.max(0, levelOfXp(hero?.xp) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
+function heroMaxHp(cls, lv, st, rolls = []) {
   const d = kitOf(cls).hitDie;
   const con = st.con || 0;
-  return Math.max(1, Math.round((d + con + (Math.floor(d / 2) + 1 + con) * (Math.max(1, lv) - 1)) * HERO_HP_MULT));
+  const avg = Math.floor(d / 2) + 1;
+  let hp = 0;
+  for (let i = 1; i <= Math.max(1, lv); i++) {
+    const r = Number(rolls?.[i - 1]);
+    hp += (i === 1 ? d : 0) + (Number.isFinite(r) && r > 0 ? r : avg) + con;
+  }
+  return Math.max(1, Math.round(hp * HERO_HP_MULT));
 }
 function heroAc(cls, st) {
   const k = kitOf(cls);
@@ -386,7 +394,7 @@ function makeHero(m) {
   const lv = levelOfXp(hero.xp);
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
-  const maxHp = heroMaxHp(m.cls, lv, st);
+  const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
   const uses = {};
   heroActions(m.cls, lv, picks).forEach((a) => {
     if (a.uses) uses[a.id] = a.uses;
@@ -418,7 +426,7 @@ var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36,
 var CAPS = {
   minion: { hit: 3, dc: 11, dmg: 4, hp: 9, ac: 13, save: 1 },
   elite: { hit: 4, dc: 12, dmg: 6.5, hp: 18, ac: 14, save: 2 },
-  boss: { hit: 5, dc: 13, dmg: 8, hp: 30, ac: 15, save: 3 },
+  boss: { hit: 5, dc: 13, dmg: 8, hp: 30, ac: 14, save: 3 },
   perLevel: { dmg: 0.32, hp: 0.42 }
 };
 function capsFor(role, partyLv, partySize) {
@@ -451,9 +459,9 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     level: Number(src.level) || 1,
     hp: maxHp,
     maxHp,
-    ac: Math.min(cap.ac, Math.max(8, (Number(src.ac) || 12) + (diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3)))),
+    ac: cap.ac,
     init: Number(src.init) || 0,
-    save: Math.min(cap.save, (Number(src.save) || 0) + Math.round(diff * ADAPT.hitPer)),
+    save: cap.save,
     img: src.imageUrl || "",
     deadImg: src.deadImageUrl || "",
     icon: src.icon || "",
@@ -488,7 +496,7 @@ function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, part
     let mins = fit("minion", partyLevel2 + 1);
     const elites = fit("elite", partyLevel2 + 2);
     if (!mins.length) mins = elites.length ? elites : FALLBACK_MONSTERS.filter((m) => m.role === "minion");
-    let count = Math.min(6, partySize + (floor >= 2 && partySize >= 2 ? 1 : 0) + (partySize >= 3 ? 1 : 0));
+    let count = Math.min(5, partySize + (floor >= 2 ? 1 : 0));
     if (floor >= 2 && elites.length && rnd() < 0.45) {
       picks.push(pick(elites));
       count = Math.max(partySize >= 2 ? 1 : 0, count - 2);
@@ -589,9 +597,37 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
 function partyLevel(s) {
   return Math.round(s.heroes.reduce((t, h) => t + h.level, 0) / Math.max(1, s.heroes.length));
 }
+var BUDGET = {
+  normal: { hp: 1, dmg: 0.15 },
+  elite: { hp: 1.1, dmg: 0.16 },
+  boss: { hp: 1.3, dmg: 0.16 },
+  weight: { minion: 1, elite: 2.5, boss: 5 },
+  // PF dei mostri per ogni eroe = forza d'attacco di un eroe di quel livello
+  hpPerHero: 19,
+  hpPerLevel: 0.2,
+  // in gruppo gli eroi si coprono a vicenda (cure, focus): ogni eroe in più vale un po' di più
+  groupHp: 0.12,
+  groupDmg: 0.1
+};
+var heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.max(1, lv) - 1) + (lv >= 5 ? 0.25 : 0));
+function balanceFoes(foes, heroes, isBoss) {
+  const live = heroes.filter((h) => !h.fled);
+  const heroHp = live.reduce((t, h) => t + (h.maxHp || 10), 0) || 10;
+  const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
+  const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
+  const w = (f) => BUDGET.weight[f.role] || 1;
+  const sumW = foes.reduce((t, f) => t + w(f), 0) || 1;
+  foes.forEach((f) => {
+    const share = w(f) / sumW;
+    const g = live.length - 1;
+    f.maxHp = f.hp = Math.max(3, Math.round(heroOff * kind.hp * (1 + BUDGET.groupHp * g) * share));
+    f.cap = { ...f.cap || {}, dmg: Math.max(1.5, heroHp * kind.dmg * (1 + BUDGET.groupDmg * g) * share * (foes.length > 1 ? 1.15 : 1)) };
+  });
+  return foes;
+}
 function startFloor(s, bestiary, now) {
   s.boss = s.floor > s.floors;
-  s.foes = buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.length });
+  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length }), s.heroes, s.boss);
   s.heroes.forEach((h) => {
     h.fx = {};
   });
@@ -814,9 +850,9 @@ function foeAct(s, f) {
   const tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
-  const capMult = (n2, sides2, area) => {
+  const capMult = (n2, sides2, targets = 1) => {
     const avg = (avgDice(n2, sides2) + lvlBonus) * (f.adapt?.mult || 1);
-    const max = (f.cap?.dmg || 99) * (area ? 0.5 : 1);
+    const max = (f.cap?.dmg || 99) * (targets > 1 ? Math.min(1, 1.1 / targets) : 1);
     return avg > max ? max / avg : 1;
   };
   const turns = Math.max(1, Number(a.durationTurns) || 2);
@@ -856,8 +892,8 @@ function foeAct(s, f) {
   const isSave = a.hitMode === "save" || a.aoeShape && a.aoeShape !== "single";
   if (isSave) {
     const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
-    const dc = Math.min(f.cap?.dc ?? 99, (Number(a.saveDC) || 12) + (f.adapt?.hit || 0));
-    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length > 1)));
+    const dc = f.cap?.dc ?? (Number(a.saveDC) || 12) + (f.adapt?.hit || 0);
+    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length)));
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
@@ -867,13 +903,13 @@ function foeAct(s, f) {
     log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
     return;
   }
-  const bonus = Math.min(f.cap?.hit ?? 99, (Number(a.bonus) || 3) + (f.adapt?.hit || 0));
+  const bonus = f.cap?.hit ?? (Number(a.bonus) || 3) + (f.adapt?.hit || 0);
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) {
     log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id] });
     return;
   }
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, false))), type, []);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
   log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg });
 }
 function checkEnd(s) {
@@ -1162,6 +1198,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   heroOf,
   heroPending,
   heroStats,
+  hpPending,
   levelOfXp,
   mergeDungeons,
   newRun,
