@@ -1978,7 +1978,7 @@ exports.segreteDo = onCall(
     const db = admin.firestore();
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -1992,12 +1992,21 @@ exports.segreteDo = onCall(
             const stats = {};
             segreteBundle.STAT_KEYS.forEach((k) => { stats[k] = Number(request.data?.stats?.[k]) || 0; });
             const pick = String(request.data?.pick || "");
-            const bad = segreteBundle.validNewHero(cls, stats, pick);
+            const weapon = String(request.data?.weapon || "");
+            const bad = segreteBundle.validNewHero(cls, stats, pick, weapon);
             if (bad) throw new Error(bad);
-            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], xp: 0, createdAt: Date.now() } });
+            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], weapon, xp: 0, createdAt: Date.now() } });
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          if (op === "heroWeapon") {
+            // eroi creati prima delle armi (2026-11-04): scelgono l'arma una volta sola
+            if (hero.weapon) throw new Error("L'arma l'hai già scelta.");
+            const weapon = String(request.data?.weapon || "");
+            if (!segreteBundle.weaponChoices(cls).some((w) => w.key === weapon)) throw new Error("Arma non valida per questa classe.");
+            tx.update(ref, { [`storyChars.${cls}.weapon`]: weapon });
+            return { ok: true };
+          }
           if (op === "heroHp") {
             // tiro del dado vita (livello 1 alla creazione, poi uno per livello): crypto, una volta sola
             if (segreteBundle.hpPending(hero) <= 0) throw new Error("Hai già tirato i PF di tutti i tuoi livelli.");

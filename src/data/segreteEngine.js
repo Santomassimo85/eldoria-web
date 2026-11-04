@@ -11,7 +11,7 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { kitOf, heroActions, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { kitOf, heroActions, weaponMod, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 10 * 60 * 1000;
@@ -64,10 +64,10 @@ export function makeHero(m) {
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
   const uses = {};
-  heroActions(m.cls, lv, picks).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+  heroActions(m.cls, lv, picks, hero.weapon).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
-    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks,
+    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks, weapon: hero.weapon || null,
     fx: {}, uses,
   };
 }
@@ -209,7 +209,7 @@ export const elOf = (type) => EL_OF[type] || "physical";
 const RANGED = new Set(["arco", "doppio", "lancio"]);
 function heroVfx(a) {
   if (a.kind === "defend") return { fx: "shield", el: "arcane" };
-  if (a.kind === "weapon") return { fx: RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
+  if (a.kind === "weapon") return { fx: a.ranged || RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
   if (a.kind === "spell" || a.kind === "missile") return { fx: "bolt", el: elOf(a.dmg) };
   if (a.kind === "save") return { fx: a.area ? "aoe" : "bolt", el: elOf(a.dmg) };
   if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
@@ -330,7 +330,7 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || []).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -362,6 +362,9 @@ function heroAct(s, h, a, target) {
   }
   if (a.kind === "weapon" || a.kind === "spell") {
     const n = attacksOf(h.cls, lv, a);
+    // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
+    const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm : hit;
     if (a.selfDis) h.fx.reckless = s.round + 1;
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
@@ -369,12 +372,12 @@ function heroAct(s, h, a, target) {
         if (!others.length) break;
         target = others[0];
       }
-      const r = attackRoll(s, h, target, hit, { adv: !!a.adv });
+      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
-      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hit}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id] }); continue; }
+      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id] }); continue; }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
-      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? mod + dmgBonusOf(s, h) : 0);
+      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + dmgBonusOf(s, h) : 0);
       if (a.bonusDmg === "lv/2") dmg += Math.floor(lv / 2);
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
@@ -392,7 +395,7 @@ function heroAct(s, h, a, target) {
         if (sv < heroDc(h.cls, lv, st)) { target.fx.stun = true; extra += ` · 💫 stordito (TS ${sv})`; } else extra += ` · resiste allo stordimento (${sv})`;
       }
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
-      log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hit}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
+      log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total });
     }
     return ev;
@@ -618,7 +621,7 @@ export function nextFloor(s, bestiary, now) {
   s.heroes.forEach((h) => {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
-    const uses = {}; heroActions(h.cls, h.level, h.picks || []).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+    const uses = {}; heroActions(h.cls, h.level, h.picks || [], h.weapon).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
     h.uses = uses;
   });
   s.floor += 1;

@@ -9,7 +9,7 @@ import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import { classInfo, heroOf } from "../data/segrete";
 import {
-  kitOf, poolFor, heroActions, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
 } from "../data/segreteKits";
 
@@ -33,12 +33,29 @@ const ActChip = ({ a, sub }) => (
   </span>
 );
 
+function WeaponPicker({ cls, value, onPick, disabled }) {
+  return (
+    <div className="sgh-picks">
+      {weaponChoices(cls).map((w) => (
+        <button key={w.key} type="button" aria-pressed={value === w.key} disabled={disabled}
+          className={`sgh-pick${value === w.key ? " is-on" : ""}`} onClick={() => onPick(w.key)}>
+          <span className="sgh-act">
+            <span aria-hidden="true">{w.icon}</span> <b>{w.name}</b>{w.ranged ? <em> · a distanza</em> : null}
+            <small>{w.dice} {DMG_SHORT[w.dmg]} · usa {WSTAT_LABEL[w.wstat]}</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function SegreteHero({ cls, charData }) {
   const hero = heroOf(charData, cls);
   const info = classInfo(cls);
   const kit = kitOf(cls);
   const [stats, setStats] = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   const [pick, setPick] = useState("");
+  const [weapon, setWeapon] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [hpMsg, setHpMsg] = useState("");
@@ -92,6 +109,8 @@ export default function SegreteHero({ cls, charData }) {
           <button type="button" className="sgr-btn sgr-btn--ghost" onClick={auto}>🎲 Distribuisci per me</button>
         </div>
         <p className="sgh-sub">❤ Punti ferita del {info?.it}: <b>{HERO_HP_BASE} di base</b> + dado vita della classe <b>d{kit.hitDie}</b> pieno + un tiro di <b>d{kit.hitDie}</b> (lo fai subito dopo) + COS. A ogni livello un altro tiro di d{kit.hitDie} + COS.</p>
+        <p className="sgh-sub">🗡 Scegli la tua arma (serve anche contro chi resiste alla tua magia):</p>
+        <WeaponPicker cls={cls} value={weapon} onPick={setWeapon} />
         <p className="sgh-sub">Hai già: {kit.base.map((a) => `${a.icon} ${a.name}`).join(" · ")}</p>
         <p className="sgh-sub">Scegli la prima abilità o il primo incantesimo:</p>
         <div className="sgh-picks">
@@ -102,8 +121,8 @@ export default function SegreteHero({ cls, charData }) {
           ))}
         </div>
         {err && <p className="sgr-err">{err}</p>}
-        <button type="button" className="sgr-cta" disabled={busy || left < 0 || !pick}
-          onClick={() => send({ op: "heroCreate", cls, stats, pick })}>{busy ? "Creo…" : `Crea l'eroe ${info?.it || ""}`}</button>
+        <button type="button" className="sgr-cta" disabled={busy || left < 0 || !pick || !weapon}
+          onClick={() => send({ op: "heroCreate", cls, stats, pick, weapon })}>{busy ? "Creo…" : `Crea l'eroe ${info?.it || ""}`}</button>
       </div>
     );
   }
@@ -116,7 +135,7 @@ export default function SegreteHero({ cls, charData }) {
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
-  const acts = heroActions(cls, lv, hero.picks || []).filter((a) => a.kind !== "defend");
+  const acts = heroActions(cls, lv, hero.picks || [], hero.weapon).filter((a) => a.kind !== "defend");
   const options = poolFor(cls, lv).filter((a) => !(hero.picks || []).includes(a.id));
   const locked = kit.pool.filter((a) => (a.min || 1) > lv);
   const nextMilestone = Math.min(MAX_STORY_LEVEL, (Math.floor(lv / ASI_EVERY) + 1) * ASI_EVERY);
@@ -142,6 +161,12 @@ export default function SegreteHero({ cls, charData }) {
         </div>
       )}
       {hpMsg && <p className="sgh-hpmsg">{hpMsg}</p>}
+      {!hero.weapon && (
+        <div className="sgh-pending">
+          <p>🗡 Il tuo {info?.it} ora ha un'arma: scegline una (una volta sola; finché non scegli usa la prima).</p>
+          <WeaponPicker cls={cls} value="" disabled={busy} onPick={(w) => send({ op: "heroWeapon", cls, weapon: w })} />
+        </div>
+      )}
       {pend.asi > 0 && (
         <div className="sgh-pending">
           <p>⭐ Hai <b>{pend.asi}</b> {pend.asi === 1 ? "punto caratteristica" : "punti caratteristica"} da spendere (massimo +{STAT_MAX}):</p>

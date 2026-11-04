@@ -12,6 +12,7 @@ export function heroTodo(hero) {
   const p = heroPending(hero);
   const hp = hpPending(hero);
   const out = [];
+  if (!hero.weapon) out.push({ k: "weapon", icon: "🗡", text: "scegli l'arma" });
   if (hp > 0) out.push({ k: "hp", icon: "❤", text: hp === 1 ? "tira i PF" : `tira i PF (${hp})` });
   if (p.asi > 0) out.push({ k: "asi", icon: "⭐", text: `+${p.asi} caratteristica` });
   if (p.picks > 0) out.push({ k: "pick", icon: "✨", text: p.picks === 1 ? "nuova abilità" : `${p.picks} abilità` });

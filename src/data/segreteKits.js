@@ -33,44 +33,90 @@ export const xpForLevel = (lv) => XP_TABLE[Math.max(0, Math.min(MAX_STORY_LEVEL,
 export const asiEarned = (lv) => Math.floor(lv / ASI_EVERY);
 export const picksAllowed = (lv) => 1 + Math.floor(lv / ASI_EVERY);
 
-const W = (id, name, icon, dice, dmg, extra = {}) => ({ id, name, icon, kind: "weapon", dice, dmg, ...extra });
+/* ARMI (2026-11-04): ogni eroe ha un'arma, scelta alla creazione fra DUE del manuale D&D
+   (danni simili, tipo di danno diverso: così contro un nemico immune ha un'altra strada).
+   wstat = caratteristica dell'arma: str · dex · fin (accurata/il Monaco: la migliore fra FOR e DES).
+   Le abilità con `useWeapon` (Attacco Poderoso, Punizione, Furtivo…) prendono dadi e tipo dall'arma. */
+export const WEAPONS = {
+  spada_lunga: { name: "Spada Lunga", icon: "⚔", dice: "1d8", dmg: "slashing", wstat: "str" },
+  martello: { name: "Martello da Guerra", icon: "🔨", dice: "1d8", dmg: "bludgeoning", wstat: "str" },
+  ascia_bip: { name: "Ascia Bipenne", icon: "🪓", dice: "1d12", dmg: "slashing", wstat: "str" },
+  maglio: { name: "Maglio", icon: "🔨", dice: "2d6", dmg: "bludgeoning", wstat: "str" },
+  mazzafrusto: { name: "Mazzafrusto", icon: "⛓", dice: "1d8", dmg: "bludgeoning", wstat: "str" },
+  arco_lungo: { name: "Arco Lungo", icon: "🏹", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
+  scimitarra: { name: "Scimitarra", icon: "🗡", dice: "1d6", dmg: "slashing", wstat: "fin" },
+  stocco: { name: "Stocco", icon: "🗡", dice: "1d8", dmg: "piercing", wstat: "fin" },
+  bastone: { name: "Bastone Ferrato", icon: "🦯", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
+  lancia: { name: "Lancia", icon: "🔱", dice: "1d6", dmg: "piercing", wstat: "str" },
+  balestra_l: { name: "Balestra Leggera", icon: "🏹", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
+  mazza: { name: "Mazza", icon: "🔨", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
+};
+export const WEAPON_CHOICES = {
+  fighter: ["spada_lunga", "martello"],
+  barbarian: ["ascia_bip", "maglio"],
+  paladin: ["spada_lunga", "mazzafrusto"],
+  ranger: ["arco_lungo", "scimitarra"],
+  monk: ["bastone", "lancia"],
+  rogue: ["stocco", "scimitarra"],
+  wizard: ["bastone", "balestra_l"],
+  sorcerer: ["bastone", "balestra_l"],
+  warlock: ["mazza", "lancia"],
+  druid: ["scimitarra", "bastone"],
+  cleric: ["mazza", "lancia"],
+  bard: ["stocco", "spada_lunga"],
+};
+export const DMG_SHORT = { slashing: "tagliente", piercing: "perforante", bludgeoning: "contundente" };
+export const WSTAT_LABEL = { str: "FOR", dex: "DES", fin: "FOR o DES" };
+export const weaponChoices = (cls) => (WEAPON_CHOICES[cls] || WEAPON_CHOICES.fighter).map((k) => ({ key: k, ...WEAPONS[k], wstat: cls === "monk" ? "fin" : WEAPONS[k].wstat }));
+// arma dell'eroe: quella scelta, altrimenti la prima della classe (eroi creati prima delle armi)
+export function weaponOf(cls, key) {
+  const list = weaponChoices(cls);
+  return list.find((w) => w.key === key) || list[0];
+}
+export const weaponAction = (w) => ({ id: "arma", name: w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, info: `${w.dice} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}` });
+// modificatore di un'azione d'arma (colpire e danni)
+export function weaponMod(cls, st, a) {
+  if (!a?.wstat) return mainMod(cls, st);
+  if (a.wstat === "fin") return Math.max(st.str || 0, st.dex || 0);
+  return st[a.wstat] || 0;
+}
 
 /* armor: "heavy" = CA fissa · "light" = CA − 3 + DES · "unarmored" = 10 + DES + (COS|SAG) */
 export const KITS = {
   fighter: { hitDie: 10, ac: 17, armor: "heavy", stat: "str", rec: ["str", "con"], extraAttacks: true,
-    base: [W("spada", "Spada Lunga", "⚔", "1d8", "slashing"), { id: "respiro", name: "Secondo Respiro", icon: "❤", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }],
+    base: [{ id: "respiro", name: "Secondo Respiro", icon: "❤", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }],
     pool: [
-      { id: "poderoso", name: "Attacco Poderoso", icon: "💥", kind: "weapon", dice: "1d8", dmg: "slashing", bonusDmg: "lv/2", min: 1, uses: 2, info: "+metà livello ai danni" },
+      { id: "poderoso", useWeapon: true, name: "Attacco Poderoso", icon: "💥", kind: "weapon", dice: "1d8", dmg: "slashing", bonusDmg: "lv/2", min: 1, uses: 2, info: "+metà livello ai danni" },
       { id: "parata", name: "Muro di Scudi", icon: "🛡", kind: "buff", buff: "ac", value: 3, turns: 2, self: true, min: 1, uses: 1 },
-      { id: "impeto", name: "Impeto d'Azione", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", bonusAttacks: 1, min: 3, uses: 1, info: "un attacco in più" },
-      { id: "stordire", name: "Colpo Stordente", icon: "💫", kind: "weapon", dice: "1d8", dmg: "bludgeoning", stunSave: "con", min: 6, uses: 2, info: "colpito: TS COS o stordito" },
+      { id: "impeto", useWeapon: true, name: "Impeto d'Azione", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", bonusAttacks: 1, min: 3, uses: 1, info: "un attacco in più" },
+      { id: "stordire", useWeapon: true, name: "Colpo Stordente", icon: "💫", kind: "weapon", dice: "1d8", dmg: "bludgeoning", stunSave: "con", min: 6, uses: 2, info: "colpito: TS COS o stordito" },
       { id: "turbine", name: "Turbine d'Acciaio", icon: "🌪", kind: "save", dice: "3d8", dmg: "slashing", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true },
       { id: "grido", name: "Grido di Battaglia", icon: "📯", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 12, uses: 1 },
     ] },
   barbarian: { hitDie: 12, ac: 15, armor: "unarmored", unarmored: "con", stat: "str", rec: ["str", "con"], extraAttacks: true,
-    base: [W("ascia", "Ascia Bipenne", "🪓", "1d12", "slashing"), { id: "furia", name: "Furia", icon: "💢", kind: "buff", buff: "rage", value: 2, turns: 3, self: true, uses: 1, info: "+2 danni, dimezza i danni fisici" }],
+    base: [{ id: "furia", name: "Furia", icon: "💢", kind: "buff", buff: "rage", value: 2, turns: 3, self: true, uses: 1, info: "+2 danni, dimezza i danni fisici" }],
     pool: [
-      { id: "irruento", name: "Attacco Irruento", icon: "😤", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio, ma −2 CA" },
+      { id: "irruento", useWeapon: true, name: "Attacco Irruento", icon: "😤", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio, ma −2 CA" },
       { id: "lancio", name: "Ascia Lanciata", icon: "🎯", kind: "weapon", dice: "1d10", dmg: "slashing", min: 1 },
       { id: "ruggito", name: "Ruggito Feroce", icon: "🦁", kind: "debuff", area: true, turns: 1, min: 3, uses: 1, info: "tutti i nemici a svantaggio" },
-      { id: "brutale", name: "Colpo Brutale", icon: "🔨", kind: "weapon", dice: "1d12", dmg: "slashing", rider: "1d12", riderDmg: "bludgeoning", min: 6, uses: 2, grow: true },
+      { id: "brutale", useWeapon: true, name: "Colpo Brutale", icon: "🔨", kind: "weapon", dice: "1d12", dmg: "slashing", rider: "1d12", riderDmg: "bludgeoning", min: 6, uses: 2, grow: true },
       { id: "inarrestabile", name: "Furia Inarrestabile", icon: "❤", kind: "heal", dice: "2d12", plusMod: true, self: true, min: 9, uses: 1 },
       { id: "terremoto", name: "Pestone Sismico", icon: "🌋", kind: "save", dice: "3d8", dmg: "bludgeoning", save: "str", area: true, half: true, min: 12, uses: 1, grow: true },
     ] },
   paladin: { hitDie: 10, ac: 18, armor: "heavy", stat: "str", rec: ["str", "cha"], extraAttacks: true, healStat: "cha",
-    base: [W("spada_p", "Spada Lunga", "⚔", "1d8", "slashing"), { id: "mani", name: "Imposizione delle Mani", icon: "🙌", kind: "heal", flat: "lv*5", uses: 1 }],
+    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "🙌", kind: "heal", flat: "lv*5", uses: 1 }],
     pool: [
-      { id: "punizione", name: "Punizione Divina", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, grow: true },
+      { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, grow: true },
       { id: "benedizione", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
       { id: "cura_p", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, min: 3, uses: 2, grow: true },
       { id: "aura", name: "Aura di Protezione", icon: "🌟", kind: "buff", buff: "ac", value: 2, turns: 3, allParty: true, min: 6, uses: 1 },
-      { id: "accecante", name: "Punizione Accecante", icon: "☀", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
+      { id: "accecante", useWeapon: true, name: "Punizione Accecante", icon: "☀", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
       { id: "sacra", name: "Arma Sacra", icon: "🗡", kind: "buff", buff: "dmg", value: 5, turns: 3, self: true, min: 12, uses: 1 },
     ] },
   ranger: { hitDie: 10, ac: 15, armor: "light", stat: "dex", rec: ["dex", "wis"], extraAttacks: true, healStat: "wis",
-    base: [W("arco", "Arco Lungo", "🏹", "1d8", "piercing"), { id: "marchio", name: "Marchio del Cacciatore", icon: "🎯", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, uses: 2 }],
+    base: [{ id: "marchio", name: "Marchio del Cacciatore", icon: "🎯", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, uses: 2 }],
     pool: [
-      { id: "doppio", name: "Colpo Doppio", icon: "🏹", kind: "weapon", dice: "1d8", dmg: "piercing", bonusAttacks: 1, min: 1, uses: 2, info: "un attacco in più" },
+      { id: "doppio", useWeapon: true, name: "Colpo Doppio", icon: "🏹", kind: "weapon", dice: "1d8", dmg: "piercing", bonusAttacks: 1, min: 1, uses: 2, info: "un attacco in più" },
       { id: "cura_r", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, min: 1, uses: 1, grow: true },
       { id: "pioggia", name: "Pioggia di Frecce", icon: "🌧", kind: "save", dice: "2d8", dmg: "piercing", save: "dex", area: true, half: true, min: 3, uses: 1, grow: true },
       { id: "mimetismo", name: "Mimetismo", icon: "🍃", kind: "buff", buff: "adv", turns: 2, self: true, min: 3, uses: 2 },
@@ -88,14 +134,14 @@ export const KITS = {
       { id: "palmo", name: "Palmo Tremante", icon: "🖐", kind: "save", dice: "6d10", dmg: "necrotic", save: "con", half: true, min: 12, uses: 1 },
     ] },
   rogue: { hitDie: 8, ac: 15, armor: "light", stat: "dex", rec: ["dex", "con"],
-    base: [W("stocco", "Stocco", "🗡", "1d8", "piercing"), { id: "furtivo", name: "Attacco Furtivo", icon: "🌒", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "sneak", riderDmg: "piercing", uses: 3, info: "+metà livello in d6" }],
+    base: [{ id: "furtivo", useWeapon: true, name: "Attacco Furtivo", icon: "🌒", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "sneak", riderDmg: "piercing", uses: 3, info: "+metà livello in d6" }],
     pool: [
       { id: "nascondersi", name: "Nascondersi", icon: "🫥", kind: "buff", buff: "adv", turns: 2, self: true, min: 1, uses: 2 },
       { id: "veleno_r", name: "Lama Avvelenata", icon: "☠", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
-      { id: "basso", name: "Colpo Basso", icon: "🦵", kind: "weapon", dice: "1d8", dmg: "piercing", riderDis: 2, min: 3, uses: 2, info: "il nemico a svantaggio" },
+      { id: "basso", useWeapon: true, name: "Colpo Basso", icon: "🦵", kind: "weapon", dice: "1d8", dmg: "piercing", riderDis: 2, min: 3, uses: 2, info: "il nemico a svantaggio" },
       { id: "prodigiosa", name: "Schivata Prodigiosa", icon: "🤸", kind: "buff", buff: "ac", value: 4, turns: 1, self: true, min: 3, uses: 2 },
       { id: "fumogena", name: "Bomba Fumogena", icon: "💨", kind: "debuff", area: true, turns: 2, min: 6, uses: 1, info: "tutti i nemici a svantaggio" },
-      { id: "assassinare", name: "Assassinare", icon: "🗡", kind: "weapon", dice: "1d8", dmg: "piercing", adv: true, rider: "4d6", riderDmg: "piercing", min: 9, uses: 1, grow: true },
+      { id: "assassinare", useWeapon: true, name: "Assassinare", icon: "🗡", kind: "weapon", dice: "1d8", dmg: "piercing", adv: true, rider: "4d6", riderDmg: "piercing", min: 9, uses: 1, grow: true },
     ] },
   wizard: { hitDie: 6, ac: 12, armor: "light", stat: "int", rec: ["int", "dex"],
     base: [{ id: "dardo_fuoco", name: "Dardo di Fuoco", icon: "🔥", kind: "spell", dice: "1d10", dmg: "fire", scale: true }, { id: "dardo_inc", name: "Dardo Incantato", icon: "✨", kind: "missile", dice: "3d4", flat: 3, dmg: "force", uses: 3, grow: true }],
@@ -138,7 +184,7 @@ export const KITS = {
       { id: "tempesta", name: "Tempesta di Ghiaccio", icon: "🌨", kind: "save", dice: "4d6", dmg: "cold", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true },
     ] },
   cleric: { hitDie: 8, ac: 18, armor: "heavy", stat: "wis", rec: ["wis", "con"],
-    base: [W("mazza", "Mazza", "🔨", "1d6", "bludgeoning"), { id: "cura_c", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
+    base: [{ id: "cura_c", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
     pool: [
       { id: "fiamma", name: "Fiamma Sacra", icon: "🕯", kind: "save", dice: "1d8", dmg: "radiant", save: "dex", scale: true, min: 1 },
       { id: "benedire_c", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
@@ -148,7 +194,7 @@ export const KITS = {
       { id: "guarigione", name: "Guarigione", icon: "💖", kind: "heal", flat: "lv*6", min: 12, uses: 1 },
     ] },
   bard: { hitDie: 8, ac: 14, armor: "light", stat: "cha", rec: ["cha", "dex"],
-    base: [W("stocco_b", "Stocco", "🗡", "1d8", "piercing"), { id: "beffa", name: "Beffa Crudele", icon: "🎭", kind: "save", dice: "1d4", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" }],
+    base: [{ id: "beffa", name: "Beffa Crudele", icon: "🎭", kind: "save", dice: "1d4", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" }],
     pool: [
       { id: "parola_b", name: "Parola Guaritrice", icon: "🎵", kind: "heal", dice: "1d4", plusMod: true, min: 1, uses: 3, grow: true },
       { id: "ispirazione", name: "Ispirazione Bardica", icon: "🎶", kind: "buff", buff: "adv", turns: 2, min: 1, uses: 2 },
@@ -164,10 +210,12 @@ export const DEFEND = { id: "difesa", name: "Difendersi", icon: "🛡", kind: "d
 
 export const kitOf = (cls) => KITS[cls] || KITS.fighter;
 export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-export function heroActions(cls, lv, picks = []) {
+export function heroActions(cls, lv, picks = [], weapon = null) {
   const k = kitOf(cls);
+  const w = weaponOf(cls, weapon);
+  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [...k.base, ...chosen, DEFEND];
+  return [weaponAction(w), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */
@@ -207,8 +255,9 @@ export function attacksOf(cls, lv, action) {
 }
 
 /* Validazione della scheda (la usa il server) */
-export function validNewHero(cls, stats, pick) {
+export function validNewHero(cls, stats, pick, weapon) {
   if (!KITS[cls]) return "Classe sconosciuta.";
+  if (!weaponChoices(cls).some((w) => w.key === weapon)) return "Scegli l'arma.";
   let sum = 0;
   for (const k of STAT_KEYS) {
     const v = Number(stats?.[k]) || 0;
