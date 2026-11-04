@@ -275,7 +275,8 @@ exports.arenaWeeklyReset = onSchedule(
             console.error("❌ arenaWeeklyReset (scommesse) fallita:", err);
         }
         // 2b) Le Segrete (story mode): stanze e partite della settimana spariscono.
-        //     I livelli di storia si azzerano da soli (storyWeekly.weekKey della settimana vecchia).
+        //     Gli eroi di classe (characters.storyChars) restano: la progressione è permanente;
+        //     il conteggio dei dungeon (storyRuns) riparte da solo con la settimana nuova.
         try {
             let gone = 0;
             for (const col of ["dungeon_rooms", "dungeon_runs"]) {
@@ -1956,8 +1957,8 @@ exports.petAward = onCall(
 // Stato della partita in dungeon_runs/{roomId} (regole: lettura loggati, scrittura
 // solo da qui). Operazioni: init (crea la partita quando la stanza è partita),
 // act (azione dell'eroe di turno), timeout (chi sparisce da 10 minuti si difende),
-// next (sala successiva), flee (abbandona). Vittoria = +1 livello di storia della
-// classe a ogni eroe rimasto (characters.storyWeekly, settimana dell'Arena).
+// next (sala successiva), flee (abbandona), heroCreate/heroAsi/heroPick (eroe di classe).
+// Vittoria = PE all'eroe di classe (characters.storyChars[cls].xp, permanente) + Corone + forse un oggetto.
 const segreteBundle = require("./segreteBundle");
 const segreteRng = () => crypto.randomInt(0, 2 ** 31) / 2 ** 31;
 // Il Master principale non ha i limiti dei dungeon (1 al giorno, 3 a settimana): uid letto una volta.
@@ -1974,9 +1975,52 @@ exports.segreteDo = onCall(
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const op = String(request.data?.op || "");
+    const db = admin.firestore();
+
+    // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick") {
+      const cls = String(request.data?.cls || "");
+      if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          const hero = segreteBundle.heroOf(cs.data(), cls);
+          if (op === "heroCreate") {
+            if (hero) throw new Error("Hai già un eroe di questa classe.");
+            const stats = {};
+            segreteBundle.STAT_KEYS.forEach((k) => { stats[k] = Number(request.data?.stats?.[k]) || 0; });
+            const pick = String(request.data?.pick || "");
+            const bad = segreteBundle.validNewHero(cls, stats, pick);
+            if (bad) throw new Error(bad);
+            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], xp: 0, createdAt: Date.now() } });
+            return { ok: true };
+          }
+          if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          const pend = segreteBundle.heroPending(hero);
+          if (op === "heroAsi") {
+            const stat = String(request.data?.stat || "");
+            if (!segreteBundle.STAT_KEYS.includes(stat)) throw new Error("Caratteristica sconosciuta.");
+            if (pend.asi <= 0) throw new Error("Non hai punti caratteristica da spendere.");
+            if (segreteBundle.heroStats(hero)[stat] >= segreteBundle.STAT_MAX) throw new Error(`Massimo +${segreteBundle.STAT_MAX}.`);
+            tx.update(ref, { [`storyChars.${cls}.asi.${stat}`]: (Number(hero.asi?.[stat]) || 0) + 1 });
+            return { ok: true };
+          }
+          const pick = String(request.data?.pick || "");
+          if (pend.picks <= 0) throw new Error("Non hai scelte da fare: arriva al prossimo livello multiplo di 3.");
+          if ((hero.picks || []).includes(pick)) throw new Error("Ce l'hai già.");
+          if (!segreteBundle.poolFor(cls, pend.level).some((a) => a.id === pick)) throw new Error("Non disponibile al tuo livello.");
+          tx.update(ref, { [`storyChars.${cls}.picks`]: [...(hero.picks || []), pick] });
+          return { ok: true };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Operazione non riuscita.");
+      }
+    }
+
     const roomId = String(request.data?.roomId || "");
     if (!roomId || roomId.includes("/")) throw new HttpsError("invalid-argument", "Stanza non valida.");
-    const db = admin.firestore();
     const roomRef = db.collection("dungeon_rooms").doc(roomId);
     const runRef = db.collection("dungeon_runs").doc(roomId);
     const now = Date.now();
@@ -2011,7 +2055,13 @@ exports.segreteDo = onCall(
           for (const m of room.members || []) {
             const cs = await tx.get(db.collection("characters").doc(m.uid));
             charSnaps.push([m, cs]);
-            heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", level: segreteBundle.storyLevelOf(cs.exists ? cs.data() : {}, m.cls, week) });
+            heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", hero: segreteBundle.heroOf(cs.exists ? cs.data() : {}, m.cls) });
+          }
+          const noHero = heroes.filter((h) => !h.hero);
+          if (noHero.length) {
+            const msg = noHero.map((h) => `${h.name} non ha ancora creato l'eroe di quella classe`).join(" · ");
+            tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
+            return { ok: false, blocked: msg };
           }
           // limiti: 1 al giorno, 3 a settimana per ogni membro (il Master no)
           const blocked = charSnaps.filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, week, day).canRun);
@@ -2077,18 +2127,17 @@ exports.segreteDo = onCall(
             run.corone = corone;
             run.levelUps = [];
             for (const [h, cs] of snaps) {
-              const sw = cs.exists ? cs.data().storyWeekly : null;
-              const levels = sw && sw.weekKey === week ? { ...(sw.levels || {}) } : {};
-              const cur = Math.max(1, Number(levels[h.cls]) || 1);
-              const next = Math.min(segreteBundle.MAX_STORY_LEVEL, cur + 1);
-              levels[h.cls] = next;
-              const runs = sw && sw.weekKey === week ? (Number(sw.wins) || 0) + 1 : 1;
-              // update (non set+merge): il campo si sostituisce intero, così i livelli della settimana vecchia spariscono
-              if (cs.exists) tx.update(db.collection("characters").doc(h.uid), {
-                storyWeekly: { weekKey: week, levels, wins: runs },
-                ...(corone ? { platinum: admin.firestore.FieldValue.increment(corone) } : {}),
-              });
-              run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, from: cur, to: next });
+              if (!cs.exists) continue;
+              const hero = segreteBundle.heroOf(cs.data(), h.cls);
+              const patch = corone ? { platinum: admin.firestore.FieldValue.increment(corone) } : {};
+              if (hero) {
+                const from = segreteBundle.levelOfXp(hero.xp);
+                const gain = segreteBundle.xpGain(from, run.floors);
+                const xp = (Number(hero.xp) || 0) + gain;
+                patch[`storyChars.${h.cls}.xp`] = xp;
+                run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, from, to: segreteBundle.levelOfXp(xp) });
+              }
+              if (Object.keys(patch).length) tx.update(cs.ref, patch);
             }
           }
           tx.update(roomRef, { status: "done", result: run.status, endedAt: admin.firestore.FieldValue.serverTimestamp() });

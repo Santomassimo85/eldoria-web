@@ -12,12 +12,13 @@ import { isMainMaster } from "../utils/roles";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, runsOf, STORY_CLASSES, classInfo, storyLevelOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, WEEKLY_RUNS, runsOf, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom,
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
+import SegreteHero from "./SegreteHero";
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
@@ -30,7 +31,7 @@ function ClassPicker({ value, onChange, charData, disabled }) {
           className={`sgr-class${value === c.key ? " is-on" : ""}`} onClick={() => onChange(c.key)}>
           <span aria-hidden="true">{c.icon}</span>
           <b>{c.it}</b>
-          <small>Lv {storyLevelOf(charData, c.key)}</small>
+          <small>{heroOf(charData, c.key) ? `Lv ${storyLevelOf(charData, c.key)}` : "da creare"}</small>
         </button>
       ))}
     </div>
@@ -111,7 +112,7 @@ export default function Segrete() {
       <header className="sgr-head">
         <p className="sgr-kicker">Storia · gruppi da 1 a {MAX_PARTY}</p>
         <h1 className="sgr-title">Le Segrete</h1>
-        <p className="sgr-lead">Livelli e dungeon valgono fino a {weekEndLabel()}: poi si riparte tutti dal livello 1. Se il gruppo cade, si perde tutto.</p>
+        <p className="sgr-lead">Ogni classe ha il suo eroe, che resta tuo e cresce di livello vincendo i dungeon. I dungeon della settimana si contano fino a {weekEndLabel()}. Se il gruppo cade, si perde tutto.</p>
         <p className="sgr-runs">🗝 Dungeon: oggi <b>{runs.dayCount}/{DAILY_RUNS}</b> · questa settimana <b>{runs.weekCount}/{WEEKLY_RUNS}</b>{master ? " · tu sei il Master: nessun limite" : !runs.canRun ? (runs.weekCount >= WEEKLY_RUNS ? " · hai finito quelli della settimana" : " · torna domani") : ""}</p>
       </header>
 
@@ -143,7 +144,9 @@ export default function Segrete() {
             </div>
             <p className="sgr-label">La tua classe</p>
             <ClassPicker value={cls} onChange={setCls} charData={charData} />
-            <button type="button" className="sgr-cta" disabled={busy || !cls}
+            <SegreteHero cls={cls} charData={charData} />
+            <button type="button" className="sgr-cta" disabled={busy || !cls || !heroOf(charData, cls)}
+              title={heroOf(charData, cls) ? "" : "Crea prima l'eroe di questa classe"}
               onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls) }))}>
               Crea il gruppo
             </button>
@@ -168,9 +171,9 @@ export default function Segrete() {
                       ))}
                     </ul>
                     <div className="sgr-room-actions">
-                      <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls}
+                      <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroOf(charData, cls)}
                         onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                        {roomFull(r) ? "Pieno" : `Entra come ${classInfo(cls)?.it || "…"}`}
+                        {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : `Entra come ${classInfo(cls)?.it || "…"} Lv ${level(cls)}`}
                       </button>
                       {(master || idle) && (
                         <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
@@ -263,11 +266,12 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun
       <p className="sgr-label">La tua classe</p>
       <ClassPicker value={me?.cls} charData={charData} disabled={busy}
         onChange={(k) => k !== me?.cls && run(() => setMemberClass(room.id, uid, k, level(k)))} />
+      <SegreteHero cls={me?.cls} charData={charData} />
 
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && <p className="sgr-err">⛔ Hai già fatto {runsOf(charData).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: puoi restare nel gruppo ma non partire.</p>}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!canRun && !me?.ready)}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!canRun || !heroOf(charData, me?.cls)))}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
           {me?.ready ? "✓ Pronto — annulla" : "▶ Avvia"}
         </button>

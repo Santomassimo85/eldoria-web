@@ -209,7 +209,7 @@ export default function SegreteBattle({ room, uid }) {
         {(run.status === "won" || run.status === "lost") && (
           <div className="sgb-end">
             <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
-            {(run.levelUps || []).map((l) => <p key={l.uid}>⬆ {l.name}: {classInfo(l.cls)?.it} Lv {l.from} → <b>Lv {l.to}</b></p>)}
+            {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({classInfo(l.cls)?.it}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
             {run.status === "won" && !!run.corone && <p>🪙 +{run.corone} Corone a ogni eroe rimasto fino alla fine.</p>}
             {run.loot && (
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}

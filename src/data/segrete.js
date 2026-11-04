@@ -10,6 +10,7 @@
    ============================================================ */
 import { ARENA_CLASSES } from "./arenaClassSprites";
 import { currentWeekKey } from "./arenaWeek";
+import { levelOfXp } from "./segreteKits";
 
 export const MAX_PARTY = 4;
 // Se qualcuno sparisce durante il dungeon: dopo 10 minuti il suo turno è difensivo.
@@ -26,11 +27,11 @@ export const DEFAULT_DUNGEONS = [
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;
 
-// Livello di storia del personaggio per quella classe (1 se nuovo o di un'altra settimana).
-export function storyLevelOf(charData, classKey, week = currentWeekKey()) {
-  const s = charData?.storyWeekly;
-  if (!s || s.weekKey !== week) return 1;
-  return Math.max(1, Number(s.levels?.[classKey]) || 1);
+// Eroe di classe (permanente, 2026-11-04): characters.storyChars[cls] = {stats, asi, picks, xp}.
+export const heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
+export function storyLevelOf(charData, classKey) {
+  const h = heroOf(charData, classKey);
+  return h ? levelOfXp(h.xp) : 1;
 }
 
 // Dungeon disponibili: quelli base, sovrascritti/integrati da dungeon_types del Master

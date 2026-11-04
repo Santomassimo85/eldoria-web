@@ -10,7 +10,7 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { kitOf, heroActions, heroMaxHp, heroDc, heroHit, modOf, profOf, cantripMult, attacksOf, DEFEND } from "./segreteKits";
+import { kitOf, heroActions, heroMaxHp, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 10 * 60 * 1000;
@@ -55,26 +55,35 @@ export const FALLBACK_MONSTERS = [
 ];
 
 /* ── costruzione dei combattenti ─────────────────────── */
+// m = { uid, name, cls, avatar, hero: characters.storyChars[cls] } (livello dai PE della scheda)
 export function makeHero(m) {
-  const lv = Math.max(1, Math.min(20, m.level || 1));
-  const kit = kitOf(m.cls);
-  const maxHp = heroMaxHp(m.cls, lv);
+  const hero = m.hero || {};
+  const lv = levelOfXp(hero.xp);
+  const st = heroStats(hero);
+  const picks = Array.isArray(hero.picks) ? hero.picks : [];
+  const maxHp = heroMaxHp(m.cls, lv, st);
   const uses = {};
-  heroActions(m.cls, lv).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+  heroActions(m.cls, lv, picks).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
-    hp: maxHp, maxHp, ac: kit.ac, init: kit.stat === "dex" ? modOf(lv) : 1, save: 1 + Math.floor(profOf(lv) / 2),
+    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks,
     fx: {}, uses,
   };
+}
+/* PE alla vittoria: una fetta del salto verso il livello dopo (8% a sala + 12% il boss:
+   con 3 sale ~36% → ~3 dungeon per livello, con 3 dungeon a settimana ~1 livello a settimana). */
+export function xpGain(level, floors) {
+  if (level >= MAX_STORY_LEVEL) return 0;
+  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.08 * (floors || 3) + 0.12));
 }
 /* Il mostro si adatta al livello del gruppo (2026-11-04, simulato): più debole del
    gruppo = più PF e colpi più forti; più forte = un po' meno. Élite e boss
    crescono anche col numero di eroi; i gregari crescono di numero. */
-export const ADAPT = { hpUp: 0.25, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.6, hitPer: 0.34, bigBase: 0.31, bigPer: 0.32, multUp: 0.05, multDown: 0.12, multMin: 0.5, soloHp: 1.3 };
+export const ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.45, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.12 };
 function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const diff = partyLv - (Number(src.level) || 1);
   const lvScale = diff >= 0 ? 1 + ADAPT.hpUp * diff : Math.max(ADAPT.hpMin, 1 + ADAPT.hpDown * diff);
-  const scale = (src.role === "minion" ? 1 : ADAPT.bigBase + ADAPT.bigPer * partySize) * lvScale;
+  const scale = (src.role === "minion" ? 1 + ADAPT.minionPer * (partySize - 1) : ADAPT.bigBase + ADAPT.bigPer * partySize) * lvScale;
   const maxHp = Math.max(1, Math.round((Number(src.hp) || 10) * scale));
   return {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
@@ -199,26 +208,30 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || []).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
   if (a.scale) n *= cantripMult(lv);
-  if (a.grow) n += Math.max(0, Math.floor((lv - (a.unlock || 1)) / 4));
+  if (a.grow) n += Math.max(0, Math.floor((lv - (a.min || 1)) / 4));
   return [n, sides];
 }
 // Cosa serve scegliere: "foe" | "ally" | null
 export function targetKind(a) {
   if (a.kind === "weapon" || a.kind === "spell" || a.kind === "missile" || (a.kind === "save" && !a.area)) return "foe";
   if (a.kind === "heal" && !a.self) return "ally";
+  if (a.kind === "debuff" && !a.area) return "foe";
   if (a.kind === "buff" && !a.self && !a.allParty) return "ally";
   return null;
 }
 
 function heroAct(s, h, a, target) {
   const lv = h.level;
-  const hit = heroHit(lv) + (fxOn(s, h.fx.bless) ? 0 : 0);
-  const mod = modOf(lv);
+  const st = h.st || {};
+  const hit = heroHit(h.cls, lv, st);
+  const mod = mainMod(h.cls, st);
+  const healMod = st[kitOf(h.cls).healStat] ?? mod;
+  const flatOf = (f) => { const m = /^lv\*(\d+)$/.exec(String(f || "")); return m ? lv * Number(m[1]) : Number(f) || 0; };
   const ev = { actor: h.id, roll: null };
   if (a.kind === "defend") {
     h.fx.dodge = true;
@@ -251,6 +264,12 @@ function heroAct(s, h, a, target) {
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
         total += rd; extra = ` +${rd} ${DMG_IT[a.riderDmg] || ""}`;
       }
+      if (a.riderDis && alive(target)) { target.fx.dis = s.round + 1 + a.riderDis; extra += " · a svantaggio"; }
+      if (a.stunSave && alive(target)) {
+        const sv = d20() + (target.save || 0);
+        if (sv < heroDc(h.cls, lv, st)) { target.fx.stun = true; extra += ` · 💫 stordito (TS ${sv})`; } else extra += ` · resiste allo stordimento (${sv})`;
+      }
+      if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
       log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hit}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total });
     }
@@ -259,15 +278,15 @@ function heroAct(s, h, a, target) {
   if (a.kind === "missile") {
     const [dn, ds] = diceFor(a, lv);
     const notes = [];
-    const dmg = applyDamage(s, target, roll(dn, ds).t + (a.flat || 0), a.dmg, notes);
+    const dmg = applyDamage(s, target, roll(dn, ds).t + flatOf(a.flat) + (a.plusMod ? mod : 0), a.dmg, notes);
     log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
     return ev;
   }
   if (a.kind === "save") {
-    const dc = heroDc(lv);
+    const dc = heroDc(h.cls, lv, st);
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
-    const base = roll(dn, ds).t;
+    const base = roll(dn, ds).t + flatOf(a.flat);
     const parts = [];
     targets.forEach((t) => {
       const sv = d20() + (t.save || 0);
@@ -285,13 +304,19 @@ function heroAct(s, h, a, target) {
     const tg = a.kind === "heal_all" ? s.heroes.filter((x) => !x.fled) : [a.self ? h : target];
     const parts = tg.map((t) => {
       let amt;
-      if (a.flat === "lv*5") amt = lv * 5;
-      else { const [dn, ds] = diceFor(a, lv); amt = roll(dn, ds).t + (a.plusMod ? mod : 0) + (a.plusLevel ? lv : 0); }
+      if (a.flat) amt = flatOf(a.flat);
+      else { const [dn, ds] = diceFor(a, lv); amt = roll(dn, ds).t + (a.plusMod ? healMod : 0) + (a.plusLevel ? lv : 0); }
       const before = t.hp;
       t.hp = Math.min(t.maxHp, t.hp + amt);
       return `${t.name} +${t.hp - before}${before <= 0 && t.hp > 0 ? " (rialzato!)" : ""}`;
     });
     log(s, `${a.icon} ${h.name} → ${a.name}: ${parts.join(" · ")}.`, { kind: "heal", actor: h.id, targets: tg.map((t) => t.id) });
+    return ev;
+  }
+  if (a.kind === "debuff") {
+    const tg = a.area ? s.foes.filter(alive) : [target];
+    tg.forEach((t) => { t.fx.dis = s.round + (a.turns || 1) + 1; });
+    log(s, `${a.icon} ${h.name} → ${a.name}: ${tg.map((t) => t.name).join(", ")} a svantaggio per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
   }
   if (a.kind === "buff") {
@@ -361,7 +386,7 @@ function foeAct(s, f) {
     const dc = (Number(a.saveDC) || 12) + (f.adapt?.hit || 0);
     const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1)));
     const parts = tg.map((t) => {
-      const sv = d20() + (t.save || 0) - (fxOn(s, t.fx.dis) ? 0 : 0);
+      const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
       const dmg = ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0) : applyDamage(s, t, base, type, []);
       return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${t.hp <= 0 ? " 💀" : ""}`;
@@ -444,7 +469,7 @@ export function nextFloor(s, bestiary, now) {
   s.heroes.forEach((h) => {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
-    const uses = {}; heroActions(h.cls, h.level).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+    const uses = {}; heroActions(h.cls, h.level, h.picks || []).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
     h.uses = uses;
   });
   s.floor += 1;
