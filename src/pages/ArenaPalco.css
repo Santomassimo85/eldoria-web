@@ -314,3 +314,67 @@ body.in-fight .arena-combat-dialog .master-fight-chip-tag { font-size: .72rem; }
 .cv-lastlog-list li.is-def { box-shadow: inset 3px 0 0 #e58b72; }
 .cv-lastlog-list .log-ts { margin-right: 6px; font-size: .7rem; color: #9d927f; }
 @media (prefers-reduced-motion: reduce) { .cv-lastlog-text { animation: none; } }
+
+/* ── LEGGIBILITÀ DEL FIGHT (2026-11-04) ──────────────────────────────
+   Il font pixel a 11–13 px non si leggeva (nomi delle azioni tagliati,
+   schede in maiuscoletto, nomi e PF minuscoli, riga dei danni in Cinzel).
+   Lo stile pixel resta nei bordi a gradino e nei colori; i TESTI usano un
+   carattere pulito, più grande, su fondi più scuri. */
+.cv-field, .cv-lastlog { --cvp-read: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.cv-field .fighter-card .fighter-name { font: 700 1rem/1.2 var(--cvp-read) !important; letter-spacing: 0 !important; }
+.cv-field .fighter-card .fighter-class, .cv-field .fighter-card .fighter-sub { font: 500 .8rem/1.25 var(--cvp-read) !important; color: #e9dcc4 !important; letter-spacing: 0 !important; text-transform: none !important; font-variant: normal !important; }
+.cv-field .fighter-card, .cv-field .fighter-card * { font-variant: normal !important; }
+.cv-field .fighter-card { background: rgba(10, 8, 16, .86) !important; }
+.cv-field .fighter-card .cv-hp-text, .cv-field .fighter-card .hp-label { font: 700 .86rem/1.2 var(--cvp-read) !important; color: #fff7e6 !important; }
+.cv-field .fighter-card .ministat { font: 600 .78rem/1.2 var(--cvp-read) !important; color: #fff7e6 !important; }
+.cv-field .fighter-card .fighter-status, .cv-field .fighter-card .fighter-wait, .cv-field .fighter-card small { font: 500 .76rem/1.3 var(--cvp-read) !important; color: #efe3cc !important; }
+
+/* azioni: nome intero su una o due righe, dadi sotto, usi in alto a destra */
+.cv-field .action-panel { background: rgba(10, 8, 16, .9) !important; }
+.cv-field .action-group-label { font: 700 .8rem/1.2 var(--cvp-read) !important; letter-spacing: .04em !important; font-variant: normal !important; }
+.cv-field .action-group-hint, .cv-field .combat-dock-empty, .cv-field .no-target-msg { font: 500 .84rem/1.35 var(--cvp-read) !important; }
+.cv-field .btn-action, .cv-field .btn-item {
+  position: relative; display: grid !important; grid-template-columns: auto 1fr; grid-template-rows: auto auto;
+  align-items: center; column-gap: 8px !important; row-gap: 2px !important; padding: 7px 10px !important; min-height: 56px;
+  background-color: rgba(10, 8, 16, .82) !important;
+}
+.cv-field .btn-action .action-icon, .cv-field .btn-item .item-icon { grid-row: 1 / span 2; font-size: 1.25rem; line-height: 1; }
+.cv-field .btn-action .action-name, .cv-field .btn-item .item-name {
+  grid-column: 2; font: 700 .95rem/1.2 var(--cvp-read) !important; color: #fff !important;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; max-width: none !important; padding-right: 30px;
+  overflow-wrap: anywhere;
+}
+.cv-field .btn-action .action-dice, .cv-field .btn-item .item-desc, .cv-field .btn-item .item-qty {
+  grid-column: 2; font: 600 .8rem/1.2 var(--cvp-read) !important; color: #f2d79b !important; white-space: normal !important; overflow: visible !important; text-overflow: clip !important; margin: 0 !important; text-align: left !important;
+}
+.cv-field .action-uses-badge { position: absolute !important; top: 5px; right: 6px; font: 700 .72rem/1 var(--cvp-read) !important; padding: 2px 5px !important; color: #fff7e6 !important; background: rgba(0,0,0,.6) !important; border: 1px solid rgba(243,234,216,.45) !important; border-radius: 0 !important; }
+.cv-field .btn-action:disabled, .cv-field .btn-item:disabled, .cv-field .btn-action.no-uses { opacity: .55; }
+.cv-field .btn-end-dual-turn { font: 700 .86rem/1.2 var(--cvp-read) !important; padding: 7px 12px !important; }
+.cv-field .dual-action-label { font: 600 .82rem/1.2 var(--cvp-read); }
+
+/* schede in fondo */
+.cv-field .cdt-tab .cdt-lab { font: 600 .74rem/1.15 var(--cvp-read) !important; font-variant: normal !important; text-transform: none !important; }
+.cv-field .cdt-tab .cdt-ico { font-size: 1.1rem; }
+
+/* passive e info */
+.cv-passive b, .cv-info-grid b { font-family: var(--cvp-read); font-size: .92rem; }
+.cv-passive small, .cv-info-st, .cv-info-grid small { font-family: var(--cvp-read); font-size: .8rem; }
+
+/* riga dell'ultima azione e cronaca: niente Cinzel/maiuscoletto, nomi e PF leggibili */
+.cv-lastlog-btn, .cv-lastlog-text, .cv-lastlog-list, .cv-lastlog-list li { font-family: var(--cvp-read) !important; font-variant: normal !important; text-transform: none !important; letter-spacing: 0 !important; }
+.cv-lastlog-btn { font-size: .92rem !important; font-weight: 600; color: #fff7e6; }
+.cv-lastlog-list li { font-size: .9rem !important; color: #f3ead8 !important; }
+.cv-lastlog-list .log-ts { font-family: var(--cvp-read); font-size: .74rem; color: #b8ad99; }
+.cv-lastlog .achr-hp-chip { font: 600 .8rem/1.3 var(--cvp-read) !important; color: #fff !important; background: rgba(0,0,0,.4); border-width: 1px; padding: 2px 8px; }
+.cv-lastlog .achr-hp-chip.is-down { border-color: #e0624f !important; }
+.cv-lastlog .achr-hp-chip.is-up { border-color: #5fd16b !important; }
+.cv-lastlog .achr-hp-chip b { color: #ffd88a; }
+
+@media (max-width: 760px) {
+  .cv-field .fighter-card .fighter-name { font-size: .95rem !important; }
+  .cv-field .btn-action, .cv-field .btn-item { min-height: 52px; padding: 6px 8px !important; column-gap: 6px !important; }
+  .cv-field .btn-action .action-name, .cv-field .btn-item .item-name { font-size: .88rem !important; padding-right: 26px; }
+  .cv-field .btn-action .action-dice { font-size: .76rem !important; }
+  .cv-field .cdt-tab .cdt-lab { font-size: .66rem !important; }
+  .cv-lastlog-btn { font-size: .86rem !important; }
+}
