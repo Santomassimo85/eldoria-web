@@ -33,7 +33,7 @@ function statusIcons(c, round) {
   const left = (u) => Math.max(1, untilOf(u) - round);
   const out = [];
   (fx.ac || []).filter(on).forEach((e, i) => out.push({ k: `ac${i}`, ico: "🛡", n: left(e), good: true, tag: `+${e.v} CA`, t: `+${e.v} CA` }));
-  if (fx.dodge) out.push({ k: "dodge", ico: "🌀", n: 1, good: true, tag: "+4 CA", t: "In difesa: +4 CA fino al prossimo round" });
+  if (fx.dodge) out.push({ k: "dodge", ico: "🌀", n: 1, good: true, tag: "+4 CA", t: "In difesa: +4 CA fino alla sua prossima azione" });
   if (on(fx.adv)) out.push({ k: "adv", ico: "🎯", n: left(fx.adv), good: true, tag: "vant.", t: "Vantaggio agli attacchi" });
   if (on(fx.dmg)) out.push({ k: "dmg", ico: "⚔", n: left(fx.dmg), good: true, tag: `+${fx.dmg.v} danni`, t: `+${fx.dmg.v} ai danni` });
   if (on(fx.rage)) out.push({ k: "rage", ico: "💢", n: left(fx.rage), good: true, tag: `+${fx.rage.v} furia`, t: `Furia: +${fx.rage.v} danni, danni fisici dimezzati` });
@@ -67,7 +67,7 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       onContextMenu={(e) => { if (onInspect) { e.preventDefault(); onInspect(c.id); } }}>
       {flash && <span key={flash.k} className={`sgb-pop sgb-pop--${flash.kind}`}>{flash.txt}</span>}
       {!!icons.length && (
-        <StatusPips className="sgb-st-pips" max={6}
+        <StatusPips className="sgb-st-pips" max={9}
           items={icons.map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }))} />
       )}
       <span className="sgb-sprite" data-vfx-target={vfxKey(c.id)}>
@@ -157,9 +157,7 @@ export default function SegreteBattle({ room, uid }) {
               effectNums: nums,
             }]);
           } else nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, el: l.el }));
-          const next = {};
-          targets.forEach((id) => { if (l.kind === "buff" || l.kind === "debuff") next[id] = { k: `${l.i}-${id}`, kind: "buff", txt: "✨" }; });
-          if (Object.keys(next).length) setFlashes(next);
+          // niente più ✨ di un secondo: bonus e malus restano come icone fisse sullo sprite (StatusPips) per i round che durano
         }, idx * STAGGER_MS);
         timers.current.push(t);
       });

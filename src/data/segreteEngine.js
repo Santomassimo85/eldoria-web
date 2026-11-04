@@ -355,6 +355,8 @@ function heroAct(s, h, a, target) {
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
   const flatOf = (f) => { const m = /^lv\*(\d+)$/.exec(String(f || "")); return m ? lv * Number(m[1]) : Number(f) || 0; };
   const ev = { actor: h.id, roll: null };
+  // "In difesa" dura fino alla prossima azione dell'eroe (prima spariva all'inizio del round: l'icona non si vedeva mai)
+  h.fx.dodge = false;
   if (a.kind === "defend") {
     h.fx.dodge = true;
     log(s, `🛡 ${h.name} si mette in difesa (+4 CA fino al suo turno).`, { kind: "buff", actor: h.id, targets: [h.id] });
@@ -554,7 +556,6 @@ function startHeroPhase(s, now) {
   s.acted = {};
   s.phaseAt = now;
   s.turnAt = now;
-  s.heroes.forEach((h) => { h.fx.dodge = false; });
 }
 // Tutti i mostri, uno dopo l'altro; poi nuovo round e di nuovo tocca agli eroi.
 function monsterPhase(s, now) {

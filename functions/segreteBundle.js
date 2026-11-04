@@ -770,6 +770,7 @@ function heroAct(s, h, a, target) {
     return m ? lv * Number(m[1]) : Number(f) || 0;
   };
   const ev = { actor: h.id, roll: null };
+  h.fx.dodge = false;
   if (a.kind === "defend") {
     h.fx.dodge = true;
     log(s, `\u{1F6E1} ${h.name} si mette in difesa (+4 CA fino al suo turno).`, { kind: "buff", actor: h.id, targets: [h.id] });
@@ -1007,9 +1008,6 @@ function startHeroPhase(s, now) {
   s.acted = {};
   s.phaseAt = now;
   s.turnAt = now;
-  s.heroes.forEach((h) => {
-    h.fx.dodge = false;
-  });
 }
 function monsterPhase(s, now) {
   for (const id of s.order) {

@@ -118,3 +118,17 @@
 
 /* 2026-11-04: icone di stato con effetto e durata (StatusPips) sopra lo sprite */
 .sgb-st-pips { position: absolute; top: -10px; left: 50%; translate: -50% -60%; z-index: 2; width: max-content; }
+
+/* Icone di stato FISSE e impilate (2026-11-04): stanno nel flusso sopra lo sprite, larghe quanto
+   il combattente; se sono tante vanno a capo verso l'alto, così non coprono mai gli sprite vicini. */
+.sgb-f .sgb-st-pips { position: static; translate: none; width: 100%; max-width: 100%; min-height: 0;
+  display: flex; flex-wrap: wrap-reverse; justify-content: center; align-items: flex-end; gap: 4px 2px; margin-bottom: 2px; }
+.sgb-f .sgb-st-pips .stp-i { min-width: 0; padding-top: 3px; }
+.sgb-f .sgb-st-pips .stp-i > i { font-size: 18px; }
+.sgb-f .sgb-st-pips .stp-i > em { font-size: 9px; }
+.sgb-f .sgb-st-pips .stp-i > small { font-size: 10px; top: -2px; right: -5px; }
+.sgb-f .sgb-st-pips .stp-more { font-size: 10px; }
+@media (max-width: 760px) {
+  .sgb-f .sgb-st-pips .stp-i > i { font-size: 16px; }
+  .sgb-f .sgb-st-pips .stp-i > em { font-size: 8px; }
+}
