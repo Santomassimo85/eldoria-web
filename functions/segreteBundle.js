@@ -55,6 +55,7 @@ module.exports = __toCommonJS(segreteServer_exports);
 // src/data/segreteKits.js
 var MAX_STORY_LEVEL = 20;
 var HERO_HP_MULT = 1.1;
+var HERO_HP_BASE = 10;
 var XP_TABLE = [0, 300, 900, 2700, 6500, 14e3, 23e3, 34e3, 48e3, 64e3, 85e3, 1e5, 12e4, 14e4, 165e3, 195e3, 225e3, 265e3, 305e3, 355e3];
 var STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 var STAT_BUDGET = 10;
@@ -301,7 +302,7 @@ function heroMaxHp(cls, lv, st, rolls = []) {
     const r = Number(rolls?.[i - 1]);
     hp += (i === 1 ? d : 0) + (Number.isFinite(r) && r > 0 ? r : avg) + con;
   }
-  return Math.max(1, Math.round(hp * HERO_HP_MULT));
+  return Math.max(1, Math.round(hp * HERO_HP_MULT)) + HERO_HP_BASE;
 }
 function heroAc(cls, st) {
   const k = kitOf(cls);
@@ -612,7 +613,7 @@ var BUDGET = {
 var heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.max(1, lv) - 1) + (lv >= 5 ? 0.25 : 0));
 function balanceFoes(foes, heroes, isBoss) {
   const live = heroes.filter((h) => !h.fled);
-  const heroHp = live.reduce((t, h) => t + (h.maxHp || 10), 0) || 10;
+  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE), 0) || 10;
   const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
   const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
   const w = (f) => BUDGET.weight[f.role] || 1;

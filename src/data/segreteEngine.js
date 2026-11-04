@@ -11,7 +11,7 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { kitOf, heroActions, heroMaxHp, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { kitOf, heroActions, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 10 * 60 * 1000;
@@ -256,7 +256,8 @@ export const BUDGET = {
 const heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.max(1, lv) - 1) + (lv >= 5 ? 0.25 : 0));
 export function balanceFoes(foes, heroes, isBoss) {
   const live = heroes.filter((h) => !h.fled);
-  const heroHp = live.reduce((t, h) => t + (h.maxHp || 10), 0) || 10;
+  // i +10 PF di base degli eroi sono un vantaggio vero: non alzano il danno dei mostri
+  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE), 0) || 10;
   const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
   const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
   const w = (f) => BUDGET.weight[f.role] || 1;

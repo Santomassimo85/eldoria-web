@@ -9,7 +9,7 @@ import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import { classInfo, heroOf } from "../data/segrete";
 import {
-  kitOf, poolFor, heroActions, heroStats, heroPending, hpPending, heroMaxHp, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
 } from "../data/segreteKits";
 
@@ -91,6 +91,7 @@ export default function SegreteHero({ cls, charData }) {
           <span className="sgh-left">{left > 0 ? `${left} punti da assegnare` : "✓ Punti assegnati"}</span>
           <button type="button" className="sgr-btn sgr-btn--ghost" onClick={auto}>🎲 Distribuisci per me</button>
         </div>
+        <p className="sgh-sub">❤ Punti ferita del {info?.it}: <b>{HERO_HP_BASE} di base</b> + dado vita della classe <b>d{kit.hitDie}</b> pieno + un tiro di <b>d{kit.hitDie}</b> (lo fai subito dopo) + COS. A ogni livello un altro tiro di d{kit.hitDie} + COS.</p>
         <p className="sgh-sub">Hai già: {kit.base.map((a) => `${a.icon} ${a.name}`).join(" · ")}</p>
         <p className="sgh-sub">Scegli la prima abilità o il primo incantesimo:</p>
         <div className="sgh-picks">
@@ -136,7 +137,7 @@ export default function SegreteHero({ cls, charData }) {
 
       {hpLeft > 0 && (
         <div className="sgh-pending sgh-hp">
-          <p>❤ {(hero.hpRolls || []).length ? `Hai ${hpLeft} ${hpLeft === 1 ? "tiro" : "tiri"} dei PF da fare (livelli nuovi)` : "Tira i tuoi punti ferita"}: dado vita <b>d{kit.hitDie}</b> + COS. Finché non tiri non puoi partire.</p>
+          <p>❤ {(hero.hpRolls || []).length ? `Hai ${hpLeft} ${hpLeft === 1 ? "tiro" : "tiri"} dei PF da fare (livelli nuovi)` : "Tira i tuoi punti ferita"}: dado vita del {info?.it} <b>d{kit.hitDie}</b> + COS (più {HERO_HP_BASE} PF di base). Finché non tiri non puoi partire.</p>
           <button type="button" className="sgr-cta" disabled={busy} onClick={rollHp}>🎲 Tira i PF (d{kit.hitDie})</button>
         </div>
       )}

@@ -12,6 +12,8 @@
 
 export const MAX_STORY_LEVEL = 20;
 export const HERO_HP_MULT = 1.1;
+// +10 PF fissi a ogni eroe (richiesta 2026-11-04), fuori dal moltiplicatore e dal budget dei mostri
+export const HERO_HP_BASE = 10;
 export const XP_TABLE = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
 export const STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 export const STAT_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
@@ -178,7 +180,7 @@ export const mainMod = (cls, st) => st[kitOf(cls).stat] || 0;
 /* PF TIRATI (2026-11-04): alla creazione e a ogni livello si tira il dado vita della
    classe (lo tira il server: hero.hpRolls[i] = tiro del livello i+1). Livello 1 = dado
    pieno + il tiro; livelli dopo = il tiro; + COS a ogni livello. Finché un tiro manca
-   conta la media. */
+   conta la media. In più HERO_HP_BASE (+10) fissi. */
 export const hpPending = (hero) => Math.max(0, levelOfXp(hero?.xp) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
 export function heroMaxHp(cls, lv, st, rolls = []) {
   const d = kitOf(cls).hitDie;
@@ -189,7 +191,7 @@ export function heroMaxHp(cls, lv, st, rolls = []) {
     const r = Number(rolls?.[i - 1]);
     hp += (i === 1 ? d : 0) + (Number.isFinite(r) && r > 0 ? r : avg) + con;
   }
-  return Math.max(1, Math.round(hp * HERO_HP_MULT));
+  return Math.max(1, Math.round(hp * HERO_HP_MULT)) + HERO_HP_BASE;
 }
 export function heroAc(cls, st) {
   const k = kitOf(cls);
