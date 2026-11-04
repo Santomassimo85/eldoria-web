@@ -142,13 +142,19 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize 
     if (!bosses.length) bosses = FALLBACK_MONSTERS.filter((m) => m.role === "boss");
     picks.push(pick(bosses));
     const mins = fit("minion", partyLevel + 1);
-    for (let i = 0; i < Math.floor(partySize / 2) && mins.length; i++) picks.push(pick(mins));
+    // scorta del boss: da soli metà delle volte nessuna, in gruppo metà del gruppo
+    const escort = partySize <= 1 ? (rnd() < 0.5 ? 1 : 0) : Math.floor(partySize / 2);
+    for (let i = 0; i < escort && mins.length; i++) picks.push(pick(mins));
   } else {
     let mins = fit("minion", partyLevel + 1);
     const elites = fit("elite", partyLevel + 2);
     if (!mins.length) mins = elites.length ? elites : FALLBACK_MONSTERS.filter((m) => m.role === "minion");
-    let count = Math.min(5, partySize + (floor >= 2 ? 1 : 0));
-    if (floor >= 2 && elites.length && rnd() < 0.45) { picks.push(pick(elites)); count = Math.max(partySize >= 2 ? 1 : 0, count - 2); }
+    // QUANTI MOSTRI (2026-11-04): da soli 1–3 (1–2 nella prima sala), in gruppo fra
+    // eroi e eroi+1 (max 5). Il numero cambia solo la forma della sala: PF e danni totali
+    // li decide il budget (balanceFoes), quindi più mostri = mostri più deboli.
+    const [lo, hi] = partySize <= 1 ? (floor >= 2 ? [2, 3] : [1, 2]) : [partySize, Math.min(5, partySize + 1)];
+    let count = lo + Math.floor(rnd() * (hi - lo + 1));
+    if (floor >= 2 && elites.length && rnd() < 0.4) { picks.push(pick(elites)); count = Math.max(0, count - 2); }
     for (let i = 0; i < count; i++) picks.push(pick(mins));
   }
   // nomi doppi → "Goblin A", "Goblin B"
@@ -248,8 +254,10 @@ export const BUDGET = {
   weight: { minion: 1, elite: 2.5, boss: 5 },
   // PF dei mostri per ogni eroe = forza d'attacco di un eroe di quel livello
   hpPerHero: 19, hpPerLevel: 0.2,
-  // in gruppo gli eroi si coprono a vicenda (cure, focus): ogni eroe in più vale un po' di più
-  groupHp: 0.12, groupDmg: 0.1,
+  // ritocco per numero di eroi (tarato con le simulazioni: stessa difficoltà da 1 a 4)
+  size: { 1: { hp: 1.17, dmg: 1.17 }, 2: { hp: 1.38, dmg: 1.38 }, 3: { hp: 1.58, dmg: 1.58 }, 4: { hp: 1.75, dmg: 1.75 } },
+  // ritocco per livello del gruppo (gli eroi crescono a scatti: Lv 5 attacco extra…)
+  level: (lv) => { const k = lv <= 1 ? 1.05 : lv === 2 ? 0.92 : lv === 3 ? 0.95 : lv === 4 ? 0.85 : lv <= 8 ? 1 : lv <= 12 ? 0.97 : lv <= 16 ? 0.9 : 0.85; return { hp: k, dmg: k }; },
 };
 // Forza d'attacco di un eroe (≈ PF di mostri che "regge" una sala): cresce col livello,
 // con un salto all'attacco extra / incantesimi più forti del Lv 5.
@@ -262,11 +270,12 @@ export function balanceFoes(foes, heroes, isBoss) {
   const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
   const w = (f) => BUDGET.weight[f.role] || 1;
   const sumW = foes.reduce((t, f) => t + w(f), 0) || 1;
+  const sz = BUDGET.size[Math.min(4, Math.max(1, live.length))] || BUDGET.size[4];
+  const lvT = BUDGET.level(Math.round(live.reduce((t, h) => t + (h.level || 1), 0) / Math.max(1, live.length)));
   foes.forEach((f) => {
     const share = w(f) / sumW;
-    const g = live.length - 1;
-    f.maxHp = f.hp = Math.max(3, Math.round(heroOff * kind.hp * (1 + BUDGET.groupHp * g) * share));
-    f.cap = { ...(f.cap || {}), dmg: Math.max(1.5, heroHp * kind.dmg * (1 + BUDGET.groupDmg * g) * share * (foes.length > 1 ? 1.15 : 1)) };
+    f.maxHp = f.hp = Math.max(3, Math.round(heroOff * kind.hp * sz.hp * lvT.hp * share));
+    f.cap = { ...(f.cap || {}), dmg: Math.max(1.5, heroHp * kind.dmg * sz.dmg * lvT.dmg * share * (foes.length > 1 ? 1.15 : 1)) };
   });
   return foes;
 }
@@ -461,10 +470,12 @@ function foeAct(s, f) {
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   // danno medio oltre il tetto del gruppo → si riduce in proporzione
-  // targets = quanti eroi colpisce: un'area divide il budget del mostro fra tutti (×1,4)
+  // targets = quanti eroi colpisce: un'area divide il budget del mostro fra tutti. L'area
+  // non manca mai (TS: metà danni a chi lo supera), quindi in totale vale ~0,8 di un colpo
+  // (un attacco singolo va a segno ~60% delle volte): così in gruppo non pesa il doppio.
   const capMult = (n, sides, targets = 1) => {
     const avg = (avgDice(n, sides) + lvlBonus) * (f.adapt?.mult || 1);
-    const max = (f.cap?.dmg || 99) * (targets > 1 ? Math.min(1, 1.1 / targets) : 1);
+    const max = (f.cap?.dmg || 99) * (targets > 1 ? Math.min(1, 0.8 / targets) : 1);
     return avg > max ? max / avg : 1;
   };
   const turns = Math.max(1, Number(a.durationTurns) || 2);
