@@ -60,6 +60,7 @@ import Officina from "./pages/Officina";
 import RuotaExanthia from "./pages/RuotaExanthia";
 import SalaGloria from "./pages/SalaGloria";
 import Segrete from "./pages/Segrete";
+import SegreteAdmin from "./pages/SegreteAdmin";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
@@ -697,6 +698,7 @@ export default function App() {
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
           <Route path="/dm-admin/send-notif" element={<SendNotification />} />
+          <Route path="/dm-admin/segrete" element={<SegreteAdmin />} />
           <Route path="/dm-admin/player-sprites" element={<PlayerSpritesAdmin />} />
         </Routes>
       </main>

@@ -55,7 +55,7 @@ const SAVES = [
   { v: "str", l: "FOR" }, { v: "int", l: "INT" }, { v: "cha", l: "CAR" },
 ];
 
-const blankAction = (i = 0) => ({
+export const blankAction = (i = 0) => ({
   type: "attack",
   name: "",
   diceNum: 1,
@@ -148,7 +148,7 @@ const sanitizeAction = (a = {}, i = 0) => {
   };
 };
 
-const sanitizeActions = (arr, min) => {
+export const sanitizeActions = (arr, min) => {
   const out = (Array.isArray(arr) ? arr : []).map(sanitizeAction).slice(0, MAX_ACTIONS);
   while (out.length < min) out.push(blankAction(out.length));
   return out;
@@ -160,7 +160,7 @@ const sanitizeActions = (arr, min) => {
 // di riferimento): senza, l'IA inventava un'altra creatura (2026-10-03).
 // Due forme: "corpse" = la stessa creatura stesa a terra, "tomb" = una tomba
 // che porta i suoi segni (arma, elmo, colori).
-const pixelArtPrompt = (name, desc, dead, { deadStyle = "corpse", withRef = false } = {}) => {
+export const pixelArtPrompt = (name, desc, dead, { deadStyle = "corpse", withRef = false } = {}) => {
   const bg = "CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery. No text, no frame, no border. Only the subject on flat magenta.";
   const style = "Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.";
   const subject = `Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}`;
@@ -185,7 +185,7 @@ ${bg}`;
 // Rimuove lo sfondo a tinta unita (magenta) con un flood-fill dai bordi: così
 // non cancella eventuali pixel dello stesso colore "intrappolati" nel soggetto.
 // Ridimensiona a pixel-art (nearest neighbor) e restituisce un Blob PNG.
-const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
+export const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
   const img = new Image();
   img.onload = () => {
     const MAX = 256;
@@ -247,8 +247,8 @@ const DEF_STATES = [
 ];
 const DEF_KEYS = ["resistances", "vulnerabilities", "immunities"];
 const cleanDefList = (v) => (Array.isArray(v) ? v.filter((k) => DAMAGE_TYPE_KEYS.includes(k)) : []);
-const defensesOf = (o) => Object.fromEntries(DEF_KEYS.map((k) => [k, cleanDefList(o?.[k])]));
-const DefensesPicker = ({ value, onChange }) => {
+export const defensesOf = (o) => Object.fromEntries(DEF_KEYS.map((k) => [k, cleanDefList(o?.[k])]));
+export const DefensesPicker = ({ value, onChange }) => {
   const stateOf = (key) => DEF_KEYS.find((k) => (value?.[k] || []).includes(key)) || null;
   const cycle = (key) => {
     const cur = stateOf(key);
@@ -365,7 +365,7 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
 };
 
 /* Lista di azioni con "+ Aggiungi" (boss e minion). */
-const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) => {
+export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) => {
   const update = (i, patch) => onChange(actions.map((a, k) => (k === i ? { ...a, ...patch } : a)));
   return (
     <div className="wb-actions-section">
@@ -392,7 +392,7 @@ const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) => {
 // Verso dello sprite. In battaglia gli eroi stanno a DESTRA: se il disegno guarda a sinistra
 // (com'è quasi sempre per le immagini generate dall'IA) la pagina lo specchia; se guarda già a
 // destra va lasciato com'è. L'anteprima mostra ESATTAMENTE come apparirà in scena.
-const FacingPicker = ({ value, onChange, imageUrl, name }) => {
+export const FacingPicker = ({ value, onChange, imageUrl, name }) => {
   const facing = value === "right" ? "right" : "left";
   return (
     <div className="wb-facing">
@@ -441,7 +441,7 @@ const DeadStylePicker = ({ value, onChange }) => (
   </div>
 );
 
-const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "var(--oro)" }) => {
+export const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "var(--oro)" }) => {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = React.useRef(null);
 

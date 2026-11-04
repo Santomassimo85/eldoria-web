@@ -44,3 +44,20 @@ export function mergeDungeons(custom = []) {
 export const roomMember = (room, uid) => (room?.members || []).find((m) => m.uid === uid) || null;
 export const roomFull = (room) => (room?.members || []).length >= MAX_PARTY;
 export const allReady = (room) => (room?.members || []).length > 0 && room.members.every((m) => m.ready);
+
+/* ── Bestiario e tipi di dungeon del Master (fase 2) ──────────────
+   dungeon_types/{key}: { name, icon, desc, floors, backgrounds: [url], hidden }
+     floors = incontri prima del boss (il boss è l'ultima sala).
+   dungeon_monsters/{id}: { name, desc, role, level, hp, ac, init, save,
+     dungeons: [key], imageUrl, deadImageUrl, facing, actions: [azione World
+     Boss], resistances, vulnerabilities, immunities, source }
+     role: minion (gruppi), elite (da solo o con 1-2 minion), boss (ultima sala). */
+export const DEFAULT_FLOORS = 3;
+export const MONSTER_ROLES = [
+  { key: "minion", label: "Gregario", icon: "🐀", hint: "Escono in gruppo nelle sale normali." },
+  { key: "elite", label: "Élite", icon: "💀", hint: "Più forte: da solo o con qualche gregario." },
+  { key: "boss", label: "Boss", icon: "👑", hint: "L'ultima sala del dungeon." },
+];
+export const roleInfo = (k) => MONSTER_ROLES.find((r) => r.key === k) || MONSTER_ROLES[0];
+export const dungeonSlug = (name) => String(name || "").toLowerCase()
+  .normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);

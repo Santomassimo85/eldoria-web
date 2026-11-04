@@ -1,0 +1,60 @@
+/* Le Segrete · admin (token del Covo, respiro arcano dell'admin) */
+.sga-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.sga-tabs button, .sga-chips button {
+  min-height: 38px; padding: 6px 14px; border-radius: 3px; cursor: pointer; font: 600 .92rem var(--font-ui, serif);
+  border: 1px solid rgba(var(--osso-rgb), .22); background: var(--roccia-2); color: var(--osso);
+}
+.sga-tabs button.is-on, .sga-chips button.is-on { border-color: var(--el); background: rgba(var(--el-rgb), .18); box-shadow: inset 0 0 0 1px var(--el); }
+.sga-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sga-chips button { min-height: 34px; padding: 4px 10px; font-size: .86rem; }
+.sga-chips button.is-done { opacity: .6; }
+.sga-filter { margin: 12px 0; }
+
+.sga-card { display: block; width: 100%; text-align: left; padding: 14px; border-radius: 3px; border: 1px solid rgba(var(--osso-rgb), .16); border-top: 3px solid var(--el); background: var(--roccia-2); color: var(--osso); font: inherit; }
+button.sga-card { cursor: pointer; }
+button.sga-card:hover { border-color: var(--el); }
+.sga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 10px; }
+.sga-h2 { margin: 0 0 12px; font-family: var(--font-head, serif); font-size: 1.5rem; }
+.sga-h3 { margin: 18px 0 8px; font: 700 1rem var(--font-ui, serif); }
+.sga-h3 small { font-weight: 400; color: var(--osso-2); margin-left: 6px; }
+.sga-hint { margin: 6px 0; color: var(--osso-2); font-size: .9rem; }
+.sga-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+
+.sga-dcard { display: grid; gap: 4px; padding: 0 0 12px; overflow: hidden; }
+.sga-dcard b, .sga-dcard small { padding: 0 12px; }
+.sga-dcard small { color: var(--osso-2); }
+.sga-dcard.is-hidden { opacity: .55; }
+.sga-dcard-bg { aspect-ratio: 16 / 9; display: grid; place-items: center; font-size: 3rem; background: var(--roccia-1) center / cover no-repeat; }
+
+.sga-form { max-width: 980px; }
+.sga-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.sga-field { display: grid; gap: 4px; flex: 1 1 220px; margin: 6px 0; }
+.sga-field > span { font: 600 .78rem var(--font-ui, serif); color: var(--osso-2); }
+.sga-field--s { flex: 0 1 170px; }
+.sga-field--xs { flex: 0 1 110px; }
+.sga-check { display: flex; gap: 8px; align-items: center; margin: 14px 0 4px; }
+.sga-ai { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 10px; border: 1px dashed rgba(var(--el-rgb), .5); border-radius: 3px; }
+.sga-ai input { flex: 1 1 260px; }
+
+.sga-bgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 8px; margin-bottom: 10px; }
+.sga-bg { position: relative; margin: 0; aspect-ratio: 16 / 9; border-radius: 3px; overflow: hidden; background: var(--roccia-1); }
+.sga-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sga-bg--empty { display: grid; place-items: center; align-content: center; font-size: 2.4rem; color: var(--osso-2); }
+.sga-bg--empty small { font-size: .8rem; }
+.sga-x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 3px; cursor: pointer; background: rgba(0,0,0,.6); color: #fff; }
+
+.sga-sprites { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px; }
+.sga-savebar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; margin: 18px -14px -14px; padding: 12px 14px; background: var(--roccia-3, var(--roccia-2)); border-top: 1px solid rgba(var(--osso-rgb), .16); }
+
+.sga-mcard { display: flex; gap: 12px; align-items: center; }
+.sga-mcard-img { flex: none; width: 76px; height: 76px; display: grid; place-items: center; font-size: 2.2rem; background: var(--roccia-1); border-radius: 3px; }
+.sga-mcard-img img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.sga-mcard-img img.mirror { transform: scaleX(-1); }
+.sga-mcard-main { display: grid; gap: 2px; min-width: 0; }
+.sga-mcard-main small { color: var(--osso-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sga-import { margin-bottom: 12px; }
+
+@media (max-width: 640px) {
+  .sga-field--s, .sga-field--xs { flex: 1 1 45%; }
+  .sga-savebar .adm-btn { flex: 1 1 auto; }
+}

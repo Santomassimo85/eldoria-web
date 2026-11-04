@@ -125,7 +125,8 @@ export default function Segrete() {
             <div className="sgr-dungeons" role="radiogroup" aria-label="Dungeon">
               {dungeons.map((d) => (
                 <button key={d.key} type="button" role="radio" aria-checked={type === d.key}
-                  className={`sgr-dungeon${type === d.key ? " is-on" : ""}`} onClick={() => setType(d.key)}>
+                  className={`sgr-dungeon${type === d.key ? " is-on" : ""}${d.backgrounds?.[0] ? " has-bg" : ""}`} onClick={() => setType(d.key)}
+                  style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(180deg, rgba(10,8,14,.35), rgba(10,8,14,.92)), url(${d.backgrounds[0]})` } : undefined}>
                   <span className="sgr-dungeon-ico" aria-hidden="true">{d.icon}</span>
                   <b>{d.name}</b>
                   {d.desc && <small>{d.desc}</small>}

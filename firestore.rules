@@ -244,6 +244,10 @@ service cloud.firestore {
       allow update: if isLoggedIn() && request.resource.data.memberIds.size() <= 4;
       allow delete: if isLoggedIn(); // anche chi trova una stanza ferma da ore la può sciogliere
     }
+    match /dungeon_monsters/{monsterId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
     match /dungeon_types/{typeId} {
       allow read: if isLoggedIn();
       allow write: if isMaster();
