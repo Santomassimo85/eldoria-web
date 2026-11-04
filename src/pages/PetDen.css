@@ -614,29 +614,36 @@
 
 /* ── BONUS / MALUS IN LOTTA (2026-11-01) ──────────────────── */
 .pd-fxbar { display: grid; gap: 4px; }
-.pd-fxrow { display: flex; flex-wrap: wrap; gap: 3px; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
-.pd-fxi { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px 1px 3px; border-radius: 3px; font-size: .74rem; line-height: 1.3; border: 1px solid; }
-.pd-fxi i { font-style: normal; }
-.pd-fxi b { font-weight: 800; }
-.pd-fxi small { font-size: .66rem; opacity: .85; font-family: var(--font-num); }
-.pd-fxi.is-good { background: rgba(90, 190, 110, .18); border-color: rgba(110, 210, 130, .6); color: #c9f5cf; }
-.pd-fxi.is-bad { background: rgba(210, 70, 70, .2); border-color: rgba(230, 100, 100, .6); color: #ffd0d0; }
+.pd-fxrow { display: flex; flex-wrap: wrap; gap: 2px 7px; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+/* 2026-11-04: niente cornice, solo il simbolo che saltella con un alone verde (bonus) o rosso (malus) */
+.pd-fxi { position: relative; display: inline-flex; align-items: flex-end; gap: 1px; padding: 0 3px 0 0; font-size: .74rem; line-height: 1; background: none; border: 0; }
+.pd-fxi i { font-style: normal; font-size: 1.32rem; line-height: 1; display: inline-block; animation: pd-fxi-hop 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.pd-fxrow > .pd-fxi:nth-child(2) i { animation-delay: .35s; } .pd-fxrow > .pd-fxi:nth-child(3) i { animation-delay: .7s; } .pd-fxrow > .pd-fxi:nth-child(4) i { animation-delay: 1.05s; } .pd-fxrow > .pd-fxi:nth-child(5) i { animation-delay: 1.4s; }
+@keyframes pd-fxi-hop { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-4px) scale(1.08, .94); } 86% { transform: translateY(0) scale(.94, 1.06); } 92% { transform: scale(1.03, .97); } }
+.pd-fxi b, .pd-fxi em, .pd-fxi small { text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 0 -1px 0 #000; }
+.pd-fxi b { font-weight: 900; font-size: .72rem; margin-left: -4px; }
+.pd-fxi small { font-size: .62rem; font-weight: 800; font-family: var(--font-num); margin-left: -3px; }
+.pd-fxi.is-good i { filter: drop-shadow(0 0 3px rgba(110, 230, 140, .95)) drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.pd-fxi.is-bad i { filter: drop-shadow(0 0 3px rgba(255, 90, 90, .95)) drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.pd-fxi.is-good { color: #b8ffc6; }
+.pd-fxi.is-bad { color: #ffc2c2; }
 .pd-fxi.is-spent { opacity: .45; filter: grayscale(.7); }
+.pd-fxi.is-spent i { animation: none; }
 .pd-fxlist { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; font-size: .74rem; line-height: 1.35; background: rgba(0,0,0,.5); border-radius: 4px; max-height: 140px; overflow: auto; }
 .pd-fxlist li.is-good { color: #c9f5cf; }
 .pd-fxlist li.is-bad { color: #ffd0d0; }
 .pd-fxlist i { font-style: normal; }
-@media (max-width: 760px) { .pd-fxi { font-size: .68rem; } .pd-fxlist { font-size: .7rem; } }
+@media (max-width: 760px) { .pd-fxi i { font-size: 1.12rem; } .pd-fxlist { font-size: .7rem; } }
 
 /* tetto di PE al giorno (2026-11-01) */
 .pd-xpday { margin: 2px 0 0; font-size: .74rem; color: var(--pd-mute); }
 .pd-xpday.is-full { color: #ffd27a; }
 
 /* ── STATI IN LOTTA (2026-11-01): fumetto sopra il pet + tinta dello sprite ── */
-.pd-fxi em { font-style: normal; font-weight: 700; font-size: .68rem; }
+.pd-fxi em { font-style: normal; font-weight: 800; font-size: .66rem; margin-left: 1px; }
 .pd-stb { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); z-index: 4; display: flex; flex-direction: column; align-items: center; pointer-events: none; animation: pd-stb-bob 1.6s ease-in-out infinite; }
 .pd-stb-ic { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,.7)); }
-.pd-stb-lab { margin-top: 2px; padding: 1px 7px; border-radius: 999px; font-size: .7rem; font-weight: 800; white-space: nowrap; color: #fff; background: rgba(20,16,24,.85); border: 1px solid currentColor; text-shadow: 0 1px 0 #000; font-family: var(--font-num); letter-spacing: .02em; }
+.pd-stb-lab { margin-top: 1px; font-size: .74rem; font-weight: 900; white-space: nowrap; color: #fff; text-shadow: 1.5px 1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px -1.5px 0 #000; font-family: var(--font-num); letter-spacing: .03em; }
 .pd-stb--sleep .pd-stb-lab { color: #b9c8ff; }
 .pd-stb--burn .pd-stb-lab { color: #ffb070; }
 .pd-stb--poison .pd-stb-lab { color: #b6f07a; }
@@ -684,7 +691,7 @@
 @keyframes pd-wobble-body { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
 .pd-spot--e .pd-stb { top: -16px; }
 @media (max-width: 760px) { .pd-stb-ic { font-size: 1.5rem; } .pd-stb-lab { font-size: .62rem; } }
-@media (prefers-reduced-motion: reduce) { .pd-stb, .pd-stb *, .pd-spot[class*="pd-st-"] .pd-act { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pd-fxi i, .pd-stb, .pd-stb *, .pd-spot[class*="pd-st-"] .pd-act { animation: none !important; } }
 
 /* ── EVOLUZIONE (2026-11-01): sagoma nei Dettagli, popup che spiega, scambio di sagome ── */
 .pd-shadow { display: inline-flex; }

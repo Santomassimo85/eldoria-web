@@ -8,7 +8,7 @@
    particelle sono quadrate. Negli impatti escono scintille quadrate.
    ============================================================ */
 
-import React, { useLayoutEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { TYPE_COLORS } from "../data/petDex";
 import "./PetFx.css";
 
@@ -27,7 +27,7 @@ function measure(field, el) {
   return { x: r.left + r.width / 2 - f.left, y: r.top + r.height * 0.55 - f.top, feet: r.bottom - f.top, s: r.width };
 }
 
-const PIX = 5; // lato dei "pixel" del filtro
+const PIX = 3; // lato dei "pixel" del filtro (2026-11-04: da 5 a 3, i dettagli degli elementi si leggono)
 
 // Filtro di pixelatura: campiona un punto ogni PIX px e lo allarga a blocco.
 function PixelFilter() {
@@ -58,7 +58,164 @@ function Sparks({ parts, s, delay = 0, n = 8 }) {
   ));
 }
 
-export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
+// Quando la forma della mossa arriva sul bersaglio (ms): lì parte il marchio dell'elemento.
+const IMPACT_MS = { stomp: 300, bite: 330, claw: 120, whip: 330, sting: 300, dash: 300, spikes: 160, orb: 380, beam: 200, breath: 460, drain: 0, burst: 40, bolt: 90, rain: 460, wave: 480, roar: 480, cloud: 200, curse: 260 };
+
+/* ── MARCHIO DELL'ELEMENTO (2026-11-04) ─────────────────────────
+   Sopra la forma della mossa, sul bersaglio colpito, ogni elemento ha
+   il suo disegno: fiamme che salgono, cristalli di ghiaccio, schizzi
+   d'acqua, scariche, sassi, bolle d'acido, teschio del veleno, spiriti
+   neri, raggi di luce, cerchi psichici. Così si capisce subito COSA
+   ha colpito, non solo dal colore. */
+function ElementMark({ type, parts, s, delay }) {
+  const P = (i) => parts[i % parts.length];
+  const d = (ms, extra = {}) => ({ ...extra, animationDelay: `${delay + ms}ms` });
+  const at = (x, y, extra = {}) => ({ left: x, top: y, ...extra });
+  const around = (i, n, r, k = 0) => {
+    const a = (i / n) * 6.283 + P(i)[0] * 0.6 + k;
+    return [Math.cos(a) * s * r, Math.sin(a) * s * r];
+  };
+  switch (type) {
+    case "fire":
+      return (
+        <>
+          <span className="pfx-el-scorch" style={at("var(--x1)", "var(--fy)", d(0))} />
+          {[-0.36, -0.18, 0, 0.18, 0.36].map((k, i) => (
+            <span key={`f${i}`} className="pfx-flame" style={at(`calc(var(--x1) + ${k}*var(--s))`, "var(--fy)", d(i % 2 ? 70 : 0, { "--h": `${s * (i === 2 ? 0.95 : 0.5 + P(i)[1] * 0.35)}px` }))} />
+          ))}
+          {parts.slice(0, 9).map((p, i) => (
+            <span key={`e${i}`} className="pfx-ember" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 0.9}px)`, `calc(var(--y1) + ${p[1] * s * 0.35}px)`, d(80 + i * 35, { "--tx": `${(p[2] - 0.5) * s * 0.5}px`, "--ty": `${-s * (0.6 + p[3] * 0.6)}px` }))} />
+          ))}
+        </>
+      );
+    case "cold":
+      return (
+        <>
+          <span className="pfx-frost" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {Array.from({ length: 6 }, (_, i) => {
+            const [x, y] = around(i, 6, 0.42);
+            return <span key={`c${i}`} className="pfx-crystal" style={at(`calc(var(--x1) + ${x}px)`, `calc(var(--y1) + ${y}px)`, d(i * 30, { "--r": `${(i / 6) * 360 + 90}deg`, "--z": 0.7 + P(i)[1] * 0.6 }))} />;
+          })}
+          {parts.slice(0, 6).map((p, i) => (
+            <span key={`s${i}`} className="pfx-flake" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 1.1}px)`, `calc(var(--y1) - ${s * 0.5}px)`, d(120 + i * 50, { "--ty": `${s * (0.7 + p[1] * 0.4)}px` }))}>❄</span>
+          ))}
+        </>
+      );
+    case "water":
+      return (
+        <>
+          <span className="pfx-ripple" style={at("var(--x1)", "var(--fy)", d(0))} />
+          <span className="pfx-ripple" style={at("var(--x1)", "var(--fy)", d(150))} />
+          {Array.from({ length: 9 }, (_, i) => {
+            const k = (i / 8 - 0.5) * 2;
+            return <span key={`w${i}`} className="pfx-splash" style={at("var(--x1)", "var(--y1)", d(i * 15, { "--tx": `${k * s * 0.7}px`, "--ty": `${-s * (0.45 + (1 - Math.abs(k)) * 0.4 + P(i)[0] * 0.15)}px` }))} />;
+          })}
+          {parts.slice(0, 4).map((p, i) => (
+            <span key={`b${i}`} className="pfx-bubble" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 0.8}px)`, `calc(var(--y1) + ${p[1] * s * 0.2}px)`, d(200 + i * 70))} />
+          ))}
+        </>
+      );
+    case "lightning":
+      return (
+        <>
+          <span className="pfx-el-flash" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {Array.from({ length: 6 }, (_, i) => {
+            const [x, y] = around(i, 6, 0.34);
+            return <span key={`z${i}`} className="pfx-zap" style={at(`calc(var(--x1) + ${x}px)`, `calc(var(--y1) + ${y}px)`, d((i % 3) * 70, { "--r": `${(i / 6) * 360 + P(i)[2] * 40}deg` }))} />;
+          })}
+          <span className="pfx-zapring" style={at("var(--x1)", "var(--y1)", d(60))} />
+        </>
+      );
+    case "earth":
+      return (
+        <>
+          <span className="pfx-el-dust" style={at("var(--x1)", "var(--fy)", d(0))} />
+          <span className="pfx-crack-gr" style={at("var(--x1)", "var(--fy)", d(0))} />
+          {parts.slice(0, 8).map((p, i) => (
+            <span key={`r${i}`} className="pfx-rock" style={at("var(--x1)", "var(--y1)", d(i * 20, { "--tx": `${(p[0] - 0.5) * s * 1.5}px`, "--ty": `${-s * (0.3 + p[1] * 0.45)}px`, "--fall": `${s * 0.75}px`, "--z": 0.6 + p[2] * 0.8, "--r": `${Math.round(p[3] * 540)}deg` }))} />
+          ))}
+        </>
+      );
+    case "acid":
+      return (
+        <>
+          <span className="pfx-goo" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {parts.slice(0, 7).map((p, i) => (
+            <span key={`a${i}`} className="pfx-acid-drip" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 0.8}px)`, `calc(var(--y1) + ${(p[1] - 0.6) * s * 0.4}px)`, d(60 + i * 40, { "--ty": `${s * (0.35 + p[2] * 0.35)}px` }))} />
+          ))}
+          {parts.slice(7, 12).map((p, i) => (
+            <span key={`h${i}`} className="pfx-sizzle" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 0.9}px)`, `calc(var(--y1) + ${p[1] * s * 0.3}px)`, d(180 + i * 60))} />
+          ))}
+        </>
+      );
+    case "poison":
+      return (
+        <>
+          {parts.slice(0, 8).map((p, i) => (
+            <span key={`p${i}`} className="pfx-toxbub" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * s * 0.9}px)`, `calc(var(--y1) + ${p[1] * s * 0.3}px)`, d(i * 45, { "--z": 0.6 + p[2] * 0.8, "--ty": `${-s * (0.5 + p[3] * 0.5)}px` }))} />
+          ))}
+          <span className="pfx-skull" style={at("var(--x1)", "var(--y1)", d(120))}>☠️</span>
+        </>
+      );
+    case "necrotic":
+      return (
+        <>
+          <span className="pfx-voidring" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {Array.from({ length: 5 }, (_, i) => (
+            <span key={`n${i}`} className="pfx-wisp" style={at(`calc(var(--x1) + ${(i - 2) * 0.2}*var(--s))`, "var(--y1)", d(i * 60, { "--ty": `${-s * (0.6 + P(i)[0] * 0.4)}px`, "--sw": `${(P(i)[1] - 0.5) * s * 0.4}px` }))} />
+          ))}
+          <span className="pfx-skull pfx-skull--necro" style={at("var(--x1)", "var(--y1)", d(160))}>💀</span>
+        </>
+      );
+    case "radiant":
+      return (
+        <>
+          <span className="pfx-halo" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={`l${i}`} className="pfx-lightray" style={at("var(--x1)", "var(--y1)", d(i % 2 ? 60 : 0, { "--r": `${i * 45}deg` }))} />
+          ))}
+          {parts.slice(0, 6).map((p, i) => {
+            const [x, y] = around(i, 6, 0.5 + p[1] * 0.2);
+            return <span key={`t${i}`} className="pfx-twinkle" style={at(`calc(var(--x1) + ${x}px)`, `calc(var(--y1) + ${y}px)`, d(100 + i * 50))}>✦</span>;
+          })}
+        </>
+      );
+    case "psychic":
+      return (
+        <>
+          {[0, 1, 2].map((i) => <span key={`q${i}`} className="pfx-psiring" style={at("var(--x1)", "var(--y1)", d(i * 110))} />)}
+          {parts.slice(0, 5).map((p, i) => {
+            const [x, y] = around(i, 5, 0.45);
+            return <span key={`g${i}`} className="pfx-psigem" style={at(`calc(var(--x1) + ${x}px)`, `calc(var(--y1) + ${y}px)`, d(150 + i * 40))}>◆</span>;
+          })}
+        </>
+      );
+    default: // colpo fisico: stella d'urto + linee della botta
+      return (
+        <>
+          <span className="pfx-impact" style={at("var(--x1)", "var(--y1)", d(0))} />
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={`k${i}`} className="pfx-bonk" style={at("var(--x1)", "var(--y1)", d(0, { "--r": `${i * 60 + 15}deg` }))} />
+          ))}
+        </>
+      );
+  }
+}
+
+export default function PetFx({ ev: liveEv, seq: liveSeq, fieldRef, spotRefs }) {
+  // L'effetto resta in scena anche quando arriva la riga dopo (colpo, danni):
+  // prima spariva a metà e il marchio dell'elemento non si vedeva.
+  const [held, setHeld] = useState(null);
+  const timer = useRef(null);
+  useEffect(() => {
+    if (liveEv?.kind !== "move" || !liveEv.fx) return;
+    setHeld({ ev: liveEv, seq: liveSeq });
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setHeld(null), 1500);
+  }, [liveSeq]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const ev = held?.ev;
+  const seq = held?.seq ?? 0;
   const [pos, setPos] = useState(null);
   const active = ev?.kind === "move" && ev.fx;
 
@@ -314,11 +471,19 @@ export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
     default:
       body = <span className="pfx-pop" style={at("var(--x1)", "var(--y1)")} />;
   }
+  // il marchio dell'elemento solo se la mossa va a segno sul bersaglio
+  const landed = !self && (!ev.roll || ev.roll.ok);
+  const missed = !self && ev.roll && !ev.roll.ok;
+  const hitAt = IMPACT_MS[ev.fx] ?? 300;
 
   return (
     <>
       <PixelFilter />
-      <div key={seq} className={`pfx pfx--${ev.mtype}`} style={style} aria-hidden="true">{body}</div>
+      <div key={seq} className={`pfx pfx--${ev.mtype}${ev.roll?.crit ? " is-crit" : ""}`} style={style} aria-hidden="true">
+        {body}
+        {landed && <ElementMark type={ev.mtype} parts={parts} s={b.s * (ev.roll?.crit ? 1.25 : 1)} delay={hitAt} />}
+        {missed && <span className="pfx-whiff" style={at("var(--x1)", "var(--y1)", { animationDelay: `${hitAt}ms` })}>MANCATO</span>}
+      </div>
     </>
   );
 }
