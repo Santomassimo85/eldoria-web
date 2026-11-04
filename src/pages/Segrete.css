@@ -136,3 +136,17 @@
 
 .sgr-class .sgr-class-done { color: #8ee69a; font-size: .7rem; }
 .sgr-page .sgr-runs small { color: var(--osso-2, #d8ccb4); font-size: .85rem; }
+
+/* Cronaca della lotta leggibile (segnalato 2026-11-04: testo scuro su fondo scuro).
+   Colori espliciti con priorità alta: battono le regole generali del sito su li/span/button. */
+.sgr-page .sgb-log, .sgr-page .sgb-log .sgb-log-text { color: #fff7e6 !important; background: #1b1622; }
+.sgr-page .sgb-log-list { background: rgba(12, 10, 18, .98) !important; }
+.sgr-page .sgb-log-list li { color: #f3ead8 !important; }
+.sgr-page .sgb-log-list li.k-room, .sgr-page .sgb-log-list li.k-end { color: #f2c14e !important; }
+.sgr-page .sgb-log-list li.k-heal { color: #8ee69a !important; }
+.sgr-page .sgb-log-list li.k-crit { color: #ffb4a4 !important; }
+.sgr-page .sgb-log-list li.k-miss { color: #d8ccb4 !important; }
+.sgr-page .sgb-log-n { color: #f2c14e !important; }
+.sgr-page .sgb-top, .sgr-page .sgb-where { color: #fff7e6 !important; }
+.sgr-page .sgb-hud b { color: #fff !important; }
+.sgr-page .sgb-hud small { color: #e9dcc4 !important; }

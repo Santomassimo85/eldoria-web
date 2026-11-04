@@ -415,11 +415,33 @@ function xpGain(level, floors) {
   return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.08 * (floors || 3) + 0.12));
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
+var CAPS = {
+  minion: { hit: 3, dc: 11, dmg: 4, hp: 9, ac: 13, save: 1 },
+  elite: { hit: 4, dc: 12, dmg: 6.5, hp: 18, ac: 14, save: 2 },
+  boss: { hit: 5, dc: 13, dmg: 8, hp: 30, ac: 15, save: 3 },
+  perLevel: { dmg: 0.32, hp: 0.42 }
+};
+function capsFor(role, partyLv, partySize) {
+  const c = CAPS[role] || CAPS.minion;
+  const L = Math.max(1, partyLv);
+  const prof = 2 + Math.floor((L - 1) / 4);
+  const big = role === "minion" ? 1 : ADAPT.bigBase + ADAPT.bigPer * partySize;
+  return {
+    hit: c.hit + prof - 2,
+    dc: c.dc + prof - 2,
+    dmg: c.dmg * (1 + CAPS.perLevel.dmg * (L - 1)),
+    ac: c.ac + Math.floor((L - 1) / 3),
+    save: c.save + prof - 2,
+    hp: Math.round(c.hp * (1 + CAPS.perLevel.hp * (L - 1)) * big)
+  };
+}
+var avgDice = (n, sides) => n * (sides + 1) / 2;
 function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const diff = partyLv - (Number(src.level) || 1);
   const lvScale = diff >= 0 ? 1 + ADAPT.hpUp * diff : Math.max(ADAPT.hpMin, 1 + ADAPT.hpDown * diff);
   const scale = (src.role === "minion" ? 1 + ADAPT.minionPer * (partySize - 1) : ADAPT.bigBase + ADAPT.bigPer * partySize) * lvScale;
-  const maxHp = Math.max(1, Math.round((Number(src.hp) || 10) * scale));
+  const cap = capsFor(src.role || "minion", partyLv, partySize);
+  const maxHp = Math.max(1, Math.min(cap.hp, Math.round((Number(src.hp) || 10) * scale)));
   return {
     id: `f${idx}`,
     side: "f",
@@ -429,13 +451,14 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     level: Number(src.level) || 1,
     hp: maxHp,
     maxHp,
-    ac: Math.max(8, (Number(src.ac) || 12) + (diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3))),
+    ac: Math.min(cap.ac, Math.max(8, (Number(src.ac) || 12) + (diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3)))),
     init: Number(src.init) || 0,
-    save: (Number(src.save) || 0) + Math.round(diff * ADAPT.hitPer),
+    save: Math.min(cap.save, (Number(src.save) || 0) + Math.round(diff * ADAPT.hitPer)),
     img: src.imageUrl || "",
     deadImg: src.deadImageUrl || "",
     icon: src.icon || "",
     facing: src.facing || "left",
+    cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5),
     res: src.resistances || [],
@@ -791,11 +814,19 @@ function foeAct(s, f) {
   const tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
+  const capMult = (n2, sides2, area) => {
+    const avg = (avgDice(n2, sides2) + lvlBonus) * (f.adapt?.mult || 1);
+    const max = (f.cap?.dmg || 99) * (area ? 0.5 : 1);
+    return avg > max ? max / avg : 1;
+  };
   const turns = Math.max(1, Number(a.durationTurns) || 2);
   curVfx = { ...foeVfx(a, wbDmgType(a)), from: f.id };
   if (a.type === "heal") {
     const t = hurt || f;
-    const amt = roll(Number(a.diceNum) || 1, parseDice(`1${a.diceType || "d8"}`)[1]).t + (Number(a.bonus) || 0);
+    const hn = Number(a.diceNum) || 1, hs = parseDice(`1${a.diceType || "d8"}`)[1];
+    const raw = roll(hn, hs).t + (Number(a.bonus) || 0);
+    const hmax = (f.cap?.dmg || 99) * 1.2;
+    const amt = Math.max(1, Math.round(raw * Math.min(1, hmax / Math.max(1, avgDice(hn, hs) + (Number(a.bonus) || 0)))));
     const before = t.hp;
     t.hp = Math.min(t.maxHp, t.hp + amt);
     log(s, `\u{1F49A} ${f.name} \u2192 ${nm}: ${t.name} +${t.hp - before} PF.`, { kind: "heal", actor: f.id, targets: [t.id] });
@@ -825,8 +856,8 @@ function foeAct(s, f) {
   const isSave = a.hitMode === "save" || a.aoeShape && a.aoeShape !== "single";
   if (isSave) {
     const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
-    const dc = (Number(a.saveDC) || 12) + (f.adapt?.hit || 0);
-    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1)));
+    const dc = Math.min(f.cap?.dc ?? 99, (Number(a.saveDC) || 12) + (f.adapt?.hit || 0));
+    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length > 1)));
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
@@ -836,13 +867,13 @@ function foeAct(s, f) {
     log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
     return;
   }
-  const bonus = (Number(a.bonus) || 3) + (f.adapt?.hit || 0);
+  const bonus = Math.min(f.cap?.hit ?? 99, (Number(a.bonus) || 3) + (f.adapt?.hit || 0));
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) {
     log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id] });
     return;
   }
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1))), type, []);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, false))), type, []);
   log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg });
 }
 function checkEnd(s) {
