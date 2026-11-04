@@ -53,10 +53,13 @@ export default function SegreteHero({ cls, charData }) {
     const left = STAT_BUDGET - spent;
     const starters = poolFor(cls, 1);
     const auto = () => {
+      // principale +3, seconda consigliata +3, poi COS/DES/SAG… finché finiscono i punti
       const s = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
-      s[kit.stat] = 3; s[kit.rec[1]] = Math.min(3, s[kit.rec[1]] + 3); if (kit.rec[1] !== "con") s.con = 2;
-      let l = STAT_BUDGET - STAT_KEYS.reduce((t, k) => t + s[k], 0);
-      for (const k of ["dex", "con", "wis"]) while (l > 0 && s[k] < STAT_CAP) { s[k]++; l--; }
+      let l = STAT_BUDGET;
+      for (const k of [kit.stat, kit.rec[1], "con", "dex", "wis", "str", "int", "cha"]) {
+        const add = Math.min(STAT_CAP - s[k], l);
+        s[k] += add; l -= add;
+      }
       setStats(s);
     };
     return (

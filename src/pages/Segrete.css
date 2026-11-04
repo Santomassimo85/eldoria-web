@@ -106,3 +106,7 @@
 .sgh-act small { color: #f2d79b; font-size: .8rem; }
 .sgh-pending { margin-top: 10px; padding: 10px; border: 1px dashed #f2c14e; background: rgba(242,193,78,.08); }
 .sgh-pending p { margin: 0 0 6px; }
+
+/* testi chiari espliciti: la regola globale dei <p>/<b> del sito li scuriva */
+.sgh, .sgh p, .sgh b, .sgh-title, .sgh-act b, .sgr-slot-main b, .sgr-room-name, .sgr-room-members li { color: var(--osso, #ece5d6); }
+.sgh-title { color: #fff7e6; }
