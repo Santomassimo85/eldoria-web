@@ -26,10 +26,32 @@ import { charmFx, PET_BAG } from "./petBag";
 import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 
 let rnd = Math.random;
+/* Dadi a seme (2026-11-04): prima si usava un generatore lineare (LCG) e i
+   semi dei turni differivano di 7919 → il primo d20 di ogni turno saliva di
+   ~1,4 a turno, sempre uguale: i giocatori lo avevano imparato. Ora il seme
+   passa da un hash (mix32) e il generatore è mulberry32: semi vicini danno
+   sequenze scorrelate. */
+export function mix32(...parts) {
+  let h = 0x9e3779b9;
+  for (const p of parts) {
+    h = Math.imul(h ^ (Number(p) >>> 0), 0x85ebca6b);
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  }
+  return h >>> 0;
+}
+function diceRng(seed) {
+  let a = mix32(seed) | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 // Esegue fn con dadi a seme fisso (sfide: lo stesso turno dà lo stesso esito su ogni dispositivo).
 export function withSeed(seed, fn) {
   const prev = rnd;
-  rnd = seeded(seed);
+  rnd = diceRng(seed);
   try { return fn(); } finally { rnd = prev; }
 }
 const d20 = () => 1 + Math.floor(rnd() * 20);

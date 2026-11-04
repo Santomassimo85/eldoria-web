@@ -55,6 +55,8 @@ export const claimGifts = op("claimGifts");
 export const evolvePet = op("evolvePet");
 // Torre: le azioni della lotta, il server la rigioca e decide l'esito.
 export const towerFinish = op("towerFinish");
+// Entra in un piano: il server tira il seme casuale dei dadi di questa lotta.
+export const towerBegin = op("towerBegin");
 // Ricomincia la torre dal piano 1 (una volta al giorno).
 export const resetTower = op("resetTower");
 // Sfide: si manda solo l'id, il server legge la sfida.

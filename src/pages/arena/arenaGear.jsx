@@ -228,7 +228,7 @@ export function resolveWeaponRider(raw, weaponAction, attackerSnap, attackerMP, 
   const typed = applyTypedDamage(raw + subFlat, weaponAction, critMult, defenderSnap, false);
   const damage = applyDefenderDamageMods(typed.total + subDice.bonus, defenderSnap, defenderMP, false);
   const onHit = (damage > 0 && Array.isArray(weaponAction?.onHit) && weaponAction.onHit.length)
-    ? applyMarketEffects(weaponAction.onHit, attackerMP, defenderMP, true, damage)
+    ? applyMarketEffects(weaponAction.onHit, attackerMP, defenderMP, true, damage, defenderSnap)
     : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
   const bits = [];
   if (subFlat) bits.push(`🎓+${subFlat}`);

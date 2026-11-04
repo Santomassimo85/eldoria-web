@@ -11,7 +11,7 @@
    ============================================================ */
 
 import { PET_DEX, STARTERS, MAX_PER_SPECIES, MAX_TEAM, MAX_EGGS, MAX_MOVES, MAX_LEVEL, EGGS, refundOf, rollEgg, gradeOfLevel, learnPool } from "./petDex";
-import { desperateOk, addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
+import { mix32, desperateOk, addXp, towerXp, towerLossXp, LOSS_XP, towerPoints, battleMoves, knownMoves, learnedMoves, xpToNext, newBattle, playTurn, withSeed, towerFloor, towerWeek, DAILY_XP_CAP, xpTodayOf, xpDayKey } from "./petEngine";
 import { PET_BAG, SCROLL_SLOTS, CHARMS, towerDrops, usableInBattle, EVO_STONE } from "./petBag";
 import { EVOLUTIONS, evoLevelOf, evoDiceOf } from "./petEvo";
 export { LOSS_XP };
@@ -456,7 +456,24 @@ function spendBattleItems(den, used, teamIds, team) {
   });
   addLog(den, { k: "battle_items", items: Object.keys(used) });
 }
-export const towerTurnSeed = (seed, i) => (seed + (i + 1) * 7919) >>> 0;
+export const towerTurnSeed = (seed, i) => mix32(seed, i + 1, 0x70e7);
+/* Seme della lotta (2026-11-04): prima era fisso (giocatore + piano +
+   tentativo) e cambiava SOLO dopo una sconfitta: ritirandosi i dadi tornavano
+   identici e c'era chi passava i piani imparandoli. Ora ogni volta che si
+   entra in un piano il SERVER tira un seme casuale (crypto) e lo salva in
+   tower.run; a fine lotta rigioca con quello e lo consuma. */
+function randomSeed() {
+  const c = globalThis.crypto;
+  if (c?.getRandomValues) return c.getRandomValues(new Uint32Array(1))[0];
+  return Math.floor(Math.random() * 4294967296) >>> 0;
+}
+export function towerBegin(den, data, floor) {
+  den.tower = towerFresh(den.tower);
+  if (den.tower.floor !== floor) throw new Error("Questo piano non è quello da fare: ricarica il Rifugio.");
+  const seed = randomSeed();
+  den.tower = { ...den.tower, run: { floor, seed, at: new Date().toISOString() } };
+  return { out: { seed } };
+}
 export function towerStart(den, floor, teamIds, seed, week = towerWeek()) {
   const pets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   if (!pets.length || pets.length !== teamIds.length || pets.length > MAX_TEAM) throw new Error("Squadra non valida.");
@@ -493,7 +510,9 @@ export function validAction(b, a, bag = {}) {
 }
 export function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {
   if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
-  const seed = towerSeed(uid, den, floor, week);
+  const run = towerFresh(den.tower, week).run;
+  if (!run || run.floor !== floor || !Number.isFinite(run.seed)) throw new Error("Lotta non avviata dal server: ricarica la pagina e riprova il piano.");
+  const seed = run.seed;
   let b = towerStart(den, floor, teamIds, seed, week);
   const bag = { ...den.items };
   const used = {};
@@ -511,6 +530,7 @@ export function towerFinish(den, data, floor, teamIds, actions, ctx) {
   den.tower = towerFresh(den.tower, week);
   if (den.tower.floor !== floor) throw new Error(floor > 1 && den.tower.floor === 1 ? "La torre è ricominciata (nuova settimana o reset): riparti dal piano 1." : "Questo piano è già stato registrato.");
   const { over, used } = replayTower(den, ctx.uid, floor, teamIds, actions, week);
+  den.tower = { ...den.tower, run: null }; // il seme si usa una volta sola
   spendBattleItems(den, used, teamIds, null);
   return recordTowerResult(den, data, floor, over === "p", teamIds);
 }
@@ -566,6 +586,7 @@ export const OPS = {
   giveCharm: { run: giveCharm },
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },
+  towerBegin: { run: towerBegin },
   towerFinish: { run: towerFinish },
   resetTower: { run: resetTower },
   recordPvpResult: { run: recordPvpResult, match: true },

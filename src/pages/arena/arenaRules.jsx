@@ -173,7 +173,7 @@ export function effectsHaveEnemyTarget(effects) { return (effects || []).some(ef
 // Applica una lista di effetti. Ritorna { selfPatch, enemyPatch, selfHeal, enemyDmg, logs }.
 // useChance=true (armi): ogni effetto con `chance`<100 tira per attivarsi.
 // dealt = danno già inflitto dal colpo che porta gli effetti (per il risucchio).
-export function applyMarketEffects(effects, selfP, enemyP, useChance, dealt = 0) {
+export function applyMarketEffects(effects, selfP, enemyP, useChance, dealt = 0, enemySnap = null) {
   let selfPatch = {}, enemyPatch = {}, selfHeal = 0, enemyDmg = 0;
   const logs = [];
   const steals = [];
@@ -194,6 +194,7 @@ export function applyMarketEffects(effects, selfP, enemyP, useChance, dealt = 0)
       selfPatch = { ...selfPatch, ...buffPatchFor(e.buffType, e.buffAmount, e.buffTurns) };
       logs.push(`✨ +${e.buffAmount} ${MARKET_BUFF_LABEL[e.buffType] || "bonus"} ${Math.max(1, e.buffTurns || 1)}t`);
     } else if (e.kind === "malus") {
+      if (e.malusType === "disarm" && cannotBeDisarmed(enemySnap)) { logs.push("🔗 arma vincolata: niente disarmo"); continue; }
       enemyPatch = { ...enemyPatch, ...malusPatchFor(e.malusType, e.malusDice, e.malusTurns, { ...enemyP, ...enemyPatch }) };
       logs.push(`${MALUS_TYPE_MAP[e.malusType]?.icon || "☠"} ${malusTypeLabel(e.malusType)}`);
     }
@@ -513,6 +514,10 @@ export function classInBracket(cls, classLevels, bracketKey) {
 // Effetto della sottoclasse scelta, letto dallo snapshot (snap.subclass = chiave opzione).
 export function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
+}
+// Legame con l'Arma (Cavaliere Mistico): l'arma non può essere tolta né arroventata.
+export function cannotBeDisarmed(snap) {
+  return !!getSubclassEffect(snap).noDisarm;
 }
 // Ritorsione del difensore: quella della sottoclasse, altrimenti le Spine
 // dell'armatura della Bottega (stesse regole: mischia, primo colpo del turno).

@@ -39,7 +39,7 @@ import { ARENA_ARCHETYPE_BY_CLASS, ARENA_EXPIRY_GRACE_MS, ARENA_INITIATIVE_DURAT
 import { ARENA_ARMORS, ARENA_KITE_MAX, GOOD_STATUS_CLS, IS_TWO_HANDED_MELEE, PLAYER_HAS_RANGED_WEAPON, WEAPON_IS_RANGED, WILD_SHAPES, getDisplayAc, resolveMonkUnarmed, resolveWeaponRider, targetAcNow } from "./arena/arenaGear";
 import { ARENA_ITEMS, applySlotLoss, describeMarketPurchase, formatPrizeConfig, prizeTierToStr, resolveMarketGear, scrollSlotLossFor, trimSpellsToLimits } from "./arena/arenaMarketGear";
 import { finalizeArenaMatch, processWsKnockouts } from "./arena/arenaMatchFlow";
-import { ARENA_KEY_STATS, ARENA_TITLES, FIGHT_RESULT_DELAY_MS, SAVE_LABEL, SORC_SLOTS_MAX, STAT_DESCS, actionElement, applyDefenderDamageMods, applyMarketEffects, applyTypedDamage, beastRageDamageBonus, clearDebuffs, clericBlessedDice, consumeInvisibility, countDebuffs, defenderRetaliate, defenderSaveMod, disadvTag, displayLog, divineStrikeBonus, dotResistMult, effectsHaveEnemyTarget, elementalOnHitStatus, frenzyExhausted, getAidBonusForClass, getAsiPoints, getCharTitles, getClassKey, getFighterStatuses, getHpDice, getLoadoutConfig, getMagicDetectBonusForClass, getMaxActionsPerTurn, getProficiencyBonus, getSnapLevel, getSnapTitles, getSpellAttackBonus, getSpellCast, getSpellMod, getSpellSaveDC, getSpellcastingAbility, getSubclassEffect, getTitleHitBonus, heavyElemAttackAdv, infusionWeaponBonus, isArtificerClass, isBarbarianClass, isBardClass, isFighterClass, isHeavyArmor, isMonkClass, isNoArmor, isPaladinClass, isRangerClass, isRogueClass, isSaveDamageSpell, isSorcererClass, isStormSpell, isWarlockClass, isWizardClass, kiStrikesBypass, logPubText, migrateArenaSnapshots, migrateMatchRageUses, ownedSubclassKey, parseSpellSaveAbility, physicalFallbackType, rageDamageBonus, readActiveBonus, readAidDmgBonus, readSaveFaithBonus, readSpellSlots, readSpellUsesLeft, readStealthAdvTurns, readStealthAnyTurns, readStealthDisadvTurns, recklessRaging, renderLogWithDice, rollDmg, savedCharMissing, scaleActionForLevel, selectableSubclasses, sneakAttackDice, spellMechanicTag, spellResistMult, spendSpellUse, subclassCritThreshold, subclassDamageDice, subclassFirstStrike, subclassForesightDisadv, subclassRangedHit, tickEagleEnd, usesSharedSpellSlots } from "./arena/arenaRules";
+import { ARENA_KEY_STATS, ARENA_TITLES, FIGHT_RESULT_DELAY_MS, SAVE_LABEL, SORC_SLOTS_MAX, STAT_DESCS, actionElement, applyDefenderDamageMods, applyMarketEffects, applyTypedDamage, beastRageDamageBonus, cannotBeDisarmed, clearDebuffs, clericBlessedDice, consumeInvisibility, countDebuffs, defenderRetaliate, defenderSaveMod, disadvTag, displayLog, divineStrikeBonus, dotResistMult, effectsHaveEnemyTarget, elementalOnHitStatus, frenzyExhausted, getAidBonusForClass, getAsiPoints, getCharTitles, getClassKey, getFighterStatuses, getHpDice, getLoadoutConfig, getMagicDetectBonusForClass, getMaxActionsPerTurn, getProficiencyBonus, getSnapLevel, getSnapTitles, getSpellAttackBonus, getSpellCast, getSpellMod, getSpellSaveDC, getSpellcastingAbility, getSubclassEffect, getTitleHitBonus, heavyElemAttackAdv, infusionWeaponBonus, isArtificerClass, isBarbarianClass, isBardClass, isFighterClass, isHeavyArmor, isMonkClass, isNoArmor, isPaladinClass, isRangerClass, isRogueClass, isSaveDamageSpell, isSorcererClass, isStormSpell, isWarlockClass, isWizardClass, kiStrikesBypass, logPubText, migrateArenaSnapshots, migrateMatchRageUses, ownedSubclassKey, parseSpellSaveAbility, physicalFallbackType, rageDamageBonus, readActiveBonus, readAidDmgBonus, readSaveFaithBonus, readSpellSlots, readSpellUsesLeft, readStealthAdvTurns, readStealthAnyTurns, readStealthDisadvTurns, recklessRaging, renderLogWithDice, rollDmg, savedCharMissing, scaleActionForLevel, selectableSubclasses, sneakAttackDice, spellMechanicTag, spellResistMult, spendSpellUse, subclassCritThreshold, subclassDamageDice, subclassFirstStrike, subclassForesightDisadv, subclassRangedHit, tickEagleEnd, usesSharedSpellSlots } from "./arena/arenaRules";
 import { ARENA_FX_OFFENSIVE, classifyArenaVfx, normalizeArenaFx, withArenaFx } from "./arena/arenaVfx";
 export { WIZARD_SPELLS, SORCERER_SPELLS, WARLOCK_SPELLS, DRUID_SPELLS, CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS, RANGER_SPELLS } from "./arena/arenaSpells";
 export { ARTIFICER_SPELLS } from "./arena/arenaClassActions";
@@ -3847,7 +3847,7 @@ export default function Arena() {
     const aiStaggerLog = aiStaggerApplies ? `✊ ${aiSnap.name} sbilancia ${target.name}: il suo prossimo attacco è a svantaggio!` : null;
     // Arma della Bottega dell'IA con effetti all'impatto (malus al giocatore / bonus a sé).
     const _aiOnHit = (isHit && damage > 0 && Array.isArray(chosen.onHit) && chosen.onHit.length)
-      ? applyMarketEffects(chosen.onHit, aiPlayer, tgtMatchPlayer, true, damage)
+      ? applyMarketEffects(chosen.onHit, aiPlayer, tgtMatchPlayer, true, damage, targetSnap)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const aiOnHitLog = _aiOnHit.logs.length ? `⚔️ ${chosen.name} all'impatto → ${_aiOnHit.logs.join(" · ")}` : null;
 
@@ -4759,7 +4759,7 @@ export default function Arena() {
     const elementalLog = _elemStatus.note ? `${defName} — ${_elemStatus.note}` : null;
     // Arma della Bottega con effetti all'impatto (malus al nemico / bonus a te, con % propria).
     const _onHit = (isHit && damage > 0 && !isSpellAction && Array.isArray(action.onHit) && action.onHit.length)
-      ? applyMarketEffects(action.onHit, attackerMatchPlayer, defMatchPlayer, true, damage)
+      ? applyMarketEffects(action.onHit, attackerMatchPlayer, defMatchPlayer, true, damage, defenderSnap)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const onHitLog = _onHit.logs.length ? `⚔️ ${action.name} all'impatto → ${_onHit.logs.join(" · ")}` : null;
 
@@ -5461,7 +5461,7 @@ export default function Arena() {
     const dmg = missed ? 0 : applyDefenderDamageMods(rawDmg, targetSnap, targetPlayer, false);
     // Effetti all'impatto del pet della Bottega (malus al nemico / bonus al padrone, con %).
     const _petOnHit = (!missed && dmg > 0 && Array.isArray(action.onHit) && action.onHit.length)
-      ? applyMarketEffects(action.onHit, me, targetPlayer, true, dmg)
+      ? applyMarketEffects(action.onHit, me, targetPlayer, true, dmg, targetSnap)
       : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
     const petOnHitLog = _petOnHit.logs.length ? `${action.icon} ${action.name} all'impatto → ${_petOnHit.logs.join(" · ")}` : null;
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -6012,9 +6012,12 @@ export default function Arena() {
     const myName = mySnap?.name || "?";
     const turns = action.weaponLockTurns ?? 2;
     const expiry = new Date(arenaNow() + ARENA_TURN_DURATION).toISOString();
+    // Legame con l'Arma (Cavaliere Mistico): non può essere disarmato. La carica si spende lo stesso.
+    const targetBound = cannotBeDisarmed((arenaMeta.characterSnapshots || {})[targetId]);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
+        if (p.id === targetId && targetBound) return p;
         // Si arroventa SOLO l'arma attualmente equipaggiata: il bersaglio può cambiare
         // su un'altra arma non equipaggiata (es. arma a 2 mani riposta) e usarla.
         if (p.id === targetId) return { ...p, weaponLockTurns: turns, weaponLockNames: p.equippedWeaponNames || [] };
@@ -6026,7 +6029,9 @@ export default function Arena() {
         return p;
       });
       const targetName = (arenaMeta.characterSnapshots || {})[targetId]?.name || "?";
-      const log = `🔩 ${myName} arroventa l'arma di ${targetName}! Per ${turns} turni non può usarla.`;
+      const log = targetBound
+        ? `🔗 ${myName} usa ${action.name} su ${targetName}, ma l'arma è vincolata dal Legame con l'Arma: non si stacca!`
+        : `🔩 ${myName} arroventa l'arma di ${targetName}! Per ${turns} turni non può usarla.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await commitArenaMatches(updatedMatches);
@@ -6779,7 +6784,7 @@ export default function Arena() {
     const enemyName = myMatch?.players.find(p => p.id === targetId)?.name || "il nemico";
     const meMaxHp   = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? me?.maxHp ?? 70;
     const composite = marketItem?.effects
-      ? applyMarketEffects(marketItem.effects, me, myMatch?.players.find(p => p.id === targetId), false)
+      ? applyMarketEffects(marketItem.effects, me, myMatch?.players.find(p => p.id === targetId), false, 0, (arenaMeta.characterSnapshots || {})[targetId])
       : null;
     // Azione gratuita: dopo l'oggetto attacchi ancora e a fine turno i contatori
     // scalano di 1. Senza compenso "+1 CA per 2 turni" copriva un solo attacco nemico.

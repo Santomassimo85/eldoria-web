@@ -30,7 +30,7 @@ import { desperateOk,
 } from "../data/petEngine";
 import {
   denOf, countOf, chooseStarter, givePet, buyEgg, hatchEgg, releasePet, setTeam, renamePet, claimGifts,
-  towerFinish, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, resetPetTowers, MASCOT_XP_BONUS,
+  towerFinish, towerBegin, towerTurnSeed, towerStart, towerFresh, canResetTower, resetTower, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, savePetArt, savePetLook, petArtPrompt, setMascot, resetPetPlayers, resetPetTowers, MASCOT_XP_BONUS,
   learnMove, setMoveset, buyItem, giveItems, applyGrowthItem, giveCharm, teachScroll, recordPvpResult, claimTournamentXp, PVP_POINTS, PVP_DAILY,
   evolvePet, evoArtKey, petEvoArtPrompt,
 } from "../utils/petDen";
@@ -1987,8 +1987,8 @@ function BattleControls({ battle, busy, art, onAct, forced, bag = {} }) {
 
 const dropNames = (ids = []) => ids.map((k) => `${PET_BAG[k]?.icon} ${PET_BAG[k]?.name}`).join(", ");
 
-/* Torre verificata dal server (2026-10-31): dadi a seme fisso (towerSeed:
-   giocatore + piano + tentativo, cambia solo dopo una sconfitta registrata),
+/* Torre verificata dal server (2026-10-31; seme casuale dal 2026-11-04): a
+   ogni ingresso nel piano il server tira il seme dei dadi (towerBegin),
    si tiene la lista delle azioni e a fine lotta il server la rigioca
    (towerFinish) e decide lui l'esito. Dopo una sconfitta si riparte solo
    quando la scheda ha già il tentativo nuovo (e i PE presi), altrimenti la
@@ -2001,10 +2001,30 @@ function PetBattle(props) {
   const started = useRef(false);
   if (!started.current && att != null && curAtt !== att) return <p className="pd-loading">Preparo il piano…</p>;
   started.current = true;
-  return <PetBattleRun {...props} />;
+  return <PetBattleSeed {...props} />;
 }
-function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry }) {
-  const seed = useMemo(() => towerSeed(uid, den, plan.floor), []); // eslint-disable-line react-hooks/exhaustive-deps
+// Ogni ingresso nel piano = seme nuovo tirato dal server (dadi davvero a caso).
+function PetBattleSeed(props) {
+  const { uid, plan, onExit } = props;
+  const [seed, setSeed] = useState(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let alive = true;
+    towerBegin(uid, plan.floor)
+      .then((r) => { if (alive) setSeed(r?.seed >>> 0); })
+      .catch((e) => { if (alive) setErr(e.message || "Non riesco a preparare il piano."); });
+    return () => { alive = false; };
+  }, [uid, plan.floor]);
+  if (err) return (
+    <div className="pd-loading">
+      <p>{err}</p>
+      <button type="button" className="pd-btn pd-btn--ghost" onClick={onExit}>← Indietro</button>
+    </div>
+  );
+  if (seed == null) return <p className="pd-loading">Preparo il piano…</p>;
+  return <PetBattleRun {...props} seed={seed} />;
+}
+function PetBattleRun({ uid, den, art, plan, teamIds, onExit, onRetry, seed }) {
   const actions = useRef([]);
   const [usedItems, setUsedItems] = useState({});
   const [battle, setBattleState] = useState(() => {

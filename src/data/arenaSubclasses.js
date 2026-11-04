@@ -59,9 +59,9 @@ export const ARENA_SUBCLASSES = {
       {
         key: "cavaliere_mistico", name: "Cavaliere Mistico", icon: "🔮", dnd: "Eldritch Knight",
         desc: "Spada e grimorio: incantesimi d'Intelligenza al servizio della lama.",
-        effect: { ca: 1 },
+        effect: { ca: 1, noDisarm: true },
         actions: [
-          passive("Legame con l'Arma", "🔗", "+1 CA: l'arma vincolata non ti lascia mai scoperto"),
+          passive("Legame con l'Arma", "🔗", "+1 CA e non puoi essere disarmato: l'arma vincolata non si stacca (Disarmare, Riscaldare Arma, oggetti che disarmano)"),
           { name: "Lama Arcana", level: 1, hitBonus: 3, damage: "2d8", statKey: "int", type: "spell", icon: "🗡", info: "Lv1 · Forza · tiro per colpire · 3 usi", maxUses: 3 },
           { name: "Scudo Mistico", level: 1, hitBonus: 0, damage: "—", statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA per 2 turni · 2 usi", special: "shield_buff", shieldBuffBonus: 3, shieldBuffTurns: 2, maxUses: 2 },
         ],

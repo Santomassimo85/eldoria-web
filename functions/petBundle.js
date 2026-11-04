@@ -53,6 +53,7 @@ __export(petOps_exports, {
   setMoveset: () => setMoveset,
   setTeam: () => setTeam,
   teachScroll: () => teachScroll,
+  towerBegin: () => towerBegin,
   towerFinish: () => towerFinish,
   towerFresh: () => towerFresh,
   towerSeed: () => towerSeed,
@@ -1793,9 +1794,28 @@ function towerDrops(floor, rnd2 = Math.random) {
 
 // src/data/petEngine.js
 var rnd = Math.random;
+function mix32(...parts) {
+  let h = 2654435769;
+  for (const p of parts) {
+    h = Math.imul(h ^ Number(p) >>> 0, 2246822507);
+    h ^= h >>> 13;
+    h = Math.imul(h, 3266489909);
+    h ^= h >>> 16;
+  }
+  return h >>> 0;
+}
+function diceRng(seed) {
+  let a = mix32(seed) | 0;
+  return () => {
+    a = a + 1831565813 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
 function withSeed(seed, fn) {
   const prev = rnd;
-  rnd = seeded(seed);
+  rnd = diceRng(seed);
   try {
     return fn();
   } finally {
@@ -2941,7 +2961,19 @@ function spendBattleItems(den, used, teamIds, team) {
   });
   addLog(den, { k: "battle_items", items: Object.keys(used) });
 }
-var towerTurnSeed = (seed, i) => seed + (i + 1) * 7919 >>> 0;
+var towerTurnSeed = (seed, i) => mix32(seed, i + 1, 28903);
+function randomSeed() {
+  const c = globalThis.crypto;
+  if (c?.getRandomValues) return c.getRandomValues(new Uint32Array(1))[0];
+  return Math.floor(Math.random() * 4294967296) >>> 0;
+}
+function towerBegin(den, data, floor) {
+  den.tower = towerFresh(den.tower);
+  if (den.tower.floor !== floor) throw new Error("Questo piano non \xE8 quello da fare: ricarica il Rifugio.");
+  const seed = randomSeed();
+  den.tower = { ...den.tower, run: { floor, seed, at: (/* @__PURE__ */ new Date()).toISOString() } };
+  return { out: { seed } };
+}
 function towerStart(den, floor, teamIds, seed, week = towerWeek()) {
   const pets = teamIds.map((id) => den.pets.find((p) => p.id === id)).filter(Boolean);
   if (!pets.length || pets.length !== teamIds.length || pets.length > MAX_TEAM) throw new Error("Squadra non valida.");
@@ -2973,7 +3005,9 @@ function validAction(b, a, bag = {}) {
 }
 function replayTower(den, uid, floor, teamIds, actions, week = towerWeek()) {
   if (!Array.isArray(actions) || actions.length > 400) throw new Error("Lotta non valida.");
-  const seed = towerSeed(uid, den, floor, week);
+  const run = towerFresh(den.tower, week).run;
+  if (!run || run.floor !== floor || !Number.isFinite(run.seed)) throw new Error("Lotta non avviata dal server: ricarica la pagina e riprova il piano.");
+  const seed = run.seed;
   let b = towerStart(den, floor, teamIds, seed, week);
   const bag = { ...den.items };
   const used = {};
@@ -2994,6 +3028,7 @@ function towerFinish(den, data, floor, teamIds, actions, ctx) {
   den.tower = towerFresh(den.tower, week);
   if (den.tower.floor !== floor) throw new Error(floor > 1 && den.tower.floor === 1 ? "La torre \xE8 ricominciata (nuova settimana o reset): riparti dal piano 1." : "Questo piano \xE8 gi\xE0 stato registrato.");
   const { over, used } = replayTower(den, ctx.uid, floor, teamIds, actions, week);
+  den.tower = { ...den.tower, run: null };
   spendBattleItems(den, used, teamIds, null);
   return recordTowerResult(den, data, floor, over === "p", teamIds);
 }
@@ -3040,6 +3075,7 @@ var OPS = {
   giveCharm: { run: giveCharm },
   teachScroll: { run: teachScroll },
   claimGifts: { run: claimGifts },
+  towerBegin: { run: towerBegin },
   towerFinish: { run: towerFinish },
   resetTower: { run: resetTower },
   recordPvpResult: { run: recordPvpResult, match: true },
@@ -3080,6 +3116,7 @@ var OPS = {
   setMoveset,
   setTeam,
   teachScroll,
+  towerBegin,
   towerFinish,
   towerFresh,
   towerSeed,
