@@ -41,15 +41,28 @@ function statusIcons(c, round) {
   return out;
 }
 
-function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash, round }) {
+function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash, round, onInspect }) {
   const icons = c.hp > 0 ? statusIcons(c, round || 1) : [];
+  // pressione lunga (dito o mouse, 450 ms) = scheda del nemico; il tocco normale resta per il bersaglio
+  const lp = useRef({ t: null, fired: false, x: 0, y: 0 });
+  const startPress = (e) => {
+    if (!onInspect) return;
+    lp.current.fired = false; lp.current.x = e.clientX; lp.current.y = e.clientY;
+    clearTimeout(lp.current.t);
+    lp.current.t = setTimeout(() => { lp.current.fired = true; onInspect(c.id); }, 450);
+  };
+  const cancelPress = () => clearTimeout(lp.current.t);
+  const movePress = (e) => { if (Math.hypot(e.clientX - lp.current.x, e.clientY - lp.current.y) > 12) cancelPress(); };
   const dead = c.hp <= 0;
   const img = dead && c.deadImg ? c.deadImg : c.img || (c.side === "h" ? classSprite : "");
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
   const mirror = c.side === "f" ? c.facing !== "right" : true;
   return (
     <button type="button" className={`sgb-f sgb-f--${c.side}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
-      disabled={!selectable} onClick={() => selectable && onPick(c.id)} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF`}>
+      aria-disabled={!selectable} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF${onInspect ? " (tieni premuto per la scheda)" : ""}`}
+      onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } if (selectable) onPick(c.id); }}
+      onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress} onPointerMove={movePress}
+      onContextMenu={(e) => { if (onInspect) { e.preventDefault(); onInspect(c.id); } }}>
       {flash && <span key={flash.k} className={`sgb-pop sgb-pop--${flash.kind}`}>{flash.txt}</span>}
       {!!icons.length && (
         <span className="sgb-st" aria-label={icons.map((i) => i.t).join(", ")}>
@@ -84,6 +97,9 @@ export default function SegreteBattle({ room, uid }) {
   const [sprites, setSprites] = useState({});
   const [flashes, setFlashes] = useState({});
   const [vfxMsgs, setVfxMsgs] = useState([]);
+  const [inspect, setInspect] = useState(null);
+  const [known, setKnown] = useState({});
+  useEffect(() => onSnapshot(doc(db, "dungeon_meta", "known"), (snap) => setKnown(snap.exists() ? snap.data().sources || {} : {}), () => {}), []);
   const initAsked = useRef("");
   const seenSeq = useRef(0);
   const timeoutAsked = useRef("");
@@ -193,6 +209,10 @@ export default function SegreteBattle({ room, uid }) {
   return (
     <div className="sgb">
       <VfxLayer messages={vfxMsgs} selfUid={uid} />
+      {inspect && (() => {
+        const f = run.foes.find((x) => x.id === inspect);
+        return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
+      })()}
       <div className="sgb-top">
         <span className="sgb-where">{run.dungeonIcon} {run.dungeonName} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
@@ -210,7 +230,7 @@ export default function SegreteBattle({ room, uid }) {
       <div className={`sgb-field${run.bg ? " has-bg" : ""}`} style={run.bg ? { backgroundImage: `url(${run.bg})` } : undefined}>
         <div className="sgb-foes">
           {run.foes.map((f) => (
-            <Fighter key={f.id} c={f} round={run.round} isTurn={false} flash={flashes[f.id]}
+            <Fighter key={f.id} c={f} round={run.round} isTurn={false} flash={flashes[f.id]} onInspect={setInspect}
               selectable={!!(tk === "foe" && f.hp > 0)} onPick={pickTarget} />
           ))}
         </div>
@@ -284,4 +304,65 @@ function actInfo(a, lv) {
   if (a.kind === "save") return `${a.dice} · TS ${a.save.toUpperCase()}${a.area ? " · tutti" : ""}`;
   if (a.kind === "missile") return `${a.dice}+${a.flat || 0} · colpisce sempre`;
   return `${a.dice}${a.kind === "weapon" ? "+mod" : ""}`;
+}
+
+/* Scheda del nemico (pressione lunga). I dati veri solo se quel TIPO di mostro è già stato
+   sconfitto almeno una volta in una qualunque partita (dungeon_meta/known), sennò ????. */
+const DMG_LABEL = { slashing: "🗡 Tagliente", piercing: "🏹 Perforante", bludgeoning: "🔨 Contundente", fire: "🔥 Fuoco", cold: "❄ Freddo", lightning: "⚡ Fulmine", thunder: "🔊 Tuono", acid: "🧪 Acido", poison: "☠ Veleno", necrotic: "🌑 Necrotico", radiant: "✨ Radioso", force: "💫 Forza", psychic: "🧠 Psichico" };
+const ROLE_LABEL = { minion: "🐀 Gregario", elite: "💀 Élite", boss: "👑 Boss" };
+function foeActionLine(a) {
+  const dice = a.diceNum && a.diceType ? `${a.diceNum}${a.diceType}${Number(a.bonus) && a.type === "heal" ? `+${a.bonus}` : ""}` : "";
+  if (a.type === "heal") return `💚 cura ${dice}`;
+  if (a.type === "buff_ca") return `🛡 +${a.acBonus || 2} CA per ${a.durationTurns || 2} round`;
+  if (a.type === "buff_adv") return `🎯 vantaggio per ${a.durationTurns || 2} round`;
+  if (a.type === "debuff_dis") return `🌫 svantaggio ${a.aoeShape && a.aoeShape !== "single" ? "a tutti" : "a un eroe"} per ${a.durationTurns || 2} round`;
+  const area = a.aoeShape && a.aoeShape !== "single";
+  const save = a.hitMode === "save" || area;
+  return `${dice}${save ? ` · TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${a.saveDC || 12}${a.halfOnSave !== false ? " (metà se lo superi)" : ""}` : ` · +${a.bonus || 0} al colpire`}${area ? " · tutto il gruppo" : ""}`;
+}
+function FoeCard({ f, known, kills, round, onClose }) {
+  const q = "????";
+  const list = (arr) => (arr || []).map((k) => DMG_LABEL[k] || k).join(", ");
+  const icons = f.hp > 0 ? statusIcons(f, round) : [];
+  return (
+    <div className="sgb-card-back" role="presentation" onClick={onClose}>
+      <div className="sgb-card" role="dialog" aria-modal="true" aria-label={`Scheda di ${f.name}`} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="sgb-card-x" onClick={onClose} aria-label="Chiudi">✕</button>
+        <div className="sgb-card-head">
+          {f.img ? <img src={f.img} alt="" className={f.facing !== "right" ? "mirror" : ""} /> : <span className="sgb-emoji" aria-hidden="true">{f.icon || "👹"}</span>}
+          <div>
+            <b>{f.name}</b>
+            <small>{ROLE_LABEL[f.role] || ""} · Lv {f.level}</small>
+            <small className={known ? "is-known" : "is-unknown"}>{known ? `📖 Conosciuto · sconfitto ${kills} ${kills === 1 ? "volta" : "volte"} nelle Segrete` : "❔ Mai sconfitto: nessuno sa ancora com'è fatto"}</small>
+          </div>
+        </div>
+        <dl className="sgb-card-stats">
+          <div><dt>PF</dt><dd>{known ? `${f.hp} / ${f.maxHp}` : q}</dd></div>
+          <div><dt>CA</dt><dd>{known ? f.ac : q}</dd></div>
+        </dl>
+        <p className="sgb-card-h">Resistenze</p>
+        {known ? (
+          <ul className="sgb-card-list">
+            <li><span>Resiste (½)</span> {list(f.res) || "—"}</li>
+            <li><span>Vulnerabile (×2)</span> {list(f.vul) || "—"}</li>
+            <li><span>Immune</span> {list(f.imm) || "—"}</li>
+          </ul>
+        ) : <p className="sgb-card-q">{q}</p>}
+        <p className="sgb-card-h">Attacchi e poteri</p>
+        {known ? (
+          <ul className="sgb-card-list">
+            {(f.actions || []).map((a, i) => <li key={i}><b>{a.name || "Attacco"}</b> {foeActionLine(a)}</li>)}
+            {!(f.actions || []).length && <li>—</li>}
+          </ul>
+        ) : <p className="sgb-card-q">{q}</p>}
+        {!!icons.length && (
+          <>
+            <p className="sgb-card-h">Effetti adesso</p>
+            <ul className="sgb-card-list">{icons.map((i) => <li key={i.k}>{i.ico} {i.t}{i.n ? ` · ${i.n} round` : ""}</li>)}</ul>
+          </>
+        )}
+        {!known && <p className="sgb-card-hint">Sconfiggetene uno e la sua scheda si svelerà per tutti.</p>}
+      </div>
+    </div>
+  );
 }

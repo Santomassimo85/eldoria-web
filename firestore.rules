@@ -256,6 +256,10 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if isMaster(); // il server (segreteDo) lo segna vinto con l'admin SDK
     }
+    match /dungeon_meta/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if false; // bestiario scoperto: lo scrive solo segreteDo
+    }
     match /dungeon_types/{typeId} {
       allow read: if isLoggedIn();
       allow write: if isMaster();

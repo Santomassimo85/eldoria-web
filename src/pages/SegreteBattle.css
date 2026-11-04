@@ -91,3 +91,27 @@
 .sgb-st i.is-bad { filter: drop-shadow(0 0 2px #ff5a45) drop-shadow(1px 1px 0 #000); }
 .sgb-st sub { position: absolute; right: -3px; bottom: -4px; font: 800 .62rem/1 system-ui, sans-serif; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
 @media (max-width: 760px) { .sgb-st i { font-size: 1rem; } }
+
+/* scheda del nemico (pressione lunga) */
+.sgb-f { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }
+.sgb-f[aria-disabled="true"] { cursor: default; }
+.sgb-card-back { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.65); }
+.sgb-card { position: relative; width: min(420px, 100%); max-height: 85vh; overflow-y: auto; padding: 16px; background: #15111c; border: 2px solid #f2c14e; color: #f3ead8; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.sgb-card-x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 1rem; cursor: pointer; }
+.sgb-card-head { display: flex; gap: 12px; align-items: center; padding-right: 36px; }
+.sgb-card-head img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; }
+.sgb-card-head img.mirror { transform: scaleX(-1); }
+.sgb-card-head b { display: block; font-size: 1.15rem; color: #fff; }
+.sgb-card-head small { display: block; font-size: .82rem; color: #d8ccb4; }
+.sgb-card-head small.is-known { color: #8ee69a; }
+.sgb-card-head small.is-unknown { color: #f2c14e; }
+.sgb-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 4px; }
+.sgb-card-stats div { padding: 8px 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(243,234,216,.15); }
+.sgb-card-stats dt { font-size: .74rem; color: #d8ccb4; text-transform: uppercase; letter-spacing: .08em; }
+.sgb-card-stats dd { margin: 2px 0 0; font-size: 1.2rem; font-weight: 800; color: #fff; }
+.sgb-card .sgb-card-h { margin: 12px 0 4px; font-weight: 800; color: #f2c14e; font-size: .9rem; }
+.sgb-card-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: .9rem; }
+.sgb-card-list li { padding: 5px 8px; background: rgba(0,0,0,.25); color: #f3ead8; }
+.sgb-card-list li span { display: inline-block; min-width: 9.5em; color: #d8ccb4; }
+.sgb-card .sgb-card-q { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: .2em; color: #8a7f6f; }
+.sgb-card .sgb-card-hint { margin: 12px 0 0; font-size: .85rem; color: #d8ccb4; }

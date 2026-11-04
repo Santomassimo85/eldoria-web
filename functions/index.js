@@ -2097,6 +2097,16 @@ exports.segreteDo = onCall(
           throw new Error("Operazione sconosciuta.");
         }
 
+        // Bestiario scoperto (2026-11-04): ogni tipo di mostro sconfitto in QUALUNQUE partita
+        // diventa conosciuto per tutti (dungeon_meta/known.sources[src]); nella lotta, tenendo
+        // premuto su un nemico conosciuto si vedono CA, PF, resistenze e attacchi, sennò ????.
+        // set+merge: nessuna lettura, quindi va bene anche dopo le altre letture.
+        const newlyDead = (run.foes || []).filter((f) => f.hp <= 0 && !f.recorded && f.src);
+        const knownPatch = {};
+        newlyDead.forEach((f) => {
+          f.recorded = true;
+          knownPatch[f.src] = { name: String(f.name || "").replace(/ [A-Z]$/, ""), count: admin.firestore.FieldValue.increment(1), lastAt: now };
+        });
         // Il dungeon CONTA per i limiti dopo RUN_COUNTS_AFTER sale ripulite (o alla vittoria):
         // chi cade prima può riprovare. Letture tutte prima delle scritture.
         const needCount = !run.counted && (run.status === "won" || run.floor > segreteBundle.RUN_COUNTS_AFTER
@@ -2158,6 +2168,7 @@ exports.segreteDo = onCall(
           }
           tx.update(roomRef, { status: "done", result: run.status, endedAt: admin.firestore.FieldValue.serverTimestamp() });
         }
+        if (Object.keys(knownPatch).length) tx.set(db.collection("dungeon_meta").doc("known"), { sources: knownPatch }, { merge: true });
         run.updatedAt = now;
         tx.set(runRef, run);
         return { ok: true, ev, seq: run.seq, from: before };
