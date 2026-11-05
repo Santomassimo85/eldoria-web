@@ -1912,7 +1912,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
 
   return (
     <div className="rpg-screen">
-      <VfxLayer messages={messages} selfUid={currentUser?.uid} />
+      <VfxLayer messages={messages} selfUid={currentUser?.uid} canvas />
 
       {/* ── PALCO: testata + campo di battaglia. Sul telefono resta fermo in alto
            (sticky) e sotto scorrono azioni, status e log: l'effetto dell'attacco si vede. ── */}

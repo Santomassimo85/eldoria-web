@@ -200,6 +200,7 @@ export function VfxLayer({ messages, selfUid = null, canvas = false }) {
     if (!import.meta.env.DEV) return;
     window.__wbVfx = (kind, el, targets, o = {}) => {
       const msg = { id: `dev-${Date.now()}`, effect: kind, effectEl: el, effectTargets: targets, effectFrom: o.from, effectMissTargets: o.miss, effectKill: o.kill };
+      if (canvas) return playCanvas(msg, targets);
       const spawned = spawnFor(msg, targets);
       setItems((prev) => [...prev, ...spawned]);
       const ids = new Set(spawned.map((s) => s.id));
@@ -208,7 +209,7 @@ export function VfxLayer({ messages, selfUid = null, canvas = false }) {
       return spawned.length;
     };
     return () => { delete window.__wbVfx; };
-  }, []);
+  }, [canvas]);
 
   useEffect(() => {
     if (!messages?.length) return;
