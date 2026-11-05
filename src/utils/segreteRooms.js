@@ -83,16 +83,46 @@ export const setMemberClass = (roomId, uid, cls, level) => editRoom(roomId, (roo
   return { members: room.members.map((m) => (m.uid === uid ? { ...m, cls, level, ready: false } : m)) };
 });
 
-// Spunta "Avvia": quando l'hanno messa tutti il dungeon parte.
-export const setReady = (roomId, uid, ready) => editRoom(roomId, (room) => {
-  if (room.status !== "open") return null;
-  const members = room.members.map((m) => (m.uid === uid ? { ...m, ready: !!ready } : m));
-  const next = { ...room, members };
-  return allReady(next) ? { members, status: "running", startedAt: serverTimestamp(), blocked: null } : { members, blocked: null };
-});
+// Notifica (campanella + push) a una lista di uid, porta alle Segrete.
+function notifyMembers(uids, title, message) {
+  return Promise.all([...new Set(uids)].filter(Boolean).map((userId) => addDoc(collection(db, "notifications"), {
+    userId, title, message, link: "/segrete", read: false, timestamp: serverTimestamp(),
+  }))).catch(() => {});
+}
+const nameOf = (room, uid) => room.members.find((m) => m.uid === uid)?.name || "Il capo";
+
+/* Spunta "Avvia": quando l'hanno messa tutti il dungeon parte.
+   Notifiche (2026-11-05): quando il CAPO preme Avvia gli altri ancora non pronti ricevono
+   "premi Avvia"; quando la spedizione parte la ricevono tutti gli altri del gruppo. */
+export async function setReady(roomId, uid, ready) {
+  let room = null;
+  const patch = await editRoom(roomId, (r) => {
+    room = r;
+    if (r.status !== "open") return null;
+    const members = r.members.map((m) => (m.uid === uid ? { ...m, ready: !!ready } : m));
+    const next = { ...r, members };
+    return allReady(next) ? { members, status: "running", startedAt: serverTimestamp(), blocked: null } : { members, blocked: null };
+  });
+  if (!patch || !room) return;
+  const others = room.members.filter((m) => m.uid !== uid);
+  if (patch.status === "running") {
+    await notifyMembers(others.map((m) => m.uid), "⚔ La spedizione è partita!",
+      `Il gruppo «${room.name}» è sceso nelle Segrete: entra e combatti, tocca al gruppo.`);
+  } else if (ready && room.hostUid === uid) {
+    await notifyMembers(others.filter((m) => !m.ready).map((m) => m.uid), "🗝 Il capo è pronto",
+      `${nameOf(room, uid)} ha premuto Avvia nel gruppo «${room.name}». Premi Avvia anche tu: si parte quando sono pronti tutti.`);
+  }
+}
 
 // Il Master fa partire comunque (prova o gruppo bloccato).
-export const forceStart = (roomId) => editRoom(roomId, (room) => (room.status === "open" ? { status: "running", startedAt: serverTimestamp() } : null));
+export async function forceStart(roomId) {
+  let room = null;
+  const patch = await editRoom(roomId, (r) => { room = r; return r.status === "open" ? { status: "running", startedAt: serverTimestamp() } : null; });
+  if (patch && room) {
+    await notifyMembers(room.members.map((m) => m.uid), "⚔ La spedizione è partita!",
+      `Il gruppo «${room.name}» è sceso nelle Segrete: entra e combatti, tocca al gruppo.`);
+  }
+}
 
 // Torna alla stanza (finché il combattimento non c'è: fase 3) — capo o Master.
 export const reopenRoom = (roomId) => editRoom(roomId, (room) => ({ status: "open", startedAt: null, members: room.members.map((m) => ({ ...m, ready: false })) }));
