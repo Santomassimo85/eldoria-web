@@ -52,3 +52,7 @@ body.in-fight .sgr-page:has(.sgv) { padding-top: 58px; }
   .sgv-mic { min-width: 48px; padding: 4px 8px; }
   .sgv-sq { width: 36px; height: 36px; }
 }
+.sgv-diag { font-size: .72rem; color: #d8ccb4; }
+.sgv-diag summary { cursor: pointer; }
+.sgv-diag ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; max-height: 160px; overflow: auto; }
+.sgv-diag code { font-size: .68rem; color: #ffe39a; word-break: break-all; }

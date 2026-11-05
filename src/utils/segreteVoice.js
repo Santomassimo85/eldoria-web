@@ -23,7 +23,7 @@ async function loadIce() {
     return { servers: Array.isArray(list) && list.length ? list : STUN, turn: !!r?.data?.turn };
   } catch { return { servers: STUN, turn: false }; }
 }
-const BEAT_MS = 15000;
+const BEAT_MS = 5000; // porta anche la diagnostica
 export const PEER_STALE_MS = 45000;
 /* Presenza senza fidarsi degli orologi (2026-11-05): `at` lo scrive il telefono di ognuno col
    SUO orologio, e due telefoni possono differire di minuti. Si guarda invece QUANDO, sul nostro
@@ -52,6 +52,7 @@ export class VoiceMesh {
     this.muted = false;
     this.closed = false;
     this.fresh = makeFreshness();
+    this.tries = {};
   }
 
   emit() {
@@ -88,8 +89,18 @@ export class VoiceMesh {
     document.addEventListener("visibilitychange", this.onHide);
   }
 
+  // riga di diagnostica per ogni collegamento (si vede nel pannello di TUTTI: campo `diag` del peer)
+  diagOf() {
+    const out = {};
+    const fmt = (o) => Object.entries(o).map(([k, v]) => `${k[0]}${v}`).join("") || "-";
+    Object.entries(this.conns).forEach(([u, c]) => {
+      out[u] = `${c.caller ? "chiama" : "risponde"}#${c.tries} ${c.pc.connectionState}/${c.pc.iceConnectionState} sig:${c.pc.signalingState} miei:${fmt(c.loc)} suoi:${fmt(c.rem)}${c.answered ? " ✓risp" : ""}${c.via ? ` ${c.via}` : ""}${c.err ? ` ERR ${c.err}` : ""}`.slice(0, 220);
+    });
+    return out;
+  }
+
   beat() {
-    return setDoc(doc(peersCol(this.roomId), this.uid), { name: this.name || "", sid: this.sid, at: Date.now(), muted: this.muted }).catch(() => {});
+    return setDoc(doc(peersCol(this.roomId), this.uid), { name: this.name || "", sid: this.sid, at: Date.now(), muted: this.muted, diag: this.diagOf(), turn: !!this.turn, ua: navigator.userAgent.slice(0, 120) }).catch(() => {});
   }
 
   setMicOn(on) {
@@ -99,6 +110,12 @@ export class VoiceMesh {
       this.muted = muted;
       updateDoc(doc(peersCol(this.roomId), this.uid), { muted }).catch(() => {});
     }
+  }
+
+  // alcuni telefoni bloccano l'audio partito senza un tocco: ogni tocco sui tasti della voce lo risblocca
+  unlockAudio() {
+    this.ctx?.resume?.().catch(() => {});
+    Object.values(this.conns).forEach((c) => { if (c.audio?.paused) c.audio.play?.().catch(() => {}); });
   }
 
   setSpeakersOn(on) {
@@ -125,7 +142,7 @@ export class VoiceMesh {
 
   makePc(other, key, remoteSid, caller) {
     const pc = new RTCPeerConnection({ iceServers: this.ice || STUN });
-    const conn = { pc, key, remoteSid, caller, answered: false, pendingIce: [], state: "connecting" };
+    const conn = { pc, key, remoteSid, caller, answered: false, pendingIce: [], state: "connecting", loc: {}, rem: {}, tries: (this.tries[other] = (this.tries[other] || 0) + 1), err: "" };
     // guardiano: se dopo CONNECT_TIMEOUT_MS non è collegato, chi chiama rifà tutto (offerta nuova)
     conn.watch = setTimeout(() => {
       if (this.conns[other] !== conn || conn.state === "connected") return;
@@ -138,7 +155,10 @@ export class VoiceMesh {
     this.stream.getTracks().forEach((t) => pc.addTrack(t, this.stream));
     const linkRef = doc(linksCol(this.roomId), pairId(this.uid, other));
     pc.onicecandidate = (e) => {
-      if (e.candidate) addDoc(collection(linkRef, "cand"), { from: this.uid, key, c: e.candidate.toJSON() }).catch(() => {});
+      if (!e.candidate) return;
+      const ty = e.candidate.type || "?";
+      conn.loc[ty] = (conn.loc[ty] || 0) + 1;
+      addDoc(collection(linkRef, "cand"), { from: this.uid, key, c: e.candidate.toJSON() }).catch((er) => { conn.err = `cand:${er?.code || er?.message || er}`; });
     };
     pc.ontrack = (e) => {
       if (conn.audio) return;
@@ -171,6 +191,8 @@ export class VoiceMesh {
       s.docChanges().forEach((ch) => {
         const d = ch.doc.data();
         if (ch.type !== "added" || d.from === this.uid) return;
+        const ty = / typ (\w+)/.exec(d.c?.candidate || "")?.[1] || "?";
+        conn.rem[ty] = (conn.rem[ty] || 0) + 1;
         if (pc.remoteDescription) pc.addIceCandidate(d.c).catch(() => {});
         else conn.pendingIce.push(d.c);
       });
@@ -184,16 +206,18 @@ export class VoiceMesh {
   }
 
   async call(peer) {
-    const key = `${this.sid}_${peer.sid}`;
+    // chiave NUOVA a ogni tentativo (2026-11-05): prima era sid_sid e dopo un tentativo fallito
+    // l'altro telefono ignorava la nuova offerta ("già vista") → "collego" per sempre
+    const key = `${this.sid}_${peer.sid}_${rid()}`;
     const conn = this.makePc(peer.uid, key, peer.sid, true);
     try {
       const offer = await conn.pc.createOffer();
       await conn.pc.setLocalDescription(offer);
       await setDoc(doc(linksCol(this.roomId), pairId(this.uid, peer.uid)), {
-        caller: this.uid, callee: peer.uid, callerSid: this.sid, calleeSid: peer.sid,
+        caller: this.uid, callee: peer.uid, callerSid: this.sid, calleeSid: peer.sid, key,
         offer: { type: offer.type, sdp: offer.sdp }, answer: null, at: Date.now(),
       });
-    } catch { conn.state = "failed"; this.emit(); }
+    } catch (er) { conn.state = "failed"; conn.err = `offer:${er?.message || er}`; this.emit(); }
   }
 
   // collegamento fallito: chi chiama riprova col sid noto dell'altro
@@ -207,16 +231,16 @@ export class VoiceMesh {
     // risposta a una NOSTRA chiamata
     if (d.caller === this.uid && d.callerSid === this.sid && d.answer) {
       const conn = this.conns[d.callee];
-      if (conn && conn.key === `${d.callerSid}_${d.calleeSid}` && !conn.answered) {
+      if (conn && conn.key === d.key && !conn.answered) {
         conn.answered = true;
-        try { await conn.pc.setRemoteDescription(d.answer); this.flushIce(conn); } catch { /* niente */ }
+        try { await conn.pc.setRemoteDescription(d.answer); this.flushIce(conn); } catch (er) { conn.err = `remote:${er?.message || er}`; }
       }
       return;
     }
     // chiamata in arrivo per questa sessione
     if (d.callee === this.uid && d.calleeSid === this.sid && d.offer && !d.answer) {
-      const key = `${d.callerSid}_${d.calleeSid}`;
-      if (this.conns[d.caller]?.key === key) return;
+      const key = d.key;
+      if (!key || this.conns[d.caller]?.key === key) return;
       if (this.conns[d.caller]) this.drop(d.caller);
       const conn = this.makePc(d.caller, key, d.callerSid, false);
       try {
@@ -225,7 +249,7 @@ export class VoiceMesh {
         const answer = await conn.pc.createAnswer();
         await conn.pc.setLocalDescription(answer);
         await updateDoc(doc(linksCol(this.roomId), id), { answer: { type: answer.type, sdp: answer.sdp } });
-      } catch { conn.state = "failed"; this.emit(); }
+      } catch (er) { conn.state = "failed"; conn.err = `answer:${er?.message || er}`; this.emit(); }
     }
   }
 

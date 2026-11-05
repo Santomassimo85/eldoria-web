@@ -45,7 +45,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
   const inVoice = new Set(live.map((p) => p.uid));
   const others = live.filter((p) => p.uid !== uid);
 
-  const applyMic = (on) => { setMicOn(on); mesh.current?.setMicOn(on); };
+  const applyMic = (on) => { setMicOn(on); mesh.current?.setMicOn(on); mesh.current?.unlockAudio(); };
   const setMode = (m) => {
     setModeState(m);
     try { localStorage.setItem(MODE_KEY, m); } catch { /* niente */ }
@@ -92,7 +92,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
   });
 
   return (
-    <div className={`sgv${open ? " is-open" : ""}${joined ? " is-joined" : ""}`}>
+    <div className={`sgv${open ? " is-open" : ""}${joined ? " is-joined" : ""}`} onPointerDown={() => mesh.current?.unlockAudio()}>
       <div className="sgv-bar">
         <button type="button" className="sgv-pill" aria-expanded={open} title="Chi è in voce · entra nella chat vocale" onClick={() => setOpen((o) => !o)}>
           <span aria-hidden="true">🎧</span>
@@ -147,6 +147,19 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
                 <p className="sgv-hint">⚠ Con qualcuno il collegamento non riesce{st.turn ? "" : " (succede sulle reti mobili: manca ancora il «ponte» del server)"}. Riprovo da solo; intanto provate col Wi-Fi.</p>
               )}
             </>
+          )}
+          {joined && (
+            <details className="sgv-diag">
+              <summary>🔧 Diagnostica (per l'assistenza)</summary>
+              <ul>
+                {live.map((p) => (
+                  <li key={p.uid}><b>{p.name || p.uid.slice(0, 5)}</b>{p.turn ? " · ponte ok" : " · senza ponte"}
+                    {Object.entries(p.diag || {}).map(([u, line]) => <div key={u}>→ {live.find((x) => x.uid === u)?.name || u.slice(0, 5)}: <code>{line}</code></div>)}
+                    {!Object.keys(p.diag || {}).length && <div>nessun collegamento</div>}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
           {err && <p className="sgv-err" role="alert">{err}</p>}
           {err && window.Capacitor?.isNativePlatform?.() && <a className="sgv-btn sgv-dl" href={APK_EXTERNAL_URL} target="_blank" rel="noopener noreferrer">⬇ Scarica l'app aggiornata (1.2)</a>}
