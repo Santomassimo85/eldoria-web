@@ -13,6 +13,7 @@
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem } from "./segreteItems";
 import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { sizeOf } from "./segrete";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 10 * 60 * 1000;
@@ -51,7 +52,7 @@ export const FALLBACK_MONSTERS = [
   { id: "fb-goblin", name: "Goblin", icon: "👺", role: "minion", level: 1, hp: 9, ac: 13, init: 2, save: 0, actions: [A("Scimitarra", 1, "d6", 4), A("Arco Corto", 1, "d6", 4, { dmgType: "" })] },
   { id: "fb-scheletro", name: "Scheletro", icon: "💀", role: "minion", level: 1, hp: 13, ac: 13, init: 2, save: 0, vulnerabilities: ["bludgeoning"], immunities: ["poison"], actions: [A("Spada Corta", 1, "d6", 4)] },
   { id: "fb-ratto", name: "Ratto Gigante", icon: "🐀", role: "minion", level: 1, hp: 7, ac: 12, init: 2, save: 0, actions: [A("Morso", 1, "d4", 4, { dmgType: "veleno" })] },
-  { id: "fb-orco", name: "Orco", icon: "👹", role: "elite", level: 3, hp: 30, ac: 13, init: 1, save: 2, actions: [A("Ascia Bipenne", 1, "d12", 5), { type: "buff_adv", name: "Grido di Guerra", durationTurns: 2 }] },
+  { id: "fb-orco", name: "Orco", icon: "👹", role: "elite", size: "large", level: 3, hp: 30, ac: 13, init: 1, save: 2, actions: [A("Ascia Bipenne", 1, "d12", 5), { type: "buff_adv", name: "Grido di Guerra", durationTurns: 2 }] },
   { id: "fb-cultista", name: "Cultista", icon: "🧟", role: "elite", level: 3, hp: 22, ac: 12, init: 1, save: 2, actions: [A("Dardo Necrotico", 2, "d6", 5, { dmgType: "oscurità" }), { type: "heal", name: "Patto Oscuro", diceNum: 2, diceType: "d6", bonus: 2 }] },
   { id: "fb-capo", name: "Capoguerra Orco", icon: "👑", role: "boss", level: 5, hp: 75, ac: 16, init: 2, save: 4, actions: [A("Ascia Spezzaossa", 2, "d10", 7), A("Turbine d'Acciaio", 2, "d8", 0, { hitMode: "save", aoeShape: "sphere", saveAbility: "dex", saveDC: 14, halfOnSave: true }), { type: "buff_ca", name: "Scudo di Ferro", acBonus: 2, durationTurns: 2 }] },
 ];
@@ -124,7 +125,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   return {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
     level: Number(src.level) || 1, hp: maxHp, maxHp, ac: cap.ac, init: Number(src.init) || 0, save: cap.save,
-    img: src.imageUrl || "", deadImg: src.deadImageUrl || "", icon: src.icon || "", facing: src.facing || "left",
+    img: src.imageUrl || "", deadImg: src.deadImageUrl || "", icon: src.icon || "", facing: src.facing || "left", size: sizeOf(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5), res: src.resistances || [], vul: src.vulnerabilities || [], imm: src.immunities || [],
@@ -135,22 +136,27 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 /* Sala n (1-based): normale = gregari (e a volte un'élite), ultima = boss. */
 export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize }) {
   const boss = floor > floors;
-  const all = bestiary.length ? bestiary : FALLBACK_MONSTERS;
-  const fit = (role, max) => {
-    const of = all.filter((m) => (m.role || "minion") === role);
+  // `_anyBoss` = boss di altri dungeon (li passa il server): si usano solo se questo dungeon non ha un boss suo
+  const own = bestiary.filter((m) => !m._anyBoss);
+  const all = own.length ? own : FALLBACK_MONSTERS;
+  const fit = (role, max, list = all) => {
+    const of = list.filter((m) => (m.role || "minion") === role);
     const ok = of.filter((m) => (Number(m.level) || 1) <= max);
     return ok.length ? ok : of.length ? [of.reduce((a, b) => ((Number(a.level) || 1) <= (Number(b.level) || 1) ? a : b))] : [];
   };
   const picks = [];
   if (boss) {
+    // SALA DEL BOSS (2026-11-05): sempre UN boss vero (mai un'élite al suo posto) e al massimo
+    // 2 di scorta fra gregari ed élite: da soli 0–1, in 2 uno, in 3–4 due.
     let bosses = fit("boss", partyLevel + 3);
-    if (!bosses.length) bosses = fit("elite", partyLevel + 3);
+    if (!bosses.length) bosses = fit("boss", partyLevel + 3, bestiary.filter((m) => m._anyBoss));
     if (!bosses.length) bosses = FALLBACK_MONSTERS.filter((m) => m.role === "boss");
     picks.push(pick(bosses));
-    const mins = fit("minion", partyLevel + 1);
-    // scorta del boss: da soli metà delle volte nessuna, in gruppo metà del gruppo
-    const escort = partySize <= 1 ? (rnd() < 0.5 ? 1 : 0) : Math.floor(partySize / 2);
-    for (let i = 0; i < escort && mins.length; i++) picks.push(pick(mins));
+    let mins = fit("minion", partyLevel + 1);
+    if (!mins.length) mins = FALLBACK_MONSTERS.filter((m) => m.role === "minion");
+    const elites = fit("elite", partyLevel + 1);
+    const escort = partySize <= 1 ? (rnd() < 0.5 ? 1 : 0) : partySize === 2 ? 1 : 2;
+    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < 0.3 ? pick(elites) : pick(mins));
   } else {
     let mins = fit("minion", partyLevel + 1);
     const elites = fit("elite", partyLevel + 2);
@@ -639,7 +645,11 @@ function foeTarget(s, h, targetId) {
 /* ── bottino (2026-11-04) ───────────────────────────────
    s.spoils = { uid: { coins, items: {id: n} } } = bottino della spedizione: si porta a casa
    solo se il gruppo vince il dungeon (lo consegna il server), se cade si perde. */
-function addSpoil(s, uid, { coins = 0, item = null } = {}) {
+function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
+  // storico di cosa ha preso ognuno, sala per sala (2026-11-05): s.gains[uid] = [{fl, c, it, src}]
+  const g = { ...(s.gains || {}) };
+  g[uid] = [...(g[uid] || []), { fl: s.floor, c: coins || 0, it: item || null, src: String(src || "") }].slice(-60);
+  s.gains = g;
   const sp = { ...(s.spoils || {}) };
   const cur = sp[uid] || { coins: 0, items: {} };
   const items = { ...(cur.items || {}) };
@@ -651,7 +661,7 @@ function addSpoil(s, uid, { coins = 0, item = null } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const got = s.heroes.filter((h) => !h.fled).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c }); return `${h.name} ${c}`; });
+  const got = s.heroes.filter((h) => !h.fled).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
   if (got.length) log(s, `🪙 Monete Antiche dalla sala: ${got.join(" · ")}.`, { kind: "loot" });
 }
 // Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
@@ -667,13 +677,13 @@ export function lootDead(s) {
     const parts = [];
     if (die(100) <= ch.coins) {
       const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
-      addSpoil(s, who.uid, { coins: c });
+      addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`🪙 ${c} Monete Antiche`);
     }
     if (die(100) <= ch.item) {
       const id = rollDropItem(rnd, bases, f.role);
       const it = itemOf(id);
-      if (it) { addSpoil(s, who.uid, { item: id }); parts.push(`${it.icon} ${it.name}`); }
+      if (it) { addSpoil(s, who.uid, { item: id, src: f.name }); parts.push(`${it.icon} ${it.name}`); }
     }
     if (parts.length) log(s, `🎁 ${f.name} lascia cadere ${parts.join(" e ")}: li raccoglie ${who.name}.`, { kind: "loot", actor: who.id });
   });

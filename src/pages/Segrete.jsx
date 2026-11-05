@@ -13,7 +13,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { currentWeekKey } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, runsOf, clsStyle, romeDayKey, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers,
@@ -22,6 +22,7 @@ import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
+import SegreteLog, { coinsToday, storyLogOf } from "./SegreteLog";
 import { COIN_ICON, COIN_NAME, coinsOf } from "../data/segreteItems";
 import { hpPending } from "../data/segreteKits";
 import { HeroRoster, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
@@ -201,9 +202,9 @@ export default function Segrete() {
           <span className="sgr-st-ico" aria-hidden="true">🗝</span>
           <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${runs.total}/${DAILY_TOTAL} · ${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS} · sett. ${runs.weekCount}/${WEEKLY_RUNS}`}</b></span>
         </div>
-        <button type="button" className="sgr-st" onClick={() => setTab("bottega")}>
+        <button type="button" className="sgr-st" onClick={() => setTab("zaino")}>
           <span className="sgr-st-ico" aria-hidden="true">{COIN_ICON}</span>
-          <span className="sgr-st-txt"><small>{COIN_NAME}</small><b>{coinsOf(charData)}</b></span>
+          <span className="sgr-st-txt"><small>{COIN_NAME}</small><b>{coinsOf(charData)}{coinsToday(charData) ? <span className="sgr-st-plus"> · +{coinsToday(charData)} oggi</span> : null}</b></span>
         </button>
       </div>
 
@@ -287,6 +288,7 @@ export default function Segrete() {
               </button>
               {!openRooms.length && <p className="sgr-hint">Nessun gruppo aperto ora: quando qualcuno ne crea uno, compare sopra questo riquadro.</p>}
             </section>
+            {storyLogOf(charData).some((e) => e.day === romeDayKey()) && <SegreteLog charData={charData} />}
 
             {!!running.length && (
               <section className="sgr-block">
@@ -321,7 +323,7 @@ export default function Segrete() {
         </>
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
-      {tab === "zaino" && <SegreteShop charData={charData} view="zaino" />}
+      {tab === "zaino" && <><SegreteLog charData={charData} /><SegreteShop charData={charData} view="zaino" /></>}
       {tab === "manuale" && <SegreteManual />}
     </section>
   );

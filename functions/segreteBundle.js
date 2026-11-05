@@ -472,6 +472,99 @@ function boughtToday(charData, id, day = romeDay()) {
 }
 var dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
 
+// src/data/arenaClassSprites.js
+var ARENA_CLASSES = [
+  { key: "fighter", it: "Guerriero", icon: "\u2694", look: "a battle-hardened human fighter in plate armour with a longsword and a heater shield" },
+  { key: "barbarian", it: "Barbaro", icon: "\u{1FA93}", look: "a fierce barbarian in furs and leather straps, tribal tattoos, wielding a huge greataxe with both hands" },
+  { key: "paladin", it: "Paladino", icon: "\u{1F6E1}", look: "a holy paladin in shining plate armour with a tabard bearing a sun emblem, a longsword raised and a shield" },
+  { key: "ranger", it: "Ranger", icon: "\u{1F3F9}", look: "a hooded ranger in a green cloak and leather armour, drawing a longbow aimed toward the LEFT" },
+  { key: "monk", it: "Monaco", icon: "\u{1F44A}", look: "a disciplined monk in simple wrapped robes, barefoot, in a martial arts fighting stance with fists raised" },
+  { key: "rogue", it: "Ladro", icon: "\u{1F5E1}", look: "a stealthy rogue in a dark hooded leather outfit with a half mask, two daggers drawn" },
+  { key: "wizard", it: "Mago", icon: "\u{1F9D9}", look: "a wizard in long blue robes with a pointed hat and a gnarled wooden staff, a spellbook at the belt, casting a spell" },
+  { key: "sorcerer", it: "Stregone", icon: "\u{1F525}", look: "a sorcerer in elegant crimson robes with draconic markings on the skin, flames swirling around one hand" },
+  { key: "warlock", it: "Warlock", icon: "\u{1F441}", look: "a warlock in a dark tattered coat with eldritch purple glyphs, holding a pact tome, purple eldritch energy in the other hand" },
+  { key: "druid", it: "Druido", icon: "\u{1F33F}", look: "a druid in leaf and bark garments with antlers on the hood, holding a wooden staff entwined with vines" },
+  { key: "cleric", it: "Chierico", icon: "\u2728", look: "a cleric in chain mail and white vestments with a holy symbol, a mace raised and a glowing hand" },
+  { key: "bard", it: "Bardo", icon: "\u{1F3B5}", look: "a dashing bard in a feathered hat and a colourful doublet, holding a rapier and a lute on the back" }
+];
+
+// src/data/arenaWeek.js
+var WEEKDAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+var CLOSE_SHIFT_MS = 60 * 60 * 1e3;
+function romeParts(now = /* @__PURE__ */ new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short"
+  }).formatToParts(now);
+  const get = (t) => parts.find((p) => p.type === t)?.value;
+  return {
+    y: +get("year"),
+    m: +get("month"),
+    d: +get("day"),
+    weekday: WEEKDAY_INDEX[get("weekday")] ?? 0
+  };
+}
+function currentWeekKey(now = /* @__PURE__ */ new Date()) {
+  const { y, m, d, weekday } = romeParts(new Date(new Date(now).getTime() + CLOSE_SHIFT_MS));
+  const monday = new Date(Date.UTC(y, m - 1, d) - weekday * 864e5);
+  return monday.toISOString().slice(0, 10);
+}
+
+// src/data/segrete.js
+var AFK_DEFEND_MS = 10 * 60 * 1e3;
+var ROOM_IDLE_MS = 3 * 60 * 60 * 1e3;
+var DEFAULT_DUNGEONS = [
+  { key: "segrete", name: "Le Segrete", icon: "\u26D3", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
+  { key: "caverna", name: "La Caverna", icon: "\u{1F573}", desc: "Gallerie strette nel buio: bestie, goblin e ragni giganti." },
+  { key: "magma", name: "Caverna di Magma", icon: "\u{1F30B}", desc: "Fiumi di lava e aria che brucia: elementali del fuoco e salamandre." }
+];
+var STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
+var heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
+function storyLevelOf(charData, classKey) {
+  const h = heroOf(charData, classKey);
+  return h ? levelOfXp(h.xp) : 1;
+}
+function mergeDungeons(custom = []) {
+  const map = new Map(DEFAULT_DUNGEONS.map((d) => [d.key, d]));
+  custom.forEach((d) => {
+    if (d?.key) map.set(d.key, { ...map.get(d.key) || {}, ...d });
+  });
+  return [...map.values()].filter((d) => !d.hidden);
+}
+var DEFAULT_FLOORS = 3;
+var MONSTER_SIZES = [
+  { key: "tiny", label: "Minuscola", scale: 0.7 },
+  { key: "small", label: "Piccola", scale: 0.85 },
+  { key: "medium", label: "Media", scale: 1 },
+  { key: "large", label: "Grande", scale: 1.3 },
+  { key: "huge", label: "Enorme", scale: 1.6 },
+  { key: "gargantuan", label: "Mastodontica", scale: 1.9 }
+];
+var defaultSize = (role) => role === "boss" ? "large" : "medium";
+var sizeOf = (m) => MONSTER_SIZES.some((z) => z.key === m?.size) ? m.size : defaultSize(m?.role);
+var DAILY_RUNS = 1;
+var DAILY_TOTAL = 3;
+var dailyTotalOf = (charData, day = romeDayKey()) => charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0;
+var nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
+var WEEKLY_RUNS = 3;
+var RUN_COUNTS_AFTER = 2;
+var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const r = charData?.storyClassRuns?.[cls];
+  const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
+  const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
+  const total = dailyTotalOf(charData, day);
+  const totalFull = total >= DAILY_TOTAL;
+  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+}
+function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
+  const { weekCount, dayCount } = runsOf(charData, cls, week, day);
+  return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
+}
+
 // src/data/segreteEngine.js
 var LOG_MAX = 80;
 var AFK_MS = 10 * 60 * 1e3;
@@ -524,7 +617,7 @@ var FALLBACK_MONSTERS = [
   { id: "fb-goblin", name: "Goblin", icon: "\u{1F47A}", role: "minion", level: 1, hp: 9, ac: 13, init: 2, save: 0, actions: [A("Scimitarra", 1, "d6", 4), A("Arco Corto", 1, "d6", 4, { dmgType: "" })] },
   { id: "fb-scheletro", name: "Scheletro", icon: "\u{1F480}", role: "minion", level: 1, hp: 13, ac: 13, init: 2, save: 0, vulnerabilities: ["bludgeoning"], immunities: ["poison"], actions: [A("Spada Corta", 1, "d6", 4)] },
   { id: "fb-ratto", name: "Ratto Gigante", icon: "\u{1F400}", role: "minion", level: 1, hp: 7, ac: 12, init: 2, save: 0, actions: [A("Morso", 1, "d4", 4, { dmgType: "veleno" })] },
-  { id: "fb-orco", name: "Orco", icon: "\u{1F479}", role: "elite", level: 3, hp: 30, ac: 13, init: 1, save: 2, actions: [A("Ascia Bipenne", 1, "d12", 5), { type: "buff_adv", name: "Grido di Guerra", durationTurns: 2 }] },
+  { id: "fb-orco", name: "Orco", icon: "\u{1F479}", role: "elite", size: "large", level: 3, hp: 30, ac: 13, init: 1, save: 2, actions: [A("Ascia Bipenne", 1, "d12", 5), { type: "buff_adv", name: "Grido di Guerra", durationTurns: 2 }] },
   { id: "fb-cultista", name: "Cultista", icon: "\u{1F9DF}", role: "elite", level: 3, hp: 22, ac: 12, init: 1, save: 2, actions: [A("Dardo Necrotico", 2, "d6", 5, { dmgType: "oscurit\xE0" }), { type: "heal", name: "Patto Oscuro", diceNum: 2, diceType: "d6", bonus: 2 }] },
   { id: "fb-capo", name: "Capoguerra Orco", icon: "\u{1F451}", role: "boss", level: 5, hp: 75, ac: 16, init: 2, save: 4, actions: [A("Ascia Spezzaossa", 2, "d10", 7), A("Turbine d'Acciaio", 2, "d8", 0, { hitMode: "save", aoeShape: "sphere", saveAbility: "dex", saveDC: 14, halfOnSave: true }), { type: "buff_ca", name: "Scudo di Ferro", acBonus: 2, durationTurns: 2 }] }
 ];
@@ -611,6 +704,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     deadImg: src.deadImageUrl || "",
     icon: src.icon || "",
     facing: src.facing || "left",
+    size: sizeOf(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5),
@@ -623,21 +717,24 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 }
 function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize }) {
   const boss = floor > floors;
-  const all = bestiary.length ? bestiary : FALLBACK_MONSTERS;
-  const fit = (role, max) => {
-    const of = all.filter((m) => (m.role || "minion") === role);
+  const own = bestiary.filter((m) => !m._anyBoss);
+  const all = own.length ? own : FALLBACK_MONSTERS;
+  const fit = (role, max, list = all) => {
+    const of = list.filter((m) => (m.role || "minion") === role);
     const ok = of.filter((m) => (Number(m.level) || 1) <= max);
     return ok.length ? ok : of.length ? [of.reduce((a, b) => (Number(a.level) || 1) <= (Number(b.level) || 1) ? a : b)] : [];
   };
   const picks = [];
   if (boss) {
     let bosses = fit("boss", partyLevel2 + 3);
-    if (!bosses.length) bosses = fit("elite", partyLevel2 + 3);
+    if (!bosses.length) bosses = fit("boss", partyLevel2 + 3, bestiary.filter((m) => m._anyBoss));
     if (!bosses.length) bosses = FALLBACK_MONSTERS.filter((m) => m.role === "boss");
     picks.push(pick(bosses));
-    const mins = fit("minion", partyLevel2 + 1);
-    const escort = partySize <= 1 ? rnd() < 0.5 ? 1 : 0 : Math.floor(partySize / 2);
-    for (let i = 0; i < escort && mins.length; i++) picks.push(pick(mins));
+    let mins = fit("minion", partyLevel2 + 1);
+    if (!mins.length) mins = FALLBACK_MONSTERS.filter((m) => m.role === "minion");
+    const elites = fit("elite", partyLevel2 + 1);
+    const escort = partySize <= 1 ? rnd() < 0.5 ? 1 : 0 : partySize === 2 ? 1 : 2;
+    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < 0.3 ? pick(elites) : pick(mins));
   } else {
     let mins = fit("minion", partyLevel2 + 1);
     const elites = fit("elite", partyLevel2 + 2);
@@ -1183,7 +1280,10 @@ function foeTarget(s, h, targetId) {
   log(s, `\u{1F3AF} ${t && t.side === "f" ? `${t.name} \xE8 gi\xE0 caduto: ` : ""}${h.name} punta ${next.name}.`, { kind: "info", actor: h.id });
   return next;
 }
-function addSpoil(s, uid, { coins = 0, item = null } = {}) {
+function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
+  const g = { ...s.gains || {} };
+  g[uid] = [...g[uid] || [], { fl: s.floor, c: coins || 0, it: item || null, src: String(src || "") }].slice(-60);
+  s.gains = g;
   const sp = { ...s.spoils || {} };
   const cur = sp[uid] || { coins: 0, items: {} };
   const items = { ...cur.items || {} };
@@ -1196,7 +1296,7 @@ function floorCoins(s) {
   s.coinsFloor = s.floor;
   const got = s.heroes.filter((h) => !h.fled).map((h) => {
     const c = die(FLOOR_COINS_DIE);
-    addSpoil(s, h.uid, { coins: c });
+    addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` });
     return `${h.name} ${c}`;
   });
   if (got.length) log(s, `\u{1FA99} Monete Antiche dalla sala: ${got.join(" \xB7 ")}.`, { kind: "loot" });
@@ -1213,14 +1313,14 @@ function lootDead(s) {
     const parts = [];
     if (die(100) <= ch.coins) {
       const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
-      addSpoil(s, who.uid, { coins: c });
+      addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`\u{1FA99} ${c} Monete Antiche`);
     }
     if (die(100) <= ch.item) {
       const id = rollDropItem(rnd, bases, f.role);
       const it = itemOf(id);
       if (it) {
-        addSpoil(s, who.uid, { item: id });
+        addSpoil(s, who.uid, { item: id, src: f.name });
         parts.push(`${it.icon} ${it.name}`);
       }
     }
@@ -1335,89 +1435,6 @@ function flee(s, uid, now) {
     s.status = "lost";
     log(s, "\u2620 Non resta nessuno a proseguire: tutto \xE8 perduto.", { kind: "end" });
   }
-}
-
-// src/data/arenaClassSprites.js
-var ARENA_CLASSES = [
-  { key: "fighter", it: "Guerriero", icon: "\u2694", look: "a battle-hardened human fighter in plate armour with a longsword and a heater shield" },
-  { key: "barbarian", it: "Barbaro", icon: "\u{1FA93}", look: "a fierce barbarian in furs and leather straps, tribal tattoos, wielding a huge greataxe with both hands" },
-  { key: "paladin", it: "Paladino", icon: "\u{1F6E1}", look: "a holy paladin in shining plate armour with a tabard bearing a sun emblem, a longsword raised and a shield" },
-  { key: "ranger", it: "Ranger", icon: "\u{1F3F9}", look: "a hooded ranger in a green cloak and leather armour, drawing a longbow aimed toward the LEFT" },
-  { key: "monk", it: "Monaco", icon: "\u{1F44A}", look: "a disciplined monk in simple wrapped robes, barefoot, in a martial arts fighting stance with fists raised" },
-  { key: "rogue", it: "Ladro", icon: "\u{1F5E1}", look: "a stealthy rogue in a dark hooded leather outfit with a half mask, two daggers drawn" },
-  { key: "wizard", it: "Mago", icon: "\u{1F9D9}", look: "a wizard in long blue robes with a pointed hat and a gnarled wooden staff, a spellbook at the belt, casting a spell" },
-  { key: "sorcerer", it: "Stregone", icon: "\u{1F525}", look: "a sorcerer in elegant crimson robes with draconic markings on the skin, flames swirling around one hand" },
-  { key: "warlock", it: "Warlock", icon: "\u{1F441}", look: "a warlock in a dark tattered coat with eldritch purple glyphs, holding a pact tome, purple eldritch energy in the other hand" },
-  { key: "druid", it: "Druido", icon: "\u{1F33F}", look: "a druid in leaf and bark garments with antlers on the hood, holding a wooden staff entwined with vines" },
-  { key: "cleric", it: "Chierico", icon: "\u2728", look: "a cleric in chain mail and white vestments with a holy symbol, a mace raised and a glowing hand" },
-  { key: "bard", it: "Bardo", icon: "\u{1F3B5}", look: "a dashing bard in a feathered hat and a colourful doublet, holding a rapier and a lute on the back" }
-];
-
-// src/data/arenaWeek.js
-var WEEKDAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-var CLOSE_SHIFT_MS = 60 * 60 * 1e3;
-function romeParts(now = /* @__PURE__ */ new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Rome",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short"
-  }).formatToParts(now);
-  const get = (t) => parts.find((p) => p.type === t)?.value;
-  return {
-    y: +get("year"),
-    m: +get("month"),
-    d: +get("day"),
-    weekday: WEEKDAY_INDEX[get("weekday")] ?? 0
-  };
-}
-function currentWeekKey(now = /* @__PURE__ */ new Date()) {
-  const { y, m, d, weekday } = romeParts(new Date(new Date(now).getTime() + CLOSE_SHIFT_MS));
-  const monday = new Date(Date.UTC(y, m - 1, d) - weekday * 864e5);
-  return monday.toISOString().slice(0, 10);
-}
-
-// src/data/segrete.js
-var AFK_DEFEND_MS = 10 * 60 * 1e3;
-var ROOM_IDLE_MS = 3 * 60 * 60 * 1e3;
-var DEFAULT_DUNGEONS = [
-  { key: "segrete", name: "Le Segrete", icon: "\u26D3", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
-  { key: "caverna", name: "La Caverna", icon: "\u{1F573}", desc: "Gallerie strette nel buio: bestie, goblin e ragni giganti." },
-  { key: "magma", name: "Caverna di Magma", icon: "\u{1F30B}", desc: "Fiumi di lava e aria che brucia: elementali del fuoco e salamandre." }
-];
-var STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
-var heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
-function storyLevelOf(charData, classKey) {
-  const h = heroOf(charData, classKey);
-  return h ? levelOfXp(h.xp) : 1;
-}
-function mergeDungeons(custom = []) {
-  const map = new Map(DEFAULT_DUNGEONS.map((d) => [d.key, d]));
-  custom.forEach((d) => {
-    if (d?.key) map.set(d.key, { ...map.get(d.key) || {}, ...d });
-  });
-  return [...map.values()].filter((d) => !d.hidden);
-}
-var DEFAULT_FLOORS = 3;
-var DAILY_RUNS = 1;
-var DAILY_TOTAL = 3;
-var dailyTotalOf = (charData, day = romeDayKey()) => charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0;
-var nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
-var WEEKLY_RUNS = 3;
-var RUN_COUNTS_AFTER = 2;
-var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
-function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
-  const r = charData?.storyClassRuns?.[cls];
-  const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
-  const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
-  const total = dailyTotalOf(charData, day);
-  const totalFull = total >= DAILY_TOTAL;
-  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
-}
-function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
-  const { weekCount, dayCount } = runsOf(charData, cls, week, day);
-  return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
 }
 
 // src/utils/foundryMap.js

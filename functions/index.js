@@ -2122,7 +2122,11 @@ exports.segreteDo = onCall(
 
         const loadBestiary = async () => {
           const q = await tx.get(db.collection("dungeon_monsters").where("dungeons", "array-contains", room.type));
-          return q.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const own = q.docs.map((d) => ({ id: d.id, ...d.data() }));
+          if (own.some((m) => m.role === "boss")) return own;
+          // il dungeon non ha un boss suo: si pesca fra i boss degli altri dungeon (2026-11-05)
+          const bq = await tx.get(db.collection("dungeon_monsters").where("role", "==", "boss"));
+          return own.concat(bq.docs.filter((d) => !own.some((m) => m.id === d.id)).map((d) => ({ id: d.id, ...d.data(), _anyBoss: true })));
         };
 
         if (op === "init") {
@@ -2277,6 +2281,24 @@ exports.segreteDo = onCall(
               if (Object.keys(patch).length) tx.update(cs.ref, patch);
             }
           }
+          // storico del giocatore (2026-11-05): una riga per dungeon finito, ultime 40 (`characters.storyLog`)
+          const endDayKey = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+          run.heroes.forEach((h) => {
+            const cs = charMap[h.uid];
+            if (!cs?.exists) return;
+            const sp = (run.spoils || {})[h.uid] || {};
+            const lu = (run.levelUps || []).find((l) => l.uid === h.uid);
+            const won = run.status === "won" && !h.fled;
+            const entry = {
+              at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝",
+              cls: h.cls, result: h.fled ? "fled" : run.status, floor: run.floor, floors: run.floors,
+              coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
+              xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,
+              corone: won ? (run.corone || 0) : 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",
+            };
+            const prev = Array.isArray(cs.data().storyLog) ? cs.data().storyLog : [];
+            tx.update(cs.ref, { storyLog: [...prev, entry].slice(-40) });
+          });
           tx.update(roomRef, { status: "done", result: run.status, endedAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         if (bagPatch) tx.update(bagPatch.ref, bagPatch.patch);

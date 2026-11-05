@@ -8,7 +8,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
-import { classInfo, clsStyle } from "../data/segrete";
+import { classInfo, clsStyle, sizeScale } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
@@ -63,8 +63,8 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
   const mirror = c.side === "f" ? c.facing !== "right" : true;
   return (
-    <button type="button" className={`sgb-f sgb-f--${c.side}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
-      style={c.side === "h" ? clsStyle(c.cls) : undefined}
+    <button type="button" className={`sgb-f sgb-f--${c.side}${c.role === "boss" ? " is-boss" : ""}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
+      style={c.side === "h" ? clsStyle(c.cls) : { "--sz": sizeScale(c) }}
       aria-disabled={!selectable} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF${onInspect ? " (tieni premuto per la scheda)" : ""}`}
       onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } if (selectable) onPick(c.id); }}
       onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress} onPointerMove={movePress}
@@ -344,15 +344,12 @@ export default function SegreteBattle({ room, uid }) {
             {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
           </p>
         ))}
-        {spoils && (spoils.coins > 0 || Object.keys(spoils.items || {}).length > 0) && (
-          <p className="sgb-spoils">🎒 Bottino della spedizione: <b>{COIN_ICON} {spoils.coins || 0} Monete Antiche</b>
-            {Object.entries(spoils.items || {}).map(([id, n]) => itemOf(id) && <span key={id}> · {itemOf(id).icon} {itemOf(id).name}{n > 1 ? ` ×${n}` : ""}</span>)}
-            {run.status === "won" ? " · portato a casa!" : run.status === "lost" ? " · perduto." : " · lo portate a casa solo se vincete."}</p>
-        )}
+        <SpoilsBox run={run} uid={uid} spoils={spoils} hidden={playing} />
         {playing && run.status !== "fight" && <p className="sgb-turn sgb-turn--wait">⏳ …</p>}
         {!playing && run.status === "cleared" && (
           <div className="sgb-end">
             <p>✅ Sala ripulita! Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati.</p>
+            <FloorGains run={run} uid={uid} />
             <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>{run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala"}</button>
           </div>
         )}
@@ -369,6 +366,49 @@ export default function SegreteBattle({ room, uid }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* Bottino (2026-11-05): cosa hai preso finora, sala per sala (run.gains[uid] dal motore). */
+const floorLabel = (run, fl) => (fl > run.floors ? "👑 Boss" : `🚪 Sala ${fl}`);
+const gainText = (g) => (g.it ? `${itemOf(g.it)?.icon || "🎁"} ${itemOf(g.it)?.name || g.it}` : `${COIN_ICON} ${g.c}`);
+function FloorGains({ run, uid }) {
+  const list = ((run.gains || {})[uid] || []).filter((g) => g.fl === run.floor);
+  if (!list.length) return <p className="sgb-gain-none">In questa sala non hai raccolto niente.</p>;
+  const coins = list.reduce((t, g) => t + (g.c || 0), 0);
+  return (
+    <p className="sgb-gain-floor">🎒 In questa sala hai preso: <b>{COIN_ICON} {coins}</b>
+      {list.filter((g) => g.it).map((g, i) => <span key={i}> · {gainText(g)}</span>)}</p>
+  );
+}
+function SpoilsBox({ run, uid, spoils, hidden }) {
+  const [open, setOpen] = useState(false);
+  const gains = (run.gains || {})[uid] || [];
+  if (!spoils && !gains.length) return null;
+  const coins = spoils?.coins || 0;
+  const items = Object.entries(spoils?.items || {});
+  const byFloor = [];
+  gains.forEach((g) => { const last = byFloor[byFloor.length - 1]; if (last && last.fl === g.fl) last.list.push(g); else byFloor.push({ fl: g.fl, list: [g] }); });
+  const state = run.status === "won" ? "portato a casa!" : run.status === "lost" ? "perduto." : "lo portate a casa solo se vincete";
+  return (
+    <div className={`sgb-spoils${hidden ? " is-wait" : ""}`}>
+      <button type="button" className="sgb-spoils-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span>🎒 Il tuo bottino: <b>{COIN_ICON} {coins} Monete Antiche</b>
+          {items.map(([id, n]) => itemOf(id) && <span key={id}> · {itemOf(id).icon} {itemOf(id).name}{n > 1 ? ` ×${n}` : ""}</span>)}
+          <small> · {state}</small></span>
+        {!!gains.length && <em>{open ? "chiudi ▴" : "sala per sala ▾"}</em>}
+      </button>
+      {open && (
+        <ol className="sgb-spoils-list">
+          {byFloor.map((b) => (
+            <li key={b.fl}>
+              <b>{floorLabel(run, b.fl)}</b>
+              <span>{b.list.map((g, i) => <span key={i} className="sgb-gain">{gainText(g)} <small>{g.src}</small></span>)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

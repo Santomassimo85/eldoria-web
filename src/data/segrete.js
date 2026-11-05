@@ -62,6 +62,19 @@ export const allReady = (room) => (room?.members || []).length > 0 && room.membe
      Boss], resistances, vulnerabilities, immunities, source }
      role: minion (gruppi), elite (da solo o con 1-2 minion), boss (ultima sala). */
 export const DEFAULT_FLOORS = 3;
+// Taglia dei mostri (2026-11-05): scelta nell'admin, in lotta ingrandisce lo sprite.
+// Senza taglia: boss Grande, gli altri Media.
+export const MONSTER_SIZES = [
+  { key: "tiny", label: "Minuscola", scale: 0.7 },
+  { key: "small", label: "Piccola", scale: 0.85 },
+  { key: "medium", label: "Media", scale: 1 },
+  { key: "large", label: "Grande", scale: 1.3 },
+  { key: "huge", label: "Enorme", scale: 1.6 },
+  { key: "gargantuan", label: "Mastodontica", scale: 1.9 },
+];
+export const defaultSize = (role) => (role === "boss" ? "large" : "medium");
+export const sizeOf = (m) => (MONSTER_SIZES.some((z) => z.key === m?.size) ? m.size : defaultSize(m?.role));
+export const sizeScale = (m) => MONSTER_SIZES.find((z) => z.key === sizeOf(m))?.scale || 1;
 export const MONSTER_ROLES = [
   { key: "minion", label: "Gregario", icon: "🐀", hint: "Escono in gruppo nelle sale normali." },
   { key: "elite", label: "Élite", icon: "💀", hint: "Più forte: da solo o con qualche gregario." },

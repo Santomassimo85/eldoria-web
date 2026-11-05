@@ -148,3 +148,29 @@
 .sgb-f.has-cls .sgb-sprite::before { content: ""; position: absolute; left: 10%; right: 10%; bottom: -3px; height: 12px; border-radius: 50%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--cls) 80%, transparent), transparent 70%); pointer-events: none; }
 .sgb-f.has-cls .sgb-sprite > * { position: relative; z-index: 1; }
 .sgb-f.has-cls.is-dead .sgb-sprite::before { opacity: .35; }
+
+/* bottino sala per sala (2026-11-05) */
+.sgb-spoils { padding: 0; }
+.sgb-spoils-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 7px 10px; border: 0; background: none; cursor: pointer; text-align: left; color: #f3ead8; font: 600 .9rem system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgb-spoils-head small { color: #e9dcc4; font-weight: 400; }
+.sgb-spoils-head em { margin-left: auto; font-style: normal; color: #f2c14e; font-size: .8rem; white-space: nowrap; }
+.sgb-spoils-list { list-style: none; margin: 0; padding: 4px 10px 8px; display: grid; gap: 4px; border-top: 1px dashed rgba(242,193,78,.5); }
+.sgb-spoils-list li { display: grid; grid-template-columns: 82px 1fr; gap: 6px; align-items: baseline; font: .85rem/1.35 system-ui, sans-serif; }
+.sgr-page .sgb-spoils-list li > b { color: #ffe39a; }
+.sgb-gain { display: inline-block; margin: 0 8px 2px 0; color: #fff7e6; }
+.sgb-gain small { color: #cbbfa6; font-size: .74rem; }
+.sgr-page .sgb-gain-floor { margin: 4px 0 8px; padding: 6px 10px; border-left: 3px solid #f2c14e; background: rgba(242,193,78,.1); color: #fff7e6; }
+.sgr-page .sgb-gain-floor b { color: #ffe39a; }
+.sgr-page .sgb-gain-none { margin: 4px 0 8px; color: #cbbfa6; font-style: italic; }
+
+/* Taglia dei mostri (2026-11-05): --sz = scala della taglia (Media 1, Grande 1,3, Enorme 1,6…) */
+.sgb-f--f { width: calc(clamp(96px, 12vw, 132px) * min(var(--sz, 1), 1.6)); }
+.sgb-f--f .sgb-sprite { height: calc(clamp(72px, 13vh, 120px) * var(--sz, 1)); }
+.sgb-f--f .sgb-emoji { font-size: calc(clamp(2.6rem, 6vw, 3.6rem) * var(--sz, 1)); }
+.sgb-f--f .sgb-hud { max-width: clamp(96px, 14vw, 150px); justify-self: center; }
+.sgb-f.is-boss .sgb-hud { border-color: #f2c14e; }
+.sgb-f.is-boss .sgb-hud b::before { content: "👑 "; }
+@media (max-width: 760px) {
+  .sgb-f--f { width: calc(clamp(78px, 23vw, 104px) * min(var(--sz, 1), 1.35)); }
+  .sgb-f--f .sgb-sprite { height: calc(clamp(58px, 10svh, 92px) * min(var(--sz, 1), 1.5)); }
+}

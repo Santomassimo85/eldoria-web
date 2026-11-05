@@ -18,7 +18,7 @@ import { isAdminEmail } from "../utils/roles";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 import {
-  DEFAULT_DUNGEONS, DEFAULT_FLOORS, MONSTER_ROLES, roleInfo, dungeonSlug,
+  DEFAULT_DUNGEONS, DEFAULT_FLOORS, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
 import {
   ActionsList, DefensesPicker, FacingPicker, SpriteDropzone, blankAction, sanitizeActions, pixelArtPrompt,
@@ -42,6 +42,7 @@ const cleanMonster = (m) => ({
   init: num(m.init, -5, 15, 0), save: num(m.save, -5, 15, 0),
   dungeons: Array.isArray(m.dungeons) ? m.dungeons : [],
   imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "", facing: m.facing === "right" ? "right" : "left",
+  size: sizeOf(m),
   actions: sanitizeActions(m.actions, 1),
   ...defensesOf(m),
   ...(m.source ? { source: m.source } : {}),
@@ -375,6 +376,10 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
             <select className="admin-field-input" value={form.role} onChange={(e) => set({ role: e.target.value })}>
               {MONSTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.icon} {r.label}</option>)}
             </select></label>
+          <label className="sga-field sga-field--s"><span>Taglia</span>
+            <select className="admin-field-input" value={sizeOf(form)} onChange={(e) => set({ size: e.target.value })}>
+              {MONSTER_SIZES.map((z) => <option key={z.key} value={z.key}>{z.label}{z.scale !== 1 ? ` (×${String(z.scale).replace(".", ",")} in lotta)` : ""}</option>)}
+            </select></label>
         </div>
         <p className="sga-hint">{roleInfo(form.role).hint}</p>
         <div className="sga-row">
@@ -468,7 +473,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
             </div>
             <div className="sga-mcard-main">
               <b>{m.name}</b>
-              <small>{roleInfo(m.role).icon} {roleInfo(m.role).label} · Lv {m.level} · {m.hp} PF · CA {m.ac}</small>
+              <small>{roleInfo(m.role).icon} {roleInfo(m.role).label} · {MONSTER_SIZES.find((z) => z.key === sizeOf(m))?.label} · Lv {m.level} · {m.hp} PF · CA {m.ac}</small>
               <small>{(m.actions || []).map((a) => a.name).filter(Boolean).join(" · ") || "nessuna azione"}</small>
               <small className="sga-mcard-d">{(m.dungeons || []).map((k) => dungeons.find((d) => d.key === k)?.icon || "").join(" ") || "⚠ in nessun dungeon"}</small>
             </div>
