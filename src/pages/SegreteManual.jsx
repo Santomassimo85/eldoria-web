@@ -2,7 +2,7 @@
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
 import { MAX_PARTY, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, clsStyle } from "../data/segrete";
 import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, weaponChoices, DMG_SHORT } from "../data/segreteKits";
-import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE } from "../data/segreteItems";
+import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
   return (
@@ -73,6 +73,7 @@ export default function SegreteManual() {
           <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco.</li>
           <li>I mostri a volte lasciano monete o un oggetto, che va a un eroe tirato a sorte (2 eroi d4, 3 eroi d6, 4 eroi d8: 1–2 il primo, 3–4 il secondo…): gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
           <li>Il bottino si consegna solo se il gruppo <b>vince</b> il dungeon.</li>
+          <li><b>🎁 Regali:</b> dallo Zaino puoi regalare un oggetto a un altro giocatore per {GIFT_FEE} {COIN_NAME}, al massimo {GIFT_DAILY} al giorno. Un'arma montata su un eroe va prima rimessa nello zaino (tasto «↩ Nello zaino»), poi la può prendere un altro tuo eroe o la puoi regalare.</li>
           <li>Lo zaino è unico per tutti i tuoi eroi. In lotta usare un oggetto vale come l'azione del round.</li>
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>
         </ul>

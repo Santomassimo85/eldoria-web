@@ -2006,6 +2006,48 @@ exports.segreteDo = onCall(
         throw new HttpsError("failed-precondition", e?.message || "Acquisto non riuscito.");
       }
     }
+    // ── Regalo di un oggetto dello zaino a un altro giocatore (2026-11-05): costa GIFT_FEE Monete,
+    //    massimo GIFT_DAILY al giorno; al destinatario arriva una notifica ──
+    if (op === "giftItem") {
+      const itemId = String(request.data?.itemId || "");
+      const toUid = String(request.data?.toUid || "");
+      const it = segreteBundle.itemOf(itemId);
+      if (!it) throw new HttpsError("invalid-argument", "Oggetto sconosciuto.");
+      if (!toUid || toUid === uid) throw new HttpsError("invalid-argument", "Scegli un altro giocatore.");
+      const ref = db.collection("characters").doc(uid);
+      const toRef = db.collection("characters").doc(toUid);
+      try {
+        const res = await db.runTransaction(async (tx) => {
+          const [cs, ts] = [await tx.get(ref), await tx.get(toRef)];
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          if (!ts.exists) throw new Error("Il giocatore non esiste.");
+          const data = cs.data();
+          if (!(segreteBundle.bagOf(data)[itemId] > 0)) throw new Error(`Non hai ${it.name} nello zaino.`);
+          // un'arma equipaggiata non è nello zaino: va prima tolta dall'eroe
+          const coins = segreteBundle.coinsOf(data);
+          if (coins < segreteBundle.GIFT_FEE) throw new Error(`Il regalo costa ${segreteBundle.GIFT_FEE} Monete Antiche, ne hai ${coins}.`);
+          const day = segreteBundle.romeDay(Date.now());
+          const n = segreteBundle.giftsToday(data, day);
+          if (n >= segreteBundle.GIFT_DAILY) throw new Error(`Oggi hai già fatto ${segreteBundle.GIFT_DAILY} regali: torna domani.`);
+          tx.update(ref, {
+            storyCoins: coins - segreteBundle.GIFT_FEE,
+            [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(-1),
+            storyGiftDay: { day, n: n + 1 },
+          });
+          tx.update(toRef, { [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(1) });
+          tx.set(db.collection("notifications").doc(), {
+            userId: toUid,
+            title: "🎁 Un regalo nelle Segrete",
+            message: `${data.name || "Un compagno"} ti ha regalato ${it.icon || ""} ${it.name}: lo trovi nello zaino delle Segrete.`,
+            link: "/segrete", read: false, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { ok: true, coins: coins - segreteBundle.GIFT_FEE, left: segreteBundle.GIFT_DAILY - n - 1, to: ts.data().name || "" };
+        });
+        return res;
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Regalo non riuscito.");
+      }
+    }
     // ── Arma magica sull'eroe: dallo zaino all'eroe (quella di prima torna nello zaino) ──
     if (op === "heroEquip") {
       const cls = String(request.data?.cls || "");

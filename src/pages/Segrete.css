@@ -291,3 +291,13 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-page .sgr-st-plus { color: #8ee69a; font-weight: 700; }
 .sgr-page .sgr-helper { margin: 12px 0 0; padding: 10px 12px; border: 1px solid #45b8c4; border-radius: 3px; background: rgba(69,184,196,.12); color: #e8f7f9; }
 .sgr-page .sgr-helper b { color: #9fe6ee; }
+
+/* regali e armi montate (2026-11-05) */
+.sgs-wrap { list-style: none; display: grid; gap: 6px; }
+.sgs-list--one { grid-template-columns: 1fr; }
+.sgs-gift { white-space: nowrap; }
+.sgs-giftbox { padding: 10px 12px; border: 1px solid #f2c14e; border-radius: 3px; background: rgba(242,193,78,.08); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-page .sgs-gift-title { margin: 0 0 4px; color: #fff7e6; }
+.sgs-giftbox select { max-width: 100%; margin-top: 6px; }
+.sgs-worn { border-left: 4px solid var(--cls); }
+@media (max-width: 520px) { .sgs-item { flex-wrap: wrap; } .sgs-gift { margin-left: auto; } }

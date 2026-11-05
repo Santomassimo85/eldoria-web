@@ -2,12 +2,14 @@
    Monete Antiche (characters.storyCoins) e zaino (characters.storyBag) del giocatore, per
    tutti i suoi eroi. Si compra col server (segreteDo op shopBuy); le armi magiche si
    equipaggiano dalla scheda dell'eroe. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "../firebase";
-import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit } from "../data/segreteItems";
+import { db, functions } from "../firebase";
+import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday } from "../data/segreteItems";
 import { WEAPON_CHOICES } from "../data/segreteKits";
-import { classInfo } from "../data/segrete";
+import { classInfo, clsStyle } from "../data/segrete";
 
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
@@ -15,7 +17,7 @@ const segreteDo = (data) => { callable = callable || httpsCallable(functions, "s
 // chi usa un tipo d'arma: "Guerriero, Bardo"
 const usersOf = (base) => Object.entries(WEAPON_CHOICES).filter(([, l]) => l.includes(base)).map(([c]) => classInfo(c)?.it).filter(Boolean).join(", ");
 
-function ItemRow({ id, n, onBuy, busy, coins, charData }) {
+function ItemRow({ id, n, onBuy, onGift, busy, coins, charData }) {
   const it = itemOf(id);
   const r = RARITY[it.rarity];
   return (
@@ -26,6 +28,7 @@ function ItemRow({ id, n, onBuy, busy, coins, charData }) {
         <small>{it.desc}{it.kind === "weapon" ? ` Classi: ${usersOf(it.base)}.` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
+      {onGift && <button type="button" className="sgr-btn sgr-btn--ghost sgs-gift" disabled={busy} onClick={() => onGift(id)}>🎁 Regala</button>}
       {onBuy && (() => {
         const had = boughtToday(charData, id);
         const lim = dailyLimit(id);
@@ -43,11 +46,60 @@ function ItemRow({ id, n, onBuy, busy, coins, charData }) {
   );
 }
 
-export default function SegreteShop({ charData, view = "zaino" }) {
+/* Regalo a un altro giocatore (2026-11-05): scegli a chi, costa GIFT_FEE Monete, GIFT_DAILY al giorno */
+function GiftBox({ id, uid, charData, busy, onSend, onClose }) {
+  const it = itemOf(id);
+  const [players, setPlayers] = useState(null);
+  const [to, setTo] = useState("");
+  useEffect(() => {
+    getDocs(collection(db, "characters")).then((s) => setPlayers(s.docs.map((d) => ({ uid: d.id, ...d.data() }))
+      .filter((c) => c.name && c.uid !== uid && !isHiddenChar({ id: c.uid, name: c.name }) && !String(c.name).toLowerCase().includes("master"))
+      .sort((a, b) => String(a.name).localeCompare(b.name)))).catch(() => setPlayers([]));
+  }, [uid]);
+  const coins = coinsOf(charData);
+  const left = GIFT_DAILY - giftsToday(charData);
+  const why = left <= 0 ? `Oggi hai già fatto ${GIFT_DAILY} regali: torna domani.` : coins < GIFT_FEE ? `Servono ${GIFT_FEE} ${COIN_NAME}, ne hai ${coins}.` : "";
+  return (
+    <div className="sgs-giftbox" role="dialog" aria-label={`Regala ${it.name}`}>
+      <p className="sgs-gift-title">🎁 Regala {it.icon} <b>{it.name}</b></p>
+      <p className="sgr-hint">Costa {COIN_ICON} {GIFT_FEE} {COIN_NAME} (le paghi tu) · regali rimasti oggi: {Math.max(0, left)}/{GIFT_DAILY}. Chi lo riceve ha una notifica.</p>
+      {!players ? <p className="sgr-hint">Carico i giocatori…</p> : (
+        <select className="sgr-input" value={to} onChange={(e) => setTo(e.target.value)} aria-label="A chi">
+          <option value="">— a chi? —</option>
+          {players.map((p) => <option key={p.uid} value={p.uid}>{p.name}</option>)}
+        </select>
+      )}
+      {why && <p className="sgr-err">{why}</p>}
+      <div className="sgr-room-actions">
+        <button type="button" className="sgr-btn" disabled={busy || !to || !!why}
+          onClick={() => onSend(id, to, players.find((p) => p.uid === to)?.name || "")}>🎁 Regala per {COIN_ICON} {GIFT_FEE}</button>
+        <button type="button" className="sgr-btn sgr-btn--ghost" onClick={onClose}>Annulla</button>
+      </div>
+    </div>
+  );
+}
+
+export default function SegreteShop({ charData, view = "zaino", uid }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const tab = view;
   const [wFilter, setWFilter] = useState(false);
+  const [gift, setGift] = useState(null);
+  const sendGift = async (id, toUid, toName) => {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try { await segreteDo({ op: "giftItem", itemId: id, toUid }); setMsg(`🎁 ${itemOf(id).name} regalato a ${toName}.`); setGift(null); }
+    catch (e) { setMsg(e.message || "Regalo non riuscito."); }
+    finally { setBusy(false); }
+  };
+  const unequip = async (cls) => {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try { await segreteDo({ op: "heroEquip", cls, itemId: null }); setMsg("↩ Arma rimessa nello zaino: ora la può prendere un altro eroe dalla sua scheda (o la puoi regalare)."); }
+    catch (e) { setMsg(e.message || "Non riuscito."); }
+    finally { setBusy(false); }
+  };
+  const worn = Object.entries(charData?.storyChars || {}).filter(([, h]) => h?.weaponItem && itemOf(h.weaponItem));
   const coins = coinsOf(charData);
   const bag = bagOf(charData);
   const bagIds = Object.keys(bag);
@@ -65,14 +117,37 @@ export default function SegreteShop({ charData, view = "zaino" }) {
     <section className="sgr-block" id="sgr-bottega">
       <h2 className="sgr-h2">{tab === "zaino" ? "🎒 Il tuo zaino" : "🏪 La Bottega"} <span className="sgr-coins">{COIN_ICON} {coins} {COIN_NAME}</span></h2>
       <p className="sgr-hint">{tab === "zaino"
-        ? "Lo zaino è tuo e vale per tutti i tuoi eroi. Gli oggetti si usano in lotta col tasto 🎒 Zaino; le armi magiche si equipaggiano dalla scheda dell'eroe (scheda Personaggi)."
+        ? `Lo zaino è unico per tutti i tuoi eroi: ogni classe usa gli stessi oggetti. Le armi magiche si equipaggiano dalla scheda dell'eroe (Personaggi); per passarne una a un'altra classe rimettila nello zaino qui sotto. Puoi anche regalare un oggetto a un altro giocatore: costa ${GIFT_FEE} ${COIN_NAME}, massimo ${GIFT_DAILY} regali al giorno.`
         : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
       {tab === "zaino" ? (
         bagIds.length ? (
-          <ul className="sgs-list">{bagIds.map((id) => <ItemRow key={id} id={id} n={bag[id]} />)}</ul>
+          <ul className="sgs-list">{bagIds.map((id) => (
+            <li key={id} className="sgs-wrap">
+              <ul className="sgs-list sgs-list--one"><ItemRow id={id} n={bag[id]} onGift={(x) => setGift(gift === x ? null : x)} busy={busy} /></ul>
+              {gift === id && <GiftBox id={id} uid={uid} charData={charData} busy={busy} onSend={sendGift} onClose={() => setGift(null)} />}
+            </li>
+          ))}</ul>
         ) : <p className="sgr-empty">Lo zaino è vuoto: passa dalla Bottega o cerca fra i mostri.</p>
-      ) : (
+      ) : null}
+      {tab === "zaino" && !!worn.length && (
+        <>
+          <p className="sgr-label">Armi montate sugli eroi</p>
+          <ul className="sgs-list">
+            {worn.map(([cls, h]) => {
+              const it = itemOf(h.weaponItem);
+              return (
+                <li key={cls} className="sgs-item sgs-worn" style={clsStyle(cls)}>
+                  <span className="sgs-ico" aria-hidden="true">{it.icon}</span>
+                  <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname">{classInfo(cls)?.icon} {classInfo(cls)?.it}</span></small></span>
+                  <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => unequip(cls)}>↩ Nello zaino</button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      {tab !== "zaino" && (
         <>
           <p className="sgr-label">Pozioni e oggetti da lotta</p>
           <ul className="sgs-list">{shop.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>

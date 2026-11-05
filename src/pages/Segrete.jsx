@@ -329,7 +329,7 @@ export default function Segrete() {
         </>
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
-      {tab === "zaino" && <><SegreteLog charData={charData} /><SegreteShop charData={charData} view="zaino" /></>}
+      {tab === "zaino" && <><SegreteLog charData={charData} /><SegreteShop charData={charData} view="zaino" uid={uid} /></>}
       {tab === "manuale" && <SegreteManual />}
     </section>
   );

@@ -107,3 +107,10 @@ export function boughtToday(charData, id, day = romeDay()) {
   return d && d.day === day ? Number(d.n?.[id]) || 0 : 0;
 }
 export const dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
+/* REGALI FRA GIOCATORI (2026-11-05): un oggetto dello zaino a un altro giocatore costa
+   GIFT_FEE Monete Antiche (le paga chi regala) e se ne possono fare GIFT_DAILY al giorno.
+   Fra i propri eroi non serve: lo zaino è unico per tutti gli eroi del giocatore.
+   characters.storyGiftDay = {day, n}. Lo controlla il server (segreteDo op giftItem). */
+export const GIFT_FEE = 50;
+export const GIFT_DAILY = 3;
+export const giftsToday = (charData, day = romeDay()) => (charData?.storyGiftDay?.day === day ? Number(charData.storyGiftDay.n) || 0 : 0);

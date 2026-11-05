@@ -24,6 +24,8 @@ __export(segreteServer_exports, {
   DAILY_RUNS: () => DAILY_RUNS,
   DAILY_TOTAL: () => DAILY_TOTAL,
   DEFAULT_FLOORS: () => DEFAULT_FLOORS,
+  GIFT_DAILY: () => GIFT_DAILY,
+  GIFT_FEE: () => GIFT_FEE,
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
   RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
@@ -39,6 +41,7 @@ __export(segreteServer_exports, {
   currentWeekKey: () => currentWeekKey,
   dailyLimit: () => dailyLimit,
   flee: () => flee,
+  giftsToday: () => giftsToday,
   heroActions: () => heroActions,
   heroOf: () => heroOf,
   heroPending: () => heroPending,
@@ -471,6 +474,9 @@ function boughtToday(charData, id, day = romeDay()) {
   return d && d.day === day ? Number(d.n?.[id]) || 0 : 0;
 }
 var dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
+var GIFT_FEE = 50;
+var GIFT_DAILY = 3;
+var giftsToday = (charData, day = romeDay()) => charData?.storyGiftDay?.day === day ? Number(charData.storyGiftDay.n) || 0 : 0;
 
 // src/data/arenaClassSprites.js
 var ARENA_CLASSES = [
@@ -1521,6 +1527,8 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   DAILY_RUNS,
   DAILY_TOTAL,
   DEFAULT_FLOORS,
+  GIFT_DAILY,
+  GIFT_FEE,
   KITS,
   MAX_STORY_LEVEL,
   RUN_COUNTS_AFTER,
@@ -1536,6 +1544,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   currentWeekKey,
   dailyLimit,
   flee,
+  giftsToday,
   heroActions,
   heroOf,
   heroPending,
