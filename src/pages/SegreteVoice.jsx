@@ -62,7 +62,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
       m.setMicOn(mode === "open");
       setMicOn(mode === "open");
       m.setSpeakersOn(speakers);
-      setJoined(true); setOpen(true);
+      setJoined(true); setOpen(false);
     } catch (e) {
       const inApp = !!window.Capacitor?.isNativePlatform?.();
       setErr(e?.name === "NotAllowedError"
@@ -92,12 +92,34 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
 
   return (
     <div className={`sgv${open ? " is-open" : ""}${joined ? " is-joined" : ""}`}>
-      <button type="button" className="sgv-pill" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span aria-hidden="true">{joined ? (micOn ? "🎙" : "🔇") : "🎧"}</span>
-        <b>Voce</b>
-        <em>{inVoice.size || 0}</em>
-        {!!talkingNow.length && <span className="sgv-wave" aria-label={`Parla: ${talkingNow.map((p) => p.name).join(", ")}`}>{talkingNow.map((p) => p.name).join(", ")}</span>}
-      </button>
+      <div className="sgv-bar">
+        <button type="button" className="sgv-pill" aria-expanded={open} title="Chi è in voce · entra nella chat vocale" onClick={() => setOpen((o) => !o)}>
+          <span aria-hidden="true">🎧</span>
+          <b>Voce</b>
+          <em>{inVoice.size || 0}</em>
+          {!!talkingNow.length && <span className="sgv-wave" aria-label={`Parla: ${talkingNow.map((p) => p.name).join(", ")}`}>{talkingNow.map((p) => p.name).join(", ")}</span>}
+        </button>
+        {joined && (
+          <>
+            {mode === "ptt" ? (
+              <button type="button" className={`sgv-mic${micOn ? " is-live" : ""}`} aria-label="Tieni premuto per parlare" title="Tieni premuto per parlare"
+                onPointerDown={pttDown} onPointerUp={pttUp} onPointerLeave={pttUp} onPointerCancel={pttUp}
+                onContextMenu={(e) => e.preventDefault()}>
+                {micOn ? "🔴 Parli" : "🎙 Tieni premuto"}
+              </button>
+            ) : (
+              <button type="button" className={`sgv-mic${micOn ? " is-live" : ""}`} aria-pressed={micOn} title={micOn ? "Tocca per il muto" : "Tocca per aprire il microfono"} onClick={() => applyMic(!micOn)}>
+                {micOn ? "🎙 Aperto" : "🔇 Muto"}
+              </button>
+            )}
+            <button type="button" className="sgv-sq" aria-label={mode === "ptt" ? "Passa a microfono sempre aperto" : "Passa a tieni premuto"}
+              title={mode === "ptt" ? "Passa a: sempre aperto" : "Passa a: tieni premuto"} onClick={() => setMode(mode === "ptt" ? "open" : "ptt")}>
+              {mode === "ptt" ? "✋" : "🔓"}
+            </button>
+            <button type="button" className="sgv-sq sgv-sq--x" aria-label="Esci dalla chat vocale" title="Esci dalla voce" onClick={leave}>✕</button>
+          </>
+        )}
+      </div>
 
       {open && (
         <div className="sgv-panel" role="dialog" aria-label="Chat vocale del gruppo">
@@ -118,25 +140,8 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
             </>
           ) : (
             <>
-              <div className="sgv-modes" role="group" aria-label="Modo del microfono">
-                <button type="button" aria-pressed={mode === "ptt"} className={mode === "ptt" ? "is-on" : ""} onClick={() => setMode("ptt")}>✋ Tieni premuto</button>
-                <button type="button" aria-pressed={mode === "open"} className={mode === "open" ? "is-on" : ""} onClick={() => setMode("open")}>🎙 Sempre aperto</button>
-              </div>
-              {mode === "ptt" ? (
-                <button type="button" className={`sgv-ptt${micOn ? " is-live" : ""}`}
-                  onPointerDown={pttDown} onPointerUp={pttUp} onPointerLeave={pttUp} onPointerCancel={pttUp}
-                  onContextMenu={(e) => e.preventDefault()}>
-                  {micOn ? "🔴 Stai parlando…" : "🎙 Tieni premuto per parlare"}
-                </button>
-              ) : (
-                <button type="button" className={`sgv-ptt${micOn ? " is-live" : ""}`} onClick={() => applyMic(!micOn)}>
-                  {micOn ? "🎙 Microfono aperto · tocca per il muto" : "🔇 Muto · tocca per parlare"}
-                </button>
-              )}
-              <div className="sgv-row">
-                <button type="button" className="sgv-btn" onClick={() => { const v = !speakers; setSpeakers(v); mesh.current?.setSpeakersOn(v); }}>{speakers ? "🔈 Silenzia gli altri" : "🔊 Riattiva l'audio"}</button>
-                <button type="button" className="sgv-btn" onClick={leave}>Esci dalla voce</button>
-              </div>
+              <p className="sgv-hint">Il microfono si comanda dai tasti accanto a 🎧 Voce, senza aprire questo pannello: {mode === "ptt" ? "«🎙 Tieni premuto» per parlare" : "«🎙 Aperto / 🔇 Muto» per accenderlo e spegnerlo"} · il tondo cambia modo (✋ tieni premuto, 🔓 sempre aperto) · ✕ esce dalla voce.</p>
+              <button type="button" className="sgv-btn" onClick={() => { const v = !speakers; setSpeakers(v); mesh.current?.setSpeakersOn(v); }}>{speakers ? "🔈 Silenzia gli altri" : "🔊 Riattiva l'audio"}</button>
               {!!others.length && Object.values(st.conns).some((c) => c === "failed") && (
                 <p className="sgv-hint">⚠ Con qualcuno il collegamento non riesce (succede su alcune reti mobili o del lavoro). Provate col Wi-Fi.</p>
               )}
