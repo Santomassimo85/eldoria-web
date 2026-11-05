@@ -14,6 +14,7 @@
 import { useEffect } from "react";
 import { playSpell } from "../fx/spellFx";
 import { popOnEl } from "../fx/hitNumbers";
+import { shake, recoil, castPose } from "../fx/hitFeel";
 import "./PetFx.css";
 
 // Mosse che restano su chi le usa.
@@ -34,42 +35,6 @@ const rectOf = (el) => {
   const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height * 0.55, size: r.width, bottom: r.bottom };
 };
-const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// scossa a scatti (old style: niente morbidezza)
-function shake(el, px, ms) {
-  if (!el?.animate || reduced()) return;
-  const k = [];
-  for (let i = 0; i <= 6; i++) {
-    const f = 1 - i / 6;
-    k.push({ transform: i === 6 ? "none" : `translate(${Math.round((i % 2 ? -1 : 1) * px * f)}px, ${Math.round((i % 3 - 1) * px * 0.6 * f)}px)` });
-  }
-  el.animate(k, { duration: ms, easing: "steps(1, end)" });
-}
-// chi incassa: lampo bianco a scatti e un passo indietro
-function recoil(el, dir, crit) {
-  if (!el?.animate) return;
-  const back = reduced() ? 0 : (crit ? 14 : 8) * dir;
-  el.animate([
-    { transform: "none", filter: "none" },
-    { transform: `translateX(${back}px)`, filter: "brightness(4) saturate(0)" },
-    { transform: `translateX(${back * 0.7}px)`, filter: "none" },
-    { transform: `translateX(${back * 0.4}px)`, filter: "brightness(3) saturate(0)" },
-    { transform: "none", filter: "none" },
-  ], { duration: crit ? 360 : 260, easing: "steps(4, end)" });
-}
-// chi lancia un incantesimo: si gonfia e si illumina un attimo
-function castPose(el, el2) {
-  if (!el?.animate || reduced()) return;
-  el.animate([
-    { transform: "none", filter: "none" },
-    { transform: "scale(1.06, .94)", filter: "brightness(1.6) drop-shadow(0 0 6px #fff)" },
-    { transform: "scale(.97, 1.04) translateY(-4px)", filter: "brightness(1.3)" },
-    { transform: "none", filter: "none" },
-  ], { duration: 320, easing: "steps(3, end)" });
-  void el2;
-}
-
 export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
   useEffect(() => {
     if (ev?.kind !== "move" || !ev.fx) return undefined;

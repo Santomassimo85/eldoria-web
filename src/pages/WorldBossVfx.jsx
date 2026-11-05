@@ -15,6 +15,7 @@ import "./WorldBossVfx.css";
 import { spellSound } from "../utils/petAudio";
 import { playSpell } from "../fx/spellFx";
 import { popNumber, popTag } from "../fx/hitNumbers";
+import { shake, recoil, castPose, stageOf } from "../fx/hitFeel";
 import { whenDiceIdle } from "../components/DiceRoll";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
@@ -301,13 +302,32 @@ function playCanvas(msg, targets) {
   const anchors = targets.map((t) => ({ key: t, a: anchorOf(t) })).filter((x) => x.a);
   if (!anchors.length) return false;
   const pt = (a) => ({ x: a.x, y: a.y, size: a.size, bottom: a.bottom });
+  const nums = Array.isArray(msg.effectNums) ? msg.effectNums : [];
+  const crits = new Set(nums.filter((n) => n.crit).map((n) => n.t));
+  const elOfKey = (k) => document.querySelector(`[data-vfx-target="${k}"]`);
+  // chi lancia una magia (dardo, area, maledizione) si illumina
+  const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
+  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield"].includes(kind)) castPose(caster);
+  let shook = false;
   anchors.forEach(({ key, a }, i) => {
     const o = { el, to: pt(a), miss: missSet.has(key), kill: killSet.has(key) };
-    if (kind === "bolt" || kind === "arrow") playSpell({ ...o, kind, from: pt(sourceOf(msg.effectFrom, a)), delay: i * 110 });
-    else if (kind === "aoe") playSpell({ ...o, kind: "aoe", delay: i * 130 });
-    else if (kind === "slash") playSpell({ ...o, kind: "slash", delay: i * 90 });
-    else if (kind === "hit") playSpell({ ...o, kind: "impact", delay: i * 90, scale: 0.85 });
+    let hit = -1;
+    const src = kind === "bolt" || kind === "arrow" ? sourceOf(msg.effectFrom, a) : null;
+    if (src) hit = playSpell({ ...o, kind, from: pt(src), delay: i * 110 });
+    else if (kind === "aoe") hit = playSpell({ ...o, kind: "aoe", delay: i * 130 });
+    else if (kind === "slash") hit = playSpell({ ...o, kind: "slash", delay: i * 90 });
+    else if (kind === "hit") hit = playSpell({ ...o, kind: "impact", delay: i * 90, scale: 0.85 });
     else playSpell({ ...o, kind, miss: false, kill: false, delay: i * 60 }); // heal · buff · shield · debuff
+    // peso del colpo (2026-11-05): lampo e passo indietro su chi incassa, scossa sui colpi forti
+    if (hit < 0 || o.miss) return;
+    const crit = crits.has(key);
+    const from = src || (msg.effectFrom ? anchorOf(msg.effectFrom) : null);
+    const dir = from ? Math.sign(a.x - from.x) : 0;
+    setTimeout(() => {
+      const tEl = elOfKey(key);
+      recoil(tEl, dir, crit);
+      if (!shook && (crit || o.kill || kind === "aoe")) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
+    }, hit);
   });
   return true;
 }
