@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
-import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf } from "../data/segreteItems";
+import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit } from "../data/segreteItems";
 import { WEAPON_CHOICES } from "../data/segreteKits";
 import { classInfo } from "../data/segrete";
 
@@ -15,7 +15,7 @@ const segreteDo = (data) => { callable = callable || httpsCallable(functions, "s
 // chi usa un tipo d'arma: "Guerriero, Bardo"
 const usersOf = (base) => Object.entries(WEAPON_CHOICES).filter(([, l]) => l.includes(base)).map(([c]) => classInfo(c)?.it).filter(Boolean).join(", ");
 
-function ItemRow({ id, n, onBuy, busy, coins }) {
+function ItemRow({ id, n, onBuy, busy, coins, charData }) {
   const it = itemOf(id);
   const r = RARITY[it.rarity];
   return (
@@ -26,11 +26,19 @@ function ItemRow({ id, n, onBuy, busy, coins }) {
         <small>{it.desc}{it.kind === "weapon" ? ` Classi: ${usersOf(it.base)}.` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
-      {onBuy && (
-        <button type="button" className="sgr-btn" disabled={busy || coins < it.price} onClick={() => onBuy(id)}>
-          {COIN_ICON} {it.price}
-        </button>
-      )}
+      {onBuy && (() => {
+        const had = boughtToday(charData, id);
+        const lim = dailyLimit(id);
+        const full = had >= lim;
+        return (
+          <span className="sgs-buy">
+            <button type="button" className="sgr-btn" disabled={busy || full || coins < it.price} onClick={() => onBuy(id)}>
+              {full ? "✓ oggi basta" : `${COIN_ICON} ${it.price}`}
+            </button>
+            <small>oggi {had}/{lim}</small>
+          </span>
+        );
+      })()}
     </li>
   );
 }
@@ -57,7 +65,7 @@ export default function SegreteShop({ charData }) {
     <section className="sgr-block" id="sgr-bottega">
       <p className="sgr-kicker">④ Bottega e zaino</p>
       <h2 className="sgr-h2">{COIN_ICON} {coins} {COIN_NAME}</h2>
-      <p className="sgr-hint">Ogni sala vinta dà 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe, e a volte i mostri lasciano monete o oggetti. Il bottino della spedizione si porta a casa solo se il gruppo vince il dungeon. Lo zaino è tuo e vale per tutti i tuoi eroi.</p>
+      <p className="sgr-hint">Ogni sala vinta dà 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe, e a volte i mostri lasciano monete o oggetti. Il bottino della spedizione si porta a casa solo se il gruppo vince il dungeon. Lo zaino è tuo e vale per tutti i tuoi eroi. In bottega ogni oggetto ha un limite di acquisti al giorno.</p>
       <div className="sgs-tabs">
         <button type="button" className={`sgr-btn${tab === "zaino" ? "" : " sgr-btn--ghost"}`} aria-pressed={tab === "zaino"} onClick={() => setTab("zaino")}>🎒 Zaino ({bagIds.reduce((t, k) => t + bag[k], 0)})</button>
         <button type="button" className={`sgr-btn${tab === "bottega" ? "" : " sgr-btn--ghost"}`} aria-pressed={tab === "bottega"} onClick={() => setTab("bottega")}>🏪 Bottega</button>
@@ -70,10 +78,10 @@ export default function SegreteShop({ charData }) {
       ) : (
         <>
           <p className="sgr-label">Pozioni e oggetti da lotta</p>
-          <ul className="sgs-list">{shop.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} />)}</ul>
+          <ul className="sgs-list">{shop.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
           <p className="sgr-label">Armi +1 <small>(si equipaggiano dalla scheda dell'eroe; le +2 si trovano solo nei dungeon)</small></p>
           <label className="sgs-filter"><input type="checkbox" checked={wFilter} onChange={(e) => setWFilter(e.target.checked)} /> solo armi che i miei eroi possono usare</label>
-          <ul className="sgs-list">{shopWeapons.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} />)}</ul>
+          <ul className="sgs-list">{shopWeapons.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
         </>
       )}
     </section>

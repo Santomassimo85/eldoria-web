@@ -200,3 +200,5 @@
 .sgs-n { font-weight: 800; color: #f2c14e; }
 .sgs-item .sgr-btn { white-space: nowrap; }
 .sgs-filter { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; color: var(--osso-2, #d8ccb4); font-size: .9rem; }
+.sgs-buy { display: grid; justify-items: center; gap: 2px; }
+.sgr-page .sgs-buy small { color: var(--osso-2, #d8ccb4); font-size: .72rem; }

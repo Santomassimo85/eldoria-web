@@ -1988,10 +1988,18 @@ exports.segreteDo = onCall(
         return await db.runTransaction(async (tx) => {
           const cs = await tx.get(ref);
           if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
-          const coins = segreteBundle.coinsOf(cs.data());
+          const data = cs.data();
+          const coins = segreteBundle.coinsOf(data);
           const cost = it.price * qty;
           if (coins < cost) throw new Error(`Servono ${cost} Monete Antiche, ne hai ${coins}.`);
-          tx.update(ref, { storyCoins: coins - cost, [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(qty) });
+          // limite di acquisti al giorno per oggetto (giorno di Roma)
+          const day = segreteBundle.romeDay(Date.now());
+          const had = segreteBundle.boughtToday(data, itemId, day);
+          const lim = segreteBundle.dailyLimit(itemId);
+          if (had + qty > lim) throw new Error(`Oggi puoi comprare al massimo ${lim} × ${it.name}${had ? ` (ne hai già comprati ${had})` : ""}: torna domani.`);
+          const prevN = data.storyShopDay?.day === day ? { ...(data.storyShopDay.n || {}) } : {};
+          prevN[itemId] = had + qty;
+          tx.update(ref, { storyCoins: coins - cost, [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(qty), storyShopDay: { day, n: prevN } });
           return { ok: true, coins: coins - cost };
         });
       } catch (e) {

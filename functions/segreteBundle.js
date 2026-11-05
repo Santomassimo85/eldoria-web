@@ -34,8 +34,10 @@ __export(segreteServer_exports, {
   act: () => act,
   bagOf: () => bagOf,
   battleItem: () => battleItem,
+  boughtToday: () => boughtToday,
   coinsOf: () => coinsOf,
   currentWeekKey: () => currentWeekKey,
+  dailyLimit: () => dailyLimit,
   flee: () => flee,
   heroActions: () => heroActions,
   heroOf: () => heroOf,
@@ -50,6 +52,7 @@ __export(segreteServer_exports, {
   nextFloor: () => nextFloor,
   nextRunsPatch: () => nextRunsPatch,
   poolFor: () => poolFor,
+  romeDay: () => romeDay,
   runsOf: () => runsOf,
   storyLevelOf: () => storyLevelOf,
   timeout: () => timeout,
@@ -396,21 +399,21 @@ var RARITY = {
   veryRare: { it: "Molto raro", w: 2, color: "#c48bff" }
 };
 var BASE_ITEMS = {
-  pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
-  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 60, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
-  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 150, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
-  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 25, rarity: "common", desc: "Toglie svantaggio, stordimento e irruenza a te o a un alleato." },
-  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 45, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
-  eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 50, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
-  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 30, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
-  acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 30, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 acido, colpisce sempre." },
-  acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 45, rarity: "uncommon", desc: "Su un nemico: 2d8 radiosi, colpisce sempre." },
-  pietra_tuono: { name: "Pietra del Tuono", icon: "\u{1F4A5}", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 70, rarity: "uncommon", desc: "Esplode fra i nemici: 2d6 tuono a tutti, TS COS CD 13 per met\xE0." },
-  piuma_fenice: { name: "Piuma della Fenice", icon: "\u{1FAB6}", kind: "revive", pct: 50, price: 200, rarity: "rare", desc: "Rialza un alleato a terra con met\xE0 dei PF." }
+  pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
+  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
+  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
+  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "Toglie svantaggio, stordimento e irruenza a te o a un alleato." },
+  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
+  eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
+  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
+  acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 acido, colpisce sempre." },
+  acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "Su un nemico: 2d8 radiosi, colpisce sempre." },
+  pietra_tuono: { name: "Pietra del Tuono", icon: "\u{1F4A5}", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 140, daily: 1, rarity: "uncommon", desc: "Esplode fra i nemici: 2d6 tuono a tutti, TS COS CD 13 per met\xE0." },
+  piuma_fenice: { name: "Piuma della Fenice", icon: "\u{1FAB6}", kind: "revive", pct: 50, price: 400, daily: 1, rarity: "rare", desc: "Rialza un alleato a terra con met\xE0 dei PF." }
 };
 var WEAPON_ITEMS = {};
 Object.entries(WEAPONS).forEach(([k, w]) => {
-  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 600, rarity: "rare", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
+  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
   WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
 });
 var ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS };
@@ -462,6 +465,12 @@ function rollDropItem(rnd2, weaponBases = [], role = "minion") {
   }
   return pool[pool.length - 1];
 }
+var romeDay = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+function boughtToday(charData, id, day = romeDay()) {
+  const d = charData?.storyShopDay;
+  return d && d.day === day ? Number(d.n?.[id]) || 0 : 0;
+}
+var dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
 
 // src/data/segreteEngine.js
 var LOG_MAX = 80;
@@ -1493,8 +1502,10 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   act,
   bagOf,
   battleItem,
+  boughtToday,
   coinsOf,
   currentWeekKey,
+  dailyLimit,
   flee,
   heroActions,
   heroOf,
@@ -1509,6 +1520,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   nextFloor,
   nextRunsPatch,
   poolFor,
+  romeDay,
   runsOf,
   storyLevelOf,
   timeout,

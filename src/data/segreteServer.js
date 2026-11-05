@@ -6,4 +6,4 @@ export { mergeDungeons, DEFAULT_FLOORS, storyLevelOf, heroOf, runsOf, nextRunsPa
 export { MAX_STORY_LEVEL, validNewHero, weaponChoices, heroActions, heroPending, hpPending, poolFor, heroStats, levelOfXp, STAT_KEYS, STAT_MAX, KITS } from "./segreteKits";
 export { currentWeekKey } from "./arenaWeek";
 export { wonItemInboxDoc } from "../utils/foundryMap";
-export { itemOf, battleItem, SHOP_ITEMS, bagOf, coinsOf } from "./segreteItems";
+export { itemOf, battleItem, SHOP_ITEMS, bagOf, coinsOf, boughtToday, dailyLimit, romeDay } from "./segreteItems";
