@@ -2188,12 +2188,12 @@ exports.segreteDo = onCall(
         if (run && run.startKey !== startKey) run = null; // stanza ripartita: partita nuova
 
         const loadBestiary = async () => {
-          const q = await tx.get(db.collection("dungeon_monsters").where("dungeons", "array-contains", room.type));
-          const own = q.docs.map((d) => ({ id: d.id, ...d.data() }));
+          // + mostri di base del codice (2026-11-06), sovrascrivibili/nascondibili dal Master
+          const all = segreteBundle.mergeMonsters((await tx.get(db.collection("dungeon_monsters"))).docs.map((d) => ({ id: d.id, ...d.data() })));
+          const own = all.filter((m) => (m.dungeons || []).includes(room.type));
           if (own.some((m) => m.role === "boss")) return own;
           // il dungeon non ha un boss suo: si pesca fra i boss degli altri dungeon (2026-11-05)
-          const bq = await tx.get(db.collection("dungeon_monsters").where("role", "==", "boss"));
-          return own.concat(bq.docs.filter((d) => !own.some((m) => m.id === d.id)).map((d) => ({ id: d.id, ...d.data(), _anyBoss: true })));
+          return own.concat(all.filter((m) => m.role === "boss" && !own.some((o) => o.id === m.id)).map((m) => ({ ...m, _anyBoss: true })));
         };
 
         if (op === "init") {

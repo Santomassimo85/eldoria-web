@@ -22,7 +22,42 @@ export const DEFAULT_DUNGEONS = [
   { key: "segrete", name: "Le Segrete", icon: "⛓", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
   { key: "caverna", name: "La Caverna", icon: "🕳", desc: "Gallerie strette nel buio: bestie, goblin e ragni giganti." },
   { key: "magma", name: "Caverna di Magma", icon: "🌋", desc: "Fiumi di lava e aria che brucia: elementali del fuoco e salamandre." },
+  // 2026-11-06
+  { key: "ghiaccio", name: "Il Ghiacciaio Eterno", icon: "🧊", desc: "Gallerie di ghiaccio azzurro e vento che taglia: lupi dell'inverno, mefiti di brina e la Regina di Brina." },
+  { key: "palude", name: "La Palude Marcia", icon: "🐸", desc: "Acqua nera, nebbia e fango che risucchia: annegati che si rialzano e troll che non muoiono mai del tutto." },
+  { key: "tempio", name: "Il Tempio Sepolto", icon: "🏛", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." },
 ];
+
+/* MOSTRI DI BASE (2026-11-06): stanno nel codice come i dungeon di base e si uniscono al
+   bestiario (dungeon_monsters). Il Master li modifica dall'admin: il salvataggio crea un doc
+   con lo STESSO id che li sovrascrive; eliminarli = doc con hidden: true. */
+const BA = (name, diceNum, diceType, bonus, extra = {}) => ({ type: "attack", name, diceNum, diceType, bonus, hitMode: "hit", aoeShape: "single", dmgType: "", ...extra });
+export const BASE_MONSTERS = [
+  { id: "base-lupo-invernale", name: "Lupo Invernale", icon: "🐺", role: "minion", size: "medium", level: 2, hp: 15, ac: 13, init: 2, save: 1, dungeons: ["ghiaccio"],
+    desc: "Lupo dal pelo bianco come la neve, caccia in branco e morde alle gambe.", resistances: ["cold"], vulnerabilities: ["fire"], immunities: [],
+    actions: [BA("Morso Gelido", 1, "d8", 4, { dmgType: "ghiaccio" }), { type: "buff_adv", name: "Ululato del Branco", durationTurns: 2 }] },
+  { id: "base-mefite-brina", name: "Mefite di Brina", icon: "❄", role: "minion", size: "small", level: 2, hp: 12, ac: 12, init: 2, save: 1, dungeons: ["ghiaccio"],
+    desc: "Piccolo spirito dispettoso di ghiaccio, sputa schegge e soffia nevischio.", resistances: [], vulnerabilities: ["fire", "bludgeoning"], immunities: ["cold", "poison"],
+    actions: [BA("Artiglio di Ghiaccio", 1, "d6", 3, { dmgType: "ghiaccio" }), BA("Soffio di Nevischio", 2, "d4", 0, { dmgType: "ghiaccio", hitMode: "save", aoeShape: "cone", saveAbility: "dex", saveDC: 11, halfOnSave: true })] },
+  { id: "base-annegato", name: "Annegato", icon: "🧟", role: "minion", size: "medium", level: 1, hp: 16, ac: 10, init: 0, save: 0, dungeons: ["palude", "tempio"],
+    desc: "Cadavere gonfio d'acqua che esce dal fango e trascina giù chi afferra.", resistances: [], vulnerabilities: ["radiant"], immunities: ["poison"],
+    actions: [BA("Pugno Fradicio", 1, "d6", 3, { dmgType: "fisico" }), BA("Morsa del Fango", 1, "d8", 3, { dmgType: "oscurità" })] },
+  { id: "base-troll-ghiacci", name: "Troll dei Ghiacci", icon: "🧌", role: "elite", size: "large", level: 4, hp: 45, ac: 14, init: 1, save: 2, dungeons: ["ghiaccio", "palude"],
+    desc: "Troll enorme con la pelle coperta di brina: le ferite si richiudono, se non le bruci.", resistances: ["cold"], vulnerabilities: ["fire", "acid"], immunities: [],
+    actions: [BA("Artigli", 2, "d6", 5), BA("Clava di Ghiaccio", 1, "d12", 5, { dmgType: "ghiaccio" }), { type: "heal", name: "Rigenerazione", diceNum: 2, diceType: "d6", bonus: 2 }] },
+  { id: "base-regina-brina", name: "Vyrskaal, Regina di Brina", icon: "🐉", role: "boss", size: "huge", level: 6, hp: 90, ac: 16, init: 1, save: 4, dungeons: ["ghiaccio"],
+    desc: "Giovane drago bianco che regna sul ghiacciaio: tutto quello che tocca diventa statua di ghiaccio.", resistances: [], vulnerabilities: ["fire"], immunities: ["cold"],
+    actions: [BA("Morso", 2, "d10", 6), BA("Artigli di Brina", 2, "d6", 6, { dmgType: "ghiaccio" }),
+      BA("Soffio Gelido", 6, "d8", 0, { dmgType: "ghiaccio", hitMode: "save", aoeShape: "cone", saveAbility: "con", saveDC: 15, halfOnSave: true }),
+      { type: "buff_ca", name: "Corazza di Ghiaccio", acBonus: 2, durationTurns: 2 }, { type: "debuff_dis", name: "Tormenta Accecante", durationTurns: 2 }] },
+];
+/* bestiario completo: mostri di base (non sovrascritti) + documenti del Master, senza i nascosti */
+export function mergeMonsters(docs = []) {
+  const ids = new Set(docs.map((d) => d.id));
+  return BASE_MONSTERS.filter((m) => !ids.has(m.id)).map((m) => ({ ...m, base: true }))
+    .concat(docs.map((d) => (BASE_MONSTERS.some((m) => m.id === d.id) ? { ...BASE_MONSTERS.find((m) => m.id === d.id), ...d, base: true } : d)))
+    .filter((m) => !m.hidden);
+}
 
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;

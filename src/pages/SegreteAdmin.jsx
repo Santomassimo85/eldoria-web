@@ -18,7 +18,7 @@ import { isAdminEmail } from "../utils/roles";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 import {
-  DEFAULT_DUNGEONS, DEFAULT_FLOORS, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
+  DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
 import {
   ActionsList, DefensesPicker, FacingPicker, SpriteDropzone, blankAction, sanitizeActions, pixelArtPrompt,
@@ -46,6 +46,7 @@ const cleanMonster = (m) => ({
   actions: sanitizeActions(m.actions, 1),
   ...defensesOf(m),
   ...(m.source ? { source: m.source } : {}),
+  ...(m.icon ? { icon: String(m.icon).slice(0, 8) } : {}),
 });
 
 const toJpegDataUrl = (src, max = 1280) => new Promise((res, rej) => {
@@ -96,7 +97,9 @@ export default function SegreteAdmin() {
   const { currentUser } = useAuth();
   const [tab, setTab] = useState("dungeon");
   const [custom, setCustom] = useState([]);
-  const [monsters, setMonsters] = useState([]);
+  const [monsterDocs, setMonsters] = useState([]);
+  // + mostri di base del codice (2026-11-06)
+  const monsters = useMemo(() => mergeMonsters(monsterDocs), [monsterDocs]);
   const [wbMinions, setWbMinions] = useState([]);
   const [wbBosses, setWbBosses] = useState([]);
 
@@ -291,16 +294,19 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     if (!m.name) return alert("Dai un nome al mostro.");
     flag("save", true);
     try {
-      if (form.id) await updateDoc(doc(db, "dungeon_monsters", form.id), { ...m, updatedAt: serverTimestamp() });
+      if (form.id) await setDoc(doc(db, "dungeon_monsters", form.id), { ...m, updatedAt: serverTimestamp() }, { merge: true });
       else await addDoc(collection(db, "dungeon_monsters"), { ...m, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       setForm(null);
     } catch (e) { alert(e.message); } finally { flag("save", false); }
   };
   const remove = async () => {
     if (!window.confirm(`Eliminare «${form.name}» dal bestiario?`)) return;
-    await deleteDoc(doc(db, "dungeon_monsters", form.id)); setForm(null);
+    // un mostro di base non si cancella dal codice: lo si nasconde
+    if (form.base) await setDoc(doc(db, "dungeon_monsters", form.id), { hidden: true, updatedAt: serverTimestamp() }, { merge: true });
+    else await deleteDoc(doc(db, "dungeon_monsters", form.id));
+    setForm(null);
   };
-  const duplicate = () => setForm((f) => ({ ...f, id: undefined, name: `${f.name} (copia)` }));
+  const duplicate = () => setForm((f) => ({ ...f, id: undefined, base: undefined, name: `${f.name} (copia)` }));
 
   const genSprite = async (dead) => {
     if (!form.name.trim()) return alert("Dai prima un nome al mostro.");
