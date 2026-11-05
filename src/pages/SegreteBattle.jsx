@@ -152,6 +152,8 @@ export default function SegreteBattle({ room, uid }) {
      i numeri e scendono i PF, 4) una pausa per leggere. Prima dado, effetto e PF andavano
      ognuno col suo orologio e si vedevano sfasati. */
   const queue = useRef(Promise.resolve());
+  const queued = useRef(0); // righe ancora da giocare: finché > 0 le azioni restano nascoste
+  const [animating, setAnimating] = useState(false);
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
@@ -164,6 +166,8 @@ export default function SegreteBattle({ room, uid }) {
     const sideOf = (id) => all.find((c) => c.id === id)?.side;
     // rete di sicurezza: se qualcosa si pianta (scheda in pausa, dado appeso) i PF si allineano comunque
     timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 15000 + fresh.length * 5000));
+    queued.current += fresh.length;
+    setAnimating(true);
     queue.current = queue.current.catch(() => {}).then(async () => {
       await sendP.current.catch(() => {});
       for (const l of fresh) {
@@ -208,9 +212,13 @@ export default function SegreteBattle({ room, uid }) {
         }
         // 4) il tempo di leggere: più lungo dopo un colpo, breve per le righe di servizio
         await sleep(l.fx ? ROW_GAP_MS : l.roll ? 500 : 250);
+        queued.current = Math.max(0, queued.current - 1);
       }
       setFlashes({});
-    });
+      if (!queued.current) setAnimating(false);
+    }).catch(() => { queued.current = 0; setAnimating(false); });
+    // rete di sicurezza per i tasti: mai bloccati per più di così
+    timers.current.push(setTimeout(() => { if (queued.current) { queued.current = 0; setAnimating(false); } }, 20000 + fresh.length * 5000));
     return undefined;
   }, [run?.log, room.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -317,7 +325,10 @@ export default function SegreteBattle({ room, uid }) {
 
       <div className="sgb-panel">
         {err && <p className="sgb-err" role="alert">{err}</p>}
-        {run.status === "fight" && (myTurn ? (
+        {run.status === "fight" && (animating || playing) && (
+          <p className="sgb-turn sgb-turn--wait">🎬 Si tirano i dadi e partono i colpi… {myTurn ? "poi tocca a te." : ""}</p>
+        )}
+        {run.status === "fight" && !(animating || playing) && (myTurn ? (
           chosen || chosenItem ? (
             <div className="sgb-pickmsg">
               <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"} sul campo.</span>
