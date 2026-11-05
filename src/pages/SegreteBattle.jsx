@@ -8,7 +8,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
-import { classInfo } from "../data/segrete";
+import { classInfo, clsStyle } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
@@ -63,7 +63,8 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
   const mirror = c.side === "f" ? c.facing !== "right" : true;
   return (
-    <button type="button" className={`sgb-f sgb-f--${c.side}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
+    <button type="button" className={`sgb-f sgb-f--${c.side}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
+      style={c.side === "h" ? clsStyle(c.cls) : undefined}
       aria-disabled={!selectable} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF${onInspect ? " (tieni premuto per la scheda)" : ""}`}
       onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } if (selectable) onPick(c.id); }}
       onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress} onPointerMove={movePress}
@@ -79,9 +80,10 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       </span>
       <span className="sgb-hud">
         <b>{done ? "✓ " : ""}{c.name}</b>
+        {c.side === "h" && <em className="sgb-cls">{classInfo(c.cls)?.icon} {classInfo(c.cls)?.it} · Lv {c.level}</em>}
         <span className="sgb-bar"><i style={{ width: `${pct}%` }} className={pct < 30 ? "low" : ""} /></span>
         {c.side === "h"
-          ? <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`} · Lv {c.level}</small>
+          ? <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`}</small>
           : dead ? <small>sconfitto</small> : null}
       </span>
     </button>

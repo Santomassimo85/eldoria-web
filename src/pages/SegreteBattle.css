@@ -138,3 +138,13 @@
 .sgb-bag { display: grid; gap: 8px; }
 .sgr-page .sgb-spoils, .sgb-spoils { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed #f2c14e; background: rgba(242,193,78,.08); color: #f3ead8; font-size: .9rem; }
 .sgb-spoils b { color: #ffe39a; }
+
+/* Classe degli eroi in lotta (2026-11-05): bordo e base del riquadro nel colore della classe,
+   riga "icona Classe · Lv", e un cerchio colorato a terra sotto lo sprite. */
+.sgb-f.has-cls .sgb-hud { border-color: var(--cls); border-left-width: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--cls) 30%, rgba(10,8,16,.9)), rgba(10,8,16,.88) 70%); }
+.sgb-f.has-cls.is-turn .sgb-hud { border-color: #f2c14e; border-left-color: var(--cls); }
+.sgr-page .sgb-f.has-cls .sgb-cls { font-style: normal; font-size: .7rem; font-weight: 800; line-height: 1.1; color: var(--cls) !important; text-shadow: 0 1px 0 #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sgb-f.has-cls .sgb-sprite { position: relative; }
+.sgb-f.has-cls .sgb-sprite::before { content: ""; position: absolute; left: 10%; right: 10%; bottom: -3px; height: 12px; border-radius: 50%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--cls) 80%, transparent), transparent 70%); pointer-events: none; }
+.sgb-f.has-cls .sgb-sprite > * { position: relative; z-index: 1; }
+.sgb-f.has-cls.is-dead .sgb-sprite::before { opacity: .35; }
