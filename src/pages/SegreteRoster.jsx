@@ -3,7 +3,7 @@
    ognuno con livello, PE, PF/CA e cosa ha da sistemare (PF da tirare, punti
    caratteristica, nuove abilità), e a parte il picker delle classi ancora da creare.
    Toccare un eroe = sceglierlo per il gruppo e aprirne la scheda. */
-import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, WEEKLY_RUNS, clsStyle } from "../data/segrete";
+import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, MAX_STORY_LEVEL } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
@@ -23,9 +23,93 @@ export const heroClasses = (charData) => STORY_CLASSES.filter((c) => heroOf(char
 
 function runState(charData, cls) {
   const r = runsOf(charData, cls);
-  if (r.weekCount >= WEEKLY_RUNS) return { cls: "is-done", text: "✓ settimana fatta · può aiutare" };
-  if (r.dayCount >= DAILY_RUNS) return { cls: "is-done", text: "✓ fatto oggi · può aiutare" };
-  return { cls: "is-free", text: `pronto · sett. ${r.weekCount}/${WEEKLY_RUNS}` };
+  if (r.dayCount >= DAILY_RUNS) return { cls: "is-done", text: `oggi ${r.dayCount}/${DAILY_RUNS} · può aiutare` };
+  return { cls: "is-free", text: `oggi ${r.dayCount}/${DAILY_RUNS}` };
+}
+
+const heroLine = (charData, key) => {
+  const h = heroOf(charData, key);
+  const lv = heroPending(h).level;
+  const xp = Number(h.xp) || 0;
+  const from = xpForLevel(lv);
+  const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
+  const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (xp - from)) / Math.max(1, to - from));
+  return { h, lv, pct, st: heroStats(h) };
+};
+
+/* Scelta rapida dell'eroe (2026-11-06): una fila di chip, senza aprire la scheda
+   Personaggi. Gli eroi con i PF ancora da tirare sono spenti. */
+export function HeroQuickPick({ charData, value, onPick, disabled, onManage, label = "Entri con" }) {
+  const list = heroClasses(charData);
+  return (
+    <div className="sgr-qp">
+      <p className="sgr-label">{label}</p>
+      {!list.length ? (
+        <p className="sgr-hint">Non hai ancora un eroe. <button type="button" className="sgr-linkbtn" onClick={onManage}>Crealo in Personaggi →</button></p>
+      ) : (
+        <div className="sgr-qp-row" role="radiogroup" aria-label={label}>
+          {list.map((c) => {
+            const { h, lv } = heroLine(charData, c.key);
+            const ready = hpPending(h) === 0;
+            const run = runState(charData, c.key);
+            const on = value === c.key;
+            return (
+              <button key={c.key} type="button" role="radio" aria-checked={on} disabled={disabled || !ready}
+                title={ready ? `${c.it} Lv ${lv} · ${run.text}` : "Prima tira i PF nella scheda Personaggi"}
+                className={`sgr-qp-b${on ? " is-on" : ""}${run.cls === "is-done" ? " is-done" : ""}`} style={clsStyle(c.key)} onClick={() => !on && onPick(c.key)}>
+                <span aria-hidden="true">{c.icon}</span>
+                <b>{c.it}</b>
+                <small>Lv {lv} · {ready ? run.text.replace(" · può aiutare", " · aiuto") : "tira i PF"}</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!!list.length && onManage && <button type="button" className="sgr-linkbtn" onClick={onManage}>gestisci gli eroi →</button>}
+    </div>
+  );
+}
+
+/* Eroi a fisarmonica (2026-11-06): una riga corta per eroe; tocco = apre la sua scheda
+   sotto la riga (una alla volta). "Usa questo eroe" lo sceglie per il gruppo. */
+export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, inRoom, renderDetail }) {
+  const list = heroClasses(charData);
+  if (!list.length) return <p className="sgr-empty">Non hai ancora eroi: creane uno qui sotto.</p>;
+  return (
+    <ul className="sgr-acc">
+      {list.map((c) => {
+        const { h, lv, pct, st } = heroLine(charData, c.key);
+        const todo = heroTodo(h);
+        const run = runState(charData, c.key);
+        const isOpen = open === c.key;
+        const inUse = value === c.key;
+        return (
+          <li key={c.key} className={`sgr-acc-i${isOpen ? " is-open" : ""}${inUse ? " is-use" : ""}`} style={clsStyle(c.key)}>
+            <button type="button" className="sgr-acc-h" aria-expanded={isOpen} onClick={() => onOpen(isOpen ? null : c.key)}>
+              <span className="sgr-acc-ico" aria-hidden="true">{c.icon}</span>
+              <span className="sgr-acc-main">
+                <b>{c.it} <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
+                <span className="sgr-acc-xp" title={`${pct}% al livello dopo`}><i style={{ width: `${pct}%` }} /></span>
+                <small className="sgr-acc-sub">{heroMaxHp(c.key, lv, st, h.hpRolls || [])} PF · CA {heroAc(c.key, st)} · <span className={run.cls}>{run.text}</span></small>
+              </span>
+              {!!todo.length && <span className="sgr-acc-todo" title={todo.map((t) => t.text).join(", ")}>{todo.map((t) => t.icon).join("")}</span>}
+              <span className="sgr-acc-chev" aria-hidden="true">{isOpen ? "▴" : "▾"}</span>
+            </button>
+            {isOpen && (
+              <div className="sgr-acc-body">
+                {!inUse && (
+                  <button type="button" className="sgr-btn sgr-acc-usebtn" disabled={disabled || hpPending(h) > 0} onClick={() => onUse(c.key)}>
+                    ▶ Usa questo eroe{inRoom ? " nel gruppo" : ""}
+                  </button>
+                )}
+                {renderDetail(c.key)}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 export function HeroRoster({ charData, value, onSelect, disabled, playingLabel = "scelto" }) {

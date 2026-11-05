@@ -1,6 +1,6 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
-import { MAX_PARTY, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, clsStyle } from "../data/segrete";
+import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, clsStyle } from "../data/segrete";
 import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, weaponChoices, DMG_SHORT } from "../data/segreteKits";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
@@ -44,9 +44,9 @@ export default function SegreteManual() {
       <Fold icon="🧝" title="Eroi, livelli e armi">
         <ul>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
-          <li>Si sale di livello con i PE delle vittorie (servono circa 3 vittorie a livello, fino al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li>Si sale di livello con i PE delle vittorie (servono circa 4–5 vittorie a livello, fino al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
-          <li>I livelli <b>non si azzerano</b>: la domenica alle 23:00 si azzerano solo i gruppi e i conteggi dei dungeon.</li>
+          <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>
         </ul>
         <div className="sgm-classes">
           {STORY_CLASSES.map((c) => (
@@ -60,8 +60,7 @@ export default function SegreteManual() {
 
       <Fold icon="📅" title="Quanti dungeon si possono fare">
         <ul>
-          <li>Con ogni classe: <b>{DAILY_RUNS} al giorno</b> e <b>{WEEKLY_RUNS} a settimana</b>.</li>
-          <li>In tutto, con tutti i tuoi eroi: al massimo <b>{DAILY_TOTAL} dungeon finiti al giorno</b>.</li>
+          <li>Con ogni classe: <b>{DAILY_RUNS} dungeon completi al giorno</b>. Nessun limite settimanale, e la domenica non si azzera niente.</li>
           <li>Un dungeon conta solo dopo aver ripulito {RUN_COUNTS_AFTER} sale (o vinto): se il gruppo cade prima, si può riprovare.</li>
           <li>Se un eroe ha finito i suoi dungeon, puoi giocare con un eroe di un'altra classe.</li>
           <li><b>🤝 Come aiuto:</b> anche con i limiti pieni puoi entrare in un gruppo (per esempio se serve proprio la tua classe). Giochi normalmente, ma non prendi PE, monete, oggetti né Corone, e il dungeon non ti si conta.</li>

@@ -126,23 +126,25 @@ export const dungeonSlug = (name) => String(name || "").toLowerCase()
    Master principale è esente.
    characters.storyClassRuns[cls] = { weekKey, count, day, dayCount }
    (il vecchio characters.storyRuns, per giocatore, non si usa più). */
-export const DAILY_RUNS = 1;
+/* 2026-11-06: 3 dungeon COMPLETI al giorno per classe e basta: niente più limite settimanale
+   né tetto per giocatore, e la domenica non si azzera niente. */
+export const DAILY_RUNS = 3;
 /* TETTO PER GIOCATORE (2026-11-04 sera): oltre a 1 per classe, al massimo DAILY_TOTAL
    dungeon FINITI al giorno in tutto (vinti o persi dopo la 2ª sala), contati alla fine
    della partita in characters.storyDaily = { day, count }. */
-export const DAILY_TOTAL = 3;
+export const DAILY_TOTAL = Infinity; // tolto il 2026-11-06
 export const dailyTotalOf = (charData, day = romeDayKey()) => (charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0);
 export const nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
-export const WEEKLY_RUNS = 5; // 5 dungeon a settimana per classe (era 3 fino al 2026-11-06)
+export const WEEKLY_RUNS = Infinity; // tolto il 2026-11-06
 export const RUN_COUNTS_AFTER = 2;
 export const romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
 export function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
-  const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
+  const dayCount = r && r.day === day ? Number(r.dayCount) || 0 : 0;
   const total = dailyTotalOf(charData, day);
   const totalFull = total >= DAILY_TOTAL;
-  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+  return { weekCount, dayCount, total, totalFull, left: Math.max(0, DAILY_RUNS - dayCount), canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
 export function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);

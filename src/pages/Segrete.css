@@ -317,3 +317,64 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-vote-act { font-size: .8rem; font-weight: 700; color: #f2c14e; }
 .sgr-vote-card.is-mine .sgr-vote-act { color: #8ee69a; }
 .sgr-vote-pick { margin: 0 10px 10px; min-height: 36px; }
+
+/* ── LOBBY MENO CAOTICA (2026-11-06) ── */
+.sgr-fold > summary { cursor: pointer; list-style: none; }
+.sgr-fold > summary::-webkit-details-marker { display: none; }
+.sgr-fold > summary::after { content: "▾"; margin-left: auto; font-size: .9rem; color: var(--osso-2, #d8ccb4); }
+.sgr-fold[open] > summary::after { content: "▴"; }
+details.sgr-block:not([open]) { padding-bottom: 6px; }
+details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
+.sgr-vote.sgr-fold > summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; padding: 10px 12px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .18); border-radius: 3px; background: var(--roccia-1, #17141b); }
+.sgr-vote.sgr-fold[open] > summary { margin-bottom: 8px; }
+
+/* scelta rapida dell'eroe */
+.sgr-qp { margin: 4px 0 10px; }
+.sgr-qp .sgr-label { margin-top: 4px; }
+.sgr-qp-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.sgr-qp-b { flex: 0 0 auto; display: grid; grid-template-columns: auto auto; column-gap: 6px; align-items: center; text-align: left; padding: 6px 10px; min-height: 44px; border-radius: 3px; cursor: pointer;
+  border: 1px solid rgba(var(--osso-rgb, 236,229,214), .2); border-left: 4px solid var(--cls, #e0a85a); background: var(--roccia-1, #17141b); color: var(--osso, #ece5d6); font: 14px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-qp-b > span { grid-row: span 2; font-size: 1.25rem; }
+.sgr-qp-b small { color: var(--osso-2, #d8ccb4); font-size: .76rem; }
+.sgr-qp-b.is-on { border-color: var(--cls, #e0a85a); box-shadow: inset 0 0 0 1px var(--cls, #e0a85a); background: color-mix(in srgb, var(--cls, #e0a85a) 16%, var(--roccia-1, #17141b)); }
+.sgr-qp-b.is-done:not(.is-on) { opacity: .75; }
+.sgr-qp-b:disabled { opacity: .45; cursor: not-allowed; }
+.sgr-qp > .sgr-linkbtn { margin-top: 2px; }
+
+/* scelta del dungeon compatta */
+.sgr-dpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.sgr-dpick-b { padding: 7px 11px; min-height: 40px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .2); background: var(--roccia-1, #17141b); color: var(--osso, #ece5d6); font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-dpick-b.is-on { border-color: var(--el, #e0a85a); box-shadow: inset 0 0 0 1px var(--el, #e0a85a); background: rgba(var(--el-rgb, 224,168,90), .14); }
+.sgr-dpick-desc { margin: 8px 0 0; padding: 10px 12px; border-radius: 3px; background: var(--roccia-1, #17141b) center / cover; color: var(--osso-2, #d8ccb4); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-dpick-desc b { color: var(--osso, #ece5d6); }
+
+/* eroi a fisarmonica */
+.sgr-acc { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.sgr-acc-i { border: 1px solid rgba(var(--osso-rgb, 236,229,214), .16); border-left: 4px solid var(--cls, #e0a85a); border-radius: 3px; background: var(--roccia-1, #17141b); }
+.sgr-acc-i.is-open { border-color: var(--cls, #e0a85a); }
+.sgr-acc-h { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: none; border: 0; cursor: pointer; text-align: left; color: var(--osso, #ece5d6); font: 15px/1.25 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-acc-ico { font-size: 1.5rem; }
+.sgr-acc-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.sgr-acc-main b small { color: var(--osso-2, #d8ccb4); font-weight: 600; }
+.sgr-acc-use { margin-left: 6px; padding: 1px 6px; border-radius: 3px; font: 700 .7rem system-ui, sans-serif; font-style: normal; background: var(--cls, #e0a85a); color: #15121a; vertical-align: middle; }
+.sgr-acc-xp { display: block; height: 4px; max-width: 220px; border-radius: 2px; background: rgba(var(--osso-rgb, 236,229,214), .12); overflow: hidden; }
+.sgr-acc-xp i { display: block; height: 100%; background: var(--cls, #e0a85a); }
+.sgr-acc-sub { color: var(--osso-2, #d8ccb4); font-size: .8rem; }
+.sgr-acc-sub .is-done { color: #9fd59a; }
+.sgr-acc-todo { padding: 2px 6px; border-radius: 3px; background: rgba(242,193,78,.18); border: 1px solid #f2c14e; font-size: .9rem; }
+.sgr-acc-chev { color: var(--osso-2, #d8ccb4); }
+.sgr-acc-body { padding: 0 12px 12px; border-top: 1px solid rgba(var(--osso-rgb, 236,229,214), .1); }
+.sgr-acc-usebtn { margin: 10px 0 4px; }
+.sgr-acc-body .sgh { margin-top: 8px; }
+.sgr-newhero { margin-top: 12px; }
+
+/* scheda dell'eroe: pieghe */
+.sgh-fold { margin-top: 10px; border-top: 1px solid rgba(var(--osso-rgb, 236,229,214), .1); padding-top: 8px; }
+.sgh-fold > summary { cursor: pointer; font: 600 .95rem system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--osso, #ece5d6); }
+.sgh-fold > summary small { color: var(--osso-2, #d8ccb4); font-weight: 400; }
+.sgh-fold[open] > summary { margin-bottom: 8px; }
+.sgh-locked { display: inline-flex; gap: 4px; align-items: baseline; padding: 4px 8px; border-radius: 3px; border: 1px dashed rgba(var(--osso-rgb, 236,229,214), .25); color: var(--osso-2, #d8ccb4); font: 13px system-ui, sans-serif; }
+@media (max-width: 520px) {
+  .sgr-acc-h { padding: 8px 10px; gap: 8px; }
+  .sgr-acc-sub { font-size: .76rem; }
+}

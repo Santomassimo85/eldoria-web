@@ -274,24 +274,8 @@ exports.arenaWeeklyReset = onSchedule(
         } catch (err) {
             console.error("❌ arenaWeeklyReset (scommesse) fallita:", err);
         }
-        // 2b) Le Segrete (story mode): stanze e partite della settimana spariscono.
-        //     Gli eroi di classe (characters.storyChars) restano: la progressione è permanente;
-        //     il conteggio dei dungeon (storyRuns) riparte da solo con la settimana nuova.
-        try {
-            let gone = 0;
-            for (const col of ["dungeon_rooms", "dungeon_runs"]) {
-                const s = await dbAdmin.collection(col).get();
-                for (let i = 0; i < s.docs.length; i += 400) {
-                    const b = dbAdmin.batch();
-                    s.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
-                    await b.commit();
-                }
-                gone += s.size;
-            }
-            if (gone) console.log(`🗝 arenaWeeklyReset: ${gone} stanze/partite delle Segrete cancellate.`);
-        } catch (err) {
-            console.error("❌ arenaWeeklyReset (Segrete) fallita:", err);
-        }
+        // 2b) Le Segrete: dal 2026-11-06 la domenica NON si azzera niente (gruppi, partite,
+        //     eroi e conteggi restano; il limite è solo di 3 dungeon al giorno per classe).
         // 3) Monete e acquisti di ogni personaggio.
         try {
             const snap = await dbAdmin.collection("characters").get();

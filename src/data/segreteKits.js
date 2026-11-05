@@ -97,7 +97,7 @@ export const KITS = {
   barbarian: { hitDie: 12, ac: 15, armor: "unarmored", unarmored: "con", stat: "str", rec: ["str", "con"], extraAttacks: true,
     base: [{ id: "furia", name: "Furia", icon: "💢", kind: "buff", buff: "rage", value: 2, turns: 3, self: true, uses: 1, info: "+2 danni, dimezza i danni fisici" }],
     pool: [
-      { id: "irruento", useWeapon: true, name: "Attacco Irruento", icon: "😤", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio, ma −2 CA" },
+      { id: "irruento", useWeapon: true, name: "Attacco Irruento", icon: "😤", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio per 2 turni, ma −2 CA per 2 turni" },
       { id: "lancio", name: "Ascia Lanciata", icon: "🎯", kind: "weapon", dice: "1d10", dmg: "slashing", min: 1 },
       { id: "ruggito", name: "Ruggito Feroce", icon: "🦁", kind: "debuff", area: true, turns: 1, min: 3, uses: 1, info: "tutti i nemici a svantaggio" },
       { id: "brutale", useWeapon: true, name: "Colpo Brutale", icon: "🔨", kind: "weapon", dice: "1d12", dmg: "slashing", rider: "1d12", riderDmg: "bludgeoning", min: 6, uses: 2, grow: true },

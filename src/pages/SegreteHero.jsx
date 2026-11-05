@@ -207,10 +207,15 @@ export default function SegreteHero({ cls, charData }) {
           {wItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, itemId: null })}>Togli {wItem.name} (torna nello zaino)</button>}
         </div>
       )}
-      <p className="sgh-sub">Le tue azioni</p>
-      <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
+      <details className="sgh-fold">
+        <summary>⚔ Le tue azioni <small>({acts.length})</small></summary>
+        <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
+      </details>
       {lv < MAX_STORY_LEVEL && (
-        <p className="sgh-hint">Al livello {nextMilestone}: +1 punto caratteristica e una nuova scelta.{locked.length ? ` Da sbloccare: ${locked.map((a) => `${a.icon} ${a.name} (Lv ${a.min})`).join(" · ")}.` : ""}</p>
+        <details className="sgh-fold">
+          <summary>🔒 Prossimi livelli <small>(al Lv {nextMilestone}: +1 caratteristica e una scelta)</small></summary>
+          {locked.length ? <div className="sgh-acts">{locked.map((a) => <span key={a.id} className="sgh-locked">{a.icon} {a.name} <small>Lv {a.min}</small></span>)}</div> : <p className="sgh-hint">Niente di nuovo da sbloccare: solo scelte fra quelle che già vedi.</p>}
+        </details>
       )}
     </div>
   );

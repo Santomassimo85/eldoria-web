@@ -85,7 +85,9 @@ export function makeHero(m) {
    con 3 sale ~36% → ~3 dungeon per livello, con 3 dungeon a settimana ~1 livello a settimana). */
 export function xpGain(level, floors) {
   if (level >= MAX_STORY_LEVEL) return 0;
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.08 * (floors || 3) + 0.12));
+  // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
+  // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
+  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08));
 }
 /* Il mostro si adatta al livello del gruppo (2026-11-04, simulato): più debole del
    gruppo = più PF e colpi più forti; più forte = un po' meno. Élite e boss
@@ -392,7 +394,8 @@ function heroAct(s, h, a, target) {
     // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
     const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
-    if (a.selfDis) h.fx.reckless = s.round + 1;
+    // Attacco Irruento (2026-11-06): vantaggio e −2 CA per 2 turni (questo e il prossimo)
+    if (a.selfDis) { h.fx.reckless = s.round + 2; h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2); }
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
         const others = s.foes.filter(alive);

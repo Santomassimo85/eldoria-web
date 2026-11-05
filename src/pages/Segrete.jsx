@@ -1,19 +1,17 @@
 /* LE SEGRETE — story mode della Sala della Gloria (fase 1, 2026-11-04):
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
-   la classe (livello di storia per classe, si azzera domenica 23:00 come
-   l'Arena) e preme Avvia: quando l'hanno premuto tutti il dungeon parte.
+   l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
    Il combattimento (motore sul server + IA dei nemici) arriva nella fase 3. */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, doc, getDocs, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
-import { currentWeekKey } from "../data/arenaWeek";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, runsOf, clsStyle, romeDayKey, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, voteDungeon, chooseDungeon,
@@ -23,50 +21,40 @@ import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
 import SegreteVoice from "./SegreteVoice";
-import SegreteLog, { coinsToday, storyLogOf } from "./SegreteLog";
+import SegreteLog, { coinsToday } from "./SegreteLog";
 import { COIN_ICON, COIN_NAME, coinsOf } from "../data/segreteItems";
 import { hpPending } from "../data/segreteKits";
-import { HeroRoster, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
+import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
 // eroe pronto a giocare: creato e con i PF tirati
 const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
 
-/* Con quale eroe entri / crei il gruppo (tocco = va alla scheda Personaggi) */
-function EnterAs({ charData, cls, onChange }) {
-  const c = classInfo(cls);
-  const h = heroOf(charData, cls);
-  return (
-    <p className="sgr-enteras" style={clsStyle(cls)}>
-      Entri con: {c && h ? <b className="sgr-clsname">{c.icon} {c.it} Lv {storyLevelOf(charData, cls)}</b> : <b>nessun eroe pronto</b>}
-      <button type="button" className="sgr-linkbtn" onClick={onChange}>cambia eroe →</button>
-      {c && h && !heroReady(charData, cls) && <small> · prima tira i PF nella sua scheda</small>}
-    </p>
-  );
-}
-
-/* Scheda Personaggi: i tuoi eroi (con la scheda di quello scelto) + creare un eroe nuovo */
-function HeroSections({ charData, cls, onSelect, disabled, inRoom }) {
-  const has = !!heroOf(charData, cls);
-  const detail = (
-    <div id="sgr-hero-detail" style={clsStyle(cls)}>
-      <SegreteHero cls={cls} charData={charData} />
-    </div>
-  );
+/* Scheda Personaggi (2026-11-06, rifatta): eroi a fisarmonica (una scheda aperta alla
+   volta, sotto la sua riga) + "Crea un eroe" richiudibile con le classi libere. */
+function HeroSections({ charData, cls, onUse, disabled, inRoom }) {
+  const [open, setOpen] = useState(null);
+  const [newCls, setNewCls] = useState(null);
+  const free = STORY_CLASSES.filter((c) => !heroOf(charData, c.key));
+  const n = heroClasses(charData).length;
   return (
     <>
       <section className="sgr-block" id="sgr-eroi">
-        <h2 className="sgr-h2">🧝 I tuoi eroi <span className="sgr-count">{heroClasses(charData).length}/{STORY_CLASSES.length}</span></h2>
-        <p className="sgr-hint">Un eroe per classe, resta tuo per sempre. Tocca un eroe per sceglierlo{inRoom ? " nel gruppo (toglie la tua spunta di Avvia)" : " per il prossimo gruppo"} e aprire qui sotto la sua scheda.</p>
-        <HeroRoster charData={charData} value={cls} onSelect={onSelect} disabled={disabled} playingLabel={inRoom ? "nel gruppo" : "scelto"} />
-        {has && detail}
+        <h2 className="sgr-h2">🧝 I tuoi eroi <span className="sgr-count">{n}/{STORY_CLASSES.length}</span></h2>
+        {!!n && <p className="sgr-hint">Tocca un eroe per aprire la sua scheda. Un eroe per classe, resta tuo per sempre.</p>}
+        <HeroAccordion charData={charData} value={cls} open={open} onOpen={setOpen} onUse={onUse} disabled={disabled} inRoom={inRoom}
+          renderDetail={(k) => <SegreteHero cls={k} charData={charData} />} />
       </section>
-      <section className="sgr-block">
-        <h2 className="sgr-h2">✚ Crea un eroe</h2>
-        <NewClassPicker charData={charData} value={has ? null : cls} onSelect={onSelect} disabled={disabled} />
-        {!has && cls && detail}
-      </section>
+      {!!free.length && (
+        <details className="sgr-block sgr-fold" open={!n}>
+          <summary className="sgr-h2">✚ Crea un eroe <span className="sgr-count">{free.length} classi libere</span></summary>
+          <NewClassPicker charData={charData} value={newCls} onSelect={(k) => setNewCls(newCls === k ? null : k)} disabled={disabled} />
+          {newCls && !heroOf(charData, newCls) && (
+            <div className="sgr-newhero" style={clsStyle(newCls)}><SegreteHero cls={newCls} charData={charData} /></div>
+          )}
+        </details>
+      )}
     </>
   );
 }
@@ -90,7 +78,6 @@ export default function Segrete() {
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
   const master = isMainMaster(currentUser?.email);
-  const week = currentWeekKey();
 
   const [charData, setCharData] = useState(null);
   const [custom, setCustom] = useState([]);
@@ -113,10 +100,11 @@ export default function Segrete() {
   useEffect(() => onSnapshot(collection(db, "dungeon_types"), (s) => setCustom(s.docs.map((d) => ({ key: d.id, ...d.data() }))), () => setCustom([])), []);
   useEffect(() => {
     if (!uid) return undefined;
-    return onSnapshot(query(collection(db, "dungeon_rooms"), where("weekKey", "==", week)),
+    // tutte le stanze (dal 2026-11-06 la domenica non si cancellano più): le vecchie si nascondono sotto
+    return onSnapshot(collection(db, "dungeon_rooms"),
       (s) => setRooms(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       (e) => setErr(e.message));
-  }, [uid, week]);
+  }, [uid]);
 
   // eroe proposto: quello della classe dell'Arena se c'è, sennò il primo eroe creato
   useEffect(() => {
@@ -134,10 +122,11 @@ export default function Segrete() {
   const inFight = !!myRoom && (myRoom.status === "running" || myRoom.status === "done");
   const now = Date.now();
   const invitedTo = (r) => (r.invited || []).find((i) => i.uid === uid) || null;
+  const fresh = (r, ms) => Date.now() - tsMs(r.updatedAt || r.createdAt) < ms;
   const openRooms = rooms
-    .filter((r) => r.status === "open" && r.id !== myRoom?.id)
+    .filter((r) => r.status === "open" && r.id !== myRoom?.id && (fresh(r, 2 * 864e5) || invitedTo(r) || master))
     .sort((a, b) => Number(invitedTo(b)) - Number(invitedTo(a)) || tsMs(b.updatedAt) - tsMs(a.updatedAt));
-  const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id);
+  const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id && (fresh(r, 6 * 36e5) || master));
   const invites = openRooms.filter(invitedTo).length;
   const todoN = heroClasses(charData).filter((c) => heroTodo(heroOf(charData, c.key)).length).length;
 
@@ -148,14 +137,14 @@ export default function Segrete() {
     finally { setBusy(false); }
   };
   const level = (k) => storyLevelOf(charData, k);
-  // scegliere un eroe: nel gruppo cambia l'eroe del gruppo, fuori lo prepara per il prossimo
-  const pickHero = (k) => {
+  // usare un eroe: nel gruppo cambia l'eroe del gruppo, fuori lo prepara per il prossimo (senza cambiare scheda)
+  const chooseHero = (k) => {
     if (myRoom && myRoom.status === "open" && meInRoom) {
       if (k !== meInRoom.cls) run(() => setMemberClass(myRoom.id, uid, k, level(k)));
     } else setCls(k);
-    if (tab !== "eroi") setTab("eroi");
-    setTimeout(() => document.getElementById("sgr-hero-detail")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
   };
+  // dagli avvisi "eroi da sistemare": va nella scheda Personaggi
+  const pickHero = (k) => { chooseHero(k); setTab("eroi"); };
 
   if (!uid) {
     return (
@@ -206,7 +195,7 @@ export default function Segrete() {
         </button>
         <div className="sgr-st">
           <span className="sgr-st-ico" aria-hidden="true">🗝</span>
-          <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${runs.total}/${DAILY_TOTAL} · ${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS} · sett. ${runs.weekCount}/${WEEKLY_RUNS}`}</b></span>
+          <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS}`}</b></span>
         </div>
         <button type="button" className="sgr-st" onClick={() => setTab("zaino")}>
           <span className="sgr-st-ico" aria-hidden="true">{COIN_ICON}</span>
@@ -229,13 +218,14 @@ export default function Segrete() {
       {tab === "gruppi" && (
         myRoom ? (
           <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} />
+            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} />
         ) : (
           <>
             <HeroNews charData={charData} onSelect={pickHero} />
             {!!openRooms.length && (
               <section className="sgr-block">
                 <h2 className="sgr-h2">Entra in un gruppo <span className="sgr-count">{openRooms.length}</span></h2>
+                <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
                 <ul className="sgr-rooms">
                   {openRooms.map((r) => {
                     const idle = now - tsMs(r.updatedAt) > ROOM_IDLE_MS;
@@ -269,36 +259,32 @@ export default function Segrete() {
               </section>
             )}
 
-            <section className="sgr-block">
-              <h2 className="sgr-h2">Crea un gruppo</h2>
-              <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo</label>
-              <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
-                placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
+            <details className="sgr-block sgr-fold" open={!openRooms.length}>
+              <summary className="sgr-h2">✚ Crea un gruppo</summary>
+              <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
               <p className="sgr-label">Dove scendete</p>
-              <div className="sgr-dungeons" role="radiogroup" aria-label="Dungeon">
+              <div className="sgr-dpick" role="radiogroup" aria-label="Dungeon">
                 {dungeons.map((d) => (
                   <button key={d.key} type="button" role="radio" aria-checked={type === d.key}
-                    className={`sgr-dungeon${type === d.key ? " is-on" : ""}${d.backgrounds?.[0] ? " has-bg" : ""}`} onClick={() => setType(d.key)}
-                    style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(180deg, rgba(10,8,14,.35), rgba(10,8,14,.92)), url(${d.backgrounds[0]})` } : undefined}>
-                    <span className="sgr-dungeon-ico" aria-hidden="true">{d.icon}</span>
-                    <b>{d.name}</b>
-                    {d.desc && <small>{d.desc}</small>}
+                    className={`sgr-dpick-b${type === d.key ? " is-on" : ""}`} onClick={() => setType(d.key)}>
+                    <span aria-hidden="true">{d.icon}</span> {d.name}
                   </button>
                 ))}
               </div>
-              <EnterAs charData={charData} cls={cls} onChange={() => setTab("eroi")} />
+              {(() => { const d = dungeonOf(type); return d.desc ? <p className="sgr-dpick-desc" style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(90deg, rgba(10,8,14,.94) 40%, rgba(10,8,14,.55)), url(${d.backgrounds[0]})` } : undefined}>{d.icon} <b>{d.name}</b> · {d.desc}</p> : null; })()}
+              <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
+              <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
+                placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
               <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
                 onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls) }))}>
                 Crea il gruppo
               </button>
-              {!openRooms.length && <p className="sgr-hint">Nessun gruppo aperto ora: quando qualcuno ne crea uno, compare sopra questo riquadro.</p>}
-            </section>
-            {storyLogOf(charData).some((e) => e.day === romeDayKey()) && <SegreteLog charData={charData} />}
+            </details>
 
             {!!running.length && (
-              <section className="sgr-block">
-                <h2 className="sgr-h2">Nelle Segrete adesso <span className="sgr-count">{running.length}</span></h2>
+              <details className="sgr-block sgr-fold">
+                <summary className="sgr-h2">Nelle Segrete adesso <span className="sgr-count">{running.length}</span></summary>
                 <ul className="sgr-rooms">
                   {running.map((r) => (
                     <li key={r.id} className="sgr-room is-running">
@@ -316,7 +302,7 @@ export default function Segrete() {
                     </li>
                   ))}
                 </ul>
-              </section>
+              </details>
             )}
           </>
         )
@@ -325,7 +311,7 @@ export default function Segrete() {
       {tab === "eroi" && (
         <>
           <HeroNews charData={charData} onSelect={pickHero} />
-          <HeroSections charData={charData} cls={curCls} onSelect={pickHero} disabled={busy} inRoom={!!myRoom} />
+          <HeroSections charData={charData} cls={curCls} onUse={chooseHero} disabled={busy} inRoom={!!myRoom} />
         </>
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
@@ -342,8 +328,8 @@ function DungeonVote({ room, uid, master, busy, run, dungeons }) {
   const myVote = room.members.find((m) => m.uid === uid)?.vote || null;
   const top = Math.max(0, ...dungeons.map((d) => votesOf(d.key).length));
   return (
-    <div className="sgr-vote">
-      <p className="sgr-label">Prossimo dungeon <small>· tocca per votare{host ? " · tu sei il capo: scegli quale avviare" : " · lo sceglie il capo"}</small></p>
+    <details className="sgr-vote sgr-fold">
+      <summary className="sgr-label">🗳 Cambia dungeon / vota <small>· {room.members.filter((m) => m.vote).length} voti{host ? " · tu sei il capo: scegli quale avviare" : " · lo sceglie il capo"}</small></summary>
       <div className="sgr-vote-grid">
         {dungeons.map((d) => {
           const v = votesOf(d.key);
@@ -363,11 +349,11 @@ function DungeonVote({ room, uid, master, busy, run, dungeons }) {
           );
         })}
       </div>
-    </div>
+    </details>
   );
 }
 
-function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes }) {
+function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes, onPick }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
@@ -418,13 +404,11 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
 
       {!!dungeons.length && <DungeonVote room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
 
-      <EnterAs charData={charData} cls={me?.cls} onChange={onHeroes} />
+      <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && (
-        <p className="sgr-helper">🤝 {runsOf(charData, me?.cls).totalFull
-          ? `Hai già finito ${DAILY_TOTAL} dungeon oggi`
-          : `Con ${classInfo(me?.cls)?.it || "questa classe"} hai già fatto ${runsOf(charData, me?.cls).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}`}: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te{runsOf(charData, me?.cls).totalFull ? "" : "; con un altro eroe invece prendi i premi"}).</p>
+        <p className="sgr-helper">🤝 Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>
       )}
       <div className="sgr-start">
         <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && !heroReady(charData, me?.cls))}

@@ -158,7 +158,7 @@ var KITS = {
     extraAttacks: true,
     base: [{ id: "furia", name: "Furia", icon: "\u{1F4A2}", kind: "buff", buff: "rage", value: 2, turns: 3, self: true, uses: 1, info: "+2 danni, dimezza i danni fisici" }],
     pool: [
-      { id: "irruento", useWeapon: true, name: "Attacco Irruento", icon: "\u{1F624}", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio, ma \u22122 CA" },
+      { id: "irruento", useWeapon: true, name: "Attacco Irruento", icon: "\u{1F624}", kind: "weapon", dice: "1d12", dmg: "slashing", adv: true, selfDis: true, min: 1, uses: 3, info: "vantaggio per 2 turni, ma \u22122 CA per 2 turni" },
       { id: "lancio", name: "Ascia Lanciata", icon: "\u{1F3AF}", kind: "weapon", dice: "1d10", dmg: "slashing", min: 1 },
       { id: "ruggito", name: "Ruggito Feroce", icon: "\u{1F981}", kind: "debuff", area: true, turns: 1, min: 3, uses: 1, info: "tutti i nemici a svantaggio" },
       { id: "brutale", useWeapon: true, name: "Colpo Brutale", icon: "\u{1F528}", kind: "weapon", dice: "1d12", dmg: "slashing", rider: "1d12", riderDmg: "bludgeoning", min: 6, uses: 2, grow: true },
@@ -659,20 +659,20 @@ var MONSTER_SIZES = [
 ];
 var defaultSize = (role) => role === "boss" ? "large" : "medium";
 var sizeOf = (m) => MONSTER_SIZES.some((z) => z.key === m?.size) ? m.size : defaultSize(m?.role);
-var DAILY_RUNS = 1;
-var DAILY_TOTAL = 3;
+var DAILY_RUNS = 3;
+var DAILY_TOTAL = Infinity;
 var dailyTotalOf = (charData, day = romeDayKey()) => charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0;
 var nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
-var WEEKLY_RUNS = 5;
+var WEEKLY_RUNS = Infinity;
 var RUN_COUNTS_AFTER = 2;
 var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
 function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const r = charData?.storyClassRuns?.[cls];
   const weekCount = r && r.weekKey === week ? Number(r.count) || 0 : 0;
-  const dayCount = r && r.weekKey === week && r.day === day ? Number(r.dayCount) || 0 : 0;
+  const dayCount = r && r.day === day ? Number(r.dayCount) || 0 : 0;
   const total = dailyTotalOf(charData, day);
   const totalFull = total >= DAILY_TOTAL;
-  return { weekCount, dayCount, total, totalFull, canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
+  return { weekCount, dayCount, total, totalFull, left: Math.max(0, DAILY_RUNS - dayCount), canRun: !totalFull && weekCount < WEEKLY_RUNS && dayCount < DAILY_RUNS };
 }
 function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);
@@ -775,7 +775,7 @@ function makeHero(m) {
 }
 function xpGain(level, floors) {
   if (level >= MAX_STORY_LEVEL) return 0;
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.08 * (floors || 3) + 0.12));
+  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08));
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 var CAPS = {
@@ -1106,7 +1106,10 @@ function heroAct(s, h, a, target) {
     const n = attacksOf(h.cls, lv, a);
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
     const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
-    if (a.selfDis) h.fx.reckless = s.round + 1;
+    if (a.selfDis) {
+      h.fx.reckless = s.round + 2;
+      h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2);
+    }
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
         const others = s.foes.filter(alive);
