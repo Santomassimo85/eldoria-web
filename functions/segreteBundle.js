@@ -653,7 +653,10 @@ function makeHero(m) {
     weapon: weaponKey,
     weaponPlus,
     fx: {},
-    uses
+    uses,
+    // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
+    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
+    ...m.helper ? { helper: true } : {}
   };
 }
 function xpGain(level, floors) {
@@ -859,6 +862,8 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     seq: 0,
     bestiary: bestiary.map((m) => m.id || m.name)
   };
+  const helpers = s.heroes.filter((h) => h.helper);
+  if (helpers.length) log(s, `\u{1F91D} ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete n\xE9 bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti gi\xE0 pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
   return s;
 }
@@ -1294,7 +1299,7 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const got = s.heroes.filter((h) => !h.fled).map((h) => {
+  const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => {
     const c = die(FLOOR_COINS_DIE);
     addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` });
     return `${h.name} ${c}`;
@@ -1302,7 +1307,7 @@ function floorCoins(s) {
   if (got.length) log(s, `\u{1FA99} Monete Antiche dalla sala: ${got.join(" \xB7 ")}.`, { kind: "loot" });
 }
 function lootDead(s) {
-  const heroes = s.heroes.filter((h) => !h.fled);
+  const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
   const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
   s.foes.forEach((f) => {

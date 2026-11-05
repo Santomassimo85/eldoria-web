@@ -64,6 +64,7 @@ export default function SegreteManual() {
           <li>In tutto, con tutti i tuoi eroi: al massimo <b>{DAILY_TOTAL} dungeon finiti al giorno</b>.</li>
           <li>Un dungeon conta solo dopo aver ripulito {RUN_COUNTS_AFTER} sale (o vinto): se il gruppo cade prima, si può riprovare.</li>
           <li>Se un eroe ha finito i suoi dungeon, puoi giocare con un eroe di un'altra classe.</li>
+          <li><b>🤝 Come aiuto:</b> anche con i limiti pieni puoi entrare in un gruppo (per esempio se serve proprio la tua classe). Giochi normalmente, ma non prendi PE, monete, oggetti né Corone, e il dungeon non ti si conta.</li>
         </ul>
       </Fold>
 

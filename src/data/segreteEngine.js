@@ -76,6 +76,9 @@ export function makeHero(m) {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
     hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks, weapon: weaponKey, weaponPlus,
     fx: {}, uses,
+    // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
+    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
+    ...(m.helper ? { helper: true } : {}),
   };
 }
 /* PE alla vittoria: una fetta del salto verso il livello dopo (8% a sala + 12% il boss:
@@ -269,6 +272,8 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
+  const helpers = s.heroes.filter((h) => h.helper);
+  if (helpers.length) log(s, `🤝 ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete né bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti già pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
   return s;
 }
@@ -661,12 +666,13 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const got = s.heroes.filter((h) => !h.fled).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
+  const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
   if (got.length) log(s, `🪙 Monete Antiche dalla sala: ${got.join(" · ")}.`, { kind: "loot" });
 }
 // Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
 export function lootDead(s) {
-  const heroes = s.heroes.filter((h) => !h.fled);
+  // chi aiuta (limiti pieni) non entra nel tiro del bottino; se aiutano tutti, i mostri non lasciano niente
+  const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
   const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
   s.foes.forEach((f) => {

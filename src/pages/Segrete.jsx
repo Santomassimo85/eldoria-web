@@ -386,12 +386,15 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, canRun, onHer
       <EnterAs charData={charData} cls={me?.cls} onChange={onHeroes} />
 
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
-      {!canRun && runsOf(charData, me?.cls).totalFull && <p className="sgr-err">⛔ Hai già finito {DAILY_TOTAL} dungeon oggi: si riparte domani.</p>}
-      {!canRun && !runsOf(charData, me?.cls).totalFull && <p className="sgr-err">⛔ Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto {runsOf(charData, me?.cls).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}: scegli un altro eroe in Personaggi.</p>}
+      {!canRun && (
+        <p className="sgr-helper">🤝 {runsOf(charData, me?.cls).totalFull
+          ? `Hai già finito ${DAILY_TOTAL} dungeon oggi`
+          : `Con ${classInfo(me?.cls)?.it || "questa classe"} hai già fatto ${runsOf(charData, me?.cls).weekCount >= WEEKLY_RUNS ? `i ${WEEKLY_RUNS} dungeon della settimana` : "il dungeon di oggi"}`}: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te{runsOf(charData, me?.cls).totalFull ? "" : "; con un altro eroe invece prendi i premi"}).</p>
+      )}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!canRun || !heroReady(charData, me?.cls)))}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && !heroReady(charData, me?.cls))}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
-          {me?.ready ? "✓ Pronto — annulla" : "▶ Avvia"}
+          {me?.ready ? "✓ Pronto — annulla" : canRun ? "▶ Avvia" : "▶ Avvia come aiuto"}
         </button>
         <span className="sgr-start-n">{readyN}/{room.members.length} pronti{allReady(room) ? "" : room.members.length > 1 ? " · si parte quando premono tutti" : ""}</span>
       </div>

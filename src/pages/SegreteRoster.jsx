@@ -23,8 +23,8 @@ export const heroClasses = (charData) => STORY_CLASSES.filter((c) => heroOf(char
 
 function runState(charData, cls) {
   const r = runsOf(charData, cls);
-  if (r.weekCount >= WEEKLY_RUNS) return { cls: "is-done", text: "✓ settimana fatta" };
-  if (r.dayCount >= DAILY_RUNS) return { cls: "is-done", text: "✓ fatto oggi" };
+  if (r.weekCount >= WEEKLY_RUNS) return { cls: "is-done", text: "✓ settimana fatta · può aiutare" };
+  if (r.dayCount >= DAILY_RUNS) return { cls: "is-done", text: "✓ fatto oggi · può aiutare" };
   return { cls: "is-free", text: `pronto · sett. ${r.weekCount}/${WEEKLY_RUNS}` };
 }
 

@@ -2151,18 +2151,13 @@ exports.segreteDo = onCall(
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
             return { ok: false, blocked: msg };
           }
-          // limiti PER CLASSE: 1 al giorno, 3 a settimana (il Master no). Qui si controlla
-          // soltanto: il dungeon si conta dopo RUN_COUNTS_AFTER sale ripulite (sotto).
-          const blocked = charSnaps.filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day).canRun);
-          if (blocked.length) {
-            const msg = blocked.map(([m, cs]) => {
-              const r = segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day);
-              if (r.totalFull) return `${m.name} ha già finito ${segreteBundle.DAILY_TOTAL} dungeon oggi (si riparte domani)`;
-              return `${m.name} ${r.weekCount >= segreteBundle.WEEKLY_RUNS ? `ha già fatto ${segreteBundle.WEEKLY_RUNS} dungeon questa settimana con questa classe` : "ha già fatto il dungeon di oggi con questa classe"} (può cambiare classe)`;
-            }).join(" · ");
-            tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
-            return { ok: false, blocked: msg };
-          }
+          // limiti PER CLASSE (1 al giorno, 3 a settimana) e 3 dungeon al giorno in tutto (il Master no).
+          // Dal 2026-11-05 chi li ha già pieni NON blocca più il gruppo: entra come AIUTO
+          // (gioca, ma niente PE, monete, oggetti, Corone, e il dungeon non gli si conta).
+          const helperUids = new Set(charSnaps
+            .filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day).canRun)
+            .map(([m]) => m.uid));
+          heroes.forEach((h) => { if (helperUids.has(h.uid)) h.helper = true; });
           const fresh = segreteBundle.withRng(segreteRng, () => segreteBundle.newRun({
             room: { ...room, startKey }, heroes, bestiary, dungeon: { ...dungeon, floors: dungeon.floors || segreteBundle.DEFAULT_FLOORS }, now,
           }));
@@ -2222,11 +2217,12 @@ exports.segreteDo = onCall(
           const day = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
           run.heroes.forEach((h) => {
             const cs = charMap[h.uid];
-            if (h.uid === masterUid || !cs?.exists) return;
+            if (h.uid === masterUid || h.helper || !cs?.exists) return;
             tx.update(cs.ref, { [`storyClassRuns.${h.cls}`]: segreteBundle.nextRunsPatch(cs.data(), h.cls, week, day) });
           });
           run.seq = (run.seq || 0) + 1;
-          run.log = [...(run.log || []), { i: run.seq, kind: "room", txt: `📜 Superata la ${segreteBundle.RUN_COUNTS_AFTER}ª sala: il dungeon di oggi è segnato per ${run.heroes.map((h) => h.name).join(", ")} (con la loro classe).` }].slice(-80);
+          const countedNames = run.heroes.filter((h) => !h.helper).map((h) => h.name);
+          if (countedNames.length) run.log = [...(run.log || []), { i: run.seq, kind: "room", txt: `📜 Superata la ${segreteBundle.RUN_COUNTS_AFTER}ª sala: il dungeon di oggi è segnato per ${countedNames.join(", ")} (con la loro classe).` }].slice(-80);
         }
         // fine del dungeon: premi e stanza chiusa
         if (needEnd) {
@@ -2236,12 +2232,12 @@ exports.segreteDo = onCall(
             const endDay = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
             run.heroes.forEach((h) => {
               const cs = charMap[h.uid];
-              if (h.uid === masterUid || !cs?.exists) return;
+              if (h.uid === masterUid || h.helper || !cs?.exists) return;
               tx.update(cs.ref, { storyDaily: segreteBundle.nextDailyPatch(cs.data(), endDay) });
             });
           }
           if (run.status === "won") {
-            const winners = run.heroes.filter((h) => !h.fled);
+            const winners = run.heroes.filter((h) => !h.fled && !h.helper);
             const snaps = winners.map((h) => [h, charMap[h.uid]]);
             // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
             const lootPool = lootQ.docs.filter((d) => { const ds = d.data().dungeons || []; return !ds.length || ds.includes(run.type); });
@@ -2288,10 +2284,10 @@ exports.segreteDo = onCall(
             if (!cs?.exists) return;
             const sp = (run.spoils || {})[h.uid] || {};
             const lu = (run.levelUps || []).find((l) => l.uid === h.uid);
-            const won = run.status === "won" && !h.fled;
+            const won = run.status === "won" && !h.fled && !h.helper;
             const entry = {
               at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝",
-              cls: h.cls, result: h.fled ? "fled" : run.status, floor: run.floor, floors: run.floors,
+              cls: h.cls, result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
               coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
               xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,
               corone: won ? (run.corone || 0) : 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",

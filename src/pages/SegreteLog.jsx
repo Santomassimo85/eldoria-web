@@ -24,9 +24,11 @@ function Row({ e }) {
       <span className="sgl-time">{hhmm(e.at)}</span>
       <span className="sgl-main">
         <b>{e.icon} {e.dungeon} <span className="sgr-clsname">· {c?.icon} {c?.it}</span></b>
-        <small>{RESULT[e.result] || e.result} · arrivati a {reached}</small>
+        <small>{RESULT[e.result] || e.result}{e.helper ? " · 🤝 aiuto" : ""} · arrivati a {reached}</small>
         <span className="sgl-gain">
-          {e.kept ? (
+          {e.helper ? (
+            <em>🤝 come aiuto: nessun premio</em>
+          ) : e.kept ? (
             <>
               <em className="sgl-coins">{COIN_ICON} +{e.coins}</em>
               {items.map(([id, n]) => <em key={id}>{itemOf(id).icon} {itemOf(id).name}{n > 1 ? ` ×${n}` : ""}</em>)}

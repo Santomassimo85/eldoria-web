@@ -289,3 +289,5 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-page .sgl-gain .sgl-lost { border-color: rgba(224,98,79,.6); color: #ffb4a4; }
 .sgl-more { margin-top: 10px; }
 .sgr-page .sgr-st-plus { color: #8ee69a; font-weight: 700; }
+.sgr-page .sgr-helper { margin: 12px 0 0; padding: 10px 12px; border: 1px solid #45b8c4; border-radius: 3px; background: rgba(69,184,196,.12); color: #e8f7f9; }
+.sgr-page .sgr-helper b { color: #9fe6ee; }

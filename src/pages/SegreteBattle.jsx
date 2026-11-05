@@ -80,7 +80,7 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       </span>
       <span className="sgb-hud">
         <b>{done ? "✓ " : ""}{c.name}</b>
-        {c.side === "h" && <em className="sgb-cls">{classInfo(c.cls)?.icon} {classInfo(c.cls)?.it} · Lv {c.level}</em>}
+        {c.side === "h" && <em className="sgb-cls">{c.helper ? "🤝 " : ""}{classInfo(c.cls)?.icon} {classInfo(c.cls)?.it} · Lv {c.level}</em>}
         <span className="sgb-bar"><i style={{ width: `${pct}%` }} className={pct < 30 ? "low" : ""} /></span>
         {c.side === "h"
           ? <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`}</small>
@@ -357,7 +357,7 @@ export default function SegreteBattle({ room, uid }) {
           <div className="sgb-end">
             <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
             {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({classInfo(l.cls)?.it}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
-            {run.status === "won" && !!run.corone && <p>🪙 +{run.corone} Corone a ogni eroe rimasto fino alla fine.</p>}
+            {run.status === "won" && !!run.corone && <p>🪙 +{run.corone} Corone a ogni eroe rimasto fino alla fine{(run.heroes || []).some((h) => h.helper) ? " (non a chi è venuto ad aiutare)" : ""}.</p>}
             {run.loot && (
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}
                 <span>🎁 Nel forziere del boss: <b>{run.loot.name}</b>, va a <b>{run.loot.winner}</b>{run.loot.uid === uid ? " (a te!)" : ""}. Arriverà nella scheda su Foundry.</span></p>
@@ -385,6 +385,9 @@ function FloorGains({ run, uid }) {
 function SpoilsBox({ run, uid, spoils, hidden }) {
   const [open, setOpen] = useState(false);
   const gains = (run.gains || {})[uid] || [];
+  if ((run.heroes || []).find((h) => h.uid === uid)?.helper) {
+    return <div className="sgb-spoils"><p className="sgb-spoils-head">🤝 Partecipi come aiuto: hai già finito i dungeon con questo eroe, quindi niente PE, monete né bottino. Il gruppo ti ringrazia!</p></div>;
+  }
   if (!spoils && !gains.length) return null;
   const coins = spoils?.coins || 0;
   const items = Object.entries(spoils?.items || {});
