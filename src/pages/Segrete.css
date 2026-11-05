@@ -202,3 +202,75 @@
 .sgs-filter { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; color: var(--osso-2, #d8ccb4); font-size: .9rem; }
 .sgs-buy { display: grid; justify-items: center; gap: 2px; }
 .sgr-page .sgs-buy small { color: var(--osso-2, #d8ccb4); font-size: .72rem; }
+
+/* ── LOBBY A SCHEDE (2026-11-05): barra di stato + schede Gruppi · Personaggi · Bottega · Zaino · Manuale ── */
+.sgr-head { margin-bottom: 12px; }
+.sgr-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.sgr-st { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 8px 12px; text-align: left; border-radius: 3px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .18); background: var(--roccia-2, #221f27); color: var(--osso, #ece5d6); font: 15px/1.25 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button.sgr-st { cursor: pointer; }
+button.sgr-st:hover { border-color: var(--el, #e0a85a); }
+.sgr-st-ico { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 3px; background: rgba(0,0,0,.35); font-size: 1.35rem; }
+.sgr-st-txt { display: grid; min-width: 0; }
+.sgr-page .sgr-st small { color: var(--osso-2, #d8ccb4); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
+.sgr-page .sgr-st b { color: #fff7e6; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sgr-st--hero { border-color: var(--cls); box-shadow: inset 4px 0 0 var(--cls); }
+.sgr-st--hero .sgr-st-ico { background: color-mix(in srgb, var(--cls) 28%, transparent); }
+.sgr-page .sgr-st--hero b { color: var(--cls); }
+.sgr-st.is-live { border-color: #5fd16b; box-shadow: inset 4px 0 0 #5fd16b; }
+
+.sgr-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0 0 16px; padding: 4px; border-radius: 3px; background: var(--roccia-1, #17141b); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14); }
+.sgr-tab { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 6px 8px; border: 0; border-radius: 3px; cursor: pointer; background: transparent; color: var(--osso-2, #d8ccb4); font: 700 .95rem system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sgr-tab:hover { background: rgba(var(--osso-rgb, 236,229,214), .06); color: #fff7e6; }
+.sgr-tab.is-on { background: var(--el, #e0a85a); color: var(--ossidiana, #0d0a0a); }
+.sgr-tab-ico { font-size: 1.15rem; line-height: 1; }
+.sgr-tab-badge { min-width: 18px; padding: 1px 5px; border-radius: 9px; background: #f2c14e; color: #1a1206; font: 800 .72rem/1.3 system-ui, sans-serif; font-style: normal; text-align: center; }
+.sgr-tab.is-on .sgr-tab-badge { background: var(--ossidiana, #0d0a0a); color: #f2c14e; }
+
+.sgr-linkbtn { margin-left: 8px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--el, #e0a85a); font: 600 .95rem inherit; text-decoration: underline; }
+.sgr-coins { margin-left: auto; font: 700 1rem var(--font-num, serif); color: #f2c14e; }
+
+/* colore di classe (--cls messo in linea da clsStyle) */
+.sgr-hero { border-left: 4px solid var(--cls, var(--el)); }
+.sgr-hero-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
+.sgr-page .sgr-hero-name b { color: var(--cls, #fff7e6); }
+.sgr-hero-xp i { background: var(--cls, var(--el)); }
+.sgr-hero.is-on { border-color: var(--cls); box-shadow: inset 0 0 0 1px var(--cls), 0 0 14px color-mix(in srgb, var(--cls) 35%, transparent); background: color-mix(in srgb, var(--cls) 12%, var(--roccia-1, #17141b)); }
+.sgr-hero.is-on .sgr-hero-on { background: var(--cls); }
+.sgr-hero.has-todo:not(.is-on) { border-color: #f2c14e; border-left-color: var(--cls); }
+.sgr-class { border-top: 3px solid var(--cls, var(--el)); }
+.sgr-class span { color: var(--cls); }
+.sgr-page .sgr-class b { color: var(--cls, #fff7e6); }
+.sgr-class.is-on { border-color: var(--cls); box-shadow: inset 0 0 0 1px var(--cls); background: color-mix(in srgb, var(--cls) 14%, var(--roccia-1, #17141b)); }
+.sgr-slot[style] { border-left: 4px solid var(--cls); }
+.sgr-slot[style] .sgr-slot-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
+.sgr-slot.is-ready[style] { border-color: #5fd16b; border-left-color: var(--cls); }
+.sgr-page .sgr-clsname { color: var(--cls, inherit); font-weight: 700; }
+.sgr-clsdot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: var(--cls); vertical-align: middle; }
+.sgr-enteras[style] { border-color: var(--cls); box-shadow: inset 4px 0 0 var(--cls); }
+.sgr-news-i[style] { border-left: 4px solid var(--cls); }
+#sgr-hero-detail .sgh { border-color: var(--cls, var(--el)); border-top: 3px solid var(--cls, var(--el)); }
+#sgr-hero-detail .sgh-xp i { background: var(--cls, var(--el)); }
+#sgr-hero-detail .sgh-title { color: var(--cls, #fff7e6); }
+
+/* manuale */
+.sgm-fold { margin-top: 8px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .16); border-radius: 3px; background: var(--roccia-1, #17141b); }
+.sgm-fold summary { cursor: pointer; padding: 12px 14px; color: #fff7e6; font: 700 1.02rem system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sgm-fold[open] summary { border-bottom: 1px solid rgba(var(--osso-rgb, 236,229,214), .12); }
+.sgm-body { padding: 4px 16px 12px; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sgr-page .sgm-body li { margin: 6px 0; color: var(--osso, #ece5d6); }
+.sgr-page .sgm-body b { color: #fff7e6; }
+.sgm-classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 6px; margin-top: 10px; }
+.sgm-cls { display: grid; gap: 2px; padding: 8px 10px; border-left: 4px solid var(--cls); border-radius: 3px; background: color-mix(in srgb, var(--cls) 10%, transparent); }
+.sgr-page .sgm-cls b { color: var(--cls); }
+.sgr-page .sgm-cls small { color: var(--osso-2, #d8ccb4); font-size: .8rem; }
+
+@media (max-width: 760px) {
+  .sgr-status { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .sgr-st { min-height: 52px; padding: 6px 8px; gap: 8px; }
+  .sgr-st-ico { width: 32px; height: 32px; font-size: 1.15rem; }
+  .sgr-page .sgr-st b { font-size: .86rem; white-space: normal; }
+  .sgr-tab { flex-direction: column; gap: 2px; min-height: 54px; padding: 4px 2px; font-size: .74rem; }
+  .sgr-tab-badge { position: absolute; top: 3px; right: 3px; }
+  .sgr-title { font-size: 2rem; }
+  .sgr-lead { font-size: .92rem; }
+}

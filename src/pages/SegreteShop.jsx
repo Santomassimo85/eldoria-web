@@ -43,10 +43,10 @@ function ItemRow({ id, n, onBuy, busy, coins, charData }) {
   );
 }
 
-export default function SegreteShop({ charData }) {
+export default function SegreteShop({ charData, view = "zaino" }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [tab, setTab] = useState("zaino");
+  const tab = view;
   const [wFilter, setWFilter] = useState(false);
   const coins = coinsOf(charData);
   const bag = bagOf(charData);
@@ -63,13 +63,10 @@ export default function SegreteShop({ charData }) {
   const shopWeapons = SHOP_ITEMS.filter((id) => ITEMS[id].kind === "weapon" && (!wFilter || myBases.has(ITEMS[id].base)));
   return (
     <section className="sgr-block" id="sgr-bottega">
-      <p className="sgr-kicker">④ Bottega e zaino</p>
-      <h2 className="sgr-h2">{COIN_ICON} {coins} {COIN_NAME}</h2>
-      <p className="sgr-hint">Ogni sala vinta dà 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe, e a volte i mostri lasciano monete o oggetti. Il bottino della spedizione si porta a casa solo se il gruppo vince il dungeon. Lo zaino è tuo e vale per tutti i tuoi eroi. In bottega ogni oggetto ha un limite di acquisti al giorno.</p>
-      <div className="sgs-tabs">
-        <button type="button" className={`sgr-btn${tab === "zaino" ? "" : " sgr-btn--ghost"}`} aria-pressed={tab === "zaino"} onClick={() => setTab("zaino")}>🎒 Zaino ({bagIds.reduce((t, k) => t + bag[k], 0)})</button>
-        <button type="button" className={`sgr-btn${tab === "bottega" ? "" : " sgr-btn--ghost"}`} aria-pressed={tab === "bottega"} onClick={() => setTab("bottega")}>🏪 Bottega</button>
-      </div>
+      <h2 className="sgr-h2">{tab === "zaino" ? "🎒 Il tuo zaino" : "🏪 La Bottega"} <span className="sgr-coins">{COIN_ICON} {coins} {COIN_NAME}</span></h2>
+      <p className="sgr-hint">{tab === "zaino"
+        ? "Lo zaino è tuo e vale per tutti i tuoi eroi. Gli oggetti si usano in lotta col tasto 🎒 Zaino; le armi magiche si equipaggiano dalla scheda dell'eroe (scheda Personaggi)."
+        : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
       {tab === "zaino" ? (
         bagIds.length ? (

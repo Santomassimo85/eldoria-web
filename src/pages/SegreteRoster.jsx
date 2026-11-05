@@ -3,7 +3,7 @@
    ognuno con livello, PE, PF/CA e cosa ha da sistemare (PF da tirare, punti
    caratteristica, nuove abilità), e a parte il picker delle classi ancora da creare.
    Toccare un eroe = sceglierlo per il gruppo e aprirne la scheda. */
-import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, WEEKLY_RUNS } from "../data/segrete";
+import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, WEEKLY_RUNS, clsStyle } from "../data/segrete";
 import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, MAX_STORY_LEVEL } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
@@ -30,7 +30,7 @@ function runState(charData, cls) {
 
 export function HeroRoster({ charData, value, onSelect, disabled, playingLabel = "scelto" }) {
   const list = heroClasses(charData);
-  if (!list.length) return <p className="sgr-empty">Non hai ancora eroi: creane uno qui sotto, in «Nuovo eroe».</p>;
+  if (!list.length) return <p className="sgr-empty">Non hai ancora eroi: scegli una classe qui sotto, in «Crea un eroe».</p>;
   return (
     <div className="sgr-roster" role="radiogroup" aria-label="I tuoi eroi">
       {list.map((c) => {
@@ -46,7 +46,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
         const on = value === c.key;
         return (
           <button key={c.key} type="button" role="radio" aria-checked={on} disabled={disabled}
-            className={`sgr-hero${on ? " is-on" : ""}${todo.length ? " has-todo" : ""}`} onClick={() => onSelect(c.key)}>
+            className={`sgr-hero${on ? " is-on" : ""}${todo.length ? " has-todo" : ""}`} style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
             {on && <span className="sgr-hero-on">▶ {playingLabel}</span>}
             <span className="sgr-hero-top">
               <span className="sgr-hero-ico" aria-hidden="true">{c.icon}</span>
@@ -75,7 +75,7 @@ export function NewClassPicker({ charData, value, onSelect, disabled }) {
     <div className="sgr-classes" role="radiogroup" aria-label="Classe del nuovo eroe">
       {list.map((c) => (
         <button key={c.key} type="button" role="radio" aria-checked={value === c.key} disabled={disabled}
-          className={`sgr-class${value === c.key ? " is-on" : ""}`} onClick={() => onSelect(c.key)}>
+          className={`sgr-class${value === c.key ? " is-on" : ""}`} style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
           <span aria-hidden="true">{c.icon}</span>
           <b>{c.it}</b>
           <small>da creare</small>
@@ -93,7 +93,7 @@ export function HeroNews({ charData, onSelect }) {
     <div className="sgr-news" role="status">
       <b>⬆ Eroi da sistemare</b>
       {list.map(({ c, todo }) => (
-        <button key={c.key} type="button" className="sgr-news-i" onClick={() => onSelect(c.key)}>
+        <button key={c.key} type="button" className="sgr-news-i" style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
           {c.icon} {c.it} Lv {heroPending(heroOf(charData, c.key)).level}: {todo.map((t) => `${t.icon} ${t.text}`).join(" · ")} →
         </button>
       ))}

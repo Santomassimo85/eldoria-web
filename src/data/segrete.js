@@ -26,6 +26,14 @@ export const DEFAULT_DUNGEONS = [
 
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;
+// colore di ogni classe nella lobby delle Segrete (carte, slot del gruppo, scheda dell'eroe)
+export const CLASS_COLORS = {
+  fighter: "#b9c6d8", barbarian: "#e2553f", paladin: "#f2c94c", ranger: "#3fae76",
+  monk: "#45b8c4", rogue: "#9a9cb3", wizard: "#4f86ea", sorcerer: "#ff8a34",
+  warlock: "#a95ee0", druid: "#a8c83c", cleric: "#f3ead0", bard: "#ea62ad",
+};
+export const classColor = (key) => CLASS_COLORS[key] || "#e0a85a";
+export const clsStyle = (key) => ({ "--cls": classColor(key) });
 
 // Eroe di classe (permanente, 2026-11-04): characters.storyChars[cls] = {stats, asi, picks, xp}.
 export const heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
