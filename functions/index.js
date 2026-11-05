@@ -1977,6 +1977,31 @@ exports.segreteDo = onCall(
     const op = String(request.data?.op || "");
     const db = admin.firestore();
 
+    // ── Chat vocale (2026-11-05): server ICE per WebRTC. Con le chiavi di Cloudflare TURN
+    //    (CF_TURN_KEY_ID + CF_TURN_API_TOKEN in functions/.env.eldoria-web) dà anche il "ponte"
+    //    TURN con credenziali a tempo: serve ai telefoni su rete mobile, che spesso non si
+    //    collegano in diretto. Senza chiavi: solo STUN. ──
+    if (op === "voiceIce") {
+      const stun = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }];
+      const keyId = process.env.CF_TURN_KEY_ID;
+      const token = process.env.CF_TURN_API_TOKEN;
+      if (!keyId || !token) return { iceServers: stun, turn: false };
+      try {
+        const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ttl: 6 * 3600 }),
+        });
+        if (!r.ok) throw new Error(`TURN ${r.status}`);
+        const j = await r.json();
+        const servers = Array.isArray(j.iceServers) ? j.iceServers : j.iceServers ? [j.iceServers] : [];
+        return { iceServers: [...stun, ...servers], turn: servers.length > 0 };
+      } catch (e) {
+        console.warn("[voiceIce]", e?.message || e);
+        return { iceServers: stun, turn: false };
+      }
+    }
+
     // ── Bottega delle Segrete (2026-11-04): compra con le Monete Antiche ──
     if (op === "shopBuy") {
       const itemId = String(request.data?.itemId || "");

@@ -6,14 +6,36 @@
      dungeon_voice/{roomId}/links/{a__b}/cand/{id} = { from, key, c }  candidati ICE
    Chi ha l'uid "minore" chiama, l'altro risponde. `sid` = sessione di chi entra: se qualcuno
    esce e rientra (o ricarica) il sid cambia e il collegamento si rifà da capo.
-   Solo STUN pubblici: su alcune reti mobili/aziendali il collegamento diretto può non riuscire
-   (servirebbe un server TURN). */
+   Server ICE (2026-11-05): li dà `segreteDo` op "voiceIce" (STUN + TURN di Cloudflare se le chiavi
+   sono configurate: senza TURN i telefoni su rete mobile spesso restano su "collego").
+   Un collegamento che non si apre entro CONNECT_TIMEOUT_MS si rifà da capo (lo rifà chi chiama). */
 import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../firebase";
 
-const ICE = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
+const STUN = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }];
+const CONNECT_TIMEOUT_MS = 15000;
+async function loadIce() {
+  try {
+    const call = httpsCallable(functions, "segreteDo");
+    const r = await Promise.race([call({ op: "voiceIce" }), new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 6000))]);
+    const list = r?.data?.iceServers;
+    return { servers: Array.isArray(list) && list.length ? list : STUN, turn: !!r?.data?.turn };
+  } catch { return { servers: STUN, turn: false }; }
+}
 const BEAT_MS = 15000;
 export const PEER_STALE_MS = 45000;
+/* Presenza senza fidarsi degli orologi (2026-11-05): `at` lo scrive il telefono di ognuno col
+   SUO orologio, e due telefoni possono differire di minuti. Si guarda invece QUANDO, sul nostro
+   orologio, `at` di quel peer è cambiato l'ultima volta (il battito arriva ogni 15 s). */
+export function makeFreshness() {
+  const seen = {};
+  return (peers, now = Date.now()) => peers.filter((p) => {
+    const k = `${p.sid}|${p.at}`;
+    if (!seen[p.uid] || seen[p.uid].k !== k) seen[p.uid] = { k, t: now };
+    return now - seen[p.uid].t < PEER_STALE_MS;
+  });
+}
 const pairId = (a, b) => (a < b ? `${a}__${b}` : `${b}__${a}`);
 const rid = () => Math.random().toString(36).slice(2, 10);
 
@@ -29,21 +51,26 @@ export class VoiceMesh {
     this.levels = {};
     this.muted = false;
     this.closed = false;
+    this.fresh = makeFreshness();
   }
 
   emit() {
     if (this.closed) return;
     const conns = {};
-    Object.entries(this.conns).forEach(([u, c]) => { conns[u] = c.state || "new"; });
-    this.onState?.({ conns, levels: { ...this.levels } });
+    const via = {};
+    Object.entries(this.conns).forEach(([u, c]) => { conns[u] = c.slow && c.state !== "connected" ? "failed" : c.state || "new"; if (c.via) via[u] = c.via; });
+    this.onState?.({ conns, via, turn: !!this.turn, levels: { ...this.levels } });
   }
 
   async join() {
+    const icePromise = loadIce();
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
     });
     this.track = this.stream.getAudioTracks()[0];
+    const ice = await icePromise;
+    this.ice = ice.servers; this.turn = ice.turn;
     const AC = window.AudioContext || window.webkitAudioContext;
     this.ctx = AC ? new AC() : null;
     this.watchLevel(this.uid, this.stream);
@@ -56,6 +83,7 @@ export class VoiceMesh {
     this.unsubs.push(onSnapshot(peersCol(this.roomId), (s) => this.reconcile(s.docs.map((d) => ({ uid: d.id, ...d.data() })))));
     this.unsubs.push(onSnapshot(linksCol(this.roomId), (s) => s.docs.forEach((d) => this.onLink(d.id, d.data()))));
     this.levelT = setInterval(() => this.emit(), 200);
+    this.staleT = setInterval(() => { if (this.lastPeers) this.reconcile(this.lastPeers); }, 10000);
     this.onHide = () => { if (document.visibilityState === "visible") this.ctx?.resume?.(); };
     document.addEventListener("visibilitychange", this.onHide);
   }
@@ -81,7 +109,8 @@ export class VoiceMesh {
   reconcile(peers) {
     if (this.closed) return;
     const now = Date.now();
-    const live = peers.filter((p) => p.uid !== this.uid && p.sid && now - (p.at || 0) < PEER_STALE_MS);
+    this.lastPeers = peers;
+    const live = this.fresh(peers, now).filter((p) => p.uid !== this.uid && p.sid);
     this.peerSids = Object.fromEntries(live.map((p) => [p.uid, p.sid]));
     // chi non c'è più: chiudi
     Object.keys(this.conns).forEach((u) => { if (!live.some((p) => p.uid === u)) this.drop(u); });
@@ -95,8 +124,16 @@ export class VoiceMesh {
   }
 
   makePc(other, key, remoteSid, caller) {
-    const pc = new RTCPeerConnection({ iceServers: ICE });
+    const pc = new RTCPeerConnection({ iceServers: this.ice || STUN });
     const conn = { pc, key, remoteSid, caller, answered: false, pendingIce: [], state: "connecting" };
+    // guardiano: se dopo CONNECT_TIMEOUT_MS non è collegato, chi chiama rifà tutto (offerta nuova)
+    conn.watch = setTimeout(() => {
+      if (this.conns[other] !== conn || conn.state === "connected") return;
+      conn.slow = true;
+      console.warn("[voce] collegamento con", other, "fermo su", pc.connectionState, "/", pc.iceConnectionState, "· riprovo");
+      if (caller) { this.drop(other); this.retry(other); }
+      this.emit();
+    }, CONNECT_TIMEOUT_MS);
     this.conns[other] = conn;
     this.stream.getTracks().forEach((t) => pc.addTrack(t, this.stream));
     const linkRef = doc(linksCol(this.roomId), pairId(this.uid, other));
@@ -115,6 +152,18 @@ export class VoiceMesh {
     };
     pc.onconnectionstatechange = () => {
       conn.state = pc.connectionState;
+      if (pc.connectionState === "connected") {
+        conn.slow = false;
+        // diretto o via ponte (TURN)? lo dice la coppia di candidati scelta
+        pc.getStats().then((st) => {
+          let pair = null;
+          st.forEach((r) => { if (r.type === "candidate-pair" && (r.nominated || r.selected) && r.state === "succeeded") pair = r; });
+          const loc = pair && st.get(pair.localCandidateId);
+          const rem = pair && st.get(pair.remoteCandidateId);
+          conn.via = loc?.candidateType === "relay" || rem?.candidateType === "relay" ? "ponte" : "diretto";
+          this.emit();
+        }).catch(() => {});
+      }
       if (pc.connectionState === "failed" && caller) setTimeout(() => { if (this.conns[other] === conn) { this.drop(other); this.retry(other); } }, 1500);
       this.emit();
     };
@@ -209,6 +258,7 @@ export class VoiceMesh {
     const c = this.conns[other];
     if (!c) return;
     c.unsubCand?.();
+    clearTimeout(c.watch);
     try { c.pc.close(); } catch { /* niente */ }
     c.audio?.remove();
     delete this.conns[other];
@@ -218,7 +268,7 @@ export class VoiceMesh {
 
   async leave() {
     this.closed = true;
-    clearInterval(this.beatT); clearInterval(this.levelT); clearInterval(this.meterT);
+    clearInterval(this.beatT); clearInterval(this.levelT); clearInterval(this.meterT); clearInterval(this.staleT);
     document.removeEventListener("visibilitychange", this.onHide);
     this.unsubs.forEach((u) => u());
     Object.keys(this.conns).forEach((u) => this.drop(u));

@@ -4,7 +4,7 @@
    Preferenza in localStorage `sgr_voice_mode`. Il motore è src/utils/segreteVoice.js. */
 import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
-import { VoiceMesh, peersCol, PEER_STALE_MS } from "../utils/segreteVoice";
+import { VoiceMesh, peersCol, makeFreshness } from "../utils/segreteVoice";
 import { classInfo, clsStyle } from "../data/segrete";
 import "./SegreteVoice.css";
 
@@ -39,8 +39,9 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
     return () => window.removeEventListener("pagehide", bye);
   }, []);
 
-  const now = Date.now();
-  const live = peers.filter((p) => now - (p.at || 0) < PEER_STALE_MS);
+  const fresh = useRef(null);
+  if (!fresh.current) fresh.current = makeFreshness();
+  const live = fresh.current(peers);
   const inVoice = new Set(live.map((p) => p.uid));
   const others = live.filter((p) => p.uid !== uid);
 
@@ -128,7 +129,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
               <li key={m.uid} style={clsStyle(m.cls)} className={speaking(m.uid) && !m.muted ? "is-talk" : ""}>
                 <span className="sgv-ico" aria-hidden="true">{classInfo(m.cls)?.icon}</span>
                 <span className="sgv-name">{m.name}{m.uid === uid ? " (tu)" : ""}</span>
-                <small>{!m.in ? "non in voce" : m.muted ? "🔇 muto" : speaking(m.uid) ? "🔊 parla" : m.uid !== uid && joined && m.conn !== "connected" ? (m.conn === "failed" ? "⚠ non collegato" : "… collego") : "in voce"}</small>
+                <small>{!m.in ? "non in voce" : m.muted ? "🔇 muto" : speaking(m.uid) ? "🔊 parla" : m.uid !== uid && joined && m.conn !== "connected" ? (m.conn === "failed" ? "⚠ non collegato, riprovo" : "… collego") : m.uid !== uid && joined && st.via?.[m.uid] === "ponte" ? "in voce · via ponte" : "in voce"}</small>
               </li>
             ))}
           </ul>
@@ -143,7 +144,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
               <p className="sgv-hint">Il microfono si comanda dai tasti accanto a 🎧 Voce, senza aprire questo pannello: {mode === "ptt" ? "«🎙 Tieni premuto» per parlare" : "«🎙 Aperto / 🔇 Muto» per accenderlo e spegnerlo"} · il tondo cambia modo (✋ tieni premuto, 🔓 sempre aperto) · ✕ esce dalla voce.</p>
               <button type="button" className="sgv-btn" onClick={() => { const v = !speakers; setSpeakers(v); mesh.current?.setSpeakersOn(v); }}>{speakers ? "🔈 Silenzia gli altri" : "🔊 Riattiva l'audio"}</button>
               {!!others.length && Object.values(st.conns).some((c) => c === "failed") && (
-                <p className="sgv-hint">⚠ Con qualcuno il collegamento non riesce (succede su alcune reti mobili o del lavoro). Provate col Wi-Fi.</p>
+                <p className="sgv-hint">⚠ Con qualcuno il collegamento non riesce{st.turn ? "" : " (succede sulle reti mobili: manca ancora il «ponte» del server)"}. Riprovo da solo; intanto provate col Wi-Fi.</p>
               )}
             </>
           )}
