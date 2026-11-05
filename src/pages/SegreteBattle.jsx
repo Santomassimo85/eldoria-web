@@ -19,9 +19,10 @@ import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom } from "../utils/segreteRooms";
 import "./SegreteBattle.css";
 
-const STAGGER_MS = 750;
+const ROW_GAP_MS = 900; // pausa dopo ogni colpo, per leggere numeri e cronaca
+const DICE_GAP_MS = 250; // fra il dado che sparisce e l'effetto
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // quando arriva il colpo sullo sprite (ms dall'inizio dell'effetto): lì scendono i PF e cade il nemico
-const IMPACT_MS = { bolt: 520, arrow: 360, aoe: 460, slash: 180, heal: 320, buff: 300, shield: 300, debuff: 320 };
 const vfxKey = (id) => `seg-${id}`;
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
@@ -145,51 +146,73 @@ export default function SegreteBattle({ room, uid }) {
   const sendP = useRef(Promise.resolve());
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; timers.current.forEach(clearTimeout); }; }, []);
+  /* SEQUENZA DELLA LOTTA (2026-11-05): le righe nuove si giocano UNA ALLA VOLTA, in fila:
+     1) il d20 di chi attacca (anche dei mostri, dado rosso) e si aspetta che sparisca,
+     2) l'effetto a canvas, 3) all'istante VERO dell'impatto (msg.onImpact dal VfxLayer) escono
+     i numeri e scendono i PF, 4) una pausa per leggere. Prima dado, effetto e PF andavano
+     ognuno col suo orologio e si vedevano sfasati. */
+  const queue = useRef(Promise.resolve());
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
     if (!seenSeq.current) { seenSeq.current = last; setShownSeq(last); return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
+    if (!fresh.length) return;
     seenSeq.current = last;
-    // rete di sicurezza: se l'animazione non parte (dado appeso, scheda in pausa) i PF si allineano comunque
-    timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 20000 + fresh.length * STAGGER_MS));
-    // 2026-11-04: si parte quando il proprio tiro è finito e il dado è sparito
-    // (il dado si mostra quando risponde il server, a volte dopo che la cronaca è già arrivata).
-    sendP.current.catch(() => {}).then(() => whenDiceIdle()).then(() => {
-      if (!mounted.current) return;
-      fresh.forEach((l, idx) => {
-        const t = setTimeout(() => {
-          const targets = l.targets || [];
-          // numeri sugli sprite: PF cambiati per bersaglio (l.nums dal server; righe vecchie: l.dmg)
-          const tags = l.tags || {};
-          const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit", tag: tags[id] }))
-            : l.dmg && targets.length === 1 ? [{ t: vfxKey(targets[0]), v: -l.dmg, crit: l.kind === "crit", tag: tags[targets[0]] }] : [];
-          // immune = danno 0: niente numero, ma la scritta sì
-          Object.entries(tags).forEach(([id, tag]) => { if (!nums.some((n) => n.t === vfxKey(id))) nums.push({ t: vfxKey(id), v: 0, tag }); });
-          if (l.fx && targets.length) {
+    const all = [...(run.heroes || []), ...(run.foes || [])];
+    const nameOf = (id) => all.find((c) => c.id === id)?.name || "";
+    const sideOf = (id) => all.find((c) => c.id === id)?.side;
+    // rete di sicurezza: se qualcosa si pianta (scheda in pausa, dado appeso) i PF si allineano comunque
+    timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 15000 + fresh.length * 5000));
+    queue.current = queue.current.catch(() => {}).then(async () => {
+      await sendP.current.catch(() => {});
+      for (const l of fresh) {
+        if (!mounted.current) return;
+        // 1) il dado
+        if (l.roll?.nat) {
+          const foe = sideOf(l.actor) === "f";
+          const dice = (l.roll.dice || []).length > 1 ? l.roll.dice.map((v) => ({ value: v, dim: v !== l.roll.nat })) : undefined;
+          await whenDiceIdle();
+          await showD20Roll(l.roll.nat, { label: `${foe ? "🟥 " : ""}${nameOf(l.actor)}`, dice, ...(foe ? { skin: "nemico" } : {}) }).catch(() => {});
+          await sleep(DICE_GAP_MS);
+        }
+        if (!mounted.current) return;
+        // 2) effetto + 3) impatto
+        const targets = l.targets || [];
+        const tags = l.tags || {};
+        const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit", tag: tags[id] }))
+          : l.dmg && targets.length === 1 ? [{ t: vfxKey(targets[0]), v: -l.dmg, crit: l.kind === "crit", tag: tags[targets[0]] }] : [];
+        Object.entries(tags).forEach(([id, tag]) => { if (!nums.some((n) => n.t === vfxKey(id))) nums.push({ t: vfxKey(id), v: 0, tag }); });
+        const land = () => setShownSeq((v) => Math.max(v || 0, l.i));
+        if (l.fx && targets.length) {
+          await new Promise((res) => {
+            let done = false;
+            const finish = () => { if (done) return; done = true; land(); res(); };
+            timers.current.push(setTimeout(finish, 3000)); // l'effetto non è partito: si va avanti lo stesso
             setVfxMsgs((m) => [...m.slice(-20), {
               id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
               effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
               effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
               effectNums: nums,
+              onImpact: (ms) => timers.current.push(setTimeout(finish, ms + 40)),
             }]);
-          } else nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, el: l.el }));
-          // la riga "arriva": i PF scendono e chi è a 0 cade, insieme all'impatto dell'effetto
-          const land = setTimeout(() => setShownSeq((v) => Math.max(v || 0, l.i)), l.fx ? IMPACT_MS[l.fx] ?? 320 : 60);
-          timers.current.push(land);
-          if (!l.fx) Object.entries(l.tags || {}).forEach(([id, tag]) => {
+          });
+        } else {
+          nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, el: l.el }));
+          Object.entries(tags).forEach(([id, tag]) => {
             const el = document.querySelector(`[data-vfx-target="${vfxKey(id)}"]`);
             const r = el?.getBoundingClientRect();
             if (r?.width) popTag({ x: r.left + r.width / 2, y: r.top + r.height * 0.35, tag, delay: 120 });
           });
-          // niente più ✨ di un secondo: bonus e malus restano come icone fisse sullo sprite (StatusPips) per i round che durano
-        }, idx * STAGGER_MS);
-        timers.current.push(t);
-      });
-      timers.current.push(setTimeout(() => setFlashes({}), fresh.length * STAGGER_MS + 1400));
+          land();
+        }
+        // 4) il tempo di leggere: più lungo dopo un colpo, breve per le righe di servizio
+        await sleep(l.fx ? ROW_GAP_MS : l.roll ? 500 : 250);
+      }
+      setFlashes({});
     });
     return undefined;
-  }, [run?.log, room.id]);
+  }, [run?.log, room.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Turni a fasi: tutti gli eroi insieme, poi i mostri. pending = eroi vivi che devono ancora agire.
   const fighting = run?.status === "fight";
@@ -210,14 +233,14 @@ export default function SegreteBattle({ room, uid }) {
 
   useEffect(() => { if (!myTurn) { setChosen(null); setChosenItem(null); setBagOpen(false); } }, [myTurn]);
 
-  const diceOf = (r) => showD20Roll(r.ev.roll.nat, { label: "Il tuo tiro", dice: r.ev.roll.dice.length > 1 ? r.ev.roll.dice.map((v) => ({ value: v, dim: v !== r.ev.roll.nat })) : undefined });
   const send = async (data) => {
     if (busy) return;
     setBusy(true); setErr("");
     try {
       const p = segreteDo({ roomId: room.id, ...data });
       // la cronaca nuova aspetta questa promessa (e il dado) prima di animarsi
-      sendP.current = p.then((r) => { if (r?.ev?.roll?.nat) diceOf(r); });
+      // il dado del proprio tiro lo mostra la sequenza della lotta, insieme a quelli degli altri
+      sendP.current = p.then(() => {});
       await p;
     } catch (e) { setErr(e.message || "Azione non riuscita."); }
     finally { setBusy(false); setChosen(null); }

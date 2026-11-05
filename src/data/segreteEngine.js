@@ -401,7 +401,7 @@ function heroAct(s, h, a, target) {
       }
       const r = attackRoll(s, h, target, hitW, { adv: !!a.adv });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
-      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id] }); continue; }
+      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } }); continue; }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
       let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0);
@@ -423,7 +423,7 @@ function heroAct(s, h, a, target) {
       }
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
       log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
-        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total });
+        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } });
     }
     return ev;
   }
@@ -561,9 +561,9 @@ function foeAct(s, f) {
   }
   const bonus = f.cap?.hit ?? ((Number(a.bonus) || 3) + (f.adapt?.hit || 0));
   const r = attackRoll(s, f, tgt, bonus);
-  if (!r.hit) { log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id] }); return; }
+  if (!r.hit) { log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } }); return; }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
-  log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg });
+  log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
 }
 
 /* ── giro dei turni ──────────────────────────────────── */

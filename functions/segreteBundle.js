@@ -1002,7 +1002,7 @@ function heroAct(s, h, a, target) {
       const r = attackRoll(s, h, target, hitW, { adv: !!a.adv });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
       if (!r.hit) {
-        log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id] });
+        log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } });
         continue;
       }
       let [dn, ds] = diceFor(a, lv);
@@ -1044,7 +1044,7 @@ function heroAct(s, h, a, target) {
       log(
         s,
         `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
-        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total }
+        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } }
       );
     }
     return ev;
@@ -1191,11 +1191,11 @@ function foeAct(s, f) {
   const bonus = f.cap?.hit ?? (Number(a.bonus) || 3) + (f.adapt?.hit || 0);
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) {
-    log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id] });
+    log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } });
     return;
   }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
-  log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg });
+  log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
 }
 function checkEnd(s) {
   if (!s.heroes.some(alive)) {

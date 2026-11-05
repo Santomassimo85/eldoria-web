@@ -223,7 +223,7 @@ export function VfxLayer({ messages, selfUid = null, canvas = false }) {
       if (ts && ts < mountedAtRef.current - 5000) { seenRef.current.add(msg.id); continue; }
       seenRef.current.add(msg.id);
       const play = () => {
-        if (canvas) { if (playCanvas(msg, targets)) soundFor(msg, targets); return; }
+        if (canvas) { const hits = playCanvas(msg, targets); if (hits) soundFor(msg, targets); return hits || null; }
         const spawned = spawnFor(msg, targets);
         if (!spawned.length) return;
         setItems((prev) => [...prev, ...spawned]);
@@ -231,10 +231,20 @@ export function VfxLayer({ messages, selfUid = null, canvas = false }) {
         const ttl = Math.max(...spawned.map((s) => s.delay + s.dur)) + 150;
         setTimeout(() => setItems((prev) => prev.filter((s) => !ids.has(s.id))), ttl);
         soundFor(msg, targets);
+        return null;
       };
       // 2026-11-04: l'effetto parte quando il dado è SPARITO (anche quello degli altri, che
       // compare un attimo dopo il messaggio: si aspetta che parta e poi che finisca).
-      const afterDice = () => whenDiceIdle().then(() => { play(); popNums(msg, targets, canvas); });
+      // 2026-11-05: numeri e `msg.onImpact(ms)` all'istante VERO dell'impatto (quello che restituisce
+      // il motore a canvas), non più a un ritardo stimato: chi usa onImpact (Segrete) ci fa scendere i PF.
+      const afterDice = () => whenDiceIdle().then(() => {
+        const hits = play();
+        popNums(msg, targets, canvas, hits);
+        if (typeof msg.onImpact === "function") {
+          const ms = hits && Object.keys(hits).length ? Math.min(...Object.values(hits)) : impactDelay(normalizeEffect(msg).kind, 0, canvas);
+          msg.onImpact(Math.max(0, ms));
+        }
+      });
       if (msg.dice?.dice?.length && msg.dice.by !== selfUid) setTimeout(afterDice, 250);
       else afterDice();
     }
@@ -269,7 +279,8 @@ function impactDelay(kind, i, canvas) {
   if (kind === "hit") return i * 90;
   return 260 + i * 60;
 }
-function popNums(msg, targets, canvas) {
+function popNums(msg, targets, canvas, hits = null) {
+  const at = (kind, i, t) => (hits && hits[t] != null ? hits[t] : impactDelay(kind, i, canvas));
   const nums = Array.isArray(msg.effectNums) ? msg.effectNums : [];
   const { kind, el } = normalizeEffect(msg);
   const missSet = new Set(Array.isArray(msg.effectMissTargets) ? msg.effectMissTargets : (msg.effectMiss ? targets : []));
@@ -282,15 +293,15 @@ function popNums(msg, targets, canvas) {
     const v = Number(n.v) || 0;
     const miss = n.miss || (missSet.has(n.t) && !v);
     // scritta IMMUNE / RESISTE / VULNERABILE sotto il numero (anche da sola, se il danno è 0)
-    if (n.tag) popTag({ x: a.x, y: a.y - a.h * 0.15, tag: n.tag, delay: impactDelay(kind, i, canvas) + 140 });
+    if (n.tag) popTag({ x: a.x, y: a.y - a.h * 0.15, tag: n.tag, delay: at(kind, i, n.t) + 140 });
     if (!miss && !v) return;
-    popNumber({ x: a.x, y: a.y - a.h * 0.15, value: v, kind: miss ? "miss" : v > 0 ? "heal" : "dmg", el: n.el || el, crit: !!n.crit, delay: impactDelay(kind, i, canvas) + 40 });
+    popNumber({ x: a.x, y: a.y - a.h * 0.15, value: v, kind: miss ? "miss" : v > 0 ? "heal" : "dmg", el: n.el || el, crit: !!n.crit, delay: at(kind, i, n.t) + 40 });
   });
   // mancati senza numero: la scritta MANCATO
   targets.forEach((t, i) => {
     if (done.has(t) || !missSet.has(t)) return;
     const a = anchorOf(t);
-    if (a) popNumber({ x: a.x, y: a.y - a.h * 0.15, kind: "miss", delay: impactDelay(kind, i, canvas) + 40 });
+    if (a) popNumber({ x: a.x, y: a.y - a.h * 0.15, kind: "miss", delay: at(kind, i, t) + 40 });
   });
 }
 
@@ -309,6 +320,7 @@ function playCanvas(msg, targets) {
   const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
   if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield"].includes(kind)) castPose(caster);
   let shook = false;
+  const hits = {};
   anchors.forEach(({ key, a }, i) => {
     const o = { el, to: pt(a), miss: missSet.has(key), kill: killSet.has(key) };
     let hit = -1;
@@ -318,6 +330,7 @@ function playCanvas(msg, targets) {
     else if (kind === "slash") hit = playSpell({ ...o, kind: "slash", delay: i * 90 });
     else if (kind === "hit") hit = playSpell({ ...o, kind: "impact", delay: i * 90, scale: 0.85 });
     else playSpell({ ...o, kind, miss: false, kill: false, delay: i * 60 }); // heal · buff · shield · debuff
+    if (hit >= 0) hits[key] = hit;
     // peso del colpo (2026-11-05): lampo e passo indietro su chi incassa, scossa sui colpi forti
     if (hit < 0 || o.miss) return;
     const crit = crits.has(key);
@@ -329,7 +342,7 @@ function playCanvas(msg, targets) {
       if (!shook && (crit || o.kill || kind === "aoe")) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
     }, hit);
   });
-  return true;
+  return hits;
 }
 
 let seq = 0;
