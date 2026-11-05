@@ -133,7 +133,7 @@ export const DAILY_RUNS = 1;
 export const DAILY_TOTAL = 3;
 export const dailyTotalOf = (charData, day = romeDayKey()) => (charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0);
 export const nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
-export const WEEKLY_RUNS = 3;
+export const WEEKLY_RUNS = 5; // 5 dungeon a settimana per classe (era 3 fino al 2026-11-06)
 export const RUN_COUNTS_AFTER = 2;
 export const romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
 export function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {

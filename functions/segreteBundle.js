@@ -663,7 +663,7 @@ var DAILY_RUNS = 1;
 var DAILY_TOTAL = 3;
 var dailyTotalOf = (charData, day = romeDayKey()) => charData?.storyDaily?.day === day ? Number(charData.storyDaily.count) || 0 : 0;
 var nextDailyPatch = (charData, day = romeDayKey()) => ({ day, count: dailyTotalOf(charData, day) + 1 });
-var WEEKLY_RUNS = 3;
+var WEEKLY_RUNS = 5;
 var RUN_COUNTS_AFTER = 2;
 var romeDayKey = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
 function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
