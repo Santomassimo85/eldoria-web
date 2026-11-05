@@ -488,6 +488,8 @@ function heroAct(s, h, a, target) {
 }
 
 /* ── IA dei mostri ───────────────────────────────────── */
+const HEAL_COOLDOWN = 3;
+const HEAL_MAX = 3;
 function foeAct(s, f) {
   const heroes = s.heroes.filter(alive);
   if (!heroes.length) return;
@@ -500,7 +502,10 @@ function foeAct(s, f) {
   const buffs = acts.filter((a) => (a.type === "buff_ca" && !(f.fx.ac || []).some((e) => fxOn(s, e))) || (a.type === "buff_adv" && !fxOn(s, f.fx.adv)));
   const debuffs = acts.filter((a) => a.type === "debuff_dis");
   let a;
-  if (hurt && heals.length && rnd() < 0.8) a = pick(heals);
+  // CURE DEI MOSTRI (2026-11-05, segnalato Kraelthar che si curava a ogni turno): al massimo una
+  // cura ogni 3 round per mostro (HEAL_COOLDOWN), 3 cure per sala (HEAL_MAX), probabilità 50% invece di 80%
+  const canHeal = (f.heals || 0) < HEAL_MAX && !(f.healRound && s.round - f.healRound < HEAL_COOLDOWN);
+  if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
   else if (areas.length && heroes.length >= 2 && rnd() < 0.55) a = pick(areas);
   else if (buffs.length && rnd() < 0.25) a = pick(buffs);
   else if (debuffs.length && rnd() < 0.25) a = pick(debuffs);
@@ -527,8 +532,10 @@ function foeAct(s, f) {
     const t = hurt || f;
     const hn = Number(a.diceNum) || 1, hs = parseDice(`1${a.diceType || "d8"}`)[1];
     const raw = roll(hn, hs).t + (Number(a.bonus) || 0);
-    const hmax = (f.cap?.dmg || 99) * 1.2;
-    const amt = Math.max(1, Math.round(raw * Math.min(1, hmax / Math.max(1, avgDice(hn, hs) + (Number(a.bonus) || 0)))));
+    // cura a METÀ (2026-11-05): tetto 0,6 del danno medio del mostro (era 1,2) e il tiro dimezzato
+    const hmax = (f.cap?.dmg || 99) * 0.6;
+    const amt = Math.max(1, Math.round(raw * 0.5 * Math.min(1, hmax / Math.max(1, (avgDice(hn, hs) + (Number(a.bonus) || 0)) * 0.5))));
+    f.heals = (f.heals || 0) + 1; f.healRound = s.round;
     const before = t.hp; t.hp = Math.min(t.maxHp, t.hp + amt);
     log(s, `💚 ${f.name} → ${nm}: ${t.name} +${t.hp - before} PF.`, { kind: "heal", actor: f.id, targets: [t.id] });
     return;

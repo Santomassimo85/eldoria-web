@@ -1113,6 +1113,8 @@ function heroAct(s, h, a, target) {
   }
   return ev;
 }
+var HEAL_COOLDOWN = 3;
+var HEAL_MAX = 3;
 function foeAct(s, f) {
   const heroes = s.heroes.filter(alive);
   if (!heroes.length) return;
@@ -1125,7 +1127,8 @@ function foeAct(s, f) {
   const buffs = acts.filter((a2) => a2.type === "buff_ca" && !(f.fx.ac || []).some((e) => fxOn(s, e)) || a2.type === "buff_adv" && !fxOn(s, f.fx.adv));
   const debuffs = acts.filter((a2) => a2.type === "debuff_dis");
   let a;
-  if (hurt && heals.length && rnd() < 0.8) a = pick(heals);
+  const canHeal = (f.heals || 0) < HEAL_MAX && !(f.healRound && s.round - f.healRound < HEAL_COOLDOWN);
+  if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
   else if (areas.length && heroes.length >= 2 && rnd() < 0.55) a = pick(areas);
   else if (buffs.length && rnd() < 0.25) a = pick(buffs);
   else if (debuffs.length && rnd() < 0.25) a = pick(debuffs);
@@ -1146,8 +1149,10 @@ function foeAct(s, f) {
     const t = hurt || f;
     const hn = Number(a.diceNum) || 1, hs = parseDice(`1${a.diceType || "d8"}`)[1];
     const raw = roll(hn, hs).t + (Number(a.bonus) || 0);
-    const hmax = (f.cap?.dmg || 99) * 1.2;
-    const amt = Math.max(1, Math.round(raw * Math.min(1, hmax / Math.max(1, avgDice(hn, hs) + (Number(a.bonus) || 0)))));
+    const hmax = (f.cap?.dmg || 99) * 0.6;
+    const amt = Math.max(1, Math.round(raw * 0.5 * Math.min(1, hmax / Math.max(1, (avgDice(hn, hs) + (Number(a.bonus) || 0)) * 0.5))));
+    f.heals = (f.heals || 0) + 1;
+    f.healRound = s.round;
     const before = t.hp;
     t.hp = Math.min(t.maxHp, t.hp + amt);
     log(s, `\u{1F49A} ${f.name} \u2192 ${nm}: ${t.name} +${t.hp - before} PF.`, { kind: "heal", actor: f.id, targets: [t.id] });
