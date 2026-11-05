@@ -29,3 +29,4 @@ body.in-fight .sgv { bottom: calc(12px + env(safe-area-inset-bottom)); }
 body.in-fight .sgv { top: calc(10px + env(safe-area-inset-top)); bottom: auto; }
 body.in-fight .sgv-pill { order: 1; }
 body.in-fight .sgv-panel { order: 2; }
+.sgv-dl { display: grid; place-items: center; text-decoration: none; border-color: #f2c14e; color: #ffe39a; }

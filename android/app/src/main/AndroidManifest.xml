@@ -41,6 +41,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- chat vocale delle Segrete (2026-11-05): la WebView chiede il microfono -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Android 13+: permesso a runtime per mostrare le notifiche push -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

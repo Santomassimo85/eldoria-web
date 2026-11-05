@@ -61,7 +61,12 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
       m.setSpeakersOn(speakers);
       setJoined(true); setOpen(true);
     } catch (e) {
-      setErr(e?.name === "NotAllowedError" ? "Serve il permesso del microfono: consentilo nelle impostazioni del browser." : e?.message || "Microfono non disponibile.");
+      const inApp = !!window.Capacitor?.isNativePlatform?.();
+      setErr(e?.name === "NotAllowedError"
+        ? (inApp
+          ? "L'app non ha il permesso del microfono. Se non te l'ha chiesto, aggiorna l'app (versione 1.2: scaricala dal link qui sotto) oppure attivalo in Impostazioni → App → Crit Happens → Autorizzazioni → Microfono."
+          : "Serve il permesso del microfono: consentilo nelle impostazioni del browser.")
+        : e?.message || "Microfono non disponibile.");
     } finally { setBusy(false); }
   };
   const leave = async () => {
@@ -135,6 +140,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
             </>
           )}
           {err && <p className="sgv-err" role="alert">{err}</p>}
+          {err && window.Capacitor?.isNativePlatform?.() && <a className="sgv-btn sgv-dl" href="/app/crit-happens.apk" download>⬇ Scarica l'app aggiornata (1.2)</a>}
         </div>
       )}
     </div>

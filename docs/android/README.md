@@ -27,7 +27,7 @@ browser Android. Installazione: consentire "origini sconosciute" quando Android 
 - Tocco sulla notifica nell'app → evento `ch-push-open` → navigazione a `data.url`.
 
 ## Ricostruire l'APK (Windows, questa macchina)
-Prerequisiti già presenti: JDK 21 (`C:\Program Files\Microsoft\jdk-21.0.7.6-hotspot`),
+Prerequisiti: JDK 21 (PC KalEl: `C:\Program Files\Microsoft\jdk-21.0.7.6-hotspot`; PC Luca dal 2026-11-05: portatile in `%LOCALAPPDATA%\Java\jdk-21.0.13.0.2+1`),
 Android SDK in `%LOCALAPPDATA%\Android\Sdk` (cmdline-tools, platform 35, build-tools 35),
 `android/local.properties` con `sdk.dir`. Il `webDir` è `www-shell/` (pagina vuota): dentro l’APK NON finisce `dist/`, altrimenti peserebbe 480 MB.
 
@@ -58,3 +58,6 @@ generate dal logo del sito. Rigenerare con
 `npx @capacitor/assets generate --android --iconBackgroundColor "#0b0a0d" --splashBackgroundColor "#0b0a0d"`.
 L'icona bianca della barra di stato è `res/drawable-*/ic_stat_notify.png`
 (dichiarata nel manifest come `default_notification_icon`).
+
+## Versioni
+- 1.2 (versionCode 3, 2026-11-05): permessi RECORD_AUDIO + MODIFY_AUDIO_SETTINGS per la chat vocale delle Segrete (la WebView di Capacitor li chiede al primo uso del microfono).
