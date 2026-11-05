@@ -16,7 +16,7 @@ import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, 
 import { sizeOf } from "./segrete";
 
 export const LOG_MAX = 80;
-export const AFK_MS = 10 * 60 * 1000;
+export const AFK_MS = 5 * 60 * 1000; // 5 minuti per agire (2026-11-05, prima 10)
 
 /* ── dadi ─────────────────────────────────────────────── */
 let rnd = Math.random;
@@ -764,7 +764,7 @@ export function timeout(s, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
   if (!late.length) throw new Error("Hanno già agito tutti.");
-  if (now - (s.phaseAt || s.turnAt || 0) < AFK_MS) throw new Error("I 10 minuti non sono ancora finiti.");
+  if (now - (s.phaseAt || s.turnAt || 0) < AFK_MS) throw new Error("I 5 minuti non sono ancora finiti.");
   late.forEach((h) => { h.fx.dodge = true; s.acted = { ...(s.acted || {}), [h.id]: true }; });
   log(s, `⏰ Tempo scaduto: ${late.map((h) => h.name).join(", ")} si ${late.length === 1 ? "difende" : "difendono"} da ${late.length === 1 ? "solo" : "soli"}.`, { kind: "buff", targets: late.map((h) => h.id) });
   afterHeroAction(s, now);

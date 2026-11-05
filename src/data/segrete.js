@@ -13,8 +13,8 @@ import { currentWeekKey } from "./arenaWeek";
 import { levelOfXp } from "./segreteKits";
 
 export const MAX_PARTY = 4;
-// Se qualcuno sparisce durante il dungeon: dopo 10 minuti il suo turno è difensivo.
-export const AFK_DEFEND_MS = 10 * 60 * 1000;
+// Se qualcuno sparisce durante il dungeon: dopo 5 minuti (era 10 fino al 2026-11-05) il suo turno è difensivo.
+export const AFK_DEFEND_MS = 5 * 60 * 1000;
 // Stanze aperte e ferme da più di tanto si possono sciogliere (il Master o chi entra).
 export const ROOM_IDLE_MS = 3 * 60 * 60 * 1000;
 

@@ -34,7 +34,7 @@ export default function SegreteManual() {
           <li>Ogni round agiscono prima <b>tutti gli eroi</b> (un'azione a testa, in qualsiasi ordine), poi tutti i mostri in ordine d'iniziativa.</li>
           <li>Tocca un nemico per sceglierlo come bersaglio; <b>tienilo premuto</b> per la sua scheda (PF, CA e resistenze si vedono solo dei mostri già sconfitti almeno una volta).</li>
           <li>Se il bersaglio scelto è già caduto, il colpo va al nemico in piedi più ferito.</li>
-          <li>Chi non agisce per 10 minuti si mette in difesa da solo, così il gruppo non resta fermo.</li>
+          <li>Chi non agisce per 5 minuti si mette in difesa da solo, così il gruppo non resta fermo.</li>
           <li>Sopra gli sprite: icone verdi = bonus, rosse = malus, col numero dei round che restano. Le scritte IMMUNE / RESISTE / VULNERABILE! dicono come il nemico ha preso il colpo.</li>
           <li>Fra una sala e l'altra si recupera un po': chi era a terra si rialza al 25% dei PF e gli usi delle abilità tornano.</li>
           <li>«🏃 Abbandona» toglie il tuo eroe dalla spedizione: conta come a terra e non prende premi.</li>

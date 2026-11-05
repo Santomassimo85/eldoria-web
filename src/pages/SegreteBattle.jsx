@@ -2,7 +2,7 @@
    Legge dungeon_runs/{roomId} (lo scrive solo il server, callable segreteDo) e
    manda le azioni. Gruppo in basso a sinistra, mostri a destra sullo sfondo del
    dungeon; quando tocca a te scegli l'azione e (se serve) il bersaglio toccandolo.
-   Chi non risponde per 10 minuti: chiunque del gruppo lo fa difendere (anche da solo). */
+   Chi non risponde per 5 minuti: chiunque del gruppo lo fa difendere (anche da solo). */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";

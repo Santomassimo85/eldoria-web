@@ -514,7 +514,7 @@ function currentWeekKey(now = /* @__PURE__ */ new Date()) {
 }
 
 // src/data/segrete.js
-var AFK_DEFEND_MS = 10 * 60 * 1e3;
+var AFK_DEFEND_MS = 5 * 60 * 1e3;
 var ROOM_IDLE_MS = 3 * 60 * 60 * 1e3;
 var DEFAULT_DUNGEONS = [
   { key: "segrete", name: "Le Segrete", icon: "\u26D3", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
@@ -567,7 +567,7 @@ function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey(
 
 // src/data/segreteEngine.js
 var LOG_MAX = 80;
-var AFK_MS = 10 * 60 * 1e3;
+var AFK_MS = 5 * 60 * 1e3;
 var rnd = Math.random;
 function withRng(fn, body) {
   const prev = rnd;
@@ -1399,7 +1399,7 @@ function timeout(s, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
   if (!late.length) throw new Error("Hanno gi\xE0 agito tutti.");
-  if (now - (s.phaseAt || s.turnAt || 0) < AFK_MS) throw new Error("I 10 minuti non sono ancora finiti.");
+  if (now - (s.phaseAt || s.turnAt || 0) < AFK_MS) throw new Error("I 5 minuti non sono ancora finiti.");
   late.forEach((h) => {
     h.fx.dodge = true;
     s.acted = { ...s.acted || {}, [h.id]: true };

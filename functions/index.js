@@ -1956,7 +1956,7 @@ exports.petAward = onCall(
 // functions/segreteBundle.js con `npm run build:segrete` (da rifare a ogni modifica).
 // Stato della partita in dungeon_runs/{roomId} (regole: lettura loggati, scrittura
 // solo da qui). Operazioni: init (crea la partita quando la stanza è partita),
-// act (azione dell'eroe di turno), timeout (chi sparisce da 10 minuti si difende),
+// act (azione dell'eroe di turno), timeout (chi sparisce da 5 minuti si difende),
 // next (sala successiva), flee (abbandona), heroCreate/heroAsi/heroPick (eroe di classe).
 // Vittoria = PE all'eroe di classe (characters.storyChars[cls].xp, permanente) + Corone + forse un oggetto.
 const segreteBundle = require("./segreteBundle");
