@@ -35,4 +35,20 @@ body.in-fight .sgv-panel { order: 2; }
 .sgv-mic.is-live { border-color: #e0624f; background: rgba(120,30,24,.92); box-shadow: 0 0 14px rgba(224,98,79,.6); }
 .sgv-sq { width: 42px; height: 42px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(243,234,216,.35); background: rgba(16,12,22,.92); color: #fff7e6; font-size: 1.05rem; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
 .sgv-sq--x { color: #ffb4a4; font-weight: 800; }
-@media (max-width: 420px) { .sgv-wave { display: none; } .sgv-pill b { display: none; } }
+
+/* Schermi stretti (2026-11-05): solo icone, tasti più piccoli; in lotta la pagina scende
+   sotto la barra della voce invece di farsi coprire la riga del dungeon. */
+body.in-fight .sgr-page:has(.sgv) { padding-top: 58px; }
+@media (max-width: 600px) {
+  .sgv-bar { gap: 5px; flex-wrap: nowrap; }
+  .sgv-lbl, .sgv-wave { display: none; }
+  .sgv-pill { min-height: 40px; padding: 4px 10px; gap: 4px; }
+  .sgv-mic { min-width: 56px; min-height: 40px; padding: 4px 12px; font-size: 1.25rem; }
+  .sgv-sq { width: 40px; height: 40px; font-size: .95rem; }
+  body.in-fight .sgr-page:has(.sgv) { padding-top: 54px; }
+}
+@media (max-width: 340px) {
+  .sgv-pill { padding: 4px 8px; }
+  .sgv-mic { min-width: 48px; padding: 4px 8px; }
+  .sgv-sq { width: 36px; height: 36px; }
+}

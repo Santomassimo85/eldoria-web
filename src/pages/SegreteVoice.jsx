@@ -95,7 +95,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
       <div className="sgv-bar">
         <button type="button" className="sgv-pill" aria-expanded={open} title="Chi è in voce · entra nella chat vocale" onClick={() => setOpen((o) => !o)}>
           <span aria-hidden="true">🎧</span>
-          <b>Voce</b>
+          <b className="sgv-lbl">Voce</b>
           <em>{inVoice.size || 0}</em>
           {!!talkingNow.length && <span className="sgv-wave" aria-label={`Parla: ${talkingNow.map((p) => p.name).join(", ")}`}>{talkingNow.map((p) => p.name).join(", ")}</span>}
         </button>
@@ -105,11 +105,11 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
               <button type="button" className={`sgv-mic${micOn ? " is-live" : ""}`} aria-label="Tieni premuto per parlare" title="Tieni premuto per parlare"
                 onPointerDown={pttDown} onPointerUp={pttUp} onPointerLeave={pttUp} onPointerCancel={pttUp}
                 onContextMenu={(e) => e.preventDefault()}>
-                {micOn ? "🔴 Parli" : "🎙 Tieni premuto"}
+                {micOn ? <>🔴<span className="sgv-lbl"> Parli</span></> : <>🎙<span className="sgv-lbl"> Tieni premuto</span></>}
               </button>
             ) : (
               <button type="button" className={`sgv-mic${micOn ? " is-live" : ""}`} aria-pressed={micOn} title={micOn ? "Tocca per il muto" : "Tocca per aprire il microfono"} onClick={() => applyMic(!micOn)}>
-                {micOn ? "🎙 Aperto" : "🔇 Muto"}
+                {micOn ? <>🎙<span className="sgv-lbl"> Aperto</span></> : <>🔇<span className="sgv-lbl"> Muto</span></>}
               </button>
             )}
             <button type="button" className="sgv-sq" aria-label={mode === "ptt" ? "Passa a microfono sempre aperto" : "Passa a tieni premuto"}
