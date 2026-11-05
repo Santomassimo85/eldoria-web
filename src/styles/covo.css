@@ -759,6 +759,8 @@ body:not(.theme-dark) :is(.chat-toggle-btn, .online-fab):hover { background: lin
    posizione fissa al centro (nesso.css) né in basso a sinistra (style.css) — sui telefoni stretti copriva i respiri */
 .header-agenda { display: inline-flex; align-items: center; }
 .header-agenda:empty { display: none; }
+/* la mascotte del pet sta in assoluto a sinistra dell'avatar: l'agenda le lascia il suo spazio (2026-11-05) */
+.header-right:has(.ld-mascot) .header-agenda:not(:empty) { margin-right: 42px; }
 .header-agenda .floating-sidebar-btn {
   position: static !important; inset: auto !important; transform: none !important; margin: 0 !important;
   width: 36px !important; height: 36px !important; font-size: 16px !important; opacity: 1 !important; pointer-events: auto !important;
