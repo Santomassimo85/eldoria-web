@@ -9,7 +9,9 @@
    Uso:  playSpell({ kind, el, from, to, miss, kill, crit, delay, scale })
      kind  = bolt (proiettile) · arrow · slash · hit · aoe · beam · strike
              (fulmine dall'alto) · breath · cloud · curse · drain · wave ·
-             heal · buff · shield · debuff · impact
+             heal · buff · shield · debuff · impact · burst
+             forme fisiche dei pet (2026-11-05): claw · bite · stomp · whip ·
+             sting · dash · spikes · rain · roar · sleep
      el    = fire · frost · water · lightning · earth · acid · poison ·
              darkness · radiant · arcane · psychic · physical
      from/to = { x, y, size, bottom? } in px dello SCHERMO (getBoundingClientRect)
@@ -272,6 +274,63 @@ function blob(x, y, r, color, alpha = 1) {
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha = alpha;
   ctx.drawImage(glow(color), x - r, y - r, r * 2, r * 2);
+}
+
+/* ── pezzi delle forme fisiche (2026-11-05) ── */
+// taglio: tre strati (alone, colore, nucleo bianco)
+function slashLine(x1, y1, x2, y2, pal, w, a) {
+  strokePath([[x1, y1], [x2, y2]], pal[2], w + 2.5, 0.55 * a);
+  strokePath([[x1, y1], [x2, y2]], pal[1], w + 0.8, a);
+  strokePath([[x1, y1], [x2, y2]], pal[0], Math.max(1, w - 1), a);
+}
+// mascella: arco pieno con i denti a punta (dir 1 = in alto, i denti guardano giù)
+function jaw(x, y, w, pal, a, dir) {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = a;
+  const n = 5, tw = (w * 2) / n, th = Math.max(2, w * 0.45);
+  ctx.fillStyle = pal[3];
+  ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y - dir * th * 0.6), w + 1, th * 0.9 + 1, 0, dir > 0 ? Math.PI : 0, dir > 0 ? Math.PI * 2 : Math.PI); ctx.fill();
+  for (let i = 0; i < n; i++) {
+    const x0 = x - w + i * tw;
+    ctx.fillStyle = pal[3];
+    ctx.beginPath(); ctx.moveTo(Math.round(x0 - 1), Math.round(y)); ctx.lineTo(Math.round(x0 + tw + 1), Math.round(y)); ctx.lineTo(Math.round(x0 + tw / 2), Math.round(y + dir * (th + 1))); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.moveTo(Math.round(x0), Math.round(y)); ctx.lineTo(Math.round(x0 + tw), Math.round(y)); ctx.lineTo(Math.round(x0 + tw / 2), Math.round(y + dir * th)); ctx.fill();
+  }
+  blob(x, y, w * 1.2, pal[1], 0.35 * a);
+}
+// stella a quattro punte (schiocco)
+function star4(x, y, r, color, a) {
+  strokePath([[x - r, y], [x + r, y]], color, 1, a);
+  strokePath([[x, y - r], [x, y + r]], color, 1, a);
+  strokePath([[x - r * 0.5, y - r * 0.5], [x + r * 0.5, y + r * 0.5]], color, 1, a * 0.7);
+  strokePath([[x - r * 0.5, y + r * 0.5], [x + r * 0.5, y - r * 0.5]], color, 1, a * 0.7);
+}
+// spuntone dal terreno, con la faccia dell'elemento
+function spike(x, gy, w, h, el, pal) {
+  if (h <= 0.5) return;
+  if (el === "fire") { for (let i = 0; i < 2; i++) add({ type: "flame", c: pal, x: x + rr(-w, w) * 0.5, y: gy - h * R(), vy: -rr(40, 90), r: w * 0.9, r1: w * 0.2, life: 0.3 }); return; }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  const pts = [[x - w, gy], [x, gy - h], [x + w, gy]];
+  ctx.fillStyle = pal[3];
+  ctx.beginPath(); ctx.moveTo(Math.round(pts[0][0] - 1), Math.round(gy)); ctx.lineTo(Math.round(x), Math.round(gy - h - 1)); ctx.lineTo(Math.round(pts[2][0] + 1), Math.round(gy)); ctx.fill();
+  ctx.fillStyle = pal[1];
+  ctx.beginPath(); ctx.moveTo(Math.round(pts[0][0]), Math.round(gy)); ctx.lineTo(Math.round(x), Math.round(gy - h)); ctx.lineTo(Math.round(pts[2][0]), Math.round(gy)); ctx.fill();
+  ctx.fillStyle = pal[0];
+  ctx.beginPath(); ctx.moveTo(Math.round(x - w * 0.25), Math.round(gy)); ctx.lineTo(Math.round(x), Math.round(gy - h + 1)); ctx.lineTo(Math.round(x + 0.5), Math.round(gy)); ctx.fill();
+  if (el === "frost" || el === "lightning" || el === "radiant" || el === "arcane" || el === "psychic") blob(x, gy - h * 0.6, w * 1.6, pal[1], 0.4);
+}
+// "Z" a pixel (p = lato del pixel nel canvas)
+function pixelZ(x, y, p, color, a) {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = Math.max(0, a);
+  const rows = ["11111", "00010", "00100", "01000", "11111"];
+  const ox = Math.round(x), oy = Math.round(y);
+  ctx.fillStyle = "#2a1a4a";
+  rows.forEach((r, j) => [...r].forEach((c, i) => { if (c === "1") ctx.fillRect(ox + i * p - 1, oy + j * p - 1, p + 2, p + 2); }));
+  ctx.fillStyle = color;
+  rows.forEach((r, j) => [...r].forEach((c, i) => { if (c === "1") ctx.fillRect(ox + i * p, oy + j * p, p, p); }));
 }
 
 /* ── scie dei proiettili per elemento ── */
@@ -605,6 +664,157 @@ export function playSpell(o) {
         });
       });
       hit = delay + 120;
+      break;
+    }
+    /* ── FORME FISICHE DEI PET (2026-11-05): prima erano pezzi DOM, ora tutte nel motore ── */
+    case "claw": { // tre graffi paralleli in fila, con scintille lungo il taglio
+      const L = ts * 4;
+      for (let k = 0; k < 3; k++) {
+        const ox = (k - 1) * ts * 1.5, oy = (k - 1) * ts * -0.3;
+        const x1 = tx - L * 0.55 + ox, y1 = ty - L * 0.6 + oy, x2 = tx + L * 0.55 + ox, y2 = ty + L * 0.6 + oy;
+        actor(delay + k * 70, 240 * fast, (t) => {
+          const g = Math.min(1, t * 2.4), a = 1 - Math.max(0, t - 0.55) / 0.45;
+          const ex = x1 + (x2 - x1) * g, ey = y1 + (y2 - y1) * g;
+          slashLine(x1, y1, ex, ey, pal, 1.6, a);
+          if (t < 0.45 && R() < 0.6) add({ type: "spark", c: pal[0], x: ex, y: ey, vx: rr(-50, 50) + (x2 - x1) * 1.5, vy: rr(-50, 50) + (y2 - y1) * 1.5, r: 1, life: 0.25 });
+        });
+      }
+      hit = delay + 240;
+      break;
+    }
+    case "bite": { // due mascelle con i denti che si chiudono, poi lo schiocco
+      const dur = 340 * fast;
+      const w = ts * 2.6;
+      actor(delay, dur, (t) => {
+        const close = t < 0.7 ? Math.pow(t / 0.7, 2) : 1;
+        const gap = ts * 2.4 * (1 - close);
+        const a = t < 0.85 ? 1 : (1 - t) / 0.15;
+        jaw(tx, ty - gap, w, pal, a, 1);
+        jaw(tx, ty + gap, w, pal, a, -1);
+      });
+      actor(delay + dur * 0.7, 160, (t) => { blob(tx, ty, ts * (2 + t * 3), pal[1], (1 - t) * 0.9); ring(tx, ty, ts * (1 + t * 4), pal[0], 1, 1 - t, 0.7); });
+      hit = delay + dur * 0.72;
+      break;
+    }
+    case "stomp": { // pestone: onda d'urto a terra, sassi e polvere che volano
+      const gy = ground ?? ty + ts * 6;
+      const at = delay + 280 * fast;
+      actor(at, 520 * fast, (t) => {
+        const r = ts * (1.5 + t * 9);
+        ring(tx, gy, r, pal[1], 2, 1 - t, 0.22);
+        ring(tx, gy, r * 0.7, pal[0], 1, (1 - t) * 0.8, 0.22);
+      });
+      actor(at, 1, () => {
+        for (let i = 0; i < 16; i++) add({ type: "rock", c: i % 2 ? pal[1] : PAL.earth[1], c2: PAL.earth[3], x: tx + rr(-1, 1) * ts * 3, y: gy, vx: rr(-90, 90), vy: -rr(80, 190), ay: 520, r: rr(0.8, 1.8), life: rr(0.5, 0.8) });
+        for (let i = 0; i < 10; i++) add({ type: "smoke", c: PAL.earth[4], x: tx + rr(-1, 1) * ts * 4, y: gy - ts * 0.5, vx: rr(-50, 50), vy: -rr(5, 25), r: ts * 0.6, r1: ts * 1.8, life: rr(0.6, 0.9), a: 0.6 });
+      });
+      hit = at;
+      break;
+    }
+    case "whip": { // una frusta che si srotola ad arco e schiocca sul bersaglio
+      const dur = 330 * fast;
+      const mx = (fx + tx) / 2, my = Math.min(fy, ty) - Math.abs(tx - fx) * 0.35;
+      const P = (u) => [(1 - u) * (1 - u) * fx + 2 * (1 - u) * u * mx + u * u * tx, (1 - u) * (1 - u) * fy + 2 * (1 - u) * u * my + u * u * ty];
+      actor(delay, dur + 160, (t) => {
+        const g = Math.min(1, t * (dur + 160) / dur);
+        const a = t < 0.75 ? 1 : (1 - t) / 0.25;
+        const pts = [];
+        for (let i = 0; i <= 24; i++) pts.push(P((i / 24) * g));
+        strokePath(pts, pal[3], 6, 0.6 * a);
+        strokePath(pts, pal[1], 3, a);
+        strokePath(pts, pal[0], 1, a);
+      });
+      actor(delay + dur, 200, (t) => { star4(tx, ty, ts * (1.5 + t * 3), pal[0], 1 - t); blob(tx, ty, ts * 3, pal[1], (1 - t) * 0.8); });
+      hit = delay + dur;
+      break;
+    }
+    case "sting": { // ago velocissimo, puntura e gocce dell'elemento
+      const dur = 200 * fast;
+      actor(delay, dur, (t) => {
+        const x = fx + (tx - fx) * t, y = fy + (ty - fy) * t;
+        const bx = x - (tx - fx) * 0.12, by = y - (ty - fy) * 0.12;
+        strokePath([[bx, by], [x, y]], pal[2], 3, 0.6);
+        strokePath([[bx, by], [x, y]], pal[0], 1, 1);
+      });
+      actor(delay + dur, 1, () => {
+        for (let i = 0; i < 9; i++) add({ type: "bubble", c: pal[1], x: tx + rr(-1, 1) * ts, y: ty, vx: rr(-30, 30), vy: rr(-40, 10), ay: 260, r: rr(0.8, 1.5), life: rr(0.5, 0.8) });
+      });
+      hit = delay + dur;
+      break;
+    }
+    case "dash": { // carica: scie di velocità dietro a chi si lancia, poi la botta
+      const dur = 300 * fast;
+      const dx = tx - fx, dy = ty - fy;
+      actor(delay, dur, (t) => {
+        for (let i = 0; i < 3; i++) {
+          const u = Math.max(0, t - 0.08 - R() * 0.25);
+          const x = fx + dx * u, y = fy + dy * u + rr(-1, 1) * ts * 1.6;
+          strokePath([[x - dx * 0.12, y - dy * 0.12], [x, y]], i ? pal[1] : pal[0], 1, 0.9);
+        }
+      });
+      actor(delay + dur, 220, (t) => { ring(tx, ty, ts * (1.5 + t * 6), pal[1], 2, 1 - t, 0.7); blob(tx, ty, ts * 4, pal[0], (1 - t) * 0.8); });
+      hit = delay + dur;
+      break;
+    }
+    case "spikes": { // spuntoni che salgono dal terreno sotto il bersaglio (forma dell'elemento)
+      const gy = ground ?? ty + ts * 6;
+      const ks = [-0.9, -0.45, 0, 0.45, 0.9];
+      ks.forEach((k, i) => {
+        const h = ts * (i === 2 ? 6 : 3.5 + R() * 1.6), x = tx + k * ts * 2.6;
+        actor(delay + 100 + Math.abs(i - 2) * 70, 520 * fast, (t) => {
+          const up = t < 0.25 ? t / 0.25 : t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+          spike(x, gy, ts * 0.9, h * up, el, pal);
+        });
+      });
+      actor(delay + 100, 1, () => { for (let i = 0; i < 8; i++) add({ type: "rock", c: pal[1], c2: pal[3], x: tx + rr(-1, 1) * ts * 3, y: gy, vx: rr(-60, 60), vy: -rr(60, 140), ay: 500, r: rr(0.7, 1.4), life: 0.6 }); });
+      hit = delay + 170;
+      break;
+    }
+    case "rain": { // pioggia dell'elemento sul bersaglio (gocce, schegge, sassi, braci)
+      const dur = 520 * fast;
+      actor(delay, dur, () => {
+        for (let i = 0; i < 2; i++) {
+          const x = tx + rr(-1, 1) * ts * 3.5, y = ty - ts * 12;
+          if (el === "frost") add({ type: "shard", c: pal[1], c2: pal[3], x, y, vx: rr(-10, 10), vy: rr(260, 340), r: rr(1, 1.6), life: 0.4, rot: 0 });
+          else if (el === "earth") add({ type: "rock", c: pal[1], c2: pal[3], x, y, vy: rr(220, 300), ay: 300, r: rr(1, 1.8), life: 0.45 });
+          else if (el === "fire") add({ type: "flame", c: pal, x, y, vy: rr(240, 320), r: ts * 0.6, r1: ts * 0.2, life: 0.4 });
+          else add({ type: "spark", c: i ? pal[0] : pal[1], x, y, vx: rr(-10, 10), vy: rr(280, 360), r: 1, life: 0.4 });
+        }
+      });
+      hit = delay + 460 * fast;
+      break;
+    }
+    case "roar": { // ruggito: anelli d'aria da chi urla verso il bersaglio
+      const ang = Math.atan2(ty - fy, tx - fx);
+      for (let k = 0; k < 4; k++) {
+        actor(delay + k * 90, 480 * fast, (t) => {
+          const x = fx + (tx - fx) * t * 0.85, y = fy + (ty - fy) * t * 0.85;
+          ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (1 - t) * 0.9;
+          ctx.strokeStyle = pal[2]; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.ellipse(x, y, ts * (0.6 + t * 1.5), ts * (1.8 + t * 3.5), ang, -1.2, 1.2); ctx.stroke();
+          ctx.strokeStyle = k % 2 ? pal[1] : pal[0]; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.ellipse(x, y, ts * (0.6 + t * 1.5), ts * (1.8 + t * 3.5), ang, -1.2, 1.2); ctx.stroke();
+        });
+      }
+      hit = -1;
+      break;
+    }
+    case "sleep": { // Z pixel che salgono e un velo viola
+      actor(delay, 900, (t) => blob(tx, ty, ts * 4, "#9b7bff", Math.sin(t * Math.PI) * 0.35));
+      const zp = Math.max(1, Math.round(ts * 0.2));
+      for (let k = 0; k < 3; k++) actor(delay + k * 260, 1000, (t) => pixelZ(tx + zp * 7 * k - zp * 4, ty - ts * 1.5 - zp * 7 * k - t * ts * 3, zp + (k === 2 ? 1 : 0), "#e8dcff", 1 - t * t));
+      hit = -1;
+      break;
+    }
+    case "burst": { // esplosione sul bersaglio: lampo, raggi, anello
+      actor(delay, 140, (t) => { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (1 - t) * 0.3; ctx.fillStyle = pal[1]; ctx.fillRect(0, 0, W, H); });
+      actor(delay, 420 * fast, (t) => {
+        blob(tx, ty, ts * (2 + t * 5), pal[2], (1 - t) * 0.8);
+        blob(tx, ty, ts * (1 + t * 3), pal[0], 1 - t);
+        ring(tx, ty, ts * (2 + t * 8), pal[1], 2, 1 - t, 0.8);
+        for (let i = 0; i < 10; i++) { const q = (i / 10) * Math.PI * 2; strokePath([[tx + Math.cos(q) * ts * (1 + t * 3), ty + Math.sin(q) * ts * (1 + t * 3)], [tx + Math.cos(q) * ts * (2 + t * 7), ty + Math.sin(q) * ts * (2 + t * 7)]], pal[1], 1, 1 - t); }
+      });
+      hit = delay + 40;
       break;
     }
     case "heal":

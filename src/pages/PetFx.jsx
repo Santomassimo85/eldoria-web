@@ -1,373 +1,101 @@
 /* ============================================================
-   EFFETTI DELLA LOTTA DEI PET (2026-10-31) — tutto DOM + CSS.
-   Ogni mossa ha un `fx` (forma dell'attacco, vedi petDex.js) e un
-   tipo (elemento → colori). Le posizioni vengono misurate dagli
-   sprite veri in campo, così valgono su telefono e desktop.
-   Look pixel art: tutto lo strato passa dal filtro SVG #pd-pixelate
-   (blocchi da PIX px), i movimenti vanno a scatti (steps) e le
-   particelle sono quadrate. Negli impatti escono scintille quadrate.
+   EFFETTI DELLA LOTTA DEI PET — rifatti il 2026-11-05 sul motore
+   "RPG old style" delle Segrete (src/fx/spellFx.js: canvas a pixel
+   grossi, luce additiva, fumo, fiamme, schegge, scariche).
+   Ogni mossa ha un `fx` (forma, vedi petDex.js) e un tipo (elemento):
+   la forma va al motore (anche quelle fisiche: graffi, morso, pestone,
+   frusta, pungiglione, carica, spuntoni, pioggia…), e qui si aggiunge il
+   "peso" del colpo: chi lancia si carica, chi incassa lampeggia e
+   arretra, il campo trema sui colpi pesanti e sui critici, MANCATO
+   esce all'arrivo. I balzi di chi attacca restano le classi .is-lunge /
+   .is-stomp / .is-dash (PetDen.jsx + PetFx.css).
+   Prova dalla console: __spellFx("claw", "fire")
    ============================================================ */
-
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { TYPE_COLORS } from "../data/petDex";
+import { useEffect } from "react";
 import { playSpell } from "../fx/spellFx";
+import { popOnEl } from "../fx/hitNumbers";
 import "./PetFx.css";
 
 // Mosse che restano su chi le usa.
 const SELF_FX = new Set(["aura", "heal", "sleep"]);
+// forma della mossa → forma del motore
+const KIND = {
+  stomp: "stomp", bite: "bite", claw: "claw", whip: "whip", sting: "sting", dash: "dash", spikes: "spikes",
+  orb: "bolt", beam: "beam", breath: "breath", burst: "burst", bolt: "strike", rain: "rain", wave: "wave",
+  roar: "roar", cloud: "cloud", curse: "curse", drain: "drain", heal: "heal", aura: "buff", sleep: "sleep",
+};
+// ritardo dell'effetto per aspettare il balzo di chi attacca (classi .is-lunge/.is-dash/.is-stomp)
+const LEAD = { bite: 120, claw: 140, whip: 60, sting: 120, dash: 0, stomp: 0 };
+// colpi che fanno tremare il campo
+const HEAVY = new Set(["stomp", "dash", "spikes", "burst", "bolt", "rain"]);
+const PHYSICAL = new Set(["stomp", "bite", "claw", "whip", "sting", "dash", "spikes"]);
 
-// Numeri pseudo-casuali fissi per seme (le particelle non "ballano" ai render).
-function rng(seed) {
-  let s = (seed * 9301 + 49297) % 233280;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-}
-
-function measure(field, el) {
-  const f = field.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
-  return { x: r.left + r.width / 2 - f.left, y: r.top + r.height * 0.55 - f.top, feet: r.bottom - f.top, s: r.width };
-}
-
-const PIX = 3; // lato dei "pixel" del filtro (2026-11-04: da 5 a 3, i dettagli degli elementi si leggono)
-
-// Filtro di pixelatura: campiona un punto ogni PIX px e lo allarga a blocco.
-function PixelFilter() {
-  const h = Math.floor(PIX / 2);
-  return (
-    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
-      <filter id="pd-pixelate" x="0" y="0" width="100%" height="100%">
-        <feFlood x={h} y={h} height="1" width="1" />
-        <feComposite width={PIX} height={PIX} />
-        <feTile result="grid" />
-        <feComposite in="SourceGraphic" in2="grid" operator="in" />
-        <feMorphology operator="dilate" radius={h} />
-      </filter>
-    </svg>
-  );
-}
-
-// Scintille quadrate che schizzano dal punto d'impatto.
-function Sparks({ parts, s, delay = 0, n = 8 }) {
-  return parts.slice(0, n).map((p, i) => (
-    <span key={`sp${i}`} className="pfx-spark" style={{
-      left: "var(--x1)", top: "var(--y1)",
-      "--tx": `${Math.cos((i / n) * 6.283 + p[0]) * s * (0.45 + p[1] * 0.35)}px`,
-      "--ty": `${Math.sin((i / n) * 6.283 + p[0]) * s * (0.45 + p[1] * 0.35)}px`,
-      background: i % 3 === 0 ? "#ffffff" : i % 3 === 1 ? "var(--c1)" : "var(--c2)",
-      animationDelay: `${delay}ms`,
-    }} />
-  ));
-}
-
-// Quando la forma della mossa arriva sul bersaglio (ms): lì parte il marchio dell'elemento.
-const IMPACT_MS = { stomp: 300, bite: 330, claw: 120, whip: 330, sting: 300, dash: 300, spikes: 160, orb: 380, beam: 200, breath: 460, drain: 0, burst: 40, bolt: 90, rain: 460, wave: 480, roar: 480, cloud: 200, curse: 260 };
-
-/* ── INCANTESIMI COL MOTORE "RPG OLD STYLE" (2026-11-04) ──────────
-   Le mosse magiche le disegna src/fx/spellFx.js (canvas con luce vera,
-   fumo, fiamme, scariche); le forme fisiche (morso, artigli, frusta,
-   pestone…) restano qui in DOM e il motore aggiunge solo l'impatto
-   dell'elemento sul bersaglio. */
-const SPELL_FX = { orb: "bolt", beam: "beam", breath: "breath", burst: "impact", bolt: "strike", wave: "wave", cloud: "cloud", curse: "curse", drain: "drain", heal: "heal", aura: "buff" };
 const rectOf = (el) => {
   const r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height * 0.55, size: r.width, bottom: r.bottom };
 };
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export default function PetFx({ ev: liveEv, seq: liveSeq, fieldRef, spotRefs }) {
-  // L'effetto resta in scena anche quando arriva la riga dopo (colpo, danni):
-  // prima spariva a metà e il marchio dell'elemento non si vedeva.
-  const [held, setHeld] = useState(null);
-  const timer = useRef(null);
-  useEffect(() => {
-    if (liveEv?.kind !== "move" || !liveEv.fx) return;
-    const fromEl = spotRefs[liveEv.side]?.current?.querySelector(".pd-sprite");
-    const toEl = spotRefs[liveEv.side === "p" ? "e" : "p"]?.current?.querySelector(".pd-sprite");
-    const kind = SPELL_FX[liveEv.fx];
-    const miss = !!(liveEv.roll && !liveEv.roll.ok);
-    const crit = !!liveEv.roll?.crit;
-    if (kind && fromEl && toEl) {
-      // mossa magica: tutto al motore, niente pezzi DOM
-      const self = SELF_FX.has(liveEv.fx);
-      const from = rectOf(fromEl);
-      playSpell({ kind, el: liveEv.mtype, from, to: self ? from : rectOf(toEl), miss: !self && miss, crit, scale: liveEv.fx === "burst" ? 1.5 : 1 });
-      return;
-    }
-    if (toEl && !miss && !SELF_FX.has(liveEv.fx)) {
-      // forma fisica: il segno dell'elemento sul bersaglio quando arriva il colpo
-      playSpell({ kind: "impact", el: liveEv.mtype, to: rectOf(toEl), crit, delay: IMPACT_MS[liveEv.fx] ?? 300, scale: 0.8 });
-    }
-    setHeld({ ev: liveEv, seq: liveSeq });
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setHeld(null), 1500);
-  }, [liveSeq]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const ev = held?.ev;
-  const seq = held?.seq ?? 0;
-  const [pos, setPos] = useState(null);
-  const active = ev?.kind === "move" && ev.fx;
-
-  useLayoutEffect(() => {
-    if (!active) { setPos(null); return; }
-    const field = fieldRef.current;
-    const from = spotRefs[ev.side]?.current?.querySelector(".pd-sprite");
-    const to = spotRefs[ev.side === "p" ? "e" : "p"]?.current?.querySelector(".pd-sprite");
-    if (!field || !from || !to) return;
-    setPos({ a: measure(field, from), b: measure(field, to) });
-  }, [seq, active]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const parts = useMemo(() => {
-    const r = rng(seq + 7);
-    return Array.from({ length: 14 }, () => [r(), r(), r(), r()]);
-  }, [seq]);
-
-  if (!active || !pos) return null;
-  const self = SELF_FX.has(ev.fx);
-  const a = pos.a, b = self ? pos.a : pos.b;
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const [c1, c2, c3] = TYPE_COLORS[ev.mtype] || TYPE_COLORS.neutral;
-  const style = {
-    "--x0": `${a.x}px`, "--y0": `${a.y}px`, "--x1": `${b.x}px`, "--y1": `${b.y}px`,
-    "--fy": `${b.feet}px`, "--s": `${b.s}px`, "--dx": `${dx}px`, "--dy": `${dy}px`,
-    "--len": `${Math.hypot(dx, dy)}px`, "--ang": `${Math.atan2(dy, dx)}rad`,
-    "--c1": c1, "--c2": c2, "--c3": c3,
-  };
-  const P = (i) => parts[i % parts.length];
-  const at = (x, y, extra = {}) => ({ left: x, top: y, ...extra });
-
-  let body = null;
-  switch (ev.fx) {
-    case "stomp":
-      body = (
-        <>
-          <span className="pfx-shock" style={at("var(--x1)", "var(--fy)")} />
-          <span className="pfx-shock pfx-shock--2" style={at("var(--x1)", "var(--fy)")} />
-          {parts.slice(0, 8).map((p, i) => (
-            <span key={i} className="pfx-dust" style={at("var(--x1)", "var(--fy)", {
-              "--tx": `${(p[0] - 0.5) * b.s * 1.6}px`, "--ty": `${-p[1] * b.s * 0.5}px`, "--z": 0.6 + p[2],
-              background: i % 3 ? "var(--c2)" : "var(--c3)",
-            })} />
-          ))}
-          <span className="pfx-pow" style={at("var(--x1)", "var(--y1)")} />
-          <Sparks parts={parts} s={b.s} delay={300} />
-        </>
-      );
-      break;
-    case "bite":
-      body = (
-        <>
-          <span className="pfx-jaw pfx-jaw--top" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-jaw pfx-jaw--bot" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-pow pfx-pow--late" style={at("var(--x1)", "var(--y1)")} />
-          <Sparks parts={parts} s={b.s} delay={320} />
-        </>
-      );
-      break;
-    case "claw":
-      body = (
-        <>
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="pfx-slash" style={at(`calc(var(--x1) + ${(i - 1) * 0.22}*var(--s))`, `calc(var(--y1) + ${(i - 1) * 0.08}*var(--s))`, { animationDelay: `${i * 70}ms` })} />
-          ))}
-          <Sparks parts={parts} s={b.s} delay={200} n={6} />
-        </>
-      );
-      break;
-    case "whip": {
-      // UNA sferzata: la frusta parte da chi attacca, si srotola ad arco e schiocca sul bersaglio.
-      const mx = (a.x + b.x) / 2, my = Math.min(a.y, b.y) - Math.abs(b.x - a.x) * 0.35;
-      const d = `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
-      body = (
-        <>
-          <svg className="pfx-whip" width="100%" height="100%" aria-hidden="true">
-            <path d={d} pathLength="100" fill="none" stroke="var(--c3)" strokeWidth="15" strokeLinecap="square" />
-            <path d={d} pathLength="100" fill="none" stroke="var(--c2)" strokeWidth="9" strokeLinecap="square" />
-            <path d={d} pathLength="100" fill="none" stroke="var(--c1)" strokeWidth="3" strokeLinecap="square" />
-          </svg>
-          <span className="pfx-crack" style={at("var(--x1)", "var(--y1)")} />
-          <Sparks parts={parts} s={b.s} delay={330} n={6} />
-        </>
-      );
-      break;
-    }
-    case "sting":
-      // pungiglione: un ago veloce, la puntura e qualche goccia dell'elemento
-      body = (
-        <>
-          <span className="pfx-needle" style={at("var(--x0)", "var(--y0)")} />
-          <span className="pfx-prick" style={at("var(--x1)", "var(--y1)")} />
-          {parts.slice(0, 5).map((p, i) => (
-            <span key={i} className="pfx-drip" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * b.s * 0.5}px)`, "var(--y1)", { animationDelay: `${330 + i * 50}ms` })} />
-          ))}
-        </>
-      );
-      break;
-    case "dash":
-      // carica: scie di velocità lungo il percorso e botta sul bersaglio (chi attacca si lancia, vedi .is-dash)
-      body = (
-        <>
-          {parts.slice(0, 6).map((p, i) => (
-            <span key={i} className="pfx-streak" style={at(`calc(var(--x0) + var(--dx) * ${0.15 + p[0] * 0.55})`, `calc(var(--y0) + var(--dy) * ${0.15 + p[0] * 0.55} + ${(p[1] - 0.5) * b.s * 0.6}px)`, { animationDelay: `${Math.round(p[2] * 120)}ms` })} />
-          ))}
-          <span className="pfx-pow" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-ring" style={at("var(--x1)", "var(--y1)", { animationDelay: ".3s" })} />
-          <Sparks parts={parts} s={b.s * 1.2} delay={300} n={10} />
-        </>
-      );
-      break;
-    case "spikes":
-      // spuntoni che salgono dal terreno sotto il bersaglio
-      body = (
-        <>
-          {[-0.42, -0.2, 0, 0.22, 0.44].map((k, i) => (
-            <span key={i} className={`pfx-spike pfx-spike--${ev.mtype}`} style={at(`calc(var(--x1) + ${k}*var(--s))`, "var(--fy)", {
-              "--h": `${b.s * (i === 2 ? 0.95 : 0.55 + P(i)[0] * 0.3)}px`, animationDelay: `${120 + Math.abs(i - 2) * 70}ms`,
-            })} />
-          ))}
-          {parts.slice(0, 6).map((p, i) => (
-            <span key={`d${i}`} className="pfx-dust" style={at("var(--x1)", "var(--fy)", {
-              "--tx": `${(p[0] - 0.5) * b.s * 1.4}px`, "--ty": `${-p[1] * b.s * 0.35}px`, "--z": 0.5 + p[2] * 0.6,
-              background: i % 2 ? "var(--c2)" : "var(--c3)",
-            })} />
-          ))}
-        </>
-      );
-      break;
-    case "orb":
-      body = (
-        <>
-          <span className="pfx-orb" style={at("var(--x0)", "var(--y0)")} />
-          <span className="pfx-pop pfx-pop--orb" style={at("var(--x1)", "var(--y1)")} />
-          <Sparks parts={parts} s={b.s} delay={380} n={6} />
-        </>
-      );
-      break;
-    case "beam":
-      body = (
-        <>
-          <span className="pfx-beam" style={at("var(--x0)", "var(--y0)")} />
-          <span className="pfx-pop pfx-pop--beam" style={at("var(--x1)", "var(--y1)")} />
-        </>
-      );
-      break;
-    case "breath":
-    case "drain": {
-      const rev = ev.fx === "drain";
-      body = (
-        <>
-          {parts.slice(0, 12).map((p, i) => (
-            <span key={i} className={`pfx-part${rev ? " is-rev" : ""}`} style={{
-              left: rev ? "var(--x1)" : "var(--x0)", top: rev ? "var(--y1)" : "var(--y0)",
-              "--ox": `${(p[0] - 0.5) * b.s * 0.7}px`, "--oy": `${(p[1] - 0.5) * b.s * 0.7}px`,
-              "--z": 0.5 + p[2], animationDelay: `${Math.round(p[3] * 320)}ms`,
-              background: ["var(--c1)", "var(--c2)", "var(--c3)"][i % 3],
-            }} />
-          ))}
-          {rev
-            ? parts.slice(0, 5).map((p, i) => <span key={`h${i}`} className="pfx-plus pfx-plus--late" style={at(`calc(var(--x0) + ${(p[0] - 0.5) * a.s * 0.8}px)`, "var(--y0)", { animationDelay: `${450 + i * 60}ms` })}>✚</span>)
-            : <span className="pfx-pop pfx-pop--breath" style={at("var(--x1)", "var(--y1)")} />}
-        </>
-      );
-      break;
-    }
-    case "burst":
-      body = (
-        <>
-          <span className="pfx-boom" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-ring" style={at("var(--x1)", "var(--y1)")} />
-          {Array.from({ length: 10 }, (_, i) => (
-            <span key={i} className="pfx-ray" style={at("var(--x1)", "var(--y1)", { "--r": `${i * 36 + P(i)[0] * 20}deg` })} />
-          ))}
-          <Sparks parts={parts} s={b.s * 1.3} delay={60} n={10} />
-        </>
-      );
-      break;
-    case "bolt": {
-      const xs = [0, 0.18, -0.12, 0.2, -0.08, 0.1, 0].map((k, i) => `${b.x + k * b.s},${(b.y * i) / 6}`).join(" ");
-      body = (
-        <>
-          <span className="pfx-flash" />
-          <svg className="pfx-bolt" width="100%" height="100%" aria-hidden="true">
-            <polyline points={xs} fill="none" stroke="var(--c3)" strokeWidth="14" strokeLinejoin="bevel" opacity=".55" />
-            <polyline points={xs} fill="none" stroke="var(--c2)" strokeWidth="7" strokeLinejoin="bevel" />
-            <polyline points={xs} fill="none" stroke="var(--c1)" strokeWidth="3" strokeLinejoin="bevel" />
-          </svg>
-          <span className="pfx-pop pfx-pop--bolt" style={at("var(--x1)", "var(--y1)")} />
-        </>
-      );
-      break;
-    }
-    case "rain":
-      body = (
-        <>
-          {parts.slice(0, 8).map((p, i) => (
-            <span key={i} className={`pfx-drop pfx-drop--${ev.mtype}`} style={{
-              left: `calc(var(--x1) + ${(p[0] - 0.5) * b.s * 1.1}px)`, top: `calc(var(--y1) + ${(p[1] - 0.5) * b.s * 0.5}px)`,
-              "--z": 0.7 + p[2] * 0.6, animationDelay: `${Math.round(p[3] * 380)}ms`,
-            }} />
-          ))}
-          <span className="pfx-pop pfx-pop--rain" style={at("var(--x1)", "var(--y1)")} />
-        </>
-      );
-      break;
-    case "wave":
-    case "roar":
-      body = [0, 1, 2].map((i) => (
-        <span key={i} className={`pfx-arc${ev.fx === "roar" ? " is-roar" : ""}`} style={at("var(--x0)", "var(--y0)", { animationDelay: `${i * 140}ms` })} />
-      ));
-      break;
-    case "cloud":
-      body = parts.slice(0, 7).map((p, i) => (
-        <span key={i} className="pfx-puff" style={at("var(--x1)", "var(--y1)", {
-          "--a": `${i * 51}deg`, "--rr": `${b.s * (0.18 + p[0] * 0.2)}px`, "--z": 0.7 + p[1] * 0.7,
-          animationDelay: `${i * 50}ms`, background: i % 2 ? "var(--c2)" : "var(--c3)",
-        })} />
-      ));
-      break;
-    case "curse":
-      body = (
-        <>
-          <span className="pfx-spiral" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-spiral pfx-spiral--in" style={at("var(--x1)", "var(--y1)")} />
-          <span className="pfx-eye" style={at("var(--x1)", "var(--y1)")} />
-        </>
-      );
-      break;
-    case "aura":
-      body = (
-        <>
-          {[0, 1, 2].map((i) => <span key={i} className="pfx-aura" style={at("var(--x1)", "var(--fy)", { animationDelay: `${i * 160}ms` })} />)}
-          {parts.slice(0, 5).map((p, i) => (
-            <span key={`u${i}`} className="pfx-up" style={at(`calc(var(--x1) + ${(p[0] - 0.5) * b.s * 0.9}px)`, `calc(var(--y1) + ${p[1] * b.s * 0.3}px)`, { animationDelay: `${i * 90}ms` })}>▲</span>
-          ))}
-        </>
-      );
-      break;
-    case "heal":
-    case "sleep":
-      body = (
-        <>
-          <span className="pfx-glow" style={at("var(--x1)", "var(--y1)")} />
-          {parts.slice(0, ev.fx === "sleep" ? 3 : 7).map((p, i) => (
-            <span key={i} className={ev.fx === "sleep" ? "pfx-z" : "pfx-plus"} style={at(`calc(var(--x1) + ${(p[0] - 0.3) * b.s * 0.8}px)`, `calc(var(--y1) + ${p[1] * b.s * 0.2}px)`, { animationDelay: `${i * (ev.fx === "sleep" ? 220 : 80)}ms` })}>
-              {ev.fx === "sleep" ? "Z" : "✚"}
-            </span>
-          ))}
-        </>
-      );
-      break;
-    default:
-      body = <span className="pfx-pop" style={at("var(--x1)", "var(--y1)")} />;
+// scossa a scatti (old style: niente morbidezza)
+function shake(el, px, ms) {
+  if (!el?.animate || reduced()) return;
+  const k = [];
+  for (let i = 0; i <= 6; i++) {
+    const f = 1 - i / 6;
+    k.push({ transform: i === 6 ? "none" : `translate(${Math.round((i % 2 ? -1 : 1) * px * f)}px, ${Math.round((i % 3 - 1) * px * 0.6 * f)}px)` });
   }
-  const missed = !self && ev.roll && !ev.roll.ok;
-  const hitAt = IMPACT_MS[ev.fx] ?? 300;
+  el.animate(k, { duration: ms, easing: "steps(1, end)" });
+}
+// chi incassa: lampo bianco a scatti e un passo indietro
+function recoil(el, dir, crit) {
+  if (!el?.animate) return;
+  const back = reduced() ? 0 : (crit ? 14 : 8) * dir;
+  el.animate([
+    { transform: "none", filter: "none" },
+    { transform: `translateX(${back}px)`, filter: "brightness(4) saturate(0)" },
+    { transform: `translateX(${back * 0.7}px)`, filter: "none" },
+    { transform: `translateX(${back * 0.4}px)`, filter: "brightness(3) saturate(0)" },
+    { transform: "none", filter: "none" },
+  ], { duration: crit ? 360 : 260, easing: "steps(4, end)" });
+}
+// chi lancia un incantesimo: si gonfia e si illumina un attimo
+function castPose(el, el2) {
+  if (!el?.animate || reduced()) return;
+  el.animate([
+    { transform: "none", filter: "none" },
+    { transform: "scale(1.06, .94)", filter: "brightness(1.6) drop-shadow(0 0 6px #fff)" },
+    { transform: "scale(.97, 1.04) translateY(-4px)", filter: "brightness(1.3)" },
+    { transform: "none", filter: "none" },
+  ], { duration: 320, easing: "steps(3, end)" });
+  void el2;
+}
 
-  return (
-    <>
-      <PixelFilter />
-      <div key={seq} className={`pfx pfx--${ev.mtype}${ev.roll?.crit ? " is-crit" : ""}`} style={style} aria-hidden="true">
-        {body}
-        {missed && <span className="pfx-whiff" style={at("var(--x1)", "var(--y1)", { animationDelay: `${hitAt}ms` })}>MANCATO</span>}
-      </div>
-    </>
-  );
+export default function PetFx({ ev, seq, fieldRef, spotRefs }) {
+  useEffect(() => {
+    if (ev?.kind !== "move" || !ev.fx) return undefined;
+    const kind = KIND[ev.fx] || "impact";
+    const fromWrap = spotRefs[ev.side]?.current;
+    const toWrap = spotRefs[ev.side === "p" ? "e" : "p"]?.current;
+    const fromEl = fromWrap?.querySelector(".pd-sprite");
+    const toEl = toWrap?.querySelector(".pd-sprite");
+    if (!fromEl || !toEl) return undefined;
+    const self = SELF_FX.has(ev.fx);
+    const miss = !self && !!(ev.roll && !ev.roll.ok);
+    const crit = !!ev.roll?.crit;
+    const from = rectOf(fromEl);
+    const to = self ? from : rectOf(toEl);
+    const lead = LEAD[ev.fx] || 0;
+    if (!PHYSICAL.has(ev.fx)) castPose(fromEl);
+    const hit = playSpell({ kind, el: ev.mtype, from, to, miss, crit, delay: lead, scale: ev.fx === "burst" ? 1.3 : 1 });
+    if (self || hit < 0) return undefined;
+    const timers = [];
+    timers.push(setTimeout(() => {
+      if (miss) { popOnEl(toEl, { kind: "miss" }); return; }
+      // il bersaglio incassa: lampo, passo indietro (verso il suo lato), il campo trema
+      recoil(toEl.querySelector(".pd-breathe") || toEl, ev.side === "p" ? 1 : -1, crit);
+      if (crit || HEAVY.has(ev.fx)) shake(fieldRef.current, crit ? 7 : 5, crit ? 380 : 300);
+    }, hit));
+    return () => timers.forEach(clearTimeout);
+  }, [seq]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
 }
