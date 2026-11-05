@@ -11,6 +11,9 @@ import "./SegreteVoice.css";
 const MODE_KEY = "sgr_voice_mode";
 const readMode = () => { try { return localStorage.getItem(MODE_KEY) === "open" ? "open" : "ptt"; } catch { return "ptt"; } };
 const SPEAK = 0.04;
+// Nell'app (WebView di Capacitor) i link del sito restano dentro l'app, che non scarica file:
+// un indirizzo di un ALTRO dominio invece Capacitor lo apre nel browser del telefono, che scarica l'APK.
+const APK_EXTERNAL_URL = "https://raw.githubusercontent.com/Santomassimo85/eldoria-web/main/public/app/crit-happens.apk";
 
 export default function SegreteVoice({ roomId, uid, name, members }) {
   const [peers, setPeers] = useState([]);
@@ -140,7 +143,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
             </>
           )}
           {err && <p className="sgv-err" role="alert">{err}</p>}
-          {err && window.Capacitor?.isNativePlatform?.() && <a className="sgv-btn sgv-dl" href="/app/crit-happens.apk" download>⬇ Scarica l'app aggiornata (1.2)</a>}
+          {err && window.Capacitor?.isNativePlatform?.() && <a className="sgv-btn sgv-dl" href={APK_EXTERNAL_URL} target="_blank" rel="noopener noreferrer">⬇ Scarica l'app aggiornata (1.2)</a>}
         </div>
       )}
     </div>
