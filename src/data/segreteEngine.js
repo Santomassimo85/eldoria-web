@@ -673,7 +673,11 @@ export function lootDead(s) {
     if (alive(f) || f.looted) return;
     f.looted = true;
     const ch = DROP_CHANCE[f.role] || DROP_CHANCE.minion;
-    const who = heroes.find((h) => h.id === f.lastHitBy) || pick(heroes);
+    // A CHI VA (2026-11-05): sempre a sorte con un dado da 2×eroi facce (2 eroi d4, 3 d6, 4 d8):
+    // 1–2 = primo eroe, 3–4 = secondo… (prima andava a chi dava il colpo finale)
+    const faces = heroes.length * 2;
+    const r = die(faces);
+    const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
       const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
@@ -685,7 +689,7 @@ export function lootDead(s) {
       const it = itemOf(id);
       if (it) { addSpoil(s, who.uid, { item: id, src: f.name }); parts.push(`${it.icon} ${it.name}`); }
     }
-    if (parts.length) log(s, `🎁 ${f.name} lascia cadere ${parts.join(" e ")}: li raccoglie ${who.name}.`, { kind: "loot", actor: who.id });
+    if (parts.length) log(s, `🎁 ${f.name} lascia cadere ${parts.join(" e ")}: ${heroes.length > 1 ? `🎲 d${faces} = ${r} → ` : ""}va a ${who.name}.`, { kind: "loot", actor: who.id });
   });
 }
 

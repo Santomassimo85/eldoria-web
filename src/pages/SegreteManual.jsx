@@ -70,7 +70,7 @@ export default function SegreteManual() {
       <Fold icon={COIN_ICON} title={`${COIN_NAME}, bottino e oggetti`}>
         <ul>
           <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco.</li>
-          <li>I mostri a volte lasciano monete o un oggetto a chi li abbatte: gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
+          <li>I mostri a volte lasciano monete o un oggetto, che va a un eroe tirato a sorte (2 eroi d4, 3 eroi d6, 4 eroi d8: 1–2 il primo, 3–4 il secondo…): gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
           <li>Il bottino si consegna solo se il gruppo <b>vince</b> il dungeon.</li>
           <li>Lo zaino è unico per tutti i tuoi eroi. In lotta usare un oggetto vale come l'azione del round.</li>
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>

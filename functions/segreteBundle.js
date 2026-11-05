@@ -1309,7 +1309,9 @@ function lootDead(s) {
     if (alive(f) || f.looted) return;
     f.looted = true;
     const ch = DROP_CHANCE[f.role] || DROP_CHANCE.minion;
-    const who = heroes.find((h) => h.id === f.lastHitBy) || pick(heroes);
+    const faces = heroes.length * 2;
+    const r = die(faces);
+    const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
       const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
@@ -1324,7 +1326,7 @@ function lootDead(s) {
         parts.push(`${it.icon} ${it.name}`);
       }
     }
-    if (parts.length) log(s, `\u{1F381} ${f.name} lascia cadere ${parts.join(" e ")}: li raccoglie ${who.name}.`, { kind: "loot", actor: who.id });
+    if (parts.length) log(s, `\u{1F381} ${f.name} lascia cadere ${parts.join(" e ")}: ${heroes.length > 1 ? `\u{1F3B2} d${faces} = ${r} \u2192 ` : ""}va a ${who.name}.`, { kind: "loot", actor: who.id });
   });
 }
 function useItem(s, uid, { itemId, targetId }, now) {
