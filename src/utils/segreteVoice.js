@@ -9,7 +9,7 @@
    Server ICE (2026-11-05): li dà `segreteDo` op "voiceIce" (STUN + TURN di Cloudflare se le chiavi
    sono configurate: senza TURN i telefoni su rete mobile spesso restano su "collego").
    Un collegamento che non si apre entro CONNECT_TIMEOUT_MS si rifà da capo (lo rifà chi chiama). */
-import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, Bytes } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 
@@ -41,6 +41,42 @@ const rid = () => Math.random().toString(36).slice(2, 10);
 
 export const peersCol = (roomId) => collection(db, "dungeon_voice", roomId, "peers");
 const linksCol = (roomId) => collection(db, "dungeon_voice", roomId, "links");
+const audioCol = (roomId) => collection(db, "dungeon_voice", roomId, "audio");
+
+/* VOCE VIA SERVER (2026-11-05): se il collegamento diretto WebRTC con qualcuno non è aperto
+   (reti mobili, router che lo bloccano, niente TURN), la voce passa da Firestore a pezzetti:
+   chi parla manda ~300 ms di audio a 12 kHz in μ-law (≈3,6 kB) in dungeon_voice/{room}/audio,
+   chi ascolta li rimette in fila con un piccolo margine. Ritardo ~1 s ma funziona su qualsiasi
+   rete. Chi manda cancella i suoi pezzetti dopo RELAY_KEEP_MS. */
+const RELAY_RATE = 12000;
+const RELAY_CHUNK = 3600; // campioni = 300 ms
+const RELAY_KEEP_MS = 8000;
+const RELAY_LEAD_S = 0.25; // margine di partenza della riproduzione
+function muEncode(f) {
+  const out = new Uint8Array(f.length);
+  for (let i = 0; i < f.length; i++) {
+    let x = Math.max(-1, Math.min(1, f[i])) * 32635;
+    const sign = x < 0 ? 0x80 : 0;
+    if (x < 0) x = -x;
+    x += 132;
+    let exp = 7;
+    for (let m = 0x4000; (x & m) === 0 && exp > 0; m >>= 1) exp--;
+    const mant = (x >> (exp + 3)) & 0x0f;
+    out[i] = ~(sign | (exp << 4) | mant) & 0xff;
+  }
+  return out;
+}
+function muDecode(u) {
+  const out = new Float32Array(u.length);
+  for (let i = 0; i < u.length; i++) {
+    const v = ~u[i] & 0xff;
+    const sign = v & 0x80, exp = (v >> 4) & 7, mant = v & 0x0f;
+    let x = ((mant << 3) + 132) << exp;
+    x -= 132;
+    out[i] = (sign ? -x : x) / 32635;
+  }
+  return out;
+}
 
 export class VoiceMesh {
   constructor({ roomId, uid, name, onState }) {
@@ -60,10 +96,19 @@ export class VoiceMesh {
     const conns = {};
     const via = {};
     Object.entries(this.conns).forEach(([u, c]) => { conns[u] = c.slow && c.state !== "connected" ? "failed" : c.state || "new"; if (c.via) via[u] = c.via; });
-    this.onState?.({ conns, via, turn: !!this.turn, levels: { ...this.levels } });
+    const levels = { ...this.levels };
+    const now = Date.now();
+    Object.entries(this.relayLevel || {}).forEach(([u, l]) => { if (!this.direct(u) && now < l.until + 150) levels[u] = l.v; });
+    // con chi non c'è il diretto, la voce passa dal server: per l'interfaccia è "collegato via server"
+    Object.keys(this.peerSids || {}).forEach((u) => { if (!this.direct(u)) { conns[u] = "relay"; via[u] = "server"; } });
+    this.onState?.({ conns, via, turn: !!this.turn, levels });
   }
 
   async join() {
+    // l'AudioContext va creato SUBITO, dentro il tocco (iPhone/Android lo lasciano sospeso se nasce dopo un await)
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = AC ? new AC() : null;
+    this.ctx?.resume?.().catch(() => {});
     const icePromise = loadIce();
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -72,9 +117,8 @@ export class VoiceMesh {
     this.track = this.stream.getAudioTracks()[0];
     const ice = await icePromise;
     this.ice = ice.servers; this.turn = ice.turn;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    this.ctx = AC ? new AC() : null;
     this.watchLevel(this.uid, this.stream);
+    this.startRelay();
     this.audioBox = document.createElement("div");
     this.audioBox.style.display = "none";
     document.body.appendChild(this.audioBox);
@@ -89,6 +133,89 @@ export class VoiceMesh {
     document.addEventListener("visibilitychange", this.onHide);
   }
 
+  /* ── voce via server ── */
+  // serve il server con questo peer? sì finché il collegamento diretto non è aperto
+  direct(u) { return this.conns[u]?.state === "connected"; }
+  needRelay() { return Object.keys(this.peerSids || {}).some((u) => !this.direct(u)); }
+
+  startRelay() {
+    if (!this.ctx) return;
+    this.relayBuf = [];
+    this.relayN = 0;
+    this.relaySeq = 0;
+    this.relaySent = [];
+    this.relayPlay = {};
+    this.relayLevel = {};
+    this.relayUsed = {};
+    try {
+      const src = this.ctx.createMediaStreamSource(this.stream);
+      const proc = this.ctx.createScriptProcessor(4096, 1, 1);
+      const mute = this.ctx.createGain(); mute.gain.value = 0;
+      src.connect(proc); proc.connect(mute); mute.connect(this.ctx.destination);
+      const ratio = this.ctx.sampleRate / RELAY_RATE;
+      proc.onaudioprocess = (e) => {
+        if (this.closed || !this.track?.enabled || !this.needRelay()) { this.relayBuf = []; this.relayN = 0; return; }
+        const inp = e.inputBuffer.getChannelData(0);
+        const n = Math.floor(inp.length / ratio);
+        const out = new Float32Array(n);
+        for (let i = 0; i < n; i++) out[i] = inp[Math.floor(i * ratio)];
+        this.relayBuf.push(out); this.relayN += n;
+        if (this.relayN >= RELAY_CHUNK) {
+          const all = new Float32Array(this.relayN);
+          let o = 0; this.relayBuf.forEach((b) => { all.set(b, o); o += b.length; });
+          this.relayBuf = []; this.relayN = 0;
+          this.sendChunk(all);
+        }
+      };
+      this.relayNodes = [src, proc, mute];
+    } catch (er) { this.relayErr = String(er?.message || er); }
+    let first = true;
+    this.unsubs.push(onSnapshot(audioCol(this.roomId), (snap) => {
+      if (first) { first = false; return; } // i pezzetti vecchi non si riproducono
+      snap.docChanges().forEach((ch) => {
+        if (ch.type !== "added") return;
+        const d = ch.doc.data();
+        if (!d || d.from === this.uid || d.sid === this.sid) return;
+        if (this.direct(d.from)) return; // con lui c'è il collegamento diretto: niente doppione
+        this.playChunk(d.from, d);
+      });
+    }, (er) => { this.relayErr = `ascolto:${er?.code || er?.message || er}`; }));
+  }
+
+  sendChunk(samples) {
+    const now = Date.now();
+    addDoc(audioCol(this.roomId), {
+      from: this.uid, sid: this.sid, n: ++this.relaySeq, sr: RELAY_RATE, d: Bytes.fromUint8Array(muEncode(samples)),
+    }).then((ref) => { this.relaySent.push({ ref, at: now }); })
+      .catch((er) => { this.relayErr = `invio:${er?.code || er?.message || er}`; });
+    // pulizia dei pezzetti vecchi
+    while (this.relaySent.length && now - this.relaySent[0].at > RELAY_KEEP_MS) deleteDoc(this.relaySent.shift().ref).catch(() => {});
+  }
+
+  playChunk(from, d) {
+    if (!this.ctx || this.speakersOff) return;
+    try {
+      const u = d.d?.toUint8Array ? d.d.toUint8Array() : new Uint8Array(d.d || []);
+      if (!u.length) return;
+      const f = muDecode(u);
+      const sr = Number(d.sr) || RELAY_RATE;
+      const buf = this.ctx.createBuffer(1, f.length, sr);
+      buf.getChannelData(0).set(f);
+      const node = this.ctx.createBufferSource();
+      node.buffer = buf;
+      node.connect(this.ctx.destination);
+      const t = this.ctx.currentTime;
+      const p = this.relayPlay[from] || (this.relayPlay[from] = { next: 0 });
+      // troppo indietro o troppo avanti (pausa, rete lenta): si riparte dal margine
+      if (p.next < t || p.next > t + 2) p.next = t + RELAY_LEAD_S;
+      node.start(p.next);
+      p.next += buf.duration;
+      let sum = 0; for (let i = 0; i < f.length; i += 4) sum += f[i] * f[i];
+      this.relayLevel[from] = { v: Math.sqrt(sum / (f.length / 4)), t: Date.now(), until: Date.now() + (p.next - t) * 1000 };
+      this.relayUsed[from] = Date.now();
+    } catch (er) { this.relayErr = `play:${er?.message || er}`; }
+  }
+
   // riga di diagnostica per ogni collegamento (si vede nel pannello di TUTTI: campo `diag` del peer)
   diagOf() {
     const out = {};
@@ -96,6 +223,8 @@ export class VoiceMesh {
     Object.entries(this.conns).forEach(([u, c]) => {
       out[u] = `${c.caller ? "chiama" : "risponde"}#${c.tries} ${c.pc.connectionState}/${c.pc.iceConnectionState} sig:${c.pc.signalingState} miei:${fmt(c.loc)} suoi:${fmt(c.rem)}${c.answered ? " ✓risp" : ""}${c.via ? ` ${c.via}` : ""}${c.err ? ` ERR ${c.err}` : ""}`.slice(0, 220);
     });
+    if (this.relayErr) out._relay = `ERR ${this.relayErr}`.slice(0, 160);
+    Object.entries(this.relayUsed || {}).forEach(([u, t]) => { out[u] = `${out[u] || ""} · server ${Math.round((Date.now() - t) / 1000)}s fa`; });
     return out;
   }
 
@@ -296,6 +425,8 @@ export class VoiceMesh {
     document.removeEventListener("visibilitychange", this.onHide);
     this.unsubs.forEach((u) => u());
     Object.keys(this.conns).forEach((u) => this.drop(u));
+    (this.relayNodes || []).forEach((n) => { try { n.disconnect(); } catch { /* niente */ } });
+    (this.relaySent || []).forEach((x) => deleteDoc(x.ref).catch(() => {}));
     this.stream?.getTracks().forEach((t) => t.stop());
     this.audioBox?.remove();
     this.ctx?.close?.().catch(() => {});
