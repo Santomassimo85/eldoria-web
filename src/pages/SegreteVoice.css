@@ -56,3 +56,5 @@ body.in-fight .sgr-page:has(.sgv) { padding-top: 58px; }
 .sgv-diag summary { cursor: pointer; }
 .sgv-diag ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; max-height: 160px; overflow: auto; }
 .sgv-diag code { font-size: .68rem; color: #ffe39a; word-break: break-all; }
+.sgv-mic.sgv-wake { border-color: #5fd16b; background: rgba(30,90,40,.95); animation: sgv-wake 1s ease-in-out infinite; }
+@keyframes sgv-wake { 50% { box-shadow: 0 0 14px rgba(95,209,107,.8); } }

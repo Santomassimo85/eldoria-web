@@ -100,6 +100,9 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
           <em>{inVoice.size || 0}</em>
           {!!talkingNow.length && <span className="sgv-wave" aria-label={`Parla: ${talkingNow.map((p) => p.name).join(", ")}`}>{talkingNow.map((p) => p.name).join(", ")}</span>}
         </button>
+        {joined && st.audio && st.audio !== "running" && (
+          <button type="button" className="sgv-mic sgv-wake" onClick={() => mesh.current?.unlockAudio()}>🔊<span className="sgv-lbl"> Attiva l'audio</span></button>
+        )}
         {joined && (
           <>
             {mode === "ptt" ? (
@@ -154,7 +157,7 @@ export default function SegreteVoice({ roomId, uid, name, members }) {
               <ul>
                 {live.map((p) => (
                   <li key={p.uid}><b>{p.name || p.uid.slice(0, 5)}</b>{p.turn ? " · ponte ok" : " · senza ponte"}
-                    {Object.entries(p.diag || {}).map(([u, line]) => <div key={u}>→ {live.find((x) => x.uid === u)?.name || u.slice(0, 5)}: <code>{line}</code></div>)}
+                    {Object.entries(p.diag || {}).map(([u, line]) => <div key={u}>{u === "_audio" ? "🔊" : `→ ${live.find((x) => x.uid === u)?.name || u.slice(0, 5)}:`} <code>{line}</code></div>)}
                     {!Object.keys(p.diag || {}).length && <div>nessun collegamento</div>}
                   </li>
                 ))}

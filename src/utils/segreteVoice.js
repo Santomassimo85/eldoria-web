@@ -101,7 +101,7 @@ export class VoiceMesh {
     Object.entries(this.relayLevel || {}).forEach(([u, l]) => { if (!this.direct(u) && now < l.until + 150) levels[u] = l.v; });
     // con chi non c'è il diretto, la voce passa dal server: per l'interfaccia è "collegato via server"
     Object.keys(this.peerSids || {}).forEach((u) => { if (!this.direct(u)) { conns[u] = "relay"; via[u] = "server"; } });
-    this.onState?.({ conns, via, turn: !!this.turn, levels });
+    this.onState?.({ conns, via, turn: !!this.turn, levels, audio: this.ctx?.state || "none" });
   }
 
   async join() {
@@ -147,6 +147,10 @@ export class VoiceMesh {
     this.relayPlay = {};
     this.relayLevel = {};
     this.relayUsed = {};
+    this.relayOut = 0; this.relayIn = 0;
+    // l'audio del telefono può tornare "sospeso" (app in secondo piano, chiamata, risparmio energetico):
+    // si prova a riattivarlo da soli; se il telefono vuole un tocco, l'interfaccia mostra il tasto
+    this.ctxT = setInterval(() => { if (this.ctx && this.ctx.state !== "running") this.ctx.resume?.().catch(() => {}); }, 2000);
     try {
       const src = this.ctx.createMediaStreamSource(this.stream);
       const proc = this.ctx.createScriptProcessor(4096, 1, 1);
@@ -186,7 +190,7 @@ export class VoiceMesh {
     const now = Date.now();
     addDoc(audioCol(this.roomId), {
       from: this.uid, sid: this.sid, n: ++this.relaySeq, sr: RELAY_RATE, d: Bytes.fromUint8Array(muEncode(samples)),
-    }).then((ref) => { this.relaySent.push({ ref, at: now }); })
+    }).then((ref) => { this.relaySent.push({ ref, at: now }); this.relayOut++; })
       .catch((er) => { this.relayErr = `invio:${er?.code || er?.message || er}`; });
     // pulizia dei pezzetti vecchi
     while (this.relaySent.length && now - this.relaySent[0].at > RELAY_KEEP_MS) deleteDoc(this.relaySent.shift().ref).catch(() => {});
@@ -213,6 +217,7 @@ export class VoiceMesh {
       let sum = 0; for (let i = 0; i < f.length; i += 4) sum += f[i] * f[i];
       this.relayLevel[from] = { v: Math.sqrt(sum / (f.length / 4)), t: Date.now(), until: Date.now() + (p.next - t) * 1000 };
       this.relayUsed[from] = Date.now();
+      this.relayIn++;
     } catch (er) { this.relayErr = `play:${er?.message || er}`; }
   }
 
@@ -223,7 +228,7 @@ export class VoiceMesh {
     Object.entries(this.conns).forEach(([u, c]) => {
       out[u] = `${c.caller ? "chiama" : "risponde"}#${c.tries} ${c.pc.connectionState}/${c.pc.iceConnectionState} sig:${c.pc.signalingState} miei:${fmt(c.loc)} suoi:${fmt(c.rem)}${c.answered ? " ✓risp" : ""}${c.via ? ` ${c.via}` : ""}${c.err ? ` ERR ${c.err}` : ""}`.slice(0, 220);
     });
-    if (this.relayErr) out._relay = `ERR ${this.relayErr}`.slice(0, 160);
+    out._audio = `audio:${this.ctx?.state || "nessuno"} mandati:${this.relayOut || 0} ricevuti:${this.relayIn || 0} mic:${this.track?.enabled ? "on" : "off"} serve-server:${this.needRelay?.() ? "sì" : "no"}${this.relayErr ? ` ERR ${this.relayErr}` : ""}`.slice(0, 200);
     Object.entries(this.relayUsed || {}).forEach(([u, t]) => { out[u] = `${out[u] || ""} · server ${Math.round((Date.now() - t) / 1000)}s fa`; });
     return out;
   }
@@ -421,7 +426,7 @@ export class VoiceMesh {
 
   async leave() {
     this.closed = true;
-    clearInterval(this.beatT); clearInterval(this.levelT); clearInterval(this.meterT); clearInterval(this.staleT);
+    clearInterval(this.beatT); clearInterval(this.ctxT); clearInterval(this.levelT); clearInterval(this.meterT); clearInterval(this.staleT);
     document.removeEventListener("visibilitychange", this.onHide);
     this.unsubs.forEach((u) => u());
     Object.keys(this.conns).forEach((u) => this.drop(u));
