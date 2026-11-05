@@ -30,6 +30,7 @@ import { deliverBossRewards, deliverySummaryText, MIN_ATTACKS, NO_PARTY } from "
 import BossRewardsEditor, { blankRewards, normalizeRewards, cleanRewards, rewardsSummary } from "./WorldBossRewards";
 
 import { isAdminEmail } from "../utils/roles";
+import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 
 const MIN_ACTIONS = 2;
 const MAX_ACTIONS = 5;
@@ -161,7 +162,7 @@ export const sanitizeActions = (arr, min) => {
 // Due forme: "corpse" = la stessa creatura stesa a terra, "tomb" = una tomba
 // che porta i suoi segni (arma, elmo, colori).
 export const pixelArtPrompt = (name, desc, dead, { deadStyle = "corpse", withRef = false } = {}) => {
-  const bg = "CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery. No text, no frame, no border. Only the subject on flat magenta.";
+  const bg = "CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery. No text, no frame, no border. Only the subject on flat magenta. Do NOT use magenta, pink or purple anywhere on the subject itself, and no glow, aura, halo, smoke or particles around it: the outline must be a clean dark line directly against the flat magenta.";
   const style = "Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.";
   const subject = `Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}`;
   if (!dead) return `Pixel art sprite of a single fantasy creature or character for a tactical RPG game.
@@ -182,52 +183,14 @@ ${style}
 ${bg}`;
 };
 
-// Rimuove lo sfondo a tinta unita (magenta) con un flood-fill dai bordi: così
-// non cancella eventuali pixel dello stesso colore "intrappolati" nel soggetto.
-// Ridimensiona a pixel-art (nearest neighbor) e restituisce un Blob PNG.
-export const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
-  const img = new Image();
-  img.onload = () => {
-    const MAX = 256;
-    const scale = img.width > MAX ? MAX / img.width : 1;
-    const w = Math.round(img.width * scale);
-    const hh = Math.round(img.height * scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = hh;
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, 0, 0, w, hh);
-
-    const imgData = ctx.getImageData(0, 0, w, hh);
-    const d = imgData.data;
-    const cornerAt = (x, y) => { const i = (y * w + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
-    const corners = [cornerAt(0, 0), cornerAt(w - 1, 0), cornerAt(0, hh - 1), cornerAt(w - 1, hh - 1)];
-    const ref = [0, 1, 2].map((k) => Math.round(corners.reduce((a, c) => a + c[k], 0) / corners.length));
-    const TOL2 = 110 * 110;
-    const match = (p) => {
-      const dr = d[p * 4] - ref[0], dg = d[p * 4 + 1] - ref[1], db = d[p * 4 + 2] - ref[2];
-      return dr * dr + dg * dg + db * db <= TOL2;
-    };
-    const visited = new Uint8Array(w * hh);
-    const stack = [];
-    const push = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= hh) return; const p = y * w + x; if (!visited[p]) stack.push(p); };
-    for (let x = 0; x < w; x++) { push(x, 0); push(x, hh - 1); }
-    for (let y = 0; y < hh; y++) { push(0, y); push(w - 1, y); }
-    while (stack.length) {
-      const p = stack.pop();
-      if (visited[p]) continue;
-      visited[p] = 1;
-      if (!match(p)) continue;
-      d[p * 4 + 3] = 0;                          // rendi trasparente
-      const x = p % w, y = (p / w) | 0;
-      push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
-    }
-    ctx.putImageData(imgData, 0, 0);
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob fallito"))), "image/png");
-  };
-  img.onerror = () => reject(new Error("immagine non caricabile"));
-  img.src = dataUrl;
-});
+// Toglie lo sfondo magenta (2026-11-06): stessa pulizia degli sprite dei pet
+// (utils/aiSprite.js) — a piena risoluzione, anche il fondo chiuso fra braccia e
+// gambe e gli aloni viola sui contorni — poi pixel art a 256 px, Blob PNG.
+// Prima un flood-fill semplice a 256 px lasciava zone e bordi viola.
+export const dataUrlToTransparentBlob = async (dataUrl) => {
+  const clean = await dataUrlToTransparentDataUrl(dataUrl, 256);
+  return (await fetch(clean)).blob();
+};
 
 /* ──────────────────────────────────────────────────────────────
    ActionEditor — un'azione in una scheda compatta (2026-10-21):

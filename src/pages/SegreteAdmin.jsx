@@ -17,6 +17,7 @@ import { useAuth } from "../AuthContext";
 import { isAdminEmail } from "../utils/roles";
 import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
+import { cleanSpriteDataUrl } from "../utils/aiSprite";
 import {
   DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
@@ -73,6 +74,17 @@ async function uploadPng(blob) {
   const ref = storageRef(storage, `segrete/mostro-${uid8()}.png`);
   await uploadBytes(ref, blob, { contentType: "image/png" });
   return getDownloadURL(ref);
+}
+/* Ripulisce uno sprite già salvato dagli avanzi del fondo magenta (2026-11-06).
+   Restituisce il nuovo url, o null se era già pulito. */
+async function recleanSprite(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("sprite non scaricabile");
+  const b = await r.blob();
+  const src = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(b); });
+  const out = await cleanSpriteDataUrl(src);
+  if (out === src) return null;
+  return uploadPng(await (await fetch(out)).blob());
 }
 // sprite caricato dal PC: rimpicciolito (pixel art) a 512 px, png
 const fileToSpriteBlob = (file) => fileToDataUrl(file).then((src) => new Promise((res, rej) => {
@@ -306,6 +318,34 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     else await deleteDoc(doc(db, "dungeon_monsters", form.id));
     setForm(null);
   };
+  const cleanOne = async (dead) => {
+    const k = dead ? "deadImageUrl" : "imageUrl";
+    flag(dead ? "dead" : "alive", true);
+    try { const u = await recleanSprite(form[k]); if (u) set({ [k]: u }); else alert("Era già pulito."); }
+    catch (e) { alert(`Non riuscito: ${e.message}. Rigeneralo con ✨.`); }
+    finally { flag(dead ? "dead" : "alive", false); }
+  };
+  const cleanAll = async () => {
+    const todo = monsters.filter((m) => m.imageUrl || m.deadImageUrl);
+    if (!todo.length || !window.confirm(`Ripulire dagli avanzi viola gli sprite di ${todo.length} mostri? Si sovrascrivono (il disegno resta, sparisce solo il fondo magenta rimasto).`)) return;
+    flag("cleanAll", "0/" + todo.length);
+    let fixed = 0, failed = 0;
+    for (let i = 0; i < todo.length; i++) {
+      const m = todo[i];
+      const patch = {};
+      for (const k of ["imageUrl", "deadImageUrl"]) {
+        if (!m[k]) continue;
+        try { const u = await recleanSprite(m[k]); if (u) patch[k] = u; } catch { failed++; }
+      }
+      if (Object.keys(patch).length) {
+        await setDoc(doc(db, "dungeon_monsters", m.id), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+        fixed++;
+      }
+      flag("cleanAll", `${i + 1}/${todo.length}`);
+    }
+    flag("cleanAll", false);
+    alert(`Ripuliti ${fixed} mostri.${failed ? ` ${failed} sprite non si sono potuti scaricare: rigenerali con ✨.` : ""}`);
+  };
   const duplicate = () => setForm((f) => ({ ...f, id: undefined, base: undefined, name: `${f.name} (copia)` }));
 
   const genSprite = async (dead) => {
@@ -425,6 +465,8 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
         <div className="sga-btns">
           {!form.imageUrl && <button type="button" className="adm-btn" disabled={busy.alive} onClick={() => genSprite(false)}>✨ Genera lo sprite</button>}
           {form.imageUrl && !form.deadImageUrl && <button type="button" className="adm-btn" disabled={busy.dead} onClick={() => genSprite(true)}>✨ Genera lo sprite morto</button>}
+          {form.imageUrl && <button type="button" className="adm-btn" disabled={busy.alive} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(false)}>🧽 Ripulisci il vivo</button>}
+          {form.deadImageUrl && <button type="button" className="adm-btn" disabled={busy.dead} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(true)}>🧽 Ripulisci il morto</button>}
         </div>
         <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
 
@@ -461,6 +503,11 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
           ))}
         </div>
       )}
+      <div className="sga-btns">
+        <button type="button" className="adm-btn" disabled={!!busy.cleanAll} onClick={cleanAll} title="Ripassa la pulizia del fondo magenta su tutti gli sprite già salvati">
+          {busy.cleanAll ? `🧽 Ripulisco… ${busy.cleanAll}` : "🧽 Ripulisci tutti gli sprite"}
+        </button>
+      </div>
       <div className="sga-chips sga-filter">
         <button type="button" aria-pressed={filter === "all"} className={filter === "all" ? "is-on" : ""} onClick={() => setFilter("all")}>Tutti ({monsters.length})</button>
         {dungeons.map((d) => (
