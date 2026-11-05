@@ -34,7 +34,7 @@ import { serverClockOffset, serverNow } from "../data/serverClock";
 import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftSaleValue, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
-import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, roundMo, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
+import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentDie, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, roundMo, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import { affordFromSnapshot, availableCoins, availableGp, canAfford, coinsOf, fmtCoins, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
 import "./CraftingOfficina.css";
@@ -385,7 +385,7 @@ export default function CraftingOfficina() {
       const a = rnd(20), b = rnd(20);
       const d20 = advMode === "adv" ? Math.max(a, b) : advMode === "dis" ? Math.min(a, b) : a;
       // Ogni componente dà +1d3 al tiro (tirato adesso, resta nel registro).
-      const compRolls = work.components.map((k) => ({ key: k, roll: rnd(COMPONENT_ROLL_DIE) }));
+      const compRolls = work.components.map((k) => ({ key: k, roll: rnd(componentDie(componentByKey(k))) }));
       const compBonus = compRolls.reduce((s, c) => s + c.roll, 0);
       const rollBonus = bonus + compBonus;
       const total = d20 + rollBonus;
@@ -879,7 +879,7 @@ export default function CraftingOfficina() {
                           <button key={c.key} type="button" className={`off-comp${on ? " on" : ""}`} disabled={full} onClick={() => toggleComp(c.key)} title={`${c.desc} · ${c.ev.label}`}>
                             <span className="off-comp-ic" aria-hidden="true">{c.icon}</span>
                             <span className="off-comp-name">{c.name}{c.effect ? <i className="off-comp-eff"> · {componentEffectLabel(c)}</i> : null}</span>
-                            <span className="off-comp-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
+                            <span className="off-comp-fx">−{c.minutes} min · +1–{componentDie(c)}{Number.isFinite(c.n) ? <i> · ×{c.n}</i> : null}</span>
                           </button>
                         );
                       })}
@@ -887,7 +887,7 @@ export default function CraftingOfficina() {
                   ) : (
                     <p className="off-tile-empty">Nessun componente risulta tuo: li trovi <strong>in sessione</strong>. Ognuno accorcia il lavoro di 30–60 min e dà +1–{COMPONENT_ROLL_DIE} al tiro.</p>
                   )}
-                  {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</em> al tiro · si consumano</span>}
+                  {comps.length > 0 && <span className="off-tile-fx"><em>−{fmtMinutes(comps.reduce((a, k) => a + (componentByKey(k)?.minutes || 0), 0))}</em> · <em>+{comps.length}–{comps.reduce((a, k) => a + componentDie(componentByKey(k)), 0)}</em> al tiro · si consumano</span>}
                 </div>
 
                 {/* investimento nei materiali */}
@@ -962,9 +962,9 @@ export default function CraftingOfficina() {
                     <span className={`off-piece${toolsOn ? "" : " is-off"}`}><b>{sign(toolB)}</b><small>strumenti</small></span>
                     <span className="off-piece"><b>{sign(gradeB)}</b><small>{prog.grado.name}</small></span>
                     {extra !== 0 && <span className="off-piece"><b>{sign(extra)}</b><small>spesa/ritmo</small></span>}
-                    {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.length * COMPONENT_ROLL_DIE}</b><small>componenti</small></span>}
+                    {comps.length > 0 && <span className="off-piece"><b>+{comps.length}–{comps.reduce((a, k) => a + componentDie(componentByKey(k)), 0)}</b><small>componenti</small></span>}
                     {perkB !== 0 && <span className="off-piece"><b>{sign(perkB)}</b><small>Sentiero</small></span>}
-                    <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.length}d{COMPONENT_ROLL_DIE}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
+                    <span className="off-eq">= d20 {sign(bonus)}{comps.length > 0 && <> +{comps.map((k) => `1d${componentDie(componentByKey(k))}`).join(" +")}</>}{advMode && <em> · {advMode === "adv" ? "vantaggio" : "svantaggio"}</em>}</span>
                   </div>
                   <span className="off-sum-cost">Materiali <b>{fmtMo(costMo)}</b>{investOpt.costPct ? <i> (+{investOpt.costPct}% sui {fmtMo(baseMo)} di base)</i> : null} · <b>+{xpGain} PE</b> se esce {targetMeta.label}<i> · con un 20 naturale paghi solo {fmtMo(roundMo(costMo * NAT20_COST_MULT))}</i></span>
                   {/* La borsa: le monete escono dalla scheda appena parte il lavoro. */}
@@ -1198,7 +1198,7 @@ export default function CraftingOfficina() {
                 <li key={c.key} className={n > 0 ? "on" : ""}>
                   <span className="off-stock-ic" aria-hidden="true">{c.icon}</span>
                   <span className="off-stock-main"><b>{c.name} <i>×{n}</i></b><small>{c.desc}{c.effect ? ` — ${componentEffectLabel(c)}.` : ""}{n > 0 && c.ev.label ? <><br />✓ {c.ev.label}</> : null}</small></span>
-                  <span className="off-stock-fx">−{c.minutes} min · +1–{COMPONENT_ROLL_DIE}</span>
+                  <span className="off-stock-fx">−{c.minutes} min · +1–{componentDie(c)}</span>
                 </li>
               );
             })}
@@ -1498,7 +1498,7 @@ function StockRow({ icon, name, sub, n, disabled, onMinus, onPlus }) {
   );
 }
 
-const compSub = (k) => [`−${k.minutes} min`, `+1d${COMPONENT_ROLL_DIE} al tiro`, componentEffectLabel(k)].filter(Boolean).join(" · ");
+const compSub = (k) => [`−${k.minutes} min`, `+1d${componentDie(k)} al tiro`, componentEffectLabel(k)].filter(Boolean).join(" · ");
 const enhSub = (e) => `${e.applies.map((t) => FT_LABEL[t] || t).join(", ")} · ${e.desc}`;
 
 // ── ARTIGIANI: una scheda per PG, raggruppate per professione ──

@@ -42,8 +42,12 @@ export const COMPONENTS = [
   { key: "osso",      icon: "🦴", name: "Osso di Bestia Antica",       minutes: 45, aliases: ["osso di bestia", "ancient beast bone", "beast bone"], desc: "Duro come pietra ma facile da incidere: ottimo per manici, intarsi e amuleti.", effect: { dm: "bonus di attacco", label: "Bonus di attacco (a scelta del DM)" } },
   { key: "sale",      icon: "🧂", name: "Sale delle Profondità",       minutes: 30, aliases: ["sale delle profondità", "deep salt"], desc: "Cristalli grigi delle miniere: conservano, fissano i colori e stabilizzano le miscele." },
   { key: "cera",      icon: "🕯", name: "Cera d'Api Titanica",         minutes: 45, aliases: ["cera titanica", "titan beeswax", "titanic beeswax"], desc: "Un panetto che non si scioglie al sole: per stampi, sigilli, lucidature e candele." },
+  // 2026-11-05: frammento raro trovato in sessione (Makenna): dado più grosso al tiro (+1d6 invece di +1d3)
+  { key: "vertebra", icon: "🦴", name: "Frammento di Vertebra di Szareth", minutes: 45, rollDie: 6, aliases: ["vertebra di szareth", "vertebra di szaret", "szareth"], desc: "Un frammento d'osso antico che pulsa ancora di potere: guida la mano verso un'opera migliore (+1d6 al tiro invece di +1d3)." },
   { key: "cristallo", icon: "💎", name: "Scheggia di Cristallo Grezzo", minutes: 60, aliases: ["cristallo grezzo", "raw crystal", "rough crystal"], desc: "Vibra piano se la si accosta a qualcosa d'incantato: accorda i materiali fra loro.", effect: { price: 500, label: "+500 mo al valore dell'oggetto" } },
 ];
+// Dado al tiro di un componente (di solito d3; alcuni rari di più)
+export const componentDie = (c) => Number(c?.rollDie) || COMPONENT_ROLL_DIE;
 // Etichetta breve dell'effetto extra di un componente ("" se non ne ha).
 export const componentEffectLabel = (c) => c?.effect?.label || "";
 
