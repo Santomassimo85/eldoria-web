@@ -153,7 +153,7 @@ export default function SegreteBattle({ room, uid }) {
      ognuno col suo orologio e si vedevano sfasati. */
   const queue = useRef(Promise.resolve());
   const queued = useRef(0); // righe ancora da giocare: finché > 0 le azioni restano nascoste
-  const [animating, setAnimating] = useState(false);
+  const [, setAnimating] = useState(false); // rinfresca la vista a fine coda
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
@@ -277,6 +277,10 @@ export default function SegreteBattle({ room, uid }) {
   // righe non ancora "arrivate": i loro cambi di PF non si mostrano ancora
   const pendingRows = shownSeq == null ? [] : run.log.filter((l) => l.i > shownSeq);
   const playing = pendingRows.length > 0;
+  // 2026-11-05: il menu delle azioni sparisce SOLO mentre si gioca il turno dei mostri (o il cambio
+  // di round/sala); i colpi degli altri eroi non lo tolgono: resta finché non agisci tu
+  const heroIdSet = new Set((run.heroes || []).map((h) => h.id));
+  const blocking = pendingRows.some((l) => !(l.actor && heroIdSet.has(l.actor)) && l.kind !== "info" && l.kind !== "loot");
   const lag = {};
   pendingRows.forEach((l) => Object.entries(l.nums || {}).forEach(([id, v]) => { lag[id] = (lag[id] || 0) + v; }));
   const shown = (c) => (lag[c.id] ? { ...c, hp: Math.max(0, Math.min(c.maxHp, c.hp - lag[c.id])) } : c);
@@ -325,10 +329,10 @@ export default function SegreteBattle({ room, uid }) {
 
       <div className="sgb-panel">
         {err && <p className="sgb-err" role="alert">{err}</p>}
-        {run.status === "fight" && (animating || playing) && (
+        {run.status === "fight" && blocking && (
           <p className="sgb-turn sgb-turn--wait">🎬 Si tirano i dadi e partono i colpi… {myTurn ? "poi tocca a te." : ""}</p>
         )}
-        {run.status === "fight" && !(animating || playing) && (myTurn ? (
+        {run.status === "fight" && !blocking && (myTurn ? (
           chosen || chosenItem ? (
             <div className="sgb-pickmsg">
               <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"} sul campo.</span>
