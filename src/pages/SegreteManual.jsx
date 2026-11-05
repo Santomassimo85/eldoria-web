@@ -23,6 +23,7 @@ export default function SegreteManual() {
         <ol>
           <li><b>Personaggi</b>: crea un eroe per la classe che vuoi (uno per classe, resta tuo per sempre) e tira i suoi PF.</li>
           <li><b>Gruppi</b>: crea un gruppo (da 1 a {MAX_PARTY} eroi) scegliendo il dungeon, oppure entra in uno aperto. Puoi invitare altri giocatori: ricevono una notifica.</li>
+          <li>Nel gruppo potete parlarvi con la <b>chat vocale</b> (tasto 🎧 Voce in basso a sinistra, in lotta in alto): microfono a «tieni premuto» o sempre aperto.</li>
           <li>Tutti premono <b>▶ Avvia</b>: quando l'hanno premuto tutti si scende.</li>
           <li>Si combatte sala dopo sala fino al boss. Se il gruppo vince, ognuno porta a casa PE, Corone, {COIN_NAME} e il bottino. <b>Se il gruppo cade, si perde tutto quello trovato.</b></li>
         </ol>

@@ -1,0 +1,31 @@
+/* Chat vocale delle Segrete (2026-11-05) */
+.sgv { position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 1070; display: grid; gap: 6px; justify-items: start; max-width: min(320px, calc(100vw - 24px)); font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #f3ead8; }
+body.in-fight .sgv { bottom: calc(12px + env(safe-area-inset-bottom)); }
+@media (min-width: 1301px) { .sgv { bottom: 20px; } }
+.sgv-pill { order: 2; display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 6px 12px; border-radius: 21px; cursor: pointer; border: 1px solid rgba(243,234,216,.35); background: rgba(16,12,22,.92); color: #fff7e6; font: 700 .92rem system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+.sgv.is-joined .sgv-pill { border-color: #5fd16b; }
+.sgv-pill em { font-style: normal; min-width: 18px; padding: 0 5px; border-radius: 9px; background: rgba(243,234,216,.15); text-align: center; font-size: .78rem; }
+.sgv-wave { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #8ee69a; font-size: .8rem; }
+.sgv-wave::before { content: "🔊 "; }
+.sgv-panel { order: 1; width: min(320px, calc(100vw - 24px)); padding: 10px; border-radius: 4px; border: 1px solid rgba(243,234,216,.25); background: rgba(16,12,22,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); display: grid; gap: 8px; }
+.sgv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sgv-list li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 6px; padding: 5px 8px; border-left: 3px solid var(--cls, #888); background: rgba(255,255,255,.04); border-radius: 3px; }
+.sgv-list li.is-talk { background: rgba(95,209,107,.16); box-shadow: inset 0 0 0 1px #5fd16b; }
+.sgv-ico { font-size: 1.1rem; text-align: center; }
+.sgv .sgv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cls, #fff7e6); font-weight: 700; }
+.sgv .sgv-list small { color: #d8ccb4; font-size: .76rem; white-space: nowrap; }
+.sgv-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.sgv-modes button { min-height: 36px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.3); background: transparent; color: #f3ead8; font: 600 .82rem system-ui, sans-serif; }
+.sgv-modes button.is-on { background: #f2c14e; border-color: #f2c14e; color: #1d1406; }
+.sgv-ptt { min-height: 56px; border-radius: 4px; cursor: pointer; border: 2px solid #f2c14e; background: rgba(242,193,78,.12); color: #fff7e6; font: 800 .98rem system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sgv-ptt.is-live { border-color: #e0624f; background: rgba(224,98,79,.25); box-shadow: 0 0 12px rgba(224,98,79,.5); }
+.sgv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.sgv-btn { min-height: 38px; padding: 6px 8px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.3); background: transparent; color: #f3ead8; font: 600 .84rem system-ui, sans-serif; }
+.sgv-btn--go { min-height: 46px; border-color: #5fd16b; background: rgba(95,209,107,.15); font-weight: 800; font-size: .95rem; }
+.sgv-btn:disabled { opacity: .6; }
+.sgv .sgv-hint { margin: 0; color: #d8ccb4; font-size: .78rem; }
+.sgv .sgv-err { margin: 0; color: #ffb4a4; font-size: .82rem; font-weight: 700; }
+/* in lotta in alto a sinistra: in basso coprirebbe le azioni */
+body.in-fight .sgv { top: calc(10px + env(safe-area-inset-top)); bottom: auto; }
+body.in-fight .sgv-pill { order: 1; }
+body.in-fight .sgv-panel { order: 2; }
