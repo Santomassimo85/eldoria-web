@@ -16,7 +16,7 @@ import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON } from "../data/segret
 import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
-import { leaveRoom } from "../utils/segreteRooms";
+import { leaveRoom, backToRoom } from "../utils/segreteRooms";
 import "./SegreteBattle.css";
 
 const ROW_GAP_MS = 900; // pausa dopo ogni colpo, per leggere numeri e cronaca
@@ -396,7 +396,11 @@ export default function SegreteBattle({ room, uid }) {
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}
                 <span>🎁 Nel forziere del boss: <b>{run.loot.name}</b>, va a <b>{run.loot.winner}</b>{run.loot.uid === uid ? " (a te!)" : ""}. Arriverà nella scheda su Foundry.</span></p>
             )}
-            <button type="button" className="sgb-btn" disabled={busy} onClick={() => leaveRoom(room.id, uid).catch((e) => setErr(e.message))}>Torna alla lobby</button>
+            <div className="sgb-endbtns">
+              <button type="button" className="sgb-btn" disabled={busy} onClick={() => backToRoom(room.id, uid).catch((e) => setErr(e.message))}>↩ Torna al gruppo</button>
+              <button type="button" className="sgb-btn sgb-btn--ghost" disabled={busy} onClick={() => leaveRoom(room.id, uid).catch((e) => setErr(e.message))}>Esci dal gruppo</button>
+            </div>
+            <p className="sgb-endnote">Il gruppo e la chat vocale restano: tornati al gruppo potete votare il prossimo dungeon.</p>
           </div>
         )}
       </div>

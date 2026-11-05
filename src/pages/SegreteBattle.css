@@ -174,3 +174,5 @@
   .sgb-f--f { width: calc(clamp(78px, 23vw, 104px) * min(var(--sz, 1), 1.35)); }
   .sgb-f--f .sgb-sprite { height: calc(clamp(58px, 10svh, 92px) * min(var(--sz, 1), 1.5)); }
 }
+.sgb-endbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.sgr-page .sgb-endnote { margin: 6px 0 0; font-size: .85rem; color: #e9dcc4; }

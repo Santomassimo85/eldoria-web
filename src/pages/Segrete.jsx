@@ -16,7 +16,7 @@ import {
   MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DAILY_TOTAL, WEEKLY_RUNS, runsOf, clsStyle, romeDayKey, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
-  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers,
+  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, voteDungeon, chooseDungeon,
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
@@ -229,7 +229,7 @@ export default function Segrete() {
       {tab === "gruppi" && (
         myRoom ? (
           <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-            dungeon={dungeonOf(myRoom.type)} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} />
+            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} />
         ) : (
           <>
             <HeroNews charData={charData} onSelect={pickHero} />
@@ -335,7 +335,39 @@ export default function Segrete() {
   );
 }
 
-function MyRoom({ room, uid, master, charData, busy, run, dungeon, canRun, onHeroes }) {
+/* Prossimo dungeon (2026-11-05): ognuno vota (tocco sulla carta), il capo sceglie quale avviare */
+function DungeonVote({ room, uid, master, busy, run, dungeons }) {
+  const host = room.hostUid === uid || master;
+  const votesOf = (k) => room.members.filter((m) => m.vote === k);
+  const myVote = room.members.find((m) => m.uid === uid)?.vote || null;
+  const top = Math.max(0, ...dungeons.map((d) => votesOf(d.key).length));
+  return (
+    <div className="sgr-vote">
+      <p className="sgr-label">Prossimo dungeon <small>· tocca per votare{host ? " · tu sei il capo: scegli quale avviare" : " · lo sceglie il capo"}</small></p>
+      <div className="sgr-vote-grid">
+        {dungeons.map((d) => {
+          const v = votesOf(d.key);
+          const on = room.type === d.key;
+          return (
+            <div key={d.key} className={`sgr-vote-card${on ? " is-chosen" : ""}${myVote === d.key ? " is-mine" : ""}${v.length && v.length === top ? " is-top" : ""}`}
+              style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(180deg, rgba(10,8,14,.45), rgba(10,8,14,.94)), url(${d.backgrounds[0]})` } : undefined}>
+              <button type="button" className="sgr-vote-main" disabled={busy} aria-pressed={myVote === d.key} onClick={() => run(() => voteDungeon(room.id, uid, d.key))}>
+                <span className="sgr-vote-top"><span aria-hidden="true">{d.icon}</span> <b>{d.name}</b>{on && <em className="sgr-vote-chosen">✓ scelto</em>}</span>
+                <span className="sgr-vote-who">
+                  {v.length ? v.map((m) => <i key={m.uid} style={clsStyle(m.cls)} title={m.name}>{classInfo(m.cls)?.icon} {m.name}</i>) : <small>nessun voto</small>}
+                </span>
+                <span className="sgr-vote-act">{myVote === d.key ? "✓ il tuo voto" : "🗳 vota"}</span>
+              </button>
+              {host && !on && <button type="button" className="sgr-btn sgr-vote-pick" disabled={busy} onClick={() => run(() => chooseDungeon(room.id, uid, d.key, master))}>👑 Avvia questo</button>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
@@ -359,6 +391,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, canRun, onHer
       <p className="sgr-kicker">Il tuo gruppo</p>
       <h2 className="sgr-h2">{room.name} <DungeonBadge d={dungeon} /></h2>
       {dungeon?.desc && <p className="sgr-hint">{dungeon.desc}</p>}
+      {room.result && <p className="sgr-hint">Ultimo dungeon: {room.result === "won" ? "🏆 vinto" : "☠ perso"}.</p>}
 
       <ol className="sgr-slots">
         {slots.map((m, i) => (
@@ -382,6 +415,8 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, canRun, onHer
           </li>
         ))}
       </ol>
+
+      {!!dungeons.length && <DungeonVote room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
 
       <EnterAs charData={charData} cls={me?.cls} onChange={onHeroes} />
 

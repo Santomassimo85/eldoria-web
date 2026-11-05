@@ -129,6 +129,28 @@ export const reopenRoom = (roomId) => editRoom(roomId, (room) => ({ status: "ope
 
 export const deleteRoom = (roomId) => deleteDoc(doc(db, "dungeon_rooms", roomId));
 
+/* IL GRUPPO RESTA (2026-11-05): a fine dungeon la stanza torna "open" con gli stessi membri
+   (e la chat vocale resta collegata). Lo fa il primo che preme "Torna al gruppo". */
+export const backToRoom = (roomId, uid) => editRoom(roomId, (room) => {
+  if (!(room.memberIds || []).includes(uid)) throw new Error("Non sei in questo gruppo.");
+  if (room.status !== "done") return null; // già riaperto da un altro
+  return { status: "open", startedAt: null, result: null, blocked: null, members: room.members.map((m) => ({ ...m, ready: false })) };
+});
+
+// Voto per il prossimo dungeon (ognuno il suo, si può cambiare); null = toglie il voto
+export const voteDungeon = (roomId, uid, key) => editRoom(roomId, (room) => {
+  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
+  return { members: room.members.map((m) => (m.uid === uid ? { ...m, vote: m.vote === key ? null : key } : m)) };
+});
+
+// Il capo (o il Master) sceglie il dungeon da avviare: le spunte di Avvia si azzerano
+export const chooseDungeon = (roomId, byUid, key, isMaster = false) => editRoom(roomId, (room) => {
+  if (room.hostUid !== byUid && !isMaster) throw new Error("Lo sceglie il capo del gruppo.");
+  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
+  if (room.type === key) return null;
+  return { type: key, members: room.members.map((m) => ({ ...m, ready: false })) };
+});
+
 /* Inviti (2026-11-04): chi è nel gruppo sceglie chi invitare. La stanza tiene
    `invited: [{uid, name, by}]` (nella lobby l'invitato la vede in cima con
    "Ti hanno invitato") e a ognuno parte una notifica (campanella + push) che
