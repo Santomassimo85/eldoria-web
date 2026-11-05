@@ -11,7 +11,8 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { kitOf, heroActions, weaponMod, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem } from "./segreteItems";
+import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 10 * 60 * 1000;
@@ -63,11 +64,16 @@ export function makeHero(m) {
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
+  // arma magica equipaggiata: vale solo se è di uno dei due tipi d'arma della classe
+  const wItem = itemOf(hero.weaponItem);
+  const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
+  const weaponKey = okItem ? wItem.base : hero.weapon || null;
+  const weaponPlus = okItem ? wItem.plus || 0 : 0;
   const uses = {};
-  heroActions(m.cls, lv, picks, hero.weapon).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+  heroActions(m.cls, lv, picks, weaponKey, weaponPlus).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
-    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks, weapon: hero.weapon || null,
+    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks, weapon: weaponKey, weaponPlus,
     fx: {}, uses,
   };
 }
@@ -183,6 +189,8 @@ function acOf(s, c) {
 // el = elemento (fire·frost·lightning·poison·darkness·radiant·arcane·physical), from = chi agisce
 // e kill = chi è caduto: il sito ci disegna sopra gli effetti pixel e i suoni (VfxLayer).
 let curVfx = null;
+// scritte sotto il numero (IMMUNE / RESISTE / VULNERABILE / FURIA) raccolte da applyDamage fino alla prossima riga
+let curTags = {};
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
   const row = { i: s.seq, txt, ...(curVfx && extra.targets ? curVfx : {}), ...extra };
@@ -199,6 +207,12 @@ function log(s, txt, extra = {}) {
     row.targets.forEach((id) => { const f = byId(s, id); if (f && seen[id] != null && f.hp !== seen[id]) nums[id] = f.hp - seen[id]; });
     if (Object.keys(nums).length) row.nums = nums;
   }
+  if (row.targets) {
+    const tags = {};
+    row.targets.forEach((id) => { if (curTags[id]) tags[id] = curTags[id]; });
+    if (Object.keys(tags).length) row.tags = tags;
+  }
+  curTags = {};
   const nextSeen = {};
   all.forEach((f) => { nextSeen[f.id] = f.hp; });
   s.hpSeen = nextSeen;
@@ -307,10 +321,10 @@ function startFloor(s, bestiary, now) {
 function applyDamage(s, target, amount, type, notes) {
   let dmg = Math.max(0, Math.round(amount));
   if (target.side === "f") {
-    if (target.imm.includes(type)) { dmg = 0; notes.push("immune"); }
-    else if (target.res.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); }
-    else if (target.vul.includes(type)) { dmg *= 2; notes.push("vulnerabile!"); }
-  } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("in furia"); }
+    if (target.imm.includes(type)) { dmg = 0; notes.push("immune"); curTags[target.id] = "imm"; }
+    else if (target.res.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
+    else if (target.vul.includes(type)) { dmg *= 2; notes.push("vulnerabile!"); curTags[target.id] = "vul"; }
+  } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
 }
@@ -330,7 +344,7 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -366,7 +380,7 @@ function heroAct(s, h, a, target) {
     const n = attacksOf(h.cls, lv, a);
     // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm : hit;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
     if (a.selfDis) h.fx.reckless = s.round + 1;
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
@@ -379,7 +393,7 @@ function heroAct(s, h, a, target) {
       if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id] }); continue; }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
-      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + dmgBonusOf(s, h) : 0);
+      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0);
       if (a.bonusDmg === "lv/2") dmg += Math.floor(lv / 2);
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
@@ -545,6 +559,7 @@ function foeAct(s, f) {
 function checkEnd(s) {
   if (!s.heroes.some(alive)) { s.status = "lost"; log(s, "☠ Il gruppo è caduto. Le Segrete si richiudono su di voi: tutto è perduto.", { kind: "end" }); return true; }
   if (!s.foes.some(alive)) {
+    floorCoins(s);
     if (s.boss) { s.status = "won"; log(s, `🏆 Il boss è caduto! Avete conquistato ${s.dungeonName}.`, { kind: "end" }); }
     else { s.status = "cleared"; log(s, `✅ Sala ${s.floor} ripulita! Riprendete fiato prima della prossima.`, { kind: "end" }); }
     return true;
@@ -591,7 +606,7 @@ export function act(s, uid, { actionId, targetId }, now) {
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
   const tk = targetKind(a);
   let target = null;
-  if (tk === "foe") { target = byId(s, targetId); if (!target || target.side !== "f" || !alive(target)) throw new Error("Scegli un nemico in piedi."); }
+  if (tk === "foe") target = foeTarget(s, h, targetId);
   if (tk === "ally") {
     target = byId(s, targetId);
     const heal = a.kind === "heal";
@@ -603,9 +618,137 @@ export function act(s, uid, { actionId, targetId }, now) {
   try { ev = heroAct(s, h, a, target); } finally { curVfx = null; }
   if (target && target.side === "f") target.lastHitBy = h.id;
   s.acted = { ...s.acted, [h.id]: true };
+  lootDead(s);
   afterHeroAction(s, now);
   return ev;
 }
+
+/* Bersaglio del nemico (2026-11-04): in gruppo si sceglie tutti insieme, e il nemico scelto
+   può essere già caduto per mano di un compagno. Allora si punta da soli il nemico in piedi
+   più ferito (in percentuale), e la cronaca lo dice. */
+function foeTarget(s, h, targetId) {
+  const t = byId(s, targetId);
+  if (t && t.side === "f" && alive(t)) return t;
+  const live = s.foes.filter(alive);
+  if (!live.length) throw new Error("Non ci sono nemici in piedi.");
+  const next = live.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+  log(s, `🎯 ${t && t.side === "f" ? `${t.name} è già caduto: ` : ""}${h.name} punta ${next.name}.`, { kind: "info", actor: h.id });
+  return next;
+}
+
+/* ── bottino (2026-11-04) ───────────────────────────────
+   s.spoils = { uid: { coins, items: {id: n} } } = bottino della spedizione: si porta a casa
+   solo se il gruppo vince il dungeon (lo consegna il server), se cade si perde. */
+function addSpoil(s, uid, { coins = 0, item = null } = {}) {
+  const sp = { ...(s.spoils || {}) };
+  const cur = sp[uid] || { coins: 0, items: {} };
+  const items = { ...(cur.items || {}) };
+  if (item) items[item] = (items[item] || 0) + 1;
+  sp[uid] = { coins: (cur.coins || 0) + coins, items };
+  s.spoils = sp;
+}
+// Ogni sala vinta (e il boss): 1d20 Monete Antiche a ogni eroe rimasto (anche a terra, non a chi è fuggito).
+function floorCoins(s) {
+  if (s.coinsFloor === s.floor) return;
+  s.coinsFloor = s.floor;
+  const got = s.heroes.filter((h) => !h.fled).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c }); return `${h.name} ${c}`; });
+  if (got.length) log(s, `🪙 Monete Antiche dalla sala: ${got.join(" · ")}.`, { kind: "loot" });
+}
+// Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
+export function lootDead(s) {
+  const heroes = s.heroes.filter((h) => !h.fled);
+  if (!heroes.length) return;
+  const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
+  s.foes.forEach((f) => {
+    if (alive(f) || f.looted) return;
+    f.looted = true;
+    const ch = DROP_CHANCE[f.role] || DROP_CHANCE.minion;
+    const who = heroes.find((h) => h.id === f.lastHitBy) || pick(heroes);
+    const parts = [];
+    if (die(100) <= ch.coins) {
+      const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
+      addSpoil(s, who.uid, { coins: c });
+      parts.push(`🪙 ${c} Monete Antiche`);
+    }
+    if (die(100) <= ch.item) {
+      const id = rollDropItem(rnd, bases, f.role);
+      const it = itemOf(id);
+      if (it) { addSpoil(s, who.uid, { item: id }); parts.push(`${it.icon} ${it.name}`); }
+    }
+    if (parts.length) log(s, `🎁 ${f.name} lascia cadere ${parts.join(" e ")}: li raccoglie ${who.name}.`, { kind: "loot", actor: who.id });
+  });
+}
+
+/* Oggetto dallo zaino (usarlo è l'azione del round). Il server controlla e toglie dallo zaino. */
+export function useItem(s, uid, { itemId, targetId }, now) {
+  if (s.status !== "fight") throw new Error("Non si combatte adesso.");
+  s.acted = s.acted || {};
+  const h = s.heroes.find((x) => x.uid === uid);
+  if (!h) throw new Error("Non sei in questa partita.");
+  if (!alive(h)) throw new Error("Sei a terra: aspetta che un alleato ti curi.");
+  if (s.acted[h.id]) throw new Error("Hai già agito in questo round: aspetta gli altri e i mostri.");
+  const it = battleItem(itemId);
+  if (!it) throw new Error("Oggetto non usabile in lotta.");
+  const tk = itemTarget(it);
+  let target = null;
+  if (tk === "foe") target = foeTarget(s, h, targetId);
+  if (tk === "ally" || tk === "downed") {
+    target = byId(s, targetId) || h;
+    if (target.side !== "h" || target.fled) throw new Error("Scegli un alleato.");
+    if (tk === "ally" && !alive(target)) throw new Error("È a terra: per rialzarlo serve la Piuma della Fenice.");
+    if (tk === "downed" && alive(target)) throw new Error("La Piuma della Fenice serve per un alleato a terra.");
+  }
+  const flatN = Number(it.flat) || 0;
+  const on = target && target !== h ? ` su ${target.name}` : "";
+  if (it.kind === "heal") {
+    curVfx = { fx: "heal", el: "radiant", from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const before = target.hp;
+    target.hp = Math.min(target.maxHp, target.hp + roll(n, sd).t + flatN);
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: +${target.hp - before} PF.`, { kind: "heal", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "revive") {
+    curVfx = { fx: "heal", el: "radiant", from: h.id };
+    target.hp = Math.max(1, Math.ceil((target.maxHp * (it.pct || 50)) / 100));
+    log(s, `${it.icon} ${h.name} usa ${it.name}: ${target.name} si rialza con ${target.hp} PF!`, { kind: "heal", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "cleanse") {
+    curVfx = { fx: "buff", el: "radiant", from: h.id };
+    target.fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: via svantaggio e stordimento.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "buff") {
+    curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
+    const until = s.round + (it.turns || 1) + 1;
+    if (it.buff === "ac") target.fx.ac = [...(target.fx.ac || []).filter((e) => fxOn(s, e)), { v: it.value, until }];
+    if (it.buff === "adv") target.fx.adv = until;
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "throw") {
+    curVfx = { fx: "bolt", el: elOf(it.dmg), from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const notes = [];
+    const dmg = applyDamage(s, target, roll(n, sd).t, it.dmg, notes);
+    target.lastHitBy = h.id;
+    log(s, `${it.icon} ${h.name} lancia ${it.name} su ${target.name}: ${dmg} danni ${DMG_IT[it.dmg] || ""}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
+  } else if (it.kind === "throw_area") {
+    curVfx = { fx: "aoe", el: elOf(it.dmg), from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const base = roll(n, sd).t;
+    const tg = s.foes.filter(alive);
+    const parts = tg.map((t) => {
+      const sv = d20() + (t.save || 0);
+      const ok = sv >= (it.dc || 13);
+      const notes = [];
+      const dmg = applyDamage(s, t, ok ? Math.floor(base / 2) : base, it.dmg, notes);
+      t.lastHitBy = h.id;
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${t.hp <= 0 ? " 💀" : ""}`;
+    });
+    log(s, `${it.icon} ${h.name} lancia ${it.name} (TS ${String(it.save).toUpperCase()} CD ${it.dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: h.id, targets: tg.map((t) => t.id) });
+  }
+  curVfx = null;
+  s.acted = { ...s.acted, [h.id]: true };
+  lootDead(s);
+  afterHeroAction(s, now);
+  return { actor: h.id, roll: null, item: itemId };
+}
+
 // Chi sparisce per AFK_MS: si difende da solo (lo chiede chiunque del gruppo).
 export function timeout(s, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
@@ -622,7 +765,7 @@ export function nextFloor(s, bestiary, now) {
   s.heroes.forEach((h) => {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
-    const uses = {}; heroActions(h.cls, h.level, h.picks || [], h.weapon).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+    const uses = {}; heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
     h.uses = uses;
   });
   s.floor += 1;

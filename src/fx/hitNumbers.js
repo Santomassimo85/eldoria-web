@@ -39,7 +39,18 @@ const COL = {
   heal:      ["#e8ffe8", "#3dea6a", "#04300f"],
   miss:      ["#f2f2f2", "#a9a9b4", "#1c1c22"],
   text:      ["#fffbe8", "#ffd27a", "#2a1a05"],
+  // scritte sotto il numero (2026-11-04): immune / resiste / vulnerabile / furia
+  imm:       ["#ffffff", "#9fb3cc", "#0d1626"],
+  res:       ["#fff1d6", "#d9a35a", "#2a1806"],
+  vul:       ["#fff59a", "#ff5a1f", "#3a0303"],
+  rage:      ["#ffe0d0", "#ff6a4a", "#3a0505"],
 };
+export const TAG_TEXT = { imm: "IMMUNE", res: "RESISTE", vul: "VULNERABILE!", rage: "FURIA" };
+/* Scritta sotto il numero del colpo: popTag({x, y, tag, delay}) */
+export function popTag(o) {
+  if (!TAG_TEXT[o.tag]) return;
+  popNumber({ ...o, kind: "text", tone: o.tag, text: TAG_TEXT[o.tag], noStack: true, y: o.y + 30 });
+}
 export const numberElement = (el) => (COL[el] ? el : COL[ALIAS[el]] ? ALIAS[el] : "physical");
 
 let layer = null;
@@ -61,6 +72,14 @@ function ensureLayer() {
   animation: hitnum-pop var(--hn-dur, 1100ms) linear forwards; opacity: 0; }
 .hitnum.is-crit { animation-name: hitnum-crit; }
 .hitnum.is-miss { animation-name: hitnum-miss; }
+.hitnum.is-tag { animation-name: hitnum-tag; }
+@keyframes hitnum-tag {
+  0%   { opacity: 0; transform: translate(var(--hn-x), var(--hn-y)) translate(-50%, -50%) scale(.6); }
+  14%  { opacity: 1; transform: translate(var(--hn-x), calc(var(--hn-y) - 10px)) translate(-50%, -50%) scale(1.15); }
+  24%  { transform: translate(var(--hn-x), calc(var(--hn-y) - 8px)) translate(-50%, -50%) scale(1); }
+  80%  { opacity: 1; transform: translate(var(--hn-x), calc(var(--hn-y) - 30px)) translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(var(--hn-x), calc(var(--hn-y) - 40px)) translate(-50%, -50%) scale(.95); }
+}
 @keyframes hitnum-pop {
   0%   { opacity: 1; transform: translate(var(--hn-x), var(--hn-y)) translate(-50%, -50%) scale(.4); }
   12%  { opacity: 1; transform: translate(var(--hn-x), calc(var(--hn-y) - 26px)) translate(-50%, -50%) scale(1.25); }
@@ -120,21 +139,21 @@ export function popNumber(o) {
   if (!ensureLayer()) return;
   const show = () => {
     const kind = o.kind || "dmg";
-    const colors = kind === "heal" ? COL.heal : kind === "miss" ? COL.miss : kind === "text" ? COL.text : COL[numberElement(o.el)];
+    const colors = kind === "heal" ? COL.heal : kind === "miss" ? COL.miss : kind === "text" ? COL[o.tone] || COL.text : COL[numberElement(o.el)];
     const v = Math.abs(Math.round(Number(o.value) || 0));
     const text = o.text || (kind === "miss" ? "MANCATO" : kind === "heal" ? `+${v}` : `−${v}${o.crit ? "!" : ""}`);
     const small = window.innerWidth < 700;
     const base = kind === "miss" || kind === "text" ? 11 : o.crit ? 17 : 14;
     const cv = render(text, colors, small ? base - 1 : base);
-    cv.className = `hitnum${o.crit ? " is-crit" : ""}${kind === "miss" ? " is-miss" : ""}`;
+    cv.className = `hitnum${o.crit ? " is-crit" : ""}${kind === "miss" ? " is-miss" : ""}${o.tone ? " is-tag" : ""}`;
     cv.style.width = `${cv.width * PX}px`;
     cv.style.height = `${cv.height * PX}px`;
     // impila: un numero sullo stesso punto da poco → un po' più in alto e di lato
     const key = `${Math.round(o.x / 40)}:${Math.round(o.y / 40)}`;
     const now = performance.now();
     const prev = recent.get(key);
-    const n = prev && now - prev.at < 700 ? prev.n + 1 : 0;
-    recent.set(key, { at: now, n });
+    const n = o.noStack ? 0 : prev && now - prev.at < 700 ? prev.n + 1 : 0;
+    if (!o.noStack) recent.set(key, { at: now, n });
     const x = o.x + (n % 2 ? 18 : -18) * Math.min(n, 3), y = o.y - n * 22;
     cv.style.setProperty("--hn-x", `${Math.round(x)}px`);
     cv.style.setProperty("--hn-y", `${Math.round(y)}px`);

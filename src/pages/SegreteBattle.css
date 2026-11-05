@@ -132,3 +132,9 @@
   .sgb-f .sgb-st-pips .stp-i > i { font-size: 16px; }
   .sgb-f .sgb-st-pips .stp-i > em { font-size: 8px; }
 }
+
+/* Zaino e bottino (2026-11-04) */
+.sgb-act.k-item { border-color: rgba(111, 212, 138, .75); }
+.sgb-bag { display: grid; gap: 8px; }
+.sgr-page .sgb-spoils, .sgb-spoils { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed #f2c14e; background: rgba(242,193,78,.08); color: #f3ead8; font-size: .9rem; }
+.sgb-spoils b { color: #ffe39a; }

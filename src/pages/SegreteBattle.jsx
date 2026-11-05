@@ -11,7 +11,8 @@ import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
-import { popAt } from "../fx/hitNumbers";
+import { popAt, popTag } from "../fx/hitNumbers";
+import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON } from "../data/segreteItems";
 import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
@@ -19,6 +20,8 @@ import { leaveRoom } from "../utils/segreteRooms";
 import "./SegreteBattle.css";
 
 const STAGGER_MS = 750;
+// quando arriva il colpo sullo sprite (ms dall'inizio dell'effetto): lì scendono i PF e cade il nemico
+const IMPACT_MS = { bolt: 520, arrow: 360, aoe: 460, slash: 180, heal: 320, buff: 300, shield: 300, debuff: 320 };
 const vfxKey = (id) => `seg-${id}`;
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
@@ -97,6 +100,12 @@ export default function SegreteBattle({ room, uid }) {
   const [flashes, setFlashes] = useState({});
   const [vfxMsgs, setVfxMsgs] = useState([]);
   const [inspect, setInspect] = useState(null);
+  // 2026-11-04: i PF sugli sprite scendono quando ARRIVA il colpo, non quando risponde il server
+  // (prima il nemico cadeva mentre il dado rotolava ancora). shownSeq = ultima riga già "arrivata".
+  const [shownSeq, setShownSeq] = useState(null);
+  const [myChar, setMyChar] = useState(null);
+  const [bagOpen, setBagOpen] = useState(false);
+  const [chosenItem, setChosenItem] = useState(null);
   const [known, setKnown] = useState({});
   useEffect(() => onSnapshot(doc(db, "dungeon_meta", "known"), (snap) => setKnown(snap.exists() ? snap.data().sources || {} : {}), () => {}), []);
   const initAsked = useRef("");
@@ -104,6 +113,7 @@ export default function SegreteBattle({ room, uid }) {
   const timeoutAsked = useRef("");
 
   useEffect(() => { preloadDice3D(); }, []);
+  useEffect(() => (uid ? onSnapshot(doc(db, "characters", uid), (snap) => setMyChar(snap.exists() ? snap.data() : null), () => {}) : undefined), [uid]);
   useEffect(() => onSnapshot(doc(db, "dungeon_runs", room.id), (s) => setRun(s.exists() ? s.data() : null), (e) => setErr(e.message)), [room.id]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
@@ -136,9 +146,11 @@ export default function SegreteBattle({ room, uid }) {
   useEffect(() => {
     if (!run?.log?.length) return;
     const last = run.log[run.log.length - 1].i;
-    if (!seenSeq.current) { seenSeq.current = last; return; }
+    if (!seenSeq.current) { seenSeq.current = last; setShownSeq(last); return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
     seenSeq.current = last;
+    // rete di sicurezza: se l'animazione non parte (dado appeso, scheda in pausa) i PF si allineano comunque
+    timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 20000 + fresh.length * STAGGER_MS));
     // 2026-11-04: si parte quando il proprio tiro è finito e il dado è sparito
     // (il dado si mostra quando risponde il server, a volte dopo che la cronaca è già arrivata).
     sendP.current.catch(() => {}).then(() => whenDiceIdle()).then(() => {
@@ -147,8 +159,11 @@ export default function SegreteBattle({ room, uid }) {
         const t = setTimeout(() => {
           const targets = l.targets || [];
           // numeri sugli sprite: PF cambiati per bersaglio (l.nums dal server; righe vecchie: l.dmg)
-          const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit" }))
-            : l.dmg && targets.length === 1 ? [{ t: vfxKey(targets[0]), v: -l.dmg, crit: l.kind === "crit" }] : [];
+          const tags = l.tags || {};
+          const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit", tag: tags[id] }))
+            : l.dmg && targets.length === 1 ? [{ t: vfxKey(targets[0]), v: -l.dmg, crit: l.kind === "crit", tag: tags[targets[0]] }] : [];
+          // immune = danno 0: niente numero, ma la scritta sì
+          Object.entries(tags).forEach(([id, tag]) => { if (!nums.some((n) => n.t === vfxKey(id))) nums.push({ t: vfxKey(id), v: 0, tag }); });
           if (l.fx && targets.length) {
             setVfxMsgs((m) => [...m.slice(-20), {
               id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
@@ -157,6 +172,14 @@ export default function SegreteBattle({ room, uid }) {
               effectNums: nums,
             }]);
           } else nums.forEach((n) => popAt(n.t, { value: n.v, kind: n.v > 0 ? "heal" : "dmg", crit: n.crit, el: l.el }));
+          // la riga "arriva": i PF scendono e chi è a 0 cade, insieme all'impatto dell'effetto
+          const land = setTimeout(() => setShownSeq((v) => Math.max(v || 0, l.i)), l.fx ? IMPACT_MS[l.fx] ?? 320 : 60);
+          timers.current.push(land);
+          if (!l.fx) Object.entries(l.tags || {}).forEach(([id, tag]) => {
+            const el = document.querySelector(`[data-vfx-target="${vfxKey(id)}"]`);
+            const r = el?.getBoundingClientRect();
+            if (r?.width) popTag({ x: r.left + r.width / 2, y: r.top + r.height * 0.35, tag, delay: 120 });
+          });
           // niente più ✨ di un secondo: bonus e malus restano come icone fisse sullo sprite (StatusPips) per i round che durano
         }, idx * STAGGER_MS);
         timers.current.push(t);
@@ -183,7 +206,7 @@ export default function SegreteBattle({ room, uid }) {
     segreteDo({ op: "timeout", roomId: room.id }).catch(() => {});
   }, [afkLeft, pending.length, run?.floor, run?.round, room.id]);
 
-  useEffect(() => { if (!myTurn) setChosen(null); }, [myTurn]);
+  useEffect(() => { if (!myTurn) { setChosen(null); setChosenItem(null); setBagOpen(false); } }, [myTurn]);
 
   const diceOf = (r) => showD20Roll(r.ev.roll.nat, { label: "Il tuo tiro", dice: r.ev.roll.dice.length > 1 ? r.ev.roll.dice.map((v) => ({ value: v, dim: v !== r.ev.roll.nat })) : undefined });
   const send = async (data) => {
@@ -202,16 +225,34 @@ export default function SegreteBattle({ room, uid }) {
     if (!tk) return send({ op: "act", actionId: a.id });
     setChosen(a);
   };
-  const pickTarget = (id) => chosen && send({ op: "act", actionId: chosen.id, targetId: id });
+  const pickTarget = (id) => {
+    if (chosenItem) { const it = chosenItem; setChosenItem(null); setBagOpen(false); return send({ op: "item", itemId: it.id, targetId: id }); }
+    return chosen && send({ op: "act", actionId: chosen.id, targetId: id });
+  };
+  const pickItem = (it) => {
+    if (!itemTarget(it)) { setBagOpen(false); return send({ op: "item", itemId: it.id }); }
+    setChosen(null); setChosenItem(it);
+  };
   const flee = () => window.confirm("Abbandonare il dungeon? Il tuo eroe fugge e non prenderà premi.") && send({ op: "flee" });
 
   if (!run || run.startKey !== startKey) {
     return <div className="sgb-loading">{err ? <p className="sgb-err">{err}</p> : <p>🗝 Le porte delle Segrete si aprono…</p>}</div>;
   }
 
-  const tk = chosen ? targetKind(chosen) : null;
-  const last = run.log[run.log.length - 1];
+  const itk = chosenItem ? itemTarget(chosenItem) : null;
+  const tk = chosenItem ? (itk === "downed" ? "ally" : itk) : chosen ? targetKind(chosen) : null;
+  // righe non ancora "arrivate": i loro cambi di PF non si mostrano ancora
+  const pendingRows = shownSeq == null ? [] : run.log.filter((l) => l.i > shownSeq);
+  const playing = pendingRows.length > 0;
+  const lag = {};
+  pendingRows.forEach((l) => Object.entries(l.nums || {}).forEach(([id, v]) => { lag[id] = (lag[id] || 0) + v; }));
+  const shown = (c) => (lag[c.id] ? { ...c, hp: Math.max(0, Math.min(c.maxHp, c.hp - lag[c.id])) } : c);
+  const shownLog = run.log.filter((l) => shownSeq == null || l.i <= shownSeq);
+  const last = shownLog[shownLog.length - 1] || run.log[run.log.length - 1];
   const acts = me ? heroActionList(me) : [];
+  const bag = bagOf(myChar);
+  const bagList = Object.entries(bag).map(([id, n]) => ({ ...battleItem(id), n })).filter((x) => x.id);
+  const spoils = (run.spoils || {})[uid];
 
   return (
     <div className="sgb">
@@ -230,21 +271,21 @@ export default function SegreteBattle({ room, uid }) {
       </button>
       {logOpen && (
         <ol className="sgb-log-list">
-          {[...run.log].reverse().map((l) => <li key={l.i} className={`k-${l.kind || ""}`}>{l.txt}</li>)}
+          {[...shownLog].reverse().map((l) => <li key={l.i} className={`k-${l.kind || ""}`}>{l.txt}</li>)}
         </ol>
       )}
 
       <div className={`sgb-field${run.bg ? " has-bg" : ""}`} style={run.bg ? { backgroundImage: `url(${run.bg})` } : undefined}>
         <div className="sgb-foes">
           {run.foes.map((f) => (
-            <Fighter key={f.id} c={f} round={run.round} isTurn={false} flash={flashes[f.id]} onInspect={setInspect}
+            <Fighter key={f.id} c={shown(f)} round={run.round} isTurn={false} flash={flashes[f.id]} onInspect={setInspect}
               selectable={!!(tk === "foe" && f.hp > 0)} onPick={pickTarget} />
           ))}
         </div>
         <div className="sgb-heroes">
           {run.heroes.map((h) => (
-            <Fighter key={h.id} c={h} round={run.round} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
-              selectable={!!(tk === "ally" && !h.fled && (h.hp > 0 || chosen?.kind === "heal"))} onPick={pickTarget} />
+            <Fighter key={h.id} c={shown(h)} round={run.round} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
+              selectable={!!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} onPick={pickTarget} />
           ))}
         </div>
       </div>
@@ -252,15 +293,36 @@ export default function SegreteBattle({ room, uid }) {
       <div className="sgb-panel">
         {err && <p className="sgb-err" role="alert">{err}</p>}
         {run.status === "fight" && (myTurn ? (
-          chosen ? (
+          chosen || chosenItem ? (
             <div className="sgb-pickmsg">
-              <span>{chosen.icon} <b>{chosen.name}</b>: tocca {tk === "foe" ? "un nemico" : "un alleato"} sul campo.</span>
-              <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => setChosen(null)}>Annulla</button>
+              <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"} sul campo.</span>
+              <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>
+            </div>
+          ) : bagOpen ? (
+            <div className="sgb-bag">
+              <p className="sgb-turn">🎒 Zaino: usare un oggetto è la tua azione del round.</p>
+              {!bagList.length && <p className="sgb-pickmsg">Lo zaino è vuoto. Gli oggetti si comprano alla Bottega delle Segrete (nella lobby) o si trovano sui mostri.</p>}
+              <div className="sgb-acts">
+                {bagList.map((it) => (
+                  <button key={it.id} type="button" className="sgb-act k-item" disabled={busy} onClick={() => pickItem(it)} title={it.desc}>
+                    <span className="sgb-act-ico" aria-hidden="true">{it.icon}</span>
+                    <span className="sgb-act-name">{it.name}</span>
+                    <span className="sgb-act-info">{it.desc}</span>
+                    <span className="sgb-act-uses">×{it.n}</span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => setBagOpen(false)}>← Torna alle azioni</button>
             </div>
           ) : (
             <>
               <p className="sgb-turn">⚔ Tocca al gruppo: scegli la tua azione{afkLeft != null ? ` · ⏳ ${fmtLeft(afkLeft)}` : ""}{pending.length > 1 ? ` · mancano ${pending.length}` : ""}</p>
               <div className="sgb-acts">
+                <button type="button" className="sgb-act k-item" disabled={busy} onClick={() => setBagOpen(true)}>
+                  <span className="sgb-act-ico" aria-hidden="true">🎒</span>
+                  <span className="sgb-act-name">Zaino</span>
+                  <span className="sgb-act-info">{bagList.length ? `${bagList.reduce((t, x) => t + x.n, 0)} oggetti da usare` : "vuoto"}</span>
+                </button>
                 {acts.map((a) => (
                   <button key={a.id} type="button" className={`sgb-act k-${a.kind}`} disabled={busy || (a.left != null && a.left <= 0)} onClick={() => pickAction(a)}>
                     <span className="sgb-act-ico" aria-hidden="true">{a.icon}</span>
@@ -280,13 +342,19 @@ export default function SegreteBattle({ room, uid }) {
             {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
           </p>
         ))}
-        {run.status === "cleared" && (
+        {spoils && (spoils.coins > 0 || Object.keys(spoils.items || {}).length > 0) && (
+          <p className="sgb-spoils">🎒 Bottino della spedizione: <b>{COIN_ICON} {spoils.coins || 0} Monete Antiche</b>
+            {Object.entries(spoils.items || {}).map(([id, n]) => itemOf(id) && <span key={id}> · {itemOf(id).icon} {itemOf(id).name}{n > 1 ? ` ×${n}` : ""}</span>)}
+            {run.status === "won" ? " · portato a casa!" : run.status === "lost" ? " · perduto." : " · lo portate a casa solo se vincete."}</p>
+        )}
+        {playing && run.status !== "fight" && <p className="sgb-turn sgb-turn--wait">⏳ …</p>}
+        {!playing && run.status === "cleared" && (
           <div className="sgb-end">
             <p>✅ Sala ripulita! Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati.</p>
             <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>{run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala"}</button>
           </div>
         )}
-        {(run.status === "won" || run.status === "lost") && (
+        {!playing && (run.status === "won" || run.status === "lost") && (
           <div className="sgb-end">
             <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
             {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({classInfo(l.cls)?.it}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}

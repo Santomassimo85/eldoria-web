@@ -20,6 +20,7 @@ import {
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
+import SegreteShop from "./SegreteShop";
 import { hpPending } from "../data/segreteKits";
 import { HeroRoster, NewClassPicker, HeroNews, heroClasses } from "./SegreteRoster";
 // eroe pronto a giocare: creato e con i PF tirati
@@ -227,6 +228,7 @@ export default function Segrete() {
           </section>
 
           <HeroSections charData={charData} cls={cls} onSelect={pickHero} />
+          <SegreteShop charData={charData} />
 
           {!!running.length && (
             <section className="sgr-block">
@@ -331,6 +333,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, level, canRun
       </div>
     </section>
     <HeroSections charData={charData} cls={me?.cls} onSelect={pickClass} disabled={busy} inRoom />
+    <SegreteShop charData={charData} />
     </>
   );
 }

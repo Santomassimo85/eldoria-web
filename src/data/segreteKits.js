@@ -73,7 +73,8 @@ export function weaponOf(cls, key) {
   const list = weaponChoices(cls);
   return list.find((w) => w.key === key) || list[0];
 }
-export const weaponAction = (w) => ({ id: "arma", name: w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, info: `${w.dice} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}` });
+// plus = arma magica equipaggiata (+1/+2 a colpire e ai danni, vedi segreteItems.js)
+export const weaponAction = (w, plus = 0) => ({ id: "arma", name: plus ? `${w.name} +${plus}` : w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}` });
 // modificatore di un'azione d'arma (colpire e danni)
 export function weaponMod(cls, st, a) {
   if (!a?.wstat) return mainMod(cls, st);
@@ -210,12 +211,12 @@ export const DEFEND = { id: "difesa", name: "Difendersi", icon: "🛡", kind: "d
 
 export const kitOf = (cls) => KITS[cls] || KITS.fighter;
 export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-export function heroActions(cls, lv, picks = [], weapon = null) {
+export function heroActions(cls, lv, picks = [], weapon = null, plus = 0) {
   const k = kitOf(cls);
   const w = weaponOf(cls, weapon);
-  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged } : a);
+  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0 } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  return [weaponAction(w, plus), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */

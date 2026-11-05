@@ -1977,6 +1977,64 @@ exports.segreteDo = onCall(
     const op = String(request.data?.op || "");
     const db = admin.firestore();
 
+    // ── Bottega delle Segrete (2026-11-04): compra con le Monete Antiche ──
+    if (op === "shopBuy") {
+      const itemId = String(request.data?.itemId || "");
+      const qty = Math.max(1, Math.min(10, Math.floor(Number(request.data?.qty) || 1)));
+      const it = segreteBundle.itemOf(itemId);
+      if (!it || !segreteBundle.SHOP_ITEMS.includes(itemId)) throw new HttpsError("invalid-argument", "Oggetto non in vendita.");
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          const coins = segreteBundle.coinsOf(cs.data());
+          const cost = it.price * qty;
+          if (coins < cost) throw new Error(`Servono ${cost} Monete Antiche, ne hai ${coins}.`);
+          tx.update(ref, { storyCoins: coins - cost, [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(qty) });
+          return { ok: true, coins: coins - cost };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Acquisto non riuscito.");
+      }
+    }
+    // ── Arma magica sull'eroe: dallo zaino all'eroe (quella di prima torna nello zaino) ──
+    if (op === "heroEquip") {
+      const cls = String(request.data?.cls || "");
+      const itemId = request.data?.itemId ? String(request.data.itemId) : null;
+      if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          const data = cs.data();
+          const hero = segreteBundle.heroOf(data, cls);
+          if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
+          if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia arma quando hai finito.");
+          const bag = segreteBundle.bagOf(data);
+          const patch = {};
+          const prev = hero.weaponItem && segreteBundle.itemOf(hero.weaponItem) ? hero.weaponItem : null;
+          if (itemId) {
+            const it = segreteBundle.itemOf(itemId);
+            if (!it || it.kind !== "weapon") throw new Error("Non è un'arma.");
+            if (!segreteBundle.weaponChoices(cls).some((w) => w.key === it.base)) throw new Error("Questa classe non usa quel tipo d'arma.");
+            if (!(bag[itemId] > 0)) throw new Error("Non ce l'hai nello zaino.");
+            if (prev === itemId) return { ok: true };
+            patch[`storyBag.${itemId}`] = admin.firestore.FieldValue.increment(-1);
+            patch[`storyChars.${cls}.weapon`] = it.base;
+          }
+          if (prev) patch[`storyBag.${prev}`] = admin.firestore.FieldValue.increment(1);
+          patch[`storyChars.${cls}.weaponItem`] = itemId || admin.firestore.FieldValue.delete();
+          tx.update(ref, patch);
+          return { ok: true };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Operazione non riuscita.");
+      }
+    }
+
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
     if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon") {
       const cls = String(request.data?.cls || "");
@@ -2002,6 +2060,7 @@ exports.segreteDo = onCall(
           if (op === "heroWeapon") {
             // eroi creati prima delle armi (2026-11-04): scelgono l'arma una volta sola
             if (hero.weapon) throw new Error("L'arma l'hai già scelta.");
+            if (hero.weaponItem) throw new Error("Hai già un'arma magica equipaggiata.");
             const weapon = String(request.data?.weapon || "");
             if (!segreteBundle.weaponChoices(cls).some((w) => w.key === weapon)) throw new Error("Arma non valida per questa classe.");
             tx.update(ref, { [`storyChars.${cls}.weapon`]: weapon });
@@ -2102,7 +2161,17 @@ exports.segreteDo = onCall(
         if (!run) throw new Error("La partita non è ancora iniziata.");
         const before = run.seq || 0;
         let ev = null;
-        if (op === "act") {
+        let bagPatch = null;
+        if (op === "item") {
+          const itemId = String(request.data?.itemId || "");
+          const it = segreteBundle.battleItem(itemId);
+          if (!it) throw new Error("Oggetto non usabile in lotta.");
+          const myRef = db.collection("characters").doc(uid);
+          const mine = await tx.get(myRef);
+          if (!(segreteBundle.bagOf(mine.exists ? mine.data() : {})[itemId] > 0)) throw new Error("Non hai più questo oggetto nello zaino.");
+          ev = segreteBundle.withRng(segreteRng, () => segreteBundle.useItem(run, uid, { itemId, targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
+          bagPatch = { ref: myRef, patch: { [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(-1) } };
+        } else if (op === "act") {
           ev = segreteBundle.withRng(segreteRng, () => segreteBundle.act(run, uid, { actionId: String(request.data?.actionId || ""), targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
         } else if (op === "timeout") {
           segreteBundle.withRng(segreteRng, () => segreteBundle.timeout(run, now));
@@ -2183,6 +2252,13 @@ exports.segreteDo = onCall(
               if (!cs.exists) continue;
               const hero = segreteBundle.heroOf(cs.data(), h.cls);
               const patch = corone ? { platinum: admin.firestore.FieldValue.increment(corone) } : {};
+              // bottino della spedizione (Monete Antiche delle sale e dei mostri, oggetti trovati)
+              const sp = (run.spoils || {})[h.uid];
+              if (sp) {
+                const c = Math.max(0, Math.floor(Number(sp.coins) || 0));
+                if (c) patch.storyCoins = admin.firestore.FieldValue.increment(c);
+                Object.entries(sp.items || {}).forEach(([id, n]) => { if (segreteBundle.itemOf(id) && n > 0) patch[`storyBag.${id}`] = admin.firestore.FieldValue.increment(Math.floor(n)); });
+              }
               if (hero) {
                 const from = segreteBundle.levelOfXp(hero.xp);
                 const gain = segreteBundle.xpGain(from, run.floors);
@@ -2195,6 +2271,7 @@ exports.segreteDo = onCall(
           }
           tx.update(roomRef, { status: "done", result: run.status, endedAt: admin.firestore.FieldValue.serverTimestamp() });
         }
+        if (bagPatch) tx.update(bagPatch.ref, bagPatch.patch);
         if (Object.keys(knownPatch).length) tx.set(db.collection("dungeon_meta").doc("known"), { sources: knownPatch }, { merge: true });
         run.updatedAt = now;
         tx.set(runRef, run);

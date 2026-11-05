@@ -27,16 +27,22 @@ __export(segreteServer_exports, {
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
   RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
+  SHOP_ITEMS: () => SHOP_ITEMS,
   STAT_KEYS: () => STAT_KEYS,
   STAT_MAX: () => STAT_MAX,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
   act: () => act,
+  bagOf: () => bagOf,
+  battleItem: () => battleItem,
+  coinsOf: () => coinsOf,
   currentWeekKey: () => currentWeekKey,
   flee: () => flee,
+  heroActions: () => heroActions,
   heroOf: () => heroOf,
   heroPending: () => heroPending,
   heroStats: () => heroStats,
   hpPending: () => hpPending,
+  itemOf: () => itemOf,
   levelOfXp: () => levelOfXp,
   mergeDungeons: () => mergeDungeons,
   newRun: () => newRun,
@@ -47,6 +53,7 @@ __export(segreteServer_exports, {
   runsOf: () => runsOf,
   storyLevelOf: () => storyLevelOf,
   timeout: () => timeout,
+  useItem: () => useItem,
   validNewHero: () => validNewHero,
   weaponChoices: () => weaponChoices,
   withRng: () => withRng,
@@ -110,7 +117,7 @@ function weaponOf(cls, key) {
   const list = weaponChoices(cls);
   return list.find((w) => w.key === key) || list[0];
 }
-var weaponAction = (w) => ({ id: "arma", name: w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, info: `${w.dice} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}` });
+var weaponAction = (w, plus = 0) => ({ id: "arma", name: plus ? `${w.name} +${plus}` : w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}` });
 function weaponMod(cls, st, a) {
   if (!a?.wstat) return mainMod(cls, st);
   if (a.wstat === "fin") return Math.max(st.str || 0, st.dex || 0);
@@ -322,12 +329,12 @@ var KITS = {
 var DEFEND = { id: "difesa", name: "Difendersi", icon: "\u{1F6E1}", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 var kitOf = (cls) => KITS[cls] || KITS.fighter;
 var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-function heroActions(cls, lv, picks = [], weapon = null) {
+function heroActions(cls, lv, picks = [], weapon = null, plus = 0) {
   const k = kitOf(cls);
   const w = weaponOf(cls, weapon);
-  const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged } : a;
+  const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0 } : a;
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  return [weaponAction(w, plus), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -378,6 +385,82 @@ function heroPending(hero) {
   const lv = levelOfXp(hero?.xp);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
   return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).length) };
+}
+
+// src/data/segreteItems.js
+var FLOOR_COINS_DIE = 20;
+var RARITY = {
+  common: { it: "Comune", w: 60, color: "#d8ccb4" },
+  uncommon: { it: "Non comune", w: 28, color: "#6fd48a" },
+  rare: { it: "Raro", w: 10, color: "#6fb6ff" },
+  veryRare: { it: "Molto raro", w: 2, color: "#c48bff" }
+};
+var BASE_ITEMS = {
+  pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
+  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 60, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
+  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 150, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
+  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 25, rarity: "common", desc: "Toglie svantaggio, stordimento e irruenza a te o a un alleato." },
+  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 45, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
+  eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 50, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
+  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 30, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
+  acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 30, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 acido, colpisce sempre." },
+  acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 45, rarity: "uncommon", desc: "Su un nemico: 2d8 radiosi, colpisce sempre." },
+  pietra_tuono: { name: "Pietra del Tuono", icon: "\u{1F4A5}", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 70, rarity: "uncommon", desc: "Esplode fra i nemici: 2d6 tuono a tutti, TS COS CD 13 per met\xE0." },
+  piuma_fenice: { name: "Piuma della Fenice", icon: "\u{1FAB6}", kind: "revive", pct: 50, price: 200, rarity: "rare", desc: "Rialza un alleato a terra con met\xE0 dei PF." }
+};
+var WEAPON_ITEMS = {};
+Object.entries(WEAPONS).forEach(([k, w]) => {
+  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 600, rarity: "rare", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
+  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
+});
+var ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS };
+var itemOf = (id) => ITEMS[id] ? { id, ...ITEMS[id] } : null;
+var SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
+var battleItem = (id) => {
+  const it = itemOf(id);
+  return it && it.kind !== "weapon" ? it : null;
+};
+function itemTarget(it) {
+  if (!it) return null;
+  if (it.kind === "throw") return "foe";
+  if (it.kind === "throw_area") return null;
+  if (it.kind === "revive") return "downed";
+  return "ally";
+}
+var coinsOf = (charData) => Math.max(0, Number(charData?.storyCoins) || 0);
+var bagOf = (charData) => {
+  const b = charData?.storyBag || {};
+  const out = {};
+  Object.entries(b).forEach(([k, n]) => {
+    if (ITEMS[k] && Number(n) > 0) out[k] = Number(n);
+  });
+  return out;
+};
+var DROP_CHANCE = {
+  minion: { coins: 20, coinDice: [1, 6], item: 5 },
+  elite: { coins: 40, coinDice: [2, 6], item: 12 },
+  boss: { coins: 75, coinDice: [4, 6], item: 30 }
+};
+function rollDropItem(rnd2, weaponBases = [], role = "minion") {
+  const pool = Object.keys(ITEMS).filter((id) => {
+    const it = ITEMS[id];
+    if (it.kind === "weapon") return weaponBases.includes(it.base);
+    return true;
+  });
+  const boost = role === "boss" ? { rare: 2, veryRare: 2.5 } : role === "elite" ? { rare: 1.4, veryRare: 1.5 } : {};
+  const weapons = pool.filter((id) => ITEMS[id].kind === "weapon").length || 1;
+  const weight = (id) => {
+    const it = ITEMS[id];
+    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1);
+    return it.kind === "weapon" ? w * 2 / weapons : w;
+  };
+  const tot = pool.reduce((t, id) => t + weight(id), 0);
+  let r = rnd2() * tot;
+  for (const id of pool) {
+    r -= weight(id);
+    if (r <= 0) return id;
+  }
+  return pool[pool.length - 1];
 }
 
 // src/data/segreteEngine.js
@@ -442,8 +525,12 @@ function makeHero(m) {
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
+  const wItem = itemOf(hero.weaponItem);
+  const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
+  const weaponKey = okItem ? wItem.base : hero.weapon || null;
+  const weaponPlus = okItem ? wItem.plus || 0 : 0;
   const uses = {};
-  heroActions(m.cls, lv, picks, hero.weapon).forEach((a) => {
+  heroActions(m.cls, lv, picks, weaponKey, weaponPlus).forEach((a) => {
     if (a.uses) uses[a.id] = a.uses;
   });
   return {
@@ -461,7 +548,8 @@ function makeHero(m) {
     save: Math.floor(profOf(lv) / 2),
     st,
     picks,
-    weapon: hero.weapon || null,
+    weapon: weaponKey,
+    weaponPlus,
     fx: {},
     uses
   };
@@ -577,6 +665,7 @@ function acOf(s, c) {
   return ac;
 }
 var curVfx = null;
+var curTags = {};
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
   const row = { i: s.seq, txt, ...curVfx && extra.targets ? curVfx : {}, ...extra };
@@ -594,6 +683,14 @@ function log(s, txt, extra = {}) {
     });
     if (Object.keys(nums).length) row.nums = nums;
   }
+  if (row.targets) {
+    const tags = {};
+    row.targets.forEach((id) => {
+      if (curTags[id]) tags[id] = curTags[id];
+    });
+    if (Object.keys(tags).length) row.tags = tags;
+  }
+  curTags = {};
   const nextSeen = {};
   all.forEach((f) => {
     nextSeen[f.id] = f.hp;
@@ -712,16 +809,20 @@ function applyDamage(s, target, amount, type, notes) {
     if (target.imm.includes(type)) {
       dmg = 0;
       notes.push("immune");
+      curTags[target.id] = "imm";
     } else if (target.res.includes(type)) {
       dmg = Math.floor(dmg / 2);
       notes.push("resiste");
+      curTags[target.id] = "res";
     } else if (target.vul.includes(type)) {
       dmg *= 2;
       notes.push("vulnerabile!");
+      curTags[target.id] = "vul";
     }
   } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) {
     dmg = Math.floor(dmg / 2);
     notes.push("in furia");
+    curTags[target.id] = "rage";
   }
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
@@ -744,7 +845,7 @@ var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
 function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -779,7 +880,7 @@ function heroAct(s, h, a, target) {
   if (a.kind === "weapon" || a.kind === "spell") {
     const n = attacksOf(h.cls, lv, a);
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm : hit;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
     if (a.selfDis) h.fx.reckless = s.round + 1;
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
@@ -795,7 +896,7 @@ function heroAct(s, h, a, target) {
       }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
-      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + dmgBonusOf(s, h) : 0);
+      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0);
       if (a.bonusDmg === "lv/2") dmg += Math.floor(lv / 2);
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
@@ -992,6 +1093,7 @@ function checkEnd(s) {
     return true;
   }
   if (!s.foes.some(alive)) {
+    floorCoins(s);
     if (s.boss) {
       s.status = "won";
       log(s, `\u{1F3C6} Il boss \xE8 caduto! Avete conquistato ${s.dungeonName}.`, { kind: "end" });
@@ -1043,10 +1145,7 @@ function act(s, uid, { actionId, targetId }, now) {
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
   const tk = targetKind(a);
   let target = null;
-  if (tk === "foe") {
-    target = byId(s, targetId);
-    if (!target || target.side !== "f" || !alive(target)) throw new Error("Scegli un nemico in piedi.");
-  }
+  if (tk === "foe") target = foeTarget(s, h, targetId);
   if (tk === "ally") {
     target = byId(s, targetId);
     const heal = a.kind === "heal";
@@ -1062,8 +1161,130 @@ function act(s, uid, { actionId, targetId }, now) {
   }
   if (target && target.side === "f") target.lastHitBy = h.id;
   s.acted = { ...s.acted, [h.id]: true };
+  lootDead(s);
   afterHeroAction(s, now);
   return ev;
+}
+function foeTarget(s, h, targetId) {
+  const t = byId(s, targetId);
+  if (t && t.side === "f" && alive(t)) return t;
+  const live = s.foes.filter(alive);
+  if (!live.length) throw new Error("Non ci sono nemici in piedi.");
+  const next = live.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+  log(s, `\u{1F3AF} ${t && t.side === "f" ? `${t.name} \xE8 gi\xE0 caduto: ` : ""}${h.name} punta ${next.name}.`, { kind: "info", actor: h.id });
+  return next;
+}
+function addSpoil(s, uid, { coins = 0, item = null } = {}) {
+  const sp = { ...s.spoils || {} };
+  const cur = sp[uid] || { coins: 0, items: {} };
+  const items = { ...cur.items || {} };
+  if (item) items[item] = (items[item] || 0) + 1;
+  sp[uid] = { coins: (cur.coins || 0) + coins, items };
+  s.spoils = sp;
+}
+function floorCoins(s) {
+  if (s.coinsFloor === s.floor) return;
+  s.coinsFloor = s.floor;
+  const got = s.heroes.filter((h) => !h.fled).map((h) => {
+    const c = die(FLOOR_COINS_DIE);
+    addSpoil(s, h.uid, { coins: c });
+    return `${h.name} ${c}`;
+  });
+  if (got.length) log(s, `\u{1FA99} Monete Antiche dalla sala: ${got.join(" \xB7 ")}.`, { kind: "loot" });
+}
+function lootDead(s) {
+  const heroes = s.heroes.filter((h) => !h.fled);
+  if (!heroes.length) return;
+  const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
+  s.foes.forEach((f) => {
+    if (alive(f) || f.looted) return;
+    f.looted = true;
+    const ch = DROP_CHANCE[f.role] || DROP_CHANCE.minion;
+    const who = heroes.find((h) => h.id === f.lastHitBy) || pick(heroes);
+    const parts = [];
+    if (die(100) <= ch.coins) {
+      const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
+      addSpoil(s, who.uid, { coins: c });
+      parts.push(`\u{1FA99} ${c} Monete Antiche`);
+    }
+    if (die(100) <= ch.item) {
+      const id = rollDropItem(rnd, bases, f.role);
+      const it = itemOf(id);
+      if (it) {
+        addSpoil(s, who.uid, { item: id });
+        parts.push(`${it.icon} ${it.name}`);
+      }
+    }
+    if (parts.length) log(s, `\u{1F381} ${f.name} lascia cadere ${parts.join(" e ")}: li raccoglie ${who.name}.`, { kind: "loot", actor: who.id });
+  });
+}
+function useItem(s, uid, { itemId, targetId }, now) {
+  if (s.status !== "fight") throw new Error("Non si combatte adesso.");
+  s.acted = s.acted || {};
+  const h = s.heroes.find((x) => x.uid === uid);
+  if (!h) throw new Error("Non sei in questa partita.");
+  if (!alive(h)) throw new Error("Sei a terra: aspetta che un alleato ti curi.");
+  if (s.acted[h.id]) throw new Error("Hai gi\xE0 agito in questo round: aspetta gli altri e i mostri.");
+  const it = battleItem(itemId);
+  if (!it) throw new Error("Oggetto non usabile in lotta.");
+  const tk = itemTarget(it);
+  let target = null;
+  if (tk === "foe") target = foeTarget(s, h, targetId);
+  if (tk === "ally" || tk === "downed") {
+    target = byId(s, targetId) || h;
+    if (target.side !== "h" || target.fled) throw new Error("Scegli un alleato.");
+    if (tk === "ally" && !alive(target)) throw new Error("\xC8 a terra: per rialzarlo serve la Piuma della Fenice.");
+    if (tk === "downed" && alive(target)) throw new Error("La Piuma della Fenice serve per un alleato a terra.");
+  }
+  const flatN = Number(it.flat) || 0;
+  const on = target && target !== h ? ` su ${target.name}` : "";
+  if (it.kind === "heal") {
+    curVfx = { fx: "heal", el: "radiant", from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const before = target.hp;
+    target.hp = Math.min(target.maxHp, target.hp + roll(n, sd).t + flatN);
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: +${target.hp - before} PF.`, { kind: "heal", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "revive") {
+    curVfx = { fx: "heal", el: "radiant", from: h.id };
+    target.hp = Math.max(1, Math.ceil(target.maxHp * (it.pct || 50) / 100));
+    log(s, `${it.icon} ${h.name} usa ${it.name}: ${target.name} si rialza con ${target.hp} PF!`, { kind: "heal", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "cleanse") {
+    curVfx = { fx: "buff", el: "radiant", from: h.id };
+    target.fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: via svantaggio e stordimento.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "buff") {
+    curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
+    const until = s.round + (it.turns || 1) + 1;
+    if (it.buff === "ac") target.fx.ac = [...(target.fx.ac || []).filter((e) => fxOn(s, e)), { v: it.value, until }];
+    if (it.buff === "adv") target.fx.adv = until;
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "throw") {
+    curVfx = { fx: "bolt", el: elOf(it.dmg), from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const notes = [];
+    const dmg = applyDamage(s, target, roll(n, sd).t, it.dmg, notes);
+    target.lastHitBy = h.id;
+    log(s, `${it.icon} ${h.name} lancia ${it.name} su ${target.name}: ${dmg} danni ${DMG_IT[it.dmg] || ""}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
+  } else if (it.kind === "throw_area") {
+    curVfx = { fx: "aoe", el: elOf(it.dmg), from: h.id };
+    const [n, sd] = parseDice(it.dice);
+    const base = roll(n, sd).t;
+    const tg = s.foes.filter(alive);
+    const parts = tg.map((t) => {
+      const sv = d20() + (t.save || 0);
+      const ok = sv >= (it.dc || 13);
+      const notes = [];
+      const dmg = applyDamage(s, t, ok ? Math.floor(base / 2) : base, it.dmg, notes);
+      t.lastHitBy = h.id;
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${t.hp <= 0 ? " \u{1F480}" : ""}`;
+    });
+    log(s, `${it.icon} ${h.name} lancia ${it.name} (TS ${String(it.save).toUpperCase()} CD ${it.dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: tg.map((t) => t.id) });
+  }
+  curVfx = null;
+  s.acted = { ...s.acted, [h.id]: true };
+  lootDead(s);
+  afterHeroAction(s, now);
+  return { actor: h.id, roll: null, item: itemId };
 }
 function timeout(s, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
@@ -1083,7 +1304,7 @@ function nextFloor(s, bestiary, now) {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
     const uses = {};
-    heroActions(h.cls, h.level, h.picks || [], h.weapon).forEach((a) => {
+    heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).forEach((a) => {
       if (a.uses) uses[a.id] = a.uses;
     });
     h.uses = uses;
@@ -1265,16 +1486,22 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   KITS,
   MAX_STORY_LEVEL,
   RUN_COUNTS_AFTER,
+  SHOP_ITEMS,
   STAT_KEYS,
   STAT_MAX,
   WEEKLY_RUNS,
   act,
+  bagOf,
+  battleItem,
+  coinsOf,
   currentWeekKey,
   flee,
+  heroActions,
   heroOf,
   heroPending,
   heroStats,
   hpPending,
+  itemOf,
   levelOfXp,
   mergeDungeons,
   newRun,
@@ -1285,6 +1512,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   runsOf,
   storyLevelOf,
   timeout,
+  useItem,
   validNewHero,
   weaponChoices,
   withRng,

@@ -14,7 +14,7 @@ import { createPortal } from "react-dom";
 import "./WorldBossVfx.css";
 import { spellSound } from "../utils/petAudio";
 import { playSpell } from "../fx/spellFx";
-import { popNumber } from "../fx/hitNumbers";
+import { popNumber, popTag } from "../fx/hitNumbers";
 import { whenDiceIdle } from "../components/DiceRoll";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
@@ -279,6 +279,8 @@ function popNums(msg, targets, canvas) {
     const i = Math.max(0, targets.indexOf(n.t));
     const v = Number(n.v) || 0;
     const miss = n.miss || (missSet.has(n.t) && !v);
+    // scritta IMMUNE / RESISTE / VULNERABILE sotto il numero (anche da sola, se il danno è 0)
+    if (n.tag) popTag({ x: a.x, y: a.y - a.h * 0.15, tag: n.tag, delay: impactDelay(kind, i, canvas) + 140 });
     if (!miss && !v) return;
     popNumber({ x: a.x, y: a.y - a.h * 0.15, value: v, kind: miss ? "miss" : v > 0 ? "heal" : "dmg", el: n.el || el, crit: !!n.crit, delay: impactDelay(kind, i, canvas) + 40 });
   });

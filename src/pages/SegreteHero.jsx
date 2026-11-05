@@ -8,6 +8,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import { classInfo, heroOf } from "../data/segrete";
+import { bagOf, itemOf } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroAc, xpForLevel, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
@@ -135,7 +136,11 @@ export default function SegreteHero({ cls, charData }) {
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
-  const acts = heroActions(cls, lv, hero.picks || [], hero.weapon).filter((a) => a.kind !== "defend");
+  const wItem = itemOf(hero.weaponItem);
+  const acts = heroActions(cls, lv, hero.picks || [], wItem?.base || hero.weapon, wItem?.plus || 0).filter((a) => a.kind !== "defend");
+  const bag = bagOf(charData);
+  const myBases = weaponChoices(cls).map((w) => w.key);
+  const magicWeapons = Object.keys(bag).map(itemOf).filter((it) => it?.kind === "weapon" && myBases.includes(it.base));
   const options = poolFor(cls, lv).filter((a) => !(hero.picks || []).includes(a.id));
   const locked = kit.pool.filter((a) => (a.min || 1) > lv);
   const nextMilestone = Math.min(MAX_STORY_LEVEL, (Math.floor(lv / ASI_EVERY) + 1) * ASI_EVERY);
@@ -192,6 +197,16 @@ export default function SegreteHero({ cls, charData }) {
       )}
       {err && <p className="sgr-err">{err}</p>}
 
+      <p className="sgh-sub">🗡 Arma: {wItem ? `${wItem.icon} ${wItem.name}` : (() => { const w = weaponChoices(cls).find((x) => x.key === hero.weapon) || weaponChoices(cls)[0]; return `${w.icon} ${w.name}`; })()}</p>
+      {(wItem || magicWeapons.length > 0) && (
+        <div className="sgh-row">
+          {magicWeapons.filter((it) => it.id !== hero.weaponItem).map((it) => (
+            <button key={it.id} type="button" className="sgr-btn" disabled={busy} title={it.desc}
+              onClick={() => send({ op: "heroEquip", cls, itemId: it.id })}>Equipaggia {it.icon} {it.name} (×{bag[it.id]})</button>
+          ))}
+          {wItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, itemId: null })}>Togli {wItem.name} (torna nello zaino)</button>}
+        </div>
+      )}
       <p className="sgh-sub">Le tue azioni</p>
       <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
       {lv < MAX_STORY_LEVEL && (
