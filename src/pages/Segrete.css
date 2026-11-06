@@ -221,7 +221,7 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-page .sgr-st--hero b { color: var(--cls); }
 .sgr-st.is-live { border-color: #5fd16b; box-shadow: inset 4px 0 0 #5fd16b; }
 
-.sgr-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0 0 16px; padding: 4px; border-radius: 3px; background: var(--roccia-1, #17141b); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14); }
+.sgr-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 0 0 16px; padding: 4px; border-radius: 3px; background: var(--roccia-1, #17141b); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14); }
 .sgr-tab { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 6px 8px; border: 0; border-radius: 3px; cursor: pointer; background: transparent; color: var(--osso-2, #d8ccb4); font: 700 .95rem system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .sgr-tab:hover { background: rgba(var(--osso-rgb, 236,229,214), .06); color: #fff7e6; }
 .sgr-tab.is-on { background: var(--el, #e0a85a); color: var(--ossidiana, #0d0a0a); }
@@ -272,7 +272,8 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
   .sgr-st { min-height: 52px; padding: 6px 8px; gap: 8px; }
   .sgr-st-ico { width: 32px; height: 32px; font-size: 1.15rem; }
   .sgr-page .sgr-st b { font-size: .86rem; white-space: normal; }
-  .sgr-tab { flex-direction: column; gap: 2px; min-height: 54px; padding: 4px 2px; font-size: .74rem; }
+  .sgr-tabs { grid-template-columns: repeat(6, auto); gap: 2px; } /* larghe quanto il nome: «Personaggi» non sborda */
+  .sgr-tab { flex-direction: column; gap: 2px; min-height: 54px; padding: 4px 2px; font-size: .72rem; }
   .sgr-tab-badge { position: absolute; top: 3px; right: 3px; }
   .sgr-title { font-size: 2rem; }
   .sgr-lead { font-size: .92rem; }

@@ -158,7 +158,7 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
     <section className="sgr-block" id="sgr-bottega">
       <h2 className="sgr-h2">{tab === "zaino" ? "🎒 Il tuo zaino" : "🏪 La Bottega"} <span className="sgr-coins">{COIN_ICON} {coins} {COIN_NAME}</span></h2>
       <p className="sgr-hint">{tab === "zaino"
-        ? `Lo zaino è unico per tutti i tuoi eroi: ogni classe usa gli stessi oggetti. Le armi magiche si equipaggiano dalla scheda dell'eroe (Personaggi); per passarne una a un'altra classe rimettila nello zaino qui sotto. Puoi anche regalare un oggetto a un altro giocatore: costa ${GIFT_FEE} ${COIN_NAME}, massimo ${GIFT_DAILY} regali al giorno.`
+        ? "Lo zaino è unico per tutti i tuoi eroi."
         : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
       {tab === "zaino" ? (

@@ -103,6 +103,7 @@ const TABS = [
   { key: "eroi", icon: "🧝", label: "Personaggi" },
   { key: "bottega", icon: "🏪", label: "Bottega" },
   { key: "zaino", icon: "🎒", label: "Zaino" },
+  { key: "storico", icon: "📜", label: "Storico" },
   { key: "manuale", icon: "📖", label: "Manuale" },
 ];
 const TAB_KEY = "sgr_tab";
@@ -353,7 +354,8 @@ export default function Segrete() {
         </>
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
-      {tab === "zaino" && <><SegreteLog charData={charData} /><SegreteShop charData={charData} view="zaino" uid={uid} /></>}
+      {tab === "zaino" && <SegreteShop charData={charData} view="zaino" uid={uid} />}
+      {tab === "storico" && <SegreteLog charData={charData} />}
       {tab === "manuale" && <SegreteManual />}
     </section>
   );
