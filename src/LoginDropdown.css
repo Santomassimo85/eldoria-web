@@ -295,8 +295,9 @@
 .ld-temi button[aria-pressed="true"] { background: var(--el-deep); border-color: var(--el); color: var(--el-soft); }
 .ld-form .ld-temi { margin-top: 10px; }
 .ld-set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--osso); }
-.ld-set-row > span { display: grid; min-width: 0; }
-.ld-set-row small, .ld-set-msg { color: var(--osso-3); font-size: .76rem; }
+.ld-set-row > span { display: block; min-width: 0; }
+.ld-set-row small, .ld-set-msg { display: block; color: var(--osso-3); font-size: .76rem; }
 .ld-set-btn { flex: none; min-width: 72px; min-height: 36px; padding: 4px 10px; border: 1px solid var(--roccia-3); border-radius: 3px; background: transparent; color: var(--osso); font: 700 .82rem system-ui, sans-serif; cursor: pointer; }
 .ld-set-btn.is-on { background: var(--el-deep); border-color: var(--el); color: var(--el-soft); }
 .ld-set-btn:disabled { opacity: .5; cursor: default; }
+@media (max-width: 760px) { .ld-panel--user { max-height: calc(100dvh - 190px); } } /* non finisce sotto il d20 */
