@@ -1,20 +1,13 @@
-/* Chat vocale delle Segrete (2026-11-05) */
-.sgv { position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 1070; display: grid; gap: 6px; justify-items: start; max-width: min(440px, calc(100vw - 24px)); font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #f3ead8; }
-body.in-fight .sgv { bottom: calc(12px + env(safe-area-inset-bottom)); }
-@media (min-width: 1301px) { .sgv { bottom: 20px; } }
-.sgv-bar { order: 2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Chat vocale di tutta l'app (2026-11-06): vive nella testata, niente riquadri fissi sulle pagine */
 .sgv-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 6px 12px; border-radius: 21px; cursor: pointer; border: 1px solid rgba(243,234,216,.35); background: rgba(16,12,22,.92); color: #fff7e6; font: 700 .92rem system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
 .sgv.is-joined .sgv-pill { border-color: #5fd16b; }
 .sgv-pill em { font-style: normal; min-width: 18px; padding: 0 5px; border-radius: 9px; background: rgba(243,234,216,.15); text-align: center; font-size: .78rem; }
-.sgv-wave { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #8ee69a; font-size: .8rem; }
-.sgv-wave::before { content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/speaker.svg) center / contain no-repeat; mask: url(/gi/speaker.svg) center / contain no-repeat; margin-right: .25em; }
-.sgv-panel { order: 1; width: min(320px, calc(100vw - 24px)); padding: 10px; border-radius: 4px; border: 1px solid rgba(243,234,216,.25); background: rgba(16,12,22,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); display: grid; gap: 8px; }
 .sgv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .sgv-list li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 6px; padding: 5px 8px; border-left: 3px solid var(--cls, #888); background: rgba(255,255,255,.04); border-radius: 3px; }
 .sgv-list li.is-talk { background: rgba(95,209,107,.16); box-shadow: inset 0 0 0 1px #5fd16b; }
 .sgv-ico { font-size: 1.1rem; text-align: center; }
-.sgv .sgv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cls, #fff7e6); font-weight: 700; }
-.sgv .sgv-list small { color: #d8ccb4; font-size: .76rem; white-space: nowrap; }
+.sgv-panel .sgv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cls, #fff7e6); font-weight: 700; }
+.sgv-panel .sgv-list small { color: #d8ccb4; font-size: .76rem; white-space: nowrap; }
 .sgv-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .sgv-modes button { min-height: 36px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.3); background: transparent; color: #f3ead8; font: 600 .82rem system-ui, sans-serif; }
 .sgv-modes button.is-on { background: #f2c14e; border-color: #f2c14e; color: #1d1406; }
@@ -24,37 +17,30 @@ body.in-fight .sgv { bottom: calc(12px + env(safe-area-inset-bottom)); }
 .sgv-btn { min-height: 38px; padding: 6px 8px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.3); background: transparent; color: #f3ead8; font: 600 .84rem system-ui, sans-serif; }
 .sgv-btn--go { min-height: 46px; border-color: #5fd16b; background: rgba(95,209,107,.15); font-weight: 800; font-size: .95rem; }
 .sgv-btn:disabled { opacity: .6; }
-.sgv .sgv-hint { margin: 0; color: #d8ccb4; font-size: .78rem; }
-.sgv .sgv-err { margin: 0; color: #ffb4a4; font-size: .82rem; font-weight: 700; }
-/* in lotta in alto a sinistra: in basso coprirebbe le azioni */
-body.in-fight .sgv { top: calc(10px + env(safe-area-inset-top)); bottom: auto; }
-body.in-fight .sgv-bar { order: 1; }
-body.in-fight .sgv-panel { order: 2; }
+.sgv-panel .sgv-hint { margin: 0; color: #d8ccb4; font-size: .78rem; }
+.sgv-panel .sgv-err { margin: 0; color: #ffb4a4; font-size: .82rem; font-weight: 700; }
 .sgv-dl { display: grid; place-items: center; text-decoration: none; border-color: #f2c14e; color: #ffe39a; }
 .sgv-mic { min-height: 42px; padding: 6px 14px; border-radius: 21px; cursor: pointer; border: 2px solid #f2c14e; background: rgba(16,12,22,.92); color: #fff7e6; font: 800 .9rem system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.5); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sgv-mic.is-live { border-color: #e0624f; background: rgba(120,30,24,.92); box-shadow: 0 0 14px rgba(224,98,79,.6); }
-.sgv-sq { width: 42px; height: 42px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(243,234,216,.35); background: rgba(16,12,22,.92); color: #fff7e6; font-size: 1.05rem; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-.sgv-sq--x { color: #ffb4a4; font-weight: 800; }
 
-/* Schermi stretti (2026-11-05): solo icone, tasti più piccoli; in lotta la pagina scende
-   sotto la barra della voce invece di farsi coprire la riga del dungeon. */
-body.in-fight .sgr-page:has(.sgv) { padding-top: 58px; }
-@media (max-width: 600px) {
-  .sgv-bar { gap: 5px; flex-wrap: nowrap; }
-  .sgv-lbl, .sgv-wave { display: none; }
-  .sgv-pill { min-height: 40px; padding: 4px 10px; gap: 4px; }
-  .sgv-mic { min-width: 56px; min-height: 40px; padding: 4px 12px; font-size: 1.25rem; }
-  .sgv-sq { width: 40px; height: 40px; font-size: .95rem; }
-  body.in-fight .sgr-page:has(.sgv) { padding-top: 54px; }
-}
-@media (max-width: 340px) {
-  .sgv-pill { padding: 4px 8px; }
-  .sgv-mic { min-width: 48px; padding: 4px 8px; }
-  .sgv-sq { width: 36px; height: 36px; }
-}
 .sgv-diag { font-size: .72rem; color: #d8ccb4; }
 .sgv-diag summary { cursor: pointer; }
 .sgv-diag ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; max-height: 160px; overflow: auto; }
 .sgv-diag code { font-size: .68rem; color: #ffe39a; word-break: break-all; }
 .sgv-mic.sgv-wake { border-color: #5fd16b; background: rgba(30,90,40,.95); animation: sgv-wake 1s ease-in-out infinite; }
 @keyframes sgv-wake { 50% { box-shadow: 0 0 14px rgba(95,209,107,.8); } }
+
+
+.sgv { display: inline-flex; align-items: center; }
+.sgv-bar { display: flex; align-items: center; gap: 4px; }
+.sgv .sgv-pill { min-height: 36px; padding: 3px 9px; gap: 4px; box-shadow: none; }
+.sgv-pill.is-talk { border-color: #5fd16b; box-shadow: 0 0 10px rgba(95,209,107,.7); }
+.sgv-mic { min-width: 40px; min-height: 36px; padding: 3px 8px; font-size: 1rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sgv-panel { position: fixed; top: calc(64px + env(safe-area-inset-top)); right: 8px; z-index: 10070; display: grid; gap: 8px; width: min(320px, calc(100vw - 16px)); max-height: calc(100dvh - 88px); overflow-y: auto; padding: 10px; border-radius: 4px; border: 1px solid rgba(243,234,216,.25); background: rgba(16,12,22,.97); box-shadow: 0 8px 24px rgba(0,0,0,.6); font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sgv-panel .sgv-title { margin: 0; color: #fff7e6; font-weight: 700; }
+.sgv-btn--x { color: #ffb4a4; }
+/* nei fight la testata non c'è: solo il microfono, sotto il ☰ */
+.sgv-fight { position: fixed; top: calc(54px + env(safe-area-inset-top, 0px)); right: 8px; z-index: 10060; display: grid; gap: 4px; }
+.sgv-fight .sgv-mic { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: 3px; }
+body.in-fight .sgb-top { padding-right: 56px; }
+body.vc-live .sgb-log { padding-right: 56px; }

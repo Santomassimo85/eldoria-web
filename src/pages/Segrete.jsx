@@ -21,7 +21,6 @@ import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
-import SegreteVoice from "./SegreteVoice";
 import SegreteLog, { coinsToday } from "./SegreteLog";
 import { COIN_ICON, COIN_NAME, coinsOf } from "../data/segreteItems";
 import { hpPending, armorChosen } from "../data/segreteKits";
@@ -192,13 +191,9 @@ export default function Segrete() {
     );
   }
 
-  // chat vocale: stessa posizione (primo figlio, stessa key) nella stanza e in lotta, così non si scollega
-  const voice = myRoom ? <SegreteVoice key={`voice-${myRoom.id}`} roomId={myRoom.id} uid={uid} name={meInRoom?.name || charData?.name || ""} members={myRoom.members || []} /> : null;
-
   if (inFight) {
     return (
       <section className="sgr-page">
-        {voice}
         {err && <p className="sgr-err" role="alert">{err}</p>}
         <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
           dungeon={dungeonOf(myRoom.type)} canRun />
@@ -213,7 +208,6 @@ export default function Segrete() {
 
   return (
     <section className="sgr-page">
-      {voice}
       <Link to="/sala-della-gloria" className="sgr-back">← Sala della Gloria</Link>
       <header className="sgr-head">
         <h1 className="sgr-title">Le Segrete</h1>

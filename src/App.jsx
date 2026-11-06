@@ -71,6 +71,7 @@ import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
+import AppVoice from "./components/AppVoice";
 import RuotaPopup from "./components/RuotaPopup";
 import LoginRewardPopup from "./components/LoginRewards";
 import Resoconto from "./pages/Resoconto";
@@ -557,6 +558,7 @@ export default function App() {
       <LoginRewardPopup />
       <RuotaPopup />
       <PageVisitReward />
+      <AppVoice docked={!hideChrome || forceShowNav} />
       {hideChrome && !forceShowNav && (
         <button type="button" className="battle-nav-reopen" onClick={() => { setForceShowNav(true); if (inFight) setMenuOpen(true); }} aria-label="Apri menu">
           ☰
@@ -582,6 +584,7 @@ export default function App() {
         <div className="header-right">
           {/* slot per il tastino AGENDA della Home (portale da Home.jsx): subito a sinistra dell'avatar */}
           <span id="header-agenda" className="header-agenda" />
+          <span id="header-voice" className="header-voice" />
           <LoginDropdown closeMenu={closeMenu} />
 
           <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">

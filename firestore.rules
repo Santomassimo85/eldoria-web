@@ -248,6 +248,10 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if isMaster();
     }
+    // Chat vocale dell'app (2026-11-06): la Sala comune è aperta a tutti i loggati
+    match /dungeon_voice/sala-comune/{doc=**} {
+      allow read, write: if isLoggedIn();
+    }
     // Chat vocale delle Segrete (2026-11-05): presenza e segnali WebRTC, solo chi è nel gruppo
     match /dungeon_voice/{roomId}/{doc=**} {
       allow read, write: if isLoggedIn()
