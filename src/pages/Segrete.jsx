@@ -24,7 +24,7 @@ import SegreteManual from "./SegreteManual";
 import SegreteVoice from "./SegreteVoice";
 import SegreteLog, { coinsToday } from "./SegreteLog";
 import { COIN_ICON, COIN_NAME, coinsOf } from "../data/segreteItems";
-import { hpPending } from "../data/segreteKits";
+import { hpPending, armorChosen } from "../data/segreteKits";
 import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
 // eroe pronto a giocare: creato e con i PF tirati
 const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
@@ -34,8 +34,15 @@ const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 
 
 /* Scheda Personaggi (2026-11-06, rifatta): eroi a fisarmonica (una scheda aperta alla
    volta, sotto la sua riga) + "Crea un eroe" richiudibile con le classi libere. */
-function HeroSections({ charData, cls, onUse, disabled, inRoom }) {
+function HeroSections({ charData, cls, onUse, disabled, inRoom, focus }) {
   const [open, setOpen] = useState(null);
+  // dagli avvisi ("scegli l'armatura"…): apre la scheda di quell'eroe e scorre all'equipaggiamento
+  useEffect(() => {
+    if (!focus?.cls) return undefined;
+    setOpen(focus.cls);
+    const t = setTimeout(() => document.getElementById(`sgh-gear-${focus.cls}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 250);
+    return () => clearTimeout(t);
+  }, [focus]);
   const [newCls, setNewCls] = useState(null);
   const free = STORY_CLASSES.filter((c) => !heroOf(charData, c.key));
   const n = heroClasses(charData).length;
@@ -114,6 +121,7 @@ export default function Segrete() {
   const [diff, setDiff] = useState("facile");
   const [name, setName] = useState("");
   const [tab, setTabState] = useState(readTab);
+  const [focus, setFocus] = useState(null);
   const setTab = (t) => {
     setTabState(t);
     try { localStorage.setItem(TAB_KEY, t); } catch { /* niente */ }
@@ -154,7 +162,7 @@ export default function Segrete() {
     .sort((a, b) => Number(invitedTo(b)) - Number(invitedTo(a)) || tsMs(b.updatedAt) - tsMs(a.updatedAt));
   const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id && (fresh(r, 6 * 36e5) || master));
   const invites = openRooms.filter(invitedTo).length;
-  const todoN = heroClasses(charData).filter((c) => heroTodo(heroOf(charData, c.key)).length).length;
+  const todoN = heroClasses(charData).filter((c) => heroTodo(heroOf(charData, c.key), c.key).length).length;
 
   const run = async (fn) => {
     if (busy) return;
@@ -170,7 +178,7 @@ export default function Segrete() {
     } else setCls(k);
   };
   // dagli avvisi "eroi da sistemare": va nella scheda Personaggi
-  const pickHero = (k) => { chooseHero(k); setTab("eroi"); };
+  const pickHero = (k) => { chooseHero(k); setTab("eroi"); setFocus({ cls: k, at: Date.now() }); };
 
   if (!uid) {
     return (
@@ -244,7 +252,7 @@ export default function Segrete() {
       {tab === "gruppi" && (
         myRoom ? (
           <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} />
+            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
         ) : (
           <>
             <HeroNews charData={charData} onSelect={pickHero} />
@@ -339,7 +347,7 @@ export default function Segrete() {
       {tab === "eroi" && (
         <>
           <HeroNews charData={charData} onSelect={pickHero} />
-          <HeroSections charData={charData} cls={curCls} onUse={chooseHero} disabled={busy} inRoom={!!myRoom} />
+          <HeroSections charData={charData} cls={curCls} onUse={chooseHero} disabled={busy} inRoom={!!myRoom} focus={focus} />
         </>
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
@@ -366,7 +374,7 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
   );
 }
 
-function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes, onPick }) {
+function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes, onPick, onFix }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
@@ -423,6 +431,9 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
 
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 
+      {me && heroOf(charData, me.cls) && !armorChosen(me.cls, heroOf(charData, me.cls)) && (
+        <button type="button" className="sgr-gear-alert" onClick={() => onFix?.(me.cls)}>⚠ Il tuo {classInfo(me.cls)?.it} non ha ancora scelto l'armatura (ora usa quella di base). <b>Sistemala →</b></button>
+      )}
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && (
         <p className="sgr-helper">🤝 Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>

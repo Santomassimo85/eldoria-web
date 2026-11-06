@@ -412,3 +412,37 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgi small, .sgr-page .sgi-role em, .sgr-page .sgi-line, .sgr-page .sgi-prizes li, .sgr-page .sgi-none { color: var(--osso-2, #d8ccb4) !important; }
 .sgr-page .sgi-it b { color: var(--rc, var(--osso, #ece5d6)) !important; }
 
+
+/* equipaggiamento dell'eroe (2026-11-06): tre slot in evidenza + scelte con la CA */
+.sgg { margin: 12px 0; padding: 12px; border: 1px solid rgba(var(--el-rgb, 224,168,90), .45); border-radius: 3px; background: rgba(var(--el-rgb, 224,168,90), .06); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgr-page .sgg-title { margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; color: var(--osso, #ece5d6) !important; }
+.sgr-page .sgg-title span { font-weight: 400; color: var(--osso-2, #d8ccb4) !important; }
+.sgr-page .sgg-title b { font-size: 1.15rem; color: var(--osso, #ece5d6) !important; }
+.sgr-page .sgg-alert { margin: 0 0 10px; padding: 9px 11px; border-radius: 3px; border: 1px solid #e6c14a; background: rgba(230,193,74,.14); color: #fbe6a6 !important; font-weight: 600; }
+.sgg-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 8px; }
+.sgg-slot { display: grid; gap: 2px; justify-items: start; text-align: left; padding: 10px; min-height: 44px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .2); background: var(--roccia-1, #17141b); color: var(--osso, #ece5d6); font: inherit; }
+.sgg-slot.is-open { border-color: var(--el, #e0a85a); box-shadow: inset 0 0 0 1px var(--el, #e0a85a); }
+.sgg-slot.is-warn { border-color: #e6c14a; box-shadow: inset 0 0 0 1px #e6c14a; }
+.sgr-page .sgg-slot small { color: var(--osso-2, #d8ccb4) !important; text-transform: uppercase; letter-spacing: .06em; font-size: .7rem; display: flex; gap: 6px; align-items: center; }
+.sgr-page .sgg-new { font-style: normal; text-transform: none; letter-spacing: 0; padding: 0 5px; border-radius: 3px; background: rgba(111,212,138,.2); color: #9be8b0 !important; }
+.sgg-slot-ico { font-size: 1.5rem; line-height: 1.1; }
+.sgr-page .sgg-slot b { color: var(--osso, #ece5d6) !important; }
+.sgr-page .sgg-slot-sub { color: var(--osso-2, #d8ccb4) !important; font-size: .82rem; }
+.sgr-page .sgg-slot-cta { margin-top: 4px; color: var(--el, #e0a85a) !important; font-weight: 600; font-size: .82rem; }
+.sgg-opts { margin-top: 10px; display: grid; gap: 6px; }
+.sgr-page .sgg-h { margin: 6px 0 0; font-weight: 700; color: var(--osso, #ece5d6) !important; }
+.sgr-page .sgg-h small, .sgr-page .sgg-note { font-weight: 400; color: var(--osso-2, #d8ccb4) !important; }
+.sgr-page .sgg-note { margin: 4px 0; font-size: .85rem; }
+.sgg-opt { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; padding: 8px 10px; min-height: 44px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .16); background: var(--roccia-2, #221f27); color: var(--osso, #ece5d6); font: inherit; }
+.sgg-opt:hover:not(:disabled) { border-color: var(--el, #e0a85a); }
+.sgg-opt.is-on { border-color: #6fd48a; background: rgba(111,212,138,.1); cursor: default; }
+.sgg-opt:disabled:not(.is-on) { opacity: .55; cursor: not-allowed; }
+.sgg-opt-ico { font-size: 1.3rem; text-align: center; }
+.sgr-page .sgg-opt-main b { display: block; color: var(--rc, var(--osso, #ece5d6)) !important; }
+.sgr-page .sgg-opt-main small { display: block; color: var(--osso-2, #d8ccb4) !important; font-size: .8rem; }
+.sgr-page .sgg-opt-tag { font-weight: 700; white-space: nowrap; color: var(--osso, #ece5d6) !important; font-variant-numeric: tabular-nums; }
+.sgr-page .sgg-opt-tag em { font-style: normal; }
+.sgr-page .sgg-opt-tag em.up { color: #7fe39a !important; }
+.sgr-page .sgg-opt-tag em.down { color: #ff8f84 !important; }
+.sgr-page .sgg-opt-on { grid-column: 2 / -1; color: #9be8b0 !important; font-size: .78rem; font-weight: 600; }
+.sgr-gear-alert { display: block; width: 100%; margin: 10px 0; padding: 10px 12px; text-align: left; border-radius: 3px; cursor: pointer; border: 1px solid #e6c14a; background: rgba(230,193,74,.14); color: #fbe6a6; font: 600 14px/1.4 system-ui, sans-serif; }

@@ -5,15 +5,16 @@
    Toccare un eroe = sceglierlo per il gruppo e aprirne la scheda. */
 import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroGear } from "../data/segreteItems";
-import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, heroXp, MAX_STORY_LEVEL } from "../data/segreteKits";
+import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, heroXp, armorChosen, MAX_STORY_LEVEL } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
-export function heroTodo(hero) {
+export function heroTodo(hero, cls) {
   if (!hero) return [];
   const p = heroPending(hero);
   const hp = hpPending(hero);
   const out = [];
   if (!hero.weapon) out.push({ k: "weapon", icon: "🗡", text: "scegli l'arma" });
+  if (cls && !armorChosen(cls, hero)) out.push({ k: "armor", icon: "🛡", text: hero.armor ? "armatura non adatta: cambiala" : "scegli l'armatura" });
   if (hp > 0) out.push({ k: "hp", icon: "❤", text: hp === 1 ? "tira i PF" : `tira i PF (${hp})` });
   if (p.asi > 0) out.push({ k: "asi", icon: "⭐", text: `+${p.asi} caratteristica` });
   if (p.picks > 0) out.push({ k: "pick", icon: "✨", text: p.picks === 1 ? "nuova abilità" : `${p.picks} abilità` });
@@ -80,7 +81,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
     <ul className="sgr-acc">
       {list.map((c) => {
         const { h, lv, pct, st } = heroLine(charData, c.key);
-        const todo = heroTodo(h);
+        const todo = heroTodo(h, c.key);
         const run = runState(charData, c.key);
         const isOpen = open === c.key;
         const inUse = value === c.key;
@@ -126,7 +127,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
         const from = xpForLevel(lv);
         const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
         const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (xp - from)) / Math.max(1, to - from));
-        const todo = heroTodo(h);
+        const todo = heroTodo(h, c.key);
         const run = runState(charData, c.key);
         const on = value === c.key;
         return (
@@ -172,7 +173,7 @@ export function NewClassPicker({ charData, value, onSelect, disabled }) {
 
 /* Avviso in cima: quali eroi si sono potenziati e hanno qualcosa da scegliere */
 export function HeroNews({ charData, onSelect }) {
-  const list = heroClasses(charData).map((c) => ({ c, todo: heroTodo(heroOf(charData, c.key)) })).filter((x) => x.todo.length);
+  const list = heroClasses(charData).map((c) => ({ c, todo: heroTodo(heroOf(charData, c.key), c.key) })).filter((x) => x.todo.length);
   if (!list.length) return null;
   return (
     <div className="sgr-news" role="status">

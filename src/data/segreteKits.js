@@ -135,14 +135,15 @@ export const ARMORS = {
   piastre: { name: "Armatura di Piastre", icon: "🏰", cat: "heavy", base: 18, dex: 0 },
 };
 export const ARMOR_CAT_IT = { none: "abiti", mage: "magia", unarmored: "senz'armatura", light: "leggera", medium: "media", heavy: "pesante" };
-// competenze del manuale (il Chierico come i domini di Guerra/Vita: anche le pesanti)
+// competenze del manuale D&D (2026-11-06, ricontrollate): il Chierico base NON porta le pesanti,
+// il Druido non porta armature di metallo (`no`: Giaco di Maglia, Scaglie, Mezza Armatura)
 export const ARMOR_PROF = {
   fighter: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
   paladin: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
-  cleric: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  cleric: { cats: ["light", "medium"], shield: true, def: "scaglie" },
   barbarian: { cats: ["unarmored", "light", "medium"], shield: true, def: "senza" },
   ranger: { cats: ["light", "medium"], shield: true, def: "borchiato" },
-  druid: { cats: ["light", "medium"], shield: true, def: "cuoio" },
+  druid: { cats: ["light", "medium"], shield: true, def: "pelle", no: ["giaco", "scaglie", "mezza"] },
   monk: { cats: ["unarmored"], shield: false, def: "senza" },
   rogue: { cats: ["light"], shield: false, def: "borchiato" },
   bard: { cats: ["light"], shield: false, def: "borchiato" },
@@ -152,7 +153,9 @@ export const ARMOR_PROF = {
 };
 export const TWO_HANDED = new Set(["ascia_bip", "maglio", "arco_lungo", "balestra_l"]);
 export const armorProf = (cls) => ARMOR_PROF[cls] || ARMOR_PROF.fighter;
-export const canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat);
+export const canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat) && !(armorProf(cls).no || []).includes(key);
+// l'eroe ha scelto un'armatura (o ne indossa una dallo zaino)? Se no, usa quella di partenza e va avvisato
+export const armorChosen = (cls, hero) => !!hero?.armorItem || (!!hero?.armor && canWear(cls, hero.armor) && !!ARMORS[hero.armor]?.start);
 export const armorChoices = (cls) => Object.keys(ARMORS).filter((k) => ARMORS[k].start && canWear(cls, k));
 export const shieldOk = (cls, weaponKey) => armorProf(cls).shield && !TWO_HANDED.has(weaponKey);
 /* Difesa dell'eroe. g = { armor, shield, weapon, armorItem, shieldItem } con gli OGGETTI già

@@ -17,7 +17,7 @@ const segreteDo = (data) => { callable = callable || httpsCallable(functions, "s
 // chi usa un equipaggiamento: "Guerriero, Bardo"
 const usersOf = (it) => gearUsers(it).map((c) => classInfo(c)?.it).filter(Boolean).join(", ");
 
-function ItemRow({ id, n, onBuy, onGift, busy, coins, charData }) {
+function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
   const it = itemOf(id);
   const r = RARITY[it.rarity];
   return (
@@ -28,6 +28,7 @@ function ItemRow({ id, n, onBuy, onGift, busy, coins, charData }) {
         <small>{it.desc}{it.fx ? ` (${fxLine(it.fx)})` : ""}{isGear(it) ? ` Classi: ${usersOf(it)}.` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
+      {onEquip && isGear(it) && <button type="button" className="sgr-btn sgs-gift" disabled={busy} onClick={() => onEquip(id)}>🛡 Equipaggia</button>}
       {onGift && <button type="button" className="sgr-btn sgr-btn--ghost sgs-gift" disabled={busy} onClick={() => onGift(id)}>🎁 Regala</button>}
       {onBuy && (() => {
         const had = boughtToday(charData, id);
@@ -79,12 +80,48 @@ function GiftBox({ id, uid, charData, busy, onSend, onClose }) {
   );
 }
 
+/* Equipaggia dallo zaino (2026-11-06): gli eroi del giocatore che possono usare quell'oggetto */
+function EquipBox({ id, charData, busy, onEquip, onClose }) {
+  const it = itemOf(id);
+  const mine = Object.keys(charData?.storyChars || {});
+  const users = gearUsers(it).filter((c) => mine.includes(c));
+  const slot = it.kind === "armor" ? "armor" : it.kind === "shield" ? "shield" : "weapon";
+  const field = slot === "armor" ? "armorItem" : slot === "shield" ? "shieldItem" : "weaponItem";
+  return (
+    <div className="sgs-giftbox" role="dialog" aria-label={`Equipaggia ${it.name}`}>
+      <p className="sgs-gift-title">🛡 Su quale eroe metti {it.icon} <b>{it.name}</b>?</p>
+      {!users.length ? <p className="sgr-hint">Nessuno dei tuoi eroi può usarlo. Classi che possono: {usersOf(it) || "nessuna"}.</p> : (
+        <div className="sgr-room-actions">
+          {users.map((c) => {
+            const has = charData.storyChars[c]?.[field] === id;
+            return (
+              <button key={c} type="button" className="sgr-btn" style={clsStyle(c)} disabled={busy || has} onClick={() => onEquip(c, slot, id)}>
+                {classInfo(c)?.icon} {classInfo(c)?.it}{has ? " ✓" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <p className="sgr-hint">L'oggetto che l'eroe usava in quello slot torna nello zaino.</p>
+      <button type="button" className="sgr-btn sgr-btn--ghost" onClick={onClose}>Annulla</button>
+    </div>
+  );
+}
+
 export default function SegreteShop({ charData, view = "zaino", uid }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const tab = view;
   const [wFilter, setWFilter] = useState(false);
   const [gift, setGift] = useState(null);
+  const [equip, setEquip] = useState(null);
+  const doEquip = async (cls, slot, id) => {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try { await segreteDo({ op: "heroEquip", cls, slot, itemId: id }); setMsg(`✓ ${itemOf(id).name} equipaggiato sul tuo ${classInfo(cls)?.it}.`); setEquip(null); }
+    catch (e) { setMsg(e.message || "Non riuscito."); }
+    finally { setBusy(false); }
+  };
   const sendGift = async (id, toUid, toName) => {
     if (busy) return;
     setBusy(true); setMsg("");
@@ -127,7 +164,8 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
         bagIds.length ? (
           <ul className="sgs-list">{bagIds.map((id) => (
             <li key={id} className="sgs-wrap">
-              <ul className="sgs-list sgs-list--one"><ItemRow id={id} n={bag[id]} onGift={(x) => setGift(gift === x ? null : x)} busy={busy} /></ul>
+              <ul className="sgs-list sgs-list--one"><ItemRow id={id} n={bag[id]} onGift={(x) => { setEquip(null); setGift(gift === x ? null : x); }} onEquip={(x) => { setGift(null); setEquip(equip === x ? null : x); }} busy={busy} /></ul>
+              {equip === id && <EquipBox id={id} charData={charData} busy={busy} onEquip={doEquip} onClose={() => setEquip(null)} />}
               {gift === id && <GiftBox id={id} uid={uid} charData={charData} busy={busy} onSend={sendGift} onClose={() => setGift(null)} />}
             </li>
           ))}</ul>

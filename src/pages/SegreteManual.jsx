@@ -74,7 +74,7 @@ export default function SegreteManual() {
 
       <Fold icon="🛡" title="Armature e scudi">
         <ul>
-          <li>Ogni classe porta le armature del manuale D&D: le scegli quando crei l'eroe e le cambi dalla sua scheda (mai durante un dungeon).</li>
+          <li>Ogni classe porta le armature del manuale D&D: le scegli quando crei l'eroe e le cambi dal riquadro <b>🎒 Equipaggiamento</b> della sua scheda (mai durante un dungeon). Dallo Zaino il tasto «🛡 Equipaggia» mette un oggetto su un tuo eroe.</li>
           <li>Leggere: CA base + DES. Medie: CA base + DES fino a +2. Pesanti: CA fissa. Barbaro e Monaco hanno anche la <b>Difesa senz'armatura</b>; Mago e Stregone l'<b>Armatura Magica</b> (13 + DES).</li>
           <li><b>Scudo</b> +2 CA, solo con un'arma a una mano.</li>
           <li>Mezza armatura, Armatura a Stecche e Piastre si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
@@ -83,7 +83,7 @@ export default function SegreteManual() {
           {STORY_CLASSES.map((c) => (
             <span key={c.key} className="sgm-cls" style={clsStyle(c.key)}>
               <b>{c.icon} {c.it}</b>
-              <small>{armorProf(c.key).cats.map((k) => ARMOR_CAT_IT[k]).join(", ")}{armorProf(c.key).shield ? ", scudo" : ""}</small>
+              <small>{armorProf(c.key).cats.map((k) => ARMOR_CAT_IT[k]).join(", ")}{(armorProf(c.key).no || []).length ? " (niente metallo)" : ""}{armorProf(c.key).shield ? ", scudo" : ""}</small>
             </span>
           ))}
         </div>

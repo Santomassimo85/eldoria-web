@@ -178,10 +178,10 @@ var ARMORS = {
 var ARMOR_PROF = {
   fighter: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
   paladin: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
-  cleric: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  cleric: { cats: ["light", "medium"], shield: true, def: "scaglie" },
   barbarian: { cats: ["unarmored", "light", "medium"], shield: true, def: "senza" },
   ranger: { cats: ["light", "medium"], shield: true, def: "borchiato" },
-  druid: { cats: ["light", "medium"], shield: true, def: "cuoio" },
+  druid: { cats: ["light", "medium"], shield: true, def: "pelle", no: ["giaco", "scaglie", "mezza"] },
   monk: { cats: ["unarmored"], shield: false, def: "senza" },
   rogue: { cats: ["light"], shield: false, def: "borchiato" },
   bard: { cats: ["light"], shield: false, def: "borchiato" },
@@ -191,7 +191,7 @@ var ARMOR_PROF = {
 };
 var TWO_HANDED = /* @__PURE__ */ new Set(["ascia_bip", "maglio", "arco_lungo", "balestra_l"]);
 var armorProf = (cls) => ARMOR_PROF[cls] || ARMOR_PROF.fighter;
-var canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat);
+var canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat) && !(armorProf(cls).no || []).includes(key);
 var armorChoices = (cls) => Object.keys(ARMORS).filter((k) => ARMORS[k].start && canWear(cls, k));
 var shieldOk = (cls, weaponKey) => armorProf(cls).shield && !TWO_HANDED.has(weaponKey);
 function heroDefense(cls, st, g = {}) {

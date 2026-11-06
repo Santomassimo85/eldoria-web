@@ -7,10 +7,11 @@ import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
+import SegreteGear from "./SegreteGear";
 import { classInfo, heroOf } from "../data/segrete";
-import { bagOf, itemOf, heroGear } from "../data/segreteItems";
+import { itemOf, heroGear } from "../data/segreteItems";
 import {
-  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, fxLine, DMG_ALL, canWear, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
 } from "../data/segreteKits";
 
@@ -91,7 +92,6 @@ export default function SegreteHero({ cls, charData }) {
   const [weapon, setWeapon] = useState("");
   const [armor, setArmor] = useState(null);
   const [shield, setShield] = useState(true);
-  const [armorOpen, setArmorOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [hpMsg, setHpMsg] = useState("");
@@ -176,15 +176,8 @@ export default function SegreteHero({ cls, charData }) {
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
   const wItem = itemOf(hero.weaponItem);
   const acts = heroActions(cls, lv, hero.picks || [], wItem?.base || hero.weapon, wItem?.plus || 0, wItem).filter((a) => a.kind !== "defend");
-  const bag = bagOf(charData);
   const gear = heroGear(hero, cls);
   const def = heroDefense(cls, st, gear);
-  const aItem = itemOf(hero.armorItem);
-  const sItem = itemOf(hero.shieldItem);
-  const bagArmors = Object.keys(bag).map(itemOf).filter((it) => it?.kind === "armor" && canWear(cls, it.base) && it.id !== hero.armorItem);
-  const bagShields = armorProf(cls).shield ? Object.keys(bag).map(itemOf).filter((it) => it?.kind === "shield" && it.id !== hero.shieldItem) : [];
-  const myBases = weaponChoices(cls).map((w) => w.key);
-  const magicWeapons = Object.keys(bag).map(itemOf).filter((it) => it?.kind === "weapon" && myBases.includes(it.base));
   const options = poolFor(cls, lv).filter((a) => !(hero.picks || []).includes(a.id));
   const locked = kit.pool.filter((a) => (a.min || 1) > lv);
   const nextMilestone = Math.min(MAX_STORY_LEVEL, (Math.floor(lv / ASI_EVERY) + 1) * ASI_EVERY);
@@ -202,6 +195,7 @@ export default function SegreteHero({ cls, charData }) {
       <div className="sgh-statline">
         {STAT_KEYS.map((k) => <span key={k} className={kit.rec.includes(k) ? "is-rec" : ""}><b>{STAT_LABEL[k]}</b> {st[k] >= 0 ? "+" : ""}{st[k]}</span>)}
       </div>
+      <SegreteGear cls={cls} hero={hero} st={st} charData={charData} busy={busy} send={send} />
 
       {hpLeft > 0 && (
         <div className="sgh-pending sgh-hp">
@@ -210,12 +204,6 @@ export default function SegreteHero({ cls, charData }) {
         </div>
       )}
       {hpMsg && <p className="sgh-hpmsg">{hpMsg}</p>}
-      {!hero.weapon && (
-        <div className="sgh-pending">
-          <p>🗡 Il tuo {info?.it} ora ha un'arma: scegline una (una volta sola; finché non scegli usa la prima).</p>
-          <WeaponPicker cls={cls} value="" disabled={busy} onPick={(w) => send({ op: "heroWeapon", cls, weapon: w })} />
-        </div>
-      )}
       {pend.asi > 0 && (
         <div className="sgh-pending">
           <p>⭐ Hai <b>{pend.asi}</b> {pend.asi === 1 ? "punto caratteristica" : "punti caratteristica"} da spendere (massimo +{STAT_MAX}):</p>
@@ -241,38 +229,6 @@ export default function SegreteHero({ cls, charData }) {
       )}
       {err && <p className="sgr-err">{err}</p>}
 
-      <p className="sgh-sub">🗡 Arma: {wItem ? `${wItem.icon} ${wItem.name}${wItem.fx ? ` (${fxLine(wItem.fx)})` : ""}` : (() => { const w = weaponChoices(cls).find((x) => x.key === hero.weapon) || weaponChoices(cls)[0]; return `${w.icon} ${w.name}`; })()}</p>
-      {(wItem || magicWeapons.length > 0) && (
-        <div className="sgh-row">
-          {magicWeapons.filter((it) => it.id !== hero.weaponItem).map((it) => (
-            <button key={it.id} type="button" className="sgr-btn" disabled={busy} title={it.desc}
-              onClick={() => send({ op: "heroEquip", cls, itemId: it.id })}>Equipaggia {it.icon} {it.name} (×{bag[it.id]})</button>
-          ))}
-          {wItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, itemId: null })}>Togli {wItem.name} (torna nello zaino)</button>}
-        </div>
-      )}
-      <p className="sgh-sub">🛡 Armatura: {def.armorIcon} {def.armorName}{def.shield ? ` + ${def.shieldName}` : ""} · CA {def.ac}{def.res.length ? ` · resiste a ${def.res.map((r) => DMG_ALL[r]).join(", ")}` : ""}{def.saveBonus ? ` · +${def.saveBonus} ai TS` : ""}</p>
-      <details className="sgh-fold" open={armorOpen} onToggle={(e) => setArmorOpen(e.currentTarget.open)}>
-        <summary>🛡 Cambia armatura e scudo</summary>
-        {aItem ? (
-          <p className="sgh-hint">Indossi {aItem.icon} <b>{aItem.name}</b> (dallo zaino). Scegliendo un'armatura qui sotto torna nello zaino.</p>
-        ) : null}
-        <ArmorPicker cls={cls} st={st} weapon={gear.weapon} value={aItem ? null : def.key} shield={hero.shield !== false} disabled={busy}
-          onPick={(a, sh) => send({ op: "heroArmor", cls, armor: a || def.key, shield: sh })} />
-        {(bagArmors.length > 0 || bagShields.length > 0 || aItem || sItem) && <p className="sgh-sub">Dallo zaino:</p>}
-        <div className="sgh-row">
-          {bagArmors.map((it) => (
-            <button key={it.id} type="button" className="sgr-btn" disabled={busy} title={it.desc}
-              onClick={() => send({ op: "heroEquip", cls, slot: "armor", itemId: it.id })}>Indossa {it.icon} {it.name} · CA {heroDefense(cls, st, { ...gear, armorItem: it }).ac}</button>
-          ))}
-          {bagShields.map((it) => (
-            <button key={it.id} type="button" className="sgr-btn" disabled={busy || TWO_HANDED.has(gear.weapon)} title={it.desc}
-              onClick={() => send({ op: "heroEquip", cls, slot: "shield", itemId: it.id })}>Imbraccia {it.icon} {it.name}</button>
-          ))}
-          {aItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, slot: "armor", itemId: null })}>Togli {aItem.name}</button>}
-          {sItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, slot: "shield", itemId: null })}>Togli {sItem.name}</button>}
-        </div>
-      </details>
       <details className="sgh-fold">
         <summary>⚔ Le tue azioni <small>({acts.length})</small></summary>
         <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>

@@ -2129,12 +2129,25 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          if (op === "heroArmor" || op === "heroWeapon") {
+            const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
+            if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia equipaggiamento quando hai finito.");
+          }
+          if (op === "heroArmor" && request.data?.shieldOnly) {
+            // solo scudo sì/no (2026-11-06); lo scudo magico eventualmente imbracciato torna nello zaino
+            if (!segreteBundle.armorProf(cls).shield) throw new Error("Questa classe non usa lo scudo.");
+            const patch = { [`storyChars.${cls}.shield`]: request.data?.shield !== false };
+            if (hero.shieldItem && segreteBundle.itemOf(hero.shieldItem)) {
+              patch[`storyBag.${hero.shieldItem}`] = admin.firestore.FieldValue.increment(1);
+              patch[`storyChars.${cls}.shieldItem`] = admin.firestore.FieldValue.delete();
+            }
+            tx.update(ref, patch);
+            return { ok: true };
+          }
           if (op === "heroArmor") {
             // armatura di partenza (gratis, fra quelle che la classe sa portare) e scudo sì/no (2026-11-06)
             const armor = String(request.data?.armor || "");
             if (!segreteBundle.armorChoices(cls).includes(armor)) throw new Error("Armatura non adatta a questa classe.");
-            const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
-            if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia armatura quando hai finito.");
             const patch = { [`storyChars.${cls}.armor`]: armor, [`storyChars.${cls}.shield`]: request.data?.shield !== false };
             // l'armatura magica equipaggiata torna nello zaino: si usa quella scelta
             if (hero.armorItem && segreteBundle.itemOf(hero.armorItem)) {
@@ -2145,12 +2158,16 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (op === "heroWeapon") {
-            // eroi creati prima delle armi (2026-11-04): scelgono l'arma una volta sola
-            if (hero.weapon) throw new Error("L'arma l'hai già scelta.");
-            if (hero.weaponItem) throw new Error("Hai già un'arma magica equipaggiata.");
+            // 2026-11-06: l'arma della classe si cambia quando si vuole (fuori dai dungeon);
+            // l'arma magica eventualmente equipaggiata torna nello zaino
             const weapon = String(request.data?.weapon || "");
             if (!segreteBundle.weaponChoices(cls).some((w) => w.key === weapon)) throw new Error("Arma non valida per questa classe.");
-            tx.update(ref, { [`storyChars.${cls}.weapon`]: weapon });
+            const patch = { [`storyChars.${cls}.weapon`]: weapon };
+            if (hero.weaponItem && segreteBundle.itemOf(hero.weaponItem)) {
+              patch[`storyBag.${hero.weaponItem}`] = admin.firestore.FieldValue.increment(1);
+              patch[`storyChars.${cls}.weaponItem`] = admin.firestore.FieldValue.delete();
+            }
+            tx.update(ref, patch);
             return { ok: true };
           }
           if (op === "heroHp") {
