@@ -312,7 +312,7 @@ var KITS = {
       { id: "veleno_r", name: "Lama Avvelenata", icon: "\u2620", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
       { id: "basso", useWeapon: true, name: "Colpo Basso", icon: "\u{1F9B5}", kind: "weapon", dice: "1d8", dmg: "piercing", riderDis: 2, min: 3, uses: 2, info: "il nemico a svantaggio" },
       { id: "prodigiosa", name: "Schivata Prodigiosa", icon: "\u{1F938}", kind: "buff", buff: "ac", value: 4, turns: 1, self: true, min: 3, uses: 2 },
-      { id: "fumogena", name: "Bomba Fumogena", icon: "\u{1F4A8}", kind: "debuff", area: true, turns: 2, min: 6, uses: 1, info: "tutti i nemici a svantaggio" },
+      { id: "fumogena", name: "Bomba Fumogena", icon: "\u{1F4A8}", kind: "debuff", area: true, turns: 2, inflict: { key: "blinded" }, min: 6, uses: 1, info: "tutti i nemici accecati (svantaggio, e li colpisci con vantaggio)" },
       { id: "assassinare", useWeapon: true, name: "Assassinare", icon: "\u{1F5E1}", kind: "weapon", dice: "1d8", dmg: "piercing", adv: true, rider: "4d6", riderDmg: "piercing", min: 9, uses: 1, grow: true }
     ]
   },
@@ -322,14 +322,14 @@ var KITS = {
     armor: "light",
     stat: "int",
     rec: ["int", "dex"],
-    base: [{ id: "dardo_fuoco", name: "Dardo di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true }, { id: "dardo_inc", name: "Dardo Incantato", icon: "\u2728", kind: "missile", dice: "3d4", flat: 3, dmg: "force", uses: 3, grow: true }],
+    base: [{ id: "dardo_fuoco", name: "Dardo di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, inflict: { key: "burn", chance: 15 }, info: "e a volte brucia" }, { id: "dardo_inc", name: "Dardo Incantato", icon: "\u2728", kind: "missile", dice: "3d4", flat: 3, dmg: "force", uses: 3, grow: true }],
     pool: [
-      { id: "raggio_gelo", name: "Raggio di Gelo", icon: "\u2744", kind: "spell", dice: "1d8", dmg: "cold", scale: true, min: 1 },
+      { id: "raggio_gelo", name: "Raggio di Gelo", icon: "\u2744", kind: "spell", dice: "1d8", dmg: "cold", scale: true, min: 1, inflict: { key: "slow", chance: 50, turns: 1 }, info: "e a volte rallenta" },
       { id: "scudo", name: "Scudo", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 5, turns: 1, self: true, min: 1, uses: 2 },
       { id: "mani_w", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "acida", name: "Freccia Acida", icon: "\u{1F9EA}", kind: "spell", dice: "4d4", dmg: "acid", min: 3, uses: 2, grow: true },
       { id: "palla_fuoco", name: "Palla di Fuoco", icon: "\u2604", kind: "save", dice: "8d6", dmg: "fire", save: "dex", area: true, half: true, min: 6, uses: 1, grow: true },
-      { id: "ipnosi", name: "Trama Ipnotica", icon: "\u{1F300}", kind: "save", dice: "0d1", dmg: "psychic", save: "wis", area: true, stun: 1, min: 6, uses: 1, info: "chi fallisce resta stordito" },
+      { id: "ipnosi", name: "Trama Ipnotica", icon: "\u{1F300}", kind: "save", dice: "0d1", dmg: "psychic", save: "wis", area: true, inflict: { key: "paralyzed" }, min: 6, uses: 1, info: "chi fallisce resta paralizzato (TS a ogni turno)" },
       { id: "cono_freddo", name: "Cono di Freddo", icon: "\u{1F9CA}", kind: "save", dice: "8d8", dmg: "cold", save: "con", area: true, half: true, min: 9, uses: 1, grow: true }
     ]
   },
@@ -339,9 +339,9 @@ var KITS = {
     armor: "light",
     stat: "cha",
     rec: ["cha", "con"],
-    base: [{ id: "fiotto", name: "Fiotto di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true }, { id: "mani_br", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, uses: 2, grow: true }],
+    base: [{ id: "fiotto", name: "Fiotto di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, inflict: { key: "burn", chance: 15 }, info: "e a volte brucia" }, { id: "mani_br", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, uses: 2, grow: true }],
     pool: [
-      { id: "veleno", name: "Spruzzo Velenoso", icon: "\u2620", kind: "save", dice: "1d12", dmg: "poison", save: "con", scale: true, min: 1 },
+      { id: "veleno", name: "Spruzzo Velenoso", icon: "\u2620", kind: "save", dice: "1d12", dmg: "poison", save: "con", scale: true, min: 1, inflict: { key: "poison" }, info: "chi fallisce resta avvelenato" },
       { id: "scudo_s", name: "Scudo", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 5, turns: 1, self: true, min: 1, uses: 2 },
       { id: "gemello", name: "Dardo Gemello", icon: "\u26A1", kind: "spell", dice: "1d10", dmg: "lightning", attacks: 2, min: 3, uses: 2, info: "due raggi" },
       { id: "fulmine", name: "Fulmine", icon: "\u{1F329}", kind: "save", dice: "8d6", dmg: "lightning", save: "dex", area: true, half: true, min: 6, uses: 1, grow: true },
@@ -359,7 +359,7 @@ var KITS = {
       { id: "agathys", name: "Armatura di Agathys", icon: "\u{1F9CA}", kind: "buff", buff: "ac", value: 3, turns: 3, self: true, min: 1, uses: 1 },
       { id: "hadar", name: "Braccia di Hadar", icon: "\u{1F419}", kind: "save", dice: "2d6", dmg: "necrotic", save: "str", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "vampiro", name: "Tocco Vampirico", icon: "\u{1F987}", kind: "spell", dice: "3d6", dmg: "necrotic", drain: true, min: 3, uses: 2, grow: true, info: "ti cura di met\xE0 del danno" },
-      { id: "paura", name: "Paura", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, min: 6, uses: 1, info: "tutti i nemici a svantaggio" },
+      { id: "paura", name: "Paura", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, inflict: { key: "frightened" }, min: 6, uses: 1, info: "tutti i nemici spaventati (svantaggio)" },
       { id: "fame", name: "Fame di Hadar", icon: "\u{1F311}", kind: "save", dice: "4d6", dmg: "cold", save: "con", area: true, half: true, min: 9, uses: 1, grow: true },
       { id: "dito", name: "Dito della Morte", icon: "\u2620", kind: "save", dice: "7d8", flat: 20, dmg: "necrotic", save: "con", half: true, min: 15, uses: 1 }
     ]
@@ -377,7 +377,7 @@ var KITS = {
       { id: "lama_fiamma", name: "Lama di Fiamma", icon: "\u{1F525}", kind: "spell", dice: "3d6", dmg: "fire", min: 3, uses: 3, grow: true },
       { id: "luna", name: "Raggio di Luna", icon: "\u{1F319}", kind: "save", dice: "2d10", dmg: "radiant", save: "con", half: true, min: 3, uses: 2, grow: true },
       { id: "richiamo", name: "Richiamo del Fulmine", icon: "\u26A1", kind: "save", dice: "3d10", dmg: "lightning", save: "dex", half: true, min: 6, uses: 2, grow: true },
-      { id: "tempesta", name: "Tempesta di Ghiaccio", icon: "\u{1F328}", kind: "save", dice: "4d6", dmg: "cold", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true }
+      { id: "tempesta", name: "Tempesta di Ghiaccio", icon: "\u{1F328}", kind: "save", dice: "4d6", dmg: "cold", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true, inflict: { key: "frozen", left: 1 }, info: "chi fallisce resta congelato 1 turno" }
     ]
   },
   cleric: {
@@ -407,7 +407,7 @@ var KITS = {
       { id: "parola_b", name: "Parola Guaritrice", icon: "\u{1F3B5}", kind: "heal", dice: "1d4", plusMod: true, min: 1, uses: 3, grow: true },
       { id: "ispirazione", name: "Ispirazione Bardica", icon: "\u{1F3B6}", kind: "buff", buff: "adv", turns: 2, min: 1, uses: 2 },
       { id: "onda_b", name: "Onda Tonante", icon: "\u{1F30A}", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
-      { id: "sussurri", name: "Sussurri Dissonanti", icon: "\u{1F442}", kind: "save", dice: "3d6", dmg: "psychic", save: "wis", half: true, min: 3, uses: 2, grow: true },
+      { id: "sussurri", name: "Sussurri Dissonanti", icon: "\u{1F442}", kind: "save", dice: "3d6", dmg: "psychic", save: "wis", half: true, min: 3, uses: 2, grow: true, inflict: { key: "confused", turns: 1 }, info: "chi fallisce resta confuso" },
       { id: "riposo", name: "Canto di Riposo", icon: "\u{1F3BC}", kind: "heal_all", dice: "1d8", plusMod: true, min: 3, uses: 1, grow: true },
       { id: "risata", name: "Risata Incontenibile", icon: "\u{1F602}", kind: "save", dice: "0d1", dmg: "psychic", save: "wis", stun: 1, min: 6, uses: 1, info: "chi fallisce resta stordito" }
     ]
@@ -481,7 +481,9 @@ var BASE_ITEMS = {
   pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
   pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
   pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
-  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "Toglie svantaggio, stordimento e irruenza a te o a un alleato." },
+  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "A te o a un alleato: toglie bruciatura, veleno, congelamento, paralisi, paura, cecit\xE0, rallentamento, confusione, svantaggio e stordimento. Non la pietrificazione." },
+  bomba_acqua: { name: "Bomba d'Acqua", icon: "\u{1F4A7}", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Inzuppa tutto il gruppo: toglie bruciatura, rallentamento e paralisi a tutti gli eroi in piedi." },
+  panacea: { name: "Panacea", icon: "\u2728", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "A te o a un alleato: toglie ogni stato, anche la pietrificazione." },
   pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
   eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
@@ -679,6 +681,7 @@ function itemTarget(it) {
   if (it.kind === "throw") return "foe";
   if (it.kind === "throw_area") return null;
   if (it.kind === "revive") return "downed";
+  if (it.kind === "cleanse_party") return null;
   return "ally";
 }
 var coinsOf = (charData) => Math.max(0, Number(charData?.storyCoins) || 0);
@@ -854,7 +857,25 @@ var BASE_MONSTERS = [
     resistances: [],
     vulnerabilities: ["radiant"],
     immunities: ["poison"],
-    actions: [BA("Pugno Fradicio", 1, "d6", 3, { dmgType: "fisico" }), BA("Morsa del Fango", 1, "d8", 3, { dmgType: "oscurit\xE0" })]
+    actions: [BA("Pugno Fradicio", 1, "d6", 3, { dmgType: "fisico" }), BA("Morsa del Fango", 1, "d8", 3, { dmgType: "oscurit\xE0", inflict: { key: "slow", chance: 35, save: "str" } })]
+  },
+  {
+    id: "base-basilisco",
+    name: "Basilisco del Tempio",
+    icon: "\u{1F98E}",
+    role: "elite",
+    size: "large",
+    level: 4,
+    hp: 40,
+    ac: 15,
+    init: 0,
+    save: 2,
+    dungeons: ["tempio"],
+    desc: "Lucertolone a otto zampe che dorme fra le statue del tempio. Le statue, in effetti, sono i visitatori di prima.",
+    resistances: [],
+    vulnerabilities: [],
+    immunities: ["poison"],
+    actions: [BA("Morso Velenoso", 2, "d6", 4, { dmgType: "veleno" }), BA("Sguardo Pietrificante", 1, "d6", 0, { dmgType: "arcano", hitMode: "save", aoeShape: "single", saveAbility: "con", saveDC: 12, halfOnSave: true, inflict: { key: "petrified", chance: 40 } })]
   },
   {
     id: "base-troll-ghiacci",
@@ -1159,6 +1180,7 @@ function acOf(s, c) {
   });
   if (c.fx.dodge) ac += 4;
   if (fxOn(s, c.fx.reckless)) ac -= 2;
+  if (c.fx.frozen) ac -= 2;
   return ac;
 }
 var curVfx = null;
@@ -1312,6 +1334,14 @@ function startFloor(s, bestiary, now) {
 }
 function applyDamage(s, target, amount, type, notes) {
   let dmg = Math.max(0, Math.round(amount));
+  if (target.fx?.petrified && dmg > 0) {
+    dmg = Math.floor(dmg / 2);
+    notes.push("\xE8 di pietra");
+  }
+  if (type === "fire" && target.fx?.frozen && amount > 0) {
+    delete target.fx.frozen;
+    notes.push("\u{1F9CA} il fuoco lo scongela");
+  }
   if (target.side === "f") {
     if (target.imm.includes(type)) {
       dmg = 0;
@@ -1339,8 +1369,8 @@ function applyDamage(s, target, amount, type, notes) {
   return dmg;
 }
 function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
-  let a = adv || fxOn(s, att.fx.adv);
-  let d = fxOn(s, att.fx.dis);
+  let a = adv || fxOn(s, att.fx.adv) || !!def.fx?.paralyzed || !!def.fx?.petrified || fxOn(s, def.fx?.blinded);
+  let d = fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
   if (a && d) {
     a = false;
     d = false;
@@ -1461,6 +1491,7 @@ function heroAct(s, h, a, target) {
         total += w.dmg;
         extra += w.txt;
       }
+      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st));
       log(
         s,
         `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
@@ -1488,8 +1519,9 @@ function heroAct(s, h, a, target) {
       const notes = [];
       const dmg = ok ? a.half ? applyDamage(s, t, Math.floor(base / 2), a.dmg, notes) : 0 : applyDamage(s, t, base, a.dmg, notes);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
+      const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
-      parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " \u{1F4AB} stordito" : ""}${t.hp <= 0 ? " \u{1F480}" : ""}`);
+      parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " \u{1F4AB} stordito" : ""}${inf}${t.hp <= 0 ? " \u{1F480}" : ""}`);
     });
     log(s, `${a.icon} ${h.name} \u2192 ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id) });
     return ev;
@@ -1513,7 +1545,8 @@ function heroAct(s, h, a, target) {
   if (a.kind === "debuff") {
     const tg = a.area ? s.foes.filter(alive) : [target];
     tg.forEach((t) => {
-      t.fx.dis = s.round + (a.turns || 1) + 1;
+      if (a.inflict) applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id });
+      else t.fx.dis = s.round + (a.turns || 1) + 1;
     });
     log(s, `${a.icon} ${h.name} \u2192 ${a.name}: ${tg.map((t) => t.name).join(", ")} a svantaggio per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
@@ -1555,7 +1588,15 @@ function foeAct(s, f) {
   else a = singles.length ? pick(singles) : pick(acts);
   const weakest = [...heroes].sort((x, y) => x.hp - y.hp)[0];
   const lastHitter = heroes.find((h) => h.id === f.lastHitBy);
-  const tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  let tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  let confusedTxt = "";
+  if (fxOn(s, f.fx.confused)) {
+    const c = confusedPick(s, f);
+    if (c && c !== tgt) {
+      tgt = c;
+      confusedTxt = `\u{1F635} ${f.name} \xE8 confuso e se la prende con ${c.name}! `;
+    }
+  }
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   const capMult = (n2, sides2, targets = 1) => {
@@ -1608,7 +1649,9 @@ function foeAct(s, f) {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
       const dmg2 = ok ? a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0 : applyDamage(s, t, base, type, []);
-      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
+      const inf = !ok ? foeInflict(a, type) : null;
+      const stTxt2 = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg2}${stTxt2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
     });
     log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
     return;
@@ -1616,11 +1659,12 @@ function foeAct(s, f) {
   const bonus = f.cap?.hit ?? (Number(a.bonus) || 3) + (f.adapt?.hit || 0);
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) {
-    log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } });
+    log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } });
     return;
   }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
-  log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
+  const stTxt = tryInflict(s, f, tgt, foeInflict(a, type), f.cap?.dc ?? 12);
+  log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
   if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
     const [tn, ts] = parseDice(tgt.thorns.dice);
     const notes = [];
@@ -1648,38 +1692,114 @@ function weaponHitFx(s, h, t, fx, crit, notes) {
   if (!alive(t)) return { dmg, txt };
   const dot = (key, type, ico, word) => {
     const o = fx[key];
-    if (!o || t.imm.includes(type) || die(100) > o.chance) return;
-    t.fx[key] = { dice: o.dice, until: s.round + (o.turns || 2) + 1, type, by: h.id };
-    txt += ` \xB7 ${ico} ${word}`;
+    if (!o || (t.imm || []).includes(type) || die(100) > o.chance) return;
+    txt += applyStatus(s, t, key, { dice: o.dice, turns: o.turns || 2, by: h.id });
   };
   dot("burn", "fire", "\u{1F525}", "brucia");
   dot("poison", "poison", "\u2620", "avvelenato");
-  if (fx.slow && die(100) <= fx.slow.chance) {
-    t.fx.dis = Math.max(Number(t.fx.dis) || 0, s.round + (fx.slow.turns || 1) + 1);
-    txt += " \xB7 \u{1F40C} rallentato";
-  }
+  if (fx.slow && die(100) <= fx.slow.chance) txt += applyStatus(s, t, "slow", { turns: fx.slow.turns || 1 });
   if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) {
     t.fx.stun = true;
     txt += " \xB7 \u{1F4AB} stordito";
   }
   return { dmg, txt };
 }
-function tickDots(s, f) {
-  for (const [key, ico, word] of [["burn", "\u{1F525}", "brucia"], ["poison", "\u2620", "soffre il veleno"]]) {
-    const o = f.fx[key];
-    if (!o || !alive(f)) continue;
+var STATUS = {
+  burn: { ico: "\u{1F525}", name: "bruciato", dice: "1d6", turns: 2, imm: "fire" },
+  poison: { ico: "\u2620", name: "avvelenato", dice: "1d4", turns: 3, imm: "poison" },
+  frozen: { ico: "\u{1F9CA}", name: "congelato", left: 2, imm: "cold" },
+  paralyzed: { ico: "\u26A1", name: "paralizzato", left: 3, stat: "con" },
+  petrified: { ico: "\u{1F5FF}", name: "pietrificato", left: 3 },
+  frightened: { ico: "\u{1F631}", name: "spaventato", turns: 2 },
+  blinded: { ico: "\u{1F311}", name: "accecato", turns: 2 },
+  slow: { ico: "\u{1F40C}", name: "rallentato", turns: 1 },
+  confused: { ico: "\u{1F635}", name: "confuso", turns: 2 }
+};
+function applyStatus(s, t, key, o = {}) {
+  const st = STATUS[key];
+  if (!st || !alive(t)) return "";
+  if (st.imm && (t.imm || []).includes(st.imm)) return ` \xB7 immune a ${st.name}`;
+  if (t.fx.petrified && key !== "petrified") return "";
+  if (st.dice) t.fx[key] = { dice: o.dice || st.dice, until: s.round + (o.turns || st.turns) + 1, type: st.imm, by: o.by || null };
+  else if (st.left) t.fx[key] = { left: o.left || st.left, ...key === "paralyzed" ? { dc: o.dc || 12, stat: o.stat || st.stat } : {} };
+  else t.fx[key] = { until: s.round + (o.turns || st.turns) + 1 };
+  return ` \xB7 ${st.ico} ${st.name}`;
+}
+function tryInflict(s, src, t, inf, dc) {
+  if (!inf || !alive(t)) return "";
+  const chance = (inf.chance ?? 100) * (t.role === "boss" ? 0.5 : 1);
+  if (die(100) > chance) return "";
+  if (inf.save && t.side === "h") {
+    const sv = d20() + (t.save || 0) + (t.st?.[inf.save] || 0);
+    if (sv >= dc) return ` \xB7 evita ${STATUS[inf.key]?.name || "l'effetto"} (TS ${sv})`;
+  }
+  return applyStatus(s, t, inf.key, { ...inf, dc, by: src?.id });
+}
+var STATUS_OF_DMG = {
+  // mostri del bestiario: lo stato che porta il loro tipo di danno (se l'azione non ne dice uno suo)
+  fire: { key: "burn", chance: 25, save: "dex" },
+  cold: { key: "frozen", chance: 12, save: "con" },
+  poison: { key: "poison", chance: 30, save: "con" },
+  necrotic: { key: "frightened", chance: 20, save: "wis" },
+  lightning: { key: "paralyzed", chance: 10, save: "con" },
+  psychic: { key: "confused", chance: 25, save: "wis" },
+  acid: { key: "blinded", chance: 15, save: "dex" }
+};
+var foeInflict = (a, type) => a.inflict === "none" ? null : a.inflict || STATUS_OF_DMG[type] || null;
+function turnStart(s, c) {
+  for (const key of ["burn", "poison"]) {
+    const o = c.fx[key];
+    if (!o || !alive(c)) continue;
     if (!fxOn(s, o)) {
-      delete f.fx[key];
+      delete c.fx[key];
       continue;
     }
     const [n, sd] = parseDice(o.dice);
     const notes = [];
-    curVfx = { fx: "debuff", el: elOf(o.type), from: f.id };
-    const d = applyDamage(s, f, roll(n, sd).t, o.type, notes);
-    if (o.by) f.lastHitBy = o.by;
-    log(s, `${ico} ${f.name} ${word}: \u2212${d}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", targets: [f.id], dmg: d });
+    curVfx = { fx: "debuff", el: elOf(o.type), from: c.id };
+    const d = applyDamage(s, c, roll(n, sd).t, o.type, notes);
+    if (o.by && c.side === "f") c.lastHitBy = o.by;
+    log(s, `${STATUS[key].ico} ${c.name} ${key === "burn" ? "brucia" : "soffre il veleno"}: \u2212${d}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(c)}`, { kind: "hit", targets: [c.id], dmg: d });
     curVfx = null;
   }
+  if (!alive(c)) return false;
+  const fx = c.fx;
+  ["frightened", "blinded", "slow", "confused"].forEach((k) => {
+    if (fx[k] && !fxOn(s, fx[k])) delete fx[k];
+  });
+  if (fx.petrified) {
+    fx.petrified.left -= 1;
+    if (fx.petrified.left <= 0) {
+      delete fx.petrified;
+      log(s, `\u{1F5FF} ${c.name} torna di carne e ossa (ma per questo turno resta fermo).`, { kind: "buff", targets: [c.id] });
+    } else log(s, `\u{1F5FF} ${c.name} \xE8 di pietra: non pu\xF2 agire (ancora ${fx.petrified.left} ${fx.petrified.left === 1 ? "turno" : "turni"}).`, { kind: "debuff", actor: c.id });
+    return false;
+  }
+  if (fx.frozen) {
+    fx.frozen.left -= 1;
+    const last = fx.frozen.left <= 0;
+    if (last) delete fx.frozen;
+    log(s, `\u{1F9CA} ${c.name} \xE8 congelato e salta il turno${last ? ": il ghiaccio si scioglie" : ""}.`, { kind: "debuff", actor: c.id });
+    return false;
+  }
+  if (fx.paralyzed) {
+    fx.paralyzed.left -= 1;
+    const sv = d20() + (c.save || 0) + (c.st?.[fx.paralyzed.stat || "con"] || 0);
+    const free = sv >= (fx.paralyzed.dc || 12) || fx.paralyzed.left <= 0;
+    log(s, `\u26A1 ${c.name} \xE8 paralizzato e salta il turno \xB7 TS ${sv} vs CD ${fx.paralyzed.dc || 12}: ${free ? "si libera!" : "resta bloccato"}.`, { kind: "debuff", actor: c.id });
+    if (free) delete fx.paralyzed;
+    return false;
+  }
+  if (fx.stun) {
+    fx.stun = false;
+    log(s, `\u{1F4AB} ${c.name} \xE8 stordito e salta il turno.`, { kind: "debuff", actor: c.id });
+    return false;
+  }
+  return true;
+}
+function confusedPick(s, c) {
+  const pool = [...s.heroes, ...s.foes].filter((x) => alive(x) && x.id !== c.id && !x.fled);
+  return pool.length ? pick(pool) : null;
 }
 function checkEnd(s) {
   if (!s.heroes.some(alive)) {
@@ -1705,20 +1825,18 @@ function startHeroPhase(s, now) {
   s.acted = {};
   s.phaseAt = now;
   s.turnAt = now;
+  s.heroes.forEach((h) => {
+    if (!alive(h) || h.fled) return;
+    if (!turnStart(s, h)) s.acted = { ...s.acted, [h.id]: true };
+  });
 }
 function monsterPhase(s, now) {
   for (const id of s.order) {
     if (checkEnd(s)) return;
     const f = byId(s, id);
     if (!alive(f) || f.side !== "f") continue;
-    tickDots(s, f);
-    if (!alive(f)) {
-      lootDead(s);
-      continue;
-    }
-    if (f.fx.stun) {
-      f.fx.stun = false;
-      log(s, `\u{1F4AB} ${f.name} \xE8 stordito e salta il turno.`, { kind: "debuff", actor: f.id });
+    if (!turnStart(s, f)) {
+      if (!alive(f)) lootDead(s);
       continue;
     }
     foeAct(s, f);
@@ -1727,6 +1845,11 @@ function monsterPhase(s, now) {
   if (checkEnd(s)) return;
   s.round += 1;
   startHeroPhase(s, now);
+  if (checkEnd(s)) return;
+  if (!pendingHeroes(s).length && s.heroes.some(alive)) {
+    s.chain = (s.chain || 0) + 1;
+    if (s.chain <= 12) monsterPhase(s, now);
+  } else s.chain = 0;
 }
 function afterHeroAction(s, now) {
   if (checkEnd(s)) return;
@@ -1744,6 +1867,7 @@ function act(s, uid, { actionId, targetId }, now) {
   if (!a) throw new Error("Azione non disponibile.");
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
   const tk = targetKind(a);
+  if (fxOn(s, h.fx.frightened) && (a.kind === "heal_all" || a.kind === "heal" && !a.self || a.kind === "buff" && !a.self)) throw new Error("Sei spaventato: non riesci a curare n\xE9 ad aiutare gli altri. Attacca o difenditi.");
   let target = null;
   if (tk === "foe") target = foeTarget(s, h, targetId);
   if (tk === "ally") {
@@ -1752,6 +1876,13 @@ function act(s, uid, { actionId, targetId }, now) {
     if (!target || target.side !== "h" || target.fled || !heal && !alive(target)) throw new Error("Scegli un alleato.");
   }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
+  if (tk && fxOn(s, h.fx.confused)) {
+    const c = confusedPick(s, h);
+    if (c && c !== target) {
+      log(s, `\u{1F635} ${h.name} \xE8 confuso: ${a.name} finisce su ${c.name}!`, { kind: "info", actor: h.id });
+      target = c;
+    }
+  }
   curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
   let ev;
   try {
@@ -1861,10 +1992,27 @@ function useItem(s, uid, { itemId, targetId }, now) {
     curVfx = { fx: "heal", el: "radiant", from: h.id };
     target.hp = Math.max(1, Math.ceil(target.maxHp * (it.pct || 50) / 100));
     log(s, `${it.icon} ${h.name} usa ${it.name}: ${target.name} si rialza con ${target.hp} PF!`, { kind: "heal", actor: h.id, targets: [target.id] });
-  } else if (it.kind === "cleanse") {
+  } else if (it.kind === "cleanse" || it.kind === "panacea") {
     curVfx = { fx: "buff", el: "radiant", from: h.id };
-    target.fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
-    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: via svantaggio e stordimento.`, { kind: "buff", actor: h.id, targets: [target.id] });
+    const was = ["burn", "poison", "frozen", "paralyzed", "frightened", "blinded", "slow", "confused", ...it.kind === "panacea" ? ["petrified"] : []].filter((k) => target.fx[k]);
+    const fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
+    was.forEach((k) => {
+      delete fx[k];
+    });
+    target.fx = fx;
+    const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "cleanse_party") {
+    curVfx = { fx: "aoe", el: "frost", from: h.id };
+    const tg = s.heroes.filter((x) => alive(x) && !x.fled);
+    const parts = tg.map((x) => {
+      const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]);
+      was.forEach((k) => {
+        delete x.fx[k];
+      });
+      return was.length ? `${x.name} (${was.map((k) => STATUS[k].ico).join("")})` : null;
+    }).filter(Boolean);
+    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? `liberati ${parts.join(", ")}` : "tutti fradici, ma nessuno aveva bisogno"}.`, { kind: "buff", actor: h.id, targets: tg.map((x) => x.id) });
   } else if (it.kind === "buff") {
     curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
     const until = s.round + (it.turns || 1) + 1;

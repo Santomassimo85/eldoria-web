@@ -199,6 +199,7 @@ function acOf(s, c) {
   (c.fx.ac || []).forEach((e) => { if (fxOn(s, e)) ac += e.v; });
   if (c.fx.dodge) ac += 4;
   if (fxOn(s, c.fx.reckless)) ac -= 2;
+  if (c.fx.frozen) ac -= 2;
   return ac;
 }
 // Ogni riga porta (se c'è un effetto) fx = forma (slash·arrow·bolt·aoe·heal·buff·shield·debuff),
@@ -345,6 +346,8 @@ function startFloor(s, bestiary, now) {
 /* ── danni ───────────────────────────────────────────── */
 function applyDamage(s, target, amount, type, notes) {
   let dmg = Math.max(0, Math.round(amount));
+  if (target.fx?.petrified && dmg > 0) { dmg = Math.floor(dmg / 2); notes.push("è di pietra"); }
+  if (type === "fire" && target.fx?.frozen && amount > 0) { delete target.fx.frozen; notes.push("🧊 il fuoco lo scongela"); }
   if (target.side === "f") {
     if (target.imm.includes(type)) { dmg = 0; notes.push("immune"); curTags[target.id] = "imm"; }
     else if (target.res.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
@@ -355,8 +358,8 @@ function applyDamage(s, target, amount, type, notes) {
   return dmg;
 }
 function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
-  let a = adv || fxOn(s, att.fx.adv);
-  let d = fxOn(s, att.fx.dis);
+  let a = adv || fxOn(s, att.fx.adv) || !!def.fx?.paralyzed || !!def.fx?.petrified || fxOn(s, def.fx?.blinded);
+  let d = fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
   if (a && d) { a = false; d = false; }
   const r1 = d20(); const r2 = a || d ? d20() : null;
   const nat = r2 == null ? r1 : a ? Math.max(r1, r2) : Math.min(r1, r2);
@@ -449,6 +452,7 @@ function heroAct(s, h, a, target) {
       }
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
       if (wfx && alive(target)) { const w = weaponHitFx(s, h, target, wfx, r.crit, notes); total += w.dmg; extra += w.txt; }
+      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st));
       log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } });
     }
@@ -473,8 +477,9 @@ function heroAct(s, h, a, target) {
       const notes = [];
       const dmg = ok ? (a.half ? applyDamage(s, t, Math.floor(base / 2), a.dmg, notes) : 0) : applyDamage(s, t, base, a.dmg, notes);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
+      const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
-      parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " 💫 stordito" : ""}${t.hp <= 0 ? " 💀" : ""}`);
+      parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " 💫 stordito" : ""}${inf}${t.hp <= 0 ? " 💀" : ""}`);
     });
     log(s, `${a.icon} ${h.name} → ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id) });
     return ev;
@@ -494,7 +499,7 @@ function heroAct(s, h, a, target) {
   }
   if (a.kind === "debuff") {
     const tg = a.area ? s.foes.filter(alive) : [target];
-    tg.forEach((t) => { t.fx.dis = s.round + (a.turns || 1) + 1; });
+    tg.forEach((t) => { if (a.inflict) applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id }); else t.fx.dis = s.round + (a.turns || 1) + 1; });
     log(s, `${a.icon} ${h.name} → ${a.name}: ${tg.map((t) => t.name).join(", ")} a svantaggio per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
   }
@@ -540,7 +545,10 @@ function foeAct(s, f) {
   // bersaglio: spesso il più ferito, a volte chi lo ha colpito per ultimo, sennò a caso
   const weakest = [...heroes].sort((x, y) => x.hp - y.hp)[0];
   const lastHitter = heroes.find((h) => h.id === f.lastHitBy);
-  const tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  let tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  // confuso: il bersaglio esce a caso, anche un altro mostro
+  let confusedTxt = "";
+  if (fxOn(s, f.fx.confused)) { const c = confusedPick(s, f); if (c && c !== tgt) { tgt = c; confusedTxt = `😵 ${f.name} è confuso e se la prende con ${c.name}! `; } }
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   // danno medio oltre il tetto del gruppo → si riduce in proporzione
@@ -588,16 +596,20 @@ function foeAct(s, f) {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
       const dmg = ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0) : applyDamage(s, t, base, type, []);
-      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${t.hp <= 0 ? " 💀" : ""}`;
+      // chi fallisce il TS può prendersi anche lo stato (senza un secondo tiro salvezza)
+      const inf = !ok ? foeInflict(a, type) : null;
+      const stTxt = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${stTxt}${t.hp <= 0 ? " 💀" : ""}`;
     });
     log(s, `🌀 ${f.name} → ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
     return;
   }
   const bonus = f.cap?.hit ?? ((Number(a.bonus) || 3) + (f.adapt?.hit || 0));
   const r = attackRoll(s, f, tgt, bonus);
-  if (!r.hit) { log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } }); return; }
+  if (!r.hit) { log(s, `${confusedTxt}⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } }); return; }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
-  log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
+  const stTxt = tryInflict(s, f, tgt, foeInflict(a, type), f.cap?.dc ?? 12);
+  log(s, `${confusedTxt}⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
   // scudo/armatura con le "spine" (2026-11-06): chi colpisce in mischia a volte si fa male
   if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
     const [tn, ts] = parseDice(tgt.thorns.dice);
@@ -610,7 +622,7 @@ function foeAct(s, f) {
 }
 
 /* EFFETTI AL COLPO delle armi speciali (2026-11-06): danno extra, bruciatura e veleno (danno a
-   ogni turno del mostro, vedi tickDots), rallentato (svantaggio), stordito, risucchio. */
+   ogni turno del mostro, vedi turnStart), rallentato (svantaggio), stordito, risucchio. */
 function weaponHitFx(s, h, t, fx, crit, notes) {
   let dmg = 0;
   let txt = "";
@@ -624,30 +636,116 @@ function weaponHitFx(s, h, t, fx, crit, notes) {
   if (!alive(t)) return { dmg, txt };
   const dot = (key, type, ico, word) => {
     const o = fx[key];
-    if (!o || t.imm.includes(type) || die(100) > o.chance) return;
-    t.fx[key] = { dice: o.dice, until: s.round + (o.turns || 2) + 1, type, by: h.id };
-    txt += ` · ${ico} ${word}`;
+    if (!o || (t.imm || []).includes(type) || die(100) > o.chance) return;
+    txt += applyStatus(s, t, key, { dice: o.dice, turns: o.turns || 2, by: h.id });
   };
   dot("burn", "fire", "🔥", "brucia");
   dot("poison", "poison", "☠", "avvelenato");
-  if (fx.slow && die(100) <= fx.slow.chance) { t.fx.dis = Math.max(Number(t.fx.dis) || 0, s.round + (fx.slow.turns || 1) + 1); txt += " · 🐌 rallentato"; }
+  if (fx.slow && die(100) <= fx.slow.chance) txt += applyStatus(s, t, "slow", { turns: fx.slow.turns || 1 });
   if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) { t.fx.stun = true; txt += " · 💫 stordito"; }
   return { dmg, txt };
 }
-/* Bruciature e veleni: all'inizio del turno del mostro, poi scadono. */
-function tickDots(s, f) {
-  for (const [key, ico, word] of [["burn", "🔥", "brucia"], ["poison", "☠", "soffre il veleno"]]) {
-    const o = f.fx[key];
-    if (!o || !alive(f)) continue;
-    if (!fxOn(s, o)) { delete f.fx[key]; continue; }
+/* ═══ STATI (2026-11-06) ═══════════════════════════════════
+   Valgono per eroi e mostri, in c.fx:
+   burn/poison {dice, until, type, by} = danno all'inizio di ogni suo turno (il veleno NON dà svantaggio)
+   frozen {left} = salta 2 turni e −2 CA; si toglie col Tonico o se lo colpisce il fuoco
+   paralyzed {left, dc, stat} = salta il turno, a fine turno TS per liberarsi (max 3 turni); chi lo attacca ha vantaggio
+   petrified {left} = 3 turni fermo, sprite grigio, danni dimezzati; si toglie solo con la Panacea
+   frightened {until} = svantaggio, non cura né aiuta gli altri · blinded {until} = svantaggio, chi lo attacca ha vantaggio
+   slow {until} = svantaggio · confused {until} = sceglie l'azione ma il bersaglio esce a caso (anche i compagni)
+   stun (true) = salta un turno (di prima). */
+export const STATUS = {
+  burn: { ico: "🔥", name: "bruciato", dice: "1d6", turns: 2, imm: "fire" },
+  poison: { ico: "☠", name: "avvelenato", dice: "1d4", turns: 3, imm: "poison" },
+  frozen: { ico: "🧊", name: "congelato", left: 2, imm: "cold" },
+  paralyzed: { ico: "⚡", name: "paralizzato", left: 3, stat: "con" },
+  petrified: { ico: "🗿", name: "pietrificato", left: 3 },
+  frightened: { ico: "😱", name: "spaventato", turns: 2 },
+  blinded: { ico: "🌑", name: "accecato", turns: 2 },
+  slow: { ico: "🐌", name: "rallentato", turns: 1 },
+  confused: { ico: "😵", name: "confuso", turns: 2 },
+};
+// Mette uno stato (controlla le immunità). Restituisce il pezzo di testo per la cronaca ("" se non attecchisce).
+function applyStatus(s, t, key, o = {}) {
+  const st = STATUS[key];
+  if (!st || !alive(t)) return "";
+  if (st.imm && (t.imm || []).includes(st.imm)) return ` · immune a ${st.name}`;
+  if (t.fx.petrified && key !== "petrified") return "";
+  if (st.dice) t.fx[key] = { dice: o.dice || st.dice, until: s.round + (o.turns || st.turns) + 1, type: st.imm, by: o.by || null };
+  else if (st.left) t.fx[key] = { left: o.left || st.left, ...(key === "paralyzed" ? { dc: o.dc || 12, stat: o.stat || st.stat } : {}) };
+  else t.fx[key] = { until: s.round + (o.turns || st.turns) + 1 };
+  return ` · ${st.ico} ${st.name}`;
+}
+// Stato portato da un colpo/abilità con probabilità e (per gli eroi colpiti) tiro salvezza.
+// inf = { key, chance, save?, dice?, turns? } · dc = CD di chi lo infligge
+function tryInflict(s, src, t, inf, dc) {
+  if (!inf || !alive(t)) return "";
+  const chance = (inf.chance ?? 100) * (t.role === "boss" ? 0.5 : 1);
+  if (die(100) > chance) return "";
+  if (inf.save && t.side === "h") {
+    const sv = d20() + (t.save || 0) + (t.st?.[inf.save] || 0);
+    if (sv >= dc) return ` · evita ${STATUS[inf.key]?.name || "l'effetto"} (TS ${sv})`;
+  }
+  return applyStatus(s, t, inf.key, { ...inf, dc, by: src?.id });
+}
+const STATUS_OF_DMG = {
+  // mostri del bestiario: lo stato che porta il loro tipo di danno (se l'azione non ne dice uno suo)
+  fire: { key: "burn", chance: 25, save: "dex" },
+  cold: { key: "frozen", chance: 12, save: "con" },
+  poison: { key: "poison", chance: 30, save: "con" },
+  necrotic: { key: "frightened", chance: 20, save: "wis" },
+  lightning: { key: "paralyzed", chance: 10, save: "con" },
+  psychic: { key: "confused", chance: 25, save: "wis" },
+  acid: { key: "blinded", chance: 15, save: "dex" },
+};
+const foeInflict = (a, type) => (a.inflict === "none" ? null : a.inflict || STATUS_OF_DMG[type] || null);
+// Inizio del turno di un combattente: danni a turni, poi può essere bloccato. true = può agire.
+function turnStart(s, c) {
+  for (const key of ["burn", "poison"]) {
+    const o = c.fx[key];
+    if (!o || !alive(c)) continue;
+    if (!fxOn(s, o)) { delete c.fx[key]; continue; }
     const [n, sd] = parseDice(o.dice);
     const notes = [];
-    curVfx = { fx: "debuff", el: elOf(o.type), from: f.id };
-    const d = applyDamage(s, f, roll(n, sd).t, o.type, notes);
-    if (o.by) f.lastHitBy = o.by;
-    log(s, `${ico} ${f.name} ${word}: −${d}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", targets: [f.id], dmg: d });
+    curVfx = { fx: "debuff", el: elOf(o.type), from: c.id };
+    const d = applyDamage(s, c, roll(n, sd).t, o.type, notes);
+    if (o.by && c.side === "f") c.lastHitBy = o.by;
+    log(s, `${STATUS[key].ico} ${c.name} ${key === "burn" ? "brucia" : "soffre il veleno"}: −${d}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(c)}`, { kind: "hit", targets: [c.id], dmg: d });
     curVfx = null;
   }
+  if (!alive(c)) return false;
+  const fx = c.fx;
+  ["frightened", "blinded", "slow", "confused"].forEach((k) => { if (fx[k] && !fxOn(s, fx[k])) delete fx[k]; });
+  if (fx.petrified) {
+    fx.petrified.left -= 1;
+    if (fx.petrified.left <= 0) { delete fx.petrified; log(s, `🗿 ${c.name} torna di carne e ossa (ma per questo turno resta fermo).`, { kind: "buff", targets: [c.id] }); }
+    else log(s, `🗿 ${c.name} è di pietra: non può agire (ancora ${fx.petrified.left} ${fx.petrified.left === 1 ? "turno" : "turni"}).`, { kind: "debuff", actor: c.id });
+    return false;
+  }
+  if (fx.frozen) {
+    fx.frozen.left -= 1;
+    const last = fx.frozen.left <= 0;
+    if (last) delete fx.frozen;
+    log(s, `🧊 ${c.name} è congelato e salta il turno${last ? ": il ghiaccio si scioglie" : ""}.`, { kind: "debuff", actor: c.id });
+    return false;
+  }
+  if (fx.paralyzed) {
+    fx.paralyzed.left -= 1;
+    const sv = d20() + (c.save || 0) + (c.st?.[fx.paralyzed.stat || "con"] || 0);
+    const free = sv >= (fx.paralyzed.dc || 12) || fx.paralyzed.left <= 0;
+    log(s, `⚡ ${c.name} è paralizzato e salta il turno · TS ${sv} vs CD ${fx.paralyzed.dc || 12}: ${free ? "si libera!" : "resta bloccato"}.`, { kind: "debuff", actor: c.id });
+    if (free) delete fx.paralyzed;
+    return false;
+  }
+  if (fx.stun) { fx.stun = false; log(s, `💫 ${c.name} è stordito e salta il turno.`, { kind: "debuff", actor: c.id }); return false; }
+  return true;
+}
+const BLOCKING = ["petrified", "frozen", "paralyzed"];
+export const isBlocked = (c) => BLOCKING.some((k) => c?.fx?.[k]) || !!c?.fx?.stun;
+// Confuso: un bersaglio a caso fra tutti quelli in piedi (anche i compagni), tranne sé stesso
+function confusedPick(s, c) {
+  const pool = [...s.heroes, ...s.foes].filter((x) => alive(x) && x.id !== c.id && !x.fled);
+  return pool.length ? pick(pool) : null;
 }
 
 /* ── giro dei turni ──────────────────────────────────── */
@@ -666,6 +764,11 @@ function startHeroPhase(s, now) {
   s.acted = {};
   s.phaseAt = now;
   s.turnAt = now;
+  // stati degli eroi (2026-11-06): danni a turni, e chi è bloccato (congelato, paralizzato, pietrificato) salta
+  s.heroes.forEach((h) => {
+    if (!alive(h) || h.fled) return;
+    if (!turnStart(s, h)) s.acted = { ...s.acted, [h.id]: true };
+  });
 }
 // Tutti i mostri, uno dopo l'altro; poi nuovo round e di nuovo tocca agli eroi.
 function monsterPhase(s, now) {
@@ -673,15 +776,19 @@ function monsterPhase(s, now) {
     if (checkEnd(s)) return;
     const f = byId(s, id);
     if (!alive(f) || f.side !== "f") continue; // le partite di prima del cambio avevano anche gli eroi in order
-    tickDots(s, f);
-    if (!alive(f)) { lootDead(s); continue; }
-    if (f.fx.stun) { f.fx.stun = false; log(s, `💫 ${f.name} è stordito e salta il turno.`, { kind: "debuff", actor: f.id }); continue; }
+    if (!turnStart(s, f)) { if (!alive(f)) lootDead(s); continue; }
     foeAct(s, f);
     curVfx = null;
   }
   if (checkEnd(s)) return;
   s.round += 1;
   startHeroPhase(s, now);
+  if (checkEnd(s)) return;
+  // tutti gli eroi bloccati o caduti per i danni a turni: tocca di nuovo ai mostri (gli stati che bloccano durano al massimo 3 turni: la catena finisce da sola)
+  if (!pendingHeroes(s).length && s.heroes.some(alive)) {
+    s.chain = (s.chain || 0) + 1;
+    if (s.chain <= 12) monsterPhase(s, now);
+  } else s.chain = 0;
 }
 // Dopo ogni azione di un eroe: se hanno agito tutti i vivi, tocca ai mostri.
 function afterHeroAction(s, now) {
@@ -702,6 +809,7 @@ export function act(s, uid, { actionId, targetId }, now) {
   if (!a) throw new Error("Azione non disponibile.");
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
   const tk = targetKind(a);
+  if (fxOn(s, h.fx.frightened) && (a.kind === "heal_all" || (a.kind === "heal" && !a.self) || (a.kind === "buff" && !a.self))) throw new Error("Sei spaventato: non riesci a curare né ad aiutare gli altri. Attacca o difenditi.");
   let target = null;
   if (tk === "foe") target = foeTarget(s, h, targetId);
   if (tk === "ally") {
@@ -710,6 +818,11 @@ export function act(s, uid, { actionId, targetId }, now) {
     if (!target || target.side !== "h" || target.fled || (!heal && !alive(target))) throw new Error("Scegli un alleato.");
   }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
+  // confuso (2026-11-06): l'azione è quella scelta, il bersaglio esce a caso (anche un compagno)
+  if (tk && fxOn(s, h.fx.confused)) {
+    const c = confusedPick(s, h);
+    if (c && c !== target) { log(s, `😵 ${h.name} è confuso: ${a.name} finisce su ${c.name}!`, { kind: "info", actor: h.id }); target = c; }
+  }
   curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
   let ev;
   try { ev = heroAct(s, h, a, target); } finally { curVfx = null; }
@@ -819,10 +932,19 @@ export function useItem(s, uid, { itemId, targetId }, now) {
     curVfx = { fx: "heal", el: "radiant", from: h.id };
     target.hp = Math.max(1, Math.ceil((target.maxHp * (it.pct || 50)) / 100));
     log(s, `${it.icon} ${h.name} usa ${it.name}: ${target.name} si rialza con ${target.hp} PF!`, { kind: "heal", actor: h.id, targets: [target.id] });
-  } else if (it.kind === "cleanse") {
+  } else if (it.kind === "cleanse" || it.kind === "panacea") {
     curVfx = { fx: "buff", el: "radiant", from: h.id };
-    target.fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
-    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: via svantaggio e stordimento.`, { kind: "buff", actor: h.id, targets: [target.id] });
+    const was = ["burn", "poison", "frozen", "paralyzed", "frightened", "blinded", "slow", "confused", ...(it.kind === "panacea" ? ["petrified"] : [])].filter((k) => target.fx[k]);
+    const fx = { ...target.fx, dis: 0, stun: false, reckless: 0 };
+    was.forEach((k) => { delete fx[k]; });
+    target.fx = fx;
+    const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "cleanse_party") {
+    curVfx = { fx: "aoe", el: "frost", from: h.id };
+    const tg = s.heroes.filter((x) => alive(x) && !x.fled);
+    const parts = tg.map((x) => { const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]); was.forEach((k) => { delete x.fx[k]; }); return was.length ? `${x.name} (${was.map((k) => STATUS[k].ico).join("")})` : null; }).filter(Boolean);
+    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? `liberati ${parts.join(", ")}` : "tutti fradici, ma nessuno aveva bisogno"}.`, { kind: "buff", actor: h.id, targets: tg.map((x) => x.id) });
   } else if (it.kind === "buff") {
     curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
     const until = s.round + (it.turns || 1) + 1;

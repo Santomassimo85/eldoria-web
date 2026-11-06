@@ -41,6 +41,20 @@ export default function SegreteManual() {
         </ul>
       </Fold>
 
+      <Fold icon="🧪" title="Stati: bruciato, congelato, pietrificato…">
+        <ul>
+          <li><b>🔥 Bruciato</b>: danni da fuoco all'inizio di ogni suo turno. Si toglie col Tonico o con la Bomba d'Acqua.</li>
+          <li><b>☠ Avvelenato</b>: danni da veleno a ogni turno (niente svantaggio). Si toglie col Tonico.</li>
+          <li><b>🧊 Congelato</b>: salta 2 turni con −2 CA. Lo libera solo il Tonico, oppure un colpo di fuoco.</li>
+          <li><b>⚡ Paralizzato</b>: salta il turno e chi lo attacca ha vantaggio; a ogni turno tira un TS per liberarsi (al massimo 3 turni). Tonico o Bomba d'Acqua.</li>
+          <li><b>🗿 Pietrificato</b>: diventa grigio, fermo per 3 turni, prende metà dei danni e chi lo attacca ha vantaggio. Solo la <b>Panacea</b> lo libera prima.</li>
+          <li><b>😱 Spaventato</b>: svantaggio, e non riesce a curare né ad aiutare gli altri. <b>🌑 Accecato</b>: svantaggio, e chi lo attacca ha vantaggio. <b>🐌 Rallentato</b>: svantaggio.</li>
+          <li><b>😵 Confuso</b>: scegli tu l'azione, ma il bersaglio esce a caso, anche un compagno (o te lo cura un nemico!).</li>
+          <li>I mostri portano lo stato del loro tipo di danno (fuoco brucia, gelo congela, veleno avvelena, necrotico spaventa, fulmine paralizza, psichico confonde, acido acceca): si evita col tiro salvezza. I boss evitano metà degli stati.</li>
+          <li><b>Rimedi</b> in Bottega: 🌿 Tonico (tutto tranne la pietra), 💧 Bomba d'Acqua (tutto il gruppo: bruciatura, rallentamento, paralisi), ✨ Panacea (tutto, anche la pietra).</li>
+        </ul>
+      </Fold>
+
       <Fold icon="🧝" title="Eroi, livelli e armi">
         <ul>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>

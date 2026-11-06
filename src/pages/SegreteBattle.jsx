@@ -44,9 +44,16 @@ function statusIcons(c, round) {
   if (on(fx.dis)) out.push({ k: "dis", ico: "🌫", n: left(fx.dis), good: false, tag: "svant.", t: "Svantaggio agli attacchi" });
   if (on(fx.reckless)) out.push({ k: "reck", ico: "😤", n: left(fx.reckless), good: false, tag: "−2 CA", t: "Irruento: −2 CA" });
   if (fx.stun) out.push({ k: "stun", ico: "💫", n: 1, good: false, tag: "salta", t: "Stordito: salta il prossimo turno" });
-  // armi speciali (2026-11-06): bruciatura e veleno fanno danno all'inizio del turno del mostro
-  if (on(fx.burn)) out.push({ k: "burn", ico: "🔥", n: left(fx.burn), good: false, tag: `${fx.burn.dice}/t`, t: `Brucia: ${fx.burn.dice} fuoco a ogni suo turno` });
-  if (on(fx.poison)) out.push({ k: "poison", ico: "☠", n: left(fx.poison), good: false, tag: `${fx.poison.dice}/t`, t: `Avvelenato: ${fx.poison.dice} veleno a ogni suo turno` });
+  // STATI (2026-11-06): danni a turni, blocchi e malus (vedi STATUS in segreteEngine.js)
+  if (on(fx.burn)) out.push({ k: "burn", ico: "🔥", n: left(fx.burn), good: false, tag: `${fx.burn.dice}/t`, t: `Bruciato: ${fx.burn.dice} fuoco all'inizio di ogni suo turno (Tonico o Bomba d'Acqua)` });
+  if (on(fx.poison)) out.push({ k: "poison", ico: "☠", n: left(fx.poison), good: false, tag: `${fx.poison.dice}/t`, t: `Avvelenato: ${fx.poison.dice} veleno all'inizio di ogni suo turno (Tonico)` });
+  if (fx.frozen) out.push({ k: "frozen", ico: "🧊", n: fx.frozen.left, good: false, tag: "−2 CA", t: "Congelato: salta i turni e −2 CA. Lo libera il Tonico o un colpo di fuoco" });
+  if (fx.paralyzed) out.push({ k: "par", ico: "⚡", n: fx.paralyzed.left, good: false, tag: "fermo", t: `Paralizzato: salta il turno, TS ${String(fx.paralyzed.stat || "con").toUpperCase()} CD ${fx.paralyzed.dc || 12} a ogni turno per liberarsi; chi lo attacca ha vantaggio` });
+  if (fx.petrified) out.push({ k: "stone", ico: "🗿", n: fx.petrified.left, good: false, tag: "pietra", t: "Pietrificato: non agisce, danni dimezzati, chi lo attacca ha vantaggio. Solo la Panacea lo libera prima" });
+  if (on(fx.frightened)) out.push({ k: "fear", ico: "😱", n: left(fx.frightened), good: false, tag: "paura", t: "Spaventato: svantaggio, non può curare né aiutare gli altri (Tonico)" });
+  if (on(fx.blinded)) out.push({ k: "blind", ico: "🌑", n: left(fx.blinded), good: false, tag: "cieco", t: "Accecato: svantaggio, chi lo attacca ha vantaggio (Tonico)" });
+  if (on(fx.slow)) out.push({ k: "slow", ico: "🐌", n: left(fx.slow), good: false, tag: "lento", t: "Rallentato: svantaggio agli attacchi (Tonico o Bomba d'Acqua)" });
+  if (on(fx.confused)) out.push({ k: "conf", ico: "😵", n: left(fx.confused), good: false, tag: "confuso", t: "Confuso: sceglie l'azione ma il bersaglio esce a caso, anche un compagno (Tonico)" });
   return out;
 }
 
@@ -67,7 +74,7 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
   const mirror = c.side === "f" ? c.facing !== "right" : true;
   return (
-    <button type="button" className={`sgb-f sgb-f--${c.side}${c.role === "boss" ? " is-boss" : ""}${dead ? " is-dead" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
+    <button type="button" className={`sgb-f sgb-f--${c.side}${c.role === "boss" ? " is-boss" : ""}${dead ? " is-dead" : ""}${!dead && c.fx?.petrified ? " is-stone" : ""}${!dead && c.fx?.frozen ? " is-frozen" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
       style={c.side === "h" ? clsStyle(c.cls) : { "--sz": sizeScale(c) }}
       aria-disabled={!selectable} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF${onInspect ? " (tieni premuto per la scheda)" : ""}`}
       onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } if (selectable) onPick(c.id); }}
@@ -380,7 +387,7 @@ export default function SegreteBattle({ room, uid }) {
         ) : (
           <p className="sgb-turn sgb-turn--wait">
             {pending.length
-              ? <>{me && acted[me.id] ? "✓ Hai agito. " : ""}⏳ Aspettiamo <b>{pending.map((h) => h.name).join(", ")}</b>{afkLeft != null ? ` · ${afkLeft > 0 ? `poi tocca ai mostri (chi manca si difende da solo tra ${fmtLeft(afkLeft)})` : "faccio difendere chi manca…"}` : ""}</>
+              ? <>{me && acted[me.id] ? (me.fx?.petrified ? "🗿 Sei di pietra: salti il turno. " : me.fx?.frozen ? "🧊 Sei congelato: salti il turno. " : me.fx?.paralyzed ? "⚡ Sei paralizzato: salti il turno. " : "✓ Hai agito. ") : ""}⏳ Aspettiamo <b>{pending.map((h) => h.name).join(", ")}</b>{afkLeft != null ? ` · ${afkLeft > 0 ? `poi tocca ai mostri (chi manca si difende da solo tra ${fmtLeft(afkLeft)})` : "faccio difendere chi manca…"}` : ""}</>
               : "👹 I mostri si muovono…"}
             {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
           </p>

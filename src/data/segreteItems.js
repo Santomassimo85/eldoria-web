@@ -33,7 +33,9 @@ const BASE_ITEMS = {
   pozione: { name: "Pozione di Guarigione", icon: "🧪", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
   pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "🍷", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
   pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "⚗", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
-  tonico: { name: "Tonico Purificante", icon: "🌿", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "Toglie svantaggio, stordimento e irruenza a te o a un alleato." },
+  tonico: { name: "Tonico Purificante", icon: "🌿", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "A te o a un alleato: toglie bruciatura, veleno, congelamento, paralisi, paura, cecità, rallentamento, confusione, svantaggio e stordimento. Non la pietrificazione." },
+  bomba_acqua: { name: "Bomba d'Acqua", icon: "💧", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Inzuppa tutto il gruppo: toglie bruciatura, rallentamento e paralisi a tutti gli eroi in piedi." },
+  panacea: { name: "Panacea", icon: "✨", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "A te o a un alleato: toglie ogni stato, anche la pietrificazione." },
   pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "🪨", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
   eroismo: { name: "Pozione dell'Eroismo", icon: "🦸", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "🔥", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
@@ -151,6 +153,7 @@ export function itemTarget(it) {
   if (it.kind === "throw") return "foe";
   if (it.kind === "throw_area") return null;
   if (it.kind === "revive") return "downed";
+  if (it.kind === "cleanse_party") return null;
   return "ally";
 }
 export const coinsOf = (charData) => Math.max(0, Number(charData?.storyCoins) || 0);

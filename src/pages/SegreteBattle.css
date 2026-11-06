@@ -176,3 +176,7 @@
 }
 .sgb-endbtns { display: flex; flex-wrap: wrap; gap: 8px; }
 .sgr-page .sgb-endnote { margin: 6px 0 0; font-size: .85rem; color: #e9dcc4; }
+
+/* stati in lotta (2026-11-06): pietra grigia, ghiaccio azzurro */
+.sgb-f.is-stone .sgb-sprite { filter: grayscale(1) contrast(1.15) brightness(.85); }
+.sgb-f.is-frozen .sgb-sprite { filter: saturate(.4) hue-rotate(170deg) brightness(1.15) drop-shadow(0 0 6px rgba(140,210,255,.8)); }
