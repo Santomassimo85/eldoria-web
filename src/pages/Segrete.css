@@ -456,3 +456,9 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgr-credits a { color: var(--el-2, #f2c14e); }
 
 .sgr-page .sgh-perk { color: #9be8b0 !important; font-weight: 600; }
+
+/* telefoni molto stretti: 6 schede in 272 px */
+@media (max-width: 340px) {
+  .sgr-tabs { gap: 1px; }
+  .sgr-tab { padding: 4px 1px; font-size: .64rem; }
+}
