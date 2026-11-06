@@ -20,12 +20,12 @@ function memberFrom(uid, char, cls, level) {
   };
 }
 
-export async function createRoom(uid, char, { name, type, cls, level }) {
+export async function createRoom(uid, char, { name, type, cls, level, difficulty = "facile" }) {
   const ref = doc(roomsCol());
   await runTransaction(db, async (tx) => {
     tx.set(ref, {
       name: String(name || "").trim().slice(0, 40) || `Gruppo di ${char?.name || "?"}`,
-      type, hostUid: uid,
+      type, difficulty, hostUid: uid,
       members: [memberFrom(uid, char, cls, level)], memberIds: [uid],
       status: "open", weekKey: currentWeekKey(),
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(), startedAt: null,
@@ -143,6 +143,14 @@ export const chooseDungeon = (roomId, byUid, key, isMaster = false) => editRoom(
   if (room.status !== "open") throw new Error("Il dungeon è già partito.");
   if (room.type === key) return null;
   return { type: key, members: room.members.map((m) => ({ ...m, ready: false })) };
+});
+
+/* Difficoltà (2026-11-06): la sceglie il capo (o il Master); il livello minimo lo controlla il server alla partenza */
+export const chooseDifficulty = (roomId, byUid, key, isMaster = false) => editRoom(roomId, (room) => {
+  if (room.hostUid !== byUid && !isMaster) throw new Error("La sceglie il capo del gruppo.");
+  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
+  if ((room.difficulty || "facile") === key) return null;
+  return { difficulty: key, blocked: null, members: room.members.map((m) => ({ ...m, ready: false })) };
 });
 
 /* Inviti (2026-11-04): chi è nel gruppo sceglie chi invitare. La stanza tiene

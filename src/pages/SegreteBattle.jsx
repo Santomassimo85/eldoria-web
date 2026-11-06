@@ -8,7 +8,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
-import { classInfo, clsStyle, sizeScale } from "../data/segrete";
+import { classInfo, clsStyle, sizeScale, diffOf } from "../data/segrete";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
@@ -44,6 +44,9 @@ function statusIcons(c, round) {
   if (on(fx.dis)) out.push({ k: "dis", ico: "🌫", n: left(fx.dis), good: false, tag: "svant.", t: "Svantaggio agli attacchi" });
   if (on(fx.reckless)) out.push({ k: "reck", ico: "😤", n: left(fx.reckless), good: false, tag: "−2 CA", t: "Irruento: −2 CA" });
   if (fx.stun) out.push({ k: "stun", ico: "💫", n: 1, good: false, tag: "salta", t: "Stordito: salta il prossimo turno" });
+  // armi speciali (2026-11-06): bruciatura e veleno fanno danno all'inizio del turno del mostro
+  if (on(fx.burn)) out.push({ k: "burn", ico: "🔥", n: left(fx.burn), good: false, tag: `${fx.burn.dice}/t`, t: `Brucia: ${fx.burn.dice} fuoco a ogni suo turno` });
+  if (on(fx.poison)) out.push({ k: "poison", ico: "☠", n: left(fx.poison), good: false, tag: `${fx.poison.dice}/t`, t: `Avvelenato: ${fx.poison.dice} veleno a ogni suo turno` });
   return out;
 }
 
@@ -299,7 +302,7 @@ export default function SegreteBattle({ room, uid }) {
         return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
       })()}
       <div className="sgb-top">
-        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
+        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
       </div>
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>

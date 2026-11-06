@@ -7,15 +7,15 @@ import { collection, getDocs } from "firebase/firestore";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
-import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday } from "../data/segreteItems";
-import { WEAPON_CHOICES } from "../data/segreteKits";
+import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday, isGear, gearUsers } from "../data/segreteItems";
+import { WEAPON_CHOICES, fxLine } from "../data/segreteKits";
 import { classInfo, clsStyle } from "../data/segrete";
 
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 
-// chi usa un tipo d'arma: "Guerriero, Bardo"
-const usersOf = (base) => Object.entries(WEAPON_CHOICES).filter(([, l]) => l.includes(base)).map(([c]) => classInfo(c)?.it).filter(Boolean).join(", ");
+// chi usa un equipaggiamento: "Guerriero, Bardo"
+const usersOf = (it) => gearUsers(it).map((c) => classInfo(c)?.it).filter(Boolean).join(", ");
 
 function ItemRow({ id, n, onBuy, onGift, busy, coins, charData }) {
   const it = itemOf(id);
@@ -25,7 +25,7 @@ function ItemRow({ id, n, onBuy, onGift, busy, coins, charData }) {
       <span className="sgs-ico" aria-hidden="true">{it.icon}</span>
       <span className="sgs-main">
         <b>{it.name}</b> <em style={{ color: r.color }}>{r.it}</em>
-        <small>{it.desc}{it.kind === "weapon" ? ` Classi: ${usersOf(it.base)}.` : ""}</small>
+        <small>{it.desc}{it.fx ? ` (${fxLine(it.fx)})` : ""}{isGear(it) ? ` Classi: ${usersOf(it)}.` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
       {onGift && <button type="button" className="sgr-btn sgr-btn--ghost sgs-gift" disabled={busy} onClick={() => onGift(id)}>🎁 Regala</button>}
@@ -92,14 +92,15 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
     catch (e) { setMsg(e.message || "Regalo non riuscito."); }
     finally { setBusy(false); }
   };
-  const unequip = async (cls) => {
+  const unequip = async (cls, slot = "weapon") => {
     if (busy) return;
     setBusy(true); setMsg("");
-    try { await segreteDo({ op: "heroEquip", cls, itemId: null }); setMsg("↩ Arma rimessa nello zaino: ora la può prendere un altro eroe dalla sua scheda (o la puoi regalare)."); }
+    try { await segreteDo({ op: "heroEquip", cls, slot, itemId: null }); setMsg("↩ Rimesso nello zaino: ora lo può prendere un altro eroe dalla sua scheda (o lo puoi regalare)."); }
     catch (e) { setMsg(e.message || "Non riuscito."); }
     finally { setBusy(false); }
   };
-  const worn = Object.entries(charData?.storyChars || {}).filter(([, h]) => h?.weaponItem && itemOf(h.weaponItem));
+  const SLOTS = [["weapon", "weaponItem"], ["armor", "armorItem"], ["shield", "shieldItem"]];
+  const worn = Object.entries(charData?.storyChars || {}).flatMap(([cls, h]) => SLOTS.filter(([, f]) => h?.[f] && itemOf(h[f])).map(([slot, f]) => ({ cls, slot, id: h[f] })));
   const coins = coinsOf(charData);
   const bag = bagOf(charData);
   const bagIds = Object.keys(bag);
@@ -111,7 +112,9 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
     finally { setBusy(false); }
   };
   const myBases = new Set(Object.keys(charData?.storyChars || {}).flatMap((c) => WEAPON_CHOICES[c] || []));
-  const shop = SHOP_ITEMS.filter((id) => ITEMS[id].kind !== "weapon");
+  const shop = SHOP_ITEMS.filter((id) => !isGear(ITEMS[id]));
+  const myClasses = Object.keys(charData?.storyChars || {});
+  const shopArmors = SHOP_ITEMS.filter((id) => (ITEMS[id].kind === "armor" || ITEMS[id].kind === "shield") && (!wFilter || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c))));
   const shopWeapons = SHOP_ITEMS.filter((id) => ITEMS[id].kind === "weapon" && (!wFilter || myBases.has(ITEMS[id].base)));
   return (
     <section className="sgr-block" id="sgr-bottega">
@@ -132,15 +135,15 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
       ) : null}
       {tab === "zaino" && !!worn.length && (
         <>
-          <p className="sgr-label">Armi montate sugli eroi</p>
+          <p className="sgr-label">Equipaggiamento montato sugli eroi</p>
           <ul className="sgs-list">
-            {worn.map(([cls, h]) => {
-              const it = itemOf(h.weaponItem);
+            {worn.map(({ cls, slot, id }) => {
+              const it = itemOf(id);
               return (
-                <li key={cls} className="sgs-item sgs-worn" style={clsStyle(cls)}>
+                <li key={`${cls}-${slot}`} className="sgs-item sgs-worn" style={clsStyle(cls)}>
                   <span className="sgs-ico" aria-hidden="true">{it.icon}</span>
                   <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname">{classInfo(cls)?.icon} {classInfo(cls)?.it}</span></small></span>
-                  <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => unequip(cls)}>↩ Nello zaino</button>
+                  <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => unequip(cls, slot)}>↩ Nello zaino</button>
                 </li>
               );
             })}
@@ -151,8 +154,10 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
         <>
           <p className="sgr-label">Pozioni e oggetti da lotta</p>
           <ul className="sgs-list">{shop.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
+          <label className="sgs-filter"><input type="checkbox" checked={wFilter} onChange={(e) => setWFilter(e.target.checked)} /> solo armi e armature che i miei eroi possono usare</label>
+          <p className="sgr-label">Armature <small>(si indossano dalla scheda dell'eroe, se la classe sa portarle; quelle magiche e gli scudi speciali si trovano solo nei dungeon)</small></p>
+          <ul className="sgs-list">{shopArmors.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
           <p className="sgr-label">Armi +1 <small>(si equipaggiano dalla scheda dell'eroe; le +2 si trovano solo nei dungeon)</small></p>
-          <label className="sgs-filter"><input type="checkbox" checked={wFilter} onChange={(e) => setWFilter(e.target.checked)} /> solo armi che i miei eroi possono usare</label>
           <ul className="sgs-list">{shopWeapons.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
         </>
       )}

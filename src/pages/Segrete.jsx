@@ -11,11 +11,12 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
-  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon,
+  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
+import SegreteDungeonInfo from "./SegreteDungeonInfo";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
@@ -59,9 +60,33 @@ function HeroSections({ charData, cls, onUse, disabled, inRoom }) {
   );
 }
 
-function DungeonBadge({ d }) {
+function DungeonBadge({ d, diff }) {
   if (!d) return null;
-  return <span className="sgr-dbadge"><span aria-hidden="true">{d.icon}</span> {d.name}</span>;
+  const D = diff ? diffOf(diff) : null;
+  return <span className="sgr-dbadge"><span aria-hidden="true">{d.icon}</span> {d.name}{D && D.rank > 0 ? <em className={`sgr-diffbadge sgr-diffbadge--${D.key}`}>{D.icon} {D.name}</em> : null}</span>;
+}
+
+/* Difficoltà (2026-11-06): Facile (di sempre) · Medio (Lv 8+) · Leggenda (Lv 12+). `levels` =
+   livelli degli eroi del gruppo: chi non arriva al minimo viene nominato sotto. */
+function DifficultyPicker({ value, onPick, disabled, levels = [], readOnly }) {
+  const D = diffOf(value);
+  const low = levels.filter((l) => l.level < D.minLevel);
+  return (
+    <div className="sgr-diff">
+      <p className="sgr-label">Difficoltà {readOnly ? <small>· la sceglie il capo</small> : null}</p>
+      <div className="sgr-dpick" role="radiogroup" aria-label="Difficoltà">
+        {DIFFICULTIES.map((d) => (
+          <button key={d.key} type="button" role="radio" aria-checked={D.key === d.key} disabled={disabled || (readOnly && D.key !== d.key)}
+            className={`sgr-dpick-b sgr-diff-b sgr-diff-b--${d.key}${D.key === d.key ? " is-on" : ""}`}
+            onClick={() => !readOnly && D.key !== d.key && onPick(d.key)}>
+            {d.icon} {d.name}{d.minLevel > 1 ? <small> · Lv {d.minLevel}+</small> : null}
+          </button>
+        ))}
+      </div>
+      <p className="sgr-hint">{D.desc}</p>
+      {!!low.length && <p className="sgr-err">⛔ Per {D.name} serve il livello {D.minLevel}: {low.map((l) => `${l.name} è Lv ${l.level}`).join(", ")}. Il gruppo non potrà partire.</p>}
+    </div>
+  );
 }
 
 const TABS = [
@@ -86,6 +111,7 @@ export default function Segrete() {
   const [busy, setBusy] = useState(false);
   const [cls, setCls] = useState(null);
   const [type, setType] = useState("segrete");
+  const [diff, setDiff] = useState("facile");
   const [name, setName] = useState("");
   const [tab, setTabState] = useState(readTab);
   const setTab = (t) => {
@@ -234,7 +260,7 @@ export default function Segrete() {
                         {invitedTo(r) && <p className="sgr-invited">📨 {invitedTo(r).by || "Il gruppo"} ti ha invitato!</p>}
                         <div className="sgr-room-top">
                           <b className="sgr-room-name">{r.name}</b>
-                          <DungeonBadge d={dungeonOf(r.type)} />
+                          <DungeonBadge d={dungeonOf(r.type)} diff={r.difficulty} />
                           <span className="sgr-room-n">{r.members.length}/{MAX_PARTY}</span>
                         </div>
                         <ul className="sgr-room-members">
@@ -272,12 +298,14 @@ export default function Segrete() {
                 ))}
               </div>
               {(() => { const d = dungeonOf(type); return d.desc ? <p className="sgr-dpick-desc" style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(90deg, rgba(10,8,14,.94) 40%, rgba(10,8,14,.55)), url(${d.backgrounds[0]})` } : undefined}>{d.icon} <b>{d.name}</b> · {d.desc}</p> : null; })()}
+              <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: classInfo(cls)?.it || "Il tuo eroe", level: level(cls) }] : []} />
+              <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
               <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
               <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
-                onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls) }))}>
+                onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls), difficulty: diff }))}>
                 Crea il gruppo
               </button>
             </details>
@@ -290,7 +318,7 @@ export default function Segrete() {
                     <li key={r.id} className="sgr-room is-running">
                       <div className="sgr-room-top">
                         <b className="sgr-room-name">{r.name}</b>
-                        <DungeonBadge d={dungeonOf(r.type)} />
+                        <DungeonBadge d={dungeonOf(r.type)} diff={r.difficulty} />
                       </div>
                       <p className="sgr-room-line">{r.members.map((m) => `${classInfo(m.cls)?.icon || ""} ${m.name}`).join(" · ")}</p>
                       {master && (
@@ -360,7 +388,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
   return (
     <section className="sgr-block sgr-myroom">
       <p className="sgr-kicker">Il tuo gruppo</p>
-      <h2 className="sgr-h2">{room.name} <DungeonBadge d={dungeon} /></h2>
+      <h2 className="sgr-h2">{room.name} <DungeonBadge d={dungeon} diff={room.difficulty} /></h2>
       {dungeon?.desc && <p className="sgr-hint">{dungeon.desc}</p>}
       {room.result && <p className="sgr-hint">Ultimo dungeon: {room.result === "won" ? "🏆 vinto" : "☠ perso"}.</p>}
 
@@ -388,6 +416,10 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       </ol>
 
       {!!dungeons.length && <DungeonSwitch room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
+      <DifficultyPicker value={room.difficulty} readOnly={!host && !master} disabled={busy}
+        levels={master ? room.members.filter((m) => m.uid !== uid) : room.members}
+        onPick={(k) => run(() => chooseDifficulty(room.id, uid, k, master))} />
+      <SegreteDungeonInfo dungeon={dungeon} diff={room.difficulty || "facile"} />
 
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 

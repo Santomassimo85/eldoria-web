@@ -34,12 +34,16 @@ __export(segreteServer_exports, {
   STAT_MAX: () => STAT_MAX,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
   act: () => act,
+  armorChoices: () => armorChoices,
+  armorProf: () => armorProf,
   bagOf: () => bagOf,
   battleItem: () => battleItem,
   boughtToday: () => boughtToday,
+  canWear: () => canWear,
   coinsOf: () => coinsOf,
   currentWeekKey: () => currentWeekKey,
   dailyLimit: () => dailyLimit,
+  diffOf: () => diffOf,
   flee: () => flee,
   giftsToday: () => giftsToday,
   heroActions: () => heroActions,
@@ -47,6 +51,7 @@ __export(segreteServer_exports, {
   heroPending: () => heroPending,
   heroStats: () => heroStats,
   hpPending: () => hpPending,
+  isGear: () => isGear,
   itemOf: () => itemOf,
   levelOfXp: () => levelOfXp,
   mergeDungeons: () => mergeDungeons,
@@ -124,7 +129,82 @@ function weaponOf(cls, key) {
   const list = weaponChoices(cls);
   return list.find((w) => w.key === key) || list[0];
 }
-var weaponAction = (w, plus = 0) => ({ id: "arma", name: plus ? `${w.name} +${plus}` : w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}` });
+var weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {}, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` \xB7 ${fxLine(wItem.fx)}` : ""}` });
+function fxLine(fx = {}) {
+  const out = [];
+  if (fx.extra) out.push(`+${fx.extra[0]} ${DMG_ALL[fx.extra[1]] || ""}`);
+  if (fx.burn) out.push(`${fx.burn.chance}% \u{1F525} brucia ${fx.burn.dice}/turno`);
+  if (fx.poison) out.push(`${fx.poison.chance}% \u2620 avvelena ${fx.poison.dice}/turno`);
+  if (fx.slow) out.push(`${fx.slow.chance}% \u{1F40C} rallenta`);
+  if (fx.stun) out.push(`${fx.stun.chance}% \u{1F4AB} stordisce`);
+  if (fx.drain) out.push(`il danno extra ti cura del ${fx.drain}%`);
+  if (fx.crit) out.push(`critico con ${fx.crit}\u201320`);
+  if (fx.multi) out.push(`${fx.multi.double}% un colpo in pi\xF9, ${fx.multi.none}% nessuno`);
+  return out.join(" \xB7 ");
+}
+var DMG_ALL = { slashing: "tagliente", piercing: "perforante", bludgeoning: "contundente", fire: "fuoco", cold: "freddo", lightning: "fulmine", thunder: "tuono", acid: "acido", poison: "veleno", necrotic: "necrotico", radiant: "radioso", force: "forza", psychic: "psichico" };
+var ARMORS = {
+  abiti: { name: "Abiti da viaggio", icon: "\u{1F455}", cat: "none", base: 10, dex: 99, start: true },
+  magica: { name: "Armatura Magica", icon: "\u2728", cat: "mage", base: 13, dex: 99, start: true },
+  senza: { name: "Difesa senz'armatura", icon: "\u{1F4AA}", cat: "unarmored", start: true },
+  cuoio: { name: "Armatura di Cuoio", icon: "\u{1F9E5}", cat: "light", base: 11, dex: 99, start: true },
+  borchiato: { name: "Cuoio Borchiato", icon: "\u{1F9BA}", cat: "light", base: 12, dex: 99, start: true },
+  pelle: { name: "Armatura di Pelle", icon: "\u{1F43B}", cat: "medium", base: 12, dex: 2, start: true },
+  giaco: { name: "Giaco di Maglia", icon: "\u26D3", cat: "medium", base: 13, dex: 2, start: true },
+  scaglie: { name: "Corazza di Scaglie", icon: "\u{1F409}", cat: "medium", base: 14, dex: 2, start: true },
+  mezza: { name: "Mezza Armatura", icon: "\u{1F6E1}", cat: "medium", base: 15, dex: 2 },
+  anelli: { name: "Cotta ad Anelli", icon: "\u26D3", cat: "heavy", base: 14, dex: 0, start: true },
+  maglia: { name: "Cotta di Maglia", icon: "\u26D3", cat: "heavy", base: 16, dex: 0, start: true },
+  stecche: { name: "Armatura a Stecche", icon: "\u{1F6E1}", cat: "heavy", base: 17, dex: 0 },
+  piastre: { name: "Armatura di Piastre", icon: "\u{1F3F0}", cat: "heavy", base: 18, dex: 0 }
+};
+var ARMOR_PROF = {
+  fighter: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  paladin: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  cleric: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  barbarian: { cats: ["unarmored", "light", "medium"], shield: true, def: "senza" },
+  ranger: { cats: ["light", "medium"], shield: true, def: "borchiato" },
+  druid: { cats: ["light", "medium"], shield: true, def: "cuoio" },
+  monk: { cats: ["unarmored"], shield: false, def: "senza" },
+  rogue: { cats: ["light"], shield: false, def: "borchiato" },
+  bard: { cats: ["light"], shield: false, def: "borchiato" },
+  warlock: { cats: ["light"], shield: false, def: "borchiato" },
+  wizard: { cats: ["none", "mage"], shield: false, def: "magica" },
+  sorcerer: { cats: ["none", "mage"], shield: false, def: "magica" }
+};
+var TWO_HANDED = /* @__PURE__ */ new Set(["ascia_bip", "maglio", "arco_lungo", "balestra_l"]);
+var armorProf = (cls) => ARMOR_PROF[cls] || ARMOR_PROF.fighter;
+var canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat);
+var armorChoices = (cls) => Object.keys(ARMORS).filter((k) => ARMORS[k].start && canWear(cls, k));
+var shieldOk = (cls, weaponKey) => armorProf(cls).shield && !TWO_HANDED.has(weaponKey);
+function heroDefense(cls, st, g = {}) {
+  const dex = st.dex || 0;
+  const ai = g.armorItem && g.armorItem.kind === "armor" && canWear(cls, g.armorItem.base) ? g.armorItem : null;
+  let key = ai ? ai.base : g.armor;
+  if (!ai && !(canWear(cls, key) && ARMORS[key].start)) key = armorProf(cls).def;
+  const ar = ARMORS[key];
+  let ac;
+  if (ar.cat === "unarmored") ac = 10 + dex + (st[kitOf(cls).unarmored] || 0);
+  else ac = ar.base + (ar.dex === 0 ? 0 : Math.min(dex, ar.dex)) + (ai?.plus || 0);
+  const si = g.shieldItem && g.shieldItem.kind === "shield" ? g.shieldItem : null;
+  const canShield = shieldOk(cls, g.weapon);
+  const shield = canShield && (!!si || g.shield !== false);
+  if (shield) ac += 2 + (si?.plus || 0);
+  const parts = [ai, shield ? si : null].filter(Boolean);
+  return {
+    ac,
+    key,
+    cat: ar.cat,
+    shield,
+    canShield,
+    armorName: ai ? ai.name : ar.name,
+    armorIcon: ai ? ai.icon : ar.icon,
+    shieldName: shield ? si ? si.name : "Scudo" : "",
+    res: [...new Set(parts.flatMap((p) => p.res || []))],
+    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0),
+    thorns: parts.find((p) => p.thorns)?.thorns || null
+  };
+}
 function weaponMod(cls, st, a) {
   if (!a?.wstat) return mainMod(cls, st);
   if (a.wstat === "fin") return Math.max(st.str || 0, st.dex || 0);
@@ -336,12 +416,12 @@ var KITS = {
 var DEFEND = { id: "difesa", name: "Difendersi", icon: "\u{1F6E1}", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 var kitOf = (cls) => KITS[cls] || KITS.fighter;
 var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-function heroActions(cls, lv, picks = [], weapon = null, plus = 0) {
+function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null) {
   const k = kitOf(cls);
   const w = weaponOf(cls, weapon);
-  const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0 } : a;
+  const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w, plus), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -363,21 +443,16 @@ function heroMaxHp(cls, lv, st, rolls = []) {
   }
   return Math.max(1, Math.round(hp * HERO_HP_MULT)) + HERO_HP_BASE;
 }
-function heroAc(cls, st) {
-  const k = kitOf(cls);
-  if (k.armor === "heavy") return k.ac;
-  if (k.armor === "unarmored") return 10 + (st.dex || 0) + (st[k.unarmored] || 0);
-  return k.ac - 3 + (st.dex || 0);
-}
 var heroDc = (cls, lv, st) => 8 + profOf(lv) + mainMod(cls, st);
 var heroHit = (cls, lv, st) => profOf(lv) + mainMod(cls, st);
 function attacksOf(cls, lv, action) {
   const extra = lv >= 5 && kitOf(cls).extraAttacks && action.kind === "weapon" ? 1 + (cls === "fighter" && lv >= 11) : 0;
   return (action.attacks || 1) + extra + (action.bonusAttacks || 0);
 }
-function validNewHero(cls, stats, pick2, weapon) {
+function validNewHero(cls, stats, pick2, weapon, armor = null) {
   if (!KITS[cls]) return "Classe sconosciuta.";
   if (!weaponChoices(cls).some((w) => w.key === weapon)) return "Scegli l'arma.";
+  if (armor && !armorChoices(cls).includes(armor)) return "Armatura non adatta a questa classe.";
   let sum = 0;
   for (const k of STAT_KEYS) {
     const v = Number(stats?.[k]) || 0;
@@ -417,16 +492,188 @@ var BASE_ITEMS = {
 };
 var WEAPON_ITEMS = {};
 Object.entries(WEAPONS).forEach(([k, w]) => {
-  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
-  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
+  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", group: "weapon", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
+  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", group: "weapon", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
 });
-var ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS };
+var SPECIAL_WEAPONS = {
+  lingua_salamandra: {
+    name: "Lingua di Salamandra",
+    icon: "\u{1F525}",
+    base: "spada_lunga",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["magma"],
+    fx: { extra: ["1d4", "fire"], burn: { chance: 20, dice: "1d4", turns: 2 } },
+    desc: "Spada lunga +1 ancora calda di lava: +1d4 fuoco e a volte il nemico prende fuoco."
+  },
+  maglio_fabbro: {
+    name: "Maglio del Fabbro Pazzo",
+    icon: "\u2692",
+    base: "maglio",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["magma"],
+    minDiff: "medio",
+    fx: { burn: { chance: 20, dice: "1d6", turns: 2 } },
+    desc: "Il fabbro giurava che bastava scaldarlo \xABun altro pochino\xBB. Maglio +1 che incendia chi colpisce."
+  },
+  zanna_vyrskaal: {
+    name: "Zanna di Vyrskaal",
+    icon: "\u2744",
+    base: "ascia_bip",
+    plus: 1,
+    rarity: "veryRare",
+    dungeons: ["ghiaccio"],
+    minDiff: "leggenda",
+    fx: { extra: ["1d6", "cold"], slow: { chance: 25, turns: 1 } },
+    desc: "Un dente della Regina di Brina montato su un manico. Ascia bipenne +1, +1d6 freddo, a volte congela le gambe."
+  },
+  lancia_pescatore: {
+    name: "Fiocina del Pescatore di Annegati",
+    icon: "\u{1F531}",
+    base: "lancia",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["palude", "ghiaccio"],
+    fx: { slow: { chance: 30, turns: 1 } },
+    desc: "Lancia +1 con l'uncino: chi viene preso fatica a muoversi (svantaggio)."
+  },
+  spina_palude: {
+    name: "Spina della Palude",
+    icon: "\u{1F33F}",
+    base: "stocco",
+    plus: 0,
+    rarity: "uncommon",
+    dungeons: ["palude"],
+    fx: { poison: { chance: 30, dice: "1d4", turns: 3 } },
+    desc: "Stocco ricavato da una spina gigante, sempre un po' appiccicoso. Spesso avvelena."
+  },
+  falce_ragno: {
+    name: "Zampa del Ragno Gigante",
+    icon: "\u{1F577}",
+    base: "scimitarra",
+    plus: 0,
+    rarity: "uncommon",
+    dungeons: ["caverna"],
+    fx: { poison: { chance: 25, dice: "1d6", turns: 2 } },
+    desc: "Una zampa di ragno affilata come una scimitarra. Il veleno c'\xE8 ancora."
+  },
+  arco_ratto: {
+    name: "Arco del Ratto Ubriaco",
+    icon: "\u{1F3F9}",
+    base: "arco_lungo",
+    plus: 0,
+    rarity: "uncommon",
+    dungeons: ["caverna"],
+    fx: { multi: { double: 25, none: 10 } },
+    desc: "Apparteneva a un ratto mannaro con un debole per il sidro. A volte tira due frecce, a volte nessuna."
+  },
+  stiletto_rimorso: {
+    name: "Stiletto del Rimorso",
+    icon: "\u{1F5E1}",
+    base: "stocco",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["segrete"],
+    fx: { crit: 19 },
+    desc: "Stocco +1 di un carceriere pentito: sussurra \xABscusa\xBB e colpisce i punti giusti (critico con 19 o 20)."
+  },
+  catene_mazzafrusto: {
+    name: "Mazzafrusto delle Catene",
+    icon: "\u26D3",
+    base: "mazzafrusto",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["segrete"],
+    fx: { slow: { chance: 25, turns: 1 } },
+    desc: "Le catene si attorcigliano da sole attorno alle gambe del nemico. Mazzafrusto +1."
+  },
+  mazza_penitenza: {
+    name: "Mazza della Penitenza",
+    icon: "\u{1FA78}",
+    base: "mazza",
+    plus: 1,
+    rarity: "rare",
+    dungeons: ["tempio"],
+    fx: { extra: ["1d6", "radiant"], drain: 50 },
+    desc: "Mazza +1 di un culto dimenticato: +1d6 radiosi e met\xE0 di quel danno ti cura."
+  },
+  balestra_tobia: {
+    name: "Balestra a Ripetizione di Zio Tobia",
+    icon: "\u{1F3F9}",
+    base: "balestra_l",
+    plus: 0,
+    rarity: "uncommon",
+    dungeons: ["tempio"],
+    fx: { multi: { double: 30, none: 5 } },
+    desc: "Un'invenzione di zio Tobia trovata fra le rovine. Spesso spara due quadrelli. Spesso."
+  },
+  martello_brontola: {
+    name: "Martello che Brontola",
+    icon: "\u{1F528}",
+    base: "martello",
+    plus: 1,
+    rarity: "rare",
+    fx: { stun: { chance: 15 } },
+    desc: "Martello da guerra +1 che borbotta insulti in nanico. Ogni tanto il nemico resta stordito per la vergogna."
+  },
+  mestolo_nonna: {
+    name: "Mestolo della Nonna",
+    icon: "\u{1F944}",
+    base: "bastone",
+    plus: 0,
+    rarity: "uncommon",
+    fx: { extra: ["1d4", "bludgeoning"], stun: { chance: 10 } },
+    desc: "Un mestolo enorme. Chiunque ne sia stato colpito da bambino si blocca per un attimo. +1d4 contundenti."
+  }
+};
+var ARMOR_ITEMS = {
+  arm_mezza: { name: "Mezza Armatura", icon: "\u{1F6E1}", kind: "armor", base: "mezza", plus: 0, price: 500, daily: 1, rarity: "uncommon", group: "armor", desc: "Armatura media: CA 15 + DES (massimo +2)." },
+  arm_stecche: { name: "Armatura a Stecche", icon: "\u{1F6E1}", kind: "armor", base: "stecche", plus: 0, price: 700, daily: 1, rarity: "uncommon", group: "armor", desc: "Armatura pesante: CA 17." },
+  arm_piastre: { name: "Armatura di Piastre", icon: "\u{1F3F0}", kind: "armor", base: "piastre", plus: 0, price: 1500, daily: 1, rarity: "rare", group: "armor", desc: "La migliore armatura pesante: CA 18." },
+  arm_cuoio_1: { name: "Armatura di Cuoio +1", icon: "\u{1F9E5}", kind: "armor", base: "cuoio", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Leggera: CA 12 + DES." },
+  arm_borchiato_1: { name: "Cuoio Borchiato +1", icon: "\u{1F9BA}", kind: "armor", base: "borchiato", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Leggera: CA 13 + DES." },
+  arm_scaglie_1: { name: "Corazza di Scaglie +1", icon: "\u{1F409}", kind: "armor", base: "scaglie", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Media: CA 15 + DES (massimo +2)." },
+  arm_mezza_1: { name: "Mezza Armatura +1", icon: "\u{1F6E1}", kind: "armor", base: "mezza", plus: 1, price: 0, rarity: "veryRare", group: "armor", desc: "Media: CA 16 + DES (massimo +2)." },
+  arm_maglia_1: { name: "Cotta di Maglia +1", icon: "\u26D3", kind: "armor", base: "maglia", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Pesante: CA 17." },
+  arm_piastre_1: { name: "Armatura di Piastre +1", icon: "\u{1F3F0}", kind: "armor", base: "piastre", plus: 1, price: 0, rarity: "veryRare", group: "armor", desc: "Pesante: CA 19." },
+  // a tema, dei dungeon
+  scaglie_salamandra: { name: "Scaglie della Salamandra", icon: "\u{1F98E}", kind: "armor", base: "scaglie", plus: 0, rarity: "rare", dungeons: ["magma"], res: ["fire"], desc: "Corazza di scaglie fatta con la pelle di una salamandra: resistenza al fuoco." },
+  pelliccia_lupo: { name: "Pelliccia del Lupo Invernale", icon: "\u{1F43A}", kind: "armor", base: "cuoio", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "Armatura di cuoio foderata di pelo bianco: resistenza al freddo. Profuma di cane bagnato." },
+  mezza_ghiaccio: { name: "Mezza Armatura del Ghiaccio Eterno", icon: "\u{1F9CA}", kind: "armor", base: "mezza", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "medio", res: ["cold"], desc: "Mezza armatura +1 che non si scioglie mai: resistenza al freddo." },
+  giaco_muschio: { name: "Giaco di Muschio", icon: "\u{1F344}", kind: "armor", base: "giaco", plus: 0, rarity: "uncommon", dungeons: ["palude"], res: ["poison"], desc: "Giaco di maglia ricoperto di muschio che assorbe i veleni: resistenza al veleno." },
+  giubba_galline: { name: "Giubba del Ladro di Galline", icon: "\u{1F414}", kind: "armor", base: "borchiato", plus: 1, rarity: "rare", dungeons: ["caverna"], desc: "Cuoio borchiato +1 pieno di piume. Nessuno sa perch\xE9, ma funziona." },
+  catene_carceriere: { name: "Catene del Carceriere", icon: "\u26D3", kind: "armor", base: "maglia", plus: 0, rarity: "rare", dungeons: ["segrete"], res: ["necrotic"], desc: "Cotta di maglia intrecciata con catene benedette: resistenza ai danni necrotici." },
+  piastre_guardiano: { name: "Piastre del Guardiano Sepolto", icon: "\u{1F3DB}", kind: "armor", base: "piastre", plus: 0, rarity: "veryRare", dungeons: ["tempio"], minDiff: "leggenda", saveBonus: 1, res: ["radiant"], desc: "Armatura di piastre di un guardiano del tempio: CA 18, +1 ai tiri salvezza, resistenza ai radiosi." },
+  // scudi (Guerriero, Paladino, Chierico, Barbaro, Ranger, Druido con un'arma a una mano)
+  scudo_1: { name: "Scudo +1", icon: "\u{1F6E1}", kind: "shield", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "+3 CA invece di +2." },
+  scudo_padella: { name: "Scudo-Padella", icon: "\u{1F373}", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "Una padella gigante. +2 CA e chi ti colpisce in mischia a volte si prende una padellata (1d4)." },
+  scudo_brina: { name: "Scudo di Brina", icon: "\u2744", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA e resistenza al freddo." },
+  scudo_magma: { name: "Scudo di Ossidiana", icon: "\u{1F30B}", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA: chi ti colpisce in mischia a volte si scotta (1d6 fuoco)." }
+};
+Object.values(SPECIAL_WEAPONS).forEach((w) => {
+  w.kind = "weapon";
+  w.price = 0;
+  w.special = true;
+});
+Object.values(ARMOR_ITEMS).forEach((a) => {
+  if (a.price == null) a.price = 0;
+});
+var ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS, ...SPECIAL_WEAPONS, ...ARMOR_ITEMS };
 var itemOf = (id) => ITEMS[id] ? { id, ...ITEMS[id] } : null;
 var SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
+var isGear = (it) => !!it && (it.kind === "weapon" || it.kind === "armor" || it.kind === "shield");
 var battleItem = (id) => {
   const it = itemOf(id);
-  return it && it.kind !== "weapon" ? it : null;
+  return it && !isGear(it) ? it : null;
 };
+function gearUsers(it) {
+  if (!it) return [];
+  if (it.kind === "weapon") return Object.keys(WEAPON_CHOICES).filter((c) => WEAPON_CHOICES[c].includes(it.base));
+  if (it.kind === "armor") return Object.keys(ARMOR_PROF).filter((c) => canWear(c, it.base));
+  if (it.kind === "shield") return Object.keys(ARMOR_PROF).filter((c) => armorProf(c).shield);
+  return [];
+}
 function itemTarget(it) {
   if (!it) return null;
   if (it.kind === "throw") return "foe";
@@ -448,26 +695,41 @@ var DROP_CHANCE = {
   elite: { coins: 40, coinDice: [2, 6], item: 12 },
   boss: { coins: 75, coinDice: [4, 6], item: 30 }
 };
-function rollDropItem(rnd2, weaponBases = [], role = "minion") {
-  const pool = Object.keys(ITEMS).filter((id) => {
+var DIFF_RANK = { facile: 0, medio: 1, leggenda: 2 };
+function dropPool(ctx = {}) {
+  const { dungeon = null, rank = 0, bases = null, classes = null } = ctx;
+  return Object.keys(ITEMS).filter((id) => {
     const it = ITEMS[id];
-    if (it.kind === "weapon") return weaponBases.includes(it.base);
+    if (it.dungeons && !it.dungeons.includes(dungeon)) return false;
+    if (it.minDiff && (DIFF_RANK[it.minDiff] || 0) > rank) return false;
+    if (it.kind === "weapon") return !bases || bases.includes(it.base);
+    if (it.kind === "armor" || it.kind === "shield") return !classes || gearUsers(it).some((c) => classes.includes(c));
     return true;
   });
-  const boost = role === "boss" ? { rare: 2, veryRare: 2.5 } : role === "elite" ? { rare: 1.4, veryRare: 1.5 } : {};
-  const weapons = pool.filter((id) => ITEMS[id].kind === "weapon").length || 1;
-  const weight = (id) => {
+}
+function dropWeights(ctx = {}, role = "minion") {
+  const pool = dropPool(ctx);
+  const boost = { ...role === "boss" ? { rare: 2, veryRare: 2.5 } : role === "elite" ? { rare: 1.4, veryRare: 1.5 } : {} };
+  Object.entries(ctx.boost || {}).forEach(([k, v]) => {
+    boost[k] = (boost[k] || 1) * v;
+  });
+  const gw = pool.filter((id) => ITEMS[id].group === "weapon").length || 1;
+  const ga = pool.filter((id) => ITEMS[id].group === "armor").length || 1;
+  return pool.map((id) => {
     const it = ITEMS[id];
     const w = RARITY[it.rarity].w * (boost[it.rarity] || 1);
-    return it.kind === "weapon" ? w * 2 / weapons : w;
-  };
-  const tot = pool.reduce((t, id) => t + weight(id), 0);
+    return [id, it.group === "weapon" ? w * 2 / gw : it.group === "armor" ? w * 1.5 / ga : w];
+  });
+}
+function rollDropItem(rnd2, ctx = {}, role = "minion") {
+  const ws = dropWeights(ctx, role);
+  const tot = ws.reduce((t, [, w]) => t + w, 0);
   let r = rnd2() * tot;
-  for (const id of pool) {
-    r -= weight(id);
+  for (const [id, w] of ws) {
+    r -= w;
     if (r <= 0) return id;
   }
-  return pool[pool.length - 1];
+  return ws.length ? ws[ws.length - 1][0] : "pozione";
 }
 var romeDay = (now = Date.now()) => new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
 function boughtToday(charData, id, day = romeDay()) {
@@ -532,6 +794,12 @@ var DEFAULT_DUNGEONS = [
   { key: "palude", name: "La Palude Marcia", icon: "\u{1F438}", desc: "Acqua nera, nebbia e fango che risucchia: annegati che si rialzano e troll che non muoiono mai del tutto." },
   { key: "tempio", name: "Il Tempio Sepolto", icon: "\u{1F3DB}", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." }
 ];
+var DIFFICULTIES = [
+  { key: "facile", name: "Facile", icon: "\u{1F7E2}", rank: 0, minLevel: 1, hp: 1, dmg: 1, plus: 0, elite: 0.4, coins: 1, xp: 1, corone: 1, item: 1, chest: 1, boost: {}, desc: "Il dungeon di sempre: per tutti i livelli." },
+  { key: "medio", name: "Medio", icon: "\u{1F7E1}", rank: 1, minLevel: 8, hp: 1.12, dmg: 1.08, plus: 0, elite: 0.5, coins: 1.5, xp: 1.3, corone: 1.4, item: 1.5, chest: 1.25, boost: { rare: 1.5, veryRare: 1.5 }, desc: "Mostri pi\xF9 duri e pi\xF9 \xE9lite. Pi\xF9 monete, PE e oggetti rari." },
+  { key: "leggenda", name: "Leggenda", icon: "\u{1F534}", rank: 2, minLevel: 12, hp: 1.2, dmg: 1.12, plus: 1, elite: 0.55, coins: 2, xp: 1.6, corone: 2, item: 2, chest: 1.5, boost: { rare: 2, veryRare: 3 }, desc: "Solo per veterani: i mostri picchiano forte. Bottino doppio e oggetti che non escono altrove." }
+];
+var diffOf = (key) => DIFFICULTIES.find((d) => d.key === key) || DIFFICULTIES[0];
 var BA = (name, diceNum, diceType, bonus, extra = {}) => ({ type: "attack", name, diceNum, diceType, bonus, hitMode: "hit", aoeShape: "single", dmgType: "", ...extra });
 var BASE_MONSTERS = [
   {
@@ -745,8 +1013,9 @@ function makeHero(m) {
   const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
   const weaponKey = okItem ? wItem.base : hero.weapon || null;
   const weaponPlus = okItem ? wItem.plus || 0 : 0;
+  const def = heroDefense(m.cls, st, { armor: hero.armor, shield: hero.shield, weapon: weaponKey || weaponChoices(m.cls)[0]?.key, armorItem: itemOf(hero.armorItem), shieldItem: itemOf(hero.shieldItem) });
   const uses = {};
-  heroActions(m.cls, lv, picks, weaponKey, weaponPlus).forEach((a) => {
+  heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null).forEach((a) => {
     if (a.uses) uses[a.id] = a.uses;
   });
   return {
@@ -759,13 +1028,17 @@ function makeHero(m) {
     img: m.avatar || "",
     hp: maxHp,
     maxHp,
-    ac: heroAc(m.cls, st),
+    ac: def.ac,
     init: st.dex || 0,
-    save: Math.floor(profOf(lv) / 2),
+    save: Math.floor(profOf(lv) / 2) + def.saveBonus,
     st,
     picks,
     weapon: weaponKey,
     weaponPlus,
+    ...okItem ? { wItem: wItem.id } : {},
+    res: def.res,
+    ...def.thorns ? { thorns: def.thorns } : {},
+    gear: { armor: def.armorName, shield: def.shieldName },
     fx: {},
     uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
@@ -773,9 +1046,10 @@ function makeHero(m) {
     ...m.helper ? { helper: true } : {}
   };
 }
-function xpGain(level, floors) {
+function xpGain(level, floors, diff = "facile") {
   if (level >= MAX_STORY_LEVEL) return 0;
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08));
+  const mult = diffOf(diff).xp;
+  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08) * mult);
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 var CAPS = {
@@ -832,7 +1106,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     uses: {}
   };
 }
-function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize }) {
+function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
   const own = bestiary.filter((m) => !m._anyBoss);
   const all = own.length ? own : FALLBACK_MONSTERS;
@@ -851,14 +1125,14 @@ function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, part
     if (!mins.length) mins = FALLBACK_MONSTERS.filter((m) => m.role === "minion");
     const elites = fit("elite", partyLevel2 + 1);
     const escort = partySize <= 1 ? rnd() < 0.5 ? 1 : 0 : partySize === 2 ? 1 : 2;
-    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < 0.3 ? pick(elites) : pick(mins));
+    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < eliteChance * 0.75 ? pick(elites) : pick(mins));
   } else {
     let mins = fit("minion", partyLevel2 + 1);
     const elites = fit("elite", partyLevel2 + 2);
     if (!mins.length) mins = elites.length ? elites : FALLBACK_MONSTERS.filter((m) => m.role === "minion");
     const [lo, hi] = partySize <= 1 ? floor >= 2 ? [2, 3] : [1, 2] : [partySize, Math.min(5, partySize + 1)];
     let count = lo + Math.floor(rnd() * (hi - lo + 1));
-    if (floor >= 2 && elites.length && rnd() < 0.4) {
+    if (floor >= 2 && elites.length && rnd() < eliteChance) {
       picks.push(pick(elites));
       count = Math.max(0, count - 2);
     }
@@ -958,6 +1232,7 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     type: room.type,
     week: room.weekKey || "",
     startKey: room.startKey,
+    diff: diffOf(room.difficulty).key,
     dungeonName: dungeon.name,
     dungeonIcon: dungeon.icon || "\u{1F5DD}",
     bg: (dungeon.backgrounds || []).length ? pick(dungeon.backgrounds) : "",
@@ -1019,7 +1294,14 @@ function balanceFoes(foes, heroes, isBoss) {
 }
 function startFloor(s, bestiary, now) {
   s.boss = s.floor > s.floors;
-  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length }), s.heroes, s.boss);
+  const D = diffOf(s.diff);
+  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length, eliteChance: D.elite }), s.heroes, s.boss);
+  if (D.rank > 0) s.foes.forEach((f) => {
+    f.maxHp = f.hp = Math.max(3, Math.round(f.maxHp * D.hp));
+    f.cap = { ...f.cap, dmg: (f.cap?.dmg || 4) * D.dmg, hit: (f.cap?.hit ?? 3) + D.plus, dc: (f.cap?.dc ?? 11) + D.plus };
+    f.ac += D.plus;
+    f.save += D.plus;
+  });
   s.heroes.forEach((h) => {
     h.fx = {};
   });
@@ -1044,6 +1326,10 @@ function applyDamage(s, target, amount, type, notes) {
       notes.push("vulnerabile!");
       curTags[target.id] = "vul";
     }
+  } else if ((target.res || []).includes(type)) {
+    dmg = Math.floor(dmg / 2);
+    notes.push("resiste");
+    curTags[target.id] = "res";
   } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) {
     dmg = Math.floor(dmg / 2);
     notes.push("in furia");
@@ -1052,7 +1338,7 @@ function applyDamage(s, target, amount, type, notes) {
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
 }
-function attackRoll(s, att, def, bonus, { adv = false } = {}) {
+function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
   let a = adv || fxOn(s, att.fx.adv);
   let d = fxOn(s, att.fx.dis);
   if (a && d) {
@@ -1064,13 +1350,13 @@ function attackRoll(s, att, def, bonus, { adv = false } = {}) {
   const nat = r2 == null ? r1 : a ? Math.max(r1, r2) : Math.min(r1, r2);
   const total = nat + bonus;
   const ac = acOf(s, def);
-  return { nat, dice: r2 == null ? [r1] : [r1, r2], total, ac, hit: nat === 20 || nat !== 1 && total >= ac, crit: nat === 20, adv: a, dis: d };
+  return { nat, dice: r2 == null ? [r1] : [r1, r2], total, ac, hit: nat >= critAt || nat !== 1 && total >= ac, crit: nat >= critAt, adv: a, dis: d };
 }
 var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
 function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -1103,7 +1389,19 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "weapon" || a.kind === "spell") {
-    const n = attacksOf(h.cls, lv, a);
+    let n = attacksOf(h.cls, lv, a);
+    const wfx = a.kind === "weapon" ? a.wfx || null : null;
+    if (wfx?.multi) {
+      const r = die(100);
+      if (r <= (wfx.multi.none || 0)) {
+        log(s, `${a.icon} ${h.name} \u2192 ${a.name}: si inceppa, niente colpi questo turno!`, { kind: "miss", actor: h.id, targets: [target.id] });
+        return ev;
+      }
+      if (r <= (wfx.multi.none || 0) + (wfx.multi.double || 0)) {
+        n += 1;
+        log(s, `${a.icon} ${a.name}: un colpo in pi\xF9!`, { kind: "info", actor: h.id });
+      }
+    }
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
     const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
     if (a.selfDis) {
@@ -1116,7 +1414,7 @@ function heroAct(s, h, a, target) {
         if (!others.length) break;
         target = others[0];
       }
-      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv });
+      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv, critAt: wfx?.crit || 20 });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
       if (!r.hit) {
         log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } });
@@ -1157,6 +1455,11 @@ function heroAct(s, h, a, target) {
         const before = h.hp;
         h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2));
         extra += ` \xB7 si cura di ${h.hp - before}`;
+      }
+      if (wfx && alive(target)) {
+        const w = weaponHitFx(s, h, target, wfx, r.crit, notes);
+        total += w.dmg;
+        extra += w.txt;
       }
       log(
         s,
@@ -1318,6 +1621,65 @@ function foeAct(s, f) {
   }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
   log(s, `\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
+  if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
+    const [tn, ts] = parseDice(tgt.thorns.dice);
+    const notes = [];
+    curVfx = { fx: "slash", el: elOf(tgt.thorns.dmg), from: tgt.id };
+    const td = applyDamage(s, f, roll(tn, ts).t, tgt.thorns.dmg || "bludgeoning", notes);
+    f.lastHitBy = tgt.id;
+    log(s, `\u{1F373} ${f.name} si fa male sull'equipaggiamento di ${tgt.name}: \u2212${td}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", actor: tgt.id, targets: [f.id], dmg: td });
+  }
+}
+function weaponHitFx(s, h, t, fx, crit, notes) {
+  let dmg = 0;
+  let txt = "";
+  if (fx.extra) {
+    let [n, sd] = parseDice(fx.extra[0]);
+    if (crit) n *= 2;
+    const x = applyDamage(s, t, roll(n, sd).t, fx.extra[1], notes);
+    dmg += x;
+    txt += ` +${x} ${DMG_IT[fx.extra[1]] || ""}`;
+    if (fx.drain && x > 0) {
+      const before = h.hp;
+      h.hp = Math.min(h.maxHp, h.hp + Math.ceil(x * fx.drain / 100));
+      if (h.hp > before) txt += ` \xB7 ti cura di ${h.hp - before}`;
+    }
+  }
+  if (!alive(t)) return { dmg, txt };
+  const dot = (key, type, ico, word) => {
+    const o = fx[key];
+    if (!o || t.imm.includes(type) || die(100) > o.chance) return;
+    t.fx[key] = { dice: o.dice, until: s.round + (o.turns || 2) + 1, type, by: h.id };
+    txt += ` \xB7 ${ico} ${word}`;
+  };
+  dot("burn", "fire", "\u{1F525}", "brucia");
+  dot("poison", "poison", "\u2620", "avvelenato");
+  if (fx.slow && die(100) <= fx.slow.chance) {
+    t.fx.dis = Math.max(Number(t.fx.dis) || 0, s.round + (fx.slow.turns || 1) + 1);
+    txt += " \xB7 \u{1F40C} rallentato";
+  }
+  if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) {
+    t.fx.stun = true;
+    txt += " \xB7 \u{1F4AB} stordito";
+  }
+  return { dmg, txt };
+}
+function tickDots(s, f) {
+  for (const [key, ico, word] of [["burn", "\u{1F525}", "brucia"], ["poison", "\u2620", "soffre il veleno"]]) {
+    const o = f.fx[key];
+    if (!o || !alive(f)) continue;
+    if (!fxOn(s, o)) {
+      delete f.fx[key];
+      continue;
+    }
+    const [n, sd] = parseDice(o.dice);
+    const notes = [];
+    curVfx = { fx: "debuff", el: elOf(o.type), from: f.id };
+    const d = applyDamage(s, f, roll(n, sd).t, o.type, notes);
+    if (o.by) f.lastHitBy = o.by;
+    log(s, `${ico} ${f.name} ${word}: \u2212${d}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", targets: [f.id], dmg: d });
+    curVfx = null;
+  }
 }
 function checkEnd(s) {
   if (!s.heroes.some(alive)) {
@@ -1349,6 +1711,11 @@ function monsterPhase(s, now) {
     if (checkEnd(s)) return;
     const f = byId(s, id);
     if (!alive(f) || f.side !== "f") continue;
+    tickDots(s, f);
+    if (!alive(f)) {
+      lootDead(s);
+      continue;
+    }
     if (f.fx.stun) {
       f.fx.stun = false;
       log(s, `\u{1F4AB} ${f.name} \xE8 stordito e salta il turno.`, { kind: "debuff", actor: f.id });
@@ -1421,8 +1788,9 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
+  const cm = diffOf(s.diff).coins;
   const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => {
-    const c = die(FLOOR_COINS_DIE);
+    const c = Math.round(die(FLOOR_COINS_DIE) * cm);
     addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` });
     return `${h.name} ${c}`;
   });
@@ -1431,7 +1799,14 @@ function floorCoins(s) {
 function lootDead(s) {
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
-  const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
+  const D = diffOf(s.diff);
+  const ctx = {
+    dungeon: s.type,
+    rank: DIFF_RANK[D.key] || 0,
+    boost: D.boost,
+    bases: [...new Set(heroes.map((h) => h.weapon).filter(Boolean))],
+    classes: [...new Set(heroes.map((h) => h.cls))]
+  };
   s.foes.forEach((f) => {
     if (alive(f) || f.looted) return;
     f.looted = true;
@@ -1441,12 +1816,12 @@ function lootDead(s) {
     const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
-      const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
+      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins);
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`\u{1FA99} ${c} Monete Antiche`);
     }
-    if (die(100) <= ch.item) {
-      const id = rollDropItem(rnd, bases, f.role);
+    if (die(100) <= Math.min(95, ch.item * D.item)) {
+      const id = rollDropItem(rnd, ctx, f.role);
       const it = itemOf(id);
       if (it) {
         addSpoil(s, who.uid, { item: id, src: f.name });
@@ -1542,7 +1917,7 @@ function nextFloor(s, bestiary, now) {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
     const uses = {};
-    heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).forEach((a) => {
+    heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).forEach((a) => {
       if (a.uses) uses[a.id] = a.uses;
     });
     h.uses = uses;
@@ -1648,12 +2023,16 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   STAT_MAX,
   WEEKLY_RUNS,
   act,
+  armorChoices,
+  armorProf,
   bagOf,
   battleItem,
   boughtToday,
+  canWear,
   coinsOf,
   currentWeekKey,
   dailyLimit,
+  diffOf,
   flee,
   giftsToday,
   heroActions,
@@ -1661,6 +2040,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   heroPending,
   heroStats,
   hpPending,
+  isGear,
   itemOf,
   levelOfXp,
   mergeDungeons,

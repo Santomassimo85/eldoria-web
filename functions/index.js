@@ -2061,6 +2061,9 @@ exports.segreteDo = onCall(
     if (op === "heroEquip") {
       const cls = String(request.data?.cls || "");
       const itemId = request.data?.itemId ? String(request.data.itemId) : null;
+      // slot (2026-11-06): weapon (default, come prima) · armor · shield
+      const slot = ["armor", "shield"].includes(request.data?.slot) ? request.data.slot : "weapon";
+      const field = slot === "armor" ? "armorItem" : slot === "shield" ? "shieldItem" : "weaponItem";
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
       try {
@@ -2071,21 +2074,30 @@ exports.segreteDo = onCall(
           const hero = segreteBundle.heroOf(data, cls);
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
           const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
-          if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia arma quando hai finito.");
+          if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia equipaggiamento quando hai finito.");
           const bag = segreteBundle.bagOf(data);
           const patch = {};
-          const prev = hero.weaponItem && segreteBundle.itemOf(hero.weaponItem) ? hero.weaponItem : null;
+          const prev = hero[field] && segreteBundle.itemOf(hero[field]) ? hero[field] : null;
           if (itemId) {
             const it = segreteBundle.itemOf(itemId);
-            if (!it || it.kind !== "weapon") throw new Error("Non è un'arma.");
-            if (!segreteBundle.weaponChoices(cls).some((w) => w.key === it.base)) throw new Error("Questa classe non usa quel tipo d'arma.");
+            if (slot === "weapon") {
+              if (!it || it.kind !== "weapon") throw new Error("Non è un'arma.");
+              if (!segreteBundle.weaponChoices(cls).some((w) => w.key === it.base)) throw new Error("Questa classe non usa quel tipo d'arma.");
+            } else if (slot === "armor") {
+              if (!it || it.kind !== "armor") throw new Error("Non è un'armatura.");
+              if (!segreteBundle.canWear(cls, it.base)) throw new Error("Questa classe non sa portare quell'armatura.");
+            } else {
+              if (!it || it.kind !== "shield") throw new Error("Non è uno scudo.");
+              if (!segreteBundle.armorProf(cls).shield) throw new Error("Questa classe non usa lo scudo.");
+            }
             if (!(bag[itemId] > 0)) throw new Error("Non ce l'hai nello zaino.");
             if (prev === itemId) return { ok: true };
             patch[`storyBag.${itemId}`] = admin.firestore.FieldValue.increment(-1);
-            patch[`storyChars.${cls}.weapon`] = it.base;
+            if (slot === "weapon") patch[`storyChars.${cls}.weapon`] = it.base;
+            if (slot === "shield") patch[`storyChars.${cls}.shield`] = true;
           }
           if (prev) patch[`storyBag.${prev}`] = admin.firestore.FieldValue.increment(1);
-          patch[`storyChars.${cls}.weaponItem`] = itemId || admin.firestore.FieldValue.delete();
+          patch[`storyChars.${cls}.${field}`] = itemId || admin.firestore.FieldValue.delete();
           tx.update(ref, patch);
           return { ok: true };
         });
@@ -2095,7 +2107,7 @@ exports.segreteDo = onCall(
     }
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -2110,12 +2122,28 @@ exports.segreteDo = onCall(
             segreteBundle.STAT_KEYS.forEach((k) => { stats[k] = Number(request.data?.stats?.[k]) || 0; });
             const pick = String(request.data?.pick || "");
             const weapon = String(request.data?.weapon || "");
-            const bad = segreteBundle.validNewHero(cls, stats, pick, weapon);
+            const armor = request.data?.armor ? String(request.data.armor) : null;
+            const bad = segreteBundle.validNewHero(cls, stats, pick, weapon, armor);
             if (bad) throw new Error(bad);
-            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], weapon, xp: 0, createdAt: Date.now() } });
+            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], weapon, ...(armor ? { armor } : {}), shield: request.data?.shield !== false, xp: 0, createdAt: Date.now() } });
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
+          if (op === "heroArmor") {
+            // armatura di partenza (gratis, fra quelle che la classe sa portare) e scudo sì/no (2026-11-06)
+            const armor = String(request.data?.armor || "");
+            if (!segreteBundle.armorChoices(cls).includes(armor)) throw new Error("Armatura non adatta a questa classe.");
+            const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
+            if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia armatura quando hai finito.");
+            const patch = { [`storyChars.${cls}.armor`]: armor, [`storyChars.${cls}.shield`]: request.data?.shield !== false };
+            // l'armatura magica equipaggiata torna nello zaino: si usa quella scelta
+            if (hero.armorItem && segreteBundle.itemOf(hero.armorItem)) {
+              patch[`storyBag.${hero.armorItem}`] = admin.firestore.FieldValue.increment(1);
+              patch[`storyChars.${cls}.armorItem`] = admin.firestore.FieldValue.delete();
+            }
+            tx.update(ref, patch);
+            return { ok: true };
+          }
           if (op === "heroWeapon") {
             // eroi creati prima delle armi (2026-11-04): scelgono l'arma una volta sola
             if (hero.weapon) throw new Error("L'arma l'hai già scelta.");
@@ -2195,6 +2223,14 @@ exports.segreteDo = onCall(
             const cs = await tx.get(db.collection("characters").doc(m.uid));
             charSnaps.push([m, cs]);
             heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", hero: segreteBundle.heroOf(cs.exists ? cs.data() : {}, m.cls) });
+          }
+          // DIFFICOLTÀ (2026-11-06): a Medio e Leggenda ogni eroe deve avere il livello minimo (il Master no)
+          const diff = segreteBundle.diffOf(room.difficulty);
+          const low = heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.levelOfXp(h.hero.xp) < diff.minLevel);
+          if (low.length) {
+            const msg = `per ${diff.name} serve almeno il livello ${diff.minLevel}: ${low.map((h) => `${h.name} è Lv ${segreteBundle.levelOfXp(h.hero.xp)}`).join(", ")}`;
+            tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
+            return { ok: false, blocked: msg };
           }
           const noHero = heroes.filter((h) => !h.hero || segreteBundle.hpPending(h.hero) > 0);
           if (noHero.length) {
@@ -2292,8 +2328,9 @@ exports.segreteDo = onCall(
             const snaps = winners.map((h) => [h, charMap[h.uid]]);
             // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
             const lootPool = lootQ.docs.filter((d) => { const ds = d.data().dungeons || []; return !ds.length || ds.includes(run.type); });
-            const corone = Math.max(0, Math.min(100, Number(run.corone ?? 5)));
-            const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35)));
+            const D = segreteBundle.diffOf(run.diff);
+            const corone = Math.max(0, Math.min(100, Math.round(Number(run.corone ?? 5) * D.corone)));
+            const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35) * D.chest));
             if (lootPool.length && winners.length && crypto.randomInt(0, 100) < chance) {
               const item = lootPool[crypto.randomInt(0, lootPool.length)];
               const w = winners[crypto.randomInt(0, winners.length)];
@@ -2320,7 +2357,7 @@ exports.segreteDo = onCall(
               }
               if (hero) {
                 const from = segreteBundle.levelOfXp(hero.xp);
-                const gain = segreteBundle.xpGain(from, run.floors);
+                const gain = segreteBundle.xpGain(from, run.floors, run.diff);
                 const xp = (Number(hero.xp) || 0) + gain;
                 patch[`storyChars.${h.cls}.xp`] = xp;
                 run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, from, to: segreteBundle.levelOfXp(xp) });
@@ -2337,7 +2374,7 @@ exports.segreteDo = onCall(
             const lu = (run.levelUps || []).find((l) => l.uid === h.uid);
             const won = run.status === "won" && !h.fled && !h.helper;
             const entry = {
-              at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝",
+              at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝", diff: run.diff || "facile",
               cls: h.cls, result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
               coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
               xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,

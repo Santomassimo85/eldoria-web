@@ -1,7 +1,7 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
-import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, clsStyle } from "../data/segrete";
-import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, weaponChoices, DMG_SHORT } from "../data/segreteKits";
+import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
+import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT } from "../data/segreteKits";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -56,6 +56,34 @@ export default function SegreteManual() {
             </span>
           ))}
         </div>
+      </Fold>
+
+      <Fold icon="🛡" title="Armature e scudi">
+        <ul>
+          <li>Ogni classe porta le armature del manuale D&D: le scegli quando crei l'eroe e le cambi dalla sua scheda (mai durante un dungeon).</li>
+          <li>Leggere: CA base + DES. Medie: CA base + DES fino a +2. Pesanti: CA fissa. Barbaro e Monaco hanno anche la <b>Difesa senz'armatura</b>; Mago e Stregone l'<b>Armatura Magica</b> (13 + DES).</li>
+          <li><b>Scudo</b> +2 CA, solo con un'arma a una mano.</li>
+          <li>Mezza armatura, Armatura a Stecche e Piastre si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
+        </ul>
+        <div className="sgm-classes">
+          {STORY_CLASSES.map((c) => (
+            <span key={c.key} className="sgm-cls" style={clsStyle(c.key)}>
+              <b>{c.icon} {c.it}</b>
+              <small>{armorProf(c.key).cats.map((k) => ARMOR_CAT_IT[k]).join(", ")}{armorProf(c.key).shield ? ", scudo" : ""}</small>
+            </span>
+          ))}
+        </div>
+      </Fold>
+
+      <Fold icon="🔥" title="Difficoltà e bottino dei dungeon">
+        <ul>
+          {DIFFICULTIES.map((d) => (
+            <li key={d.key}><b>{d.icon} {d.name}</b>{d.minLevel > 1 ? ` (ogni eroe almeno Lv ${d.minLevel})` : ""}: {d.desc}{d.rank > 0 ? ` Mostri con PF ×${String(d.hp).replace(".", ",")} e danni ×${String(d.dmg).replace(".", ",")}${d.plus ? `, +${d.plus} a colpire e CA` : ""}; monete ×${String(d.coins).replace(".", ",")}, PE ×${String(d.xp).replace(".", ",")}, oggetti ×${String(d.item).replace(".", ",")}.` : ""}</li>
+          ))}
+          <li>La sceglie il capo del gruppo. Sotto ogni dungeon c'è il riquadro <b>📜 Cosa c'è qui</b>: nemici, premi e tutti gli oggetti che possono cadere con la loro probabilità.</li>
+          <li>Ogni dungeon ha oggetti suoi (★), e alcuni escono solo a Medio o Leggenda.</li>
+          <li><b>Armi speciali</b>: alcune bruciano o avvelenano (danno a ogni turno del mostro), rallentano (svantaggio), stordiscono, curano chi le usa o fanno colpi in più. I boss evitano lo stordimento metà delle volte.</li>
+        </ul>
       </Fold>
 
       <Fold icon="📅" title="Quanti dungeon si possono fare">

@@ -74,7 +74,89 @@ export function weaponOf(cls, key) {
   return list.find((w) => w.key === key) || list[0];
 }
 // plus = arma magica equipaggiata (+1/+2 a colpire e ai danni, vedi segreteItems.js)
-export const weaponAction = (w, plus = 0) => ({ id: "arma", name: plus ? `${w.name} +${plus}` : w.name, icon: w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}` });
+// wItem = oggetto arma equipaggiato (nome proprio ed effetti al colpo `fx`, 2026-11-06)
+export const weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}), info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}` });
+// testo breve degli effetti al colpo di un'arma speciale
+export function fxLine(fx = {}) {
+  const out = [];
+  if (fx.extra) out.push(`+${fx.extra[0]} ${DMG_ALL[fx.extra[1]] || ""}`);
+  if (fx.burn) out.push(`${fx.burn.chance}% 🔥 brucia ${fx.burn.dice}/turno`);
+  if (fx.poison) out.push(`${fx.poison.chance}% ☠ avvelena ${fx.poison.dice}/turno`);
+  if (fx.slow) out.push(`${fx.slow.chance}% 🐌 rallenta`);
+  if (fx.stun) out.push(`${fx.stun.chance}% 💫 stordisce`);
+  if (fx.drain) out.push(`il danno extra ti cura del ${fx.drain}%`);
+  if (fx.crit) out.push(`critico con ${fx.crit}–20`);
+  if (fx.multi) out.push(`${fx.multi.double}% un colpo in più, ${fx.multi.none}% nessuno`);
+  return out.join(" · ");
+}
+export const DMG_ALL = { slashing: "tagliente", piercing: "perforante", bludgeoning: "contundente", fire: "fuoco", cold: "freddo", lightning: "fulmine", thunder: "tuono", acid: "acido", poison: "veleno", necrotic: "necrotico", radiant: "radioso", force: "forza", psychic: "psichico" };
+
+/* ARMATURE (2026-11-06) come in D&D. cat: none (abiti) · mage (Armatura Magica, Mago e
+   Stregone) · unarmored (Difesa senz'armatura di Barbaro e Monaco) · light · medium · heavy.
+   CA = base + DES (medie: DES massimo +2; pesanti: niente DES). Scudo +2 se la classe lo sa
+   usare e l'arma non è a due mani. `start` = si sceglie gratis; le altre (Mezza armatura,
+   Stecche, Piastre) sono oggetti da comprare in Bottega o da trovare nei dungeon. */
+export const ARMORS = {
+  abiti: { name: "Abiti da viaggio", icon: "👕", cat: "none", base: 10, dex: 99, start: true },
+  magica: { name: "Armatura Magica", icon: "✨", cat: "mage", base: 13, dex: 99, start: true },
+  senza: { name: "Difesa senz'armatura", icon: "💪", cat: "unarmored", start: true },
+  cuoio: { name: "Armatura di Cuoio", icon: "🧥", cat: "light", base: 11, dex: 99, start: true },
+  borchiato: { name: "Cuoio Borchiato", icon: "🦺", cat: "light", base: 12, dex: 99, start: true },
+  pelle: { name: "Armatura di Pelle", icon: "🐻", cat: "medium", base: 12, dex: 2, start: true },
+  giaco: { name: "Giaco di Maglia", icon: "⛓", cat: "medium", base: 13, dex: 2, start: true },
+  scaglie: { name: "Corazza di Scaglie", icon: "🐉", cat: "medium", base: 14, dex: 2, start: true },
+  mezza: { name: "Mezza Armatura", icon: "🛡", cat: "medium", base: 15, dex: 2 },
+  anelli: { name: "Cotta ad Anelli", icon: "⛓", cat: "heavy", base: 14, dex: 0, start: true },
+  maglia: { name: "Cotta di Maglia", icon: "⛓", cat: "heavy", base: 16, dex: 0, start: true },
+  stecche: { name: "Armatura a Stecche", icon: "🛡", cat: "heavy", base: 17, dex: 0 },
+  piastre: { name: "Armatura di Piastre", icon: "🏰", cat: "heavy", base: 18, dex: 0 },
+};
+export const ARMOR_CAT_IT = { none: "abiti", mage: "magia", unarmored: "senz'armatura", light: "leggera", medium: "media", heavy: "pesante" };
+// competenze del manuale (il Chierico come i domini di Guerra/Vita: anche le pesanti)
+export const ARMOR_PROF = {
+  fighter: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  paladin: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  cleric: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
+  barbarian: { cats: ["unarmored", "light", "medium"], shield: true, def: "senza" },
+  ranger: { cats: ["light", "medium"], shield: true, def: "borchiato" },
+  druid: { cats: ["light", "medium"], shield: true, def: "cuoio" },
+  monk: { cats: ["unarmored"], shield: false, def: "senza" },
+  rogue: { cats: ["light"], shield: false, def: "borchiato" },
+  bard: { cats: ["light"], shield: false, def: "borchiato" },
+  warlock: { cats: ["light"], shield: false, def: "borchiato" },
+  wizard: { cats: ["none", "mage"], shield: false, def: "magica" },
+  sorcerer: { cats: ["none", "mage"], shield: false, def: "magica" },
+};
+export const TWO_HANDED = new Set(["ascia_bip", "maglio", "arco_lungo", "balestra_l"]);
+export const armorProf = (cls) => ARMOR_PROF[cls] || ARMOR_PROF.fighter;
+export const canWear = (cls, key) => !!ARMORS[key] && armorProf(cls).cats.includes(ARMORS[key].cat);
+export const armorChoices = (cls) => Object.keys(ARMORS).filter((k) => ARMORS[k].start && canWear(cls, k));
+export const shieldOk = (cls, weaponKey) => armorProf(cls).shield && !TWO_HANDED.has(weaponKey);
+/* Difesa dell'eroe. g = { armor, shield, weapon, armorItem, shieldItem } con gli OGGETTI già
+   risolti (itemOf: qui non si importa segreteItems per non fare un ciclo). */
+export function heroDefense(cls, st, g = {}) {
+  const dex = st.dex || 0;
+  const ai = g.armorItem && g.armorItem.kind === "armor" && canWear(cls, g.armorItem.base) ? g.armorItem : null;
+  let key = ai ? ai.base : g.armor;
+  if (!ai && !(canWear(cls, key) && ARMORS[key].start)) key = armorProf(cls).def;
+  const ar = ARMORS[key];
+  let ac;
+  if (ar.cat === "unarmored") ac = 10 + dex + (st[kitOf(cls).unarmored] || 0);
+  else ac = ar.base + (ar.dex === 0 ? 0 : Math.min(dex, ar.dex)) + (ai?.plus || 0);
+  const si = g.shieldItem && g.shieldItem.kind === "shield" ? g.shieldItem : null;
+  const canShield = shieldOk(cls, g.weapon);
+  const shield = canShield && (!!si || g.shield !== false);
+  if (shield) ac += 2 + (si?.plus || 0);
+  const parts = [ai, shield ? si : null].filter(Boolean);
+  return {
+    ac, key, cat: ar.cat, shield, canShield,
+    armorName: ai ? ai.name : ar.name, armorIcon: ai ? ai.icon : ar.icon,
+    shieldName: shield ? (si ? si.name : "Scudo") : "",
+    res: [...new Set(parts.flatMap((p) => p.res || []))],
+    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0),
+    thorns: parts.find((p) => p.thorns)?.thorns || null,
+  };
+}
 // modificatore di un'azione d'arma (colpire e danni)
 export function weaponMod(cls, st, a) {
   if (!a?.wstat) return mainMod(cls, st);
@@ -211,12 +293,12 @@ export const DEFEND = { id: "difesa", name: "Difendersi", icon: "🛡", kind: "d
 
 export const kitOf = (cls) => KITS[cls] || KITS.fighter;
 export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-export function heroActions(cls, lv, picks = [], weapon = null, plus = 0) {
+export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null) {
   const k = kitOf(cls);
   const w = weaponOf(cls, weapon);
-  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0 } : a);
+  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w, plus), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */
@@ -242,12 +324,8 @@ export function heroMaxHp(cls, lv, st, rolls = []) {
   }
   return Math.max(1, Math.round(hp * HERO_HP_MULT)) + HERO_HP_BASE;
 }
-export function heroAc(cls, st) {
-  const k = kitOf(cls);
-  if (k.armor === "heavy") return k.ac;
-  if (k.armor === "unarmored") return 10 + (st.dex || 0) + (st[k.unarmored] || 0);
-  return k.ac - 3 + (st.dex || 0);
-}
+// CA dell'eroe (dal 2026-11-06 dall'armatura scelta: senza `g` = armatura di partenza della classe)
+export const heroAc = (cls, st, g = {}) => heroDefense(cls, st, g).ac;
 export const heroDc = (cls, lv, st) => 8 + profOf(lv) + mainMod(cls, st);
 export const heroHit = (cls, lv, st) => profOf(lv) + mainMod(cls, st);
 export function attacksOf(cls, lv, action) {
@@ -256,9 +334,10 @@ export function attacksOf(cls, lv, action) {
 }
 
 /* Validazione della scheda (la usa il server) */
-export function validNewHero(cls, stats, pick, weapon) {
+export function validNewHero(cls, stats, pick, weapon, armor = null) {
   if (!KITS[cls]) return "Classe sconosciuta.";
   if (!weaponChoices(cls).some((w) => w.key === weapon)) return "Scegli l'arma.";
+  if (armor && !armorChoices(cls).includes(armor)) return "Armatura non adatta a questa classe.";
   let sum = 0;
   for (const k of STAT_KEYS) {
     const v = Number(stats?.[k]) || 0;

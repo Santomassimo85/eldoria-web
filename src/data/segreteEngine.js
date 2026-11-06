@@ -11,9 +11,9 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem } from "./segreteItems";
-import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroAc, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
-import { sizeOf } from "./segrete";
+import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
+import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { sizeOf, diffOf } from "./segrete";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 5 * 60 * 1000; // 5 minuti per agire (2026-11-05, prima 10)
@@ -70,11 +70,15 @@ export function makeHero(m) {
   const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
   const weaponKey = okItem ? wItem.base : hero.weapon || null;
   const weaponPlus = okItem ? wItem.plus || 0 : 0;
+  // armatura e scudo (2026-11-06): CA, resistenze, +TS e "spine" dagli oggetti equipaggiati
+  const def = heroDefense(m.cls, st, { armor: hero.armor, shield: hero.shield, weapon: weaponKey || weaponChoices(m.cls)[0]?.key, armorItem: itemOf(hero.armorItem), shieldItem: itemOf(hero.shieldItem) });
   const uses = {};
-  heroActions(m.cls, lv, picks, weaponKey, weaponPlus).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+  heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
-    hp: maxHp, maxHp, ac: heroAc(m.cls, st), init: st.dex || 0, save: Math.floor(profOf(lv) / 2), st, picks, weapon: weaponKey, weaponPlus,
+    hp: maxHp, maxHp, ac: def.ac, init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus, st, picks, weapon: weaponKey, weaponPlus,
+    ...(okItem ? { wItem: wItem.id } : {}), res: def.res, ...(def.thorns ? { thorns: def.thorns } : {}),
+    gear: { armor: def.armorName, shield: def.shieldName },
     fx: {}, uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
     // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
@@ -83,11 +87,12 @@ export function makeHero(m) {
 }
 /* PE alla vittoria: una fetta del salto verso il livello dopo (8% a sala + 12% il boss:
    con 3 sale ~36% → ~3 dungeon per livello, con 3 dungeon a settimana ~1 livello a settimana). */
-export function xpGain(level, floors) {
+export function xpGain(level, floors, diff = "facile") {
   if (level >= MAX_STORY_LEVEL) return 0;
+  const mult = diffOf(diff).xp;
   // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
   // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08));
+  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08) * mult);
 }
 /* Il mostro si adatta al livello del gruppo (2026-11-04, simulato): più debole del
    gruppo = più PF e colpi più forti; più forte = un po' meno. Élite e boss
@@ -139,7 +144,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 }
 
 /* Sala n (1-based): normale = gregari (e a volte un'élite), ultima = boss. */
-export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize }) {
+export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
   // `_anyBoss` = boss di altri dungeon (li passa il server): si usano solo se questo dungeon non ha un boss suo
   const own = bestiary.filter((m) => !m._anyBoss);
@@ -161,7 +166,7 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize 
     if (!mins.length) mins = FALLBACK_MONSTERS.filter((m) => m.role === "minion");
     const elites = fit("elite", partyLevel + 1);
     const escort = partySize <= 1 ? (rnd() < 0.5 ? 1 : 0) : partySize === 2 ? 1 : 2;
-    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < 0.3 ? pick(elites) : pick(mins));
+    for (let i = 0; i < escort; i++) picks.push(elites.length && rnd() < eliteChance * 0.75 ? pick(elites) : pick(mins));
   } else {
     let mins = fit("minion", partyLevel + 1);
     const elites = fit("elite", partyLevel + 2);
@@ -171,7 +176,7 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize 
     // li decide il budget (balanceFoes), quindi più mostri = mostri più deboli.
     const [lo, hi] = partySize <= 1 ? (floor >= 2 ? [2, 3] : [1, 2]) : [partySize, Math.min(5, partySize + 1)];
     let count = lo + Math.floor(rnd() * (hi - lo + 1));
-    if (floor >= 2 && elites.length && rnd() < 0.4) { picks.push(pick(elites)); count = Math.max(0, count - 2); }
+    if (floor >= 2 && elites.length && rnd() < eliteChance) { picks.push(pick(elites)); count = Math.max(0, count - 2); }
     for (let i = 0; i < count; i++) picks.push(pick(mins));
   }
   // nomi doppi → "Goblin A", "Goblin B"
@@ -266,7 +271,7 @@ function rollInitiative(s) {
 
 export function newRun({ room, heroes, bestiary, dungeon, now }) {
   const s = {
-    roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey,
+    roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey, diff: diffOf(room.difficulty).key,
     dungeonName: dungeon.name, dungeonIcon: dungeon.icon || "🗝",
     bg: (dungeon.backgrounds || []).length ? pick(dungeon.backgrounds) : "",
     floors: dungeon.floors || 3, floor: 1, status: "fight",
@@ -320,7 +325,14 @@ export function balanceFoes(foes, heroes, isBoss) {
 }
 function startFloor(s, bestiary, now) {
   s.boss = s.floor > s.floors;
-  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length }), s.heroes, s.boss);
+  const D = diffOf(s.diff);
+  s.foes = balanceFoes(buildEncounter(bestiary, { floor: s.floor, floors: s.floors, partyLevel: partyLevel(s), partySize: s.heroes.filter((h) => !h.fled).length, eliteChance: D.elite }), s.heroes, s.boss);
+  // DIFFICOLTÀ (2026-11-06): Medio e Leggenda alzano PF, danni, colpire, CD, CA e TS dei mostri
+  if (D.rank > 0) s.foes.forEach((f) => {
+    f.maxHp = f.hp = Math.max(3, Math.round(f.maxHp * D.hp));
+    f.cap = { ...f.cap, dmg: (f.cap?.dmg || 4) * D.dmg, hit: (f.cap?.hit ?? 3) + D.plus, dc: (f.cap?.dc ?? 11) + D.plus };
+    f.ac += D.plus; f.save += D.plus;
+  });
   s.heroes.forEach((h) => { h.fx = {}; });
   s.status = "fight";
   rollInitiative(s);
@@ -337,11 +349,12 @@ function applyDamage(s, target, amount, type, notes) {
     if (target.imm.includes(type)) { dmg = 0; notes.push("immune"); curTags[target.id] = "imm"; }
     else if (target.res.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
     else if (target.vul.includes(type)) { dmg *= 2; notes.push("vulnerabile!"); curTags[target.id] = "vul"; }
-  } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
+  } else if ((target.res || []).includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
+  else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
 }
-function attackRoll(s, att, def, bonus, { adv = false } = {}) {
+function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
   let a = adv || fxOn(s, att.fx.adv);
   let d = fxOn(s, att.fx.dis);
   if (a && d) { a = false; d = false; }
@@ -349,7 +362,7 @@ function attackRoll(s, att, def, bonus, { adv = false } = {}) {
   const nat = r2 == null ? r1 : a ? Math.max(r1, r2) : Math.min(r1, r2);
   const total = nat + bonus;
   const ac = acOf(s, def);
-  return { nat, dice: r2 == null ? [r1] : [r1, r2], total, ac, hit: nat === 20 || (nat !== 1 && total >= ac), crit: nat === 20, adv: a, dis: d };
+  return { nat, dice: r2 == null ? [r1] : [r1, r2], total, ac, hit: nat >= critAt || (nat !== 1 && total >= ac), crit: nat >= critAt, adv: a, dis: d };
 }
 const advTag = (r) => (r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "");
 const dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
@@ -357,7 +370,7 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -390,7 +403,17 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "weapon" || a.kind === "spell") {
-    const n = attacksOf(h.cls, lv, a);
+    let n = attacksOf(h.cls, lv, a);
+    const wfx = a.kind === "weapon" ? a.wfx || null : null;
+    // Arco del Ratto Ubriaco & co.: a volte un colpo in più, a volte nessuno
+    if (wfx?.multi) {
+      const r = die(100);
+      if (r <= (wfx.multi.none || 0)) {
+        log(s, `${a.icon} ${h.name} → ${a.name}: si inceppa, niente colpi questo turno!`, { kind: "miss", actor: h.id, targets: [target.id] });
+        return ev;
+      }
+      if (r <= (wfx.multi.none || 0) + (wfx.multi.double || 0)) { n += 1; log(s, `${a.icon} ${a.name}: un colpo in più!`, { kind: "info", actor: h.id }); }
+    }
     // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
     const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
@@ -402,7 +425,7 @@ function heroAct(s, h, a, target) {
         if (!others.length) break;
         target = others[0];
       }
-      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv });
+      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv, critAt: wfx?.crit || 20 });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
       if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } }); continue; }
       let [dn, ds] = diceFor(a, lv);
@@ -425,6 +448,7 @@ function heroAct(s, h, a, target) {
         if (sv < heroDc(h.cls, lv, st)) { target.fx.stun = true; extra += ` · 💫 stordito (TS ${sv})`; } else extra += ` · resiste allo stordimento (${sv})`;
       }
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
+      if (wfx && alive(target)) { const w = weaponHitFx(s, h, target, wfx, r.crit, notes); total += w.dmg; extra += w.txt; }
       log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } });
     }
@@ -574,6 +598,56 @@ function foeAct(s, f) {
   if (!r.hit) { log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } }); return; }
   const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
   log(s, `⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
+  // scudo/armatura con le "spine" (2026-11-06): chi colpisce in mischia a volte si fa male
+  if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
+    const [tn, ts] = parseDice(tgt.thorns.dice);
+    const notes = [];
+    curVfx = { fx: "slash", el: elOf(tgt.thorns.dmg), from: tgt.id };
+    const td = applyDamage(s, f, roll(tn, ts).t, tgt.thorns.dmg || "bludgeoning", notes);
+    f.lastHitBy = tgt.id;
+    log(s, `🍳 ${f.name} si fa male sull'equipaggiamento di ${tgt.name}: −${td}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", actor: tgt.id, targets: [f.id], dmg: td });
+  }
+}
+
+/* EFFETTI AL COLPO delle armi speciali (2026-11-06): danno extra, bruciatura e veleno (danno a
+   ogni turno del mostro, vedi tickDots), rallentato (svantaggio), stordito, risucchio. */
+function weaponHitFx(s, h, t, fx, crit, notes) {
+  let dmg = 0;
+  let txt = "";
+  if (fx.extra) {
+    let [n, sd] = parseDice(fx.extra[0]);
+    if (crit) n *= 2;
+    const x = applyDamage(s, t, roll(n, sd).t, fx.extra[1], notes);
+    dmg += x; txt += ` +${x} ${DMG_IT[fx.extra[1]] || ""}`;
+    if (fx.drain && x > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.ceil((x * fx.drain) / 100)); if (h.hp > before) txt += ` · ti cura di ${h.hp - before}`; }
+  }
+  if (!alive(t)) return { dmg, txt };
+  const dot = (key, type, ico, word) => {
+    const o = fx[key];
+    if (!o || t.imm.includes(type) || die(100) > o.chance) return;
+    t.fx[key] = { dice: o.dice, until: s.round + (o.turns || 2) + 1, type, by: h.id };
+    txt += ` · ${ico} ${word}`;
+  };
+  dot("burn", "fire", "🔥", "brucia");
+  dot("poison", "poison", "☠", "avvelenato");
+  if (fx.slow && die(100) <= fx.slow.chance) { t.fx.dis = Math.max(Number(t.fx.dis) || 0, s.round + (fx.slow.turns || 1) + 1); txt += " · 🐌 rallentato"; }
+  if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) { t.fx.stun = true; txt += " · 💫 stordito"; }
+  return { dmg, txt };
+}
+/* Bruciature e veleni: all'inizio del turno del mostro, poi scadono. */
+function tickDots(s, f) {
+  for (const [key, ico, word] of [["burn", "🔥", "brucia"], ["poison", "☠", "soffre il veleno"]]) {
+    const o = f.fx[key];
+    if (!o || !alive(f)) continue;
+    if (!fxOn(s, o)) { delete f.fx[key]; continue; }
+    const [n, sd] = parseDice(o.dice);
+    const notes = [];
+    curVfx = { fx: "debuff", el: elOf(o.type), from: f.id };
+    const d = applyDamage(s, f, roll(n, sd).t, o.type, notes);
+    if (o.by) f.lastHitBy = o.by;
+    log(s, `${ico} ${f.name} ${word}: −${d}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(f)}`, { kind: "hit", targets: [f.id], dmg: d });
+    curVfx = null;
+  }
 }
 
 /* ── giro dei turni ──────────────────────────────────── */
@@ -599,6 +673,8 @@ function monsterPhase(s, now) {
     if (checkEnd(s)) return;
     const f = byId(s, id);
     if (!alive(f) || f.side !== "f") continue; // le partite di prima del cambio avevano anche gli eroi in order
+    tickDots(s, f);
+    if (!alive(f)) { lootDead(s); continue; }
     if (f.fx.stun) { f.fx.stun = false; log(s, `💫 ${f.name} è stordito e salta il turno.`, { kind: "debuff", actor: f.id }); continue; }
     foeAct(s, f);
     curVfx = null;
@@ -676,7 +752,8 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => { const c = die(FLOOR_COINS_DIE); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
+  const cm = diffOf(s.diff).coins;
+  const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => { const c = Math.round(die(FLOOR_COINS_DIE) * cm); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
   if (got.length) log(s, `🪙 Monete Antiche dalla sala: ${got.join(" · ")}.`, { kind: "loot" });
 }
 // Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
@@ -684,7 +761,9 @@ export function lootDead(s) {
   // chi aiuta (limiti pieni) non entra nel tiro del bottino; se aiutano tutti, i mostri non lasciano niente
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
-  const bases = [...new Set(heroes.map((h) => h.weapon).filter(Boolean))];
+  const D = diffOf(s.diff);
+  const ctx = { dungeon: s.type, rank: DIFF_RANK[D.key] || 0, boost: D.boost,
+    bases: [...new Set(heroes.map((h) => h.weapon).filter(Boolean))], classes: [...new Set(heroes.map((h) => h.cls))] };
   s.foes.forEach((f) => {
     if (alive(f) || f.looted) return;
     f.looted = true;
@@ -696,12 +775,12 @@ export function lootDead(s) {
     const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
-      const c = roll(ch.coinDice[0], ch.coinDice[1]).t;
+      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins);
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`🪙 ${c} Monete Antiche`);
     }
-    if (die(100) <= ch.item) {
-      const id = rollDropItem(rnd, bases, f.role);
+    if (die(100) <= Math.min(95, ch.item * D.item)) {
+      const id = rollDropItem(rnd, ctx, f.role);
       const it = itemOf(id);
       if (it) { addSpoil(s, who.uid, { item: id, src: f.name }); parts.push(`${it.icon} ${it.name}`); }
     }
@@ -795,7 +874,7 @@ export function nextFloor(s, bestiary, now) {
   s.heroes.forEach((h) => {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
-    const uses = {}; heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
+    const uses = {}; heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
     h.uses = uses;
   });
   s.floor += 1;

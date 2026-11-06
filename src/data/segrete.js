@@ -28,6 +28,19 @@ export const DEFAULT_DUNGEONS = [
   { key: "tempio", name: "Il Tempio Sepolto", icon: "🏛", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." },
 ];
 
+/* DIFFICOLTÀ (2026-11-06): il capo del gruppo sceglie Facile (il gioco di sempre), Medio o
+   Leggenda. Per Medio e Leggenda OGNI eroe del gruppo deve avere almeno `minLevel` (il Master
+   è esente). Mostri: PF ×hp, danni ×dmg, +plus a colpire/CD/CA/TS, élite più frequenti (tarato con le
+   simulazioni del 2026-11-06: al livello minimo Medio ~20 punti di vittorie in meno, Leggenda ~25).
+   Premi: monete ×coins, PE ×xp, Corone ×corone, probabilità di un oggetto ×item, rarità alte
+   ×boost, forziere del Master ×chest; gli oggetti con `minDiff` escono solo da lì in su. */
+export const DIFFICULTIES = [
+  { key: "facile", name: "Facile", icon: "🟢", rank: 0, minLevel: 1, hp: 1, dmg: 1, plus: 0, elite: 0.4, coins: 1, xp: 1, corone: 1, item: 1, chest: 1, boost: {}, desc: "Il dungeon di sempre: per tutti i livelli." },
+  { key: "medio", name: "Medio", icon: "🟡", rank: 1, minLevel: 8, hp: 1.12, dmg: 1.08, plus: 0, elite: 0.5, coins: 1.5, xp: 1.3, corone: 1.4, item: 1.5, chest: 1.25, boost: { rare: 1.5, veryRare: 1.5 }, desc: "Mostri più duri e più élite. Più monete, PE e oggetti rari." },
+  { key: "leggenda", name: "Leggenda", icon: "🔴", rank: 2, minLevel: 12, hp: 1.2, dmg: 1.12, plus: 1, elite: 0.55, coins: 2, xp: 1.6, corone: 2, item: 2, chest: 1.5, boost: { rare: 2, veryRare: 3 }, desc: "Solo per veterani: i mostri picchiano forte. Bottino doppio e oggetti che non escono altrove." },
+];
+export const diffOf = (key) => DIFFICULTIES.find((d) => d.key === key) || DIFFICULTIES[0];
+
 /* MOSTRI DI BASE (2026-11-06): stanno nel codice come i dungeon di base e si uniscono al
    bestiario (dungeon_monsters). Il Master li modifica dall'admin: il salvataggio crea un doc
    con lo STESSO id che li sovrascrive; eliminarli = doc con hidden: true. */
