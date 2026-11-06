@@ -1,7 +1,7 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
 import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
-import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT } from "../data/segreteKits";
+import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS } from "../data/segreteKits";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -77,6 +77,7 @@ export default function SegreteManual() {
           <li>Ogni classe porta le armature del manuale D&D: le scegli quando crei l'eroe e le cambi dal riquadro <b>🎒 Equipaggiamento</b> della sua scheda (mai durante un dungeon). Dallo Zaino il tasto «🛡 Equipaggia» mette un oggetto su un tuo eroe.</li>
           <li>Leggere: CA base + DES. Medie: CA base + DES fino a +2. Pesanti: CA fissa. Barbaro e Monaco hanno anche la <b>Difesa senz'armatura</b>; Mago e Stregone l'<b>Armatura Magica</b> (13 + DES).</li>
           <li><b>Scudo</b> +2 CA, solo con un'arma a una mano.</li>
+          <li><b>✦ Le armature più leggere hanno un vantaggio</b>, così non sono mai una scelta inutile: {Object.values(ARMORS).filter((x) => x.perk).map((x) => `${x.name} (${x.perk.text.split(": ")[1]})`).join(" · ")}. Valgono anche le loro versioni +1.</li>
           <li>Mezza armatura, Armatura a Stecche e Piastre si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
         </ul>
         <div className="sgm-classes">

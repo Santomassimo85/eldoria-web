@@ -119,17 +119,21 @@ export const DMG_ALL = { slashing: "tagliente", piercing: "perforante", bludgeon
    CA = base + DES (medie: DES massimo +2; pesanti: niente DES). Scudo +2 se la classe lo sa
    usare e l'arma non è a due mani. `start` = si sceglie gratis; le altre (Mezza armatura,
    Stecche, Piastre) sono oggetti da comprare in Bottega o da trovare nei dungeon. */
+/* VANTAGGI DELLE ARMATURE PIÙ LEGGERE (2026-11-06): fra quelle che una classe può scegliere
+   gratis, chi prende la CA più bassa riceve un piccolo vantaggio (`perk`), così non è mai una
+   scelta inutile. hit = +N a tutti i tiri per colpire · dc = +N alla CD dei suoi incantesimi e
+   abilità · save = +N ai TS · hp = +N PF massimi. Vale anche per le versioni +1 dello zaino. */
 export const ARMORS = {
-  abiti: { name: "Abiti da viaggio", icon: "👕", cat: "none", base: 10, dex: 99, start: true },
+  abiti: { name: "Abiti da viaggio", icon: "👕", cat: "none", base: 10, dex: 99, start: true, perk: { hit: 1, dc: 1, save: 1, text: "nessun ingombro: +1 a colpire, +1 CD, +1 ai TS" } },
   magica: { name: "Armatura Magica", icon: "✨", cat: "mage", base: 13, dex: 99, start: true },
   senza: { name: "Difesa senz'armatura", icon: "💪", cat: "unarmored", start: true },
-  cuoio: { name: "Armatura di Cuoio", icon: "🧥", cat: "light", base: 11, dex: 99, start: true },
+  cuoio: { name: "Armatura di Cuoio", icon: "🧥", cat: "light", base: 11, dex: 99, start: true, perk: { hit: 1, text: "morbida e silenziosa: +1 a colpire" } },
   borchiato: { name: "Cuoio Borchiato", icon: "🦺", cat: "light", base: 12, dex: 99, start: true },
-  pelle: { name: "Armatura di Pelle", icon: "🐻", cat: "medium", base: 12, dex: 2, start: true },
-  giaco: { name: "Giaco di Maglia", icon: "⛓", cat: "medium", base: 13, dex: 2, start: true },
+  pelle: { name: "Armatura di Pelle", icon: "🐻", cat: "medium", base: 12, dex: 2, start: true, perk: { save: 1, hp: 4, text: "pelliccia spessa: +4 PF e +1 ai TS" } },
+  giaco: { name: "Giaco di Maglia", icon: "⛓", cat: "medium", base: 13, dex: 2, start: true, perk: { hit: 1, text: "non intralcia i movimenti: +1 a colpire" } },
   scaglie: { name: "Corazza di Scaglie", icon: "🐉", cat: "medium", base: 14, dex: 2, start: true },
   mezza: { name: "Mezza Armatura", icon: "🛡", cat: "medium", base: 15, dex: 2 },
-  anelli: { name: "Cotta ad Anelli", icon: "⛓", cat: "heavy", base: 14, dex: 0, start: true },
+  anelli: { name: "Cotta ad Anelli", icon: "⛓", cat: "heavy", base: 14, dex: 0, start: true, perk: { save: 1, hp: 4, text: "anelli larghi, si respira: +4 PF e +1 ai TS" } },
   maglia: { name: "Cotta di Maglia", icon: "⛓", cat: "heavy", base: 16, dex: 0, start: true },
   stecche: { name: "Armatura a Stecche", icon: "🛡", cat: "heavy", base: 17, dex: 0 },
   piastre: { name: "Armatura di Piastre", icon: "🏰", cat: "heavy", base: 18, dex: 0 },
@@ -174,12 +178,14 @@ export function heroDefense(cls, st, g = {}) {
   const shield = canShield && (!!si || g.shield !== false);
   if (shield) ac += 2 + (si?.plus || 0);
   const parts = [ai, shield ? si : null].filter(Boolean);
+  const perk = ar.perk || {};
   return {
-    ac, key, cat: ar.cat, shield, canShield,
+    ac, key, cat: ar.cat, shield, canShield, perk: ar.perk || null,
+    hitBonus: perk.hit || 0, dcBonus: perk.dc || 0, hpBonus: perk.hp || 0,
     armorName: ai ? ai.name : ar.name, armorIcon: ai ? ai.icon : ar.icon,
     shieldName: shield ? (si ? si.name : "Scudo") : "",
     res: [...new Set(parts.flatMap((p) => p.res || []))],
-    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0),
+    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0) + (perk.save || 0),
     thorns: parts.find((p) => p.thorns)?.thorns || null,
   };
 }

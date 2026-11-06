@@ -6,7 +6,7 @@
 import { SgIcon } from "../components/GameIcon";
 import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroGear } from "../data/segreteItems";
-import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, heroXp, armorChosen, MAX_STORY_LEVEL } from "../data/segreteKits";
+import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, heroDefense, xpForLevel, heroXp, armorChosen, MAX_STORY_LEVEL } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
 export function heroTodo(hero, cls) {
@@ -93,7 +93,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
               <span className="sgr-acc-main">
                 <b>{c.it} <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
                 <span className="sgr-acc-xp" title={`${pct}% al livello dopo`}><i style={{ width: `${pct}%` }} /></span>
-                <small className="sgr-acc-sub">{heroMaxHp(c.key, lv, st, h.hpRolls || [])} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · <span className={run.cls}>{run.text}</span></small>
+                <small className="sgr-acc-sub">{heroMaxHp(c.key, lv, st, h.hpRolls || []) + heroDefense(c.key, st, heroGear(h, c.key)).hpBonus} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · <span className={run.cls}>{run.text}</span></small>
               </span>
               {!!todo.length && <span className="sgr-acc-todo" title={todo.map((t) => t.text).join(", ")}>{todo.map((t) => t.icon).join("")}</span>}
               <span className="sgr-acc-chev" aria-hidden="true">{isOpen ? "▴" : "▾"}</span>
@@ -140,7 +140,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
               <span className="sgr-hero-name"><b>{c.it}</b><small>Livello {lv}</small></span>
             </span>
             <span className="sgr-hero-xp" title={lv >= MAX_STORY_LEVEL ? "livello massimo" : `${xp} / ${to} PE`}><i style={{ width: `${pct}%` }} /></span>
-            <span className="sgr-hero-stats">{heroMaxHp(c.key, lv, st, h.hpRolls || [])} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · {lv >= MAX_STORY_LEVEL ? "max" : `${pct}% al Lv ${lv + 1}`}</span>
+            <span className="sgr-hero-stats">{heroMaxHp(c.key, lv, st, h.hpRolls || []) + heroDefense(c.key, st, heroGear(h, c.key)).hpBonus} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · {lv >= MAX_STORY_LEVEL ? "max" : `${pct}% al Lv ${lv + 1}`}</span>
             {todo.length ? (
               <span className="sgr-hero-todo">{todo.map((t) => <em key={t.k}>{t.icon} {t.text}</em>)}</span>
             ) : (

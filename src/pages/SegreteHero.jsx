@@ -69,7 +69,7 @@ function ArmorPicker({ cls, st, weapon, value, shield, onPick, disabled }) {
               className={`sgh-pick${value === k ? " is-on" : ""}`} onClick={() => onPick(k, shield)}>
               <span className="sgh-act">
                 <SgIcon kind="armor" of={k} fallback={a.icon} frame size="sm" /> <b>{a.name}</b> <em>· CA {ac}</em>
-                <small>{ARMOR_CAT_IT[a.cat]}{a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? ` + DES (max +${a.dex})` : " + DES"}` : ""}</small>
+                <small>{a.perk ? <b className="sgh-perk">✦ {a.perk.text} · </b> : null}{ARMOR_CAT_IT[a.cat]}{a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? ` + DES (max +${a.dex})` : " + DES"}` : ""}</small>
               </span>
             </button>
           );
@@ -190,7 +190,7 @@ export default function SegreteHero({ cls, charData }) {
         <SgIcon kind="cls" of={cls} fallback={info?.icon} frame size="lg" color="var(--cls)" className="sgh-ico" />
         <div>
           <p className="sgh-title">{info?.it} · Livello {lv}</p>
-          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || [])} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
+          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || []) + def.hpBonus} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
         </div>
       </div>
       <div className="sgh-xp"><i style={{ width: `${pct}%` }} /></div>

@@ -453,3 +453,5 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 /* crediti delle icone (game-icons.net, CC BY 3.0) */
 .sgr-page .sgr-credits { margin: 18px 0 0; font-size: .78rem; color: var(--osso-2, #b9af9d) !important; }
 .sgr-page .sgr-credits a { color: var(--el-2, #f2c14e); }
+
+.sgr-page .sgh-perk { color: #9be8b0 !important; font-weight: 600; }

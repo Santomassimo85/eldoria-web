@@ -161,16 +161,16 @@ function fxLine(fx = {}) {
 }
 var DMG_ALL = { slashing: "tagliente", piercing: "perforante", bludgeoning: "contundente", fire: "fuoco", cold: "freddo", lightning: "fulmine", thunder: "tuono", acid: "acido", poison: "veleno", necrotic: "necrotico", radiant: "radioso", force: "forza", psychic: "psichico" };
 var ARMORS = {
-  abiti: { name: "Abiti da viaggio", icon: "\u{1F455}", cat: "none", base: 10, dex: 99, start: true },
+  abiti: { name: "Abiti da viaggio", icon: "\u{1F455}", cat: "none", base: 10, dex: 99, start: true, perk: { hit: 1, dc: 1, save: 1, text: "nessun ingombro: +1 a colpire, +1 CD, +1 ai TS" } },
   magica: { name: "Armatura Magica", icon: "\u2728", cat: "mage", base: 13, dex: 99, start: true },
   senza: { name: "Difesa senz'armatura", icon: "\u{1F4AA}", cat: "unarmored", start: true },
-  cuoio: { name: "Armatura di Cuoio", icon: "\u{1F9E5}", cat: "light", base: 11, dex: 99, start: true },
+  cuoio: { name: "Armatura di Cuoio", icon: "\u{1F9E5}", cat: "light", base: 11, dex: 99, start: true, perk: { hit: 1, text: "morbida e silenziosa: +1 a colpire" } },
   borchiato: { name: "Cuoio Borchiato", icon: "\u{1F9BA}", cat: "light", base: 12, dex: 99, start: true },
-  pelle: { name: "Armatura di Pelle", icon: "\u{1F43B}", cat: "medium", base: 12, dex: 2, start: true },
-  giaco: { name: "Giaco di Maglia", icon: "\u26D3", cat: "medium", base: 13, dex: 2, start: true },
+  pelle: { name: "Armatura di Pelle", icon: "\u{1F43B}", cat: "medium", base: 12, dex: 2, start: true, perk: { save: 1, hp: 4, text: "pelliccia spessa: +4 PF e +1 ai TS" } },
+  giaco: { name: "Giaco di Maglia", icon: "\u26D3", cat: "medium", base: 13, dex: 2, start: true, perk: { hit: 1, text: "non intralcia i movimenti: +1 a colpire" } },
   scaglie: { name: "Corazza di Scaglie", icon: "\u{1F409}", cat: "medium", base: 14, dex: 2, start: true },
   mezza: { name: "Mezza Armatura", icon: "\u{1F6E1}", cat: "medium", base: 15, dex: 2 },
-  anelli: { name: "Cotta ad Anelli", icon: "\u26D3", cat: "heavy", base: 14, dex: 0, start: true },
+  anelli: { name: "Cotta ad Anelli", icon: "\u26D3", cat: "heavy", base: 14, dex: 0, start: true, perk: { save: 1, hp: 4, text: "anelli larghi, si respira: +4 PF e +1 ai TS" } },
   maglia: { name: "Cotta di Maglia", icon: "\u26D3", cat: "heavy", base: 16, dex: 0, start: true },
   stecche: { name: "Armatura a Stecche", icon: "\u{1F6E1}", cat: "heavy", base: 17, dex: 0 },
   piastre: { name: "Armatura di Piastre", icon: "\u{1F3F0}", cat: "heavy", base: 18, dex: 0 }
@@ -208,17 +208,22 @@ function heroDefense(cls, st, g = {}) {
   const shield = canShield && (!!si || g.shield !== false);
   if (shield) ac += 2 + (si?.plus || 0);
   const parts = [ai, shield ? si : null].filter(Boolean);
+  const perk = ar.perk || {};
   return {
     ac,
     key,
     cat: ar.cat,
     shield,
     canShield,
+    perk: ar.perk || null,
+    hitBonus: perk.hit || 0,
+    dcBonus: perk.dc || 0,
+    hpBonus: perk.hp || 0,
     armorName: ai ? ai.name : ar.name,
     armorIcon: ai ? ai.icon : ar.icon,
     shieldName: shield ? si ? si.name : "Scudo" : "",
     res: [...new Set(parts.flatMap((p) => p.res || []))],
-    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0),
+    saveBonus: parts.reduce((t, p) => t + (p.saveBonus || 0), 0) + (perk.save || 0),
     thorns: parts.find((p) => p.thorns)?.thorns || null
   };
 }
@@ -1064,12 +1069,14 @@ function makeHero(m) {
     cls: m.cls,
     level: lv,
     img: m.avatar || "",
-    hp: maxHp,
-    maxHp,
+    hp: maxHp + def.hpBonus,
+    maxHp: maxHp + def.hpBonus,
     ac: def.ac,
     init: st.dex || 0,
     save: Math.floor(profOf(lv) / 2) + def.saveBonus,
     st,
+    ...def.hitBonus ? { armorHit: def.hitBonus } : {},
+    ...def.dcBonus ? { armorDc: def.dcBonus } : {},
     picks,
     weapon: weaponKey,
     weaponPlus,
@@ -1420,7 +1427,7 @@ function targetKind(a) {
 function heroAct(s, h, a, target) {
   const lv = h.level;
   const st = h.st || {};
-  const hit = heroHit(h.cls, lv, st);
+  const hit = heroHit(h.cls, lv, st) + (h.armorHit || 0);
   const mod = mainMod(h.cls, st);
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
   const flatOf = (f) => {
@@ -1449,7 +1456,7 @@ function heroAct(s, h, a, target) {
       }
     }
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) : hit;
     if (a.selfDis) {
       h.fx.reckless = s.round + 2;
       h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2);
@@ -1492,7 +1499,7 @@ function heroAct(s, h, a, target) {
       }
       if (a.stunSave && alive(target)) {
         const sv = d20() + (target.save || 0);
-        if (sv < heroDc(h.cls, lv, st)) {
+        if (sv < heroDc(h.cls, lv, st) + (h.armorDc || 0)) {
           target.fx.stun = true;
           extra += ` \xB7 \u{1F4AB} stordito (TS ${sv})`;
         } else extra += ` \xB7 resiste allo stordimento (${sv})`;
@@ -1507,7 +1514,7 @@ function heroAct(s, h, a, target) {
         total += w.dmg;
         extra += w.txt;
       }
-      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st));
+      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st) + (h.armorDc || 0));
       log(
         s,
         `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
@@ -1524,7 +1531,7 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "save") {
-    const dc = heroDc(h.cls, lv, st);
+    const dc = heroDc(h.cls, lv, st) + (h.armorDc || 0);
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
     const base = roll(dn, ds).t + flatOf(a.flat);

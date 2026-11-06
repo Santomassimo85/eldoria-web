@@ -76,7 +76,8 @@ export function makeHero(m) {
   heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
-    hp: maxHp, maxHp, ac: def.ac, init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus, st, picks, weapon: weaponKey, weaponPlus,
+    hp: maxHp + def.hpBonus, maxHp: maxHp + def.hpBonus, ac: def.ac, init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus, st,
+    ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
     ...(okItem ? { wItem: wItem.id } : {}), res: def.res, ...(def.thorns ? { thorns: def.thorns } : {}),
     gear: { armor: def.armorName, shield: def.shieldName },
     fx: {}, uses,
@@ -393,7 +394,7 @@ export function targetKind(a) {
 function heroAct(s, h, a, target) {
   const lv = h.level;
   const st = h.st || {};
-  const hit = heroHit(h.cls, lv, st);
+  const hit = heroHit(h.cls, lv, st) + (h.armorHit || 0);
   const mod = mainMod(h.cls, st);
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
   const flatOf = (f) => { const m = /^lv\*(\d+)$/.exec(String(f || "")); return m ? lv * Number(m[1]) : Number(f) || 0; };
@@ -419,7 +420,7 @@ function heroAct(s, h, a, target) {
     }
     // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) : hit;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) : hit;
     // Attacco Irruento (2026-11-06): vantaggio e −2 CA per 2 turni (questo e il prossimo)
     if (a.selfDis) { h.fx.reckless = s.round + 2; h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2); }
     for (let k = 0; k < n; k++) {
@@ -448,11 +449,11 @@ function heroAct(s, h, a, target) {
       if (a.riderDis && alive(target)) { target.fx.dis = s.round + 1 + a.riderDis; extra += " · a svantaggio"; }
       if (a.stunSave && alive(target)) {
         const sv = d20() + (target.save || 0);
-        if (sv < heroDc(h.cls, lv, st)) { target.fx.stun = true; extra += ` · 💫 stordito (TS ${sv})`; } else extra += ` · resiste allo stordimento (${sv})`;
+        if (sv < (heroDc(h.cls, lv, st) + (h.armorDc || 0))) { target.fx.stun = true; extra += ` · 💫 stordito (TS ${sv})`; } else extra += ` · resiste allo stordimento (${sv})`;
       }
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
       if (wfx && alive(target)) { const w = weaponHitFx(s, h, target, wfx, r.crit, notes); total += w.dmg; extra += w.txt; }
-      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st));
+      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, (heroDc(h.cls, lv, st) + (h.armorDc || 0)));
       log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } });
     }
@@ -466,7 +467,7 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "save") {
-    const dc = heroDc(h.cls, lv, st);
+    const dc = (heroDc(h.cls, lv, st) + (h.armorDc || 0));
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
     const base = roll(dn, ds).t + flatOf(a.flat);

@@ -54,7 +54,7 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
   const slots = [
     { k: "weapon", label: "Arma", gi: sgIconName("item", wItem) || sgIconName("weapon", w.key), rarity: wItem?.rarity, icon: wItem?.icon || w.icon, name: wItem ? wItem.name : w.name,
       sub: `${w.dice}${wItem?.plus ? ` +${wItem.plus}` : ""} ${DMG_SHORT[w.dmg] || ""}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}`, n: bagW.length },
-    { k: "armor", label: "Armatura", gi: sgIconName("item", aItem) || sgIconName("armor", def.key), rarity: aItem?.rarity, icon: def.armorIcon, name: def.armorName, sub: `CA ${def.ac}${def.res.length ? ` · resiste a ${def.res.map((r) => DMG_ALL[r]).join(", ")}` : ""}${def.saveBonus ? ` · +${def.saveBonus} TS` : ""}`, n: bagA.length, warn: !chosen },
+    { k: "armor", label: "Armatura", gi: sgIconName("item", aItem) || sgIconName("armor", def.key), rarity: aItem?.rarity, icon: def.armorIcon, name: def.armorName, sub: `CA ${def.ac}${def.res.length ? ` · resiste a ${def.res.map((r) => DMG_ALL[r]).join(", ")}` : ""}${def.saveBonus ? ` · +${def.saveBonus} TS` : ""}${def.perk ? ` · ✦ ${def.perk.text}` : ""}`, n: bagA.length, warn: !chosen },
     ...(prof.shield ? [{ k: "shield", label: "Scudo", gi: shieldOn ? sgIconName("item", sItem) || sgIconName("armor", "scudo") : null, rarity: sItem?.rarity, icon: shieldOn ? sItem?.icon || "🛡" : "—", name: shieldOn ? def.shieldName : twoH ? "arma a due mani" : "nessuno",
       sub: shieldOn ? `+${2 + (sItem?.plus || 0)} CA` : twoH ? "con un'arma a due mani niente scudo" : "+2 CA se lo imbracci", n: bagS.length }] : []),
   ];
@@ -105,7 +105,7 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
             const ac = acWith({ armor: k, armorItem: null });
             return (
               <Opt key={k} on={chosen && armorKey === k} icon={a.icon} gi={sgIconName("armor", k)} name={a.name} tag={`CA ${ac}`} delta={ac - def.ac} disabled={busy}
-                sub={`${ARMOR_CAT_IT[a.cat]}${a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? " + DES (max +2)" : " + DES"}` : ""}`}
+                sub={`${ARMOR_CAT_IT[a.cat]}${a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? " + DES (max +2)" : " + DES"}` : ""}${a.perk ? ` · ✦ ${a.perk.text}` : ""}`}
                 onClick={() => send({ op: "heroArmor", cls, armor: k, shield: hero.shield !== false })} />
             );
           })}
