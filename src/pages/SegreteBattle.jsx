@@ -113,6 +113,23 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
   );
 }
 
+/* Cronaca (2026-11-06): i tiri "(🎲12+5=17 vs CA 14)" hanno il colore di chi tira: la classe per
+   gli eroi, rosso pieno per i mostri (il rosso del Barbaro è simile, per questo il mostro ha il fondo). */
+const rowSide = (l, run) => {
+  const id = l?.actor || l?.from;
+  const c = id ? [...(run.heroes || []), ...(run.foes || [])].find((x) => x.id === id) : null;
+  if (!c) return { cls: "", style: undefined };
+  return c.side === "h" ? { cls: " by-hero", style: clsStyle(c.cls) } : { cls: " by-foe", style: undefined };
+};
+function LogText({ l, run }) {
+  if (!l) return null;
+  const { cls, style } = rowSide(l, run);
+  if (!cls) return l.txt;
+  return String(l.txt).split(/((🎲[^)]*))/).map((p, i) => (i % 2
+    ? <span key={i} className={`sgb-roll${cls}`} style={style}>{p.slice(1, -1)}</span>
+    : p));
+}
+
 export default function SegreteBattle({ room, uid }) {
   useFightMode(true);
   const [run, setRun] = useState(null);
@@ -170,7 +187,7 @@ export default function SegreteBattle({ room, uid }) {
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; timers.current.forEach(clearTimeout); }; }, []);
   /* SEQUENZA DELLA LOTTA (2026-11-05): le righe nuove si giocano UNA ALLA VOLTA, in fila:
-     1) il d20 di chi attacca (anche dei mostri, dado rosso) e si aspetta che sparisca,
+     1) il d20, solo per i TUOI tiri (2026-11-06: quelli di compagni e mostri stanno nella cronaca),
      2) l'effetto a canvas, 3) all'istante VERO dell'impatto (msg.onImpact dal VfxLayer) escono
      i numeri e scendono i PF, 4) una pausa per leggere. Prima dado, effetto e PF andavano
      ognuno col suo orologio e si vedevano sfasati. */
@@ -186,7 +203,6 @@ export default function SegreteBattle({ room, uid }) {
     seenSeq.current = last;
     const all = [...(run.heroes || []), ...(run.foes || [])];
     const nameOf = (id) => all.find((c) => c.id === id)?.name || "";
-    const sideOf = (id) => all.find((c) => c.id === id)?.side;
     // rete di sicurezza: se qualcosa si pianta (scheda in pausa, dado appeso) i PF si allineano comunque
     timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 15000 + fresh.length * 5000));
     queued.current += fresh.length;
@@ -195,12 +211,11 @@ export default function SegreteBattle({ room, uid }) {
       await sendP.current.catch(() => {});
       for (const l of fresh) {
         if (!mounted.current) return;
-        // 1) il dado
-        if (l.roll?.nat) {
-          const foe = sideOf(l.actor) === "f";
+        // 1) il dado (solo il proprio)
+        if (l.roll?.nat && l.actor === `h_${uid}`) {
           const dice = (l.roll.dice || []).length > 1 ? l.roll.dice.map((v) => ({ value: v, dim: v !== l.roll.nat })) : undefined;
           await whenDiceIdle();
-          await showD20Roll(l.roll.nat, { label: `${foe ? "🟥 " : ""}${nameOf(l.actor)}`, dice, ...(foe ? { skin: "nemico" } : {}) }).catch(() => {});
+          await showD20Roll(l.roll.nat, { label: nameOf(l.actor), dice }).catch(() => {});
           await sleep(DICE_GAP_MS);
         }
         if (!mounted.current) return;
@@ -328,12 +343,12 @@ export default function SegreteBattle({ room, uid }) {
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
       </div>
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>
-        <span className="sgb-log-text" key={last?.i}>{last?.txt}</span>
+        <span className="sgb-log-text" key={last?.i}><LogText l={last} run={run} /></span>
         <span className="sgb-log-n">{logOpen ? "▴" : "▾"}</span>
       </button>
       {logOpen && (
         <ol className="sgb-log-list">
-          {[...shownLog].reverse().map((l) => <li key={l.i} className={`k-${l.kind || ""}`}>{l.txt}</li>)}
+          {[...shownLog].reverse().map((l) => <li key={l.i} className={`k-${l.kind || ""}${rowSide(l, run).cls}`} style={rowSide(l, run).style}><LogText l={l} run={run} /></li>)}
         </ol>
       )}
 
