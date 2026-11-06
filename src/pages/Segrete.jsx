@@ -28,6 +28,8 @@ import { hpPending, armorChosen } from "../data/segreteKits";
 import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
 // eroe pronto a giocare: creato e con i PF tirati
 const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
+import { SgIcon } from "../components/GameIcon";
+import { DIFF_TONE } from "../data/segreteIcons";
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
@@ -70,7 +72,7 @@ function HeroSections({ charData, cls, onUse, disabled, inRoom, focus }) {
 function DungeonBadge({ d, diff }) {
   if (!d) return null;
   const D = diff ? diffOf(diff) : null;
-  return <span className="sgr-dbadge"><span aria-hidden="true">{d.icon}</span> {d.name}{D && D.rank > 0 ? <em className={`sgr-diffbadge sgr-diffbadge--${D.key}`}>{D.icon} {D.name}</em> : null}</span>;
+  return <span className="sgr-dbadge"><SgIcon kind="dungeon" of={d} /> {d.name}{D && D.rank > 0 ? <em className={`sgr-diffbadge sgr-diffbadge--${D.key}`}><SgIcon kind="diff" of={D} color={DIFF_TONE[D.key]} /> {D.name}</em> : null}</span>;
 }
 
 /* Difficoltà (2026-11-06): Facile (di sempre) · Medio (Lv 8+) · Leggenda (Lv 12+). `levels` =
@@ -86,7 +88,7 @@ function DifficultyPicker({ value, onPick, disabled, levels = [], readOnly }) {
           <button key={d.key} type="button" role="radio" aria-checked={D.key === d.key} disabled={disabled || (readOnly && D.key !== d.key)}
             className={`sgr-dpick-b sgr-diff-b sgr-diff-b--${d.key}${D.key === d.key ? " is-on" : ""}`}
             onClick={() => !readOnly && D.key !== d.key && onPick(d.key)}>
-            {d.icon} {d.name}{d.minLevel > 1 ? <small> · Lv {d.minLevel}+</small> : null}
+            <SgIcon kind="diff" of={d} color={DIFF_TONE[d.key]} /> {d.name}{d.minLevel > 1 ? <small> · Lv {d.minLevel}+</small> : null}
           </button>
         ))}
       </div>
@@ -220,19 +222,19 @@ export default function Segrete() {
       {/* Dove sei e con chi: sempre visibile */}
       <div className="sgr-status">
         <button type="button" className="sgr-st sgr-st--hero" style={clsStyle(curCls)} onClick={() => setTab("eroi")}>
-          <span className="sgr-st-ico" aria-hidden="true">{ci?.icon || "?"}</span>
+          <SgIcon kind="cls" of={curCls} fallback={ci?.icon || "?"} size="md" color="var(--cls)" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? `${ci.it} · Lv ${level(curCls)}` : "da creare"}</b></span>
         </button>
         <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab("gruppi")}>
-          <span className="sgr-st-ico" aria-hidden="true">⚔</span>
+          <SgIcon kind="ui" of="gruppi" fallback="⚔" size="md" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Gruppo</small><b>{myRoom ? `${myRoom.name} · ${readyN}/${myRoom.members.length} pronti` : invites ? `📨 ${invites} invit${invites === 1 ? "o" : "i"}` : "nessuno"}</b></span>
         </button>
         <div className="sgr-st">
-          <span className="sgr-st-ico" aria-hidden="true">🗝</span>
+          <SgIcon kind="ui" of="key" fallback="🗝" size="md" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS}`}</b></span>
         </div>
         <button type="button" className="sgr-st" onClick={() => setTab("zaino")}>
-          <span className="sgr-st-ico" aria-hidden="true">{COIN_ICON}</span>
+          <SgIcon kind="ui" of="coin" fallback={COIN_ICON} size="md" color="#f2c14e" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>{COIN_NAME}</small><b>{coinsOf(charData)}{coinsToday(charData) ? <span className="sgr-st-plus"> · +{coinsToday(charData)} oggi</span> : null}</b></span>
         </button>
       </div>
@@ -240,7 +242,7 @@ export default function Segrete() {
       <div className="sgr-tabs" id="sgr-tabs" role="navigation" aria-label="Sezioni delle Segrete">
         {TABS.map((t) => (
           <button key={t.key} type="button" className={`sgr-tab${tab === t.key ? " is-on" : ""}`} aria-current={tab === t.key ? "page" : undefined} onClick={() => setTab(t.key)}>
-            <span className="sgr-tab-ico" aria-hidden="true">{t.icon}</span>
+            <SgIcon kind="ui" of={t.key} fallback={t.icon} className="sgr-tab-ico" />
             <span className="sgr-tab-lbl">{t.label}</span>
             {!!badge[t.key] && <em className="sgr-tab-badge">{badge[t.key]}</em>}
           </button>
@@ -273,7 +275,7 @@ export default function Segrete() {
                         </div>
                         <ul className="sgr-room-members">
                           {r.members.map((m) => (
-                            <li key={m.uid} style={clsStyle(m.cls)}><span className="sgr-clsdot" aria-hidden="true" />{classInfo(m.cls)?.icon} {m.name} <small>· <span className="sgr-clsname">{classInfo(m.cls)?.it}</span> Lv {m.level}{m.uid === r.hostUid ? " · capo" : ""}</small></li>
+                            <li key={m.uid} style={clsStyle(m.cls)}><span className="sgr-clsdot" aria-hidden="true" /><SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} color="var(--cls)" /> {m.name} <small>· <span className="sgr-clsname">{classInfo(m.cls)?.it}</span> Lv {m.level}{m.uid === r.hostUid ? " · capo" : ""}</small></li>
                           ))}
                         </ul>
                         <div className="sgr-room-actions">
@@ -301,7 +303,7 @@ export default function Segrete() {
                 {dungeons.map((d) => (
                   <button key={d.key} type="button" role="radio" aria-checked={type === d.key}
                     className={`sgr-dpick-b${type === d.key ? " is-on" : ""}`} onClick={() => setType(d.key)}>
-                    <span aria-hidden="true">{d.icon}</span> {d.name}
+                    <SgIcon kind="dungeon" of={d} /> {d.name}
                   </button>
                 ))}
               </div>
@@ -367,7 +369,7 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
         {dungeons.map((d) => (
           <button key={d.key} type="button" role="radio" aria-checked={room.type === d.key} disabled={busy}
             className={`sgr-dpick-b${room.type === d.key ? " is-on" : ""}`}
-            onClick={() => room.type !== d.key && run(() => chooseDungeon(room.id, uid, d.key, master))}>{d.icon} {d.name}</button>
+            onClick={() => room.type !== d.key && run(() => chooseDungeon(room.id, uid, d.key, master))}><SgIcon kind="dungeon" of={d} /> {d.name}</button>
         ))}
       </div>
     </div>
@@ -405,7 +407,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
           <li key={m?.uid || `vuoto-${i}`} className={`sgr-slot${m ? "" : " is-empty"}${m?.ready ? " is-ready" : ""}`} style={m ? clsStyle(m.cls) : undefined}>
             {m ? (
               <>
-                <span className="sgr-slot-ico" aria-hidden="true">{classInfo(m.cls)?.icon}</span>
+                <SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} frame size="md" color="var(--cls)" className="sgr-slot-ico" />
                 <span className="sgr-slot-main">
                   <b>{m.name}{m.uid === room.hostUid && <em className="sgr-tag">capo</em>}</b>
                   <small><span className="sgr-clsname">{classInfo(m.cls)?.it}</span> · Lv {m.level}</small>

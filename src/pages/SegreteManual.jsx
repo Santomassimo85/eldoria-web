@@ -119,6 +119,7 @@ export default function SegreteManual() {
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>
         </ul>
       </Fold>
+      <p className="sgr-credits">Icone di <a href="https://game-icons.net" target="_blank" rel="noreferrer">game-icons.net</a> (Lorc, Delapouite e altri autori), licenza <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.</p>
     </section>
   );
 }

@@ -10,6 +10,7 @@ import { db, functions } from "../firebase";
 import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday, isGear, gearUsers } from "../data/segreteItems";
 import { WEAPON_CHOICES, fxLine } from "../data/segreteKits";
 import { classInfo, clsStyle } from "../data/segrete";
+import { SgIcon } from "../components/GameIcon";
 
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
@@ -22,7 +23,7 @@ function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
   const r = RARITY[it.rarity];
   return (
     <li className="sgs-item">
-      <span className="sgs-ico" aria-hidden="true">{it.icon}</span>
+      <SgIcon kind="item" of={it} frame size="md" className={`sgs-ico gi-r-${it.rarity}`} />
       <span className="sgs-main">
         <b>{it.name}</b> <em style={{ color: r.color }}>{r.it}</em>
         <small>{it.desc}{it.fx ? ` (${fxLine(it.fx)})` : ""}{isGear(it) ? ` Classi: ${usersOf(it)}.` : ""}</small>
@@ -96,7 +97,7 @@ function EquipBox({ id, charData, busy, onEquip, onClose }) {
             const has = charData.storyChars[c]?.[field] === id;
             return (
               <button key={c} type="button" className="sgr-btn" style={clsStyle(c)} disabled={busy || has} onClick={() => onEquip(c, slot, id)}>
-                {classInfo(c)?.icon} {classInfo(c)?.it}{has ? " ✓" : ""}
+                <SgIcon kind="cls" of={c} fallback={classInfo(c)?.icon} /> {classInfo(c)?.it}{has ? " ✓" : ""}
               </button>
             );
           })}
@@ -179,8 +180,8 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
               const it = itemOf(id);
               return (
                 <li key={`${cls}-${slot}`} className="sgs-item sgs-worn" style={clsStyle(cls)}>
-                  <span className="sgs-ico" aria-hidden="true">{it.icon}</span>
-                  <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname">{classInfo(cls)?.icon} {classInfo(cls)?.it}</span></small></span>
+                  <SgIcon kind="item" of={it} frame size="md" className={`sgs-ico gi-r-${it.rarity}`} />
+                  <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname"><SgIcon kind="cls" of={cls} fallback={classInfo(cls)?.icon} /> {classInfo(cls)?.it}</span></small></span>
                   <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => unequip(cls, slot)}>↩ Nello zaino</button>
                 </li>
               );

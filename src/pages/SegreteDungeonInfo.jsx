@@ -3,6 +3,8 @@
    si incontrano (il nome solo se quel tipo è già stato sconfitto almeno una volta), monete,
    PE, Corone, probabilità di drop e tutti gli oggetti che possono cadere con la loro %.
    I numeri escono dalle stesse costanti del motore: se cambia il bilanciamento, cambia qui. */
+import { SgIcon } from "../components/GameIcon";
+import { DIFF_TONE } from "../data/segreteIcons";
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase";
@@ -77,12 +79,12 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
         <div className="sgi-tabs" role="group" aria-label="Difficoltà da guardare">
           {DIFFICULTIES.map((d) => (
             <button key={d.key} type="button" aria-pressed={tab === d.key} className={`sgi-tab${tab === d.key ? " is-on" : ""}${d.key === diff ? " is-sel" : ""}`} onClick={() => setTab(d.key)}>
-              {d.icon} {d.name}{d.key === diff ? " ✓" : ""}
+              <SgIcon kind="diff" of={d} color={DIFF_TONE[d.key]} /> {d.name}{d.key === diff ? " ✓" : ""}
             </button>
           ))}
         </div>
 
-        <p className="sgi-line"><b>{D.icon} {D.name}</b> · {D.minLevel > 1 ? `serve Lv ${D.minLevel}+ per ogni eroe` : "per tutti i livelli"} · {floors} sale + il boss</p>
+        <p className="sgi-line"><b><SgIcon kind="diff" of={D} color={DIFF_TONE[D.key]} /> {D.name}</b> · {D.minLevel > 1 ? `serve Lv ${D.minLevel}+ per ogni eroe` : "per tutti i livelli"} · {floors} sale + il boss</p>
         <p className="sgi-line sgi-danger">
           <span className="sgi-meter" aria-label={`Pericolo ${D.rank + 1} su 3`}>{[0, 1, 2].map((i) => <i key={i} className={i <= D.rank ? "on" : ""} />)}</span>
           {D.rank === 0 ? "Mostri tarati sul vostro gruppo." : `Mostri: PF ×${num(D.hp)} · danni ×${num(D.dmg)}${D.plus ? ` · +${D.plus} a colpire, CA, CD e TS` : ""} · élite più spesso (${Math.round(D.elite * 100)}%).`}
@@ -101,7 +103,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
                       const k = !!data?.known?.[m.id];
                       return (
                         <li key={m.id} title={k ? m.desc || m.name : "Non ancora sconfitto da nessuno: il nome si scopre combattendo."}>
-                          {k && m.imageUrl ? <img src={m.imageUrl} alt="" /> : <span aria-hidden="true">{k ? m.icon || "👹" : "❔"}</span>}
+                          {k && m.imageUrl ? <img src={m.imageUrl} alt="" /> : k ? <SgIcon kind="monster" of={m} fallback={m.icon || "👹"} size="md" /> : <span aria-hidden="true">❔</span>}
                           <b>{k ? m.name : "???"}</b>
                           <em>{MONSTER_SIZES.find((x) => x.key === sizeOf(m))?.label || ""}</em>
                         </li>
@@ -136,13 +138,13 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
         <p className="sgi-line"><small>Quando un {ROLE_ONE[role]} lascia un oggetto ({pctTxt(Math.min(95, ch.item * D.item))} delle volte), ecco cosa può essere. Armi e armature escono solo se qualcuno del gruppo le sa usare.</small></p>
         <ul className="sgi-items">
           {odds.map((o) => {
-            if (o.id === "__weapons") return <li key={o.id}><span aria-hidden="true">⚔</span><span className="sgi-it"><b>Arma +1 o +2</b><small>del tipo usato da qualcuno del gruppo</small></span><em>{pctTxt(o.pct)}</em></li>;
-            if (o.id === "__armors") return <li key={o.id}><span aria-hidden="true">🛡</span><span className="sgi-it"><b>Armatura o scudo magici</b><small>Mezza armatura, Stecche, Piastre, armature +1, Scudo +1</small></span><em>{pctTxt(o.pct)}</em></li>;
+            if (o.id === "__weapons") return <li key={o.id}><SgIcon kind="weapon" of="spada_lunga" frame size="sm" /><span className="sgi-it"><b>Arma +1 o +2</b><small>del tipo usato da qualcuno del gruppo</small></span><em>{pctTxt(o.pct)}</em></li>;
+            if (o.id === "__armors") return <li key={o.id}><SgIcon kind="armor" of="scudo" frame size="sm" /><span className="sgi-it"><b>Armatura o scudo magici</b><small>Mezza armatura, Stecche, Piastre, armature +1, Scudo +1</small></span><em>{pctTxt(o.pct)}</em></li>;
             const it = itemOf(o.id);
             const users = it.kind === "weapon" || it.kind === "armor" || it.kind === "shield" ? gearUsers(it).map((c) => classInfo(c)?.icon).join("") : "";
             return (
               <li key={o.id} title={it.desc}>
-                <span aria-hidden="true">{it.icon}</span>
+                <SgIcon kind="item" of={it} frame size="sm" className={`gi-r-${it.rarity}`} />
                 <span className="sgi-it">
                   <b style={{ "--rc": RARITY[it.rarity]?.color }}>{it.name}</b>
                   <small>

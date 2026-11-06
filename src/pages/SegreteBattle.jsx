@@ -13,6 +13,8 @@ import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON } from "../data/segreteItems";
+import { SgIcon } from "../components/GameIcon";
+import { sgTone } from "../data/segreteIcons";
 import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
@@ -97,11 +99,11 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
       )}
       <span className="sgb-sprite" data-vfx-target={vfxKey(c.id)}>
         {img ? <img src={img} alt="" className={mirror ? "mirror" : ""} draggable="false" />
-          : <span className="sgb-emoji" aria-hidden="true">{c.side === "h" ? classInfo(c.cls)?.icon : c.icon || (c.role === "boss" ? "👑" : "👹")}</span>}
+          : c.side === "h" ? <SgIcon kind="cls" of={c.cls} fallback={classInfo(c.cls)?.icon} size="xl" className="sgb-emoji" /> : <span className="sgb-emoji" aria-hidden="true">{c.icon || (c.role === "boss" ? "👑" : "👹")}</span>}
       </span>
       <span className="sgb-hud">
         <b>{done ? "✓ " : ""}{c.name}</b>
-        {c.side === "h" && <em className="sgb-cls">{c.helper ? "🤝 " : ""}{classInfo(c.cls)?.icon} {classInfo(c.cls)?.it} · Lv {c.level}</em>}
+        {c.side === "h" && <em className="sgb-cls">{c.helper ? "🤝 " : ""}<SgIcon kind="cls" of={c.cls} fallback={classInfo(c.cls)?.icon} /> {classInfo(c.cls)?.it} · Lv {c.level}</em>}
         <span className="sgb-bar"><i style={{ width: `${pct}%` }} className={pct < 30 ? "low" : ""} /></span>
         {c.side === "h"
           ? <small>{dead ? (c.fled ? "fuggito" : "a terra") : `${c.hp}/${c.maxHp} PF · CA ${c.ac}`}</small>
@@ -370,7 +372,7 @@ export default function SegreteBattle({ room, uid }) {
               <div className="sgb-acts">
                 {bagList.map((it) => (
                   <button key={it.id} type="button" className="sgb-act k-item" disabled={busy} onClick={() => pickItem(it)} title={it.desc}>
-                    <span className="sgb-act-ico" aria-hidden="true">{it.icon}</span>
+                    <SgIcon kind="item" of={it} frame size="md" className={`sgb-act-ico gi-r-${it.rarity}`} />
                     <span className="sgb-act-name">{it.name}</span>
                     <span className="sgb-act-info">{it.desc}</span>
                     <span className="sgb-act-uses">×{it.n}</span>
@@ -384,13 +386,13 @@ export default function SegreteBattle({ room, uid }) {
               <p className="sgb-turn">⚔ Tocca al gruppo: scegli la tua azione{afkLeft != null ? ` · ⏳ ${fmtLeft(afkLeft)}` : ""}{pending.length > 1 ? ` · mancano ${pending.length}` : ""}</p>
               <div className="sgb-acts">
                 <button type="button" className="sgb-act k-item" disabled={busy} onClick={() => setBagOpen(true)}>
-                  <span className="sgb-act-ico" aria-hidden="true">🎒</span>
+                  <SgIcon kind="ui" of="bag" fallback="🎒" frame size="md" className="sgb-act-ico" color="#e8c48a" />
                   <span className="sgb-act-name">Zaino</span>
                   <span className="sgb-act-info">{bagList.length ? `${bagList.reduce((t, x) => t + x.n, 0)} oggetti da usare` : "vuoto"}</span>
                 </button>
                 {acts.map((a) => (
                   <button key={a.id} type="button" className={`sgb-act k-${a.kind}`} disabled={busy || (a.left != null && a.left <= 0)} onClick={() => pickAction(a)}>
-                    <span className="sgb-act-ico" aria-hidden="true">{a.icon}</span>
+                    <SgIcon kind="action" of={a} frame size="md" className="sgb-act-ico" color={sgTone(a)} />
                     <span className="sgb-act-name">{a.name}</span>
                     <span className="sgb-act-info">{a.info || actInfo(a, me.level)}</span>
                     {a.left != null && <span className="sgb-act-uses">{a.left}/{a.uses}</span>}

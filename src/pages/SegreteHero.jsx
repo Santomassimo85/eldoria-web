@@ -3,6 +3,8 @@
    come nell'Arena, massimo +3, e una prima abilità/incantesimo). Con l'eroe:
    livello e PE, caratteristiche, azioni, e quando matura (ogni 3 livelli) un
    punto caratteristica e una scelta nuova. Tutto passa dal server (segreteDo). */
+import { SgIcon } from "../components/GameIcon";
+import { sgTone } from "../data/segreteIcons";
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
@@ -30,7 +32,7 @@ function actionLine(a) {
 }
 const ActChip = ({ a, sub }) => (
   <span className="sgh-act" title={actionLine(a)}>
-    <span aria-hidden="true">{a.icon}</span> <b>{a.name}</b>{a.uses ? <em> · {a.uses}/sala</em> : null}
+    <SgIcon kind="action" of={a} frame size="sm" color={sgTone(a)} /> <b>{a.name}</b>{a.uses ? <em> · {a.uses}/sala</em> : null}
     <small>{sub || actionLine(a)}</small>
   </span>
 );
@@ -42,7 +44,7 @@ function WeaponPicker({ cls, value, onPick, disabled }) {
         <button key={w.key} type="button" aria-pressed={value === w.key} disabled={disabled}
           className={`sgh-pick${value === w.key ? " is-on" : ""}`} onClick={() => onPick(w.key)}>
           <span className="sgh-act">
-            <span aria-hidden="true">{w.icon}</span> <b>{w.name}</b>{w.ranged ? <em> · a distanza</em> : null}
+            <SgIcon kind="weapon" of={w} frame size="sm" /> <b>{w.name}</b>{w.ranged ? <em> · a distanza</em> : null}
             <small>{w.dice} {DMG_SHORT[w.dmg]} · usa {WSTAT_LABEL[w.wstat]}</small>
           </span>
         </button>
@@ -66,7 +68,7 @@ function ArmorPicker({ cls, st, weapon, value, shield, onPick, disabled }) {
             <button key={k} type="button" aria-pressed={value === k} disabled={disabled}
               className={`sgh-pick${value === k ? " is-on" : ""}`} onClick={() => onPick(k, shield)}>
               <span className="sgh-act">
-                <span aria-hidden="true">{a.icon}</span> <b>{a.name}</b> <em>· CA {ac}</em>
+                <SgIcon kind="armor" of={k} fallback={a.icon} frame size="sm" /> <b>{a.name}</b> <em>· CA {ac}</em>
                 <small>{ARMOR_CAT_IT[a.cat]}{a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? ` + DES (max +${a.dex})` : " + DES"}` : ""}</small>
               </span>
             </button>
@@ -125,7 +127,7 @@ export default function SegreteHero({ cls, charData }) {
     };
     return (
       <div className="sgh sgh--new">
-        <p className="sgh-title">{info?.icon} Crea il tuo {info?.it}</p>
+        <p className="sgh-title"><SgIcon kind="cls" of={cls} fallback={info?.icon} color="var(--cls)" /> Crea il tuo {info?.it}</p>
         <p className="sgh-hint">L'eroe resta tuo per sempre e cresce di livello vincendo i dungeon. Distribuisci <b>{STAT_BUDGET} punti</b> (massimo +{STAT_CAP} per caratteristica). Consigliate: <b>{kit.rec.map((k) => STAT_LABEL[k]).join(", ")}</b>.</p>
         <div className="sgh-stats">
           {STAT_KEYS.map((k) => (
@@ -150,7 +152,7 @@ export default function SegreteHero({ cls, charData }) {
         <p className="sgh-sub">🛡 Scegli l'armatura (quelle che la classe sa portare; le migliori si trovano o si comprano):</p>
         <ArmorPicker cls={cls} st={stats} weapon={weapon || weaponChoices(cls)[0].key} value={armor || armorProf(cls).def} shield={shield}
           onPick={(a, sh) => { setArmor(a); setShield(sh); }} />
-        <p className="sgh-sub">Hai già: {kit.base.map((a) => `${a.icon} ${a.name}`).join(" · ")}</p>
+        <p className="sgh-sub">Hai già: {kit.base.map((a, i) => <span key={a.id}>{i ? " · " : ""}<SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name}</span>)}</p>
         <p className="sgh-sub">Scegli la prima abilità o il primo incantesimo:</p>
         <div className="sgh-picks">
           {starters.map((a) => (
@@ -185,7 +187,7 @@ export default function SegreteHero({ cls, charData }) {
   return (
     <div className="sgh">
       <div className="sgh-head">
-        <span className="sgh-ico" aria-hidden="true">{info?.icon}</span>
+        <SgIcon kind="cls" of={cls} fallback={info?.icon} frame size="lg" color="var(--cls)" className="sgh-ico" />
         <div>
           <p className="sgh-title">{info?.it} · Livello {lv}</p>
           <small>{heroMaxHp(cls, lv, st, hero.hpRolls || [])} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
@@ -236,7 +238,7 @@ export default function SegreteHero({ cls, charData }) {
       {lv < MAX_STORY_LEVEL && (
         <details className="sgh-fold">
           <summary>🔒 Prossimi livelli <small>(al Lv {nextMilestone}: +1 caratteristica e una scelta)</small></summary>
-          {locked.length ? <div className="sgh-acts">{locked.map((a) => <span key={a.id} className="sgh-locked">{a.icon} {a.name} <small>Lv {a.min}</small></span>)}</div> : <p className="sgh-hint">Niente di nuovo da sbloccare: solo scelte fra quelle che già vedi.</p>}
+          {locked.length ? <div className="sgh-acts">{locked.map((a) => <span key={a.id} className="sgh-locked"><SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name} <small>Lv {a.min}</small></span>)}</div> : <p className="sgh-hint">Niente di nuovo da sbloccare: solo scelte fra quelle che già vedi.</p>}
         </details>
       )}
     </div>

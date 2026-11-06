@@ -3,6 +3,7 @@
    ognuno con livello, PE, PF/CA e cosa ha da sistemare (PF da tirare, punti
    caratteristica, nuove abilità), e a parte il picker delle classi ancora da creare.
    Toccare un eroe = sceglierlo per il gruppo e aprirne la scheda. */
+import { SgIcon } from "../components/GameIcon";
 import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroGear } from "../data/segreteItems";
 import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, heroXp, armorChosen, MAX_STORY_LEVEL } from "../data/segreteKits";
@@ -59,7 +60,7 @@ export function HeroQuickPick({ charData, value, onPick, disabled, onManage, lab
               <button key={c.key} type="button" role="radio" aria-checked={on} disabled={disabled || !ready}
                 title={ready ? `${c.it} Lv ${lv} · ${run.text}` : "Prima tira i PF nella scheda Personaggi"}
                 className={`sgr-qp-b${on ? " is-on" : ""}${run.cls === "is-done" ? " is-done" : ""}`} style={clsStyle(c.key)} onClick={() => !on && onPick(c.key)}>
-                <span aria-hidden="true">{c.icon}</span>
+                <SgIcon kind="cls" of={c} frame size="sm" color="var(--cls)" />
                 <b>{c.it}</b>
                 <small>Lv {lv} · {ready ? run.text.replace(" · può aiutare", " · aiuto") : "tira i PF"}</small>
               </button>
@@ -88,7 +89,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
         return (
           <li key={c.key} className={`sgr-acc-i${isOpen ? " is-open" : ""}${inUse ? " is-use" : ""}`} style={clsStyle(c.key)}>
             <button type="button" className="sgr-acc-h" aria-expanded={isOpen} onClick={() => onOpen(isOpen ? null : c.key)}>
-              <span className="sgr-acc-ico" aria-hidden="true">{c.icon}</span>
+              <SgIcon kind="cls" of={c} frame size="md" color="var(--cls)" className="sgr-acc-ico" />
               <span className="sgr-acc-main">
                 <b>{c.it} <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
                 <span className="sgr-acc-xp" title={`${pct}% al livello dopo`}><i style={{ width: `${pct}%` }} /></span>
@@ -135,7 +136,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
             className={`sgr-hero${on ? " is-on" : ""}${todo.length ? " has-todo" : ""}`} style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
             {on && <span className="sgr-hero-on">▶ {playingLabel}</span>}
             <span className="sgr-hero-top">
-              <span className="sgr-hero-ico" aria-hidden="true">{c.icon}</span>
+              <SgIcon kind="cls" of={c} frame size="lg" color="var(--cls)" className="sgr-hero-ico" />
               <span className="sgr-hero-name"><b>{c.it}</b><small>Livello {lv}</small></span>
             </span>
             <span className="sgr-hero-xp" title={lv >= MAX_STORY_LEVEL ? "livello massimo" : `${xp} / ${to} PE`}><i style={{ width: `${pct}%` }} /></span>
@@ -162,7 +163,7 @@ export function NewClassPicker({ charData, value, onSelect, disabled }) {
       {list.map((c) => (
         <button key={c.key} type="button" role="radio" aria-checked={value === c.key} disabled={disabled}
           className={`sgr-class${value === c.key ? " is-on" : ""}`} style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
-          <span aria-hidden="true">{c.icon}</span>
+          <SgIcon kind="cls" of={c} frame size="lg" color="var(--cls)" />
           <b>{c.it}</b>
           <small>da creare</small>
         </button>

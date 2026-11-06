@@ -59,7 +59,7 @@
 .sgb-act.k-heal, .sgb-act.k-heal_all { border-color: rgba(95,209,107,.8); }
 .sgb-act.k-buff, .sgb-act.k-defend { border-color: rgba(127,211,255,.75); }
 .sgb-act:disabled { opacity: .45; cursor: default; }
-.sgb-act-ico { grid-row: 1 / span 2; font-size: 1.3rem; }
+.sgb-act-ico { grid-row: 1 / span 2; }
 .sgb-act-name { font-weight: 700; font-size: .95rem; padding-right: 34px; }
 .sgb-act-info { font-size: .78rem; color: #f2d79b; }
 .sgb-act-uses { position: absolute; top: 5px; right: 6px; padding: 1px 5px; font-size: .72rem; font-weight: 700; background: rgba(0,0,0,.6); border: 1px solid rgba(243,234,216,.45); }

@@ -81,7 +81,7 @@
 .sgh-sub { font-weight: 700; color: var(--osso, #ece5d6); margin-top: 12px; }
 .sgh-head { display: flex; gap: 10px; align-items: center; }
 .sgh-head small { color: var(--osso-2, #d8ccb4); }
-.sgh-ico { font-size: 2rem; }
+.sgh-ico.gi-emoji { font-size: 2rem; }
 .sgh-xp { height: 8px; margin: 8px 0; background: rgba(0,0,0,.5); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .2); }
 .sgh-xp i { display: block; height: 100%; background: var(--el, #e0a85a); }
 .sgh-statline { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -100,7 +100,9 @@
 .sgh-pick { padding: 0; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .22); background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .sgh-pick.is-on { border-color: var(--el, #e0a85a); box-shadow: inset 0 0 0 1px var(--el, #e0a85a); background: rgba(var(--el-rgb, 224,168,90), .12); }
 .sgh-pick:disabled { opacity: .5; }
-.sgh-act { display: grid; gap: 2px; padding: 8px 10px; font-size: .92rem; }
+.sgh-act { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; row-gap: 2px; align-items: center; padding: 8px 10px; font-size: .92rem; }
+.sgh-act > .gi, .sgh-act > .gi-emoji { grid-row: span 3; align-self: center; }
+.sgh-act > :not(.gi):not(.gi-emoji) { grid-column: 2; }
 .sgh-acts .sgh-act { border: 1px solid rgba(var(--osso-rgb, 236,229,214), .15); }
 .sgh-act em { font-style: normal; color: var(--osso-2, #d8ccb4); font-size: .8rem; }
 .sgh-act small { color: #f2d79b; font-size: .8rem; }
@@ -192,7 +194,7 @@
 .sgs-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .sgs-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 6px; }
 .sgs-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .18); border-radius: 3px; background: var(--roccia-1, #17141b); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.sgs-ico { color: var(--osso, #ece5d6); font-size: 1.6rem; line-height: 1; }
+.sgs-ico { font-size: 1.6rem; line-height: 1; }
 .sgs-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
 .sgr-page .sgs-main b { color: #fff7e6; }
 .sgs-main em { font-style: normal; font-size: .74rem; font-weight: 700; }
@@ -214,6 +216,7 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-page .sgr-st small { color: var(--osso-2, #d8ccb4); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
 .sgr-page .sgr-st b { color: #fff7e6; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sgr-st--hero { border-color: var(--cls); box-shadow: inset 4px 0 0 var(--cls); }
+.sgr-st-ico.gi { box-sizing: border-box; padding: 7px; }
 .sgr-st--hero .sgr-st-ico { background: color-mix(in srgb, var(--cls) 28%, transparent); }
 .sgr-page .sgr-st--hero b { color: var(--cls); }
 .sgr-st.is-live { border-color: #5fd16b; box-shadow: inset 4px 0 0 #5fd16b; }
@@ -231,7 +234,7 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 
 /* colore di classe (--cls messo in linea da clsStyle) */
 .sgr-hero { border-left: 4px solid var(--cls, var(--el)); }
-.sgr-hero-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
+.sgr-hero-ico.gi-emoji { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
 .sgr-page .sgr-hero-name b { color: var(--cls, #fff7e6); }
 .sgr-hero-xp i { background: var(--cls, var(--el)); }
 .sgr-hero.is-on { border-color: var(--cls); box-shadow: inset 0 0 0 1px var(--cls), 0 0 14px color-mix(in srgb, var(--cls) 35%, transparent); background: color-mix(in srgb, var(--cls) 12%, var(--roccia-1, #17141b)); }
@@ -242,7 +245,7 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-page .sgr-class b { color: var(--cls, #fff7e6); }
 .sgr-class.is-on { border-color: var(--cls); box-shadow: inset 0 0 0 1px var(--cls); background: color-mix(in srgb, var(--cls) 14%, var(--roccia-1, #17141b)); }
 .sgr-slot[style] { border-left: 4px solid var(--cls); }
-.sgr-slot[style] .sgr-slot-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
+.sgr-slot[style] .sgr-slot-ico.gi-emoji { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 3px; background: color-mix(in srgb, var(--cls) 26%, transparent); }
 .sgr-slot.is-ready[style] { border-color: #5fd16b; border-left-color: var(--cls); }
 .sgr-page .sgr-clsname { color: var(--cls, inherit); font-weight: 700; }
 .sgr-clsdot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: var(--cls); vertical-align: middle; }
@@ -425,7 +428,7 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgg-slot.is-warn { border-color: #e6c14a; box-shadow: inset 0 0 0 1px #e6c14a; }
 .sgr-page .sgg-slot small { color: var(--osso-2, #d8ccb4) !important; text-transform: uppercase; letter-spacing: .06em; font-size: .7rem; display: flex; gap: 6px; align-items: center; }
 .sgr-page .sgg-new { font-style: normal; text-transform: none; letter-spacing: 0; padding: 0 5px; border-radius: 3px; background: rgba(111,212,138,.2); color: #9be8b0 !important; }
-.sgg-slot-ico { font-size: 1.5rem; line-height: 1.1; }
+.sgg-slot-ico { margin: 4px 0 2px; }
 .sgr-page .sgg-slot b { color: var(--osso, #ece5d6) !important; }
 .sgr-page .sgg-slot-sub { color: var(--osso-2, #d8ccb4) !important; font-size: .82rem; }
 .sgr-page .sgg-slot-cta { margin-top: 4px; color: var(--el, #e0a85a) !important; font-weight: 600; font-size: .82rem; }
@@ -433,11 +436,11 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgg-h { margin: 6px 0 0; font-weight: 700; color: var(--osso, #ece5d6) !important; }
 .sgr-page .sgg-h small, .sgr-page .sgg-note { font-weight: 400; color: var(--osso-2, #d8ccb4) !important; }
 .sgr-page .sgg-note { margin: 4px 0; font-size: .85rem; }
-.sgg-opt { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; padding: 8px 10px; min-height: 44px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .16); background: var(--roccia-2, #221f27); color: var(--osso, #ece5d6); font: inherit; }
+.sgg-opt { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; min-height: 44px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .16); background: var(--roccia-2, #221f27); color: var(--osso, #ece5d6); font: inherit; }
 .sgg-opt:hover:not(:disabled) { border-color: var(--el, #e0a85a); }
 .sgg-opt.is-on { border-color: #6fd48a; background: rgba(111,212,138,.1); cursor: default; }
 .sgg-opt:disabled:not(.is-on) { opacity: .55; cursor: not-allowed; }
-.sgg-opt-ico { font-size: 1.3rem; text-align: center; }
+.sgg-opt-ico { justify-self: center; }
 .sgr-page .sgg-opt-main b { display: block; color: var(--rc, var(--osso, #ece5d6)) !important; }
 .sgr-page .sgg-opt-main small { display: block; color: var(--osso-2, #d8ccb4) !important; font-size: .8rem; }
 .sgr-page .sgg-opt-tag { font-weight: 700; white-space: nowrap; color: var(--osso, #ece5d6) !important; font-variant-numeric: tabular-nums; }
@@ -446,3 +449,7 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgg-opt-tag em.down { color: #ff8f84 !important; }
 .sgr-page .sgg-opt-on { grid-column: 2 / -1; color: #9be8b0 !important; font-size: .78rem; font-weight: 600; }
 .sgr-gear-alert { display: block; width: 100%; margin: 10px 0; padding: 10px 12px; text-align: left; border-radius: 3px; cursor: pointer; border: 1px solid #e6c14a; background: rgba(230,193,74,.14); color: #fbe6a6; font: 600 14px/1.4 system-ui, sans-serif; }
+
+/* crediti delle icone (game-icons.net, CC BY 3.0) */
+.sgr-page .sgr-credits { margin: 18px 0 0; font-size: .78rem; color: var(--osso-2, #b9af9d) !important; }
+.sgr-page .sgr-credits a { color: var(--el-2, #f2c14e); }

@@ -1,0 +1,40 @@
+/* Icone di game-icons.net (GameIcon.jsx). Il disegno prende `--gi-c`; la cornice a gradini
+   è un riquadro scuro con bordo e bagliore dello stesso colore. */
+.gi {
+  --gi-s: 1.15em;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: var(--gi-s); height: var(--gi-s); line-height: 1; vertical-align: -0.2em;
+  color: var(--gi-c, currentColor);
+}
+.gi svg { width: 100%; height: 100%; fill: currentColor; display: block; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .6)); }
+.gi-emoji { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+
+.gi--xs { --gi-s: .95em; }
+.gi--sm { --gi-s: 1.15em; }
+.gi--md { --gi-s: 1.6rem; }
+.gi--lg { --gi-s: 2.3rem; }
+.gi--xl { --gi-s: 3.2rem; }
+.gi-emoji.gi--md { font-size: 1.3rem; } .gi-emoji.gi--lg { font-size: 1.9rem; } .gi-emoji.gi--xl { font-size: 2.6rem; }
+
+/* cornice a gradini (angoli tagliati come i riquadri pixel del fight) */
+.gi--frame {
+  --gi-c: var(--el-2, #f2c14e);
+  --gi-step: max(3px, calc(var(--gi-s) * .12));
+  width: calc(var(--gi-s) * 1.5); height: calc(var(--gi-s) * 1.5);
+  padding: calc(var(--gi-s) * .22);
+  vertical-align: middle;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--gi-c) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, #2a2222, #120e0e);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--gi-c) 70%, #000), inset 0 0 0 3px rgba(0, 0, 0, .55), 0 0 14px -4px var(--gi-c);
+  clip-path: polygon(var(--gi-step) 0, calc(100% - var(--gi-step)) 0, 100% var(--gi-step), 100% calc(100% - var(--gi-step)),
+    calc(100% - var(--gi-step)) 100%, var(--gi-step) 100%, 0 calc(100% - var(--gi-step)), 0 var(--gi-step));
+}
+.gi--frame svg { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--gi-c) 55%, transparent)) drop-shadow(0 2px 0 rgba(0, 0, 0, .7)); }
+
+/* colori per rarità (oggetti delle Segrete: RARITY in segreteItems.js) */
+.gi-r-common { --gi-c: #d6cdbb; }
+.gi-r-uncommon { --gi-c: #6fdc8c; }
+.gi-r-rare { --gi-c: #6ab8ff; }
+.gi-r-epic, .gi-r-veryRare { --gi-c: #c58bff; }
+.gi-r-legendary { --gi-c: #ffb347; }
