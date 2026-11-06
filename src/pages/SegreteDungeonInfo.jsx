@@ -144,7 +144,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
               <li key={o.id} title={it.desc}>
                 <span aria-hidden="true">{it.icon}</span>
                 <span className="sgi-it">
-                  <b style={{ color: RARITY[it.rarity]?.color }}>{it.name}</b>
+                  <b style={{ "--rc": RARITY[it.rarity]?.color }}>{it.name}</b>
                   <small>
                     {it.dungeons ? <i className="sgi-tag">★ di questo dungeon</i> : null}
                     {it.minDiff ? <i className="sgi-tag sgi-tag--hot">solo {diffOf(it.minDiff).name}+</i> : null}

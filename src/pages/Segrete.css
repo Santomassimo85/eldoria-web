@@ -407,3 +407,7 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgi-items em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
 .sgi-tag { font-style: normal; margin-right: 5px; padding: 0 5px; border-radius: 3px; background: rgba(var(--el-rgb, 224,168,90), .18); color: var(--osso, #ece5d6); }
 .sgi-tag--hot { background: rgba(226,87,76,.25); }
+/* colori espliciti: il tema globale scuriva b/em/li dentro il pannello */
+.sgr-page .sgi, .sgr-page .sgi li, .sgr-page .sgi b, .sgr-page .sgi-items em, .sgr-page .sgi-h, .sgr-page .sgi > summary { color: var(--osso, #ece5d6) !important; }
+.sgr-page .sgi small, .sgr-page .sgi-role em, .sgr-page .sgi-line, .sgr-page .sgi-prizes li, .sgr-page .sgi-none { color: var(--osso-2, #d8ccb4) !important; }
+.sgr-page .sgi-it b { color: var(--rc, var(--osso, #ece5d6)) !important; }
