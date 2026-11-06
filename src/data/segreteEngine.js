@@ -28,7 +28,7 @@ function roll(n, s) { let t = 0; const r = []; for (let i = 0; i < n; i++) { con
 const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 
 /* ── tipi di danno dei mostri (editor del World Boss in italiano) ── */
-const WB_DMG = { fuoco: "fire", ghiaccio: "cold", fulmine: "lightning", veleno: "poison", "oscurità": "necrotic", sacro: "radiant", fisico: "slashing", arcano: "force" };
+const WB_DMG = { acido: "acid", psichico: "psychic", tuono: "thunder", fuoco: "fire", ghiaccio: "cold", fulmine: "lightning", veleno: "poison", "oscurità": "necrotic", sacro: "radiant", fisico: "slashing", arcano: "force" };
 export const DMG_IT = { slashing: "taglienti", piercing: "perforanti", bludgeoning: "contundenti", fire: "da fuoco", cold: "da freddo", lightning: "da fulmine", thunder: "da tuono", acid: "da acido", poison: "da veleno", necrotic: "necrotici", radiant: "radiosi", force: "da forza", psychic: "psichici" };
 function wbDmgType(a) {
   if (WB_DMG[a.dmgType]) return WB_DMG[a.dmgType];
@@ -236,14 +236,31 @@ function log(s, txt, extra = {}) {
   s.hpSeen = nextSeen;
   s.log = [...(s.log || []), row].slice(-LOG_MAX);
 }
-const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };
+const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
 export const elOf = (type) => EL_OF[type] || "physical";
 const RANGED = new Set(["arco", "doppio", "lancio"]);
+/* FORME DEGLI EFFETTI (2026-11-06): ogni arma ha la forma del suo tipo di danno, ogni magia la sua
+   (id azione → forma, o [forma, elemento]). Forme in src/fx/spellFx.js, smistate da playCanvas. */
+const WEAPON_FX = { slashing: "slash", bludgeoning: "smash", piercing: "thrust" };
+const ACTION_FX = {
+  turbine: "slash", terremoto: "stomp", pioggia: "rain", trappola: "spikes", fulminante: "strike",
+  raffica: "punch", ki: "punch", stordente: "punch", ondata: "wave", palmo: "burst",
+  dardo_inc: "missiles", raggio_gelo: "beam", mani_w: "breath", mani_br: "breath", acida: "arrow",
+  palla_fuoco: "fireball", ipnosi: "curse", cono_freddo: "breath", fiotto: "beam", veleno: "cloud",
+  fulmine: "beam", catena: "strike", deflagrazione: "beam", hadar: "spikes", vampiro: "drain",
+  fame: "cloud", dito: "curse", rovi: ["whip", "earth"], onda: "wave", onda_b: "wave", lama_fiamma: "slash",
+  luna: "strike", richiamo: "strike", tempesta: "rain", fiamma: "strike", arma_spir: "slash",
+  beffa: "curse", sussurri: "curse", risata: "sleep",
+};
 function heroVfx(a) {
   if (a.kind === "defend") return { fx: "shield", el: "arcane" };
-  if (a.kind === "weapon") return { fx: a.ranged || RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
-  if (a.kind === "spell" || a.kind === "missile") return { fx: "bolt", el: elOf(a.dmg) };
-  if (a.kind === "save") return { fx: a.area ? "aoe" : "bolt", el: elOf(a.dmg) };
+  const pick = [].concat(ACTION_FX[a.id] || []);
+  if (a.kind === "weapon") {
+    const el = a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg);
+    return { fx: pick[0] || (a.ranged || RANGED.has(a.id) ? "arrow" : a.vfx || WEAPON_FX[a.dmg] || "slash"), el };
+  }
+  if (a.kind === "spell" || a.kind === "missile") return { fx: pick[0] || "bolt", el: pick[1] || elOf(a.dmg) };
+  if (a.kind === "save") return { fx: pick[0] || (a.area ? "aoe" : "bolt"), el: pick[1] || elOf(a.dmg) };
   if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
   if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
   if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
@@ -256,8 +273,19 @@ function foeVfx(a, type) {
   if (a.type === "debuff_dis") return { fx: "debuff", el: "darkness" };
   const area = a.aoeShape && a.aoeShape !== "single";
   const el = elOf(type);
-  if (area) return { fx: "aoe", el };
-  if (el === "physical" && a.hitMode !== "save") return { fx: /arco|frecc|balest|giavell|fionda|lancio/i.test(a.name || "") ? "arrow" : "slash", el };
+  const n = a.name || "";
+  if (/soffio|breath/i.test(n)) return { fx: "breath", el };
+  if (area) return { fx: /pestone|terremoto|stomp|quake/i.test(n) ? "stomp" : "aoe", el };
+  if (/arco|frecc|balest|giavell|fionda|lancio|bow|arrow|javelin/i.test(n)) return { fx: "arrow", el };
+  if (/morso|fauci|zanne|bite|jaws/i.test(n)) return { fx: "bite", el };
+  if (/artigli|graffio|unghi|claw|talon/i.test(n)) return { fx: "claw", el };
+  if (/coda|frusta|tentacol|tail|whip/i.test(n)) return { fx: "whip", el };
+  if (/pungiglione|aculeo|sting/i.test(n)) return { fx: "sting", el };
+  if (/carica|incorn|charge|gore/i.test(n)) return { fx: "dash", el };
+  if (/raggio|ray|beam/i.test(n)) return { fx: "beam", el };
+  if (/fulmin|lightning/i.test(n)) return { fx: "strike", el };
+  if (/nube|nuvola|cloud|miasma/i.test(n)) return { fx: "cloud", el };
+  if (el === "physical" && a.hitMode !== "save") return { fx: WEAPON_FX[type] || "slash", el };
   return { fx: "bolt", el };
 }
 // TURNI A FASI (2026-11-04): prima TUTTI gli eroi insieme (un'azione a testa, in
@@ -942,7 +970,7 @@ export function useItem(s, uid, { itemId, targetId }, now) {
     const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "cleanse_party") {
-    curVfx = { fx: "aoe", el: "frost", from: h.id };
+    curVfx = { fx: "aoe", el: "water", from: h.id };
     const tg = s.heroes.filter((x) => alive(x) && !x.fled);
     const parts = tg.map((x) => { const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]); was.forEach((k) => { delete x.fx[k]; }); return was.length ? `${x.name} (${was.map((k) => STATUS[k].ico).join("")})` : null; }).filter(Boolean);
     log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? `liberati ${parts.join(", ")}` : "tutti fradici, ma nessuno aveva bisogno"}.`, { kind: "buff", actor: h.id, targets: tg.map((x) => x.id) });
@@ -953,14 +981,14 @@ export function useItem(s, uid, { itemId, targetId }, now) {
     if (it.buff === "adv") target.fx.adv = until;
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "throw") {
-    curVfx = { fx: "bolt", el: elOf(it.dmg), from: h.id };
+    curVfx = { fx: "lob", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
     const notes = [];
     const dmg = applyDamage(s, target, roll(n, sd).t, it.dmg, notes);
     target.lastHitBy = h.id;
     log(s, `${it.icon} ${h.name} lancia ${it.name} su ${target.name}: ${dmg} danni ${DMG_IT[it.dmg] || ""}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
   } else if (it.kind === "throw_area") {
-    curVfx = { fx: "aoe", el: elOf(it.dmg), from: h.id };
+    curVfx = { fx: "fireball", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
     const base = roll(n, sd).t;
     const tg = s.foes.filter(alive);

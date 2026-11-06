@@ -73,7 +73,7 @@ export const WEAPONS = {
   lancia: { name: "Lancia", icon: "🔱", dice: "1d6", dmg: "piercing", wstat: "str" },
   balestra_l: { name: "Balestra Leggera", icon: "🏹", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
   mazza: { name: "Mazza", icon: "🔨", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
-  pugni: { name: "Pugni", icon: "👊", dice: "1d6", dmg: "bludgeoning", wstat: "fin" },
+  pugni: { name: "Pugni", icon: "👊", dice: "1d6", dmg: "bludgeoning", wstat: "fin", vfx: "punch" },
 };
 export const WEAPON_CHOICES = {
   fighter: ["spada_lunga", "martello"],
@@ -99,15 +99,15 @@ export function weaponOf(cls, key) {
 }
 // plus = arma magica equipaggiata (+1/+2 a colpire e ai danni, vedi segreteItems.js)
 // wItem = oggetto arma equipaggiato (nome proprio ed effetti al colpo `fx`, 2026-11-06)
-export const weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}), info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}` });
+export const weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...(w.vfx ? { vfx: w.vfx } : {}), ...(wItem?.fx ? { wfx: wItem.fx } : {}), info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}` });
 // testo breve degli effetti al colpo di un'arma speciale
 export function fxLine(fx = {}) {
   const out = [];
   if (fx.extra) out.push(`+${fx.extra[0]} ${DMG_ALL[fx.extra[1]] || ""}`);
-  if (fx.burn) out.push(`${fx.burn.chance}% 🔥 brucia ${fx.burn.dice}/turno`);
-  if (fx.poison) out.push(`${fx.poison.chance}% ☠ avvelena ${fx.poison.dice}/turno`);
-  if (fx.slow) out.push(`${fx.slow.chance}% 🐌 rallenta`);
-  if (fx.stun) out.push(`${fx.stun.chance}% 💫 stordisce`);
+  if (fx.burn) out.push(`${fx.burn.chance}% 🔥 ${fx.burn.dice}/turno`);
+  if (fx.poison) out.push(`${fx.poison.chance}% ☠ ${fx.poison.dice}/turno`);
+  if (fx.slow) out.push(`${fx.slow.chance}% 🐌`);
+  if (fx.stun) out.push(`${fx.stun.chance}% 💫`);
   if (fx.drain) out.push(`il danno extra ti cura del ${fx.drain}%`);
   if (fx.crit) out.push(`critico con ${fx.crit}–20`);
   if (fx.multi) out.push(`${fx.multi.double}% un colpo in più, ${fx.multi.none}% nessuno`);

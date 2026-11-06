@@ -26,7 +26,7 @@ function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
       <SgIcon kind="item" of={it} frame size="md" className={`sgs-ico gi-r-${it.rarity}`} />
       <span className="sgs-main">
         <b>{it.name}</b> <em style={{ color: r.color }}>{r.it}</em>
-        <small>{it.desc}{it.fx ? ` (${fxLine(it.fx)})` : ""}{isGear(it) ? ` Classi: ${usersOf(it)}.` : ""}</small>
+        <small>{it.fx ? `${fxLine(it.fx)} · ` : ""}{it.desc}{isGear(it) ? ` · ${usersOf(it)}` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
       {onEquip && isGear(it) && <button type="button" className="sgr-btn sgs-gift" disabled={busy} onClick={() => onEquip(id)}>🛡 Equipaggia</button>}
@@ -45,6 +45,17 @@ function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
         );
       })()}
     </li>
+  );
+}
+
+/* Legenda (2026-11-06): nelle descrizioni gli stati sono solo icone, le stesse che si vedono in lotta */
+const LEGEND = [["🔥", "bruciato"], ["☠", "avvelenato"], ["🧊", "congelato"], ["⚡", "paralizzato"], ["🗿", "pietrificato"], ["😱", "spaventato"], ["🌑", "accecato"], ["🐌", "rallentato"], ["😵", "confuso"], ["🌫", "svantaggio"], ["💫", "stordito"], ["😤", "irruento"], ["🛡", "CA"], ["🎯", "vantaggio"], ["❤", "PF"]];
+function IconLegend() {
+  return (
+    <details className="sgs-legend">
+      <summary>Cosa vogliono dire le icone</summary>
+      <ul>{LEGEND.map(([i, t]) => <li key={t}>{i} {t}</li>)}</ul>
+    </details>
   );
 }
 
@@ -160,6 +171,7 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
       <p className="sgr-hint">{tab === "zaino"
         ? "Lo zaino è unico per tutti i tuoi eroi."
         : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
+      <IconLegend />
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
       {tab === "zaino" ? (
         bagIds.length ? (

@@ -124,10 +124,15 @@ const LEGACY = {
   magic: ["bolt", "arcane"], ranged: ["arrow", "physical"], slash: ["slash", "physical"], heal: ["heal", "radiant"],
   buff: ["buff", "radiant"], debuff: ["debuff", "darkness"], shield: ["shield", "arcane"], hit: ["hit", "physical"],
 };
+/* Forme del motore a canvas (2026-11-06): partono da chi agisce · nascono sul bersaglio ·
+   non hanno un istante d'impatto proprio (per i numeri se ne dà uno fisso) */
+const FROM_KINDS = new Set(["bolt", "arrow", "beam", "breath", "drain", "wave", "whip", "sting", "dash", "lob", "missiles", "thrust"]);
+const ON_KINDS = new Set(["aoe", "slash", "smash", "punch", "strike", "rain", "spikes", "stomp", "burst", "claw", "bite"]);
+const SOFT_KINDS = new Set(["cloud", "curse", "sleep", "roar"]);
 function normalizeEffect(msg) {
   let kind = msg.effect, el = msg.effectEl;
   if (!el && LEGACY[kind]) [kind, el] = LEGACY[kind];
-  if (!LEGACY[kind] && kind !== "aoe" && kind !== "arrow" && kind !== "bolt") kind = "bolt";
+  if (!LEGACY[kind] && !FROM_KINDS.has(kind) && !ON_KINDS.has(kind) && !SOFT_KINDS.has(kind) && kind !== "fireball") kind = "bolt";
   return { kind, el: el || "arcane" };
 }
 
@@ -260,6 +265,8 @@ function soundFor(msg, targets) {
   const ne = normalizeEffect(msg);
   const missAll = targets.length && (msg.effectMissTargets || []).length >= targets.length;
   if (ne.kind === "heal") playSound("heal");
+  else if (["smash", "punch", "bite"].includes(ne.kind) && ne.el === "physical") playSound("hit");
+  else if (["thrust", "claw", "whip", "sting", "dash"].includes(ne.kind) && ne.el === "physical") playSound("slash");
   else if ((ne.kind === "slash" || ne.kind === "arrow" || ne.kind === "hit") && (ne.el === "physical" || !msg.effectEl)) playSound(ne.kind);
   else spellSound({ kind: ne.kind, el: ne.el, miss: !!missAll, kill: (msg.effectKill || []).length > 0 });
 }
@@ -313,16 +320,24 @@ function playCanvas(msg, targets) {
   const elOfKey = (k) => document.querySelector(`[data-vfx-target="${k}"]`);
   // chi lancia una magia (dardo, area, maledizione) si illumina
   const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
-  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield"].includes(kind)) castPose(caster);
+  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball"].includes(kind)) castPose(caster);
+  // Palla di Fuoco: UNA palla verso il centro dei bersagli, poi esplode su ognuno
+  let lobAt = 0;
+  if (kind === "fireball") {
+    const cx = anchors.reduce((t, x) => t + x.a.x, 0) / anchors.length, cy = anchors.reduce((t, x) => t + x.a.y, 0) / anchors.length;
+    const src = sourceOf(msg.effectFrom, anchors[0].a);
+    lobAt = playSpell({ kind: "lob", el, big: true, quiet: true, from: pt(src), to: { ...pt(anchors[0].a), x: cx, y: cy } });
+  }
   let shook = false;
   const hits = {};
   anchors.forEach(({ key, a }, i) => {
     const o = { el, to: pt(a), miss: missSet.has(key), kill: killSet.has(key) };
     let hit = -1;
-    const src = kind === "bolt" || kind === "arrow" ? sourceOf(msg.effectFrom, a) : null;
+    const src = FROM_KINDS.has(kind) ? sourceOf(msg.effectFrom, a) : null;
     if (src) hit = playSpell({ ...o, kind, from: pt(src), delay: i * 110 });
-    else if (kind === "aoe") hit = playSpell({ ...o, kind: "aoe", delay: i * 130 });
-    else if (kind === "slash") hit = playSpell({ ...o, kind: "slash", delay: i * 90 });
+    else if (kind === "fireball") hit = playSpell({ ...o, kind: "burst", delay: lobAt + i * 70, scale: 1.3 });
+    else if (SOFT_KINDS.has(kind)) { playSpell({ ...o, kind, from: pt(sourceOf(msg.effectFrom, a)), miss: false, kill: false, delay: i * 60 }); hit = i * 60 + 340; }
+    else if (ON_KINDS.has(kind)) hit = playSpell({ ...o, kind, delay: i * (kind === "aoe" ? 130 : 90) });
     else if (kind === "hit") hit = playSpell({ ...o, kind: "impact", delay: i * 90, scale: 0.85 });
     else playSpell({ ...o, kind, miss: false, kill: false, delay: i * 60 }); // heal · buff · shield · debuff
     if (hit >= 0) hits[key] = hit;
@@ -334,7 +349,7 @@ function playCanvas(msg, targets) {
     setTimeout(() => {
       const tEl = elOfKey(key);
       recoil(tEl, dir, crit);
-      if (!shook && (crit || o.kill || kind === "aoe")) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
+      if (!shook && (crit || o.kill || ["aoe", "smash", "stomp", "fireball", "strike"].includes(kind))) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
     }, hit);
   });
   return hits;

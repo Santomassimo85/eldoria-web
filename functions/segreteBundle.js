@@ -126,7 +126,7 @@ var WEAPONS = {
   lancia: { name: "Lancia", icon: "\u{1F531}", dice: "1d6", dmg: "piercing", wstat: "str" },
   balestra_l: { name: "Balestra Leggera", icon: "\u{1F3F9}", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
   mazza: { name: "Mazza", icon: "\u{1F528}", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
-  pugni: { name: "Pugni", icon: "\u{1F44A}", dice: "1d6", dmg: "bludgeoning", wstat: "fin" }
+  pugni: { name: "Pugni", icon: "\u{1F44A}", dice: "1d6", dmg: "bludgeoning", wstat: "fin", vfx: "punch" }
 };
 var WEAPON_CHOICES = {
   fighter: ["spada_lunga", "martello"],
@@ -149,14 +149,14 @@ function weaponOf(cls, key) {
   const list = weaponChoices(cls);
   return list.find((w) => w.key === key) || list[0];
 }
-var weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {}, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` \xB7 ${fxLine(wItem.fx)}` : ""}` });
+var weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...w.vfx ? { vfx: w.vfx } : {}, ...wItem?.fx ? { wfx: wItem.fx } : {}, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` \xB7 ${fxLine(wItem.fx)}` : ""}` });
 function fxLine(fx = {}) {
   const out = [];
   if (fx.extra) out.push(`+${fx.extra[0]} ${DMG_ALL[fx.extra[1]] || ""}`);
-  if (fx.burn) out.push(`${fx.burn.chance}% \u{1F525} brucia ${fx.burn.dice}/turno`);
-  if (fx.poison) out.push(`${fx.poison.chance}% \u2620 avvelena ${fx.poison.dice}/turno`);
-  if (fx.slow) out.push(`${fx.slow.chance}% \u{1F40C} rallenta`);
-  if (fx.stun) out.push(`${fx.stun.chance}% \u{1F4AB} stordisce`);
+  if (fx.burn) out.push(`${fx.burn.chance}% \u{1F525} ${fx.burn.dice}/turno`);
+  if (fx.poison) out.push(`${fx.poison.chance}% \u2620 ${fx.poison.dice}/turno`);
+  if (fx.slow) out.push(`${fx.slow.chance}% \u{1F40C}`);
+  if (fx.stun) out.push(`${fx.stun.chance}% \u{1F4AB}`);
   if (fx.drain) out.push(`il danno extra ti cura del ${fx.drain}%`);
   if (fx.crit) out.push(`critico con ${fx.crit}\u201320`);
   if (fx.multi) out.push(`${fx.multi.double}% un colpo in pi\xF9, ${fx.multi.none}% nessuno`);
@@ -533,24 +533,24 @@ var RARITY = {
   veryRare: { it: "Molto raro", w: 2, color: "#c48bff" }
 };
 var BASE_ITEMS = {
-  pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
-  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
-  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
-  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "A te o a un alleato: toglie bruciatura, veleno, congelamento, paralisi, paura, cecit\xE0, rallentamento, confusione, svantaggio e stordimento. Non la pietrificazione." },
-  bomba_acqua: { name: "Bomba d'Acqua", icon: "\u{1F4A7}", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Inzuppa tutto il gruppo: toglie bruciatura, rallentamento e paralisi a tutti gli eroi in piedi." },
-  panacea: { name: "Panacea", icon: "\u2728", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "A te o a un alleato: toglie ogni stato, anche la pietrificazione." },
-  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
-  eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
-  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
-  acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 acido, colpisce sempre." },
-  acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "Su un nemico: 2d8 radiosi, colpisce sempre." },
-  pietra_tuono: { name: "Pietra del Tuono", icon: "\u{1F4A5}", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 140, daily: 1, rarity: "uncommon", desc: "Esplode fra i nemici: 2d6 tuono a tutti, TS COS CD 13 per met\xE0." },
-  piuma_fenice: { name: "Piuma della Fenice", icon: "\u{1FAB6}", kind: "revive", pct: 50, price: 400, daily: 1, rarity: "rare", desc: "Rialza un alleato a terra con met\xE0 dei PF." }
+  pozione: { name: "Pozione di Guarigione", icon: "\u{1F9EA}", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "\u2764 +2d4+2 PF \xB7 te o un alleato in piedi" },
+  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "\u{1F377}", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "\u2764 +4d4+4 PF \xB7 te o un alleato in piedi" },
+  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "\u2697", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "\u2764 +8d4+8 PF \xB7 te o un alleato in piedi" },
+  tonico: { name: "Tonico Purificante", icon: "\u{1F33F}", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "Te o un alleato: toglie \u{1F525} \u2620 \u{1F9CA} \u26A1 \u{1F631} \u{1F311} \u{1F40C} \u{1F635} \u{1F32B} \u{1F4AB} \u{1F624} \xB7 non \u{1F5FF}" },
+  bomba_acqua: { name: "Bomba d'Acqua", icon: "\u{1F4A7}", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Tutto il gruppo: toglie \u{1F525} \u{1F40C} \u26A1" },
+  panacea: { name: "Panacea", icon: "\u2728", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "Te o un alleato: toglie tutti gli stati, anche \u{1F5FF}" },
+  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "\u{1F6E1} +2 CA \xB7 3 round \xB7 te o un alleato" },
+  eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "\u{1F3AF} vantaggio \xB7 2 round \xB7 te o un alleato" },
+  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "\u{1F525} 2d6 fuoco \xB7 colpisce sempre" },
+  acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "\u{1F9EA} 2d6 acido \xB7 colpisce sempre" },
+  acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "\u2728 2d8 radiosi \xB7 colpisce sempre" },
+  pietra_tuono: { name: "Pietra del Tuono", icon: "\u{1F4A5}", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 140, daily: 1, rarity: "uncommon", desc: "\u{1F4A5} 2d6 tuono a tutti i nemici \xB7 TS COS CD 13 per met\xE0" },
+  piuma_fenice: { name: "Piuma della Fenice", icon: "\u{1FAB6}", kind: "revive", pct: 50, price: 400, daily: 1, rarity: "rare", desc: "Rialza un alleato a terra con met\xE0 PF" }
 };
 var WEAPON_ITEMS = {};
 Object.entries(WEAPONS).forEach(([k, w]) => {
-  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", group: "weapon", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
-  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", group: "weapon", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
+  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", group: "weapon", desc: `${w.dice} \xB7 +1 a colpire e ai danni` };
+  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", group: "weapon", desc: `${w.dice} \xB7 +2 a colpire e ai danni \xB7 solo nelle Segrete` };
 });
 var SPECIAL_WEAPONS = {
   lingua_salamandra: {
@@ -561,7 +561,7 @@ var SPECIAL_WEAPONS = {
     rarity: "rare",
     dungeons: ["magma"],
     fx: { extra: ["1d4", "fire"], burn: { chance: 20, dice: "1d4", turns: 2 } },
-    desc: "Spada lunga +1 ancora calda di lava: +1d4 fuoco e a volte il nemico prende fuoco."
+    desc: "Spada lunga +1 ancora calda di lava."
   },
   maglio_fabbro: {
     name: "Maglio del Fabbro Pazzo",
@@ -572,7 +572,7 @@ var SPECIAL_WEAPONS = {
     dungeons: ["magma"],
     minDiff: "medio",
     fx: { burn: { chance: 20, dice: "1d6", turns: 2 } },
-    desc: "Il fabbro giurava che bastava scaldarlo \xABun altro pochino\xBB. Maglio +1 che incendia chi colpisce."
+    desc: "Maglio +1. \xABBasta scaldarlo un altro pochino.\xBB"
   },
   zanna_vyrskaal: {
     name: "Zanna di Vyrskaal",
@@ -583,7 +583,7 @@ var SPECIAL_WEAPONS = {
     dungeons: ["ghiaccio"],
     minDiff: "leggenda",
     fx: { extra: ["1d6", "cold"], slow: { chance: 25, turns: 1 } },
-    desc: "Un dente della Regina di Brina montato su un manico. Ascia bipenne +1, +1d6 freddo, a volte congela le gambe."
+    desc: "Ascia bipenne +1: un dente della Regina di Brina."
   },
   lancia_pescatore: {
     name: "Fiocina del Pescatore di Annegati",
@@ -593,7 +593,7 @@ var SPECIAL_WEAPONS = {
     rarity: "rare",
     dungeons: ["palude", "ghiaccio"],
     fx: { slow: { chance: 30, turns: 1 } },
-    desc: "Lancia +1 con l'uncino: chi viene preso fatica a muoversi (svantaggio)."
+    desc: "Lancia +1 con l'uncino."
   },
   spina_palude: {
     name: "Spina della Palude",
@@ -603,7 +603,7 @@ var SPECIAL_WEAPONS = {
     rarity: "uncommon",
     dungeons: ["palude"],
     fx: { poison: { chance: 30, dice: "1d4", turns: 3 } },
-    desc: "Stocco ricavato da una spina gigante, sempre un po' appiccicoso. Spesso avvelena."
+    desc: "Stocco fatto da una spina gigante, sempre appiccicoso."
   },
   falce_ragno: {
     name: "Zampa del Ragno Gigante",
@@ -613,7 +613,7 @@ var SPECIAL_WEAPONS = {
     rarity: "uncommon",
     dungeons: ["caverna"],
     fx: { poison: { chance: 25, dice: "1d6", turns: 2 } },
-    desc: "Una zampa di ragno affilata come una scimitarra. Il veleno c'\xE8 ancora."
+    desc: "Scimitarra: il veleno del ragno c'\xE8 ancora."
   },
   arco_ratto: {
     name: "Arco del Ratto Ubriaco",
@@ -623,7 +623,7 @@ var SPECIAL_WEAPONS = {
     rarity: "uncommon",
     dungeons: ["caverna"],
     fx: { multi: { double: 25, none: 10 } },
-    desc: "Apparteneva a un ratto mannaro con un debole per il sidro. A volte tira due frecce, a volte nessuna."
+    desc: "Arco lungo di un ratto mannaro con un debole per il sidro."
   },
   stiletto_rimorso: {
     name: "Stiletto del Rimorso",
@@ -633,7 +633,7 @@ var SPECIAL_WEAPONS = {
     rarity: "rare",
     dungeons: ["segrete"],
     fx: { crit: 19 },
-    desc: "Stocco +1 di un carceriere pentito: sussurra \xABscusa\xBB e colpisce i punti giusti (critico con 19 o 20)."
+    desc: "Stocco +1 di un carceriere pentito: sussurra \xABscusa\xBB."
   },
   catene_mazzafrusto: {
     name: "Mazzafrusto delle Catene",
@@ -643,7 +643,7 @@ var SPECIAL_WEAPONS = {
     rarity: "rare",
     dungeons: ["segrete"],
     fx: { slow: { chance: 25, turns: 1 } },
-    desc: "Le catene si attorcigliano da sole attorno alle gambe del nemico. Mazzafrusto +1."
+    desc: "Mazzafrusto +1: le catene si attorcigliano da sole."
   },
   mazza_penitenza: {
     name: "Mazza della Penitenza",
@@ -653,7 +653,7 @@ var SPECIAL_WEAPONS = {
     rarity: "rare",
     dungeons: ["tempio"],
     fx: { extra: ["1d6", "radiant"], drain: 50 },
-    desc: "Mazza +1 di un culto dimenticato: +1d6 radiosi e met\xE0 di quel danno ti cura."
+    desc: "Mazza +1 di un culto dimenticato."
   },
   balestra_tobia: {
     name: "Balestra a Ripetizione di Zio Tobia",
@@ -663,7 +663,7 @@ var SPECIAL_WEAPONS = {
     rarity: "uncommon",
     dungeons: ["tempio"],
     fx: { multi: { double: 30, none: 5 } },
-    desc: "Un'invenzione di zio Tobia trovata fra le rovine. Spesso spara due quadrelli. Spesso."
+    desc: "Balestra leggera, invenzione di zio Tobia. Spesso funziona."
   },
   martello_brontola: {
     name: "Martello che Brontola",
@@ -672,7 +672,7 @@ var SPECIAL_WEAPONS = {
     plus: 1,
     rarity: "rare",
     fx: { stun: { chance: 15 } },
-    desc: "Martello da guerra +1 che borbotta insulti in nanico. Ogni tanto il nemico resta stordito per la vergogna."
+    desc: "Martello da guerra +1 che borbotta insulti in nanico."
   },
   mestolo_nonna: {
     name: "Mestolo della Nonna",
@@ -681,7 +681,7 @@ var SPECIAL_WEAPONS = {
     plus: 0,
     rarity: "uncommon",
     fx: { extra: ["1d4", "bludgeoning"], stun: { chance: 10 } },
-    desc: "Un mestolo enorme. Chiunque ne sia stato colpito da bambino si blocca per un attimo. +1d4 contundenti."
+    desc: "Bastone: un mestolo enorme. Tutti ne hanno paura."
   }
 };
 var ARMOR_ITEMS = {
@@ -695,18 +695,18 @@ var ARMOR_ITEMS = {
   arm_maglia_1: { name: "Cotta di Maglia +1", icon: "\u26D3", kind: "armor", base: "maglia", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Pesante: CA 17." },
   arm_piastre_1: { name: "Armatura di Piastre +1", icon: "\u{1F3F0}", kind: "armor", base: "piastre", plus: 1, price: 0, rarity: "veryRare", group: "armor", desc: "Pesante: CA 19." },
   // a tema, dei dungeon
-  scaglie_salamandra: { name: "Scaglie della Salamandra", icon: "\u{1F98E}", kind: "armor", base: "scaglie", plus: 0, rarity: "rare", dungeons: ["magma"], res: ["fire"], desc: "Corazza di scaglie fatta con la pelle di una salamandra: resistenza al fuoco." },
-  pelliccia_lupo: { name: "Pelliccia del Lupo Invernale", icon: "\u{1F43A}", kind: "armor", base: "cuoio", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "Armatura di cuoio foderata di pelo bianco: resistenza al freddo. Profuma di cane bagnato." },
-  mezza_ghiaccio: { name: "Mezza Armatura del Ghiaccio Eterno", icon: "\u{1F9CA}", kind: "armor", base: "mezza", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "medio", res: ["cold"], desc: "Mezza armatura +1 che non si scioglie mai: resistenza al freddo." },
-  giaco_muschio: { name: "Giaco di Muschio", icon: "\u{1F344}", kind: "armor", base: "giaco", plus: 0, rarity: "uncommon", dungeons: ["palude"], res: ["poison"], desc: "Giaco di maglia ricoperto di muschio che assorbe i veleni: resistenza al veleno." },
-  giubba_galline: { name: "Giubba del Ladro di Galline", icon: "\u{1F414}", kind: "armor", base: "borchiato", plus: 1, rarity: "rare", dungeons: ["caverna"], desc: "Cuoio borchiato +1 pieno di piume. Nessuno sa perch\xE9, ma funziona." },
-  catene_carceriere: { name: "Catene del Carceriere", icon: "\u26D3", kind: "armor", base: "maglia", plus: 0, rarity: "rare", dungeons: ["segrete"], res: ["necrotic"], desc: "Cotta di maglia intrecciata con catene benedette: resistenza ai danni necrotici." },
-  piastre_guardiano: { name: "Piastre del Guardiano Sepolto", icon: "\u{1F3DB}", kind: "armor", base: "piastre", plus: 0, rarity: "veryRare", dungeons: ["tempio"], minDiff: "leggenda", saveBonus: 1, res: ["radiant"], desc: "Armatura di piastre di un guardiano del tempio: CA 18, +1 ai tiri salvezza, resistenza ai radiosi." },
+  scaglie_salamandra: { name: "Scaglie della Salamandra", icon: "\u{1F98E}", kind: "armor", base: "scaglie", plus: 0, rarity: "rare", dungeons: ["magma"], res: ["fire"], desc: "\u{1F525} resistenza al fuoco \xB7 scaglie di salamandra." },
+  pelliccia_lupo: { name: "Pelliccia del Lupo Invernale", icon: "\u{1F43A}", kind: "armor", base: "cuoio", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "\u{1F9CA} resistenza al freddo \xB7 profuma di cane bagnato." },
+  mezza_ghiaccio: { name: "Mezza Armatura del Ghiaccio Eterno", icon: "\u{1F9CA}", kind: "armor", base: "mezza", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "medio", res: ["cold"], desc: "\u{1F9CA} resistenza al freddo \xB7 mezza armatura +1." },
+  giaco_muschio: { name: "Giaco di Muschio", icon: "\u{1F344}", kind: "armor", base: "giaco", plus: 0, rarity: "uncommon", dungeons: ["palude"], res: ["poison"], desc: "\u2620 resistenza al veleno \xB7 giaco di muschio." },
+  giubba_galline: { name: "Giubba del Ladro di Galline", icon: "\u{1F414}", kind: "armor", base: "borchiato", plus: 1, rarity: "rare", dungeons: ["caverna"], desc: "Cuoio borchiato +1 pieno di piume. Funziona." },
+  catene_carceriere: { name: "Catene del Carceriere", icon: "\u26D3", kind: "armor", base: "maglia", plus: 0, rarity: "rare", dungeons: ["segrete"], res: ["necrotic"], desc: "\u{1F480} resistenza al necrotico \xB7 cotta di maglia." },
+  piastre_guardiano: { name: "Piastre del Guardiano Sepolto", icon: "\u{1F3DB}", kind: "armor", base: "piastre", plus: 0, rarity: "veryRare", dungeons: ["tempio"], minDiff: "leggenda", saveBonus: 1, res: ["radiant"], desc: "CA 18 \xB7 +1 ai TS \xB7 \u2728 resistenza al radioso." },
   // scudi (Guerriero, Paladino, Chierico, Barbaro, Ranger, Druido con un'arma a una mano)
   scudo_1: { name: "Scudo +1", icon: "\u{1F6E1}", kind: "shield", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "+3 CA invece di +2." },
-  scudo_padella: { name: "Scudo-Padella", icon: "\u{1F373}", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "Una padella gigante. +2 CA e chi ti colpisce in mischia a volte si prende una padellata (1d4)." },
-  scudo_brina: { name: "Scudo di Brina", icon: "\u2744", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA e resistenza al freddo." },
-  scudo_magma: { name: "Scudo di Ossidiana", icon: "\u{1F30B}", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA: chi ti colpisce in mischia a volte si scotta (1d6 fuoco)." }
+  scudo_padella: { name: "Scudo-Padella", icon: "\u{1F373}", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "+2 CA \xB7 25%: chi ti colpisce prende 1d4." },
+  scudo_brina: { name: "Scudo di Brina", icon: "\u2744", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA \xB7 \u{1F9CA} resistenza al freddo." },
+  scudo_magma: { name: "Scudo di Ossidiana", icon: "\u{1F30B}", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA \xB7 25%: chi ti colpisce prende \u{1F525} 1d6." }
 };
 Object.values(SPECIAL_WEAPONS).forEach((w) => {
   w.kind = "weapon";
@@ -1053,7 +1053,7 @@ function roll(n, s) {
   return { t, r };
 }
 var pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-var WB_DMG = { fuoco: "fire", ghiaccio: "cold", fulmine: "lightning", veleno: "poison", "oscurit\xE0": "necrotic", sacro: "radiant", fisico: "slashing", arcano: "force" };
+var WB_DMG = { acido: "acid", psichico: "psychic", tuono: "thunder", fuoco: "fire", ghiaccio: "cold", fulmine: "lightning", veleno: "poison", "oscurit\xE0": "necrotic", sacro: "radiant", fisico: "slashing", arcano: "force" };
 var DMG_IT = { slashing: "taglienti", piercing: "perforanti", bludgeoning: "contundenti", fire: "da fuoco", cold: "da freddo", lightning: "da fulmine", thunder: "da tuono", acid: "da acido", poison: "da veleno", necrotic: "necrotici", radiant: "radiosi", force: "da forza", psychic: "psichici" };
 function wbDmgType(a) {
   if (WB_DMG[a.dmgType]) return WB_DMG[a.dmgType];
@@ -1273,14 +1273,60 @@ function log(s, txt, extra = {}) {
   s.hpSeen = nextSeen;
   s.log = [...s.log || [], row].slice(-LOG_MAX);
 }
-var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "poison", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "arcane" };
+var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
 var elOf = (type) => EL_OF[type] || "physical";
 var RANGED = /* @__PURE__ */ new Set(["arco", "doppio", "lancio"]);
+var WEAPON_FX = { slashing: "slash", bludgeoning: "smash", piercing: "thrust" };
+var ACTION_FX = {
+  turbine: "slash",
+  terremoto: "stomp",
+  pioggia: "rain",
+  trappola: "spikes",
+  fulminante: "strike",
+  raffica: "punch",
+  ki: "punch",
+  stordente: "punch",
+  ondata: "wave",
+  palmo: "burst",
+  dardo_inc: "missiles",
+  raggio_gelo: "beam",
+  mani_w: "breath",
+  mani_br: "breath",
+  acida: "arrow",
+  palla_fuoco: "fireball",
+  ipnosi: "curse",
+  cono_freddo: "breath",
+  fiotto: "beam",
+  veleno: "cloud",
+  fulmine: "beam",
+  catena: "strike",
+  deflagrazione: "beam",
+  hadar: "spikes",
+  vampiro: "drain",
+  fame: "cloud",
+  dito: "curse",
+  rovi: ["whip", "earth"],
+  onda: "wave",
+  onda_b: "wave",
+  lama_fiamma: "slash",
+  luna: "strike",
+  richiamo: "strike",
+  tempesta: "rain",
+  fiamma: "strike",
+  arma_spir: "slash",
+  beffa: "curse",
+  sussurri: "curse",
+  risata: "sleep"
+};
 function heroVfx(a) {
   if (a.kind === "defend") return { fx: "shield", el: "arcane" };
-  if (a.kind === "weapon") return { fx: a.ranged || RANGED.has(a.id) ? "arrow" : "slash", el: a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg) };
-  if (a.kind === "spell" || a.kind === "missile") return { fx: "bolt", el: elOf(a.dmg) };
-  if (a.kind === "save") return { fx: a.area ? "aoe" : "bolt", el: elOf(a.dmg) };
+  const pick2 = [].concat(ACTION_FX[a.id] || []);
+  if (a.kind === "weapon") {
+    const el = a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg);
+    return { fx: pick2[0] || (a.ranged || RANGED.has(a.id) ? "arrow" : a.vfx || WEAPON_FX[a.dmg] || "slash"), el };
+  }
+  if (a.kind === "spell" || a.kind === "missile") return { fx: pick2[0] || "bolt", el: pick2[1] || elOf(a.dmg) };
+  if (a.kind === "save") return { fx: pick2[0] || (a.area ? "aoe" : "bolt"), el: pick2[1] || elOf(a.dmg) };
   if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
   if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
   if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
@@ -1293,8 +1339,19 @@ function foeVfx(a, type) {
   if (a.type === "debuff_dis") return { fx: "debuff", el: "darkness" };
   const area = a.aoeShape && a.aoeShape !== "single";
   const el = elOf(type);
-  if (area) return { fx: "aoe", el };
-  if (el === "physical" && a.hitMode !== "save") return { fx: /arco|frecc|balest|giavell|fionda|lancio/i.test(a.name || "") ? "arrow" : "slash", el };
+  const n = a.name || "";
+  if (/soffio|breath/i.test(n)) return { fx: "breath", el };
+  if (area) return { fx: /pestone|terremoto|stomp|quake/i.test(n) ? "stomp" : "aoe", el };
+  if (/arco|frecc|balest|giavell|fionda|lancio|bow|arrow|javelin/i.test(n)) return { fx: "arrow", el };
+  if (/morso|fauci|zanne|bite|jaws/i.test(n)) return { fx: "bite", el };
+  if (/artigli|graffio|unghi|claw|talon/i.test(n)) return { fx: "claw", el };
+  if (/coda|frusta|tentacol|tail|whip/i.test(n)) return { fx: "whip", el };
+  if (/pungiglione|aculeo|sting/i.test(n)) return { fx: "sting", el };
+  if (/carica|incorn|charge|gore/i.test(n)) return { fx: "dash", el };
+  if (/raggio|ray|beam/i.test(n)) return { fx: "beam", el };
+  if (/fulmin|lightning/i.test(n)) return { fx: "strike", el };
+  if (/nube|nuvola|cloud|miasma/i.test(n)) return { fx: "cloud", el };
+  if (el === "physical" && a.hitMode !== "save") return { fx: WEAPON_FX[type] || "slash", el };
   return { fx: "bolt", el };
 }
 function rollInitiative(s) {
@@ -2059,7 +2116,7 @@ function useItem(s, uid, { itemId, targetId }, now) {
     const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "cleanse_party") {
-    curVfx = { fx: "aoe", el: "frost", from: h.id };
+    curVfx = { fx: "aoe", el: "water", from: h.id };
     const tg = s.heroes.filter((x) => alive(x) && !x.fled);
     const parts = tg.map((x) => {
       const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]);
@@ -2076,14 +2133,14 @@ function useItem(s, uid, { itemId, targetId }, now) {
     if (it.buff === "adv") target.fx.adv = until;
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "throw") {
-    curVfx = { fx: "bolt", el: elOf(it.dmg), from: h.id };
+    curVfx = { fx: "lob", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
     const notes = [];
     const dmg = applyDamage(s, target, roll(n, sd).t, it.dmg, notes);
     target.lastHitBy = h.id;
     log(s, `${it.icon} ${h.name} lancia ${it.name} su ${target.name}: ${dmg} danni ${DMG_IT[it.dmg] || ""}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
   } else if (it.kind === "throw_area") {
-    curVfx = { fx: "aoe", el: elOf(it.dmg), from: h.id };
+    curVfx = { fx: "fireball", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
     const base = roll(n, sd).t;
     const tg = s.foes.filter(alive);

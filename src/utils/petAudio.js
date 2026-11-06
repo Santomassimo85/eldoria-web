@@ -284,7 +284,10 @@ const SPELL_EL = {
 };
 const SPELL_IMPACT = { bolt: 0.4, arrow: 0.32, slash: 0.12, aoe: 0.15, hit: 0, debuff: 0.2 };
 
-export function spellSound({ kind, el = "arcane", miss = false, kill = false } = {}) {
+// forme del motore a canvas che suonano come una delle forme base (2026-11-06)
+const SOUND_LIKE = { beam: "bolt", breath: "bolt", drain: "bolt", wave: "bolt", lob: "bolt", missiles: "bolt", fireball: "aoe", strike: "aoe", rain: "aoe", spikes: "aoe", stomp: "aoe", burst: "aoe", cloud: "debuff", curse: "debuff", sleep: "debuff", roar: "debuff", smash: "slash", punch: "slash", thrust: "slash", claw: "slash", bite: "slash", whip: "slash", sting: "slash", dash: "slash" };
+export function spellSound({ kind: kind0, el = "arcane", miss = false, kill = false } = {}) {
+  const kind = SOUND_LIKE[kind0] || kind0;
   const c = getCtx();
   if (!c) return;
   if (c.state !== "running") c.resume().catch(() => {});

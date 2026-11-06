@@ -30,26 +30,26 @@ export const RARITY = {
    (toglie svantaggio, stordimento, irruenza) · buff (ac/adv come le abilità) · throw (colpisce
    sempre un nemico) · throw_area (TS di tutti i nemici, metà se riesce) · revive (rialza a %) */
 const BASE_ITEMS = {
-  pozione: { name: "Pozione di Guarigione", icon: "🧪", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "Cura 2d4+2 PF a te o a un alleato in piedi." },
-  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "🍷", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "Cura 4d4+4 PF a te o a un alleato in piedi." },
-  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "⚗", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "Cura 8d4+8 PF a te o a un alleato in piedi." },
-  tonico: { name: "Tonico Purificante", icon: "🌿", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "A te o a un alleato: toglie bruciatura, veleno, congelamento, paralisi, paura, cecità, rallentamento, confusione, svantaggio e stordimento. Non la pietrificazione." },
-  bomba_acqua: { name: "Bomba d'Acqua", icon: "💧", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Inzuppa tutto il gruppo: toglie bruciatura, rallentamento e paralisi a tutti gli eroi in piedi." },
-  panacea: { name: "Panacea", icon: "✨", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "A te o a un alleato: toglie ogni stato, anche la pietrificazione." },
-  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "🪨", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "+2 CA per 3 round a te o a un alleato." },
-  eroismo: { name: "Pozione dell'Eroismo", icon: "🦸", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "Vantaggio agli attacchi per 2 round a te o a un alleato." },
-  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "🔥", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 fuoco, colpisce sempre." },
-  acido: { name: "Fiala d'Acido", icon: "🫙", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "Lanci la fiala su un nemico: 2d6 acido, colpisce sempre." },
-  acqua_santa: { name: "Acqua Santa", icon: "💧", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "Su un nemico: 2d8 radiosi, colpisce sempre." },
-  pietra_tuono: { name: "Pietra del Tuono", icon: "💥", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 140, daily: 1, rarity: "uncommon", desc: "Esplode fra i nemici: 2d6 tuono a tutti, TS COS CD 13 per metà." },
-  piuma_fenice: { name: "Piuma della Fenice", icon: "🪶", kind: "revive", pct: 50, price: 400, daily: 1, rarity: "rare", desc: "Rialza un alleato a terra con metà dei PF." },
+  pozione: { name: "Pozione di Guarigione", icon: "🧪", kind: "heal", dice: "2d4", flat: 2, price: 25, daily: 3, rarity: "common", desc: "❤ +2d4+2 PF · te o un alleato in piedi" },
+  pozione_magg: { name: "Pozione di Guarigione Maggiore", icon: "🍷", kind: "heal", dice: "4d4", flat: 4, price: 90, daily: 2, rarity: "uncommon", desc: "❤ +4d4+4 PF · te o un alleato in piedi" },
+  pozione_sup: { name: "Pozione di Guarigione Superiore", icon: "⚗", kind: "heal", dice: "8d4", flat: 8, price: 250, daily: 1, rarity: "rare", desc: "❤ +8d4+8 PF · te o un alleato in piedi" },
+  tonico: { name: "Tonico Purificante", icon: "🌿", kind: "cleanse", price: 40, daily: 2, rarity: "common", desc: "Te o un alleato: toglie 🔥 ☠ 🧊 ⚡ 😱 🌑 🐌 😵 🌫 💫 😤 · non 🗿" },
+  bomba_acqua: { name: "Bomba d'Acqua", icon: "💧", kind: "cleanse_party", price: 200, daily: 1, rarity: "uncommon", desc: "Tutto il gruppo: toglie 🔥 🐌 ⚡" },
+  panacea: { name: "Panacea", icon: "✨", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "Te o un alleato: toglie tutti gli stati, anche 🗿" },
+  pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "🪨", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "🛡 +2 CA · 3 round · te o un alleato" },
+  eroismo: { name: "Pozione dell'Eroismo", icon: "🦸", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "🎯 vantaggio · 2 round · te o un alleato" },
+  fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "🔥", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "🔥 2d6 fuoco · colpisce sempre" },
+  acido: { name: "Fiala d'Acido", icon: "🫙", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "🧪 2d6 acido · colpisce sempre" },
+  acqua_santa: { name: "Acqua Santa", icon: "💧", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "✨ 2d8 radiosi · colpisce sempre" },
+  pietra_tuono: { name: "Pietra del Tuono", icon: "💥", kind: "throw_area", dice: "2d6", dmg: "thunder", save: "con", dc: 13, price: 140, daily: 1, rarity: "uncommon", desc: "💥 2d6 tuono a tutti i nemici · TS COS CD 13 per metà" },
+  piuma_fenice: { name: "Piuma della Fenice", icon: "🪶", kind: "revive", pct: 50, price: 400, daily: 1, rarity: "rare", desc: "Rialza un alleato a terra con metà PF" },
 };
 
 // armi magiche: una +1 (rara, in bottega) e una +2 (molto rara, solo dai mostri) per ogni arma
 const WEAPON_ITEMS = {};
 Object.entries(WEAPONS).forEach(([k, w]) => {
-  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", group: "weapon", desc: `${w.dice} +1 a colpire e ai danni. Si equipaggia sull'eroe che usa questo tipo d'arma.` };
-  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", group: "weapon", desc: `${w.dice} +2 a colpire e ai danni. Si trova solo nelle Segrete.` };
+  WEAPON_ITEMS[`${k}_1`] = { name: `${w.name} +1`, icon: w.icon, kind: "weapon", base: k, plus: 1, price: 1200, daily: 1, rarity: "rare", group: "weapon", desc: `${w.dice} · +1 a colpire e ai danni` };
+  WEAPON_ITEMS[`${k}_2`] = { name: `${w.name} +2`, icon: w.icon, kind: "weapon", base: k, plus: 2, price: 0, rarity: "veryRare", group: "weapon", desc: `${w.dice} · +2 a colpire e ai danni · solo nelle Segrete` };
 });
 
 /* ARMI SPECIALI (2026-11-06): solo dai mostri, quasi tutte di UN dungeon (`dungeons`), alcune
@@ -60,43 +60,43 @@ Object.entries(WEAPONS).forEach(([k, w]) => {
 const SPECIAL_WEAPONS = {
   lingua_salamandra: { name: "Lingua di Salamandra", icon: "🔥", base: "spada_lunga", plus: 1, rarity: "rare", dungeons: ["magma"],
     fx: { extra: ["1d4", "fire"], burn: { chance: 20, dice: "1d4", turns: 2 } },
-    desc: "Spada lunga +1 ancora calda di lava: +1d4 fuoco e a volte il nemico prende fuoco." },
+    desc: "Spada lunga +1 ancora calda di lava." },
   maglio_fabbro: { name: "Maglio del Fabbro Pazzo", icon: "⚒", base: "maglio", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio",
     fx: { burn: { chance: 20, dice: "1d6", turns: 2 } },
-    desc: "Il fabbro giurava che bastava scaldarlo «un altro pochino». Maglio +1 che incendia chi colpisce." },
+    desc: "Maglio +1. «Basta scaldarlo un altro pochino.»" },
   zanna_vyrskaal: { name: "Zanna di Vyrskaal", icon: "❄", base: "ascia_bip", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "leggenda",
     fx: { extra: ["1d6", "cold"], slow: { chance: 25, turns: 1 } },
-    desc: "Un dente della Regina di Brina montato su un manico. Ascia bipenne +1, +1d6 freddo, a volte congela le gambe." },
+    desc: "Ascia bipenne +1: un dente della Regina di Brina." },
   lancia_pescatore: { name: "Fiocina del Pescatore di Annegati", icon: "🔱", base: "lancia", plus: 1, rarity: "rare", dungeons: ["palude", "ghiaccio"],
     fx: { slow: { chance: 30, turns: 1 } },
-    desc: "Lancia +1 con l'uncino: chi viene preso fatica a muoversi (svantaggio)." },
+    desc: "Lancia +1 con l'uncino." },
   spina_palude: { name: "Spina della Palude", icon: "🌿", base: "stocco", plus: 0, rarity: "uncommon", dungeons: ["palude"],
     fx: { poison: { chance: 30, dice: "1d4", turns: 3 } },
-    desc: "Stocco ricavato da una spina gigante, sempre un po' appiccicoso. Spesso avvelena." },
+    desc: "Stocco fatto da una spina gigante, sempre appiccicoso." },
   falce_ragno: { name: "Zampa del Ragno Gigante", icon: "🕷", base: "scimitarra", plus: 0, rarity: "uncommon", dungeons: ["caverna"],
     fx: { poison: { chance: 25, dice: "1d6", turns: 2 } },
-    desc: "Una zampa di ragno affilata come una scimitarra. Il veleno c'è ancora." },
+    desc: "Scimitarra: il veleno del ragno c'è ancora." },
   arco_ratto: { name: "Arco del Ratto Ubriaco", icon: "🏹", base: "arco_lungo", plus: 0, rarity: "uncommon", dungeons: ["caverna"],
     fx: { multi: { double: 25, none: 10 } },
-    desc: "Apparteneva a un ratto mannaro con un debole per il sidro. A volte tira due frecce, a volte nessuna." },
+    desc: "Arco lungo di un ratto mannaro con un debole per il sidro." },
   stiletto_rimorso: { name: "Stiletto del Rimorso", icon: "🗡", base: "stocco", plus: 1, rarity: "rare", dungeons: ["segrete"],
     fx: { crit: 19 },
-    desc: "Stocco +1 di un carceriere pentito: sussurra «scusa» e colpisce i punti giusti (critico con 19 o 20)." },
+    desc: "Stocco +1 di un carceriere pentito: sussurra «scusa»." },
   catene_mazzafrusto: { name: "Mazzafrusto delle Catene", icon: "⛓", base: "mazzafrusto", plus: 1, rarity: "rare", dungeons: ["segrete"],
     fx: { slow: { chance: 25, turns: 1 } },
-    desc: "Le catene si attorcigliano da sole attorno alle gambe del nemico. Mazzafrusto +1." },
+    desc: "Mazzafrusto +1: le catene si attorcigliano da sole." },
   mazza_penitenza: { name: "Mazza della Penitenza", icon: "🩸", base: "mazza", plus: 1, rarity: "rare", dungeons: ["tempio"],
     fx: { extra: ["1d6", "radiant"], drain: 50 },
-    desc: "Mazza +1 di un culto dimenticato: +1d6 radiosi e metà di quel danno ti cura." },
+    desc: "Mazza +1 di un culto dimenticato." },
   balestra_tobia: { name: "Balestra a Ripetizione di Zio Tobia", icon: "🏹", base: "balestra_l", plus: 0, rarity: "uncommon", dungeons: ["tempio"],
     fx: { multi: { double: 30, none: 5 } },
-    desc: "Un'invenzione di zio Tobia trovata fra le rovine. Spesso spara due quadrelli. Spesso." },
+    desc: "Balestra leggera, invenzione di zio Tobia. Spesso funziona." },
   martello_brontola: { name: "Martello che Brontola", icon: "🔨", base: "martello", plus: 1, rarity: "rare",
     fx: { stun: { chance: 15 } },
-    desc: "Martello da guerra +1 che borbotta insulti in nanico. Ogni tanto il nemico resta stordito per la vergogna." },
+    desc: "Martello da guerra +1 che borbotta insulti in nanico." },
   mestolo_nonna: { name: "Mestolo della Nonna", icon: "🥄", base: "bastone", plus: 0, rarity: "uncommon",
     fx: { extra: ["1d4", "bludgeoning"], stun: { chance: 10 } },
-    desc: "Un mestolo enorme. Chiunque ne sia stato colpito da bambino si blocca per un attimo. +1d4 contundenti." },
+    desc: "Bastone: un mestolo enorme. Tutti ne hanno paura." },
 };
 
 /* ARMATURE E SCUDI (2026-11-06): `base` = armatura di ARMORS (segreteKits.js). Si equipaggiano
@@ -113,18 +113,18 @@ const ARMOR_ITEMS = {
   arm_maglia_1: { name: "Cotta di Maglia +1", icon: "⛓", kind: "armor", base: "maglia", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "Pesante: CA 17." },
   arm_piastre_1: { name: "Armatura di Piastre +1", icon: "🏰", kind: "armor", base: "piastre", plus: 1, price: 0, rarity: "veryRare", group: "armor", desc: "Pesante: CA 19." },
   // a tema, dei dungeon
-  scaglie_salamandra: { name: "Scaglie della Salamandra", icon: "🦎", kind: "armor", base: "scaglie", plus: 0, rarity: "rare", dungeons: ["magma"], res: ["fire"], desc: "Corazza di scaglie fatta con la pelle di una salamandra: resistenza al fuoco." },
-  pelliccia_lupo: { name: "Pelliccia del Lupo Invernale", icon: "🐺", kind: "armor", base: "cuoio", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "Armatura di cuoio foderata di pelo bianco: resistenza al freddo. Profuma di cane bagnato." },
-  mezza_ghiaccio: { name: "Mezza Armatura del Ghiaccio Eterno", icon: "🧊", kind: "armor", base: "mezza", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "medio", res: ["cold"], desc: "Mezza armatura +1 che non si scioglie mai: resistenza al freddo." },
-  giaco_muschio: { name: "Giaco di Muschio", icon: "🍄", kind: "armor", base: "giaco", plus: 0, rarity: "uncommon", dungeons: ["palude"], res: ["poison"], desc: "Giaco di maglia ricoperto di muschio che assorbe i veleni: resistenza al veleno." },
-  giubba_galline: { name: "Giubba del Ladro di Galline", icon: "🐔", kind: "armor", base: "borchiato", plus: 1, rarity: "rare", dungeons: ["caverna"], desc: "Cuoio borchiato +1 pieno di piume. Nessuno sa perché, ma funziona." },
-  catene_carceriere: { name: "Catene del Carceriere", icon: "⛓", kind: "armor", base: "maglia", plus: 0, rarity: "rare", dungeons: ["segrete"], res: ["necrotic"], desc: "Cotta di maglia intrecciata con catene benedette: resistenza ai danni necrotici." },
-  piastre_guardiano: { name: "Piastre del Guardiano Sepolto", icon: "🏛", kind: "armor", base: "piastre", plus: 0, rarity: "veryRare", dungeons: ["tempio"], minDiff: "leggenda", saveBonus: 1, res: ["radiant"], desc: "Armatura di piastre di un guardiano del tempio: CA 18, +1 ai tiri salvezza, resistenza ai radiosi." },
+  scaglie_salamandra: { name: "Scaglie della Salamandra", icon: "🦎", kind: "armor", base: "scaglie", plus: 0, rarity: "rare", dungeons: ["magma"], res: ["fire"], desc: "🔥 resistenza al fuoco · scaglie di salamandra." },
+  pelliccia_lupo: { name: "Pelliccia del Lupo Invernale", icon: "🐺", kind: "armor", base: "cuoio", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "🧊 resistenza al freddo · profuma di cane bagnato." },
+  mezza_ghiaccio: { name: "Mezza Armatura del Ghiaccio Eterno", icon: "🧊", kind: "armor", base: "mezza", plus: 1, rarity: "veryRare", dungeons: ["ghiaccio"], minDiff: "medio", res: ["cold"], desc: "🧊 resistenza al freddo · mezza armatura +1." },
+  giaco_muschio: { name: "Giaco di Muschio", icon: "🍄", kind: "armor", base: "giaco", plus: 0, rarity: "uncommon", dungeons: ["palude"], res: ["poison"], desc: "☠ resistenza al veleno · giaco di muschio." },
+  giubba_galline: { name: "Giubba del Ladro di Galline", icon: "🐔", kind: "armor", base: "borchiato", plus: 1, rarity: "rare", dungeons: ["caverna"], desc: "Cuoio borchiato +1 pieno di piume. Funziona." },
+  catene_carceriere: { name: "Catene del Carceriere", icon: "⛓", kind: "armor", base: "maglia", plus: 0, rarity: "rare", dungeons: ["segrete"], res: ["necrotic"], desc: "💀 resistenza al necrotico · cotta di maglia." },
+  piastre_guardiano: { name: "Piastre del Guardiano Sepolto", icon: "🏛", kind: "armor", base: "piastre", plus: 0, rarity: "veryRare", dungeons: ["tempio"], minDiff: "leggenda", saveBonus: 1, res: ["radiant"], desc: "CA 18 · +1 ai TS · ✨ resistenza al radioso." },
   // scudi (Guerriero, Paladino, Chierico, Barbaro, Ranger, Druido con un'arma a una mano)
   scudo_1: { name: "Scudo +1", icon: "🛡", kind: "shield", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "+3 CA invece di +2." },
-  scudo_padella: { name: "Scudo-Padella", icon: "🍳", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "Una padella gigante. +2 CA e chi ti colpisce in mischia a volte si prende una padellata (1d4)." },
-  scudo_brina: { name: "Scudo di Brina", icon: "❄", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA e resistenza al freddo." },
-  scudo_magma: { name: "Scudo di Ossidiana", icon: "🌋", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA: chi ti colpisce in mischia a volte si scotta (1d6 fuoco)." },
+  scudo_padella: { name: "Scudo-Padella", icon: "🍳", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "+2 CA · 25%: chi ti colpisce prende 1d4." },
+  scudo_brina: { name: "Scudo di Brina", icon: "❄", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA · 🧊 resistenza al freddo." },
+  scudo_magma: { name: "Scudo di Ossidiana", icon: "🌋", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA · 25%: chi ti colpisce prende 🔥 1d6." },
 };
 Object.values(SPECIAL_WEAPONS).forEach((w) => { w.kind = "weapon"; w.price = 0; w.special = true; });
 Object.values(ARMOR_ITEMS).forEach((a) => { if (a.price == null) a.price = 0; });

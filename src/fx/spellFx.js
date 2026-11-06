@@ -817,6 +817,97 @@ export function playSpell(o) {
       hit = delay + 40;
       break;
     }
+    /* ── FORME DELLE SEGRETE (2026-11-06) ── */
+    case "smash": { // arma contundente: la testa cala dall'alto, botta pesante, terra che sobbalza
+      const dur = 240 * fast;
+      const side = fx <= tx ? -1 : 1;
+      const gy = ground ?? ty + ts * 6;
+      actor(delay, dur, (t) => {
+        const e = t * t;
+        const x = tx + side * ts * 6 * (1 - e), y = ty - ts * 8 * (1 - e);
+        strokePath([[x + side * ts * 2.4, y - ts * 2.4], [x, y]], pal[2], 3, 0.7);
+        blob(x, y, ts * 1.6, pal[2], 0.7);
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; ctx.fillStyle = pal[1];
+        ctx.fillRect(Math.round(x - ts), Math.round(y - ts), Math.round(ts * 2), Math.round(ts * 2));
+      });
+      hit = delay + dur;
+      actor(hit, 340 * fast, (t) => {
+        star4(tx, ty, ts * (3 + t * 3), pal[0], 1 - t);
+        ring(tx, gy, ts * (1.5 + t * 8), pal[1], 3, 1 - t, 0.25);
+        ring(tx, ty, ts * (1 + t * 5), pal[0], 2, 1 - t, 0.9);
+      });
+      actor(hit, 1, () => {
+        for (let i = 0; i < 10; i++) add({ type: "rock", c: PAL.earth[1], c2: PAL.earth[3], x: tx + rr(-1, 1) * ts * 2, y: gy, vx: rr(-70, 70), vy: -rr(60, 150), ay: 480, r: rr(0.8, 1.5), life: rr(0.4, 0.7) });
+        for (let i = 0; i < 6; i++) add({ type: "smoke", c: PAL.earth[4], x: tx + rr(-1, 1) * ts * 3, y: gy - ts * 0.5, vx: rr(-40, 40), vy: -rr(5, 20), r: ts * 0.5, r1: ts * 1.5, life: rr(0.5, 0.8), a: 0.55 });
+      });
+      break;
+    }
+    case "thrust": { // arma perforante: una punta dritta che entra ed esce dall'altra parte
+      const dur = 150 * fast;
+      const d = Math.hypot(tx - fx, ty - fy);
+      const ux = d > 1 ? (tx - fx) / d : 1, uy = d > 1 ? (ty - fy) / d : 0;
+      const len = ts * 10;
+      actor(delay, dur, (t) => {
+        const hx = tx - ux * len * (1 - t), hy = ty - uy * len * (1 - t);
+        strokePath([[hx - ux * ts * 6, hy - uy * ts * 6], [hx, hy]], pal[2], 3, 0.6);
+        strokePath([[hx - ux * ts * 5, hy - uy * ts * 5], [hx, hy]], pal[0], 1, 1);
+        blob(hx, hy, ts * 0.7, pal[0], 1);
+      });
+      hit = delay + dur;
+      actor(hit, 190 * fast, (t) => {
+        const a = ts * 1.5, b = a + ts * 7 * t;
+        strokePath([[tx + ux * a, ty + uy * a], [tx + ux * b, ty + uy * b]], pal[0], 2, 1 - t);
+        ring(tx, ty, ts * (0.6 + t * 2), pal[1], 1, 1 - t, 0.9);
+      });
+      actor(hit, 1, () => {
+        for (let i = 0; i < 8; i++) { const sp = rr(90, 220), q = rr(-0.35, 0.35); add({ type: "glow", c: pal[i % 2], x: tx, y: ty, vx: (ux * Math.cos(q) - uy * Math.sin(q)) * sp, vy: (uy * Math.cos(q) + ux * Math.sin(q)) * sp, r: ts * 0.3, r1: 0, life: 0.28 }); }
+      });
+      break;
+    }
+    case "punch": { // pugni: tre colpi rapidi in punti diversi
+      const gap = 115 * fast;
+      const spots = [[-1.3, -0.7], [1.2, -0.1], [-0.2, 0.8]];
+      spots.forEach(([ox, oy], k) => {
+        const x = tx + ox * ts * 1.7, y = ty + oy * ts * 1.7, at = delay + k * gap;
+        actor(at, 170 * fast, (t) => {
+          star4(x, y, ts * (1.4 + t * 2.2), pal[1], 1 - t);
+          ring(x, y, ts * (0.7 + t * 3), pal[0], 2, 1 - t, 0.9);
+        });
+      });
+      hit = delay + 2 * gap;
+      break;
+    }
+    case "lob": { // oggetto lanciato ad arco alto; big = palla enorme (Palla di Fuoco)
+      const dur = (o.big ? 620 : 500) * fast;
+      const dx = tx - fx, dy = ty - fy;
+      const arc = Math.max(ts * 10, Math.hypot(dx, dy) * 0.38);
+      const head = o.big ? ts * 2.2 : ts * 0.8;
+      actor(delay, dur, (t) => {
+        const x = fx + dx * t, y = fy + dy * t - Math.sin(Math.PI * t) * arc;
+        const grow = o.big ? 0.6 + t * 0.6 : 1;
+        trail(el, pal, x, y, -dx, -dy + 30, head * 0.9);
+        blob(x, y, head * 2 * grow, pal[2], 0.55);
+        blob(x, y, head * 1.3 * grow, pal[1], 0.95);
+        blob(x, y, head * 0.7 * grow, pal[0], 1);
+      });
+      hit = delay + dur;
+      break;
+    }
+    case "missiles": { // Dardo Incantato: tre dardetti che curvano e arrivano in fila
+      const dur = 340 * fast;
+      const dx = tx - fx, dy = ty - fy, d = Math.hypot(dx, dy) || 1;
+      [-1, 1, 0].forEach((side, k) => {
+        actor(delay + k * 80, dur, (t) => {
+          const e = t * t * (3 - 2 * t), bend = Math.sin(Math.PI * e) * ts * 7 * side;
+          const x = fx + dx * e - (dy / d) * bend, y = fy + dy * e + (dx / d) * bend;
+          add({ type: "glow", c: pal[1], x, y, r: ts * 0.4, r1: 0, life: 0.2 });
+          blob(x, y, ts * 0.9, pal[2], 0.7);
+          blob(x, y, ts * 0.45, pal[0], 1);
+        });
+      });
+      hit = delay + 160 + dur;
+      break;
+    }
     case "heal":
       actor(delay, 1, () => healAt(pal, tx, ty, ts, el === "radiant" || el === "physical" ? "#8dffa8" : pal[1]));
       hit = -1;
@@ -845,7 +936,7 @@ export function playSpell(o) {
     default:
       hit = delay;
   }
-  if (hit >= 0) end(hit);
+  if (hit >= 0 && !o.quiet) end(hit);
   kick();
   return hit;
 }
