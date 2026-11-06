@@ -59,16 +59,25 @@ function statusIcons(c, round) {
 
 function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, flash, round, onInspect }) {
   const icons = c.hp > 0 ? statusIcons(c, round || 1) : [];
-  // pressione lunga (dito o mouse, 450 ms) = scheda del nemico; il tocco normale resta per il bersaglio
-  const lp = useRef({ t: null, fired: false, x: 0, y: 0 });
+  /* TOCCO vs PRESSIONE (2026-11-06): il bersaglio si prende AL RILASCIO del dito (pointerup), non
+     sul "click" che sui telefoni arriva dopo e a volte si perde; tenere premuto 450 ms = scheda.
+     Il click resta solo per la tastiera (detail 0). */
+  const lp = useRef({ t: null, fired: false, x: 0, y: 0, down: false, handled: false });
   const startPress = (e) => {
-    if (!onInspect) return;
-    lp.current.fired = false; lp.current.x = e.clientX; lp.current.y = e.clientY;
+    lp.current = { ...lp.current, fired: false, handled: false, down: true, x: e.clientX, y: e.clientY };
     clearTimeout(lp.current.t);
-    lp.current.t = setTimeout(() => { lp.current.fired = true; onInspect(c.id); }, 450);
+    if (onInspect) lp.current.t = setTimeout(() => { lp.current.fired = true; onInspect(c.id); }, 450);
   };
-  const cancelPress = () => clearTimeout(lp.current.t);
-  const movePress = (e) => { if (Math.hypot(e.clientX - lp.current.x, e.clientY - lp.current.y) > 12) cancelPress(); };
+  const cancelPress = () => { clearTimeout(lp.current.t); lp.current.down = false; };
+  const movePress = (e) => { if (lp.current.down && Math.hypot(e.clientX - lp.current.x, e.clientY - lp.current.y) > 18) cancelPress(); };
+  const endPress = (e) => {
+    const wasDown = lp.current.down;
+    clearTimeout(lp.current.t);
+    lp.current.down = false;
+    if (!wasDown || lp.current.fired || (e.button != null && e.button > 0)) return;
+    lp.current.handled = true;
+    if (selectable) onPick(c.id);
+  };
   const dead = c.hp <= 0;
   const img = dead && c.deadImg ? c.deadImg : c.img || (c.side === "h" ? classSprite : "");
   const pct = Math.max(0, Math.round((100 * c.hp) / Math.max(1, c.maxHp)));
@@ -77,10 +86,11 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
     <button type="button" className={`sgb-f sgb-f--${c.side}${c.role === "boss" ? " is-boss" : ""}${dead ? " is-dead" : ""}${!dead && c.fx?.petrified ? " is-stone" : ""}${!dead && c.fx?.frozen ? " is-frozen" : ""}${isTurn ? " is-turn" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${c.side === "h" ? " has-cls" : ""}`}
       style={c.side === "h" ? clsStyle(c.cls) : { "--sz": sizeScale(c) }}
       aria-disabled={!selectable} aria-label={`${c.name}, ${c.hp} su ${c.maxHp} PF${onInspect ? " (tieni premuto per la scheda)" : ""}`}
-      onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } if (selectable) onPick(c.id); }}
-      onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress} onPointerMove={movePress}
+      onClick={(e) => { if (lp.current.handled || lp.current.fired) { lp.current.handled = false; lp.current.fired = false; return; } if (e.detail === 0 && selectable) onPick(c.id); }}
+      onPointerDown={startPress} onPointerUp={endPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress} onPointerMove={movePress}
       onContextMenu={(e) => { if (onInspect) { e.preventDefault(); onInspect(c.id); } }}>
       {flash && <span key={flash.k} className={`sgb-pop sgb-pop--${flash.kind}`}>{flash.txt}</span>}
+      {picked && <span className="sgb-aim" aria-hidden="true">🎯</span>}
       {!!icons.length && (
         <StatusPips className="sgb-st-pips" max={9}
           items={icons.map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }))} />
@@ -105,6 +115,7 @@ export default function SegreteBattle({ room, uid }) {
   useFightMode(true);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [aiming, setAiming] = useState(null); // bersaglio appena toccato: si vede subito, mentre il server risponde
   const [err, setErr] = useState("");
   const [chosen, setChosen] = useState(null); // azione che aspetta il bersaglio
   const [logOpen, setLogOpen] = useState(false);
@@ -261,7 +272,7 @@ export default function SegreteBattle({ room, uid }) {
       sendP.current = p.then(() => {});
       await p;
     } catch (e) { setErr(e.message || "Azione non riuscita."); }
-    finally { setBusy(false); setChosen(null); }
+    finally { setBusy(false); setChosen(null); setAiming(null); }
   };
   const pickAction = (a) => {
     const tk = targetKind(a);
@@ -269,6 +280,8 @@ export default function SegreteBattle({ room, uid }) {
     setChosen(a);
   };
   const pickTarget = (id) => {
+    if (busy || aiming || !(chosen || chosenItem)) return;
+    setAiming({ id, name: [...(run?.heroes || []), ...(run?.foes || [])].find((x) => x.id === id)?.name || "" });
     if (chosenItem) { const it = chosenItem; setChosenItem(null); setBagOpen(false); return send({ op: "item", itemId: it.id, targetId: id }); }
     return chosen && send({ op: "act", actionId: chosen.id, targetId: id });
   };
@@ -325,14 +338,14 @@ export default function SegreteBattle({ room, uid }) {
       <div className={`sgb-field${run.bg ? " has-bg" : ""}`} style={run.bg ? { backgroundImage: `url(${run.bg})` } : undefined}>
         <div className="sgb-foes">
           {run.foes.map((f) => (
-            <Fighter key={f.id} c={shown(f)} round={run.round} isTurn={false} flash={flashes[f.id]} onInspect={setInspect}
-              selectable={!!(tk === "foe" && f.hp > 0)} onPick={pickTarget} />
+            <Fighter key={f.id} c={shown(f)} round={run.round} isTurn={false} flash={flashes[f.id]} onInspect={setInspect} picked={aiming?.id === f.id}
+              selectable={!!(tk === "foe" && f.hp > 0 && !aiming)} onPick={pickTarget} />
           ))}
         </div>
         <div className="sgb-heroes">
           {run.heroes.map((h) => (
             <Fighter key={h.id} c={shown(h)} round={run.round} isTurn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} flash={flashes[h.id]} classSprite={sprites[h.cls]}
-              selectable={!!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} onPick={pickTarget} />
+              picked={aiming?.id === h.id} selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} onPick={pickTarget} />
           ))}
         </div>
       </div>
@@ -345,8 +358,10 @@ export default function SegreteBattle({ room, uid }) {
         {run.status === "fight" && !blocking && (myTurn ? (
           chosen || chosenItem ? (
             <div className="sgb-pickmsg">
-              <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"} sul campo.</span>
-              <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>
+              {aiming
+                ? <span>⏳ {(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b> su <b>{aiming.name}</b>…</span>
+                : <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"} sul campo.</span>}
+              {!aiming && <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>}
             </div>
           ) : bagOpen ? (
             <div className="sgb-bag">

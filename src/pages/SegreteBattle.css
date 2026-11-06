@@ -180,3 +180,9 @@
 /* stati in lotta (2026-11-06): pietra grigia, ghiaccio azzurro */
 .sgb-f.is-stone .sgb-sprite { filter: grayscale(1) contrast(1.15) brightness(.85); }
 .sgb-f.is-frozen .sgb-sprite { filter: saturate(.4) hue-rotate(170deg) brightness(1.15) drop-shadow(0 0 6px rgba(140,210,255,.8)); }
+
+/* bersaglio appena toccato (2026-11-06): si vede subito, prima che risponda il server */
+.sgb-f.is-picked .sgb-sprite { filter: drop-shadow(0 0 8px #ff5a3c) drop-shadow(0 0 3px #ff5a3c); animation: none; }
+.sgb-aim { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font-size: 2rem; z-index: 3; pointer-events: none; animation: sgb-aim .35s ease-out both; }
+@keyframes sgb-aim { from { transform: translate(-50%, -50%) scale(2); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.sgb-f { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
