@@ -142,11 +142,11 @@
 }
 /* sigillo di lealtà alla Gilda dei Ratti */
 .mercato-page .ratto-status-container::before {
-  content: "🐀";
+  content: "";
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   font-size: 1rem; border-radius: 50%;
-  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
+  background: url(/gi/rat.svg) center / 66% no-repeat, linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
   border: 2px solid rgba(255, 240, 210, 0.45);
   box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
 }
@@ -750,7 +750,7 @@
 }
 @keyframes merc-respiro { from { transform: scale(1); } to { transform: scale(1.06); } }
 .mercato-page .occhio::after {
-  content: "🐀"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem;
+  content: ""; position: absolute; inset: 22%; background: var(--el-2, #f2c14e); -webkit-mask: url(/gi/rat.svg) center / contain no-repeat; mask: url(/gi/rat.svg) center / contain no-repeat;
 }
 .mercato-page .mercante-nome { font-family: "Cinzel", Georgia, serif; font-size: 1rem; letter-spacing: .08em; color: var(--osso); margin: 0; }
 .mercato-page .rango {

@@ -7,7 +7,7 @@ body.in-fight .sgv { bottom: calc(12px + env(safe-area-inset-bottom)); }
 .sgv.is-joined .sgv-pill { border-color: #5fd16b; }
 .sgv-pill em { font-style: normal; min-width: 18px; padding: 0 5px; border-radius: 9px; background: rgba(243,234,216,.15); text-align: center; font-size: .78rem; }
 .sgv-wave { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #8ee69a; font-size: .8rem; }
-.sgv-wave::before { content: "🔊 "; }
+.sgv-wave::before { content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/speaker.svg) center / contain no-repeat; mask: url(/gi/speaker.svg) center / contain no-repeat; margin-right: .25em; }
 .sgv-panel { order: 1; width: min(320px, calc(100vw - 24px)); padding: 10px; border-radius: 4px; border: 1px solid rgba(243,234,216,.25); background: rgba(16,12,22,.96); box-shadow: 0 8px 24px rgba(0,0,0,.6); display: grid; gap: 8px; }
 .sgv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .sgv-list li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 6px; padding: 5px 8px; border-left: 3px solid var(--cls, #888); background: rgba(255,255,255,.04); border-radius: 3px; }

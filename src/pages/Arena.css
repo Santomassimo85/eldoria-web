@@ -5328,7 +5328,7 @@
 }
 
 .bracket-group-title::before {
-  content: "⚜";
+  content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/fleur-de-lys.svg) center / contain no-repeat; mask: url(/gi/fleur-de-lys.svg) center / contain no-repeat;
   color: rgba(var(--el-rgb), 0.8);
   font-size: 1.1rem;
 }
@@ -6028,7 +6028,7 @@
   gap: 8px;
 }
 .bracket-group-title::before {
-  content: "⚜";
+  content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/fleur-de-lys.svg) center / contain no-repeat; mask: url(/gi/fleur-de-lys.svg) center / contain no-repeat;
   color: var(--ar-gold);
   font-size: 0.95rem;
 }
@@ -6870,7 +6870,7 @@
   white-space: nowrap;
 }
 .turn-indicator::before {
-  content: "⚔ ";
+  content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/crossed-swords.svg) center / contain no-repeat; mask: url(/gi/crossed-swords.svg) center / contain no-repeat;
   margin-right: 2px;
 }
 

@@ -1,3 +1,4 @@
+import { fillEmoji } from "../jsx/emojiParts";
 /* Aggiornamento automatico (2026-10-31).
    L'app Android (Capacitor) e la PWA caricano il sito dal vivo, ma se restano
    aperte in secondo piano tengono il codice vecchio finché non si ricaricano.
@@ -36,7 +37,7 @@ function showBanner() {
   banner.setAttribute("role", "status");
   banner.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:9000;display:flex;gap:10px;align-items:center;padding:10px 14px;background:#1c1714;color:#f3ead8;border:2px solid #f2c14e;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);font:600 14px Alegreya,Georgia,serif;max-width:calc(100vw - 32px)";
   const txt = document.createElement("span");
-  txt.textContent = "✨ C'è una nuova versione del sito";
+  fillEmoji(txt, "✨ C'è una nuova versione del sito");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.textContent = "Aggiorna";

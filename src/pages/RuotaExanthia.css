@@ -186,3 +186,7 @@
 .rex-month summary span:last-child { text-transform: none; color: var(--osso-2); font-family: var(--font-num, inherit); font-size: .78rem; }
 .rex-month summary strong { color: var(--oro); }
 .rex-month ul { margin-top: 4px; }
+
+/* icona dello spicchio: i file di public/gi sono neri, il filtro li colora */
+.rex-seg-ico { pointer-events: none; filter: brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(-8deg); }
+.rex-seg--t4 .rex-seg-ico { filter: brightness(0) invert(1) drop-shadow(0 0 1px #3a0705); }

@@ -131,6 +131,20 @@ export default function RuotaExanthia() {
 
 // La ruota vera e propria: nella pagina e nel popup dell'apertura (`popup`:
 // niente tabella dei premi, niente storico, ruota più piccola).
+/* scritta dello spicchio: icona verso il bordo (nel testo SVG non si può mettere uno <span>) */
+function SegLabel({ s, center }) {
+  const flip = center > 180; // metà sinistra: scritta girata, così non si legge a testa in giù
+  const ico = s.short.includes("👑") ? "crown" : s.short.includes("📸") ? "photo-camera" : null;
+  const text = s.short.replace("👑", "").replace("📸", "").trim();
+  const edge = R_OUT - 8, gap = ico ? 15 : 0;
+  return (
+    <g transform={`rotate(${flip ? center + 90 : center - 90})`}>
+      {ico && <image href={`/gi/${ico}.svg`} x={flip ? -edge : edge - 13} y="-6.5" width="13" height="13" className="rex-seg-ico" />}
+      <text x={flip ? -(edge - gap) : edge - gap} y="4" textAnchor={flip ? "start" : "end"}>{text}</text>
+    </g>
+  );
+}
+
 export function RuotaGioco({ popup = false, onClose }) {
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
@@ -214,10 +228,7 @@ export function RuotaGioco({ popup = false, onClose }) {
             {SEGMENTS.map((s, i) => (
               <g key={i} className={`rex-seg rex-seg--t${s.tier}${!s.dice && !s.special && i % 2 ? " is-alt" : ""}${result && !spinning && result.idx === i ? " is-hit" : ""}`}>
                 <path d={wedgePath(i)} />
-                {SEG_GEOM[i].center > 180
-                  // metà sinistra: scritta girata, così non si legge a testa in giù
-                  ? <text transform={`rotate(${SEG_GEOM[i].center + 90})`} x={-(R_OUT - 8)} y="4" textAnchor="start">{s.short}</text>
-                  : <text transform={`rotate(${SEG_GEOM[i].center - 90})`} x={R_OUT - 8} y="4" textAnchor="end">{s.short}</text>}
+                <SegLabel s={s} center={SEG_GEOM[i].center} />
               </g>
             ))}
             {SEG_GEOM.map((g, i) => {

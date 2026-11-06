@@ -173,7 +173,7 @@ body.tcg-infight .online-popup {
 }
 /* engraved flourish under the title */
 .tcg-subtitle::after {
-  content: "✦ ⚔ ✦"; display: block; margin-top: 10px;
+  content: "✦ ✦ ✦"; display: block; margin-top: 10px;
   letter-spacing: 10px; font-size: 13px; color: var(--gold);
   opacity: .7; text-shadow: 0 0 10px rgba(216,177,90,.6);
 }
@@ -997,7 +997,7 @@ body.tcg-infight .online-popup {
 .tcg-card.is-tapped { transform: rotate(90deg) scale(.9); }
 .tcg-card.is-sick { filter: grayscale(.6) brightness(.78); }
 .tcg-card.is-sick::after {
-  content: "💤"; position: absolute; top: 4px; left: 4px; font-size: 13px; z-index: 21;
+  content: ""; position: absolute; top: 4px; left: 4px; width: 15px; height: 15px; z-index: 21; background: #6ab8ff; -webkit-mask: url(/gi/night-sleep.svg) center / contain no-repeat; mask: url(/gi/night-sleep.svg) center / contain no-repeat;
 }
 .tcg-card.is-dying { animation: tcg-die .9s ease forwards; }
 @keyframes tcg-die {

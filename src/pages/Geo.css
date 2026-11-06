@@ -144,7 +144,7 @@
 .geo-description .lore-link::before { margin-right: 2px; font-size: .82em; opacity: .85; color: var(--lore-c, var(--el-2)); }
 .geo-description .lore-link:hover::before { color: inherit; }
 .geo-description .lore-link--char { --lore-c: var(--oro); }
-.geo-description .lore-link--char::before { content: "⚔"; }
+.geo-description .lore-link--char::before { content: ""; display: inline-block; width: 1em; height: 1em; vertical-align: -.12em; background: currentColor; -webkit-mask: url(/gi/crossed-swords.svg) center / contain no-repeat; mask: url(/gi/crossed-swords.svg) center / contain no-repeat; }
 .geo-description .lore-link--npc  { --lore-c: var(--el-soft); }
 .geo-description .lore-link--npc::before  { content: "☖"; }
 .geo-description .lore-link--city { --lore-c: var(--el-2); }

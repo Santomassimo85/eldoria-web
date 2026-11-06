@@ -3019,11 +3019,10 @@
   overflow: hidden;
 }
 .sumadm-hero::before {
-  content: "📜";
+  content: ""; width: 200px; height: 200px; background: currentColor; -webkit-mask: url(/gi/scroll-unfurled.svg) center / contain no-repeat; mask: url(/gi/scroll-unfurled.svg) center / contain no-repeat;
   position: absolute;
   right: -20px;
   bottom: -40px;
-  font-size: 200px;
   opacity: 0.08;
   transform: rotate(-15deg);
   pointer-events: none;
@@ -4016,11 +4015,10 @@
   overflow: hidden;
 }
 .qstadm-hero::before {
-  content: "📜";
+  content: ""; width: 220px; height: 220px; background: currentColor; -webkit-mask: url(/gi/scroll-unfurled.svg) center / contain no-repeat; mask: url(/gi/scroll-unfurled.svg) center / contain no-repeat;
   position: absolute;
   left: -30px;
   bottom: -50px;
-  font-size: 220px;
   opacity: 0.08;
   transform: rotate(15deg);
   pointer-events: none;

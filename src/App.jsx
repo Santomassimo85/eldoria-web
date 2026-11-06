@@ -727,6 +727,7 @@ export default function App() {
             <a href="https://designbyorpheus.it/" target="_blank" rel="noreferrer">OrpheusDesign</a>
           </strong>
         </p>
+        <p className="footer-credits">Icone di <a href="https://game-icons.net/" target="_blank" rel="noreferrer">game-icons.net</a> · CC BY 3.0</p>
       </footer>}
     </AuthProvider>
   );

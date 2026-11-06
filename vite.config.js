@@ -33,6 +33,8 @@ function injectMessagingSwConfig(env) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), injectMessagingSwConfig(env)],
+    // jsxImportSource: tutto il JSX passa da src/jsx, che cambia le emoji in icone (src/jsx/iconize.js)
+    plugins: [react({ jsxImportSource: 'eldoria-jsx' }), injectMessagingSwConfig(env)],
+    resolve: { alias: { 'eldoria-jsx': path.resolve('src/jsx') } },
   }
 })

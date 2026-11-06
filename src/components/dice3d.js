@@ -5,6 +5,7 @@
 // traiettoria di una rotazione fissa, così il dado si ferma con la faccia
 // giusta verso l'alto senza scatti finali.
 import * as THREE from "three";
+import { fillEmoji } from "../jsx/emojiParts";
 
 // [colore del dado, colore dei numeri] per ogni skin di "I Tuoi Dadi".
 const SKIN_COLORS = {
@@ -282,7 +283,7 @@ export function roll3D(host, { value, dice = null, skin = "classic", durationMs 
       const v = new THREE.Vector3(spots[i].x, spots[i].y - R * 1.3, 0).project(camera);
       const tag = document.createElement("div");
       tag.className = `dice3d-name${d.dim ? " is-dim" : ""}`;
-      tag.textContent = d.name;
+      fillEmoji(tag, d.name);
       tag.style.left = `${((v.x + 1) / 2) * 100}%`;
       tag.style.top = `${((1 - v.y) / 2) * 100}%`;
       host.appendChild(tag);
