@@ -8,7 +8,7 @@ export const ANDROID_APK_URL = "/app/crit-happens.apk";
  * Interruttore "Notifiche push su questo dispositivo" (pagina Notifiche).
  * Stesso componente su web, PWA e app Android: cambia solo il canale sotto.
  */
-export default function PushToggle() {
+export default function PushToggle({ compact = false }) {
   const { currentUser } = useAuth();
   const [support, setSupport] = useState(null);      // {supported, platform, reason}
   const [perm, setPerm] = useState("prompt");
@@ -50,6 +50,20 @@ export default function PushToggle() {
   };
 
   const where = isNativeApp() ? "app Android" : isIosWeb() ? (isStandalone() ? "iPhone (schermata Home)" : "Safari iPhone") : isAndroidWeb() ? "browser Android" : "questo browser";
+
+  // riga corta per le Impostazioni del menu avatar
+  if (compact) {
+    const state = support === null ? "controllo…" : !support.supported ? support.reason : perm === "denied" ? "bloccate: riattivale dalle impostazioni del browser o del telefono" : where;
+    return (
+      <>
+        <div className="ld-set-row">
+          <span>🔔 Notifiche<small>{state}</small></span>
+          <button type="button" className={`ld-set-btn${on ? " is-on" : ""}`} role="switch" aria-checked={on} disabled={busy || !support?.supported || perm === "denied" || !currentUser} onClick={toggle}>{busy ? "…" : on ? "Accese" : "Spente"}</button>
+        </div>
+        {msg && <small className="ld-set-msg">{msg}</small>}
+      </>
+    );
+  }
 
   return (
     <div className="nx-pannello push-toggle" role="group" aria-label="Notifiche push">

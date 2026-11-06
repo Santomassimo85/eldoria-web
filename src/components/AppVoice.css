@@ -44,6 +44,3 @@
 .sgv-fight .sgv-mic { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: 3px; }
 body.in-fight .sgb-top { padding-right: 56px; }
 body.vc-live .sgb-log { padding-right: 56px; }
-/* testata stretta: il tema (respiro) lascia il posto ai tasti della voce */
-@media (max-width: 345px) { .respiro { display: none; } }
-@media (max-width: 480px) { body.vc-on .respiro { display: none; } }

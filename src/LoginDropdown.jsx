@@ -15,6 +15,7 @@ import {
 import { PET_DEX } from "./data/petDex";
 import { classColor, MASTER_COLOR } from "./utils/classColor";
 import { LoginTrack } from "./components/LoginRewards";
+import AppSettings, { ThemePicker } from "./components/AppSettings";
 import { loginState, monthLabel, romeMonthKey } from "./data/loginRewards";
 import { EVOLUTIONS } from "./data/petEvo";
 import "./LoginDropdown.css";
@@ -71,7 +72,7 @@ function getRattoRank(points = 0) {
   return rank;
 }
 
-export default function LoginDropdown() {
+export default function LoginDropdown({ soffi, soffio, onSoffio }) {
   const { currentUser, login, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -83,6 +84,7 @@ export default function LoginDropdown() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [charData, setCharData] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [setOpen, setSetOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -180,6 +182,7 @@ export default function LoginDropdown() {
                 className="ld-input"
               />
               <button type="submit" className="ld-submit-btn">Entra</button>
+              <ThemePicker soffi={soffi} soffio={soffio} onSoffio={onSoffio} />
             </form>
           </div>
         )}
@@ -280,6 +283,14 @@ export default function LoginDropdown() {
           </button>
 
           {/* Le pagine "di servizio" stanno qui, non nei gruppi del gioco (2026-10-27). */}
+          <div className="ld-login">
+            <button type="button" className="ld-menu-item ld-login-toggle" aria-expanded={setOpen} onClick={() => setSetOpen((v) => !v)}>
+              <span>⚙ Impostazioni</span>
+              <span className="ld-login-count">{setOpen ? "▴" : "▾"}</span>
+            </button>
+            {setOpen && <AppSettings soffi={soffi} soffio={soffio} onSoffio={onSoffio} />}
+          </div>
+
           <button className="ld-menu-item" onClick={() => { navigate("/updates"); setIsOpen(false); }}>
             ✨ Novità del sito
           </button>

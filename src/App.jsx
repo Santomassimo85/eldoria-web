@@ -566,18 +566,11 @@ export default function App() {
       )}
       {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
-        {/* Sinistra header: logo + respiro del drago (Fuoco/Gelo) */}
+        {/* Sinistra header: logo (il tema sta nelle Impostazioni del menu avatar) */}
         <div className="header-left">
           <NavLink to="/" className="logo logo--img-only" onClick={closeMenu} aria-label="Crit Happens — Home">
             <img src="/logo.png" alt="Crit Happens" className="logo-img" />
           </NavLink>
-          <div className="respiro" role="group" aria-label="Respiro del drago">
-            {SOFFI.map((r) => (
-              <button key={r.key} type="button" data-soffio={r.key} aria-pressed={soffio === r.key} onClick={() => cambiaSoffio(r.key)} title={r.title}>
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d={r.d} /></svg><span>{r.label}</span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
@@ -585,7 +578,7 @@ export default function App() {
           {/* slot per il tastino AGENDA della Home (portale da Home.jsx): subito a sinistra dell'avatar */}
           <span id="header-agenda" className="header-agenda" />
           <span id="header-voice" className="header-voice" />
-          <LoginDropdown closeMenu={closeMenu} />
+          <LoginDropdown closeMenu={closeMenu} soffi={SOFFI} soffio={soffio} onSoffio={cambiaSoffio} />
 
           <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">
             <span className="line line-1"></span>
