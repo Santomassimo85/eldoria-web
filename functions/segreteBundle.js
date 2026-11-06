@@ -125,14 +125,15 @@ var WEAPONS = {
   bastone: { name: "Bastone Ferrato", icon: "\u{1F9AF}", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
   lancia: { name: "Lancia", icon: "\u{1F531}", dice: "1d6", dmg: "piercing", wstat: "str" },
   balestra_l: { name: "Balestra Leggera", icon: "\u{1F3F9}", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
-  mazza: { name: "Mazza", icon: "\u{1F528}", dice: "1d6", dmg: "bludgeoning", wstat: "str" }
+  mazza: { name: "Mazza", icon: "\u{1F528}", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
+  pugni: { name: "Pugni", icon: "\u{1F44A}", dice: "1d6", dmg: "bludgeoning", wstat: "fin" }
 };
 var WEAPON_CHOICES = {
   fighter: ["spada_lunga", "martello"],
   barbarian: ["ascia_bip", "maglio"],
   paladin: ["spada_lunga", "mazzafrusto"],
   ranger: ["arco_lungo", "scimitarra"],
-  monk: ["bastone", "lancia"],
+  monk: ["pugni", "bastone", "lancia"],
   rogue: ["stocco", "scimitarra"],
   wizard: ["bastone", "balestra_l"],
   sorcerer: ["bastone", "balestra_l"],

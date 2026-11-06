@@ -73,13 +73,14 @@ export const WEAPONS = {
   lancia: { name: "Lancia", icon: "🔱", dice: "1d6", dmg: "piercing", wstat: "str" },
   balestra_l: { name: "Balestra Leggera", icon: "🏹", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
   mazza: { name: "Mazza", icon: "🔨", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
+  pugni: { name: "Pugni", icon: "👊", dice: "1d6", dmg: "bludgeoning", wstat: "fin" },
 };
 export const WEAPON_CHOICES = {
   fighter: ["spada_lunga", "martello"],
   barbarian: ["ascia_bip", "maglio"],
   paladin: ["spada_lunga", "mazzafrusto"],
   ranger: ["arco_lungo", "scimitarra"],
-  monk: ["bastone", "lancia"],
+  monk: ["pugni", "bastone", "lancia"],
   rogue: ["stocco", "scimitarra"],
   wizard: ["bastone", "balestra_l"],
   sorcerer: ["bastone", "balestra_l"],

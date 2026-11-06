@@ -13,7 +13,7 @@ export const SG_ICONS = {
   weapon: {
     spada_lunga: "broadsword", martello: "warhammer", ascia_bip: "battle-axe", maglio: "hammer-drop",
     mazzafrusto: "flail", arco_lungo: "bow-arrow", scimitarra: "saber-slash", stocco: "fencer",
-    bastone: "bo", lancia: "spear-hook", balestra_l: "crossbow", mazza: "flanged-mace",
+    bastone: "bo", lancia: "spear-hook", balestra_l: "crossbow", mazza: "flanged-mace", pugni: "fist",
   },
   armor: {
     abiti: "shirt", magica: "magic-shield", senza: "biceps", cuoio: "leather-armor", borchiato: "leather-vest",
