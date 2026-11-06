@@ -14,7 +14,7 @@ import {
   MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
-  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, voteDungeon, chooseDungeon,
+  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon,
 } from "../utils/segreteRooms";
 import SegreteBattle from "./SegreteBattle";
 import SegreteHero from "./SegreteHero";
@@ -321,35 +321,20 @@ export default function Segrete() {
   );
 }
 
-/* Prossimo dungeon (2026-11-05): ognuno vota (tocco sulla carta), il capo sceglie quale avviare */
-function DungeonVote({ room, uid, master, busy, run, dungeons }) {
-  const host = room.hostUid === uid || master;
-  const votesOf = (k) => room.members.filter((m) => m.vote === k);
-  const myVote = room.members.find((m) => m.uid === uid)?.vote || null;
-  const top = Math.max(0, ...dungeons.map((d) => votesOf(d.key).length));
+/* Cambio dungeon (2026-11-06, tolto il voto): solo il capo (o il Master) sceglie, gli altri lo vedono e basta */
+function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
+  if (room.hostUid !== uid && !master) return null;
   return (
-    <details className="sgr-vote sgr-fold">
-      <summary className="sgr-label">🗳 Cambia dungeon / vota <small>· {room.members.filter((m) => m.vote).length} voti{host ? " · tu sei il capo: scegli quale avviare" : " · lo sceglie il capo"}</small></summary>
-      <div className="sgr-vote-grid">
-        {dungeons.map((d) => {
-          const v = votesOf(d.key);
-          const on = room.type === d.key;
-          return (
-            <div key={d.key} className={`sgr-vote-card${on ? " is-chosen" : ""}${myVote === d.key ? " is-mine" : ""}${v.length && v.length === top ? " is-top" : ""}`}
-              style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(180deg, rgba(10,8,14,.45), rgba(10,8,14,.94)), url(${d.backgrounds[0]})` } : undefined}>
-              <button type="button" className="sgr-vote-main" disabled={busy} aria-pressed={myVote === d.key} onClick={() => run(() => voteDungeon(room.id, uid, d.key))}>
-                <span className="sgr-vote-top"><span aria-hidden="true">{d.icon}</span> <b>{d.name}</b>{on && <em className="sgr-vote-chosen">✓ scelto</em>}</span>
-                <span className="sgr-vote-who">
-                  {v.length ? v.map((m) => <i key={m.uid} style={clsStyle(m.cls)} title={m.name}>{classInfo(m.cls)?.icon} {m.name}</i>) : <small>nessun voto</small>}
-                </span>
-                <span className="sgr-vote-act">{myVote === d.key ? "✓ il tuo voto" : "🗳 vota"}</span>
-              </button>
-              {host && !on && <button type="button" className="sgr-btn sgr-vote-pick" disabled={busy} onClick={() => run(() => chooseDungeon(room.id, uid, d.key, master))}>👑 Avvia questo</button>}
-            </div>
-          );
-        })}
+    <div className="sgr-dswitch">
+      <p className="sgr-label">Dungeon <small>· sei il capo: puoi cambiarlo</small></p>
+      <div className="sgr-dpick" role="radiogroup" aria-label="Dungeon del gruppo">
+        {dungeons.map((d) => (
+          <button key={d.key} type="button" role="radio" aria-checked={room.type === d.key} disabled={busy}
+            className={`sgr-dpick-b${room.type === d.key ? " is-on" : ""}`}
+            onClick={() => room.type !== d.key && run(() => chooseDungeon(room.id, uid, d.key, master))}>{d.icon} {d.name}</button>
+        ))}
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -402,7 +387,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
         ))}
       </ol>
 
-      {!!dungeons.length && <DungeonVote room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
+      {!!dungeons.length && <DungeonSwitch room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
 
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 

@@ -137,12 +137,6 @@ export const backToRoom = (roomId, uid) => editRoom(roomId, (room) => {
   return { status: "open", startedAt: null, result: null, blocked: null, members: room.members.map((m) => ({ ...m, ready: false })) };
 });
 
-// Voto per il prossimo dungeon (ognuno il suo, si può cambiare); null = toglie il voto
-export const voteDungeon = (roomId, uid, key) => editRoom(roomId, (room) => {
-  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
-  return { members: room.members.map((m) => (m.uid === uid ? { ...m, vote: m.vote === key ? null : key } : m)) };
-});
-
 // Il capo (o il Master) sceglie il dungeon da avviare: le spunte di Avvia si azzerano
 export const chooseDungeon = (roomId, byUid, key, isMaster = false) => editRoom(roomId, (room) => {
   if (room.hostUid !== byUid && !isMaster) throw new Error("Lo sceglie il capo del gruppo.");
