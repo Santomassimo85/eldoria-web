@@ -14,7 +14,7 @@ function getCtx() {
     if (!AC) return null;
     try { ctx = new AC(); } catch { return null; }
   }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (ctx.state !== "running" && ctx.state !== "closed") ctx.resume().catch(() => {});
   return ctx;
 }
 

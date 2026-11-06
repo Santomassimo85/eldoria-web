@@ -36,7 +36,7 @@ function getCtx() {
 }
 
 export function unlock() {
-  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* vecchi browser */ }
+  try { if (navigator.audioSession) navigator.audioSession.type = window.__voiceOn ? "play-and-record" : "playback"; } catch { /* vecchi browser */ }
   const c = getCtx();
   if (!c) return;
   if (c.state !== "running") c.resume().then(() => { if (musicWanted && musicOn) startLoop(); }).catch(() => {});
@@ -45,6 +45,8 @@ export function unlock() {
 
 if (typeof window !== "undefined") {
   const again = () => { if (musicWanted || ctx) unlock(); };
+  // ritorno in primo piano: il contesto degli effetti può essere stato sospeso dal telefono
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && ctx && ctx.state !== "running") ctx.resume().catch(() => {}); });
   ["pointerdown", "touchend", "click", "keydown"].forEach((e) => window.addEventListener(e, again, { capture: true, passive: true }));
   document.addEventListener("visibilitychange", () => {
     if (!ctx) return;

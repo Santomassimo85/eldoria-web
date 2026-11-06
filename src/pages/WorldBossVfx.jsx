@@ -47,25 +47,20 @@ async function loadBuffer(key, src) {
     audioBuffers[key] = await ctx.decodeAudioData(arr);
   } catch { /* ignore */ }
 }
+/* SBLOCCO DELL'AUDIO (2026-11-06): prima si sbloccava UNA volta sola, al primo tocco. Se poi
+   il telefono sospende il contesto (app in secondo piano, microfono della chat vocale delle
+   Segrete che "interrompe" l'audio della pagina) gli effetti restavano muti fino a ricaricare.
+   Ora ogni tocco e ogni ritorno in primo piano lo risvegliano. */
 function unlockAudio() {
+  const ctx = getCtx();
+  if (ctx && ctx.state !== "running" && ctx.state !== "closed") ctx.resume().catch(() => {});
   if (audioUnlocked) return;
   audioUnlocked = true;
-  const ctx = getCtx();
-  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
   for (const [k, src] of Object.entries(VFX_SOUNDS)) loadBuffer(k, src);
 }
 if (typeof window !== "undefined") {
-  const onFirstGesture = () => {
-    unlockAudio();
-    window.removeEventListener("touchstart", onFirstGesture);
-    window.removeEventListener("touchend", onFirstGesture);
-    window.removeEventListener("click", onFirstGesture);
-    window.removeEventListener("keydown", onFirstGesture);
-  };
-  window.addEventListener("touchstart", onFirstGesture, { passive: true });
-  window.addEventListener("touchend", onFirstGesture, { passive: true });
-  window.addEventListener("click", onFirstGesture);
-  window.addEventListener("keydown", onFirstGesture);
+  ["pointerdown", "touchstart", "touchend", "click", "keydown"].forEach((e) => window.addEventListener(e, unlockAudio, { capture: true, passive: true }));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && audioCtx) unlockAudio(); });
 }
 // Cura (2026-11-02): il vecchio heal.mp3 sembrava un colpo. Ora è sintetizzata:
 // arpeggio maggiore cristallino che sale (campanelle) + un velo luminoso che sfuma.
@@ -106,13 +101,13 @@ function playHealChime(ctx) {
 function playSound(kind) {
   const ctx = getCtx();
   if (kind === "heal" && ctx) {
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
     try { playHealChime(ctx); } catch { /* ignora */ }
     return;
   }
   const buf = audioBuffers[SOUND_OF[kind] || "spell"];
   if (!ctx || !buf) return;
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
   try {
     const src = ctx.createBufferSource();
     src.buffer = buf;

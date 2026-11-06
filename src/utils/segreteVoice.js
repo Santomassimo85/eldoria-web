@@ -115,6 +115,10 @@ export class VoiceMesh {
       video: false,
     });
     this.track = this.stream.getAudioTracks()[0];
+    // col microfono acceso la sessione audio del telefono è "play-and-record": gli effetti della lotta
+    // (petAudio) non devono rimetterla a "playback", e dopo l'interruzione vanno risvegliati al tocco
+    window.__voiceOn = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = "play-and-record"; } catch { /* vecchi browser */ }
     const ice = await icePromise;
     this.ice = ice.servers; this.turn = ice.turn;
     this.watchLevel(this.uid, this.stream);
@@ -433,6 +437,8 @@ export class VoiceMesh {
     (this.relayNodes || []).forEach((n) => { try { n.disconnect(); } catch { /* niente */ } });
     (this.relaySent || []).forEach((x) => deleteDoc(x.ref).catch(() => {}));
     this.stream?.getTracks().forEach((t) => t.stop());
+    window.__voiceOn = false;
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* vecchi browser */ }
     this.audioBox?.remove();
     this.ctx?.close?.().catch(() => {});
     await deleteDoc(doc(peersCol(this.roomId), this.uid)).catch(() => {});
