@@ -79,7 +79,8 @@ export default function AppVoice({ docked }) {
   // nei fight la pagina lascia libero il posto del microfono
   useEffect(() => {
     document.body.classList.toggle("vc-live", joined && !docked);
-    return () => document.body.classList.remove("vc-live");
+    document.body.classList.toggle("vc-on", joined);
+    return () => document.body.classList.remove("vc-live", "vc-on");
   }, [joined, docked]);
   useEffect(() => {
     const bye = () => mesh.current?.leave();
