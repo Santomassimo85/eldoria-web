@@ -641,7 +641,7 @@
 }
 .mercato-page .mat-stat span { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--osso-2); }
 .mercato-page .mat-stat strong { font-family: var(--font-title); color: var(--el-soft); font-size: 1.2rem; }
-.mercato-page .mat-stat.highlight strong { color: #27753f; }
+.mercato-page .mat-stat.highlight strong { color: #4ade80; }
 .mercato-page .mat-stat.visits {
   background: linear-gradient(135deg, #efe6fb, #f6efe0);
   border-color: color-mix(in srgb, var(--oro) 35%, rgba(var(--el-rgb),.35));

@@ -55,7 +55,7 @@
   background: var(--roccia-2); border: 1px solid var(--wb-line);
 }
 .wb-hero-stat strong { font-family: var(--font-num); color: var(--osso); margin-right: 3px; }
-.wb-hero-stat.active strong { color: var(--sangue); }
+.wb-hero-stat.active strong { color: #f87171; }
 
 /* ── PIEGHE (role="tab": covo.css ci mette le rune da solo) ── */
 .wb-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }

@@ -601,7 +601,7 @@ export default function Almanacco() {
             <strong>⏳ Limiti:</strong> una prova al giorno, tre a settimana. Il conto si azzera <strong>ogni domenica alle 22:00</strong>.
             In sessione si può creare lo stesso, dalla stessa pagina.
           </p>
-          <div className="alm-craft-cta">
+          <div className="alm-craft-azioni">
             <Link to="/officina" className="cta">⚒ Apri l'Officina</Link>
             <Link to="/crafting" className="nx-pillola">📖 Il manuale completo</Link>
           </div>

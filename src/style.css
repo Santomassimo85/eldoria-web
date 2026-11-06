@@ -88,7 +88,8 @@ li {
      font-family: var(--font-text);
      line-height: 1.6;
      font-size: 1rem;
-     color: #272727;
+     /* era #272727 (tema pergamena): sul Covo scuro rendeva invisibile ogni p/li senza classe */
+     color: inherit;
 }
 
 i {
