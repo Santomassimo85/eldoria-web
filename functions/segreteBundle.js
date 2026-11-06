@@ -1706,13 +1706,13 @@ function weaponHitFx(s, h, t, fx, crit, notes) {
     }
   }
   if (!alive(t)) return { dmg, txt };
-  const dot = (key, type, ico, word) => {
+  const dot = (key, type) => {
     const o = fx[key];
     if (!o || (t.imm || []).includes(type) || die(100) > o.chance) return;
     txt += applyStatus(s, t, key, { dice: o.dice, turns: o.turns || 2, by: h.id });
   };
-  dot("burn", "fire", "\u{1F525}", "brucia");
-  dot("poison", "poison", "\u2620", "avvelenato");
+  dot("burn", "fire");
+  dot("poison", "poison");
   if (fx.slow && die(100) <= fx.slow.chance) txt += applyStatus(s, t, "slow", { turns: fx.slow.turns || 1 });
   if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) {
     t.fx.stun = true;

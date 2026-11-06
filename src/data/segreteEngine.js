@@ -634,13 +634,13 @@ function weaponHitFx(s, h, t, fx, crit, notes) {
     if (fx.drain && x > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.ceil((x * fx.drain) / 100)); if (h.hp > before) txt += ` · ti cura di ${h.hp - before}`; }
   }
   if (!alive(t)) return { dmg, txt };
-  const dot = (key, type, ico, word) => {
+  const dot = (key, type) => {
     const o = fx[key];
     if (!o || (t.imm || []).includes(type) || die(100) > o.chance) return;
     txt += applyStatus(s, t, key, { dice: o.dice, turns: o.turns || 2, by: h.id });
   };
-  dot("burn", "fire", "🔥", "brucia");
-  dot("poison", "poison", "☠", "avvelenato");
+  dot("burn", "fire");
+  dot("poison", "poison");
   if (fx.slow && die(100) <= fx.slow.chance) txt += applyStatus(s, t, "slow", { turns: fx.slow.turns || 1 });
   if (fx.stun && die(100) <= fx.stun.chance * (t.role === "boss" ? 0.5 : 1)) { t.fx.stun = true; txt += " · 💫 stordito"; }
   return { dmg, txt };
