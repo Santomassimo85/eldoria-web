@@ -28,6 +28,7 @@ __export(segreteServer_exports, {
   GIFT_FEE: () => GIFT_FEE,
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
+  RESPEC_COST: () => RESPEC_COST,
   RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
   SHOP_ITEMS: () => SHOP_ITEMS,
   STAT_KEYS: () => STAT_KEYS,
@@ -70,6 +71,7 @@ __export(segreteServer_exports, {
   timeout: () => timeout,
   useItem: () => useItem,
   validNewHero: () => validNewHero,
+  validRespec: () => validRespec,
   weaponChoices: () => weaponChoices,
   withRng: () => withRng,
   wonItemInboxDoc: () => wonItemInboxDoc,
@@ -484,6 +486,36 @@ function validNewHero(cls, stats, pick2, weapon, armor = null) {
   if (sum > STAT_BUDGET) return `Hai solo ${STAT_BUDGET} punti caratteristica.`;
   if (!poolFor(cls, 1).some((a) => a.id === pick2)) return "Scegli un'abilit\xE0 o un incantesimo di partenza.";
   return null;
+}
+var RESPEC_COST = 500;
+function validRespec(cls, hero, stats, picks) {
+  const lv = heroLevel(hero);
+  const earned = asiEarned(lv);
+  const base = {}, asi = {};
+  let sum = 0, over = 0;
+  for (const k of STAT_KEYS) {
+    const v = Number(stats?.[k]);
+    if (!Number.isInteger(v) || v < 0 || v > STAT_MAX) return { error: "Caratteristiche non valide." };
+    sum += v;
+    asi[k] = Math.max(0, v - STAT_CAP);
+    base[k] = v - asi[k];
+    over += asi[k];
+  }
+  if (sum > STAT_BUDGET + earned) return { error: `Hai solo ${STAT_BUDGET + earned} punti caratteristica.` };
+  if (over > earned) return { error: `Oltre +${STAT_CAP} servono i punti dei livelli: ne hai ${earned}.` };
+  let excess = Math.max(0, STAT_KEYS.reduce((t, k) => t + base[k], 0) - STAT_BUDGET);
+  for (const k of STAT_KEYS) {
+    const m = Math.min(base[k], excess);
+    base[k] -= m;
+    asi[k] += m;
+    excess -= m;
+  }
+  const list = [...new Set(Array.isArray(picks) ? picks.map(String) : [])];
+  const pool = poolFor(cls, lv);
+  if (!list.length) return { error: "Scegli almeno un'abilit\xE0 o un incantesimo." };
+  if (list.length > picksAllowed(lv)) return { error: `Puoi scegliere al massimo ${picksAllowed(lv)} abilit\xE0.` };
+  if (!list.every((id) => pool.some((a) => a.id === id))) return { error: "Abilit\xE0 non disponibile al tuo livello." };
+  return { stats: base, asi, picks: list };
 }
 function heroPending(hero) {
   const lv = heroLevel(hero);
@@ -2188,6 +2220,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   GIFT_FEE,
   KITS,
   MAX_STORY_LEVEL,
+  RESPEC_COST,
   RUN_COUNTS_AFTER,
   SHOP_ITEMS,
   STAT_KEYS,
@@ -2230,6 +2263,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   timeout,
   useItem,
   validNewHero,
+  validRespec,
   weaponChoices,
   withRng,
   wonItemInboxDoc,

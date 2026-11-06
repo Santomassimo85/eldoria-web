@@ -175,10 +175,12 @@ export function NewClassPicker({ charData, value, onSelect, disabled }) {
 /* Avviso in cima: quali eroi si sono potenziati e hanno qualcosa da scegliere */
 export function HeroNews({ charData, onSelect }) {
   const list = heroClasses(charData).map((c) => ({ c, todo: heroTodo(heroOf(charData, c.key), c.key) })).filter((x) => x.todo.length);
-  if (!list.length) return null;
+  const free = Number(charData?.storyRespecFree) > 0;
+  if (!list.length && !free) return null;
   return (
     <div className="sgr-news" role="status">
-      <b>⬆ Eroi da sistemare</b>
+      {free && <b>♻ Hai un reset gratuito: apri la scheda di un eroe e rifallo dalla piega «Reset dell'eroe».</b>}
+      {!!list.length && <b>⬆ Eroi da sistemare</b>}
       {list.map(({ c, todo }) => (
         <button key={c.key} type="button" className="sgr-news-i" style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
           {c.icon} {c.it} Lv {heroPending(heroOf(charData, c.key)).level}: {todo.map((t) => `${t.icon} ${t.text}`).join(" · ")} →

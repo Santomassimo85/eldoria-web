@@ -1941,7 +1941,7 @@ exports.petAward = onCall(
 // Stato della partita in dungeon_runs/{roomId} (regole: lettura loggati, scrittura
 // solo da qui). Operazioni: init (crea la partita quando la stanza è partita),
 // act (azione dell'eroe di turno), timeout (chi sparisce da 5 minuti si difende),
-// next (sala successiva), flee (abbandona), heroCreate/heroAsi/heroPick (eroe di classe).
+// next (sala successiva), flee (abbandona), heroCreate/heroAsi/heroPick/heroRespec (eroe di classe).
 // Vittoria = PE all'eroe di classe (characters.storyChars[cls].xp, permanente) + Corone + forse un oggetto.
 const segreteBundle = require("./segreteBundle");
 const segreteRng = () => crypto.randomInt(0, 2 ** 31) / 2 ** 31;
@@ -2107,7 +2107,7 @@ exports.segreteDo = onCall(
     }
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor" || op === "heroRespec") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -2129,9 +2129,28 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
-          if (op === "heroArmor" || op === "heroWeapon") {
+          if (op === "heroArmor" || op === "heroWeapon" || op === "heroRespec") {
             const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
             if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia equipaggiamento quando hai finito.");
+          }
+          if (op === "heroRespec") {
+            // reset (2026-11-06): nuove caratteristiche e abilità, livello e PE restano.
+            // Prima si usa un reset regalato (storyRespecFree), poi si pagano le Monete Antiche
+            const r = segreteBundle.validRespec(cls, hero, request.data?.stats, request.data?.picks);
+            if (r.error) throw new Error(r.error);
+            const data = cs.data();
+            const free = Math.max(0, Number(data.storyRespecFree) || 0);
+            const coins = segreteBundle.coinsOf(data);
+            const cost = segreteBundle.RESPEC_COST;
+            if (!free && coins < cost) throw new Error(`Servono ${cost} Monete Antiche, ne hai ${coins}.`);
+            tx.update(ref, {
+              [`storyChars.${cls}.stats`]: r.stats,
+              [`storyChars.${cls}.asi`]: r.asi,
+              [`storyChars.${cls}.picks`]: r.picks,
+              [`storyChars.${cls}.respecs`]: (Number(hero.respecs) || 0) + 1,
+              ...(free ? { storyRespecFree: free - 1 } : { storyCoins: coins - cost }),
+            });
+            return { ok: true, free: free > 0 };
           }
           if (op === "heroArmor" && request.data?.shieldOnly) {
             // solo scudo sì/no (2026-11-06); lo scudo magico eventualmente imbracciato torna nello zaino

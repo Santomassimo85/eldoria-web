@@ -380,6 +380,39 @@ export function validNewHero(cls, stats, pick, weapon, armor = null) {
   if (!poolFor(cls, 1).some((a) => a.id === pick)) return "Scegli un'abilità o un incantesimo di partenza.";
   return null;
 }
+/* RESET DELL'EROE (2026-11-06): nuove caratteristiche (valori finali) e abilità, stesso livello.
+   Punti = STAT_BUDGET + quelli dei livelli; oltre STAT_CAP servono per forza i punti dei livelli.
+   Restituisce { error } oppure { stats, asi, picks } già divisi come li salva l'eroe. La usano
+   il pannello del sito e il server. */
+export const RESPEC_COST = 500;
+export function validRespec(cls, hero, stats, picks) {
+  const lv = heroLevel(hero);
+  const earned = asiEarned(lv);
+  const base = {}, asi = {};
+  let sum = 0, over = 0;
+  for (const k of STAT_KEYS) {
+    const v = Number(stats?.[k]);
+    if (!Number.isInteger(v) || v < 0 || v > STAT_MAX) return { error: "Caratteristiche non valide." };
+    sum += v;
+    asi[k] = Math.max(0, v - STAT_CAP);
+    base[k] = v - asi[k];
+    over += asi[k];
+  }
+  if (sum > STAT_BUDGET + earned) return { error: `Hai solo ${STAT_BUDGET + earned} punti caratteristica.` };
+  if (over > earned) return { error: `Oltre +${STAT_CAP} servono i punti dei livelli: ne hai ${earned}.` };
+  // i punti di base sono al massimo STAT_BUDGET: quelli in più contano come punti dei livelli
+  let excess = Math.max(0, STAT_KEYS.reduce((t, k) => t + base[k], 0) - STAT_BUDGET);
+  for (const k of STAT_KEYS) {
+    const m = Math.min(base[k], excess);
+    base[k] -= m; asi[k] += m; excess -= m;
+  }
+  const list = [...new Set(Array.isArray(picks) ? picks.map(String) : [])];
+  const pool = poolFor(cls, lv);
+  if (!list.length) return { error: "Scegli almeno un'abilità o un incantesimo." };
+  if (list.length > picksAllowed(lv)) return { error: `Puoi scegliere al massimo ${picksAllowed(lv)} abilità.` };
+  if (!list.every((id) => pool.some((a) => a.id === id))) return { error: "Abilità non disponibile al tuo livello." };
+  return { stats: base, asi, picks: list };
+}
 export function heroPending(hero) {
   const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);

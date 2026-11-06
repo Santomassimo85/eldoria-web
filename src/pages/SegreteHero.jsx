@@ -10,11 +10,12 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import SegreteGear from "./SegreteGear";
+import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
 import { itemOf, heroGear } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
-  STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
+  STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY, RESPEC_COST,
 } from "../data/segreteKits";
 
 let callable = null;
@@ -234,6 +235,10 @@ export default function SegreteHero({ cls, charData }) {
       <details className="sgh-fold">
         <summary>⚔ Le tue azioni <small>({acts.length})</small></summary>
         <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
+      </details>
+      <details className="sgh-fold" open={Number(charData?.storyRespecFree) > 0 || undefined}>
+        <summary>♻ Reset dell'eroe <small>({Number(charData?.storyRespecFree) > 0 ? "gratuito" : `${RESPEC_COST} monete`})</small></summary>
+        <SegreteRespec key={`${cls}-${hero.respecs || 0}`} cls={cls} hero={hero} charData={charData} busy={busy} send={send} />
       </details>
       {lv < MAX_STORY_LEVEL && (
         <details className="sgh-fold">
