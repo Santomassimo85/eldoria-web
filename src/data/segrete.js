@@ -10,7 +10,7 @@
    ============================================================ */
 import { ARENA_CLASSES } from "./arenaClassSprites";
 import { currentWeekKey } from "./arenaWeek";
-import { levelOfXp } from "./segreteKits";
+import { heroLevel } from "./segreteKits";
 
 export const MAX_PARTY = 4;
 // Se qualcuno sparisce durante il dungeon: dopo 5 minuti (era 10 fino al 2026-11-05) il suo turno è difensivo.
@@ -90,7 +90,7 @@ export const clsStyle = (key) => ({ "--cls": classColor(key) });
 export const heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
 export function storyLevelOf(charData, classKey) {
   const h = heroOf(charData, classKey);
-  return h ? levelOfXp(h.xp) : 1;
+  return h ? heroLevel(h) : 1;
 }
 
 // Dungeon disponibili: quelli base, sovrascritti/integrati da dungeon_types del Master

@@ -10,7 +10,7 @@ import { DIFFICULTIES, diffOf, mergeMonsters, DEFAULT_FLOORS, MONSTER_SIZES, siz
 import { FALLBACK_MONSTERS } from "../data/segreteEngine";
 import { DROP_CHANCE, FLOOR_COINS_DIE, COIN_ICON, COIN_NAME, RARITY, DIFF_RANK, ITEMS, itemOf, dropOdds, gearUsers } from "../data/segreteItems";
 import { classInfo } from "../data/segrete";
-import { fxLine } from "../data/segreteKits";
+import { fxLine, XP_PER_ROOM } from "../data/segreteKits";
 
 // dati letti una volta per sessione (bestiario, mostri conosciuti, forziere del Master)
 let cache = null;
@@ -67,7 +67,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
   const corone = Math.round((Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5) * D.corone);
   const chest = Math.min(100, (Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35) * D.chest);
   const chestItems = (data?.chest || []).filter((l) => !(l.dungeons || []).length || l.dungeons.includes(key));
-  const xpPct = (0.05 * floors + 0.08) * D.xp * 100;
+  const xpWin = Math.round(XP_PER_ROOM * (floors + 1) * D.xp);
   const hasBoss = (foes || []).some((m) => m.role === "boss");
 
   return (
@@ -117,7 +117,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
 
         <h4 className="sgi-h">🏆 Premi se il gruppo vince</h4>
         <ul className="sgi-prizes">
-          <li>⭐ PE: circa il <b>{Math.round(xpPct)}%</b> di un livello a vittoria</li>
+          <li>⭐ PE: <b>{xpWin}</b> a eroe, uguali per tutti i livelli</li>
           <li>👑 Corone: <b>{corone}</b> a eroe</li>
           <li>{COIN_ICON} {COIN_NAME}: <b>1d{FLOOR_COINS_DIE}{D.coins !== 1 ? ` ×${num(D.coins)}` : ""}</b> a sala ripulita (in media ~{Math.round(10.5 * D.coins * (floors + 1))} a dungeon) + quelle dei mostri</li>
           {["minion", "elite", "boss"].map((r) => {

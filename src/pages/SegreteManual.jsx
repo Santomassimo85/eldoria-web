@@ -1,7 +1,7 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
 import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
-import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT } from "../data/segreteKits";
+import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT } from "../data/segreteKits";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -58,7 +58,7 @@ export default function SegreteManual() {
       <Fold icon="🧝" title="Eroi, livelli e armi">
         <ul>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
-          <li>Si sale di livello con i PE delle vittorie (servono circa 4–5 vittorie a livello, fino al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
           <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>
         </ul>

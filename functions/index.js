@@ -2125,7 +2125,7 @@ exports.segreteDo = onCall(
             const armor = request.data?.armor ? String(request.data.armor) : null;
             const bad = segreteBundle.validNewHero(cls, stats, pick, weapon, armor);
             if (bad) throw new Error(bad);
-            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], weapon, ...(armor ? { armor } : {}), shield: request.data?.shield !== false, xp: 0, createdAt: Date.now() } });
+            tx.update(ref, { [`storyChars.${cls}`]: { stats, asi: {}, picks: [pick], weapon, ...(armor ? { armor } : {}), shield: request.data?.shield !== false, xp: 0, xpv: segreteBundle.XP_VERSION, createdAt: Date.now() } });
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
@@ -2226,9 +2226,9 @@ exports.segreteDo = onCall(
           }
           // DIFFICOLTÀ (2026-11-06): a Medio e Leggenda ogni eroe deve avere il livello minimo (il Master no)
           const diff = segreteBundle.diffOf(room.difficulty);
-          const low = heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.levelOfXp(h.hero.xp) < diff.minLevel);
+          const low = heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.heroLevel(h.hero) < diff.minLevel);
           if (low.length) {
-            const msg = `per ${diff.name} serve almeno il livello ${diff.minLevel}: ${low.map((h) => `${h.name} è Lv ${segreteBundle.levelOfXp(h.hero.xp)}`).join(", ")}`;
+            const msg = `per ${diff.name} serve almeno il livello ${diff.minLevel}: ${low.map((h) => `${h.name} è Lv ${segreteBundle.heroLevel(h.hero)}`).join(", ")}`;
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
             return { ok: false, blocked: msg };
           }
@@ -2356,10 +2356,12 @@ exports.segreteDo = onCall(
                 Object.entries(sp.items || {}).forEach(([id, n]) => { if (segreteBundle.itemOf(id) && n > 0) patch[`storyBag.${id}`] = admin.firestore.FieldValue.increment(Math.floor(n)); });
               }
               if (hero) {
-                const from = segreteBundle.levelOfXp(hero.xp);
+                // PE fissi per dungeon (2026-11-06); gli eroi vecchi passano alla scala nuova (xpv 2)
+                const from = segreteBundle.heroLevel(hero);
                 const gain = segreteBundle.xpGain(from, run.floors, run.diff);
-                const xp = (Number(hero.xp) || 0) + gain;
+                const xp = segreteBundle.heroXp(hero) + gain;
                 patch[`storyChars.${h.cls}.xp`] = xp;
+                patch[`storyChars.${h.cls}.xpv`] = segreteBundle.XP_VERSION;
                 run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, from, to: segreteBundle.levelOfXp(xp) });
               }
               if (Object.keys(patch).length) tx.update(cs.ref, patch);

@@ -33,6 +33,7 @@ __export(segreteServer_exports, {
   STAT_KEYS: () => STAT_KEYS,
   STAT_MAX: () => STAT_MAX,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
+  XP_VERSION: () => XP_VERSION,
   act: () => act,
   armorChoices: () => armorChoices,
   armorProf: () => armorProf,
@@ -47,9 +48,11 @@ __export(segreteServer_exports, {
   flee: () => flee,
   giftsToday: () => giftsToday,
   heroActions: () => heroActions,
+  heroLevel: () => heroLevel,
   heroOf: () => heroOf,
   heroPending: () => heroPending,
   heroStats: () => heroStats,
+  heroXp: () => heroXp,
   hpPending: () => hpPending,
   isGear: () => isGear,
   itemOf: () => itemOf,
@@ -78,7 +81,22 @@ module.exports = __toCommonJS(segreteServer_exports);
 var MAX_STORY_LEVEL = 20;
 var HERO_HP_MULT = 1.1;
 var HERO_HP_BASE = 10;
-var XP_TABLE = [0, 300, 900, 2700, 6500, 14e3, 23e3, 34e3, 48e3, 64e3, 85e3, 1e5, 12e4, 14e4, 165e3, 195e3, 225e3, 265e3, 305e3, 355e3];
+var XP_PER_ROOM = 25;
+var XP_GAP = (lv) => Math.round((300 + 35 * (lv - 1)) / 10) * 10;
+var XP_TABLE = [0];
+for (let lv = 1; lv < 20; lv++) XP_TABLE.push(XP_TABLE[lv - 1] + XP_GAP(lv));
+var XP_TABLE_OLD = [0, 300, 900, 2700, 6500, 14e3, 23e3, 34e3, 48e3, 64e3, 85e3, 1e5, 12e4, 14e4, 165e3, 195e3, 225e3, 265e3, 305e3, 355e3];
+var XP_VERSION = 2;
+function heroXp(hero) {
+  const xp = Number(hero?.xp) || 0;
+  if (!hero || hero.xpv === XP_VERSION) return xp;
+  let lv = 1;
+  for (let i = 1; i < XP_TABLE_OLD.length; i++) if (xp >= XP_TABLE_OLD[i]) lv = i + 1;
+  if (lv >= 20) return XP_TABLE[19];
+  const frac = (xp - XP_TABLE_OLD[lv - 1]) / (XP_TABLE_OLD[lv] - XP_TABLE_OLD[lv - 1]);
+  return Math.floor(XP_TABLE[lv - 1] + frac * (XP_TABLE[lv] - XP_TABLE[lv - 1]));
+}
+var heroLevel = (hero) => levelOfXp(heroXp(hero));
 var STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 var STAT_BUDGET = 10;
 var STAT_CAP = 3;
@@ -91,7 +109,6 @@ function levelOfXp(xp) {
   for (let i = 1; i < XP_TABLE.length; i++) if ((Number(xp) || 0) >= XP_TABLE[i]) lv = i + 1;
   return Math.min(MAX_STORY_LEVEL, lv);
 }
-var xpForLevel = (lv) => XP_TABLE[Math.max(0, Math.min(MAX_STORY_LEVEL, lv) - 1)];
 var asiEarned = (lv) => Math.floor(lv / ASI_EVERY);
 var picksAllowed = (lv) => 1 + Math.floor(lv / ASI_EVERY);
 var WEAPONS = {
@@ -431,7 +448,7 @@ function heroStats(hero) {
   return out;
 }
 var mainMod = (cls, st) => st[kitOf(cls).stat] || 0;
-var hpPending = (hero) => Math.max(0, levelOfXp(hero?.xp) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
+var hpPending = (hero) => Math.max(0, heroLevel(hero) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
 function heroMaxHp(cls, lv, st, rolls = []) {
   const d = kitOf(cls).hitDie;
   const con = st.con || 0;
@@ -464,7 +481,7 @@ function validNewHero(cls, stats, pick2, weapon, armor = null) {
   return null;
 }
 function heroPending(hero) {
-  const lv = levelOfXp(hero?.xp);
+  const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
   return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).length) };
 }
@@ -928,7 +945,7 @@ var STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon })
 var heroOf = (charData, classKey) => charData?.storyChars?.[classKey] || null;
 function storyLevelOf(charData, classKey) {
   const h = heroOf(charData, classKey);
-  return h ? levelOfXp(h.xp) : 1;
+  return h ? heroLevel(h) : 1;
 }
 function mergeDungeons(custom = []) {
   const map = new Map(DEFAULT_DUNGEONS.map((d) => [d.key, d]));
@@ -1026,7 +1043,7 @@ var FALLBACK_MONSTERS = [
 ];
 function makeHero(m) {
   const hero = m.hero || {};
-  const lv = levelOfXp(hero.xp);
+  const lv = heroLevel(hero);
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
@@ -1069,8 +1086,7 @@ function makeHero(m) {
 }
 function xpGain(level, floors, diff = "facile") {
   if (level >= MAX_STORY_LEVEL) return 0;
-  const mult = diffOf(diff).xp;
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08) * mult);
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp);
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 var CAPS = {
@@ -2170,6 +2186,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   STAT_KEYS,
   STAT_MAX,
   WEEKLY_RUNS,
+  XP_VERSION,
   act,
   armorChoices,
   armorProf,
@@ -2184,9 +2201,11 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   flee,
   giftsToday,
   heroActions,
+  heroLevel,
   heroOf,
   heroPending,
   heroStats,
+  heroXp,
   hpPending,
   isGear,
   itemOf,

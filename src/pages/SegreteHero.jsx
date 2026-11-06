@@ -10,7 +10,7 @@ import { playDiceRoll } from "../components/diceSound";
 import { classInfo, heroOf } from "../data/segrete";
 import { bagOf, itemOf, heroGear } from "../data/segreteItems";
 import {
-  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, fxLine, DMG_ALL, canWear, xpForLevel, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, fxLine, DMG_ALL, canWear, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY,
 } from "../data/segreteKits";
 
@@ -170,7 +170,7 @@ export default function SegreteHero({ cls, charData }) {
   const hpLeft = hpPending(hero);
   const lv = pend.level;
   const st = heroStats(hero);
-  const curXp = Number(hero.xp) || 0;
+  const curXp = heroXp(hero);
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
@@ -195,7 +195,7 @@ export default function SegreteHero({ cls, charData }) {
         <span className="sgh-ico" aria-hidden="true">{info?.icon}</span>
         <div>
           <p className="sgh-title">{info?.it} · Livello {lv}</p>
-          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || [])} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE`}</small>
+          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || [])} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
         </div>
       </div>
       <div className="sgh-xp"><i style={{ width: `${pct}%` }} /></div>

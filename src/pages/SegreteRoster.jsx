@@ -5,7 +5,7 @@
    Toccare un eroe = sceglierlo per il gruppo e aprirne la scheda. */
 import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroGear } from "../data/segreteItems";
-import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, MAX_STORY_LEVEL } from "../data/segreteKits";
+import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, xpForLevel, heroXp, MAX_STORY_LEVEL } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
 export function heroTodo(hero) {
@@ -31,7 +31,7 @@ function runState(charData, cls) {
 const heroLine = (charData, key) => {
   const h = heroOf(charData, key);
   const lv = heroPending(h).level;
-  const xp = Number(h.xp) || 0;
+  const xp = heroXp(h);
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (xp - from)) / Math.max(1, to - from));
@@ -122,7 +122,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
         const h = heroOf(charData, c.key);
         const lv = heroPending(h).level;
         const st = heroStats(h);
-        const xp = Number(h.xp) || 0;
+        const xp = heroXp(h);
         const from = xpForLevel(lv);
         const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
         const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (xp - from)) / Math.max(1, to - from));

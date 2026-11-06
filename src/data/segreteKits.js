@@ -2,7 +2,7 @@
    Ogni giocatore ha UN eroe per classe che cresce per sempre (non si azzera):
    characters.storyChars[classe] = { stats: {str..cha}, asi: {str..cha}, picks: [id], xp }.
    - Caratteristiche come nell'Arena: 10 punti da distribuire come modificatori (0..+3).
-   - PE come D&D (XP_TABLE); il livello si ricava dai PE.
+   - PE fissi per dungeon e tabella XP_TABLE (2026-11-06); il livello si ricava dai PE (heroXp).
    - Ogni 3 livelli (3, 6, 9…) +1 punto caratteristica (tetto +5) e una scelta in più.
    - Scelte (abilità/incantesimi): 1 alla creazione + 1 ogni 3 livelli, dall'elenco
      `pool` della classe (ognuna ha un livello minimo). Le `base` le ha sempre.
@@ -14,7 +14,30 @@ export const MAX_STORY_LEVEL = 20;
 export const HERO_HP_MULT = 1.1;
 // +10 PF fissi a ogni eroe (richiesta 2026-11-04), fuori dal moltiplicatore e dal budget dei mostri
 export const HERO_HP_BASE = 10;
-export const XP_TABLE = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+/* PE FISSI PER DUNGEON (2026-11-06, richiesta: "uguali per tutti, chi è più alto ci mette di più").
+   Una vittoria vale XP_PER_ROOM a sala (boss compreso) × difficoltà, uguale per ogni livello:
+   3 sale + boss = 100 PE, il Tempio (4 sale) 125. Il salto fra un livello e l'altro cresce piano:
+   ~3 vittorie per il Lv 2, ~6 al Lv 10, ~9 per l'ultimo (XP_GAP). Prima (D&D) ogni vittoria dava
+   una fetta del salto: un eroe alto prendeva molti più PE di uno basso nello stesso dungeon. */
+export const XP_PER_ROOM = 25;
+export const XP_GAP = (lv) => Math.round((300 + 35 * (lv - 1)) / 10) * 10;
+export const XP_TABLE = [0];
+for (let lv = 1; lv < 20; lv++) XP_TABLE.push(XP_TABLE[lv - 1] + XP_GAP(lv));
+// tabella D&D di prima: serve solo a convertire gli eroi creati prima (hero.xpv !== 2)
+const XP_TABLE_OLD = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+export const XP_VERSION = 2;
+/* PE dell'eroe sulla scala nuova: gli eroi vecchi (senza xpv 2) tengono livello e % del livello.
+   Il server alla prossima vittoria riscrive i PE convertiti con xpv 2. */
+export function heroXp(hero) {
+  const xp = Number(hero?.xp) || 0;
+  if (!hero || hero.xpv === XP_VERSION) return xp;
+  let lv = 1;
+  for (let i = 1; i < XP_TABLE_OLD.length; i++) if (xp >= XP_TABLE_OLD[i]) lv = i + 1;
+  if (lv >= 20) return XP_TABLE[19];
+  const frac = (xp - XP_TABLE_OLD[lv - 1]) / (XP_TABLE_OLD[lv] - XP_TABLE_OLD[lv - 1]);
+  return Math.floor(XP_TABLE[lv - 1] + frac * (XP_TABLE[lv] - XP_TABLE[lv - 1]));
+}
+export const heroLevel = (hero) => levelOfXp(heroXp(hero));
 export const STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"];
 export const STAT_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
 export const STAT_BUDGET = 10;
@@ -312,7 +335,7 @@ export const mainMod = (cls, st) => st[kitOf(cls).stat] || 0;
    classe (lo tira il server: hero.hpRolls[i] = tiro del livello i+1). Livello 1 = dado
    pieno + il tiro; livelli dopo = il tiro; + COS a ogni livello. Finché un tiro manca
    conta la media. In più HERO_HP_BASE (+10) fissi. */
-export const hpPending = (hero) => Math.max(0, levelOfXp(hero?.xp) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
+export const hpPending = (hero) => Math.max(0, heroLevel(hero) - (Array.isArray(hero?.hpRolls) ? hero.hpRolls.length : 0));
 export function heroMaxHp(cls, lv, st, rolls = []) {
   const d = kitOf(cls).hitDie;
   const con = st.con || 0;
@@ -349,7 +372,7 @@ export function validNewHero(cls, stats, pick, weapon, armor = null) {
   return null;
 }
 export function heroPending(hero) {
-  const lv = levelOfXp(hero?.xp);
+  const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
   return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).length) };
 }

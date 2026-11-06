@@ -12,7 +12,7 @@
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
-import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, levelOfXp, xpForLevel, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 import { sizeOf, diffOf } from "./segrete";
 
 export const LOG_MAX = 80;
@@ -61,7 +61,7 @@ export const FALLBACK_MONSTERS = [
 // m = { uid, name, cls, avatar, hero: characters.storyChars[cls] } (livello dai PE della scheda)
 export function makeHero(m) {
   const hero = m.hero || {};
-  const lv = levelOfXp(hero.xp);
+  const lv = heroLevel(hero);
   const st = heroStats(hero);
   const picks = Array.isArray(hero.picks) ? hero.picks : [];
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
@@ -89,10 +89,10 @@ export function makeHero(m) {
    con 3 sale ~36% → ~3 dungeon per livello, con 3 dungeon a settimana ~1 livello a settimana). */
 export function xpGain(level, floors, diff = "facile") {
   if (level >= MAX_STORY_LEVEL) return 0;
-  const mult = diffOf(diff).xp;
+  // 2026-11-06: PE FISSI, uguali a ogni livello: XP_PER_ROOM a sala (boss compreso) × difficoltà
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp);
   // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
   // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
-  return Math.round((xpForLevel(level + 1) - xpForLevel(level)) * (0.05 * (floors || 3) + 0.08) * mult);
 }
 /* Il mostro si adatta al livello del gruppo (2026-11-04, simulato): più debole del
    gruppo = più PF e colpi più forti; più forte = un po' meno. Élite e boss
