@@ -76,3 +76,4 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-tile > img, .sga-cw-tile > span { width: 100%; aspect-ratio: 1; object-fit: cover; image-rendering: pixelated; display: grid; place-items: center; background: rgba(0,0,0,.35); color: var(--osso-3, #b8ac96); font-size: .85rem; }
 .sga-cw-tile figcaption { font-size: .82rem; }
 .sga-cw-cut { position: absolute; left: 4px; top: 4px; padding: 2px 6px; background: #8a1f1f; color: #fff; font: 700 .72rem system-ui, sans-serif; font-style: normal; }
+.sga-cw-tile > img { object-fit: contain; }

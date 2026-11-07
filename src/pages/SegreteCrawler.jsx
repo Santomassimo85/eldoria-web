@@ -17,7 +17,7 @@ import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
-import { handSpec, handDoc } from "../fx/crawlerArt";
+import { handSpec, handDoc, pairKey } from "../fx/crawlerArt";
 import { bagOf, battleItem, itemTarget } from "../data/segreteItems";
 import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
@@ -176,8 +176,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
   useEffect(() => {
     if (!eng || !weaponKey) return;
     const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, glove))).then((s) => s.data()?.image || "").catch(() => "") : "");
-    Promise.all([read(specialKey), read(weaponKey), offKey === "none" ? "" : read(offKey === "hand" ? "open" : offKey)]).then(([special, base, offUrl]) => {
-      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, mainUrl: special || base, offUrl });
+    Promise.all([specialKey ? read(pairKey(specialKey, offKey)) : "", read(pairKey(weaponKey, offKey))]).then(([special, base]) => {
+      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: special || base });
     });
   }, [eng, weaponKey, specialKey, offKey, glove]);
 

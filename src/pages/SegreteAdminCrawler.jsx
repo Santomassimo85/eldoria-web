@@ -9,9 +9,9 @@ import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import { askImage, dropExtraHand, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
+import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, tilePrompt } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -52,8 +52,8 @@ function Preview({ dungeons, monsters, tiles }) {
   const wk = choices.includes(weapon) ? weapon : choices[0];
   const canShield = armorProf(cls).shield && !TWO_HANDED.has(wk);
   const { off, glove } = handSpec({ cls, gear: { shield: canShield && shield } }, wk, TWO_HANDED.has(wk));
-  const hw = tiles[handDoc(wk, glove)]?.image || "", ho = off === "none" ? "" : tiles[handDoc(off === "hand" ? "open" : off, glove)]?.image || "";
-  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hw.length}:${ho.length}`, { main: wk, off, mainUrl: hw, offUrl: ho }); }, [cv, fg, wk, off, glove, hw, ho]);
+  const hp = tiles[handDoc(pairKey(wk, off), glove)]?.image || "";
+  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hp.length}`, { main: wk, off, pairUrl: hp }); }, [cv, fg, wk, off, glove, hp]);
   return (
     <div className="sga-card">
       <h3 className="sga-h3">Anteprima <small>come la vede il giocatore, con l'art salvata</small></h3>
@@ -96,12 +96,11 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   const idOf = (h) => handDoc(h.key, h.glove);
   const makeHand = async (h) => {
     let image = "";
-    // un'arma tagliata in alto si rifà UNA volta da sola (se esce di nuovo tagliata la si tiene, con l'avviso)
-    for (let tries = 0; tries < (h.kind === "weapon" ? 2 : 1); tries++) {
-      const img = await askImage({ prompt: handPrompt(h), aspectRatio: "1:1" });
-      image = await dataUrlToTransparentDataUrl(img, 320);
-      if (h.kind === "weapon" && !h.two) image = (await dropExtraHand(image)) || image;
-      if (h.kind !== "weapon" || !(await touchesTop(image))) break;
+    // tagliata in alto? si rifà UNA volta da sola (se esce di nuovo tagliata la si tiene, con l'avviso)
+    for (let tries = 0; tries < 2; tries++) {
+      const img = await askImage({ prompt: handPrompt(h), aspectRatio: "16:9" });
+      image = await dataUrlToTransparentDataUrl(img, 480);
+      if (!(await touchesTop(image))) break;
     }
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   };
@@ -124,28 +123,20 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     });
   };
   const dropHand = (h) => setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: deleteField() }, { merge: true }).catch((e) => alert(e.message));
-  const extra = HANDS.filter((h) => h.kind === "weapon" && !h.two && tiles[idOf(h)]?.image);
   // armi già salvate tagliate in alto: avviso sulla miniatura
   const [cut, setCut] = useState({});
   useEffect(() => {
     let live = true;
-    HANDS.filter((h) => h.kind === "weapon").forEach((h) => {
+    HANDS.forEach((h) => {
       const src = tiles[idOf(h)]?.image;
       if (!src) return;
       touchesTop(src).then((v) => { if (live) setCut((m) => (m[idOf(h)] === v ? m : { ...m, [idOf(h)]: v })); }).catch(() => {});
     });
     return () => { live = false; };
   }, [tiles]);
-  const fixExtra = () => run("fix", async () => {
-    let fixed = 0;
-    for (const h of extra) {
-      const out = await dropExtraHand(tiles[idOf(h)].image);
-      if (out) { await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: out, updatedAt: serverTimestamp() }, { merge: true }); fixed++; }
-    }
-    alert(fixed ? `Ripulite ${fixed} armi.` : "Nessuna mano in più trovata.");
-  });
   // le prove di prima, senza guanto: non le usa più nessuno
-  const old = Object.keys(tiles).filter((k) => /^hand_[^_].*$/.test(k) && !k.includes("__") && tiles[k]?.image);
+  const ids = new Set(HANDS.map(idOf));
+  const old = Object.keys(tiles).filter((k) => k.startsWith("hand_") && !ids.has(k) && tiles[k]?.image);
 
   const missing = monsters.filter((m) => !m.frontImageUrl);
   const genFronts = async () => {
@@ -200,12 +191,11 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
 
       <div className="sga-card">
         <h3 className="sga-h3">Mani e armi <small>{HANDS.length - handsMissing.length} su {HANDS.length} · viste da chi le impugna</small></h3>
-        <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite di un guanto usa la stessa descrizione di quel guanto, così mano sinistra, armi e scudo si somigliano. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. A sinistra si vede lo scudo solo se l'eroe lo impugna. Da «Carica» puoi mettere un tuo disegno (PNG col fondo trasparente, solo mano e polso: destra in basso a destra, sinistra in basso a sinistra; lo scudo visto da dietro).</p>
+        <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite ha TUTTE E DUE le mani, larghe quanto la scena: la destra con l'arma e la sinistra libera (o con lo scudo, per chi lo può portare); così i guanti e le misure vengono uguali. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG largo 16:9 col fondo trasparente, le mani che entrano dal bordo in basso.</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera quelli mancanti (${handsMissing.length})` : "✓ Tutte le mani hanno lo sprite"}
         </button>
-        {!!extra.length && <p className="sga-hint">{extra.length} armi a una mano già generate: se hanno una mano in più in basso a sinistra, questo la cancella senza rigenerarle (gratis). <button type="button" className="adm-btn" disabled={!!busy} onClick={fixExtra}>🧽 Togli le mani in più</button></p>}
-        {!!old.length && <p className="sga-hint">Ci sono {old.length} prove vecchie senza guanto, che la lotta non usa più. <button type="button" className="adm-btn" onClick={() => old.forEach((k) => setDoc(doc(db, "dungeon_tiles", k), { image: deleteField() }, { merge: true }))}>🗑 Togli le prove vecchie</button></p>}
+        {!!old.length && <p className="sga-hint">Ci sono {old.length} sprite vecchi (mani separate), che la lotta non usa più. <button type="button" className="adm-btn" onClick={() => old.forEach((k) => setDoc(doc(db, "dungeon_tiles", k), { image: deleteField() }, { merge: true }))}>🗑 Togli le prove vecchie</button></p>}
         {Object.entries(GLOVES).map(([glove, g]) => (
           <div key={glove} className="sga-cw-row">
             <b>{g.icon} {g.name} <small>· {g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")}</small></b>
@@ -216,7 +206,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
                   <figure key={id} className="sga-cw-tile">
                     {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
                     {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
-                    <figcaption>{h.name}{h.two ? " · due mani" : ""}{h.special ? " ★" : ""}</figcaption>
+                    <figcaption>{h.name}{h.special ? " ★" : ""} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : "+ mano libera"}</small></figcaption>
                     <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
                     <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
                     {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}

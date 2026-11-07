@@ -146,8 +146,9 @@ export class CrawlerEngine {
     this.handKey = key;
     const out = proceduralHands(spec.main, spec.off);
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
-    const [m, o] = await Promise.all([up(spec.mainUrl), up(spec.offUrl)]);
+    const [m, o, p] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl)]);
     if (this.handKey !== key || this.dead) return;
+    if (p) { this.hands = { pair: p, cutR: topRow(p) }; return; }
     if (m) { out.R = m; out.big = true; out.cutR = topRow(m); if (spec.off === "mirror") out.L = m; }
     if (o) { out.L = o; out.mirrorL = false; out.big = true; } // l'IA disegna già il braccio sinistro
     this.hands = out;
@@ -331,6 +332,17 @@ export class CrawlerEngine {
     // stessa misura per tutte e due le mani: i disegni sono fatti in scala uguale
     const size = H * 0.66;
     const dims = (s) => { const w = s.naturalWidth || s.width, h = s.naturalHeight || s.height; return [size * (w / h), size]; };
+    if (hands.pair) { // un'immagine sola con le due mani, larga quanto la scena
+      const iw = hands.pair.naturalWidth || hands.pair.width, ih = hands.pair.naturalHeight || hands.pair.height;
+      const grow = hands.cutR ? Math.max(1, (H + 10) / ((W * ih) / iw)) : 1, w = W * grow, h = ((W * ih) / iw) * grow, a = Math.sin(pose.swing * Math.PI);
+      ctx.save();
+      ctx.translate(W / 2 + W * 0.3, H + 4 + b - pose.cast * 12);
+      ctx.rotate(-a * 0.32);
+      ctx.translate(-w / 2 - W * 0.3 - a * 30 * k, -h - a * 22 * k);
+      ctx.drawImage(hands.pair, (W - w) / 2, 0, w, h);
+      ctx.restore();
+      return;
+    }
     if (hands.L) {
       const [w, h] = dims(hands.L);
       ctx.save();
