@@ -9,7 +9,7 @@ import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import { askImage, dropExtraHand, flipX, frontSpriteUrl } from "../utils/crawlerGen";
+import { askImage, dropExtraHand, frontSpriteUrl } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
 import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, tilePrompt } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
@@ -94,25 +94,18 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   });
   const dropTile = (d, slot) => setDoc(doc(db, "dungeon_tiles", d.key), { [slot]: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   const idOf = (h) => handDoc(h.key, h.glove);
-  const refs = useRef({}); // mani sinistre appena generate, prima che arrivi lo snapshot
   const makeHand = async (h) => {
-    const left = h.kind === "open" ? "" : refs.current[h.glove] || tiles[handDoc("open", h.glove)]?.image || "";
-    // per l'arma il modello è la mano rovesciata (una destra), così l'IA non ridisegna la sinistra
-    const ref = left && h.kind === "weapon" ? await flipX(left) : left;
-    const img = await askImage({ prompt: handPrompt(h, !!ref), aspectRatio: "1:1", ...(ref ? { refs: [ref] } : {}) });
+    const img = await askImage({ prompt: handPrompt(h), aspectRatio: "1:1" });
     let image = await dataUrlToTransparentDataUrl(img, 320);
     if (h.kind === "weapon" && !h.two) image = (await dropExtraHand(image)) || image;
-    if (h.kind === "open") refs.current[h.glove] = image;
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   };
   const genHand = (h) => run(`hand:${idOf(h)}`, () => makeHand(h));
   const upHand = (h, file) => run(`hand:${idOf(h)}`, async () => {
     const image = await fitHand(await fileToUrl(file));
-    if (h.kind === "open") refs.current[h.glove] = image;
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   });
-  // prima le mani sinistre (fanno da modello), poi il resto
-  const handsMissing = HANDS.filter((h) => !tiles[idOf(h)]?.image).sort((a, b) => (a.kind === "open" ? 0 : 1) - (b.kind === "open" ? 0 : 1));
+  const handsMissing = HANDS.filter((h) => !tiles[idOf(h)]?.image);
   const genAllHands = () => {
     if (!handsMissing.length || !window.confirm(`Generare ${handsMissing.length} sprite delle mani? Circa 3 centesimi l'uno di credito Gemini.`)) return;
     run("hands", async () => {
@@ -191,7 +184,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
 
       <div className="sga-card">
         <h3 className="sga-h3">Mani e armi <small>{HANDS.length - handsMissing.length} su {HANDS.length} · viste da chi le impugna</small></h3>
-        <p className="sga-hint">Ogni classe ha i suoi guanti. Per ogni guanto si genera PRIMA la mano sinistra semiaperta: arma e scudo si generano partendo da lei, così le due mani hanno stesso guanto e stessa misura. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. A sinistra si vede lo scudo solo se l'eroe lo impugna. Da «Carica» puoi mettere un tuo disegno (PNG col fondo trasparente, solo mano e polso: destra in basso a destra, sinistra in basso a sinistra; lo scudo visto da dietro).</p>
+        <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite di un guanto usa la stessa descrizione di quel guanto, così mano sinistra, armi e scudo si somigliano. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. A sinistra si vede lo scudo solo se l'eroe lo impugna. Da «Carica» puoi mettere un tuo disegno (PNG col fondo trasparente, solo mano e polso: destra in basso a destra, sinistra in basso a sinistra; lo scudo visto da dietro).</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera quelli mancanti (${handsMissing.length})` : "✓ Tutte le mani hanno lo sprite"}
         </button>
@@ -202,12 +195,12 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
             <b>{g.icon} {g.name} <small>· {g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")}</small></b>
             <div className="sga-cw-tiles">
               {HANDS.filter((h) => h.glove === glove).map((h) => {
-                const id = idOf(h), src = tiles[id]?.image, needRef = h.kind !== "open" && !tiles[handDoc("open", glove)]?.image;
+                const id = idOf(h), src = tiles[id]?.image;
                 return (
-                  <figure key={id} className={`sga-cw-tile${h.kind === "open" ? " is-ref" : ""}`}>
+                  <figure key={id} className="sga-cw-tile">
                     {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
                     <figcaption>{h.name}{h.two ? " · due mani" : ""}{h.special ? " ★" : ""}</figcaption>
-                    <button type="button" className="adm-btn" disabled={!!busy} title={needRef ? "Conviene generare prima la mano sinistra di questo guanto" : ""} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
+                    <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
                     <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
                     {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}
                   </figure>

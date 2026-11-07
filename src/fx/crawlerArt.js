@@ -201,24 +201,20 @@ The texture MUST tile perfectly: left edge matches right edge, top edge matches 
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
 
 // e = voce di handEntries; withRef = c'è la mano sinistra di quel guanto come riferimento
-export function handPrompt(e, withRef) {
+// e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite
+// (mani in più). Il guanto uguale lo dà la descrizione del guanto, la stessa per tutte le voci.
+export function handPrompt(e) {
   const glove = GLOVES[e.glove]?.desc || GLOVES.leather.desc;
-  const SIZE = "HAND SIZE (very important, identical for every sprite of this set): the hand is seen from the back, about ONE FIFTH of the image width, only the hand and the wrist are visible and the wrist is cut by the image border right away: NO forearm, NO elbow, NO arm.";
   const subject = {
-    open: `the hero's LEFT hand wearing ${glove}, half open and relaxed, fingers slightly spread and curled, held low for balance, as when swinging a weapon with the other hand. The hand sits near the BOTTOM-LEFT corner of the image, the wrist touching the bottom border. Nothing else in the image, lots of empty background`,
-    shield: `the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: the INSIDE of the shield, never its painted front. Visible: wooden planks, iron rim, rivets coming through, two leather straps and the grip, with the hero's LEFT hand wearing ${glove} closed around the grip. Big shield, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left part of the image, held low and close, realistic first-person perspective (the near edge larger than the far edge)`,
+    open: `the hero's LEFT hand and forearm wearing ${glove}, half open and relaxed, fingers slightly spread and curled, held low for balance, as when swinging a weapon with the other hand, entering from the BOTTOM-LEFT corner of the image. Nothing else in the image`,
+    shield: `the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: the INSIDE of the shield, never its painted front. Visible: wooden planks, iron rim, rivets coming through, two leather straps and the grip, with the hero's LEFT hand wearing ${glove} closed around the grip (only the hand, NO arm, NO sleeve). Big shield, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left part of the image, held low and close, realistic first-person perspective`,
     weapon: e.two
-      ? `BOTH hands of the hero wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""} held diagonally, hands near the BOTTOM-RIGHT of the image, the weapon BIG and CHUNKY, pointing UP and to the LEFT`
-      : `the hero's RIGHT hand wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}. The hand sits near the BOTTOM-RIGHT corner, the wrist touching the bottom border. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT`,
+      ? `BOTH hands and forearms of the hero wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}, entering from the BOTTOM-RIGHT of the image. The weapon is BIG and CHUNKY, held diagonally, pointing UP and to the LEFT`
+      : `a RIGHT hand and forearm wearing ${glove}, entering from the BOTTOM-RIGHT corner of the image, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT. Only ONE hand in the image: the bottom-left part stays empty`,
   }[e.kind];
   return `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
 Subject: ${subject}.
-${e.kind === "shield" ? "Only the hand on the grip, NO arm, NO sleeve." : SIZE}
-${withRef ? (e.kind === "weapon"
-    ? `The attached image is ONLY a style and size reference: it shows the hero's ${e.two ? "glove" : "RIGHT hand"}. Draw ${e.two ? "the hands" : "THIS SAME hand"} with EXACTLY the same glove (design, materials, colors), the same hand size in pixels and the same drawing style, now gripping the weapon. Do NOT copy the reference image as a separate object.`
-    : "The attached image is ONLY a style and size reference showing the hero's glove: draw the hand on the grip with EXACTLY the same glove, size and drawing style. Do NOT copy the reference image as a separate object.") : ""}
-${e.kind === "weapon" && !e.two ? "EXACTLY ONE HAND in the whole image: the right hand holding the weapon. NO left hand, NO second hand, NO extra hands anywhere. The BOTTOM-LEFT part of the image must stay EMPTY flat magenta." : ""}
-Detailed shading with 3 or 4 tones per material, thick dark outline.
+${e.kind === "shield" ? "" : "The arm MUST touch the corner of the image and be cut off by the image border. "}Nothing else in the image. Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;
 }

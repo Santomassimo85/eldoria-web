@@ -75,4 +75,3 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-tile { position: relative; margin: 0; display: grid; gap: 4px; justify-items: stretch; text-align: center; }
 .sga-cw-tile > img, .sga-cw-tile > span { width: 100%; aspect-ratio: 1; object-fit: cover; image-rendering: pixelated; display: grid; place-items: center; background: rgba(0,0,0,.35); color: var(--osso-3, #b8ac96); font-size: .85rem; }
 .sga-cw-tile figcaption { font-size: .82rem; }
-.sga-cw-tile.is-ref > img, .sga-cw-tile.is-ref > span { outline: 2px solid var(--oro, #f2c14e); outline-offset: -2px; }
