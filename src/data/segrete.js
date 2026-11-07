@@ -76,7 +76,7 @@ export function mergeMonsters(docs = []) {
 }
 
 // Vista in prima persona (2026-11-07): false = solo il Master principale. true = tutti.
-export const CRAWLER_PUBLIC = false;
+export const CRAWLER_PUBLIC = true;
 
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;
