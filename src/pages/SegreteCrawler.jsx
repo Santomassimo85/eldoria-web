@@ -86,20 +86,44 @@ function FoeAnchor({ f, round, selectable, picked, onPick, onInspect, bind, onHo
   );
 }
 
-function PartySlot({ h, me, turn, done, selectable, picked, onPick, classSprite, round }) {
+function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, round }) {
   const press = usePress(h.id, selectable, onPick, null);
   const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), img = h.img || classSprite, pips = dead ? [] : pipsOf(h, round);
   return (
-    <button type="button" className={`cw-pm${me ? " is-me" : ""}${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
+    <button type="button" className={`cw-pm${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
       style={clsStyle(h.cls)} aria-disabled={!selectable} aria-label={`${h.name}, ${classInfo(h.cls)?.it}, ${h.hp} su ${h.maxHp} PF`} {...press}>
-      <span className="cw-pm-st">{!!pips.length && <StatusPips className="cw-pips" max={4} items={pips} />}</span>
       <span className="cw-face" data-vfx-target={vfxKey(h.id)}>
-        {img ? <img src={img} alt="" draggable="false" /> : <SgIcon kind="cls" of={h.cls} fallback={classInfo(h.cls)?.icon} size="md" />}
+        {img ? <img src={img} alt="" draggable="false" /> : <SgIcon kind="cls" of={h.cls} fallback={classInfo(h.cls)?.icon} size="sm" />}
         {done && <i className="cw-done" aria-hidden="true">✓</i>}
       </span>
-      <b className="cw-nm">{h.helper ? "🤝 " : ""}{h.name}</b>
-      <span className="cw-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
-      <small>{dead ? (h.fled ? "fuggito" : "a terra") : `${h.hp}/${h.maxHp} · CA ${h.ac}`}</small>
+      <span className="cw-pm-txt">
+        <b className="cw-nm">{h.helper ? "🤝 " : ""}{h.name}</b>
+        <span className="cw-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
+        <small>{dead ? (h.fled ? "fuggito" : "a terra") : `${h.hp}/${h.maxHp} · CA ${h.ac}`}</small>
+      </span>
+      {!!pips.length && <span className="cw-pm-st"><StatusPips className="cw-pips" max={3} items={pips} /></span>}
+    </button>
+  );
+}
+// il tuo eroe: barra larga sopra il log. È anche il bersaglio quando curi te stesso, e l'ancora dei numeri
+function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
+  const press = usePress(h.id, selectable, onPick, null);
+  const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), pips = dead ? [] : pipsOf(h, round);
+  return (
+    <button type="button" className={`cw-me${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
+      style={clsStyle(h.cls)} data-vfx-target={vfxKey(h.id)} aria-disabled={!selectable}
+      aria-label={`${h.name}, ${h.hp} su ${h.maxHp} punti ferita, CA ${h.ac}`} {...press}>
+      <span className="cw-me-top">
+        <b>{h.helper ? "🤝 " : ""}{h.name}</b>
+        <em>{classInfo(h.cls)?.it} · Lv {h.level}</em>
+        {done && <i className="cw-me-done">✓ hai agito</i>}
+        {!!pips.length && <StatusPips className="cw-pips" max={6} items={pips} />}
+      </span>
+      <span className="cw-me-row">
+        <span className="cw-me-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
+        <span className="cw-me-hp">{dead ? (h.fled ? "fuggito" : "a terra") : <>{h.hp}<small>/{h.maxHp}</small></>}</span>
+        <span className="cw-me-ca">CA {h.ac}</span>
+      </span>
     </button>
   );
 }
@@ -383,6 +407,11 @@ export default function SegreteCrawler({ room, uid, tools }) {
         })}
       </div>
 
+      {me && (() => {
+        const h = shown(me);
+        return <MeBar h={h} round={run.round} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} picked={aiming?.id === h.id} onPick={pickTarget}
+          selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
+      })()}
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>
         <span className="sgb-log-text" key={last?.i}><LogText l={last} run={run} /></span>
         <span className="sgb-log-n">{logOpen ? "▴" : "▾"}</span>
@@ -479,14 +508,14 @@ export default function SegreteCrawler({ room, uid, tools }) {
         {tools}
       </div>
 
-      <div className="cw-party" style={{ "--cw-n": run.heroes.length }}>
-        {run.heroes.map((h0) => {
+      {run.heroes.some((h) => h.uid !== uid) && <div className="cw-party" style={{ "--cw-n": run.heroes.filter((h) => h.uid !== uid).length }}>
+        {run.heroes.filter((h) => h.uid !== uid).map((h0) => {
           const h = shown(h0);
-          return <PartySlot key={h.id} h={h} me={h.uid === uid} round={run.round} classSprite={sprites[h.cls]} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
+          return <PartySlot key={h.id} h={h} round={run.round} classSprite={sprites[h.cls]} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
             picked={aiming?.id === h.id} onPick={pickTarget}
             selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
         })}
-      </div>
+      </div>}
     </div>,
     document.body,
   );

@@ -20,29 +20,50 @@
 .cw-panel { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 6px; }
 .cw-panel .sgb-turn { margin: 0 0 4px; font-size: .84rem; }
 .cw-panel .sgb-acts { grid-template-columns: 1fr 1fr; gap: 4px; }
-.cw-panel .sgb-act { box-sizing: border-box; min-width: 0; min-height: 50px; padding: 3px 6px; grid-template-columns: 44px minmax(0, 1fr); column-gap: 6px; }
+.cw-panel .sgb-act { box-sizing: border-box; min-width: 0; min-height: 54px; padding: 4px 6px; grid-template-columns: 44px minmax(0, 1fr); column-gap: 6px; }
 .cw-panel .sgb-act-name { font-size: .82rem; line-height: 1.1; padding-right: 28px; }
 .cw-panel .sgb-act-info { font-size: .7rem; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cw-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .cw-tools button { min-height: 36px; padding: 4px 10px; border: 1px solid rgba(243,234,216,.35); background: transparent; color: #d8ccb4; font: 600 .78rem var(--sgb-read, system-ui, sans-serif); cursor: pointer; }
 
-.cw-party { flex: none; display: grid; grid-template-columns: repeat(var(--cw-n, 4), minmax(0, 1fr)); gap: 4px; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); background: #0d0a0c; border-top: 2px solid #000; }
-.cw-pm { position: relative; min-width: 0; display: grid; justify-items: center; gap: 2px; padding: 22px 2px 3px; border: 0; background: #1b171c; color: #f3ead8; font: 12px var(--sgb-read, system-ui, sans-serif); cursor: default; touch-action: manipulation; }
-.cw-pm.is-me { background: #2a242b; box-shadow: inset 0 -3px 0 var(--cls, #e0a85a); }
-.cw-pm.is-pick { cursor: pointer; outline: 2px dashed #f2c14e; outline-offset: -2px; }
-.cw-pm.is-picked { outline: 2px solid #fff; outline-offset: -2px; }
-.cw-pm-st { position: absolute; top: 2px; left: 0; right: 0; display: flex; justify-content: center; min-height: 18px; }
-.cw-pm .cw-pips { --stp-size: 15px; display: flex; gap: 1px; line-height: 1; transform: scale(.82); transform-origin: top center; }
-.cw-face { position: relative; width: 44px; height: 44px; display: grid; place-items: center; overflow: visible; border: 2px solid var(--cls, #888); background: #17131a; }
+/* il tuo eroe, sopra il log */
+.cw-me { flex: none; display: grid; gap: 3px; padding: 5px 8px 6px; border: 0; border-top: 2px solid #000; background: linear-gradient(180deg, #221c23, #17131a); color: #f3ead8; font: 13px var(--sgb-read, system-ui, sans-serif); text-align: left; cursor: default; box-shadow: inset 3px 0 0 var(--cls, #e0a85a); touch-action: manipulation; }
+.cw-me-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cw-me-top b { color: var(--cls, #f3ead8); font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-me-top em { font-style: normal; color: #c9bfad; font-size: .74rem; white-space: nowrap; }
+.cw-me-done { font-style: normal; color: #5fd16b; font-size: .74rem; font-weight: 700; white-space: nowrap; }
+.cw-me-top .cw-pips { margin-left: auto; display: flex; gap: 2px; line-height: 1; }
+.cw-me-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.cw-me-bar { position: relative; height: 12px; background: #0a0709; box-shadow: inset 0 0 0 1px #000, 0 0 0 1px rgba(243,234,216,.18); overflow: hidden; }
+.cw-me-bar i { display: block; height: 100%; background: linear-gradient(180deg, #8ff09a, #3fae4f); transition: width .35s ease; }
+.cw-me-bar i.low { background: linear-gradient(180deg, #ff9a86, #c8303a); }
+.cw-me-hp { font: 700 1.02rem "Pixelify Sans", monospace; font-variant-numeric: tabular-nums; }
+.cw-me-hp small { font-size: .78rem; color: #c9bfad; }
+.cw-me-ca { padding: 1px 7px; font: 700 .82rem "Pixelify Sans", monospace; color: #1d1406; background: #c9bfad; clip-path: polygon(50% 0, 100% 22%, 100% 70%, 50% 100%, 0 70%, 0 22%); }
+.cw-me.is-turn { box-shadow: inset 3px 0 0 var(--cls, #e0a85a), inset 0 0 0 1px rgba(242,193,78,.45); }
+.cw-me.is-dead { opacity: .7; }
+/* bersaglio di una cura: alone morbido che respira, niente riquadri */
+.cw-me.is-pick, .cw-pm.is-pick { cursor: pointer; animation: cw-glow 1.4s ease-in-out infinite; }
+.cw-me.is-picked, .cw-pm.is-picked { box-shadow: inset 0 0 0 2px #fff3c4, 0 0 12px rgba(255,215,106,.6); }
+@keyframes cw-glow { 0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,215,106,.35), 0 0 4px rgba(255,215,106,.2); } 50% { box-shadow: inset 0 0 0 2px rgba(255,215,106,.95), 0 0 14px rgba(255,215,106,.55); } }
+
+/* i compagni, compatti, in fondo */
+.cw-party { flex: none; display: grid; grid-template-columns: repeat(var(--cw-n, 3), minmax(0, 1fr)); gap: 3px; padding: 3px 3px calc(3px + env(safe-area-inset-bottom, 0px)); background: #0d0a0c; border-top: 2px solid #000; }
+.cw-pm { position: relative; min-width: 0; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 5px; padding: 3px 4px; border: 0; background: #1b171c; color: #f3ead8; font: 12px var(--sgb-read, system-ui, sans-serif); text-align: left; cursor: default; touch-action: manipulation; }
+.cw-pm-txt { display: grid; gap: 1px; min-width: 0; }
+.cw-pm-st { position: absolute; top: -2px; right: 2px; }
+.cw-pm .cw-pips { display: flex; gap: 1px; line-height: 1; transform: scale(.7); transform-origin: top right; }
+.cw-face { position: relative; width: 30px; height: 30px; display: grid; place-items: center; overflow: visible; border: 2px solid var(--cls, #888); background: #17131a; }
 .cw-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; image-rendering: pixelated; }
 .cw-pm.is-turn .cw-face { box-shadow: 0 0 0 2px #f2c14e; }
 .cw-pm.is-dead .cw-face img { filter: grayscale(1) brightness(.5); }
-.cw-done { position: absolute; right: -4px; top: -6px; font: 700 15px "Pixelify Sans", monospace; color: #5fd16b; text-shadow: 1px 1px #000; }
+.cw-done { position: absolute; left: -5px; top: -7px; font: 700 13px "Pixelify Sans", monospace; color: #5fd16b; text-shadow: 1px 1px #000; }
 .cw-nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--cls, #f3ead8); }
-.cw-bar { width: 90%; height: 6px; background: #000; }
-.cw-bar i { display: block; height: 100%; background: #5fd16b; transition: width .25s steps(4); }
+.cw-bar { width: 100%; height: 5px; background: #000; }
+.cw-bar i { display: block; height: 100%; background: #5fd16b; transition: width .3s ease; }
 .cw-bar i.low { background: #e0624f; }
-.cw-pm small { color: #c9bfad; font-size: .68rem; white-space: nowrap; }
+.cw-pm small { color: #c9bfad; font-size: .66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .cw-me.is-pick, .cw-pm.is-pick { animation: none; box-shadow: inset 0 0 0 2px rgba(255,215,106,.9); } }
 
 /* da qui partono gli incantesimi di chi tiene il focus nella sinistra */
 .cw-hand { position: absolute; left: 8%; top: 64%; width: 20%; height: 16%; pointer-events: none; }
