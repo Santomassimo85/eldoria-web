@@ -226,7 +226,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   const foeList = (run?.foes || []).map((f0) => {
     const f = shown(f0);
-    return { id: f.id, hp: f.hp, maxHp: f.maxHp, role: f.role, icon: f.icon, img: fronts[f.src] || f.img || "", scale: sizeScale(f), state: stateOf(f) };
+    return { id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role, icon: f.icon, img: fronts[f.src] || f.img || "", scale: sizeScale(f), state: stateOf(f) };
   });
   const foeKey = JSON.stringify(foeList);
   useEffect(() => {

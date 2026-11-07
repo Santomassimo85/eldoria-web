@@ -208,7 +208,7 @@ export class CrawlerEngine {
       const [dx, dz] = slots[i];
       f.x = 6.5 + dx; f.y = this.roomY + 0.5 + dz; f.dz0 = dz;
       f.h = clamp(0.98 * (src.scale || 1), 0.62, 1.7);
-      f.hp = src.hp; f.max = src.maxHp; f.state = src.state || "";
+      f.hp = src.hp; f.max = src.maxHp; f.state = src.state || ""; f.name = src.name || "";
       if (!f.loading && !f.spr) this.prep(f);
       return f;
     });
@@ -426,9 +426,21 @@ export class CrawlerEngine {
     const { ctx } = this;
     for (const f of this.foes) {
       if (!f.box || f.hp <= 0 || f.die) continue;
-      const w = clamp(Math.round(f.box.w * 0.62), 18, 52), x = Math.round(f.box.cx - w / 2), y = Math.max(3, Math.round(f.box.y) - 6);
+      const w = clamp(Math.round(f.box.w * 0.62), 18, 52), x = Math.round(f.box.cx - w / 2), y = Math.max(11, Math.round(f.box.y) - 6);
       ctx.fillStyle = "#000"; ctx.fillRect(x - 1, y - 1, w + 2, 5);
       ctx.fillStyle = f.hp / f.max < 0.3 ? "#ff7a5c" : "#c8303a"; ctx.fillRect(x, y, Math.max(1, Math.round((w * f.hp) / Math.max(1, f.max))), 3);
+      // il nome sopra la barra (2026-11-07): contorno scuro, accorciato se è troppo lungo; oro sul bersaglio
+      if (f.name) {
+        ctx.font = '700 6.6px "Pixelify Sans", system-ui, sans-serif';
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        const max = Math.max(w + 18, 44);
+        let txt = f.name;
+        if (ctx.measureText(txt).width > max) { while (txt.length > 3 && ctx.measureText(`${txt}…`).width > max) txt = txt.slice(0, -1); txt = `${txt.trimEnd()}…`; }
+        ctx.lineJoin = "round"; ctx.lineWidth = 2; ctx.strokeStyle = "#0a0709";
+        ctx.strokeText(txt, f.box.cx, y - 1.6);
+        ctx.fillStyle = f.id === this.aim ? "#ffd76a" : f.id === this.hover && this.pickable.has(f.id) ? "#fff3c4" : "#f3ead8";
+        ctx.fillText(txt, f.box.cx, y - 1.6);
+      }
     }
   }
   drawHands() {
