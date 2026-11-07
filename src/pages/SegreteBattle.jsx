@@ -509,6 +509,7 @@ export function SpoilsBox({ run, uid, spoils, hidden }) {
 
 export function actInfo(a, lv) {
   if (a.kind === "defend") return "+4 CA fino al tuo turno";
+  if (a.kind === "grip") return `${a.info} · gratis`;
   if (a.kind === "heal") return a.flat ? `cura ${lv * 5}` : `cura ${a.dice}${a.plusMod ? "+mod" : ""}`;
   if (a.kind === "heal_all") return `cura tutti ${a.dice}+mod`;
   if (a.kind === "buff") return a.buff === "ac" ? `+${a.value} CA · ${a.turns}t` : a.buff === "adv" ? `vantaggio · ${a.turns}t` : `+${a.value} danni · ${a.turns}t`;

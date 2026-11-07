@@ -31,6 +31,7 @@ __export(segreteServer_exports, {
   RESPEC_COST: () => RESPEC_COST,
   RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
   SHOP_ITEMS: () => SHOP_ITEMS,
+  SOLO_XP_MULT: () => SOLO_XP_MULT,
   STAT_KEYS: () => STAT_KEYS,
   STAT_MAX: () => STAT_MAX,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
@@ -442,12 +443,18 @@ var KITS = {
 var DEFEND = { id: "difesa", name: "Difendersi", icon: "\u{1F6E1}", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 var kitOf = (cls) => KITS[cls] || KITS.fighter;
 var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null) {
+var VERSATILE = { spada_lunga: "1d10", bastone: "1d8" };
+var GRIP_CLASSES = /* @__PURE__ */ new Set(["fighter", "barbarian", "paladin", "ranger", "rogue", "monk"]);
+var canTwoHand = (cls, weapon) => GRIP_CLASSES.has(cls) && !!VERSATILE[weapon];
+var GRIP = { id: "grip", kind: "grip", icon: "\u270A", free: true };
+function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null, twoHand = false) {
   const k = kitOf(cls);
-  const w = weaponOf(cls, weapon);
+  const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
+  const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
   const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  const grip = canTwoHand(cls, w0.key) ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} \xB7 riprendi lo scudo` : `${VERSATILE[w0.key]} \xB7 niente scudo` }] : [];
+  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...grip, DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -1118,6 +1125,7 @@ function makeHero(m) {
     res: def.res,
     ...def.thorns ? { thorns: def.thorns } : {},
     gear: { armor: def.armorName, shield: def.shieldName },
+    ...def.shield ? { shieldAc: 2 + (itemOf(hero.shieldItem)?.kind === "shield" ? itemOf(hero.shieldItem).plus || 0 : 0) } : {},
     fx: {},
     uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
@@ -1125,9 +1133,10 @@ function makeHero(m) {
     ...m.helper ? { helper: true } : {}
   };
 }
-function xpGain(level, floors, diff = "facile") {
+var SOLO_XP_MULT = 0.75;
+function xpGain(level, floors, diff = "facile", party = 2) {
   if (level >= MAX_STORY_LEVEL) return 0;
-  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp);
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : 1));
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 var CAPS = {
@@ -1502,7 +1511,7 @@ var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
 function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -1989,6 +1998,14 @@ function act(s, uid, { actionId, targetId }, now) {
   const a = actionId === DEFEND.id ? DEFEND : heroActionList(h).find((x) => x.id === actionId);
   if (!a) throw new Error("Azione non disponibile.");
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
+  if (a.kind === "grip") {
+    if (!canTwoHand(h.cls, weaponOf(h.cls, h.weapon).key)) throw new Error("Con quest'arma non si pu\xF2.");
+    const two = !h.twoHand, sAc = Number(h.shieldAc) || 0;
+    h.twoHand = two;
+    if (sAc) h.ac += two ? -sAc : sAc;
+    log(s, two ? `\u270A ${h.name} impugna l'arma a due mani${sAc ? ` e mette via lo scudo (\u2212${sAc} CA)` : ""}.` : `\u{1F6E1} ${h.name} torna a impugnare l'arma con una mano${sAc ? ` e riprende lo scudo (+${sAc} CA)` : ""}.`, { kind: "info", actor: h.id });
+    return { actor: h.id, roll: null };
+  }
   const tk = targetKind(a);
   if (fxOn(s, h.fx.frightened) && (a.kind === "heal_all" || a.kind === "heal" && !a.self || a.kind === "buff" && !a.self)) throw new Error("Sei spaventato: non riesci a curare n\xE9 ad aiutare gli altri. Attacca o difenditi.");
   let target = null;
@@ -2330,6 +2347,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   RESPEC_COST,
   RUN_COUNTS_AFTER,
   SHOP_ITEMS,
+  SOLO_XP_MULT,
   STAT_KEYS,
   STAT_MAX,
   WEEKLY_RUNS,

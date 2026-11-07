@@ -2397,7 +2397,7 @@ exports.segreteDo = onCall(
               if (hero) {
                 // PE fissi per dungeon (2026-11-06); gli eroi vecchi passano alla scala nuova (xpv 2)
                 const from = segreteBundle.heroLevel(hero);
-                const gain = segreteBundle.xpGain(from, run.floors, run.diff);
+                const gain = segreteBundle.xpGain(from, run.floors, run.diff, (run.heroes || []).length);
                 const xp = segreteBundle.heroXp(hero) + gain;
                 patch[`storyChars.${h.cls}.xp`] = xp;
                 patch[`storyChars.${h.cls}.xpv`] = segreteBundle.XP_VERSION;

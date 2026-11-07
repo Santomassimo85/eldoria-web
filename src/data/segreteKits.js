@@ -326,12 +326,23 @@ export const DEFEND = { id: "difesa", name: "Difendersi", icon: "🛡", kind: "d
 
 export const kitOf = (cls) => KITS[cls] || KITS.fighter;
 export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
-export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null) {
+/* PRESA A DUE MANI (2026-11-07): spada lunga e bastone sono "versatili" come in D&D. Chi non è un
+   incantatore può impugnarli a due mani: dado più grosso, ma lo scudo va via (e la sua CA). Cambiare
+   presa è un'azione GRATUITA prima di agire nel round (dopo aver agito no: niente scudo rimesso apposta
+   per i mostri). Si tiene da una sala all'altra. */
+export const VERSATILE = { spada_lunga: "1d10", bastone: "1d8" };
+export const GRIP_CLASSES = new Set(["fighter", "barbarian", "paladin", "ranger", "rogue", "monk"]);
+export const canTwoHand = (cls, weapon) => GRIP_CLASSES.has(cls) && !!VERSATILE[weapon];
+export const GRIP = { id: "grip", kind: "grip", icon: "✊", free: true };
+export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null, twoHand = false) {
   const k = kitOf(cls);
-  const w = weaponOf(cls, weapon);
+  const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
+  const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
   const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
-  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), DEFEND];
+  const grip = canTwoHand(cls, w0.key)
+    ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} · riprendi lo scudo` : `${VERSATILE[w0.key]} · niente scudo` }] : [];
+  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...grip, DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */

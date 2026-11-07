@@ -6,7 +6,7 @@ import { collection, deleteField, doc, onSnapshot, serverTimestamp, setDoc } fro
 import { db } from "../firebase";
 import ImageTonePicker from "../components/ImageTonePicker";
 import { sizeScale } from "../data/segrete";
-import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf } from "../data/segreteKits";
+import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf, canTwoHand } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
@@ -16,7 +16,7 @@ import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
 // la lista: per ogni guanto la mano sinistra, lo scudo, le armi delle sue classi e le armi speciali
-const HANDS = handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf });
+const HANDS = handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf, canTwoHand });
 const fileToUrl = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
 // una foto caricata dal PC: solo rimpicciolita, il fondo trasparente deve già averlo
 const fitHand = (src) => new Promise((res, rej) => {

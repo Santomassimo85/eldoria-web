@@ -59,7 +59,7 @@ export default function SegreteManual() {
         <ul>
           <li><b>♻ Reset dell'eroe</b>: dalla scheda dell'eroe rifai caratteristiche e abilità per {RESPEC_COST} {COIN_NAME}. Livello, PE, PF tirati ed equipaggiamento restano; non si può fare durante un dungeon. Le armi si cambiano sempre gratis.</li>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
-          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Chi entra da solo prende un po' meno PE (×0,75). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
           <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>
         </ul>
@@ -78,6 +78,7 @@ export default function SegreteManual() {
           <li>Ogni classe porta le armature del manuale D&D: le scegli quando crei l'eroe e le cambi dal riquadro <b>🎒 Equipaggiamento</b> della sua scheda (mai durante un dungeon). Dallo Zaino il tasto «🛡 Equipaggia» mette un oggetto su un tuo eroe.</li>
           <li>Leggere: CA base + DES. Medie: CA base + DES fino a +2. Pesanti: CA fissa. Barbaro e Monaco hanno anche la <b>Difesa senz'armatura</b>; Mago e Stregone l'<b>Armatura Magica</b> (13 + DES).</li>
           <li><b>Scudo</b> +2 CA, solo con un'arma a una mano.</li>
+          <li><b>✊ Impugna a due mani</b>: chi non è un incantatore (Guerriero, Barbaro, Paladino, Ranger, Ladro, Monaco) con <b>Spada Lunga</b> o <b>Bastone</b> in lotta può impugnarla a due mani: Spada Lunga 1d10 invece di 1d8, Bastone 1d8 invece di 1d6, ma lo scudo va via con la sua CA. Cambiare presa è gratis e non consuma il turno, però solo prima di agire nel round.</li>
           <li><b>✦ Le armature più leggere hanno un vantaggio</b>, così non sono mai una scelta inutile: {Object.values(ARMORS).filter((x) => x.perk).map((x) => `${x.name} (${x.perk.text.split(": ")[1]})`).join(" · ")}. Valgono anche le loro versioni +1.</li>
           <li>Mezza armatura, Armatura a Stecche e Piastre si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
         </ul>

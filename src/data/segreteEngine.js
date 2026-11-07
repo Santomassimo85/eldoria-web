@@ -12,7 +12,7 @@
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
-import { kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 import { sizeOf, diffOf } from "./segrete";
 
 export const LOG_MAX = 80;
@@ -80,6 +80,7 @@ export function makeHero(m) {
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
     ...(okItem ? { wItem: wItem.id } : {}), res: def.res, ...(def.thorns ? { thorns: def.thorns } : {}),
     gear: { armor: def.armorName, shield: def.shieldName },
+    ...(def.shield ? { shieldAc: 2 + (itemOf(hero.shieldItem)?.kind === "shield" ? itemOf(hero.shieldItem).plus || 0 : 0) } : {}),
     fx: {}, uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
     // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
@@ -88,10 +89,12 @@ export function makeHero(m) {
 }
 /* PE alla vittoria: una fetta del salto verso il livello dopo (8% a sala + 12% il boss:
    con 3 sale ~36% → ~3 dungeon per livello, con 3 dungeon a settimana ~1 livello a settimana). */
-export function xpGain(level, floors, diff = "facile") {
+// da soli (2026-11-07): un po' meno PE
+export const SOLO_XP_MULT = 0.75;
+export function xpGain(level, floors, diff = "facile", party = 2) {
   if (level >= MAX_STORY_LEVEL) return 0;
   // 2026-11-06: PE FISSI, uguali a ogni livello: XP_PER_ROOM a sala (boss compreso) × difficoltà
-  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp);
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : 1));
   // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
   // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
 }
@@ -405,7 +408,7 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -847,6 +850,15 @@ export function act(s, uid, { actionId, targetId }, now) {
   const a = actionId === DEFEND.id ? DEFEND : heroActionList(h).find((x) => x.id === actionId);
   if (!a) throw new Error("Azione non disponibile.");
   if (a.uses && (h.uses?.[a.id] ?? a.uses) <= 0) throw new Error("Hai finito gli usi di questa azione per questa sala.");
+  // cambio di presa: gratis, non consuma il turno
+  if (a.kind === "grip") {
+    if (!canTwoHand(h.cls, weaponOf(h.cls, h.weapon).key)) throw new Error("Con quest'arma non si può.");
+    const two = !h.twoHand, sAc = Number(h.shieldAc) || 0;
+    h.twoHand = two;
+    if (sAc) h.ac += two ? -sAc : sAc;
+    log(s, two ? `✊ ${h.name} impugna l'arma a due mani${sAc ? ` e mette via lo scudo (−${sAc} CA)` : ""}.` : `🛡 ${h.name} torna a impugnare l'arma con una mano${sAc ? ` e riprende lo scudo (+${sAc} CA)` : ""}.`, { kind: "info", actor: h.id });
+    return { actor: h.id, roll: null };
+  }
   const tk = targetKind(a);
   if (fxOn(s, h.fx.frightened) && (a.kind === "heal_all" || (a.kind === "heal" && !a.self) || (a.kind === "buff" && !a.self))) throw new Error("Sei spaventato: non riesci a curare né ad aiutare gli altri. Attacca o difenditi.");
   let target = null;

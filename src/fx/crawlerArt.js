@@ -167,13 +167,13 @@ const TWO_FOR = { monk: ["bastone"] };
 export const twoHandedFor = (cls, weaponKey, twoHanded) => !!twoHanded || (TWO_FOR[cls] || []).includes(weaponKey);
 export function handSpec(hero, weaponKey, twoHandedWeapon) {
   const glove = gloveOf(hero?.cls), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
-  if (twoHanded) return { main: weaponKey, off: "none", glove };
+  if (twoHanded || hero?.twoHand) return { main: weaponKey, off: "none", glove };
   if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
   return { main: weaponKey, off: "hand", glove };
 }
 /* la lista per l'admin: per ogni guanto la mano sinistra, lo scudo (se quelle classi lo portano),
    le armi delle sue classi e le armi speciali fatte su quelle armi */
-export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf }) {
+export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf, canTwoHand = () => false }) {
   const out = [];
   Object.entries(GLOVES).forEach(([glove, g]) => {
     const weapons = [...new Set(g.classes.flatMap((c) => WEAPON_CHOICES[c] || []))];
@@ -190,6 +190,8 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
       const two = g.classes.some((c) => twoHandedFor(c, it.base, TWO_HANDED.has(it.base)));
       out.push({ ...it, glove, kind: "pair", two, off: two ? "none" : "hand", key: pairKey(it.item, two ? "none" : "hand") });
       if (withShield.has(it.base)) out.push({ ...it, glove, kind: "pair", two: false, off: "shield", key: pairKey(it.item, "shield") });
+      // presa a due mani (armi versatili): lo sprite con tutte e due le mani sull'arma
+      if (!two && g.classes.some((c) => canTwoHand(c, it.base))) out.push({ ...it, glove, kind: "pair", two: true, off: "none", key: pairKey(it.item, "none") });
     });
   });
   return out;
@@ -236,7 +238,7 @@ const TILE_WHAT = {
 const MATERIALS = [
   { re: /segret|prigion|cella|celle|carcer|fortezz|castell/, colors: "cold grey and blue-grey stone, dark mortar, rusty iron", wall: "square-cut grey stone blocks with dark mortar, rusty iron rings and chain marks, damp stains", floor: "worn grey flagstones with cracks, puddles and scattered straw", ceil: "rough dark stone vault with heavy wooden beams and cobwebs" },
   { re: /magma|lava|vulcan|fuoco|fiamm|brace|infern|fornac/, colors: "black basalt, deep reds and glowing orange", wall: "black volcanic basalt with glowing orange lava cracks and veins", floor: "cracked black obsidian and cooled lava crust with glowing seams", ceil: "dark scorched rock with ember-red glowing fissures and soot" },
-  { re: /ghiacc|gelo|neve|brina|invern|frozen|ice/, colors: "pale cyan, icy blue and white", wall: "translucent blue glacier ice with deep cracks, frozen bubbles and frost", floor: "smooth frozen ice sheet with snow drifts and frost patterns", ceil: "icy blue rock with hanging icicles and frost" },
+  { re: /ghiacc|gelo|neve|brina|invern|frozen|\bice\b/, colors: "pale cyan, icy blue and white", wall: "translucent blue glacier ice with deep cracks, frozen bubbles and frost", floor: "smooth frozen ice sheet with snow drifts and frost patterns", ceil: "icy blue rock with hanging icicles and frost" },
   { re: /palud|fango|acquitrin|stagn|marci|bosco|foresta|giungl/, colors: "murky greens, olive and black-brown", wall: "slimy mossy stones and rotting wooden planks covered in moss, vines and mushrooms", floor: "thick black mud with puddles of stagnant water, reeds and roots", ceil: "tangled roots, hanging moss and dripping slime" },
   { re: /tempio|sabbi|desert|piramid|santuari|rovin|culto|sepolt/, colors: "sandstone yellows, gold and dusty ochre", wall: "carved sandstone blocks with faded relief carvings and gold trims", floor: "dusty sandstone floor tiles with sand in the cracks and engraved patterns", ceil: "carved sandstone ceiling with geometric patterns and gold details" },
   { re: /cript|tomb|ossa|ossari|catacomb|cimiter|necro|morti/, colors: "bone white, grey and sickly green", wall: "catacomb walls made of stacked skulls and bones set in grey stone", floor: "cracked tomb slabs with bone fragments and dust", ceil: "low stone vault with skulls in niches and cobwebs" },
