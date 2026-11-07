@@ -9,7 +9,7 @@ import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import { askImage, dropExtraHand, frontSpriteUrl } from "../utils/crawlerGen";
+import { askImage, dropExtraHand, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
 import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, tilePrompt } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
@@ -95,9 +95,14 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   const dropTile = (d, slot) => setDoc(doc(db, "dungeon_tiles", d.key), { [slot]: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   const idOf = (h) => handDoc(h.key, h.glove);
   const makeHand = async (h) => {
-    const img = await askImage({ prompt: handPrompt(h), aspectRatio: "1:1" });
-    let image = await dataUrlToTransparentDataUrl(img, 320);
-    if (h.kind === "weapon" && !h.two) image = (await dropExtraHand(image)) || image;
+    let image = "";
+    // un'arma tagliata in alto si rifà UNA volta da sola (se esce di nuovo tagliata la si tiene, con l'avviso)
+    for (let tries = 0; tries < (h.kind === "weapon" ? 2 : 1); tries++) {
+      const img = await askImage({ prompt: handPrompt(h), aspectRatio: "1:1" });
+      image = await dataUrlToTransparentDataUrl(img, 320);
+      if (h.kind === "weapon" && !h.two) image = (await dropExtraHand(image)) || image;
+      if (h.kind !== "weapon" || !(await touchesTop(image))) break;
+    }
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   };
   const genHand = (h) => run(`hand:${idOf(h)}`, () => makeHand(h));
@@ -120,6 +125,17 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   };
   const dropHand = (h) => setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   const extra = HANDS.filter((h) => h.kind === "weapon" && !h.two && tiles[idOf(h)]?.image);
+  // armi già salvate tagliate in alto: avviso sulla miniatura
+  const [cut, setCut] = useState({});
+  useEffect(() => {
+    let live = true;
+    HANDS.filter((h) => h.kind === "weapon").forEach((h) => {
+      const src = tiles[idOf(h)]?.image;
+      if (!src) return;
+      touchesTop(src).then((v) => { if (live) setCut((m) => (m[idOf(h)] === v ? m : { ...m, [idOf(h)]: v })); }).catch(() => {});
+    });
+    return () => { live = false; };
+  }, [tiles]);
   const fixExtra = () => run("fix", async () => {
     let fixed = 0;
     for (const h of extra) {
@@ -199,6 +215,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
                 return (
                   <figure key={id} className="sga-cw-tile">
                     {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
+                    {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
                     <figcaption>{h.name}{h.two ? " · due mani" : ""}{h.special ? " ★" : ""}</figcaption>
                     <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
                     <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>

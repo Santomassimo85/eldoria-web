@@ -69,6 +69,16 @@ function bounds({ img, readable }) {
     return x1 < 0 ? all : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
   } catch { return all; }
 }
+// lo sprite tocca il bordo in alto? (solo immagini leggibili, come le data URL dell'admin)
+function topRow(img) {
+  try {
+    const w = img.naturalWidth || img.width, c = document.createElement("canvas"); c.width = w; c.height = 3;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, w, 3).data;
+    let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 40) n++;
+    return n > 2;
+  } catch { return false; }
+}
 function emojiSprite(ch) {
   const c = document.createElement("canvas"); c.width = 128; c.height = 128;
   const g = c.getContext("2d"); g.font = "104px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch || "👹", 64, 70);
@@ -138,7 +148,7 @@ export class CrawlerEngine {
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
     const [m, o] = await Promise.all([up(spec.mainUrl), up(spec.offUrl)]);
     if (this.handKey !== key || this.dead) return;
-    if (m) { out.R = m; out.big = true; if (spec.off === "mirror") out.L = m; }
+    if (m) { out.R = m; out.big = true; out.cutR = topRow(m); if (spec.off === "mirror") out.L = m; }
     if (o) { out.L = o; out.mirrorL = false; out.big = true; } // l'IA disegna già il braccio sinistro
     this.hands = out;
   }
@@ -330,7 +340,8 @@ export class CrawlerEngine {
       ctx.restore();
     }
     if (hands.R) {
-      const [w, h] = dims(hands.R), a = Math.sin(pose.swing * Math.PI);
+      // arma tagliata dall'IA in alto: più grande, il bordo tagliato finisce fuori dallo schermo
+      const [w0, h0] = dims(hands.R), grow = hands.cutR ? (H + 10) / h0 : 1, w = w0 * grow, h = h0 * grow, a = Math.sin(pose.swing * Math.PI);
       ctx.save();
       ctx.translate(W, H + 4 + b - pose.cast * 12);
       ctx.rotate(-a * 0.75);

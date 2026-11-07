@@ -23,6 +23,14 @@ export async function dropExtraHand(dataUrl) {
   g.clearRect(0, y0, x1, c.height - y0);
   return c.toDataURL("image/png");
 }
+// lo sprite tocca il bordo in alto (arma tagliata)?
+export async function touchesTop(dataUrl) {
+  const i = await loadImg(dataUrl), c = document.createElement("canvas"); c.width = i.width; c.height = i.height;
+  const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(i, 0, 0);
+  const d = g.getImageData(0, 0, c.width, 3).data;
+  let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 40) n++;
+  return n > 2;
+}
 export async function askImage(body) {
   const r = await fetch("/api/genera-immagine", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, tono: getImageTone() }) });
   const data = await r.json();
