@@ -77,3 +77,11 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-tile figcaption { font-size: .82rem; }
 .sga-cw-cut { position: absolute; left: 4px; top: 4px; padding: 2px 6px; background: #8a1f1f; color: #fff; font: 700 .72rem system-ui, sans-serif; font-style: normal; }
 .sga-cw-tile > img { object-fit: contain; }
+
+/* Mani e armi (2026-11-07 notte): armi base in una tendina, armi speciali con la loro descrizione */
+.sga-cw-base { margin: 4px 0 8px; }
+.sga-cw-base summary { cursor: pointer; padding: 6px 8px; font-weight: 700; background: rgba(255,255,255,.04); border: 1px solid rgba(243,234,216,.12); }
+.sga-cw-base[open] summary { margin-bottom: 8px; }
+.sga-cw-special { display: grid; gap: 6px; margin: 8px 0; padding: 8px; border-left: 3px solid #f2c14e; background: rgba(242,193,78,.06); }
+.sga-cw-sp-h { margin: 0; }
+.sga-cw-sp-h small { display: block; opacity: .8; }

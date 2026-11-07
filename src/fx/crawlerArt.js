@@ -195,6 +195,22 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
   return out;
 }
 
+const DMG_IT = { fire: "fuoco", cold: "gelo", poison: "veleno", radiant: "luce sacra", necrotic: "necrotico", lightning: "fulmine", acid: "acido", psychic: "psichico", thunder: "tuono", bludgeoning: "contundente", piercing: "perforante", slashing: "tagliente" };
+export function weaponEffectsText(it, w) {
+  const fx = it?.fx || {}, out = [];
+  if (w) out.push(`${w.dice} ${DMG_IT[w.dmg] || w.dmg}`);
+  if (it?.plus) out.push(`+${it.plus} magica`);
+  if (fx.extra) out.push(`+${fx.extra[0]} danni da ${DMG_IT[fx.extra[1]] || fx.extra[1]}`);
+  if (fx.burn) out.push("può bruciare il bersaglio");
+  if (fx.poison) out.push("può avvelenare il bersaglio");
+  if (fx.slow) out.push("può rallentare il bersaglio");
+  if (fx.stun) out.push("può stordire il bersaglio");
+  if (fx.drain) out.push("cura chi la impugna");
+  if (fx.crit) out.push("colpi critici più facili");
+  if (fx.multi) out.push("a volte colpisce due volte");
+  return out.join(", ");
+}
+
 /* ── prompt per l'IA ── */
 const BG = "CRITICAL: render the subject ALONE on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). One flat magenta color: no gradient, no ground shadow, no scenery. No text, no frame, no border. Do NOT use magenta, pink or purple anywhere on the subject, and no glow, aura, halo, smoke or particles around it: the outline must be a clean dark line directly against the flat magenta.";
 const STYLE = "Style: crisp 16-bit pixel art like a classic 1990s first-person dungeon RPG, limited palette, clean hard outlines, NO anti-aliasing, NO blur.";
@@ -244,7 +260,7 @@ const WHERE = {
 // e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite.
 export function handPrompt(e) {
   const glove = GLOVES[e.glove]?.desc || GLOVES.leather.desc;
-  const weapon = `${e.weaponName}${e.desc ? ` (${e.desc})` : ""}`;
+  const weapon = `${e.weaponName}${e.look ? ` — its look: ${e.look}` : e.desc ? ` (${e.desc})` : ""}`;
   const build = BUILD[e.base] ? `\nHow the weapon is made and held: ${BUILD[e.base]}.` : "";
   const special = WHERE[e.base];
   const left = e.off === "shield"

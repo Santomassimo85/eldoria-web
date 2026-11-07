@@ -68,6 +68,23 @@ export default async function handler(req, res) {
   const geminiKey = geminiKey_();
   if (!geminiKey) return res.status(500).json({ error: "Chiave Gemini mancante." });
 
+  // ASPETTO DI UN'ARMA SPECIALE delle Segrete (2026-11-07): descrizione visiva per lo sprite in prima persona
+  if (req.body?.azione === "aspettoArma") {
+    const a = req.body.arma || {};
+    try {
+      const out = await callGemini(geminiKey, `Sei un illustratore di pixel art per un dungeon crawler fantasy anni '90.
+Descrivi l'ASPETTO di questa arma magica, cosi che un disegnatore la possa disegnare tenuta in mano in prima persona.
+Arma: «${String(a.name || "").slice(0, 80)}», un'arma di tipo ${String(a.weapon || "").slice(0, 60)}.
+Descrizione di gioco: ${String(a.desc || "").slice(0, 300)}
+Danni ed effetti: ${String(a.effects || "").slice(0, 300)}
+Regole: 2 o 3 frasi in italiano, SOLO quello che si vede: materiali, colori, forma, decorazioni, e un dettaglio visivo per ogni effetto (fuoco = lama incandescente con venature di brace, gelo = brina e cristalli di ghiaccio, veleno = goccioline verdi, luce sacra = rune dorate, ecc.). La forma resta quella del tipo d'arma. Niente aloni, fumo, particelle o bagliori attorno all'arma, niente magenta/rosa/viola. Niente numeri, regole o mani.
+Rispondi in JSON: {"look": "..."}`);
+      return res.status(200).json({ look: String(out?.look || "").trim() });
+    } catch (e) {
+      return res.status(500).json({ error: "Descrizione non generata: " + e.message });
+    }
+  }
+
   const { idea = "", category = "", vocab = {}, catalog = [] } = req.body || {};
   const v = vocab || {};
   const list = (arr) => (Array.isArray(arr) ? arr : []).join(", ");

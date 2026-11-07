@@ -11,7 +11,7 @@ import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt, twoHandedFor } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -94,7 +94,25 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   });
   const dropTile = (d, slot) => setDoc(doc(db, "dungeon_tiles", d.key), { [slot]: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   const idOf = (h) => handDoc(h.key, h.glove);
+  // L'ASPETTO DELLE ARMI SPECIALI (2026-11-07): testo in dungeon_tiles/look_<arma>, scritto dall'IA dai
+  // danni e dagli effetti, ritoccabile; entra nella richiesta dello sprite.
+  const lookOf = (item) => tiles[`look_${item}`]?.text || "";
+  const [drafts, setDrafts] = useState({});
+  const draftOf = (item) => (drafts[item] ?? lookOf(item));
+  const genLook = (h) => run(`look:${h.item}`, async () => {
+    const it = ITEMS[h.item], w = WEAPONS[h.base];
+    const r = await fetch("/api/genera-oggetto-arena", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ azione: "aspettoArma", arma: { name: it?.name, weapon: w?.name, desc: it?.desc, effects: weaponEffectsText(it, w) } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.look) throw new Error(j.error || "nessuna descrizione");
+    setDrafts((d) => ({ ...d, [h.item]: j.look }));
+  });
+  const saveLook = (item) => run(`looksave:${item}`, async () => {
+    await setDoc(doc(db, "dungeon_tiles", `look_${item}`), { text: draftOf(item).trim(), updatedAt: serverTimestamp() });
+    setDrafts((d) => { const n = { ...d }; delete n[item]; return n; });
+  });
   const makeHand = async (h) => {
+    if (h.special) h = { ...h, look: draftOf(h.item).trim() };
     let image = "";
     // tagliata in alto? si rifà UNA volta da sola (se esce di nuovo tagliata la si tiene, con l'avviso)
     for (let tries = 0; tries < 2; tries++) {
@@ -110,6 +128,19 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   });
   const handsMissing = HANDS.filter((h) => !tiles[idOf(h)]?.image);
+  const tile = (h) => {
+    const id = idOf(h), src = tiles[id]?.image;
+    return (
+      <figure key={id} className="sga-cw-tile">
+        {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
+        {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
+        <figcaption>{h.special ? "" : h.name} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
+        <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : src ? "✨ Rigenera" : "✨ Genera sprite"}</button>
+        <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
+        {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}
+      </figure>
+    );
+  };
   const genAllHands = () => {
     if (!handsMissing.length || !window.confirm(`Generare ${handsMissing.length} sprite delle mani? Circa 3 centesimi l'uno di credito Gemini.`)) return;
     run("hands", async () => {
@@ -196,26 +227,35 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera quelli mancanti (${handsMissing.length})` : "✓ Tutte le mani hanno lo sprite"}
         </button>
         {!!old.length && <p className="sga-hint">Ci sono {old.length} sprite vecchi (mani separate), che la lotta non usa più. <button type="button" className="adm-btn" onClick={() => old.forEach((k) => setDoc(doc(db, "dungeon_tiles", k), { image: deleteField() }, { merge: true }))}>🗑 Togli le prove vecchie</button></p>}
-        {Object.entries(GLOVES).map(([glove, g]) => (
-          <div key={glove} className="sga-cw-row">
-            <b>{g.icon} {g.name} <small>· {g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")}</small></b>
-            <div className="sga-cw-tiles">
-              {HANDS.filter((h) => h.glove === glove).map((h) => {
-                const id = idOf(h), src = tiles[id]?.image;
+        {Object.entries(GLOVES).map(([glove, g]) => {
+          const all = HANDS.filter((h) => h.glove === glove), base = all.filter((h) => !h.special);
+          const specials = [...new Set(all.filter((h) => h.special).map((h) => h.item))];
+          const baseDone = base.filter((h) => tiles[idOf(h)]?.image).length;
+          return (
+            <div key={glove} className="sga-cw-row">
+              <b>{g.icon} {g.name} <small>· {g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")}</small></b>
+              <details className="sga-cw-base">
+                <summary>Armi base · {baseDone} su {base.length}{baseDone < base.length ? " ⚠ ne mancano" : " ✓"}</summary>
+                <div className="sga-cw-tiles">{base.map(tile)}</div>
+              </details>
+              {specials.map((item) => {
+                const vars = all.filter((h) => h.item === item), h0 = vars[0], it = ITEMS[item], draft = draftOf(item), changed = draft !== lookOf(item);
                 return (
-                  <figure key={id} className="sga-cw-tile">
-                    {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
-                    {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
-                    <figcaption>{h.name}{h.special ? " ★" : ""} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
-                    <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
-                    <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
-                    {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}
-                  </figure>
+                  <div key={item} className="sga-cw-special">
+                    <p className="sga-cw-sp-h">{it?.icon} <b>{it?.name}</b> <small>{WEAPONS[h0.base]?.name} · {weaponEffectsText(it, WEAPONS[h0.base])}</small></p>
+                    <textarea className="admin-field-input" rows={3} value={draft} placeholder="Aspetto dell'arma: premi «Genera descrizione», poi ritoccala se vuoi." onChange={(e) => setDrafts((d) => ({ ...d, [item]: e.target.value }))} />
+                    <div className="sga-row">
+                      <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genLook(h0)}>{busy === `look:${item}` ? "⏳ Scrivo…" : "📝 Genera descrizione"}</button>
+                      {changed && <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy || !draft.trim()} onClick={() => saveLook(item)}>💾 Salva descrizione</button>}
+                    </div>
+                    {!draft.trim() && <p className="sga-hint">Senza descrizione lo sprite viene generico: prima la descrizione, poi lo sprite.</p>}
+                    <div className="sga-cw-tiles">{vars.map(tile)}</div>
+                  </div>
                 );
               })}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
