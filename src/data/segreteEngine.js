@@ -248,7 +248,7 @@ const ACTION_FX = {
   dardo_inc: "missiles", raggio_gelo: "beam", mani_w: "breath", mani_br: "breath", acida: "arrow",
   palla_fuoco: "fireball", ipnosi: "curse", cono_freddo: "breath", fiotto: "beam", veleno: "cloud",
   fulmine: "beam", catena: "strike", deflagrazione: "beam", hadar: "spikes", vampiro: "drain",
-  fame: "cloud", dito: "curse", rovi: ["whip", "earth"], onda: "wave", onda_b: "wave", lama_fiamma: "slash",
+  fame: "cloud", dito: "curse", rovi: ["vine", "earth"], onda: "wave", onda_b: "wave", lama_fiamma: "slash",
   luna: "strike", richiamo: "strike", tempesta: "rain", fiamma: "strike", arma_spir: "slash",
   beffa: "curse", sussurri: "curse", risata: "sleep",
 };

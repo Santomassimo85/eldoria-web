@@ -36,6 +36,8 @@ const PAL = {
   psychic:   ["#fff2fc", "#ff94e4", "#e43cc6", "#6b1a8f", "#5c4660"],
   physical:  ["#ffffff", "#fff1c4", "#f2b552", "#8a4b1f", "#6c6258"],
 };
+// colori del ramo magico (forma "vine", Frusta di Rovi)
+const VINE = { dark: "#1c2410", bark: "#6b4a26", vein: "#a8e05a", thorn: "#e8dcae", leaf: "#3f9a2a", leafHi: "#b6f06a", aura: "#7dff6a" };
 // nomi che arrivano dai pet (tipi D&D) → elementi del motore
 const ALIAS = { cold: "frost", necrotic: "darkness", neutral: "physical", thunder: "lightning", force: "arcane" };
 export const fxElement = (el) => (PAL[el] ? el : PAL[ALIAS[el]] ? ALIAS[el] : "arcane");
@@ -726,6 +728,72 @@ export function playSpell(o) {
       });
       actor(delay + dur, 200, (t) => { star4(tx, ty, ts * (1.5 + t * 3), pal[0], 1 - t); blob(tx, ty, ts * 3, pal[1], (1 - t) * 0.8); });
       hit = delay + dur;
+      break;
+    }
+    case "vine": { // FRUSTA DI ROVI (2026-11-07): un ramo magico spinoso che cresce sinuoso, frusta e schiocca
+      const grow = 420 * fast, hold = 130 * fast, back = 260 * fast;
+      const mx = (fx + tx) / 2, my = Math.min(fy, ty) - Math.abs(tx - fx) * 0.3 - ts * 2;
+      const len = Math.hypot(tx - fx, ty - fy) || 1, nx = -(ty - fy) / len, ny = (tx - fx) / len;
+      // curva della frusta + un'onda che scorre lungo il ramo (si muove come una frusta viva)
+      const P = (u, ph) => {
+        const bx = (1 - u) * (1 - u) * fx + 2 * (1 - u) * u * mx + u * u * tx, by = (1 - u) * (1 - u) * fy + 2 * (1 - u) * u * my + u * u * ty;
+        const w = Math.sin(u * Math.PI * 2.4 - ph) * ts * 1.6 * Math.sin(u * Math.PI);
+        return [bx + nx * w, by + ny * w];
+      };
+      const N = 40;
+      const leafSide = Array.from({ length: N }, (_, i) => (i % 2 ? 1 : -1));
+      const drawVine = (g, ph, a) => {
+        const n = Math.max(2, Math.round(N * g)), pts = [];
+        for (let i = 0; i <= n; i++) pts.push(P((i / N) * Math.min(1, g * N / Math.max(1, n)), ph));
+        strokePath(pts, VINE.aura, ts * 1.6, 0.22 * a); // alone verde magico
+        ctx.globalCompositeOperation = "source-over";
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+        for (let i = 0; i < pts.length - 1; i++) { // corteccia che si assottiglia verso la punta
+          const k = i / N, w = Math.max(1, ts * (1.15 - k * 0.75));
+          ctx.globalAlpha = a;
+          ctx.strokeStyle = VINE.dark; ctx.lineWidth = w + 1.4;
+          ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[i + 1][0], pts[i + 1][1]); ctx.stroke();
+          ctx.strokeStyle = VINE.bark; ctx.lineWidth = w;
+          ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[i + 1][0], pts[i + 1][1]); ctx.stroke();
+          ctx.strokeStyle = VINE.vein; ctx.lineWidth = Math.max(0.6, w * 0.3);
+          ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1] - w * 0.25); ctx.lineTo(pts[i + 1][0], pts[i + 1][1] - w * 0.25); ctx.stroke();
+        }
+        for (let i = 2; i < pts.length - 1; i++) {
+          const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], dl = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / dl, uy = (y1 - y0) / dl, s = leafSide[i];
+          const w = Math.max(1, ts * (1.15 - (i / N) * 0.75));
+          if (i % 3 === 0) { // spina
+            const bx = x0 - uy * s * w * 0.5, by = y0 + ux * s * w * 0.5, tipx = bx - uy * s * w * 1.1 + ux * w * 0.5, tipy = by + ux * s * w * 1.1 + uy * w * 0.5;
+            ctx.fillStyle = VINE.dark; ctx.beginPath(); ctx.moveTo(bx - ux * w * 0.5, by - uy * w * 0.5); ctx.lineTo(tipx, tipy); ctx.lineTo(bx + ux * w * 0.5, by + uy * w * 0.5); ctx.fill();
+            ctx.fillStyle = VINE.thorn; ctx.beginPath(); ctx.moveTo(bx - ux * w * 0.3, by - uy * w * 0.3); ctx.lineTo(tipx - ux * 0.3, tipy - uy * 0.3); ctx.lineTo(bx + ux * w * 0.3, by + uy * w * 0.3); ctx.fill();
+          }
+          if (i % 5 === 1) { // fogliolina
+            const lx = x0 + uy * s * w * 1.4, ly = y0 - ux * s * w * 1.4;
+            ctx.save(); ctx.translate(lx, ly); ctx.rotate(Math.atan2(uy, ux) + s * 0.7);
+            ctx.fillStyle = VINE.dark; ctx.beginPath(); ctx.ellipse(0, 0, w * 1.25 + 0.6, w * 0.6 + 0.6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = VINE.leaf; ctx.beginPath(); ctx.ellipse(0, 0, w * 1.25, w * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = VINE.leafHi; ctx.fillRect(-w * 0.6, -w * 0.25, w * 0.7, Math.max(0.6, w * 0.2));
+            ctx.restore();
+          }
+        }
+        const tip = pts[pts.length - 1];
+        blob(tip[0], tip[1], ts * 1.3, VINE.aura, 0.6 * a);
+        return tip;
+      };
+      // cresce dalla mano, sinuoso; scintille verdi dalla punta
+      actor(delay, grow, (t) => {
+        const g = 1 - (1 - t) ** 2;
+        const tip = drawVine(g, t * 5, 1);
+        if (R() < 0.6) add({ type: "glow", c: VINE.aura, x: tip[0] + rr(-1, 1) * ts * 0.6, y: tip[1] + rr(-1, 1) * ts * 0.6, vx: rr(-20, 20), vy: rr(-30, 5), r: rr(0.8, 1.6), r1: 0, life: rr(0.3, 0.6) });
+      });
+      // schiocco sul bersaglio, poi il ramo si ritira
+      actor(delay + grow, hold, (t) => { drawVine(1, 5 + t * 2, 1); });
+      actor(delay + grow + hold, back, (t) => { drawVine(1 - t, 7 + t * 3, 1 - t * 0.6); });
+      actor(delay + grow, 1, () => {
+        for (let i = 0; i < 14; i++) add({ c: i % 3 ? VINE.leaf : VINE.leafHi, x: tx + rr(-1, 1) * ts, y: ty + rr(-1, 1) * ts, vx: rr(-110, 110), vy: -rr(30, 140), ay: 300, drag: 0.02, r: rr(0.7, 1.3), life: rr(0.5, 0.9) });
+        for (let i = 0; i < 6; i++) add({ type: "shard", c: VINE.thorn, c2: VINE.dark, x: tx, y: ty, vx: rr(-140, 140), vy: rr(-120, 40), ay: 260, r: rr(0.6, 1), rot: rr(0, 6), vr: rr(-12, 12), life: rr(0.35, 0.6) });
+      });
+      actor(delay + grow, 220, (t) => { star4(tx, ty, ts * (1.5 + t * 3.5), VINE.leafHi, 1 - t); ring(tx, ty, ts * (1 + t * 3), VINE.aura, 1, 1 - t, 0.6); });
+      hit = delay + grow;
       break;
     }
     case "sting": { // ago velocissimo, puntura e gocce dell'elemento

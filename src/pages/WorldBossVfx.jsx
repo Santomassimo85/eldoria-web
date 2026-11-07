@@ -126,7 +126,7 @@ const LEGACY = {
 };
 /* Forme del motore a canvas (2026-11-06): partono da chi agisce · nascono sul bersaglio ·
    non hanno un istante d'impatto proprio (per i numeri se ne dà uno fisso) */
-const FROM_KINDS = new Set(["bolt", "arrow", "beam", "breath", "drain", "wave", "whip", "sting", "dash", "lob", "missiles", "thrust"]);
+const FROM_KINDS = new Set(["bolt", "arrow", "beam", "breath", "drain", "wave", "whip", "vine", "sting", "dash", "lob", "missiles", "thrust"]);
 const ON_KINDS = new Set(["aoe", "slash", "smash", "punch", "strike", "rain", "spikes", "stomp", "burst", "claw", "bite"]);
 const SOFT_KINDS = new Set(["cloud", "curse", "sleep", "roar"]);
 function normalizeEffect(msg) {
@@ -320,7 +320,7 @@ function playCanvas(msg, targets) {
   const elOfKey = (k) => document.querySelector(`[data-vfx-target="${k}"]`);
   // chi lancia una magia (dardo, area, maledizione) si illumina
   const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
-  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball"].includes(kind)) castPose(caster);
+  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball", "vine"].includes(kind)) castPose(caster);
   // Palla di Fuoco: UNA palla verso il centro dei bersagli, poi esplode su ognuno
   let lobAt = 0;
   if (kind === "fireball") {

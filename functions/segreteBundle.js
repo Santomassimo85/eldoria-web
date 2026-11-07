@@ -1305,7 +1305,7 @@ var ACTION_FX = {
   vampiro: "drain",
   fame: "cloud",
   dito: "curse",
-  rovi: ["whip", "earth"],
+  rovi: ["vine", "earth"],
   onda: "wave",
   onda_b: "wave",
   lama_fiamma: "slash",
