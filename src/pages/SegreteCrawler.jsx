@@ -17,7 +17,7 @@ import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
-import { GLOVES, gloveOf, handSpec, handDoc, pairKey } from "../fx/crawlerArt";
+import { handSpec, handDoc, pairKey } from "../fx/crawlerArt";
 // colpo d'arma? Le righe nuove lo dicono (w: 1, dal server); per le vecchie: forme da mischia, o freccia
 // fisica (balestra). Freccia Acida e gli altri incantesimi hanno un elemento: partono dal focus.
 const MELEE_FX = new Set(["slash", "smash", "thrust", "punch"]);
@@ -37,7 +37,7 @@ const ROW_GAP_MS = 900;
 const DICE_GAP_MS = 250;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vfxKey = (id) => `seg-${id}`;
-const HAND_KEY = "seg-my-focus"; // la mano sinistra col focus, in basso a sinistra nella scena
+const HAND_KEY = "seg-my-focus"; // la mano sinistra (focus, mano libera o scudo), in basso a sinistra nella scena
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -262,7 +262,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     const all = [...(run.heroes || []), ...(run.foes || [])];
     const nameOf = (id) => all.find((c) => c.id === id)?.name || "";
     const myId = `h_${uid}`;
-    const focusHand = !!(meRef.current && GLOVES[gloveOf(meRef.current.cls)]?.focus);
+    const focusHand = !!meRef.current; // 2026-11-07: gli incantesimi di TUTTE le classi partono dalla mano sinistra
     timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 15000 + fresh.length * 5000));
     queued.current += fresh.length;
     setAnimating(true);
@@ -400,7 +400,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
       <div className="cw-stage">
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="La stanza del dungeon vista in prima persona" />
         <canvas ref={setFg} className="cw-fg" aria-hidden="true" />
-        {me && GLOVES[gloveOf(me.cls)]?.focus && <span className="cw-hand" data-vfx-target={HAND_KEY} aria-hidden="true" />}
+        {me && <span className="cw-hand" data-vfx-target={HAND_KEY} aria-hidden="true" />}
         {!walking && run.foes.map((f) => {
           const c = shown(f);
           return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onHover={hover} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
