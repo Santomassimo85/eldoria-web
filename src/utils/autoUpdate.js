@@ -59,7 +59,7 @@ async function check(fromForeground) {
   try {
     const live = await liveScript();
     if (!live || live === current) return;
-    if (fromForeground) window.location.reload();
+    if (fromForeground && !window.__voiceOn) window.location.reload(); // in voce: niente ricarica a sorpresa, solo l'avviso
     else showBanner();
   } catch { /* rete assente: si riprova al prossimo giro */ }
 }

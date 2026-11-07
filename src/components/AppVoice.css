@@ -40,8 +40,11 @@
 .sgv-panel .sgv-title { margin: 0; color: #fff7e6; font-weight: 700; }
 .sgv-btn--x { color: #ffb4a4; }
 /* nei fight la testata non c'è: solo il microfono, sotto il ☰ */
-.sgv-fight { position: fixed; top: calc(54px + env(safe-area-inset-top, 0px)); right: 8px; z-index: 10060; display: grid; gap: 4px; }
-.sgv-fight .sgv-mic { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: 3px; }
+.sgv-fight { position: fixed; top: calc(54px + env(safe-area-inset-top, 0px)); right: 8px; z-index: 10060; }
+.sgv-fight .sgv-bar { flex-direction: column; gap: 4px; }
+.sgv-fight .sgv-mic, .sgv-fight .sgv .sgv-pill { width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 3px; justify-content: center; position: relative; background: rgba(16,12,22,.85); }
+.sgv-fight .sgv-pill em { position: absolute; top: -5px; right: -5px; min-width: 16px; padding: 0 3px; border-radius: 8px; background: #f2c14e; color: #1c1714; font: 700 .66rem/16px system-ui, sans-serif; font-style: normal; }
+.sgv-panel--fight { top: calc(54px + env(safe-area-inset-top, 0px)); right: 56px; max-height: calc(100dvh - 70px); }
 body.in-fight .sgb-top { padding-right: 56px; }
 body.vc-live .sgb-log { padding-right: 56px; }
 

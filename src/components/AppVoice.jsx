@@ -1,6 +1,6 @@
 /* Chat vocale di tutta l'app (2026-11-06, prima solo nelle Segrete). Montata una volta in App.jsx,
    quindi resta collegata cambiando pagina. Sta DENTRO la testata (slot #header-voice): non copre
-   niente. Nei fight la testata sparisce: resta solo il tasto del microfono sotto il ☰, se sei in voce.
+   niente. Nei fight la testata sparisce: cuffie e microfono stanno sotto il ☰ (sempre, anche per entrare).
    Canali: Sala comune (tutti i loggati), stanze create dai giocatori (`voice_rooms`, id vr-*) e, se
    sei in un gruppo delle Segrete, il gruppo.
    Microfono: sempre aperto di base, niente da premere; "Tieni premuto" a scelta (localStorage
@@ -48,7 +48,10 @@ export default function AppVoice({ docked }) {
   const [room, setRoom] = useState(null);
   const [pick, setPick] = useState(null);
   const [slot, setSlot] = useState(null);
-  const roomId = pick === SALA || isVr(pick) ? pick : room && (pick === room.id || !pick) ? room.id : SALA;
+  const [chan, setChan] = useState(null); // il canale in cui sei: resta quello finché non esci tu
+  const picked = pick === SALA || isVr(pick) ? pick : room && (pick === room.id || !pick) ? room.id : SALA;
+  const roomId = chan || picked;
+  const [myRooms, setMyRooms] = useState(null); // tutti i gruppi in cui sei (anche vecchi): null = non letti
   const [peers, setPeers] = useState([]);
   const [rooms, setRooms] = useState(null); // null = non ancora lette
   const [counts, setCounts] = useState({});
@@ -63,6 +66,7 @@ export default function AppVoice({ docked }) {
   const [st, setSt] = useState({ conns: {}, levels: {} });
   const [, tick] = useState(0);
   const mesh = useRef(null);
+  const want = useRef(null); // canale in cui vuoi stare: dopo un'uscita non tua (app in secondo piano, ricarica) si rientra
   const holding = useRef(false);
 
   const watch = open || joined;
@@ -73,9 +77,11 @@ export default function AppVoice({ docked }) {
   }, [uid]);
   // il gruppo delle Segrete in cui sei (il più recente)
   useEffect(() => (uid ? onSnapshot(query(collection(db, "dungeon_rooms"), where("memberIds", "array-contains", uid)), (s) => {
-    const list = s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => Date.now() - msOf(r.updatedAt) < ROOM_FRESH_MS);
+    const all = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+    setMyRooms(new Set(all.map((r) => r.id)));
+    const list = all.filter((r) => Date.now() - msOf(r.updatedAt) < ROOM_FRESH_MS);
     setRoom(list.sort((a, b) => msOf(b.updatedAt) - msOf(a.updatedAt))[0] || null);
-  }, () => setRoom(null)) : undefined), [uid]);
+  }, () => { setRoom(null); setMyRooms(null); }) : undefined), [uid]);
   useEffect(() => {
     if (!uid) return undefined;
     const put = (s) => setPeers(s.docs.map((d) => ({ uid: d.id, ...d.data() })));
@@ -101,8 +107,14 @@ export default function AppVoice({ docked }) {
     return () => offs.forEach((off) => off());
   }, [uid, open, chanIds]);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 10000); return () => clearInterval(t); }, []);
-  // canale sparito (hai lasciato il gruppo) o logout: si esce dalla voce
-  useEffect(() => { if (mesh.current && (!uid || mesh.current.roomId !== roomId)) leave(); }, [roomId, uid]);
+  // CONNESSIONE STABILE (2026-11-07): prima si usciva dalla voce appena il canale "calcolato" cambiava
+  // (fine di un fight, gruppo che si aggiorna o sparisce per un attimo). Ora il canale in cui sei è
+  // fisso (`chan`): si esce solo col logout, col tasto Esci o se hai davvero lasciato il gruppo.
+  useEffect(() => { if (!uid && (mesh.current || want.current)) leave(); }, [uid]);
+  useEffect(() => {
+    const id = mesh.current?.roomId;
+    if (id && id !== SALA && !isVr(id) && myRooms && !myRooms.has(id)) leave();
+  }, [myRooms]);
   useEffect(() => {
     if (!pick || pick === SALA || pick === room?.id) return;
     if (!isVr(pick) || (rooms && !joined && !rooms.some((r) => r.id === pick))) setPick(null);
@@ -115,18 +127,29 @@ export default function AppVoice({ docked }) {
   }, [open]);
   // nei fight la pagina lascia libero il posto del microfono
   useEffect(() => {
-    document.body.classList.toggle("vc-live", joined && !docked);
+    document.body.classList.toggle("vc-live", !docked);
     document.body.classList.toggle("vc-on", joined);
     return () => document.body.classList.remove("vc-live", "vc-on");
   }, [joined, docked]);
   useEffect(() => {
-    const bye = () => { if (mesh.current) { saveResume(mesh.current.roomId); mesh.current.leave(); } };
+    const bye = () => { if (mesh.current) { saveResume(mesh.current.roomId); mesh.current.leave(); mesh.current = null; } };
     // pagina ripresa dalla cache del browser (iPhone): il collegamento è chiuso, si ricarica e si rientra
     const back = (e) => { if (e.persisted && mesh.current?.closed) window.location.reload(); };
     window.addEventListener("pagehide", bye);
     window.addEventListener("pageshow", back);
     return () => { window.removeEventListener("pagehide", bye); window.removeEventListener("pageshow", back); };
   }, []);
+  // tornando in primo piano: se il collegamento si è chiuso senza che tu uscissi, si rientra da soli
+  useEffect(() => {
+    const back = () => {
+      if (document.visibilityState !== "visible" || !want.current) return;
+      if (!mesh.current || mesh.current.closed) { mesh.current = null; join(want.current); }
+      else mesh.current.unlockAudio();
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("online", back);
+    return () => { document.removeEventListener("visibilitychange", back); window.removeEventListener("online", back); };
+  });
   // qualsiasi tocco sulla pagina risveglia l'audio, non solo i tasti della voce
   useEffect(() => {
     if (!joined) return undefined;
@@ -142,9 +165,13 @@ export default function AppVoice({ docked }) {
     if (!id) { resumed.current = true; return; }
     if (id !== SALA && !isVr(id) && room?.id !== id) return; // il gruppo si sta ancora leggendo
     resumed.current = true;
-    navigator.permissions?.query({ name: "microphone" })
-      .then((p) => { if (p.state === "granted") join(id); })
-      .catch(() => {});
+    want.current = id;
+    // nell'app Android la domanda sul permesso spesso non funziona: si prova lo stesso
+    // (il permesso l'app lo ha già dato); nel browser solo se il permesso c'è già
+    if (!navigator.permissions?.query) { join(id); return; }
+    navigator.permissions.query({ name: "microphone" })
+      .then((p) => { if (p.state === "granted" || (p.state !== "denied" && window.Capacitor?.isNativePlatform?.())) join(id); else want.current = null; })
+      .catch(() => join(id));
   }, [uid, name, room?.id]);
 
   const fresh = useRef(null);
@@ -168,11 +195,13 @@ export default function AppVoice({ docked }) {
       setPick(id); // resti su questo canale anche se poi entri in un gruppo
       const m = new VoiceMesh({ roomId: id, uid, name, onState: setSt, onTaken: () => {
         leave({ keep: true });
+        want.current = null;
         setErr("Sei entrato in voce da un'altra scheda o da un altro dispositivo: qui ti ho scollegato.");
         setOpen(true);
       } });
       await m.join();
       mesh.current = m;
+      want.current = id; setChan(id);
       saveResume(id);
       if (isVr(id)) updateDoc(doc(db, "voice_rooms", id), { at: Date.now() }).catch(() => {});
       m.setMicOn(mode === "open");
@@ -190,6 +219,7 @@ export default function AppVoice({ docked }) {
   };
   const leave = async (opts) => {
     const m = mesh.current; mesh.current = null;
+    want.current = null; setChan(null);
     dropResume();
     setJoined(false); setMicOn(false); setSt({ conns: {}, levels: {} });
     await m?.leave(opts);
@@ -266,9 +296,9 @@ export default function AppVoice({ docked }) {
   );
   return (
     <>
-      {docked ? (slot ? createPortal(bar, slot) : null) : joined ? <div className="sgv-fight" onPointerDown={() => mesh.current?.unlockAudio()}>{wake}{micBtn}</div> : null}
-      {open && docked && (
-        <div className="sgv-panel" role="dialog" aria-label="Chat vocale">
+      {docked ? (slot ? createPortal(bar, slot) : null) : createPortal(<div className="sgv-fight">{bar}</div>, document.body)}
+      {open && createPortal(
+        <div className={`sgv-panel${docked ? "" : " sgv-panel--fight"}`} role="dialog" aria-label="Chat vocale">
           <ul className="sgv-chans" aria-label="Canali vocali">
             {channels.map((c) => (
               <li key={c.id}>
@@ -331,7 +361,7 @@ export default function AppVoice({ docked }) {
           )}
           {err && <p className="sgv-err" role="alert">{err}</p>}
           {err && window.Capacitor?.isNativePlatform?.() && <a className="sgv-btn sgv-dl" href={APK_EXTERNAL_URL} target="_blank" rel="noopener noreferrer">⬇ Scarica l'app aggiornata (1.2)</a>}
-        </div>
+        </div>, document.body
       )}
     </>
   );
