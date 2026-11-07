@@ -782,7 +782,11 @@ function checkEnd(s) {
   if (!s.heroes.some(alive)) { s.status = "lost"; log(s, "☠ Il gruppo è caduto. Le Segrete si richiudono su di voi: tutto è perduto.", { kind: "end" }); return true; }
   if (!s.foes.some(alive)) {
     floorCoins(s);
-    if (s.boss) { s.status = "won"; log(s, `🏆 Il boss è caduto! Avete conquistato ${s.dungeonName}.`, { kind: "end" }); }
+    if (s.boss) {
+      // SALA DEL TESORO (2026-11-07): dopo il boss c'è lo scrigno; la vittoria arriva quando qualcuno lo apre
+      s.status = "treasure"; s.treasure = true; s.floor += 1; s.foes = []; s.chestAt = s.turnAt || 0;
+      log(s, `🏆 Il boss è caduto! In fondo alla sala c'è uno scrigno: aprite il tesoro di ${s.dungeonName}.`, { kind: "end" });
+    }
     else { s.status = "cleared"; log(s, `✅ Sala ${s.floor} ripulita! Riprendete fiato prima della prossima.`, { kind: "end" }); }
     return true;
   }
@@ -1011,6 +1015,12 @@ export function useItem(s, uid, { itemId, targetId }, now) {
 
 // Chi sparisce per AFK_MS: si difende da solo (lo chiede chiunque del gruppo).
 export function timeout(s, now) {
+  // nessuno apre lo scrigno: dopo un po' si apre da solo (lo apre il primo del gruppo)
+  if (s.status === "treasure") {
+    if (now - (s.chestAt || 0) < CHEST_AUTO_MS) throw new Error("Lo scrigno aspetta ancora qualcuno.");
+    const h = s.heroes.find((x) => !x.fled) || s.heroes[0];
+    return openChest(s, h.uid, now);
+  }
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
   if (!late.length) throw new Error("Hanno già agito tutti.");
@@ -1032,6 +1042,44 @@ export function nextFloor(s, bestiary, now) {
   log(s, "🔥 Breve riposo: recuperate fiato e incantesimi.", { kind: "room" });
   startFloor(s, bestiary, now);
 }
+/* LO SCRIGNO (2026-11-07). Uno del gruppo lo apre: Monete Antiche in più a ognuno, 1–3 oggetti base e,
+   raramente, un oggetto raro. Ogni oggetto lo vince chi fa il tiro più alto con un d20 (i pareggi si ritirano).
+   Va tutto nel bottino (spoils), che il server consegna alla vittoria come il resto. */
+export const CHEST_AUTO_MS = 90 * 1000;
+export const CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
+export const CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
+export const CHEST_RARE_CHANCE = 0.04; // per la difficoltà si moltiplica per il "chest" (Leggenda 6%)
+export function openChest(s, uid, now) {
+  if (s.status !== "treasure") throw new Error("Qui non c'è nessuno scrigno da aprire.");
+  const opener = s.heroes.find((h) => h.uid === uid);
+  if (!opener) throw new Error("Non sei in questo gruppo.");
+  const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
+  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
+  takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));
+  const ids = [];
+  const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0);
+  for (let i = 0; i < n; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
+  if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1)) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
+  const items = ids.map((id) => {
+    let rolls = takers.map((h) => ({ uid: h.uid, name: h.name, v: die(20) }));
+    const all = [rolls];
+    for (let k = 0; k < 6 && rolls.length > 1; k++) { // pareggio in cima: tirano di nuovo solo quelli pari
+      const top = Math.max(...rolls.map((r) => r.v)), tied = rolls.filter((r) => r.v === top);
+      if (tied.length < 2) break;
+      rolls = tied.map((r) => ({ ...r, v: die(20) }));
+      all.push(rolls);
+    }
+    const last = all[all.length - 1], best = last.length ? last.reduce((a, b) => (b.v > a.v ? b : a)) : null;
+    if (best) addSpoil(s, best.uid, { item: id, src: "scrigno" });
+    return { id, rare: CHEST_RARE.includes(id), rolls: all[0], ...(all.length > 1 ? { rerolls: all.slice(1) } : {}), winner: best?.uid || null, winnerName: best?.name || "" };
+  });
+  s.chest = { by: opener.name, byUid: opener.uid, coins, items, at: now };
+  const what = items.map((it) => `${itemOf(it.id)?.icon || "🎁"} ${itemOf(it.id)?.name || it.id} → ${it.winnerName || "nessuno"}`).join(", ");
+  log(s, `💰 ${opener.name} apre lo scrigno: ${coins} Monete Antiche a testa${what ? ` · ${what}` : ""}.`, { kind: "loot" });
+  s.status = "won";
+  log(s, `🏆 Avete conquistato ${s.dungeonName}.`, { kind: "end" });
+}
+
 // Un giocatore abbandona: il suo eroe fugge (conta come a terra).
 export function flee(s, uid, now) {
   const h = s.heroes.find((x) => x.uid === uid);

@@ -64,6 +64,7 @@ __export(segreteServer_exports, {
   nextDailyPatch: () => nextDailyPatch,
   nextFloor: () => nextFloor,
   nextRunsPatch: () => nextRunsPatch,
+  openChest: () => openChest,
   poolFor: () => poolFor,
   romeDay: () => romeDay,
   runsOf: () => runsOf,
@@ -1923,8 +1924,12 @@ function checkEnd(s) {
   if (!s.foes.some(alive)) {
     floorCoins(s);
     if (s.boss) {
-      s.status = "won";
-      log(s, `\u{1F3C6} Il boss \xE8 caduto! Avete conquistato ${s.dungeonName}.`, { kind: "end" });
+      s.status = "treasure";
+      s.treasure = true;
+      s.floor += 1;
+      s.foes = [];
+      s.chestAt = s.turnAt || 0;
+      log(s, `\u{1F3C6} Il boss \xE8 caduto! In fondo alla sala c'\xE8 uno scrigno: aprite il tesoro di ${s.dungeonName}.`, { kind: "end" });
     } else {
       s.status = "cleared";
       log(s, `\u2705 Sala ${s.floor} ripulita! Riprendete fiato prima della prossima.`, { kind: "end" });
@@ -2161,6 +2166,11 @@ function useItem(s, uid, { itemId, targetId }, now) {
   return { actor: h.id, roll: null, item: itemId };
 }
 function timeout(s, now) {
+  if (s.status === "treasure") {
+    if (now - (s.chestAt || 0) < CHEST_AUTO_MS) throw new Error("Lo scrigno aspetta ancora qualcuno.");
+    const h = s.heroes.find((x) => !x.fled) || s.heroes[0];
+    return openChest(s, h.uid, now);
+  }
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
   if (!late.length) throw new Error("Hanno gi\xE0 agito tutti.");
@@ -2186,6 +2196,40 @@ function nextFloor(s, bestiary, now) {
   s.floor += 1;
   log(s, "\u{1F525} Breve riposo: recuperate fiato e incantesimi.", { kind: "room" });
   startFloor(s, bestiary, now);
+}
+var CHEST_AUTO_MS = 90 * 1e3;
+var CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
+var CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
+var CHEST_RARE_CHANCE = 0.04;
+function openChest(s, uid, now) {
+  if (s.status !== "treasure") throw new Error("Qui non c'\xE8 nessuno scrigno da aprire.");
+  const opener = s.heroes.find((h) => h.uid === uid);
+  if (!opener) throw new Error("Non sei in questo gruppo.");
+  const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
+  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
+  takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));
+  const ids = [];
+  const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0);
+  for (let i = 0; i < n; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
+  if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1)) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
+  const items = ids.map((id) => {
+    let rolls = takers.map((h) => ({ uid: h.uid, name: h.name, v: die(20) }));
+    const all = [rolls];
+    for (let k = 0; k < 6 && rolls.length > 1; k++) {
+      const top = Math.max(...rolls.map((r) => r.v)), tied = rolls.filter((r) => r.v === top);
+      if (tied.length < 2) break;
+      rolls = tied.map((r) => ({ ...r, v: die(20) }));
+      all.push(rolls);
+    }
+    const last = all[all.length - 1], best = last.length ? last.reduce((a, b) => b.v > a.v ? b : a) : null;
+    if (best) addSpoil(s, best.uid, { item: id, src: "scrigno" });
+    return { id, rare: CHEST_RARE.includes(id), rolls: all[0], ...all.length > 1 ? { rerolls: all.slice(1) } : {}, winner: best?.uid || null, winnerName: best?.name || "" };
+  });
+  s.chest = { by: opener.name, byUid: opener.uid, coins, items, at: now };
+  const what = items.map((it) => `${itemOf(it.id)?.icon || "\u{1F381}"} ${itemOf(it.id)?.name || it.id} \u2192 ${it.winnerName || "nessuno"}`).join(", ");
+  log(s, `\u{1F4B0} ${opener.name} apre lo scrigno: ${coins} Monete Antiche a testa${what ? ` \xB7 ${what}` : ""}.`, { kind: "loot" });
+  s.status = "won";
+  log(s, `\u{1F3C6} Avete conquistato ${s.dungeonName}.`, { kind: "end" });
 }
 function flee(s, uid, now) {
   const h = s.heroes.find((x) => x.uid === uid);
@@ -2314,6 +2358,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   nextDailyPatch,
   nextFloor,
   nextRunsPatch,
+  openChest,
   poolFor,
   romeDay,
   runsOf,

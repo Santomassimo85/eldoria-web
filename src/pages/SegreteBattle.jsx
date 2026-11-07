@@ -340,7 +340,7 @@ export default function SegreteBattle({ room, uid }) {
         return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
       })()}
       <div className="sgb-top">
-        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
+        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
       </div>
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>
@@ -432,6 +432,12 @@ export default function SegreteBattle({ room, uid }) {
             <p>✅ Sala ripulita! Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati.</p>
             <FloorGains run={run} uid={uid} />
             <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>{run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala"}</button>
+          </div>
+        )}
+        {run.status === "treasure" && (
+          <div className="sgb-end">
+            <p>💰 In fondo alla sala c'è uno scrigno: uno di voi lo apre per tutti.</p>
+            <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "chest" })}>💰 Apri lo scrigno</button>
           </div>
         )}
         {!playing && (run.status === "won" || run.status === "lost") && (

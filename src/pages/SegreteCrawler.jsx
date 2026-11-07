@@ -22,7 +22,7 @@ import { handSpec, handDoc, pairKey } from "../fx/crawlerArt";
 // fisica (balestra). Freccia Acida e gli altri incantesimi hanno un elemento: partono dal focus.
 const MELEE_FX = new Set(["slash", "smash", "thrust", "punch"]);
 const isWeaponRow = (l) => (l.w != null ? !!l.w : MELEE_FX.has(l.fx) || (l.fx === "arrow" && (l.el || "physical") === "physical"));
-import { bagOf, battleItem, itemTarget } from "../data/segreteItems";
+import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON } from "../data/segreteItems";
 import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
 import StatusPips from "../components/StatusPips";
@@ -125,6 +125,60 @@ function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
         <span className="cw-me-ca">CA {h.ac}</span>
       </span>
     </button>
+  );
+}
+
+/* LO SCRIGNO SI APRE: coperchio e monete nella scena, poi gli oggetti uno alla volta. Per ogni oggetto
+   ogni giocatore ha tirato un d20 (sul server): il tuo dado rotola davvero, poi si vedono tutti i tiri e chi vince. */
+function ChestReveal({ chest, uid, onDone }) {
+  const [stage, setStage] = useState(0); // 0 si apre · 1 monete · 2+i oggetto i (2+n = fine)
+  const [showRolls, setShowRolls] = useState(-1);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      await sleep(1300); // intanto nella scena il coperchio si alza (lo apre la pagina appena arriva l'esito)
+      if (!alive) return; setStage(1);
+      await sleep(1100);
+      for (let i = 0; i < chest.items.length; i++) {
+        if (!alive) return;
+        setStage(2 + i); setShowRolls(-1);
+        const it = chest.items[i], mine = it.rolls.find((r) => r.uid === uid);
+        await sleep(450);
+        if (mine) { await whenDiceIdle(); await showD20Roll(mine.v, { label: `Scrigno: ${itemOf(it.id)?.name || it.id}` }).catch(() => {}); }
+        if (!alive) return;
+        setShowRolls(i);
+        await sleep(1400);
+      }
+      if (alive) setStage(2 + chest.items.length);
+    })();
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const done = stage >= 2 + chest.items.length;
+  return (
+    <div className="sgb-end cw-reveal">
+      <p className="sgb-result">💰 {chest.by} apre lo scrigno!</p>
+      {stage >= 1 && <p className="cw-reveal-coins">{COIN_ICON} <b>+{chest.coins}</b> Monete Antiche a testa</p>}
+      {!chest.items.length && stage >= 1 && <p>Nessun oggetto, solo monete.</p>}
+      <ul className="cw-reveal-items">
+        {chest.items.map((it, i) => {
+          if (stage < 2 + i) return null;
+          const item = itemOf(it.id), shown = showRolls >= i || stage > 2 + i, rolls = it.rerolls ? it.rerolls[it.rerolls.length - 1] : it.rolls;
+          return (
+            <li key={i} className={it.rare ? "is-rare" : ""}>
+              <span className="cw-reveal-it">{item?.icon || "🎁"} <b>{item?.name || it.id}</b>{it.rare ? <em> · RARO!</em> : null}</span>
+              {shown ? (
+                <span className="cw-reveal-rolls">
+                  {it.rolls.map((r) => <span key={r.uid} className={r.uid === it.winner && !it.rerolls ? "win" : ""}>🎲 {r.uid === uid ? "Tu" : r.name} {r.v}</span>)}
+                  {it.rerolls && <span className="tie">pareggio, si ritira: {rolls.map((r) => `${r.uid === uid ? "Tu" : r.name} ${r.v}`).join(" · ")}</span>}
+                  <b className="cw-reveal-win">→ {it.winner === uid ? "a te!" : it.winnerName || "nessuno"}</b>
+                </span>
+              ) : <span className="cw-reveal-rolls">🎲 si tira…</span>}
+            </li>
+          );
+        })}
+      </ul>
+      {done && <button type="button" className="sgb-btn" onClick={onDone}>Continua</button>}
+    </div>
   );
 }
 
@@ -242,6 +296,25 @@ export default function SegreteCrawler({ room, uid, tools }) {
     eng.setFoes(foeList);
   }, [eng, foeKey, run?.floor, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { eng?.setAim(aiming?.id); }, [eng, aiming]);
+  // lo scrigno: c'è nella sala del tesoro; a partita già vinta (ricarica) resta aperto e non si rianima
+  const [chestDone, setChestDone] = useState(false);
+  const chestSeen = useRef(null);
+  const chestOpened = useRef(null);
+  useEffect(() => {
+    if (!eng || !run || run.startKey !== startKey) return;
+    if (chestSeen.current !== startKey) { chestSeen.current = startKey; setChestDone(run.status === "won"); }
+    if (run.status === "treasure") eng.setChest("closed");
+    else if (run.status === "won" && run.chest) { eng.setChest(chestDone ? "open" : "closed"); if (!chestDone && chestOpened.current !== startKey) { chestOpened.current = startKey; eng.openChest(); } }
+    else if (!run.treasure) eng.setChest(null);
+  }, [eng, run?.status, run?.chest, run?.treasure, startKey, chestDone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // nessuno lo apre: dopo un minuto e mezzo lo apre il server (lo chiede chiunque del gruppo)
+  const chestAsked = useRef("");
+  useEffect(() => {
+    if (run?.status !== "treasure") return undefined;
+    const k = `${startKey}:chest`;
+    const t = setTimeout(() => { if (chestAsked.current === k) return; chestAsked.current = k; segreteDo({ op: "timeout", roomId: room.id }).catch(() => {}); }, 95000);
+    return () => clearTimeout(t);
+  }, [run?.status, startKey, room.id]);
   const hover = (id) => engRef.current?.setHover(id);
 
   /* ── coda della lotta: dado → effetto → danno, una riga alla volta (come SegreteBattle) ── */
@@ -364,6 +437,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     if (!itemTarget(it)) { setBagOpen(false); return send({ op: "item", itemId: it.id }); }
     setChosen(null); setChosenItem(it);
   };
+  const openChest = () => { if (!busy) send({ op: "chest" }); };
   const flee = () => window.confirm("Abbandonare il dungeon? Il tuo eroe fugge e non prenderà premi.") && send({ op: "flee" });
   const bind = (id, el) => engRef.current?.bindAnchor(id, el);
 
@@ -393,7 +467,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
         return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
       })()}
       <div className="sgb-top cw-top">
-        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
+        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
       </div>
 
@@ -401,6 +475,11 @@ export default function SegreteCrawler({ room, uid, tools }) {
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="La stanza del dungeon vista in prima persona" />
         <canvas ref={setFg} className="cw-fg" aria-hidden="true" />
         {me && <span className="cw-hand" data-vfx-target={HAND_KEY} aria-hidden="true" />}
+        {run.status === "treasure" && !walking && (
+          <button type="button" className="cw-chest" ref={(el) => bind("chest", el)} disabled={busy} onClick={openChest} aria-label="Apri lo scrigno">
+            <span>{busy ? "…" : "Toccami!"}</span>
+          </button>
+        )}
         {!walking && run.foes.map((f) => {
           const c = shown(f);
           return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onHover={hover} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
@@ -489,7 +568,16 @@ export default function SegreteCrawler({ room, uid, tools }) {
             <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>{run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala"}</button>
           </div>
         )}
-        {!playing && (run.status === "won" || run.status === "lost") && (
+        {run.status === "treasure" && (
+          <div className="sgb-end cw-chest-msg">
+            <p>💰 <b>In fondo alla sala c'è uno scrigno.</b> Uno di voi lo apre per tutti: monete in più a testa, e gli oggetti si tirano col dado.</p>
+            <button type="button" className="sgb-btn" disabled={busy} onClick={openChest}>{busy ? "⏳ Apro…" : "💰 Apri lo scrigno"}</button>
+          </div>
+        )}
+        {run.status === "won" && run.chest && !chestDone && (
+          <ChestReveal chest={run.chest} uid={uid} onDone={() => setChestDone(true)} />
+        )}
+        {!playing && (run.status === "lost" || (run.status === "won" && (!run.chest || chestDone))) && (
           <div className="sgb-end">
             <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
             {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({classInfo(l.cls)?.it}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}

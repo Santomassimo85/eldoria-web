@@ -2308,6 +2308,8 @@ exports.segreteDo = onCall(
         } else if (op === "next") {
           const bestiary = await loadBestiary();
           segreteBundle.withRng(segreteRng, () => segreteBundle.nextFloor(run, bestiary, now));
+        } else if (op === "chest") { // lo scrigno dopo il boss (2026-11-07)
+          segreteBundle.withRng(segreteRng, () => segreteBundle.openChest(run, uid, now));
         } else if (op === "flee") {
           segreteBundle.withRng(segreteRng, () => segreteBundle.flee(run, uid, now));
         } else {

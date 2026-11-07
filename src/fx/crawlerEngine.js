@@ -487,10 +487,78 @@ export class CrawlerEngine {
       part(hands.R, W - w, H + 4 + b - h, w, h, mv.R, W - w * 0.2, H + 4 + b);
     }
   }
+  /* LO SCRIGNO (2026-11-07): in fondo alla sala del tesoro. setChest("closed") lo mette; openChest() alza il
+     coperchio e fa uscire una fontana di monete. Il bottone "Toccami" della pagina lo segue (ancora "chest"). */
+  setChest(state) { if (!state) { this.chest = null; return; } if (!this.chest) this.chest = { open: 0, t0: 0 }; if (state === "open") this.chest.open = 1; }
+  openChest() {
+    if (!this.chest) this.chest = { open: 0, t0: 0 };
+    const c = this.chest; c.t0 = performance.now(); c.opening = true;
+    return new Promise((res) => setTimeout(res, this.calm ? 200 : 1300));
+  }
+  drawChest(t) {
+    const c = this.chest; if (!c) return;
+    const { ctx, cam } = this;
+    if (c.opening) { const k = clamp((performance.now() - c.t0) / 700, 0, 1); c.open = 1 - (1 - k) ** 3; if (k >= 1) c.opening = false; if (!c.burst && k > 0.25) { c.burst = true; this.coinBurst(); } }
+    const dz = this.roomY + 0.5 + 2.4 - cam.y; if (dz < 0.4) return;
+    const sc = SC / dz, w = 1.0 * sc, hb = 0.42 * sc, hl = 0.24 * sc, cx = W / 2, foot = HZ + CAM * sc + Math.round(cam.bob * 0.5);
+    const x0 = cx - w / 2, top = foot - hb;
+    this.chestBox = { x: x0, y: top - hl - 2, w, h: hb + hl + 2, cx, foot };
+    const line = Math.max(0.6, sc * 0.012);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = "#000"; ctx.fillRect(x0 - w * 0.06, foot - sc * 0.03, w * 1.12, sc * 0.06); ctx.globalAlpha = 1;
+    // luce che esce quando è aperto
+    if (c.open > 0) {
+      const g = ctx.createRadialGradient(cx, top, 0, cx, top, w * 1.1);
+      g.addColorStop(0, `rgba(255,226,120,${(0.55 * c.open).toFixed(2)})`); g.addColorStop(1, "rgba(255,200,80,0)");
+      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - w * 1.2, top - w * 1.2, w * 2.4, w * 1.6); ctx.globalCompositeOperation = "source-over";
+    }
+    const box = (x, y, ww, hh, fill) => { ctx.fillStyle = "#1a0f08"; ctx.fillRect(x - line, y - line, ww + line * 2, hh + line * 2); ctx.fillStyle = fill; ctx.fillRect(x, y, ww, hh); };
+    // corpo: assi di legno, fasce d'oro, borchie
+    box(x0, top, w, hb, "#6b4423");
+    ctx.fillStyle = "#57361b"; for (let i = 1; i < 3; i++) ctx.fillRect(x0, top + (hb * i) / 3 - line * 0.5, w, line);
+    ctx.fillStyle = "#8a5a30"; ctx.fillRect(x0, top, w, line * 1.5);
+    for (const fx of [0.12, 0.88]) { ctx.fillStyle = "#1a0f08"; ctx.fillRect(x0 + w * fx - w * 0.055 - line, top, w * 0.11 + line * 2, hb); ctx.fillStyle = "#d4a63a"; ctx.fillRect(x0 + w * fx - w * 0.055, top, w * 0.11, hb); ctx.fillStyle = "#f6d77a"; ctx.fillRect(x0 + w * fx - w * 0.055, top, w * 0.03, hb); }
+    // dentro (si vede quando il coperchio è alzato): monete che luccicano
+    if (c.open > 0.05) {
+      ctx.fillStyle = "#2a1608"; ctx.fillRect(x0 + line, top - hl * 0.25 * c.open, w - line * 2, hl * 0.3 * c.open + line);
+      for (let i = 0; i < 9; i++) { const px = x0 + w * (0.18 + (i * 0.083)), py = top - hl * 0.12 * c.open + Math.sin(i * 2.3) * line; ctx.fillStyle = i % 3 ? "#f2c14e" : "#fff0a8"; ctx.fillRect(px, py, w * 0.07, w * 0.05); }
+    }
+    // coperchio: chiuso a cupola; aperto si ribalta all'indietro (si schiaccia e sale)
+    const lidH = hl * (1 - c.open * 0.78), lidY = top - lidH - c.open * hl * 0.55;
+    box(x0, lidY, w, lidH, c.open > 0.5 ? "#4f3018" : "#7a4f2a");
+    if (c.open < 0.5) {
+      ctx.fillStyle = "#8f6236"; ctx.fillRect(x0, lidY, w, line * 1.5);
+      for (const fx of [0.12, 0.88]) { ctx.fillStyle = "#d4a63a"; ctx.fillRect(x0 + w * fx - w * 0.055, lidY, w * 0.11, lidH); }
+      // serratura
+      const lw = w * 0.16, lh = hb * 0.42, lx = cx - lw / 2, ly = top - lh * 0.45;
+      box(lx, ly, lw, lh, "#d4a63a"); ctx.fillStyle = "#f6d77a"; ctx.fillRect(lx, ly, lw, line); ctx.fillStyle = "#1a0f08"; ctx.fillRect(cx - line * 0.8, ly + lh * 0.35, line * 1.6, lh * 0.4);
+      // scintille d'invito, finché è chiuso
+      if (!this.calm) for (let i = 0; i < 3; i++) { const ph = (t / 900 + i / 3) % 1, sx = x0 + w * (0.2 + 0.3 * i) + Math.sin(t / 400 + i) * w * 0.05, sy = lidY - ph * hl * 1.4; ctx.globalAlpha = 1 - ph; ctx.fillStyle = "#fff3c4"; ctx.fillRect(sx, sy, line * 1.6, line * 1.6); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  coinBurst() {
+    const b = this.chestBox; if (!b) return;
+    this.parts = this.parts || [];
+    for (let i = 0; i < (this.calm ? 8 : 46); i++) this.parts.push({ x: b.cx + (Math.random() - 0.5) * b.w * 0.5, y: b.y + b.h * 0.3, vx: (Math.random() - 0.5) * 140, vy: -60 - Math.random() * 130, life: 0.9 + Math.random() * 0.7, t: 0, s: 1.6 + Math.random() * 1.4, ph: Math.random() * 6 });
+  }
+  drawParts(dt) {
+    if (!this.parts?.length) return;
+    const { ctx } = this, k = dt / 1000;
+    this.parts = this.parts.filter((p) => {
+      p.t += k; if (p.t >= p.life) return false;
+      p.vy += 300 * k; p.x += p.vx * k; p.y += p.vy * k;
+      const wob = Math.abs(Math.cos(p.t * 12 + p.ph)); // la moneta che gira
+      ctx.globalAlpha = Math.min(1, (p.life - p.t) * 2.5);
+      ctx.fillStyle = "#8a5a12"; ctx.fillRect(p.x - (p.s * wob) / 2 - 0.4, p.y - p.s / 2 - 0.4, p.s * wob + 0.8, p.s + 0.8);
+      ctx.fillStyle = wob > 0.6 ? "#ffe27a" : "#f2b62e"; ctx.fillRect(p.x - (p.s * wob) / 2, p.y - p.s / 2, p.s * wob, p.s);
+      return true;
+    });
+    ctx.globalAlpha = 1;
+  }
   syncAnchors() {
     const pct = (v, m) => `${((v / m) * 100).toFixed(1)}%`;
     this.anchors.forEach((el, id) => {
-      const b = this.byId.get(id)?.box; if (!b) return;
+      const b = id === "chest" ? this.chestBox : this.byId.get(id)?.box; if (!b) return;
       const key = `${b.x | 0},${b.y | 0},${b.w | 0},${b.h | 0}`;
       if (el.dataset.k === key) return;
       el.dataset.k = key;
@@ -514,7 +582,7 @@ export class CrawlerEngine {
     ctx.setTransform(FS, 0, 0, FS, 0, 0);
     ctx.clearRect(0, 0, W, H);
     this.layoutFoes(t);
-    this.drawTorches(); this.drawFoes(t); this.drawBars(); this.drawAim(t); this.drawHands();
+    this.drawTorches(); this.drawChest(t); this.drawFoes(t); this.drawBars(); this.drawAim(t); this.drawParts(dt); this.drawHands();
     if (this.red > 0) { ctx.fillStyle = `rgba(190,20,20,${this.red.toFixed(2)})`; ctx.fillRect(0, 0, W, H); this.red = Math.max(0, this.red - dt * 0.0016); }
     this.syncAnchors();
   }
