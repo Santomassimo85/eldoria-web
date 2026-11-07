@@ -171,9 +171,9 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
     out.push({ key: "open", glove, kind: "open", name: "Mano sinistra semiaperta", icon: "✋" });
     if (g.classes.some((c) => armorProf(c).shield)) out.push({ key: "shield", glove, kind: "shield", name: "Scudo", icon: "🛡" });
     const weapons = [...new Set(g.classes.flatMap((c) => WEAPON_CHOICES[c] || []))];
-    weapons.forEach((k) => out.push({ key: k, glove, kind: "weapon", name: WEAPONS[k].name, weaponName: WEAPONS[k].name, icon: WEAPONS[k].icon, two: TWO_HANDED.has(k) }));
+    weapons.forEach((k) => out.push({ key: k, base: k, glove, kind: "weapon", name: WEAPONS[k].name, weaponName: EN[k] || WEAPONS[k].name, icon: WEAPONS[k].icon, two: TWO_HANDED.has(k) }));
     Object.entries(ITEMS).filter(([id, it]) => weapons.includes(it.base) && !/_[12]$/.test(id)).forEach(([id, it]) => out.push({
-      key: id, glove, kind: "weapon", special: true, name: it.name, icon: it.icon, weaponName: `${WEAPONS[it.base].name} called "${it.name}"`, desc: it.desc, two: TWO_HANDED.has(it.base),
+      key: id, base: it.base, glove, kind: "weapon", special: true, name: it.name, icon: it.icon, weaponName: `magic ${EN[it.base] || WEAPONS[it.base].name} named "${it.name}"`, desc: it.desc, two: TWO_HANDED.has(it.base),
     }));
   });
   return out;
@@ -201,6 +201,19 @@ The texture MUST tile perfectly: left edge matches right edge, top edge matches 
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
 
 // e = voce di handEntries; withRef = c'è la mano sinistra di quel guanto come riferimento
+const EN = { spada_lunga: "longsword", scimitarra: "scimitar", stocco: "rapier", martello: "warhammer", mazza: "flanged mace", mazzafrusto: "flail", lancia: "spear", bastone: "quarterstaff", ascia_bip: "double-bladed greataxe", maglio: "great maul", arco_lungo: "longbow", balestra_l: "light crossbow", pugni: "bare fist" };
+const BLADE = "GRIP (very important, like a real swordsman): the closed fist wraps around the HANDLE only. The crossguard sits just ABOVE the fist, the pommel sticks out just BELOW the little finger, the whole blade rises from the top of the fist. The hand NEVER touches the blade or the crossguard. The weapon is held upright and firm, the blade tilted about 25 degrees toward the upper-left, as in a classic first-person RPG idle pose. We see the back of the hand and the knuckles, the thumb wrapped around the handle.";
+const HAFT = "GRIP (very important, realistic): the closed fist wraps around the wooden SHAFT near its lower end, the head of the weapon at the TOP of the image, the shaft rising from the fist toward the upper-left, tilted about 25 degrees. The hand never touches the head. We see the back of the hand and the knuckles.";
+const GRIP = {
+  spada_lunga: BLADE, scimitarra: BLADE, stocco: `${BLADE} The rapier has a swept hilt cage around the fist.`,
+  martello: HAFT, mazza: HAFT, mazzafrusto: `${HAFT} The spiked ball hangs from a short chain at the top of the handle.`, lancia: `${HAFT} The spear is long: its point reaches the top of the image.`,
+  bastone: "GRIP: the fist holds the long wooden staff vertically at about one third of its length; the staff rises to the top of the image, its lower part goes out of the bottom border.",
+  ascia_bip: "GRIP: BOTH fists on the long wooden shaft, the right one near the bottom border and the left one higher up, the double-bladed axe head at the top of the image, the shaft tilted toward the upper-left.",
+  maglio: "GRIP: BOTH fists on the long wooden shaft, the right one near the bottom border and the left one higher up, the big hammer head at the top of the image, the shaft tilted toward the upper-left.",
+  arco_lungo: "GRIP: the LEFT fist holds the middle of the longbow, which stands almost vertical in the center-left of the image; the RIGHT hand, near the bottom-right, draws the string back with an arrow nocked; the arrow points forward into the image.",
+  balestra_l: "GRIP: the light crossbow is seen from behind, pointing forward into the image; the RIGHT hand holds the stock with the finger near the trigger, the LEFT hand supports the front of the stock from below; a bolt is loaded.",
+  pugni: "POSE: the right fist is clenched and raised in a boxing guard, knuckles toward the viewer's front, no weapon at all.",
+};
 // e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite
 // (mani in più). Il guanto uguale lo dà la descrizione del guanto, la stessa per tutte le voci.
 export function handPrompt(e) {
@@ -210,10 +223,11 @@ export function handPrompt(e) {
     shield: `the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: the INSIDE of the shield, never its painted front. Visible: wooden planks, iron rim, rivets coming through, two leather straps and the grip, with the hero's LEFT hand wearing ${glove} closed around the grip (only the hand, NO arm, NO sleeve). Big shield, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left part of the image, held low and close, realistic first-person perspective`,
     weapon: e.two
       ? `BOTH hands and forearms of the hero wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}, entering from the BOTTOM-RIGHT of the image. The weapon is BIG and CHUNKY, held diagonally, pointing UP and to the LEFT`
-      : `a RIGHT hand and forearm wearing ${glove}, entering from the BOTTOM-RIGHT corner of the image, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT. Only ONE hand in the image: the bottom-left part stays empty`,
+      : `a RIGHT hand and forearm wearing ${glove}, entering from the BOTTOM-RIGHT corner of the image, holding a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image. Only ONE hand in the image: the bottom-left part stays empty`,
   }[e.kind];
+  const grip = e.kind === "weapon" && GRIP[e.base] ? `\n${GRIP[e.base]}` : "";
   return `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
-Subject: ${subject}.
+Subject: ${subject}.${grip}
 ${e.kind === "shield" ? "" : "The arm MUST touch the corner of the image and be cut off by the image border. "}Nothing else in the image. Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;
