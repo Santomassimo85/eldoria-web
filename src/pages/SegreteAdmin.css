@@ -66,7 +66,10 @@ button.sga-card:hover { border-color: var(--el); }
 
 /* Prima persona (2026-11-07) */
 .sga-cw { display: grid; gap: 12px; }
-.sga-cw-prev { display: block; width: min(100%, 420px); height: auto; margin: 8px auto 0; image-rendering: pixelated; background: #000; }
+.sga-cw-prev { position: relative; width: min(100%, 420px); margin: 8px auto 0; line-height: 0; background: #000; }
+.sga-cw-prev canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.sga-cw-prev canvas + canvas { position: absolute; inset: 0; height: 100%; }
+.sga-cw-up { display: block; text-align: center; cursor: pointer; }
 .sga-cw-row { display: grid; gap: 6px; margin-top: 10px; }
 .sga-cw-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
 .sga-cw-tile { position: relative; margin: 0; display: grid; gap: 4px; justify-items: stretch; text-align: center; }

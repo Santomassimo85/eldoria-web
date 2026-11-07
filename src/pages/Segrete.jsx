@@ -376,16 +376,27 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
 const CRAWLER_KEY = "sgr_crawler";
 const readCrawler = () => { try { return localStorage.getItem(CRAWLER_KEY) !== "0"; } catch { return true; } };
 // la lotta: classica per tutti; il Master (o tutti con CRAWLER_PUBLIC) vede quella in prima persona
-function BattleView({ room, uid, master }) {
+function BattleView({ room, uid, master, onReopen, busy }) {
   const [on, setOn] = useState(readCrawler);
   const can = master || CRAWLER_PUBLIC;
   const flip = () => { const v = !on; setOn(v); try { localStorage.setItem(CRAWLER_KEY, v ? "1" : "0"); } catch { /* niente */ } };
+  const reopen = master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={onReopen}>↺ Riporta in stanza (Master)</button>;
+  if (can && on) {
+    return (
+      <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}>
+        <SegreteCrawler room={room} uid={uid} tools={<div className="cw-tools"><button type="button" onClick={flip}>🖼 Passa alla vista classica</button>{reopen}</div>} />
+      </Suspense>
+    );
+  }
   return (
     <>
-      {can && on
-        ? <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}><SegreteCrawler room={room} uid={uid} /></Suspense>
-        : <SegreteBattle room={room} uid={uid} />}
-      {can && <div className="sgr-room-actions"><button type="button" className="sgr-btn sgr-btn--ghost" onClick={flip}>{on ? "🖼 Passa alla vista classica" : "🎮 Passa alla prima persona"}</button></div>}
+      <SegreteBattle room={room} uid={uid} />
+      {(can || master) && (
+        <div className="sgr-room-actions">
+          {can && <button type="button" className="sgr-btn sgr-btn--ghost" onClick={flip}>🎮 Passa alla prima persona</button>}
+          {reopen}
+        </div>
+      )}
     </>
   );
 }
@@ -398,14 +409,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
 
   if (room.status === "running" || room.status === "done") {
     return (
-      <>
-        <BattleView room={room} uid={uid} master={master} />
-        {master && (
-          <div className="sgr-room-actions">
-            <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => reopenRoom(room.id))}>↺ Riporta in stanza (Master)</button>
-          </div>
-        )}
-      </>
+      <BattleView room={room} uid={uid} master={master} busy={busy} onReopen={() => run(() => reopenRoom(room.id))} />
     );
   }
 

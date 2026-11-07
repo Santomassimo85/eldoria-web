@@ -6,6 +6,7 @@
    I bottoni sopra i mostri (.cw-foe) sono trasparenti e seguono gli sprite: servono per mirare, per la
    scheda (pressione lunga) e come ancora degli effetti (data-vfx-target), come gli sprite classici. */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
@@ -96,7 +97,7 @@ function PartySlot({ h, me, turn, done, selectable, picked, onPick, classSprite,
   );
 }
 
-export default function SegreteCrawler({ room, uid }) {
+export default function SegreteCrawler({ room, uid, tools }) {
   useFightMode(true);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -116,6 +117,7 @@ export default function SegreteCrawler({ room, uid }) {
   const [fronts, setFronts] = useState({}); // id del bestiario → sprite frontale
   const [walking, setWalking] = useState(false);
   const [cv, setCv] = useState(null);
+  const [fg, setFg] = useState(null);
   const [eng, setEng] = useState(null);
   const engRef = useRef(null);
   const initAsked = useRef("");
@@ -154,11 +156,11 @@ export default function SegreteCrawler({ room, uid }) {
 
   /* ── il motore grafico ── */
   useEffect(() => {
-    if (!cv) return undefined;
-    const e = new CrawlerEngine(cv);
+    if (!cv || !fg) return undefined;
+    const e = new CrawlerEngine(cv, fg);
     engRef.current = e; setEng(e);
     return () => { e.destroy(); engRef.current = null; setEng(null); };
-  }, [cv]);
+  }, [cv, fg]);
   const dungeonType = run?.type || "";
   useEffect(() => {
     if (!eng || !dungeonType) return;
@@ -169,15 +171,14 @@ export default function SegreteCrawler({ room, uid }) {
   const me = run?.heroes.find((h) => h.uid === uid) || null;
   const weaponKey = me ? me.weapon || WEAPON_CHOICES[me.cls]?.[0] || "spada_lunga" : "";
   const offKey = me ? handSpec(me, weaponKey, TWO_HANDED.has(weaponKey)).off : "";
+  const specialKey = me?.wItem && !/_[12]$/.test(me.wItem) ? me.wItem : ""; // arma speciale: ha il suo sprite
   useEffect(() => {
     if (!eng || !weaponKey) return;
-    const spec = { main: weaponKey, off: offKey };
-    eng.setHands(`p:${weaponKey}:${offKey}`, spec);
-    const read = (k) => getDoc(doc(db, "dungeon_tiles", `hand_${k}`)).then((s) => s.data()?.image || "").catch(() => "");
-    Promise.all([read(weaponKey), offKey === "shield" || offKey === "magic" ? read(offKey) : ""]).then(([mainUrl, offUrl]) => {
-      if (mainUrl || offUrl) eng.setHands(`a:${weaponKey}:${offKey}`, { ...spec, mainUrl, offUrl });
+    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", `hand_${k}`)).then((s) => s.data()?.image || "").catch(() => "") : "");
+    Promise.all([read(specialKey), read(weaponKey), offKey === "shield" || offKey === "magic" ? read(offKey) : ""]).then(([special, base, offUrl]) => {
+      eng.setHands(`${weaponKey}:${specialKey}:${offKey}`, { main: weaponKey, off: offKey, mainUrl: special || base, offUrl });
     });
-  }, [eng, weaponKey, offKey]);
+  }, [eng, weaponKey, specialKey, offKey]);
 
   // i PF sugli sprite scendono quando ARRIVA il colpo, non quando risponde il server
   const lag = useMemo(() => {
@@ -343,7 +344,7 @@ export default function SegreteCrawler({ room, uid }) {
   const bagList = Object.entries(bag).map(([id, n]) => ({ ...battleItem(id), n })).filter((x) => x.id);
   const spoils = (run.spoils || {})[uid];
 
-  return (
+  return createPortal(
     <div className="sgb cw">
       <VfxLayer messages={vfxMsgs} selfUid={uid} canvas />
       {inspect && (() => {
@@ -357,6 +358,7 @@ export default function SegreteCrawler({ room, uid }) {
 
       <div className="cw-stage">
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="La stanza del dungeon vista in prima persona" />
+        <canvas ref={setFg} className="cw-fg" aria-hidden="true" />
         {!walking && run.foes.map((f) => {
           const c = shown(f);
           return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
@@ -456,6 +458,7 @@ export default function SegreteCrawler({ room, uid }) {
             <p className="sgb-endnote">Il gruppo e la chat vocale restano: tornati al gruppo potete scegliere il prossimo dungeon.</p>
           </div>
         )}
+        {tools}
       </div>
 
       <div className="cw-party" style={{ "--cw-n": run.heroes.length }}>
@@ -466,6 +469,7 @@ export default function SegreteCrawler({ room, uid }) {
             selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
         })}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

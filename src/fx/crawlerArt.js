@@ -175,9 +175,9 @@ const HAND_WHAT = {
   shield: "a LEFT arm in armor entering from the BOTTOM-LEFT corner of the image, holding up a round fantasy shield seen from the front, covering the lower left",
   magic: "a LEFT open hand with sleeve entering from the BOTTOM-LEFT corner of the image, palm up, fingers spread, ready to cast a spell, no flame",
 };
-export const handPrompt = (key, weaponName) => `First-person view pixel art sprite for a dungeon crawler, as seen through the eyes of the hero.
-Subject: ${HAND_WHAT[key] || `a RIGHT hand and forearm entering from the BOTTOM-RIGHT corner of the image, gripping a ${weaponName}. The weapon points UP and slightly to the LEFT, large in the frame, like a classic first-person RPG`}.
-The arm MUST touch the corner of the image and be cut off by the image border. Nothing else in the image.
+export const handPrompt = (key, weaponName, desc) => `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
+Subject: ${HAND_WHAT[key] || `a RIGHT gloved hand and forearm entering from the BOTTOM-RIGHT corner of the image, gripping a ${weaponName}${desc ? ` (${desc})` : ""}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT`}.
+The arm MUST touch the corner of the image and be cut off by the image border. Nothing else in the image. Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;
 
