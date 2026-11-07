@@ -1568,8 +1568,8 @@ function heroAct(s, h, a, target) {
       }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
-      let dmg = roll(dn, ds).t + (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0);
-      if (a.bonusDmg === "lv/2") dmg += Math.floor(lv / 2);
+      const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
+      let dmg = rolled.t + plusDmg;
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
       let extra = "";
@@ -1611,7 +1611,7 @@ function heroAct(s, h, a, target) {
       log(
         s,
         `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
-        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice } }
+        { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice }, dr: { n: dn, s: ds, r: rolled.r, p: plusDmg } }
       );
     }
     return ev;
@@ -1619,15 +1619,16 @@ function heroAct(s, h, a, target) {
   if (a.kind === "missile") {
     const [dn, ds] = diceFor(a, lv);
     const notes = [];
-    const dmg = applyDamage(s, target, roll(dn, ds).t + flatOf(a.flat) + (a.plusMod ? mod : 0), a.dmg, notes);
-    log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dmg });
+    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0);
+    const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes);
+    log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dr: { n: dn, s: ds, r: rolled.r, p: plusDmg }, dmg });
     return ev;
   }
   if (a.kind === "save") {
     const dc = heroDc(h.cls, lv, st) + (h.armorDc || 0);
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
-    const base = roll(dn, ds).t + flatOf(a.flat);
+    const rolled = roll(dn, ds), base = rolled.t + flatOf(a.flat);
     const parts = [];
     targets.forEach((t) => {
       const sv = d20() + (t.save || 0);
@@ -1639,7 +1640,7 @@ function heroAct(s, h, a, target) {
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
       parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " \u{1F4AB} stordito" : ""}${inf}${t.hp <= 0 ? " \u{1F480}" : ""}`);
     });
-    log(s, `${a.icon} ${h.name} \u2192 ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id) });
+    log(s, `${a.icon} ${h.name} \u2192 ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id), dr: { n: dn, s: ds, r: rolled.r, p: flatOf(a.flat) } });
     return ev;
   }
   if (a.kind === "heal" || a.kind === "heal_all") {
@@ -1760,7 +1761,8 @@ function foeAct(s, f) {
   if (isSave) {
     const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
     const dc = f.cap?.dc ?? (Number(a.saveDC) || 12) + (f.adapt?.hit || 0);
-    const base = Math.max(1, Math.round((roll(n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, tg.length)));
+    const rolled2 = roll(n, sides), mult2 = (f.adapt?.mult || 1) * capMult(n, sides, tg.length);
+    const base = Math.max(1, Math.round((rolled2.t + lvlBonus) * mult2));
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
@@ -1769,7 +1771,7 @@ function foeAct(s, f) {
       const stTxt2 = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
       return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg2}${stTxt2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
     });
-    log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id) });
+    log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id), dr: { n, s: sides, r: rolled2.r, p: lvlBonus, x: Math.round(mult2 * 100) / 100 } });
     return;
   }
   const bonus = f.cap?.hit ?? (Number(a.bonus) || 3) + (f.adapt?.hit || 0);
@@ -1778,9 +1780,10 @@ function foeAct(s, f) {
     log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: manca (\u{1F3B2}${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } });
     return;
   }
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((roll(r.crit ? n * 2 : n, sides).t + lvlBonus) * (f.adapt?.mult || 1) * capMult(n, sides, 1))), type, []);
+  const rolled = roll(r.crit ? n * 2 : n, sides), mult = (f.adapt?.mult || 1) * capMult(n, sides, 1);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((rolled.t + lvlBonus) * mult)), type, []);
   const stTxt = tryInflict(s, f, tgt, foeInflict(a, type), f.cap?.dc ?? 12);
-  log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice } });
+  log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice }, dr: { n: r.crit ? n * 2 : n, s: sides, r: rolled.r, p: lvlBonus, x: Math.round(mult * 100) / 100 } });
   if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
     const [tn, ts] = parseDice(tgt.thorns.dice);
     const notes = [];

@@ -11,7 +11,7 @@ import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
-import { classInfo, clsStyle, diffOf, sizeOf } from "../data/segrete";
+import { classInfo, classColor, clsStyle, diffOf, sizeOf } from "../data/segrete";
 import { WEAPON_CHOICES, TWO_HANDED } from "../data/segreteKits";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
@@ -29,7 +29,7 @@ import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom, backToRoom } from "../utils/segreteRooms";
-import { statusIcons, rowSide, LogText, FloorGains, SpoilsBox, FoeCard, actInfo } from "./SegreteBattle";
+import { statusIcons, FloorGains, SpoilsBox, FoeCard, actInfo } from "./SegreteBattle";
 import "./SegreteBattle.css";
 import "./SegreteCrawler.css";
 
@@ -42,6 +42,40 @@ let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pipsOf = (c, round) => statusIcons(c, round || 1).map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }));
+/* CRONACA (2026-11-07): striscia e nomi col colore della classe per gli eroi, rosso per i mostri;
+   "N danni" in arancione; il tiro per colpire in una pastiglia; sotto, il tiro dei dadi del danno (row.dr). */
+const FOE_RED = "#ff6b5a";
+const escRx = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function sideOf(l, run) {
+  const id = l?.actor || l?.from, c = id ? [...(run.heroes || []), ...(run.foes || [])].find((x) => x.id === id) : null;
+  return !c ? null : c.side === "h" ? classColor(c.cls) : FOE_RED;
+}
+const drText = (d) => {
+  if (!d || !d.n) return "";
+  const p = Number(d.p) || 0, x = Number(d.x) || 1;
+  return `${d.n}d${d.s}: ${(d.r || []).join(" + ")}${p ? ` ${p > 0 ? "+" : "−"} ${Math.abs(p)}` : ""}${x !== 1 ? ` ×${String(x).replace(".", ",")}` : ""}`;
+};
+function CwLogText({ l, run }) {
+  if (!l) return null;
+  const people = [...(run.heroes || []).map((h) => ({ n: h.name, c: classColor(h.cls) })), ...(run.foes || []).map((f) => ({ n: f.name, c: FOE_RED }))]
+    .filter((p) => p.n).sort((a, b) => b.n.length - a.n.length);
+  const color = Object.fromEntries(people.map((p) => [p.n, p.c]));
+  const rx = new RegExp(`(\\(🎲[^)]*\\))|(\\d+ danni)|(CRITICO!)${people.length ? `|(${people.map((p) => escRx(p.n)).join("|")})` : ""}`, "g");
+  const out = [], txt = String(l.txt || "");
+  let last = 0, m, k = 0;
+  while ((m = rx.exec(txt))) {
+    if (m.index > last) out.push(txt.slice(last, m.index));
+    if (m[1]) out.push(<span key={k++} className="cw-lg-roll" style={{ "--side": sideOf(l, run) || "#c9bfad" }}>{m[1].slice(1, -1)}</span>);
+    else if (m[2]) out.push(<b key={k++} className="cw-lg-dmg">{m[2]}</b>);
+    else if (m[3]) out.push(<b key={k++} className="cw-lg-crit">{m[3]}</b>);
+    else out.push(<b key={k++} className="cw-lg-name" style={{ color: color[m[0]] }}>{m[0]}</b>);
+    last = rx.lastIndex;
+  }
+  if (last < txt.length) out.push(txt.slice(last));
+  const dr = l.kind !== "miss" ? drText(l.dr) : "";
+  return <>{out}{dr && <span className="cw-lg-dr">🎲 danno {dr}</span>}</>;
+}
+
 /* TAGLIE IN PRIMA PERSONA (2026-11-07): piccolo ~0,7, grande ~1,5, enorme quasi il doppio. */
 const CW_SIZE = { tiny: 0.55, small: 0.72, medium: 1, large: 1.5, huge: 1.85, gargantuan: 2.15 };
 const SMALL_RX = /goblin|coboldo|kobold|ratt[oi]|stirge|follett|spiritell|\bimp\b|pixie|gnom|halfling|pipistrell|mefit|ragnett|serpentell|lucertol|scheggia|ranocchi|lupacchiott|cucciol/i;
@@ -107,6 +141,7 @@ function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, rou
       </span>
       <span className="cw-pm-txt">
         <b className="cw-nm">{h.helper ? "🤝 " : ""}{h.name}</b>
+        <em className="cw-pm-cls">{classInfo(h.cls)?.it}{h.level ? ` · Lv ${h.level}` : ""}</em>
         <span className="cw-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
         <small>{dead ? (h.fled ? "fuggito" : "a terra") : `${h.hp}/${h.maxHp} · CA ${h.ac}`}</small>
       </span>
@@ -501,12 +536,12 @@ export default function SegreteCrawler({ room, uid, tools }) {
           selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
       })()}
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>
-        <span className="sgb-log-text" key={last?.i}><LogText l={last} run={run} /></span>
+        <span className="sgb-log-text cw-log-text" key={last?.i} style={{ "--side": sideOf(last, run) || "transparent" }}><CwLogText l={last} run={run} /></span>
         <span className="sgb-log-n">{logOpen ? "▴" : "▾"}</span>
       </button>
       {logOpen && (
         <ol className="sgb-log-list">
-          {[...shownLog].reverse().map((l) => <li key={l.i} className={`k-${l.kind || ""}${rowSide(l, run).cls}`} style={rowSide(l, run).style}><LogText l={l} run={run} /></li>)}
+          {[...shownLog].reverse().map((l) => <li key={l.i} className={`cw-lg k-${l.kind || ""}`} style={{ "--side": sideOf(l, run) || "transparent" }}><CwLogText l={l} run={run} /></li>)}
         </ol>
       )}
 

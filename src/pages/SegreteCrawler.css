@@ -85,3 +85,12 @@
 .cw-reveal-win { color: #f2c14e; }
 @keyframes cw-in { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .cw-chest span, .cw-reveal-items li { animation: none; } }
+/* cronaca: amici col colore della classe, nemici in rosso, danno ben visibile (2026-11-07) */
+.cw .cw-log-text { -webkit-line-clamp: 3; padding-left: 7px; box-shadow: inset 3px 0 0 var(--side, transparent); }
+.cw .sgb-log-list li.cw-lg { border-left: 3px solid var(--side, transparent); padding-left: 9px; color: #e9e1d0; }
+.cw-lg-name { font-weight: 800; }
+.cw-lg-dmg { color: #ffb347; font-weight: 900; font-size: 1.06em; text-shadow: 0 0 6px rgba(255,140,40,.35); }
+.cw-lg-crit { color: #ffd76a; font-weight: 900; }
+.cw-lg-roll { display: inline-block; margin: 0 2px; padding: 0 5px; border: 1px solid var(--side); color: var(--side); background: rgba(0,0,0,.35); font: 700 .8em "Pixelify Sans", monospace; white-space: nowrap; }
+.cw-lg-dr { display: inline-block; margin-left: 6px; padding: 0 6px; background: rgba(255,179,71,.16); border: 1px solid rgba(255,179,71,.45); color: #ffd08a; font: 700 .78em "Pixelify Sans", monospace; white-space: nowrap; }
+.cw-pm-cls { display: block; font-style: normal; font-size: .62rem; line-height: 1.1; color: color-mix(in srgb, var(--cls, #c9bfad) 70%, #c9bfad); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
