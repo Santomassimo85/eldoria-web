@@ -155,7 +155,7 @@ export class CrawlerEngine {
     this.ctx = fg.getContext("2d"); this.ctx.imageSmoothingEnabled = false;
     this.cam = { x: 6.5, y: 0.5, bob: 0 };
     this.base = 0; this.red = 0; this.last = 0; this.dirty = true;
-    this.foes = []; this.byId = new Map(); this.aim = null; this.anchors = new Map(); this.order = [];
+    this.foes = []; this.byId = new Map(); this.aim = null; this.aimT = 0; this.pickable = new Set(); this.hover = null; this.anchors = new Map(); this.order = [];
     this.hands = { R: null, L: null }; this.handKey = "";
     this.act = null; this.ranged = false; this.offKind = "hand";
     this.anims = []; this.walking = null; this.calm = reduced();
@@ -224,9 +224,14 @@ export class CrawlerEngine {
     if (this.dead) return;
     const c = document.createElement("canvas"); c.width = b.w; c.height = b.h;
     c.getContext("2d").drawImage(source, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
-    f.spr = { lit: c, white: overlay(c, "#fff"), stone: overlay(c, "rgba(120,120,125,.72)"), ice: overlay(c, "rgba(120,200,255,.55)"), ratio: b.w / b.h };
+    f.spr = { lit: c, white: overlay(c, "#fff"), stone: overlay(c, "rgba(120,120,125,.72)"), ice: overlay(c, "rgba(120,200,255,.55)"), gold: overlay(c, "#ffd76a"), ratio: b.w / b.h };
   }
-  setAim(id) { this.aim = id || null; }
+  /* MIRA (2026-11-07): niente riquadri. I nemici colpibili hanno un contorno dorato sulla sagoma che
+     pulsa piano e una freccetta che ondeggia; quello sotto il dito si accende; il bersaglio scelto ha il
+     mirino a quattro angoli che si stringe. Tutto disegnato qui, morbido (niente scatti). */
+  setAim(id) { if ((id || null) !== this.aim) { this.aim = id || null; this.aimT = performance.now(); } }
+  setPickable(ids) { this.pickable = new Set(ids || []); }
+  setHover(id) { this.hover = id || null; }
   bindAnchor(id, el) { if (el) this.anchors.set(id, el); else this.anchors.delete(id); }
 
   /* ── colpi ── */
@@ -335,31 +340,74 @@ export class CrawlerEngine {
       f.box = { x: cx - sw / 2, y: foot - sh + bob, w: sw, h: sh, cx, foot };
     }
   }
-  drawFoes() {
+  // le colonne dello sprite non coperte da un pilastro; ox/oy = spostamento (per il contorno)
+  drawSpans(src, b, dz, ox = 0, oy = 0) {
     const { ctx, zbuf } = this;
+    const x0 = Math.max(0, Math.floor(b.x)), x1 = Math.min(W, Math.ceil(b.x + b.w));
+    let s = -1;
+    for (let x = x0; x <= x1; x++) {
+      const vis = x < x1 && zbuf[x] >= dz;
+      if (vis && s < 0) s = x;
+      if (!vis && s >= 0) {
+        const a = Math.max(s, b.x), e = Math.min(x, b.x + b.w);
+        const u0 = ((a - b.x) / b.w) * src.width, u1 = ((e - b.x) / b.w) * src.width;
+        ctx.drawImage(src, u0, 0, u1 - u0, src.height, a + ox, b.y + oy, e - a, b.h);
+        s = -1;
+      }
+    }
+  }
+  drawFoes(t) {
+    const { ctx } = this, px = 1 / FS;
     for (const { f, dz } of this.order) {
       if (!f.spr || !f.box || f.die >= 1) continue;
       const b = f.box, src = f.flash > 0 ? f.spr.white : f.state === "stone" ? f.spr.stone : f.state === "ice" ? f.spr.ice : f.spr.lit;
-      ctx.globalAlpha = (f.die > 0 ? Math.round((1 - f.die) * 4) / 4 : 1) * 0.42;
+      const fade = f.die > 0 ? Math.round((1 - f.die) * 4) / 4 : 1;
+      ctx.globalAlpha = fade * 0.42;
       ctx.fillStyle = "#000"; // ombra piatta a terra
       const sw = Math.round(b.w * 0.8), sh = Math.max(2, Math.round((SC / dz) * 0.07));
       ctx.fillRect(Math.round(b.cx - sw / 2), Math.round(b.foot - sh / 2), sw, sh);
-      ctx.globalAlpha = f.die > 0 ? Math.round((1 - f.die) * 4) / 4 : 1;
-      // solo le colonne non coperte da un pilastro
-      const x0 = Math.max(0, Math.floor(b.x)), x1 = Math.min(W, Math.ceil(b.x + b.w));
-      let s = -1;
-      for (let x = x0; x <= x1; x++) {
-        const vis = x < x1 && zbuf[x] >= dz;
-        if (vis && s < 0) s = x;
-        if (!vis && s >= 0) {
-          const a = Math.max(s, b.x), e = Math.min(x, b.x + b.w);
-          const u0 = ((a - b.x) / b.w) * src.width, u1 = ((e - b.x) / b.w) * src.width;
-          ctx.drawImage(src, u0, 0, u1 - u0, src.height, a, b.y, e - a, b.h);
-          s = -1;
-        }
+      // contorno dorato: colpibile (pulsa piano), sotto il dito o bersaglio scelto (pieno)
+      const alive = f.hp > 0 && !f.die, aimed = alive && f.id === this.aim, hot = alive && f.id === this.hover && this.pickable.has(f.id);
+      if (alive && (aimed || this.pickable.has(f.id))) {
+        const pulse = this.calm ? 0.8 : 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t / 260));
+        const glow = aimed || hot ? 1 : pulse, thick = aimed || hot ? 2.2 : 1.6;
+        ctx.globalAlpha = fade * glow;
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) this.drawSpans(f.spr.gold, b, dz, dx * thick * px * FS / 2, dy * thick * px * FS / 2);
       }
+      ctx.globalAlpha = fade;
+      this.drawSpans(src, b, dz);
+      if (hot && !aimed) { ctx.globalAlpha = 0.18; this.drawSpans(f.spr.white, b, dz); }
     }
     ctx.globalAlpha = 1;
+  }
+  // freccetta che ondeggia sopra i colpibili; mirino a quattro angoli sul bersaglio scelto
+  drawAim(t) {
+    if (this.walking) return;
+    const { ctx } = this;
+    for (const f of this.foes) {
+      if (!f.box || f.hp <= 0 || f.die) continue;
+      const b = f.box, aimed = f.id === this.aim, pick = this.pickable.has(f.id);
+      if (pick && !aimed) {
+        const hot = f.id === this.hover, bob = this.calm ? 0 : Math.sin(t / 220 + f.ph * 4) * 2.2, cx = b.cx, y = Math.max(6, b.y - 14) + bob, s = hot ? 1.25 : 1;
+        ctx.fillStyle = "#1a1206"; ctx.beginPath(); ctx.moveTo(cx - 5.2 * s, y - 1); ctx.lineTo(cx + 5.2 * s, y - 1); ctx.lineTo(cx, y + 6.4 * s); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = hot ? "#fff3c4" : "#ffd76a"; ctx.beginPath(); ctx.moveTo(cx - 4 * s, y); ctx.lineTo(cx + 4 * s, y); ctx.lineTo(cx, y + 5 * s); ctx.closePath(); ctx.fill();
+      }
+      if (aimed) {
+        const k = this.calm ? 1 : clamp((performance.now() - this.aimT) / 260, 0, 1), e = 1 - (1 - k) ** 3, breathe = this.calm ? 0 : Math.sin(t / 300) * 1.2;
+        const pad = 10 * (1 - e) + 3 + breathe, x0 = b.x - pad, y0 = b.y - pad, x1 = b.x + b.w + pad, y1 = b.foot + pad * 0.6, L = Math.max(5, Math.min(b.w, b.h) * 0.28);
+        ctx.globalAlpha = e;
+        ctx.lineCap = "square";
+        for (const [lw, col] of [[3.2, "#1a1206"], [1.6, "#fff3c4"]]) {
+          ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.beginPath();
+          ctx.moveTo(x0, y0 + L); ctx.lineTo(x0, y0); ctx.lineTo(x0 + L, y0);
+          ctx.moveTo(x1 - L, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1, y0 + L);
+          ctx.moveTo(x0, y1 - L); ctx.lineTo(x0, y1); ctx.lineTo(x0 + L, y1);
+          ctx.moveTo(x1 - L, y1); ctx.lineTo(x1, y1); ctx.lineTo(x1, y1 - L);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
   }
   drawTorches() {
     const { ctx, cam, zbuf } = this, col = hexRgb(this.T.flame);
@@ -381,10 +429,6 @@ export class CrawlerEngine {
       const w = clamp(Math.round(f.box.w * 0.62), 18, 52), x = Math.round(f.box.cx - w / 2), y = Math.max(3, Math.round(f.box.y) - 6);
       ctx.fillStyle = "#000"; ctx.fillRect(x - 1, y - 1, w + 2, 5);
       ctx.fillStyle = f.hp / f.max < 0.3 ? "#ff7a5c" : "#c8303a"; ctx.fillRect(x, y, Math.max(1, Math.round((w * f.hp) / Math.max(1, f.max))), 3);
-      if (f.id === this.aim) {
-        ctx.fillStyle = "#f2c14e"; const ax = Math.round(f.box.cx), ay = Math.max(0, y - 8);
-        for (let i = 0; i < 4; i++) ctx.fillRect(ax - 3 + i, ay + i, 7 - i * 2, 1);
-      }
     }
   }
   drawHands() {
@@ -458,7 +502,7 @@ export class CrawlerEngine {
     ctx.setTransform(FS, 0, 0, FS, 0, 0);
     ctx.clearRect(0, 0, W, H);
     this.layoutFoes(t);
-    this.drawTorches(); this.drawFoes(); this.drawBars(); this.drawHands();
+    this.drawTorches(); this.drawFoes(t); this.drawBars(); this.drawAim(t); this.drawHands();
     if (this.red > 0) { ctx.fillStyle = `rgba(190,20,20,${this.red.toFixed(2)})`; ctx.fillRect(0, 0, W, H); this.red = Math.max(0, this.red - dt * 0.0016); }
     this.syncAnchors();
   }

@@ -71,13 +71,16 @@ function usePress(id, selectable, onPick, onInspect) {
   };
 }
 
-function FoeAnchor({ f, round, selectable, picked, onPick, onInspect, bind }) {
+function FoeAnchor({ f, round, selectable, picked, onPick, onInspect, bind, onHover }) {
   const press = usePress(f.id, selectable, onPick, onInspect);
+  const enter = () => onHover(f.id), leave = () => onHover(null);
   const pips = f.hp > 0 ? pipsOf(f, round) : [];
   return (
     <button type="button" ref={(el) => bind(f.id, el)} className={`cw-foe${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}${f.hp <= 0 ? " is-dead" : ""}`}
       data-vfx-target={vfxKey(f.id)} aria-disabled={!selectable} tabIndex={f.hp > 0 ? 0 : -1}
-      aria-label={`${f.name}${f.hp <= 0 ? ", sconfitto" : ""} (tieni premuto per la scheda)`} {...press}>
+      aria-label={`${f.name}${f.hp <= 0 ? ", sconfitto" : ""} (tieni premuto per la scheda)`} {...press}
+      onPointerEnter={enter} onFocus={enter} onBlur={leave}
+      onPointerLeave={(e) => { leave(); press.onPointerLeave(e); }}>
       {!!pips.length && <StatusPips className="cw-pips" max={6} items={pips} />}
     </button>
   );
@@ -215,6 +218,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     eng.setFoes(foeList);
   }, [eng, foeKey, run?.floor, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { eng?.setAim(aiming?.id); }, [eng, aiming]);
+  const hover = (id) => engRef.current?.setHover(id);
 
   /* ── coda della lotta: dado → effetto → danno, una riga alla volta (come SegreteBattle) ── */
   const timers = useRef([]);
@@ -345,6 +349,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   const itk = chosenItem ? itemTarget(chosenItem) : null;
   const tk = chosenItem ? (itk === "downed" ? "ally" : itk) : chosen ? targetKind(chosen) : null;
+  eng?.setPickable(tk === "foe" && !aiming ? run.foes.filter((x) => shown(x).hp > 0).map((x) => x.id) : []);
   const pendingRows = shownSeq == null ? [] : run.log.filter((l) => l.i > shownSeq);
   const playing = pendingRows.length > 0;
   const heroIdSet = new Set((run.heroes || []).map((h) => h.id));
@@ -374,7 +379,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
         {me && GLOVES[gloveOf(me.cls)]?.focus && <span className="cw-hand" data-vfx-target={HAND_KEY} aria-hidden="true" />}
         {!walking && run.foes.map((f) => {
           const c = shown(f);
-          return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
+          return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onHover={hover} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
         })}
       </div>
 

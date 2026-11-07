@@ -10,10 +10,9 @@
 .cw-stage .cw-fg { position: absolute; inset: 0; height: 100%; pointer-events: none; }
 .cw-foe { position: absolute; padding: 0; border: 0; background: none; color: inherit; cursor: default; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
 .cw-foe.is-dead { pointer-events: none; }
-.cw-foe.is-pick { cursor: crosshair; outline: 2px dashed #f2c14e; outline-offset: 1px; animation: cw-pick 1s steps(2) infinite; }
-.cw-foe.is-picked { outline: 2px solid #fff; }
-.cw-foe:focus-visible { outline: 2px solid #f2c14e; }
-@keyframes cw-pick { 50% { outline-color: rgba(242,193,78,.25); } }
+/* la mira la disegna il motore sulla sagoma (contorno, freccetta, mirino): qui niente riquadri */
+.cw-foe { outline: none; }
+.cw-foe.is-pick { cursor: pointer; }
 .cw-foe .cw-pips { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); display: flex; flex-wrap: wrap-reverse; justify-content: center; width: max-content; max-width: 150px; line-height: 1.1; }
 
 .cw .sgb-log { flex: none; }
@@ -44,6 +43,6 @@
 .cw-bar i { display: block; height: 100%; background: #5fd16b; transition: width .25s steps(4); }
 .cw-bar i.low { background: #e0624f; }
 .cw-pm small { color: #c9bfad; font-size: .68rem; white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) { .cw-foe.is-pick { animation: none; } }
+
 /* da qui partono gli incantesimi di chi tiene il focus nella sinistra */
 .cw-hand { position: absolute; left: 8%; top: 64%; width: 20%; height: 16%; pointer-events: none; }
