@@ -31,7 +31,6 @@ import "./SegreteCrawler.css";
 
 const ROW_GAP_MS = 900;
 const DICE_GAP_MS = 250;
-const MELEE = new Set(["slash", "smash", "thrust", "punch"]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vfxKey = (id) => `seg-${id}`;
 let callable = null;
@@ -252,7 +251,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
           targets.forEach((id) => { if ((l.nums?.[id] ?? -1) < 0) { e?.flash(id); if (id === myId) e?.hurt(); } });
         };
         // chi agisce si muove: le tue armi, oppure il mostro che si fa avanti
-        if (l.fx && who === myId) { if (MELEE.has(l.fx)) e?.swing(); else e?.cast(); }
+        if (l.fx && who === myId) e?.attack(l.fx);
         else if (l.fx && who && String(who).startsWith("f")) e?.lunge(who);
         if (l.fx && targets.length) {
           await new Promise((res) => {

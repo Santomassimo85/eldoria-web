@@ -12,6 +12,48 @@ import { TILE_THEMES, proceduralHands, tileFromImage } from "./crawlerArt";
 export const CW_W = 264, CW_H = 255, CW_FG = 3;
 const W = CW_W, H = CW_H, FS = CW_FG, HZ = Math.round(H * 0.4), PL = 0.78, SC = W / 2 / PL, WALLH = 1.9, CAM = 0.56, P = 10, BANDS = 7;
 const STEP_MS = 215;
+/* COLPI IN PRIMA PERSONA (2026-11-07): la mano destra con l'arma si stacca dalla sinistra (lo sprite ha
+   il centro vuoto) e fa il suo movimento; la sinistra dà un piccolo contraccolpo. Nessun disegno nuovo. */
+const MOVES = {
+  slash: { ms: 430, R: [[0, 0, 0, 0, 1], [0.32, 0.3, 16, -16, 1], [0.5, -0.62, -46, 6, 1.04], [0.68, -0.66, -48, 8, 1.04], [1, 0, 0, 0, 1]] },
+  smash: { ms: 480, R: [[0, 0, 0, 0, 1], [0.35, 0.12, 6, -34, 1], [0.52, -0.4, -24, 26, 1.08], [0.7, -0.42, -26, 28, 1.08], [1, 0, 0, 0, 1]] },
+  thrust: { ms: 400, R: [[0, 0, 0, 0, 1], [0.3, 0.05, 8, 14, 0.94], [0.5, -0.12, -48, -34, 1.28], [0.66, -0.12, -48, -34, 1.28], [1, 0, 0, 0, 1]] },
+  punch: { ms: 340, R: [[0, 0, 0, 0, 1], [0.25, 0, 10, 12, 0.95], [0.42, -0.05, -70, -40, 1.38], [0.56, -0.05, -70, -40, 1.38], [1, 0, 0, 0, 1]] },
+  shoot: { ms: 520, R: [[0, 0, 0, 0, 1], [0.45, 0, 0, 6, 0.97], [0.55, 0, 0, -8, 1.04], [0.75, 0, 0, -3, 1.01], [1, 0, 0, 0, 1]] },
+  cast: { ms: 520, R: [[0, 0, 0, 0, 1], [0.4, 0.04, 0, -12, 1.02], [0.6, 0.04, 0, -12, 1.02], [1, 0, 0, 0, 1]] },
+};
+const LEFT = {
+  melee: [[0, 0, 0, 0, 1], [0.5, 0.05, 6, 10, 1], [1, 0, 0, 0, 1]],
+  shield: [[0, 0, 0, 0, 1], [0.5, -0.04, 6, -8, 1.02], [1, 0, 0, 0, 1]],
+  cast: [[0, 0, 0, 0, 1], [0.4, -0.05, 10, -22, 1.06], [0.65, -0.05, 10, -22, 1.06], [1, 0, 0, 0, 1]],
+  still: [[0, 0, 0, 0, 1], [1, 0, 0, 0, 1]],
+};
+const RANGED = new Set(["arco_lungo", "balestra_l"]);
+// valore della curva al tempo k (tra un fotogramma e l'altro si passa in modo morbido)
+function curve(keys, k) {
+  let i = 0;
+  while (i < keys.length - 2 && k > keys[i + 1][0]) i++;
+  const a = keys[i], b = keys[i + 1], t = clamp((k - a[0]) / Math.max(0.001, b[0] - a[0]), 0, 1), e = t * t * (3 - 2 * t);
+  return { rot: a[1] + (b[1] - a[1]) * e, dx: a[2] + (b[2] - a[2]) * e, dy: a[3] + (b[3] - a[3]) * e, s: a[4] + (b[4] - a[4]) * e };
+}
+const NO_MOVE = { rot: 0, dx: 0, dy: 0, s: 1 };
+// dove separare le due mani: la colonna più vuota nella fascia centrale dello sprite
+function splitOf(img) {
+  try {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, c = document.createElement("canvas"); c.width = w; c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, w, h).data;
+    let best = -1, min = Infinity;
+    for (let x = Math.round(w * 0.3); x <= Math.round(w * 0.62); x++) {
+      let n = 0;
+      for (let y = 0; y < h; y++) if (d[(y * w + x) * 4 + 3] > 40) n++;
+      if (n < min) { min = n; best = x; }
+    }
+    if (best < 0 || min > h * 0.02) return null;
+    const part = (x0, x1) => { const p = document.createElement("canvas"); p.width = x1 - x0; p.height = h; p.getContext("2d").drawImage(img, x0, 0, x1 - x0, h, 0, 0, x1 - x0, h); return p; };
+    return { x: best, L: part(0, best), R: part(best, w) };
+  } catch { return null; }
+}
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hexRgb = (c) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -115,7 +157,7 @@ export class CrawlerEngine {
     this.base = 0; this.red = 0; this.last = 0; this.dirty = true;
     this.foes = []; this.byId = new Map(); this.aim = null; this.anchors = new Map(); this.order = [];
     this.hands = { R: null, L: null }; this.handKey = "";
-    this.pose = { swing: 0, cast: 0 };
+    this.act = null; this.ranged = false; this.offKind = "hand";
     this.anims = []; this.walking = null; this.calm = reduced();
     this.setTheme("segrete");
     this.loop = this.loop.bind(this);
@@ -148,7 +190,9 @@ export class CrawlerEngine {
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
     const [m, o, p] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl)]);
     if (this.handKey !== key || this.dead) return;
-    if (p) { this.hands = { pair: p, cutR: topRow(p) }; return; }
+    this.ranged = RANGED.has(spec.main);
+    this.offKind = spec.off;
+    if (p) { this.hands = { pair: p, cutR: topRow(p), split: spec.off === "none" ? null : splitOf(p) }; return; }
     if (m) { out.R = m; out.big = true; out.cutR = topRow(m); if (spec.off === "mirror") out.L = m; }
     if (o) { out.L = o; out.mirrorL = false; out.big = true; } // l'IA disegna già il braccio sinistro
     this.hands = out;
@@ -192,8 +236,24 @@ export class CrawlerEngine {
     if (this.calm) ms = Math.min(ms, 60);
     return new Promise((res) => { this.anims.push({ t0: performance.now(), ms, fn, res }); setTimeout(() => res(), ms + 400); });
   }
-  swing() { return this.anim(300, (k) => { this.pose.swing = k >= 1 ? 0 : k; }); }
-  cast() { return this.anim(360, (k) => { this.pose.cast = k >= 1 ? 0 : Math.sin(k * Math.PI); }); }
+  // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
+  attack(fx) {
+    const kind = MOVES[fx] ? fx : fx === "arrow" ? (this.ranged ? "shoot" : "cast") : "cast";
+    const ms = MOVES[kind].ms;
+    this.act = { kind, t0: performance.now(), ms };
+    return new Promise((res) => setTimeout(res, this.calm ? 60 : ms));
+  }
+  swing(fx = "slash") { return this.attack(fx); }
+  cast() { return this.attack("cast"); }
+  // movimento del momento per la destra (con l'arma) e per la sinistra
+  moveNow() {
+    const a = this.act;
+    if (!a || this.calm) return { R: NO_MOVE, L: NO_MOVE };
+    const k = (performance.now() - a.t0) / a.ms;
+    if (k >= 1) { this.act = null; return { R: NO_MOVE, L: NO_MOVE }; }
+    const left = a.kind === "cast" ? LEFT.cast : this.offKind === "shield" ? LEFT.shield : a.kind === "shoot" ? LEFT.still : LEFT.melee;
+    return { R: curve(MOVES[a.kind].R, k), L: curve(left, k) };
+  }
   async lunge(id) {
     const f = this.byId.get(id); if (!f) return;
     await this.anim(190, (k) => { f.lunge = k; });
@@ -328,38 +388,47 @@ export class CrawlerEngine {
     }
   }
   drawHands() {
-    const { ctx, hands, pose, cam } = this, k = W / 240, b = Math.round(cam.bob * 1.1);
-    // stessa misura per tutte e due le mani: i disegni sono fatti in scala uguale
-    const size = H * 0.66;
-    const dims = (s) => { const w = s.naturalWidth || s.width, h = s.naturalHeight || s.height; return [size * (w / h), size]; };
+    const { ctx, hands, cam } = this, k = W / 240, b = Math.round(cam.bob * 1.1);
+    const mv = this.moveNow();
+    // disegna img nel riquadro (x, y, w, h) con il movimento m, che ruota attorno a (px, py)
+    const part = (img, x, y, w, h, m, px, py, sx = 0, sw = null) => {
+      ctx.save();
+      ctx.translate(px + m.dx * k, py + m.dy * k);
+      ctx.rotate(m.rot);
+      ctx.scale(m.s, m.s);
+      ctx.translate(-px, -py);
+      if (sw == null) ctx.drawImage(img, x, y, w, h);
+      else ctx.drawImage(img, sx, 0, sw, img.height, x, y, w, h);
+      ctx.restore();
+    };
     if (hands.pair) { // un'immagine sola con le due mani, larga quanto la scena
       const iw = hands.pair.naturalWidth || hands.pair.width, ih = hands.pair.naturalHeight || hands.pair.height;
-      const grow = hands.cutR ? Math.max(1, (H + 10) / ((W * ih) / iw)) : 1, w = W * grow, h = ((W * ih) / iw) * grow, a = Math.sin(pose.swing * Math.PI);
-      ctx.save();
-      ctx.translate(W / 2 + W * 0.3, H + 4 + b - pose.cast * 12);
-      ctx.rotate(-a * 0.32);
-      ctx.translate(-w / 2 - W * 0.3 - a * 30 * k, -h - a * 22 * k);
-      ctx.drawImage(hands.pair, (W - w) / 2, 0, w, h);
-      ctx.restore();
+      const grow = hands.cutR ? Math.max(1, (H + 10) / ((W * ih) / iw)) : 1, w = W * grow, h = ((W * ih) / iw) * grow;
+      const x0 = (W - w) / 2, y0 = H + 4 + b - h, sc = w / iw;
+      if (hands.split) {
+        const sp = hands.split, wl = sp.x * sc;
+        part(sp.L, x0, y0, wl, h, mv.L, x0 + wl * 0.4, y0 + h);
+        part(sp.R, x0 + wl, y0, w - wl, h, mv.R, x0 + wl + (w - wl) * 0.7, y0 + h); // perno: il polso, in basso
+      } else {
+        part(hands.pair, x0, y0, w, h, mv.R, W / 2 + W * 0.15, y0 + h);
+      }
       return;
     }
+    // riserva disegnata dal codice: due mani separate
+    const size = H * 0.66;
+    const dims = (s) => { const w = s.naturalWidth || s.width, h = s.naturalHeight || s.height; return [size * (w / h), size]; };
     if (hands.L) {
-      const [w, h] = dims(hands.L);
+      const [w, h] = dims(hands.L), y = H - h + 4 + b;
       ctx.save();
-      ctx.translate(0, H - h + 4 + b - pose.cast * 16);
+      ctx.translate(mv.L.dx * k, mv.L.dy * k);
       if (hands.mirrorL) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-      ctx.drawImage(hands.L, 0, 0, w, h);
+      ctx.drawImage(hands.L, 0, y, w, h);
       ctx.restore();
     }
     if (hands.R) {
       // arma tagliata dall'IA in alto: più grande, il bordo tagliato finisce fuori dallo schermo
-      const [w0, h0] = dims(hands.R), grow = hands.cutR ? (H + 10) / h0 : 1, w = w0 * grow, h = h0 * grow, a = Math.sin(pose.swing * Math.PI);
-      ctx.save();
-      ctx.translate(W, H + 4 + b - pose.cast * 12);
-      ctx.rotate(-a * 0.75);
-      ctx.translate(-w - a * 46 * k, -h - a * 30 * k);
-      ctx.drawImage(hands.R, 0, 0, w, h);
-      ctx.restore();
+      const [w0, h0] = dims(hands.R), grow = hands.cutR ? (H + 10) / h0 : 1, w = w0 * grow, h = h0 * grow;
+      part(hands.R, W - w, H + 4 + b - h, w, h, mv.R, W - w * 0.2, H + 4 + b);
     }
   }
   syncAnchors() {
