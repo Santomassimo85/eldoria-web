@@ -18,8 +18,10 @@ import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
 import { GLOVES, gloveOf, handSpec, handDoc, pairKey } from "../fx/crawlerArt";
-// colpi d'arma: questi partono dall'arma, non dalla mano del focus
-const WEAPON_FX = new Set(["slash", "smash", "thrust", "punch", "arrow"]);
+// colpo d'arma? Le righe nuove lo dicono (w: 1, dal server); per le vecchie: forme da mischia, o freccia
+// fisica (balestra). Freccia Acida e gli altri incantesimi hanno un elemento: partono dal focus.
+const MELEE_FX = new Set(["slash", "smash", "thrust", "punch"]);
+const isWeaponRow = (l) => (l.w != null ? !!l.w : MELEE_FX.has(l.fx) || (l.fx === "arrow" && (l.el || "physical") === "physical"));
 import { bagOf, battleItem, itemTarget } from "../data/segreteItems";
 import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
@@ -260,7 +262,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
           targets.forEach((id) => { if ((l.nums?.[id] ?? -1) < 0) { e?.flash(id); if (id === myId) e?.hurt(); } });
         };
         // chi agisce si muove: le tue armi, oppure il mostro che si fa avanti
-        if (l.fx && who === myId) e?.attack(l.fx);
+        if (l.fx && who === myId) e?.attack(isWeaponRow(l) ? l.fx : "cast");
         else if (l.fx && who && String(who).startsWith("f")) e?.lunge(who);
         if (l.fx && targets.length) {
           await new Promise((res) => {
@@ -270,7 +272,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
             setVfxMsgs((m) => [...m.slice(-20), {
               id: `seg-${room.id}-${startKey}-${l.i}`, effect: l.fx, effectEl: l.el,
               effectTargets: targets.map(vfxKey),
-              effectFrom: focusHand && who === myId && !WEAPON_FX.has(l.fx) ? HAND_KEY : l.from ? vfxKey(l.from) : undefined,
+              effectFrom: focusHand && who === myId && !isWeaponRow(l) ? HAND_KEY : l.from ? vfxKey(l.from) : undefined,
               effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
               effectNums: nums,
               onImpact: (ms) => timers.current.push(setTimeout(finish, ms + 40)),

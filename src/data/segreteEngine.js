@@ -257,7 +257,7 @@ function heroVfx(a) {
   const pick = [].concat(ACTION_FX[a.id] || []);
   if (a.kind === "weapon") {
     const el = a.riderDmg && elOf(a.riderDmg) !== "physical" ? elOf(a.riderDmg) : elOf(a.dmg);
-    return { fx: pick[0] || (a.ranged || RANGED.has(a.id) ? "arrow" : a.vfx || WEAPON_FX[a.dmg] || "slash"), el };
+    return { fx: pick[0] || (a.ranged || RANGED.has(a.id) ? "arrow" : a.vfx || WEAPON_FX[a.dmg] || "slash"), el, w: 1 };
   }
   if (a.kind === "spell" || a.kind === "missile") return { fx: pick[0] || "bolt", el: pick[1] || elOf(a.dmg) };
   if (a.kind === "save") return { fx: pick[0] || (a.area ? "aoe" : "bolt"), el: pick[1] || elOf(a.dmg) };
