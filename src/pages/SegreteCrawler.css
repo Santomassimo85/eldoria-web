@@ -50,7 +50,7 @@
 /* i compagni, compatti, in fondo */
 .cw-party { flex: none; display: grid; grid-template-columns: repeat(var(--cw-n, 3), minmax(0, 1fr)); gap: 3px; padding: 3px 3px calc(3px + env(safe-area-inset-bottom, 0px)); background: #0d0a0c; border-top: 2px solid #000; }
 .cw-pm { position: relative; min-width: 0; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 5px; padding: 3px 4px; border: 0; background: #1b171c; color: #f3ead8; font: 12px var(--sgb-read, system-ui, sans-serif); text-align: left; cursor: default; touch-action: manipulation; }
-.cw-pm-txt { display: grid; gap: 1px; min-width: 0; }
+.cw-pm-txt { display: grid; gap: 1px; min-width: 0; text-align: center; }
 .cw-pm-st { position: absolute; top: -2px; right: 2px; }
 .cw-pm .cw-pips { display: flex; gap: 1px; line-height: 1; transform: scale(.7); transform-origin: top right; }
 .cw-face { position: relative; width: 30px; height: 30px; display: grid; place-items: center; overflow: visible; border: 2px solid var(--cls, #888); background: #17131a; }
