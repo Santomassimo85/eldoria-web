@@ -375,23 +375,25 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
 
 const CRAWLER_KEY = "sgr_crawler";
 const readCrawler = () => { try { return localStorage.getItem(CRAWLER_KEY) !== "0"; } catch { return true; } };
-// la lotta: classica per tutti; il Master (o tutti con CRAWLER_PUBLIC) vede quella in prima persona
+/* la lotta (2026-11-07): con CRAWLER_PUBLIC tutti vedono quella in prima persona, senza scelta.
+   La classica (SegreteBattle) resta nel codice, messa da parte: la può richiamare solo il Master. */
 function BattleView({ room, uid, master, onReopen, busy }) {
-  const [on, setOn] = useState(readCrawler);
+  const [pref, setPref] = useState(readCrawler);
   const can = master || CRAWLER_PUBLIC;
-  const flip = () => { const v = !on; setOn(v); try { localStorage.setItem(CRAWLER_KEY, v ? "1" : "0"); } catch { /* niente */ } };
+  const on = can && (master ? pref : true);
+  const flip = () => { const v = !pref; setPref(v); try { localStorage.setItem(CRAWLER_KEY, v ? "1" : "0"); } catch { /* niente */ } };
   const reopen = master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={onReopen}>↺ Riporta in stanza (Master)</button>;
-  if (can && on) {
+  if (on) {
     return (
       <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}>
-        <SegreteCrawler room={room} uid={uid} tools={<div className="cw-tools"><button type="button" onClick={flip}>🖼 Passa alla vista classica</button>{reopen}</div>} />
+        <SegreteCrawler room={room} uid={uid} tools={master ? <div className="cw-tools"><button type="button" onClick={flip}>🖼 Vista classica (solo Master)</button>{reopen}</div> : null} />
       </Suspense>
     );
   }
   return (
     <>
       <SegreteBattle room={room} uid={uid} />
-      {(can || master) && (
+      {master && (
         <div className="sgr-room-actions">
           {can && <button type="button" className="sgr-btn sgr-btn--ghost" onClick={flip}>🎮 Passa alla prima persona</button>}
           {reopen}
