@@ -153,6 +153,7 @@ export default function SegreteBattle({ room, uid }) {
   useEffect(() => onSnapshot(doc(db, "dungeon_meta", "known"), (snap) => setKnown(snap.exists() ? snap.data().sources || {} : {}), () => {}), []);
   const initAsked = useRef("");
   const seenSeq = useRef(0);
+  const seenKey = useRef(null); // avvio della partita a cui si riferisce seenSeq
   const timeoutAsked = useRef("");
 
   useEffect(() => { preloadDice3D(); }, []);
@@ -195,9 +196,9 @@ export default function SegreteBattle({ room, uid }) {
   const queued = useRef(0); // righe ancora da giocare: finché > 0 le azioni restano nascoste
   const [, setAnimating] = useState(false); // rinfresca la vista a fine coda
   useEffect(() => {
-    if (!run?.log?.length) return;
+    if (!run?.log?.length || run.startKey !== startKey) return;
     const last = run.log[run.log.length - 1].i;
-    if (!seenSeq.current) { seenSeq.current = last; setShownSeq(last); return; }
+    if (seenKey.current !== startKey) { seenKey.current = startKey; seenSeq.current = last; setShownSeq(last); return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
     if (!fresh.length) return;
     seenSeq.current = last;
@@ -232,7 +233,7 @@ export default function SegreteBattle({ room, uid }) {
             const finish = () => { if (done) return; done = true; land(); res(); };
             timers.current.push(setTimeout(finish, 3000)); // l'effetto non è partito: si va avanti lo stesso
             setVfxMsgs((m) => [...m.slice(-20), {
-              id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
+              id: `seg-${room.id}-${startKey}-${l.i}`, effect: l.fx, effectEl: l.el,
               effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
               effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
               effectNums: nums,
@@ -258,7 +259,7 @@ export default function SegreteBattle({ room, uid }) {
     // rete di sicurezza per i tasti: mai bloccati per più di così
     timers.current.push(setTimeout(() => { if (queued.current) { queued.current = 0; setAnimating(false); } }, 20000 + fresh.length * 5000));
     return undefined;
-  }, [run?.log, room.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [run?.log, room.id, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Turni a fasi: tutti gli eroi insieme, poi i mostri. pending = eroi vivi che devono ancora agire.
   const fighting = run?.status === "fight";
@@ -271,7 +272,7 @@ export default function SegreteBattle({ room, uid }) {
   // tempo scaduto: chiunque del gruppo fa difendere chi è sparito (una volta per turno)
   useEffect(() => {
     if (!pending.length || afkLeft == null || afkLeft > 0) return;
-    const k = `${run.floor}:${run.round}`;
+    const k = `${startKey}:${run.floor}:${run.round}`;
     if (timeoutAsked.current === k) return;
     timeoutAsked.current = k;
     segreteDo({ op: "timeout", roomId: room.id }).catch(() => {});

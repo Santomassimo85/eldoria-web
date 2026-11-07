@@ -121,8 +121,10 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const engRef = useRef(null);
   const initAsked = useRef("");
   const seenSeq = useRef(0);
+  const seenKey = useRef(null); // avvio della partita a cui si riferisce seenSeq
   const timeoutAsked = useRef("");
   const floorSeen = useRef(null);
+  const floorKey = useRef(null);
 
   useEffect(() => onSnapshot(doc(db, "dungeon_meta", "known"), (snap) => setKnown(snap.exists() ? snap.data().sources || {} : {}), () => {}), []);
   useEffect(() => { preloadDice3D(); }, []);
@@ -195,7 +197,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const foeKey = JSON.stringify(foeList);
   useEffect(() => {
     if (!eng || !run) return;
-    if (floorSeen.current == null) { floorSeen.current = run.floor; eng.setFoes(foeList); return; }
+    if (run.startKey !== startKey) return;
+    if (floorSeen.current == null || floorKey.current !== startKey) { floorKey.current = startKey; floorSeen.current = run.floor; eng.setFoes(foeList); return; }
     if (run.floor !== floorSeen.current) {
       floorSeen.current = run.floor;
       setWalking(true);
@@ -203,7 +206,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
       return;
     }
     eng.setFoes(foeList);
-  }, [eng, foeKey, run?.floor]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [eng, foeKey, run?.floor, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { eng?.setAim(aiming?.id); }, [eng, aiming]);
 
   /* ── coda della lotta: dado → effetto → danno, una riga alla volta (come SegreteBattle) ── */
@@ -215,9 +218,9 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const queued = useRef(0);
   const [, setAnimating] = useState(false);
   useEffect(() => {
-    if (!run?.log?.length) return;
+    if (!run?.log?.length || run.startKey !== startKey) return;
     const last = run.log[run.log.length - 1].i;
-    if (!seenSeq.current) { seenSeq.current = last; setShownSeq(last); return; }
+    if (seenKey.current !== startKey) { seenKey.current = startKey; seenSeq.current = last; setShownSeq(last); return; }
     const fresh = run.log.filter((l) => l.i > seenSeq.current);
     if (!fresh.length) return;
     seenSeq.current = last;
@@ -259,7 +262,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
             const finish = () => { if (done) return; done = true; land(); res(); };
             timers.current.push(setTimeout(finish, 3000));
             setVfxMsgs((m) => [...m.slice(-20), {
-              id: `seg-${room.id}-${l.i}`, effect: l.fx, effectEl: l.el,
+              id: `seg-${room.id}-${startKey}-${l.i}`, effect: l.fx, effectEl: l.el,
               effectTargets: targets.map(vfxKey), effectFrom: l.from ? vfxKey(l.from) : undefined,
               effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
               effectNums: nums,
@@ -282,7 +285,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     }).catch(() => { queued.current = 0; setAnimating(false); });
     timers.current.push(setTimeout(() => { if (queued.current) { queued.current = 0; setAnimating(false); } }, 20000 + fresh.length * 5000));
     return undefined;
-  }, [run?.log, room.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [run?.log, room.id, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fighting = run?.status === "fight";
   const acted = run?.acted || {};
@@ -292,7 +295,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   useEffect(() => {
     if (!pending.length || afkLeft == null || afkLeft > 0) return;
-    const k = `${run.floor}:${run.round}`;
+    const k = `${startKey}:${run.floor}:${run.round}`;
     if (timeoutAsked.current === k) return;
     timeoutAsked.current = k;
     segreteDo({ op: "timeout", roomId: room.id }).catch(() => {});
