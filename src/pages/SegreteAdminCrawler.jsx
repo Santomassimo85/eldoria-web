@@ -162,7 +162,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
 
       <div className="sga-card">
         <h3 className="sga-h3">Armi in mano <small>{HANDS.length - handsMissing.length} su {HANDS.length} · viste da chi le impugna</small></h3>
-        <p className="sga-hint">Una voce per arma. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG col fondo trasparente, col braccio che entra dall'angolo in basso a destra (scudo e mano da incantatore: in basso a sinistra).</p>
+        <p className="sga-hint">Una voce per arma. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG col fondo trasparente, col braccio che entra dall'angolo in basso a destra (mano da incantatore: in basso a sinistra). Lo scudo si vede da dietro, come lo vede chi lo impugna: assi, cinghie e pugno sull'impugnatura, senza braccio, in basso a sinistra.</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera le armi mancanti (${handsMissing.length})` : "✓ Tutte le armi hanno lo sprite"}
         </button>

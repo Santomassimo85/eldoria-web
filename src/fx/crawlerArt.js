@@ -120,7 +120,11 @@ const DRAW = {
 function offHand(kind) {
   const s = Spr(130, 122);
   if (kind === "shield") {
-    s.ell(38, 96, 56, 58, 0x7a1f24).ell(38, 96, 47, 49, 0x3a3238).ell(38, 96, 42, 44, 0x7a1f24).rect(33, 66, 10, 56, 0xdfe6f0).rect(10, 84, 56, 10, 0xdfe6f0);
+    s.ell(38, 100, 58, 60, 0x55585e).ell(38, 100, 53, 55, 0x6a4526); // bordo di ferro, assi di legno
+    for (let i = -48; i <= 48; i += 12) s.line(38 + i, 46, 38 + i, 158, 1, 0x4a2f1a);
+    for (const [x, y] of [[0, 72], [76, 72], [6, 132], [72, 132], [38, 46]]) s.ell(x, y, 2, 2, 0xb8bcc4); // ribattini
+    s.rect(-6, 82, 88, 9, 0x3a2414).rect(-6, 112, 88, 9, 0x3a2414); // cinghie di cuoio
+    s.rect(30, 74, 16, 50, 0x5a3a24).ell(38, 98, 13, 16, 0x8a92a0).ell(34, 92, 6, 6, 0xa8b0bc); // impugnatura e pugno
   } else { // mano aperta da incantatore: la riserva disegna anche la fiamma
     s.line(100, 104, 142, 140, (k) => 16 + k * 16, 0x2c3f8a).ell(92, 96, 12, 11, SKIN);
     for (let i = 0; i < 4; i++) s.line(86 + i * 5, 90, 76 + i * 7, 72 + (i === 0 ? 8 : 0), 4, SKIN);
@@ -172,7 +176,7 @@ The texture MUST tile perfectly: left edge matches right edge, top edge matches 
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
 
 const HAND_WHAT = {
-  shield: "a LEFT arm in armor entering from the BOTTOM-LEFT corner of the image, holding up a round fantasy shield seen from the front, covering the lower left",
+  shield: "the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: we look at the INSIDE of the shield, never its painted front. Visible: the wooden planks of the back, iron rim, rivets coming through, two leather straps and the wooden grip with a gloved fist closed around it. NO arm, NO sleeve, NO elbow: only the fist on the grip. The shield is big, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left quarter of the image, held low and close to the viewer, with realistic first-person perspective (the near edge larger than the far edge)",
   magic: "a LEFT open hand with sleeve entering from the BOTTOM-LEFT corner of the image, palm up, fingers spread, ready to cast a spell, no flame",
 };
 export const handPrompt = (key, weaponName, desc) => `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
