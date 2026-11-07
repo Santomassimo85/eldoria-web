@@ -232,12 +232,12 @@ const BUILD = {
   bastone: "a long straight iron-shod wooden quarterstaff with metal caps at both ends; the fist closes around it at about one third of its length; the top end stays inside the image",
   ascia_bip: "a long straight wooden shaft with a double-bladed axe head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
   maglio: "a long straight wooden shaft with a big rectangular hammer head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
-  arco_lungo: "the archer's own view while aiming, seen from BEHIND the bow. The LEFT fist grips a wooden bow in the middle; the bow stands vertical a little LEFT of the image center, and the WHOLE bow fits inside the image with both tips visible (draw it shorter if needed). An arrow is NOCKED on the string: the arrow points STRAIGHT AHEAD, AWAY from the viewer, into the depth of the image, strongly foreshortened, so we see mostly the fletching and the back of the shaft; it is NEVER drawn sideways or horizontal. The RIGHT hand, at the bottom-right close to the viewer, pulls the string back to the cheek with two fingers on the nock",
+  arco_lungo: "the archer's own view while drawing the bow, like a modern first-person RPG. The LEFT arm reaches forward from the BOTTOM-LEFT corner; the LEFT fist grips the handle of a wooden longbow just below the center of the image. The bow is CANTED diagonally: its upper limb goes up toward the upper-RIGHT, its lower limb down toward the bottom-left, both tips visible inside the image. An arrow is NOCKED and rests on the knuckles of the left fist; the arrow points FORWARD, toward the CENTER of the image and the horizon, slightly foreshortened, NOT upward. The RIGHT hand, at the BOTTOM-CENTER close to the viewer, holds the string drawn back with fingers on the nock; the taut string runs diagonally from the right hand up to the upper tip of the bow",
   balestra_l: "a light crossbow seen from behind, pointing forward away from the viewer; the RIGHT hand on the stock with a finger near the trigger, the LEFT hand supporting the front of the stock from below; a bolt is loaded",
   pugni: "no weapon: both fists clenched and raised in a boxing guard",
 };
 const WHERE = {
-  arco_lungo: "The bow and both hands stay in the LEFT and RIGHT parts of the image, the CENTER stays as empty as possible.",
+  arco_lungo: "Bow and hands fill the lower half and the right side of the image; the arrow tip reaches the center, the upper-left and upper-center stay empty.",
   balestra_l: "The crossbow sits low in the lower half of the image, so the upper CENTER stays empty.",
   pugni: "The LEFT fist in the LEFT third, the RIGHT fist in the RIGHT third, the CENTER stays EMPTY.",
 };
