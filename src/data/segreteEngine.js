@@ -145,6 +145,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 }
 
 /* Sala n (1-based): normale = gregari (e a volte un'élite), ultima = boss. */
+export const CROWD_CHANCE = 0.42;
 export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
   // `_anyBoss` = boss di altri dungeon (li passa il server): si usano solo se questo dungeon non ha un boss suo
@@ -177,6 +178,8 @@ export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize,
     // li decide il budget (balanceFoes), quindi più mostri = mostri più deboli.
     const [lo, hi] = partySize <= 1 ? (floor >= 2 ? [2, 3] : [1, 2]) : [partySize, Math.min(5, partySize + 1)];
     let count = lo + Math.floor(rnd() * (hi - lo + 1));
+    // SALE AFFOLLATE (2026-11-07): ogni tanto 1–2 mostri in più (max 5); il budget li rende più deboli
+    if (rnd() < CROWD_CHANCE) count = Math.min(5, count + 1 + (rnd() < 0.55 ? 1 : 0));
     if (floor >= 2 && elites.length && rnd() < eliteChance) { picks.push(pick(elites)); count = Math.max(0, count - 2); }
     for (let i = 0; i < count; i++) picks.push(pick(mins));
   }

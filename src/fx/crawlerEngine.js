@@ -207,7 +207,7 @@ export class CrawlerEngine {
       const f = old && old.url === (src.img || "") ? old : { id: src.id, url: src.img || "", icon: src.icon, flash: 0, die: 0, lunge: 0, ph: i * 0.37, spr: null, box: null };
       const [dx, dz] = slots[i];
       f.x = 6.5 + dx; f.y = this.roomY + 0.5 + dz; f.dz0 = dz;
-      f.h = clamp(0.98 * (src.scale || 1), 0.62, 1.7);
+      f.h = clamp(0.82 * (src.scale || 1), 0.42, 1.85); // 2026-11-07: un po' più piccoli, taglie più marcate
       f.hp = src.hp; f.max = src.maxHp; f.state = src.state || ""; f.name = src.name || "";
       if (!f.loading && !f.spr) this.prep(f);
       return f;

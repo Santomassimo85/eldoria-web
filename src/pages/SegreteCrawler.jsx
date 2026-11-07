@@ -11,7 +11,7 @@ import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
-import { classInfo, clsStyle, sizeScale, diffOf } from "../data/segrete";
+import { classInfo, clsStyle, diffOf, sizeOf } from "../data/segrete";
 import { WEAPON_CHOICES, TWO_HANDED } from "../data/segreteKits";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
@@ -42,6 +42,15 @@ let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pipsOf = (c, round) => statusIcons(c, round || 1).map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }));
+/* TAGLIE IN PRIMA PERSONA (2026-11-07): piccolo ~0,7, grande ~1,5, enorme quasi il doppio. */
+const CW_SIZE = { tiny: 0.55, small: 0.72, medium: 1, large: 1.5, huge: 1.85, gargantuan: 2.15 };
+const SMALL_RX = /goblin|coboldo|kobold|ratt[oi]|stirge|follett|spiritell|\bimp\b|pixie|gnom|halfling|pipistrell|mefit|ragnett|serpentell|lucertol|scheggia|ranocchi|lupacchiott|cucciol/i;
+const LARGE_RX = /troll|ogre|orco gigante|gigant|giant|drag[oh]|golem|elemental|minotaur|basilisc|\borso\b|owlbear|ettin|wyvern|idra|hydra|ciclope|cyclop|treant|ent\b|mammut|behemoth|colosso/i;
+function crawlerScale(f) {
+  let size = sizeOf(f);
+  if (size === "medium") size = SMALL_RX.test(f.name || "") ? "small" : LARGE_RX.test(f.name || "") ? "large" : "medium";
+  return CW_SIZE[size] || 1;
+}
 const stateOf = (c) => (c.fx?.petrified ? "stone" : c.fx?.frozen ? "ice" : "");
 
 // tocco = bersaglio (al rilascio: il click sui telefoni a volte si perde), 450 ms premuto = scheda
@@ -280,7 +289,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   const foeList = (run?.foes || []).map((f0) => {
     const f = shown(f0);
-    return { id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role, icon: f.icon, img: fronts[f.src] || f.img || "", scale: sizeScale(f), state: stateOf(f) };
+    return { id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role, icon: f.icon, img: fronts[f.src] || f.img || "", scale: crawlerScale(f), state: stateOf(f) };
   });
   const foeKey = JSON.stringify(foeList);
   useEffect(() => {

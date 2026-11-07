@@ -1184,6 +1184,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     uses: {}
   };
 }
+var CROWD_CHANCE = 0.42;
 function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
   const own = bestiary.filter((m) => !m._anyBoss);
@@ -1210,6 +1211,7 @@ function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, part
     if (!mins.length) mins = elites.length ? elites : FALLBACK_MONSTERS.filter((m) => m.role === "minion");
     const [lo, hi] = partySize <= 1 ? floor >= 2 ? [2, 3] : [1, 2] : [partySize, Math.min(5, partySize + 1)];
     let count = lo + Math.floor(rnd() * (hi - lo + 1));
+    if (rnd() < CROWD_CHANCE) count = Math.min(5, count + 1 + (rnd() < 0.55 ? 1 : 0));
     if (floor >= 2 && elites.length && rnd() < eliteChance) {
       picks.push(pick(elites));
       count = Math.max(0, count - 2);
