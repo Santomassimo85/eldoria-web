@@ -252,10 +252,20 @@ service cloud.firestore {
     match /dungeon_voice/sala-comune/{doc=**} {
       allow read, write: if isLoggedIn();
     }
-    // Chat vocale delle Segrete (2026-11-05): presenza e segnali WebRTC, solo chi è nel gruppo
+    // Stanze vocali create dai giocatori (2026-11-07): il loro canale ha id vr-*
+    match /voice_rooms/{roomId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && roomId.matches('vr-.*')
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
+      allow update: if isLoggedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['at']);
+      allow delete: if isLoggedIn() && (resource.data.by == request.auth.uid || isMaster());
+    }
+    // Chat vocale: presenza e segnali WebRTC. Stanze vr-* aperte ai loggati, gruppi delle Segrete solo ai membri
     match /dungeon_voice/{roomId}/{doc=**} {
-      allow read, write: if isLoggedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/dungeon_rooms/$(roomId)).data.memberIds;
+      allow read, write: if isLoggedIn() && (roomId.matches('vr-.*')
+        || request.auth.uid in get(/databases/$(database)/documents/dungeon_rooms/$(roomId)).data.memberIds);
     }
     match /dungeon_runs/{roomId} {
       allow read: if isLoggedIn();

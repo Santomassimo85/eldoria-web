@@ -44,3 +44,18 @@
 .sgv-fight .sgv-mic { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: 3px; }
 body.in-fight .sgb-top { padding-right: 56px; }
 body.vc-live .sgb-log { padding-right: 56px; }
+
+/* Canali e stanze (2026-11-07) */
+.sgv.has-people .sgv-pill { border-color: #f2c14e; }
+.sgv-chans { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 188px; overflow-y: auto; }
+.sgv-chans li { display: flex; gap: 3px; }
+.sgv-chans li > button:first-child { flex: 1; min-width: 0; min-height: 38px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.22); background: transparent; color: #f3ead8; font: 600 .86rem system-ui, sans-serif; text-align: left; }
+.sgv-chans li > button.is-on { background: #f2c14e; border-color: #f2c14e; color: #1d1406; }
+.sgv-chan-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sgv-chans em { font-style: normal; min-width: 20px; padding: 0 5px; border-radius: 9px; background: rgba(95,209,107,.3); text-align: center; font-size: .76rem; }
+.sgv-chan-x { width: 38px; min-height: 38px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(243,234,216,.22); background: transparent; color: #ffb4a4; }
+.sgv-new { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; margin: 0; }
+.sgv-new input { min-width: 0; min-height: 38px; padding: 4px 8px; border-radius: 3px; border: 1px solid rgba(243,234,216,.3); background: rgba(0,0,0,.35); color: #fff7e6; font: 16px system-ui, sans-serif; }
+.sgv-new input::placeholder { color: #b8ac96; }
+.sgv-new button { min-height: 38px; padding: 4px 10px; border-radius: 3px; cursor: pointer; border: 1px solid #5fd16b; background: rgba(95,209,107,.15); color: #f3ead8; font: 700 .84rem system-ui, sans-serif; }
+.sgv-new button:disabled { opacity: .5; }

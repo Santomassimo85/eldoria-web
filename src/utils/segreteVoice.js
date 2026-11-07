@@ -1,7 +1,7 @@
-/* CHAT VOCALE DELLE SEGRETE (2026-11-05)
-   WebRTC a maglia fra i membri del gruppo (max 4 = 6 collegamenti), audio solo.
-   Firestore fa da "centralino" (regole: solo chi è nel gruppo):
-     dungeon_voice/{roomId}/peers/{uid}   = { name, sid, at, muted }   presenza (battito ogni 15 s)
+/* CHAT VOCALE DELL'APP (2026-11-05, Segrete; 2026-11-07 stanze e microfono sempre aperto)
+   WebRTC a maglia fra chi è nel canale, audio solo: la voce va da telefono a telefono, gratis.
+   Firestore fa da "centralino" (canali: sala-comune, id del gruppo delle Segrete, vr-* = stanze):
+     dungeon_voice/{roomId}/peers/{uid}   = { name, sid, at, muted }   presenza (battito ogni 20 s)
      dungeon_voice/{roomId}/links/{a__b}  = { caller, callee, callerSid, calleeSid, offer, answer }
      dungeon_voice/{roomId}/links/{a__b}/cand/{id} = { from, key, c }  candidati ICE
    Chi ha l'uid "minore" chiama, l'altro risponde. `sid` = sessione di chi entra: se qualcuno
@@ -9,7 +9,7 @@
    Server ICE (2026-11-05): li dà `segreteDo` op "voiceIce" (STUN + TURN di Cloudflare se le chiavi
    sono configurate: senza TURN i telefoni su rete mobile spesso restano su "collego").
    Un collegamento che non si apre entro CONNECT_TIMEOUT_MS si rifà da capo (lo rifà chi chiama). */
-import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, Bytes } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, serverTimestamp, Timestamp, Bytes } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 
@@ -23,14 +23,18 @@ async function loadIce() {
     return { servers: Array.isArray(list) && list.length ? list : STUN, turn: !!r?.data?.turn };
   } catch { return { servers: STUN, turn: false }; }
 }
-const BEAT_MS = 5000; // porta anche la diagnostica
-export const PEER_STALE_MS = 45000;
+// Battito raro apposta (2026-11-07): ogni battito è 1 scrittura + 1 lettura per ogni presente, e la
+// quota gratuita di Firestore (20k scritture, 50k letture al giorno) deve bastare per serate intere.
+const BEAT_MS = 20000; // porta anche la diagnostica
+export const PEER_STALE_MS = 90000;
+const PEER_DEAD_MS = 30 * 60000; // chi ha chiuso di colpo: il suo doc resta, ma è un fantasma
 /* Presenza senza fidarsi degli orologi (2026-11-05): `at` lo scrive il telefono di ognuno col
    SUO orologio, e due telefoni possono differire di minuti. Si guarda invece QUANDO, sul nostro
-   orologio, `at` di quel peer è cambiato l'ultima volta (il battito arriva ogni 15 s). */
+   orologio, `at` di quel peer è cambiato l'ultima volta (il battito arriva ogni 20 s). */
 export function makeFreshness() {
   const seen = {};
   return (peers, now = Date.now()) => peers.filter((p) => {
+    if (now - (Number(p.at) || 0) > PEER_DEAD_MS) return false; // margine largo: gli orologi possono sbagliare
     const k = `${p.sid}|${p.at}`;
     if (!seen[p.uid] || seen[p.uid].k !== k) seen[p.uid] = { k, t: now };
     return now - seen[p.uid].t < PEER_STALE_MS;
@@ -45,12 +49,17 @@ const audioCol = (roomId) => collection(db, "dungeon_voice", roomId, "audio");
 
 /* VOCE VIA SERVER (2026-11-05): se il collegamento diretto WebRTC con qualcuno non è aperto
    (reti mobili, router che lo bloccano, niente TURN), la voce passa da Firestore a pezzetti:
-   chi parla manda ~300 ms di audio a 12 kHz in μ-law (≈3,6 kB) in dungeon_voice/{room}/audio,
-   chi ascolta li rimette in fila con un piccolo margine. Ritardo ~1 s ma funziona su qualsiasi
-   rete. Chi manda cancella i suoi pezzetti dopo RELAY_KEEP_MS. */
+   chi parla manda ~600 ms di audio a 12 kHz in μ-law (≈7 kB) in dungeon_voice/{room}/audio,
+   chi ascolta li rimette in fila con un piccolo margine. Ritardo ~1,3 s ma funziona su qualsiasi
+   rete. Chi manda cancella i suoi pezzetti dopo RELAY_KEEP_MS.
+   Ogni pezzetto è una scrittura su Firestore: col microfono sempre aperto si manda SOLO quando
+   qualcuno parla davvero (VAD_RMS), mai il silenzio, e non nei primi secondi di un collegamento. */
 const RELAY_RATE = 12000;
-const RELAY_CHUNK = 3600; // campioni = 300 ms
+const RELAY_CHUNK = 7200; // campioni = 600 ms
 const RELAY_KEEP_MS = 8000;
+const RELAY_GRACE_MS = 6000; // il diretto di solito si apre in pochi secondi: prima non si scrive niente
+const VAD_RMS = 0.012; // sotto questo volume è silenzio
+const VAD_HOLD_MS = 900; // dopo l'ultima parola si manda ancora un attimo, per non tagliare le frasi
 const RELAY_LEAD_S = 0.25; // margine di partenza della riproduzione
 function muEncode(f) {
   const out = new Uint8Array(f.length);
@@ -78,9 +87,17 @@ function muDecode(u) {
   return out;
 }
 
+// volume medio di un pezzo di audio: decide se è voce o silenzio
+export function rmsOf(f) {
+  let sum = 0;
+  for (let i = 0; i < f.length; i++) sum += f[i] * f[i];
+  return f.length ? Math.sqrt(sum / f.length) : 0;
+}
+
 export class VoiceMesh {
-  constructor({ roomId, uid, name, onState }) {
-    Object.assign(this, { roomId, uid, name, onState });
+  constructor({ roomId, uid, name, onState, onTaken }) {
+    Object.assign(this, { roomId, uid, name, onState, onTaken });
+    this.peerSince = {};
     this.sid = rid();
     this.conns = {}; // otherUid → { pc, key, remoteSid, caller, answered, pendingIce, unsubCand, audio, state }
     this.unsubs = [];
@@ -133,14 +150,25 @@ export class VoiceMesh {
     this.unsubs.push(onSnapshot(linksCol(this.roomId), (s) => s.docs.forEach((d) => this.onLink(d.id, d.data()))));
     this.levelT = setInterval(() => this.emit(), 200);
     this.staleT = setInterval(() => { if (this.lastPeers) this.reconcile(this.lastPeers); }, 10000);
-    this.onHide = () => { if (document.visibilityState === "visible") this.ctx?.resume?.(); };
+    // tornando in primo piano: audio riacceso e battito subito (in secondo piano i timer rallentano)
+    this.onHide = () => { if (document.visibilityState === "visible") { this.ctx?.resume?.(); this.beat(); } };
     document.addEventListener("visibilitychange", this.onHide);
   }
 
   /* ── voce via server ── */
   // serve il server con questo peer? sì finché il collegamento diretto non è aperto
   direct(u) { return this.conns[u]?.state === "connected"; }
-  needRelay() { return Object.keys(this.peerSids || {}).some((u) => !this.direct(u)); }
+  needRelay(now = Date.now()) {
+    return Object.keys(this.peerSids || {}).some((u) => !this.direct(u) && now - (this.peerSince[u] || now) >= RELAY_GRACE_MS);
+  }
+  // il pezzo di audio appena pronto: il silenzio resta a casa, l'ultimo pezzo tenuto da parte
+  // parte insieme al primo con la voce, così non si perde l'inizio della frase
+  gateChunk(all, now = Date.now()) {
+    if (rmsOf(all) >= VAD_RMS) this.vadUntil = now + VAD_HOLD_MS;
+    if (now >= (this.vadUntil || 0)) { this.relayPrev = all; return; }
+    if (this.relayPrev) { this.sendChunk(this.relayPrev); this.relayPrev = null; }
+    this.sendChunk(all);
+  }
 
   startRelay() {
     if (!this.ctx) return;
@@ -162,7 +190,7 @@ export class VoiceMesh {
       src.connect(proc); proc.connect(mute); mute.connect(this.ctx.destination);
       const ratio = this.ctx.sampleRate / RELAY_RATE;
       proc.onaudioprocess = (e) => {
-        if (this.closed || !this.track?.enabled || !this.needRelay()) { this.relayBuf = []; this.relayN = 0; return; }
+        if (this.closed || !this.track?.enabled || !this.needRelay()) { this.relayBuf = []; this.relayN = 0; this.relayPrev = null; return; }
         const inp = e.inputBuffer.getChannelData(0);
         const n = Math.floor(inp.length / ratio);
         const out = new Float32Array(n);
@@ -172,13 +200,15 @@ export class VoiceMesh {
           const all = new Float32Array(this.relayN);
           let o = 0; this.relayBuf.forEach((b) => { all.set(b, o); o += b.length; });
           this.relayBuf = []; this.relayN = 0;
-          this.sendChunk(all);
+          this.gateChunk(all);
         }
       };
       this.relayNodes = [src, proc, mute];
     } catch (er) { this.relayErr = String(er?.message || er); }
     let first = true;
-    this.unsubs.push(onSnapshot(audioCol(this.roomId), (snap) => {
+    // solo i pezzetti recenti: chi chiude di colpo lascia i suoi nel canale e non vanno riletti a ogni ingresso
+    const recent = query(audioCol(this.roomId), where("at", ">", Timestamp.fromMillis(Date.now() - 10 * 60000)));
+    this.unsubs.push(onSnapshot(recent, (snap) => {
       if (first) { first = false; return; } // i pezzetti vecchi non si riproducono
       snap.docChanges().forEach((ch) => {
         if (ch.type !== "added") return;
@@ -193,7 +223,7 @@ export class VoiceMesh {
   sendChunk(samples) {
     const now = Date.now();
     addDoc(audioCol(this.roomId), {
-      from: this.uid, sid: this.sid, n: ++this.relaySeq, sr: RELAY_RATE, d: Bytes.fromUint8Array(muEncode(samples)),
+      from: this.uid, sid: this.sid, n: ++this.relaySeq, sr: RELAY_RATE, at: serverTimestamp(), d: Bytes.fromUint8Array(muEncode(samples)),
     }).then((ref) => { this.relaySent.push({ ref, at: now }); this.relayOut++; })
       .catch((er) => { this.relayErr = `invio:${er?.code || er?.message || er}`; });
     // pulizia dei pezzetti vecchi
@@ -264,9 +294,15 @@ export class VoiceMesh {
   reconcile(peers) {
     if (this.closed) return;
     const now = Date.now();
+    // lo stesso giocatore è entrato da un'altra scheda o da un altro telefono: resta solo l'ultimo
+    const me = peers.find((p) => p.uid === this.uid);
+    if (me && me.sid !== this.sid) { this.onTaken?.(); return; }
     this.lastPeers = peers;
     const live = this.fresh(peers, now).filter((p) => p.uid !== this.uid && p.sid);
     this.peerSids = Object.fromEntries(live.map((p) => [p.uid, p.sid]));
+    const since = {};
+    live.forEach((p) => { since[p.uid] = this.peerSince[p.uid] || now; });
+    this.peerSince = since;
     // chi non c'è più: chiudi
     Object.keys(this.conns).forEach((u) => { if (!live.some((p) => p.uid === u)) this.drop(u); });
     live.forEach((p) => {
@@ -428,7 +464,8 @@ export class VoiceMesh {
     delete this.levels[other];
   }
 
-  async leave() {
+  async leave({ keep = false } = {}) {
+    if (this.closed) return;
     this.closed = true;
     clearInterval(this.beatT); clearInterval(this.ctxT); clearInterval(this.levelT); clearInterval(this.meterT); clearInterval(this.staleT);
     document.removeEventListener("visibilitychange", this.onHide);
@@ -441,6 +478,6 @@ export class VoiceMesh {
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* vecchi browser */ }
     this.audioBox?.remove();
     this.ctx?.close?.().catch(() => {});
-    await deleteDoc(doc(peersCol(this.roomId), this.uid)).catch(() => {});
+    if (!keep) await deleteDoc(doc(peersCol(this.roomId), this.uid)).catch(() => {});
   }
 }

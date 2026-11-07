@@ -1,15 +1,19 @@
 /* Chat vocale di tutta l'app (2026-11-06, prima solo nelle Segrete). Montata una volta in App.jsx,
    quindi resta collegata cambiando pagina. Sta DENTRO la testata (slot #header-voice): non copre
    niente. Nei fight la testata sparisce: resta solo il tasto del microfono sotto il ☰, se sei in voce.
-   Canali: Sala comune (tutti i loggati) e, se sei in un gruppo delle Segrete, il gruppo.
-   Microfono: "Tieni premuto" o "Sempre aperto" (localStorage `sgr_voice_mode`). Il motore è
-   src/utils/segreteVoice.js. Finché non sei in voce e il pannello è chiuso i presenti si leggono ogni
-   30 s (getDocs), non in diretta: il battito di chi parla costerebbe una lettura a ogni pagina aperta. */
+   Canali: Sala comune (tutti i loggati), stanze create dai giocatori (`voice_rooms`, id vr-*) e, se
+   sei in un gruppo delle Segrete, il gruppo.
+   Microfono: sempre aperto di base, niente da premere; "Tieni premuto" a scelta (localStorage
+   `sgr_voice_mode`). Il motore è src/utils/segreteVoice.js. Una ricarica (anche l'aggiornamento
+   automatico) ti rimette nel canale: sessionStorage `vc_resume`, solo in quella scheda e solo se il
+   permesso del microfono c'è già. Finché non sei in voce e il pannello è chiuso i presenti si leggono
+   ogni 45 s (getDocs), non in diretta: il battito di chi parla costerebbe una lettura a ogni pagina. */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
+import { isAdminEmail } from "../utils/roles";
 import { VoiceMesh, peersCol, makeFreshness } from "../utils/segreteVoice";
 import { classInfo, clsStyle } from "../data/segrete";
 import "./AppVoice.css";
@@ -19,7 +23,19 @@ const ROOM_FRESH_MS = 2 * 24 * 3600 * 1000; // gruppi fermi da più di 2 giorni:
 const msOf = (x) => (x?.toMillis ? x.toMillis() : Number(x) || 0);
 
 const MODE_KEY = "sgr_voice_mode";
-const readMode = () => { try { return localStorage.getItem(MODE_KEY) === "open" ? "open" : "ptt"; } catch { return "ptt"; } };
+const readMode = () => { try { return localStorage.getItem(MODE_KEY) === "ptt" ? "ptt" : "open"; } catch { return "open"; } };
+const isVr = (id) => !!id && id.startsWith("vr-");
+const VR_FRESH_MS = 7 * 24 * 3600 * 1000; // stanze mai usate da una settimana: non si mostrano più
+const RESUME_KEY = "vc_resume";
+const RESUME_MS = 10 * 60000;
+const saveResume = (room) => { try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ room, at: Date.now() })); } catch { /* niente */ } };
+const dropResume = () => { try { sessionStorage.removeItem(RESUME_KEY); } catch { /* niente */ } };
+const readResume = () => {
+  try {
+    const r = JSON.parse(sessionStorage.getItem(RESUME_KEY) || "null");
+    return r?.room && Date.now() - r.at < RESUME_MS ? r.room : null;
+  } catch { return null; }
+};
 const SPEAK = 0.04;
 // Nell'app (WebView di Capacitor) i link del sito restano dentro l'app, che non scarica file:
 // un indirizzo di un ALTRO dominio invece Capacitor lo apre nel browser del telefono, che scarica l'APK.
@@ -32,8 +48,11 @@ export default function AppVoice({ docked }) {
   const [room, setRoom] = useState(null);
   const [pick, setPick] = useState(null);
   const [slot, setSlot] = useState(null);
-  const roomId = pick === SALA ? SALA : room && (pick === room.id || !pick) ? room.id : SALA;
+  const roomId = pick === SALA || isVr(pick) ? pick : room && (pick === room.id || !pick) ? room.id : SALA;
   const [peers, setPeers] = useState([]);
+  const [rooms, setRooms] = useState(null); // null = non ancora lette
+  const [counts, setCounts] = useState({});
+  const [newName, setNewName] = useState("");
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -63,13 +82,31 @@ export default function AppVoice({ docked }) {
     if (watch) return onSnapshot(peersCol(roomId), put, () => setPeers([]));
     const load = () => { if (!document.hidden) getDocs(peersCol(roomId)).then(put).catch(() => setPeers([])); };
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(load, 45000);
     return () => clearInterval(t);
   }, [roomId, uid, watch]);
+  // le stanze dei giocatori: si leggono solo a pannello aperto o in voce
+  useEffect(() => (uid && watch ? onSnapshot(collection(db, "voice_rooms"), (s) => {
+    setRooms(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => Date.now() - (Number(r.at) || 0) < VR_FRESH_MS)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name))));
+  }, () => setRooms([])) : undefined), [uid, watch]);
+  // quanti sono negli altri canali: solo a pannello aperto
+  const chanIds = [SALA, ...(room ? [room.id] : []), ...(rooms || []).map((r) => r.id)].join("|");
+  useEffect(() => {
+    if (!uid || !open) return undefined;
+    const offs = chanIds.split("|").map((id) => onSnapshot(peersCol(id), (s) => {
+      const n = s.docs.filter((d) => Date.now() - (Number(d.data().at) || 0) < 3 * 60000).length;
+      setCounts((c) => (c[id] === n ? c : { ...c, [id]: n }));
+    }, () => {}));
+    return () => offs.forEach((off) => off());
+  }, [uid, open, chanIds]);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 10000); return () => clearInterval(t); }, []);
   // canale sparito (hai lasciato il gruppo) o logout: si esce dalla voce
   useEffect(() => { if (mesh.current && (!uid || mesh.current.roomId !== roomId)) leave(); }, [roomId, uid]);
-  useEffect(() => { if (pick && pick !== SALA && pick !== room?.id) setPick(null); }, [pick, room?.id]);
+  useEffect(() => {
+    if (!pick || pick === SALA || pick === room?.id) return;
+    if (!isVr(pick) || (rooms && !joined && !rooms.some((r) => r.id === pick))) setPick(null);
+  }, [pick, room?.id, rooms, joined]);
   useEffect(() => {
     if (!open) return undefined;
     const away = (e) => { if (!e.target.closest?.(".sgv-panel, .sgv-pill")) setOpen(false); };
@@ -83,10 +120,32 @@ export default function AppVoice({ docked }) {
     return () => document.body.classList.remove("vc-live", "vc-on");
   }, [joined, docked]);
   useEffect(() => {
-    const bye = () => mesh.current?.leave();
+    const bye = () => { if (mesh.current) { saveResume(mesh.current.roomId); mesh.current.leave(); } };
+    // pagina ripresa dalla cache del browser (iPhone): il collegamento è chiuso, si ricarica e si rientra
+    const back = (e) => { if (e.persisted && mesh.current?.closed) window.location.reload(); };
     window.addEventListener("pagehide", bye);
-    return () => window.removeEventListener("pagehide", bye);
+    window.addEventListener("pageshow", back);
+    return () => { window.removeEventListener("pagehide", bye); window.removeEventListener("pageshow", back); };
   }, []);
+  // qualsiasi tocco sulla pagina risveglia l'audio, non solo i tasti della voce
+  useEffect(() => {
+    if (!joined) return undefined;
+    const wakeUp = () => mesh.current?.unlockAudio();
+    document.addEventListener("pointerdown", wakeUp);
+    return () => document.removeEventListener("pointerdown", wakeUp);
+  }, [joined]);
+  // dopo una ricarica si rientra da soli nel canale di prima (mai un microfono che si apre senza permesso)
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!uid || !name || resumed.current) return;
+    const id = readResume();
+    if (!id) { resumed.current = true; return; }
+    if (id !== SALA && !isVr(id) && room?.id !== id) return; // il gruppo si sta ancora leggendo
+    resumed.current = true;
+    navigator.permissions?.query({ name: "microphone" })
+      .then((p) => { if (p.state === "granted") join(id); })
+      .catch(() => {});
+  }, [uid, name, room?.id]);
 
   const fresh = useRef(null);
   if (!fresh.current) fresh.current = makeFreshness();
@@ -107,9 +166,15 @@ export default function AppVoice({ docked }) {
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) throw new Error("Questo browser non supporta la chat vocale.");
       setPick(id); // resti su questo canale anche se poi entri in un gruppo
-      const m = new VoiceMesh({ roomId: id, uid, name, onState: setSt });
+      const m = new VoiceMesh({ roomId: id, uid, name, onState: setSt, onTaken: () => {
+        leave({ keep: true });
+        setErr("Sei entrato in voce da un'altra scheda o da un altro dispositivo: qui ti ho scollegato.");
+        setOpen(true);
+      } });
       await m.join();
       mesh.current = m;
+      saveResume(id);
+      if (isVr(id)) updateDoc(doc(db, "voice_rooms", id), { at: Date.now() }).catch(() => {});
       m.setMicOn(mode === "open");
       setMicOn(mode === "open");
       m.setSpeakersOn(speakers);
@@ -123,10 +188,11 @@ export default function AppVoice({ docked }) {
         : e?.message || "Microfono non disponibile.");
     } finally { setBusy(false); }
   };
-  const leave = async () => {
+  const leave = async (opts) => {
     const m = mesh.current; mesh.current = null;
+    dropResume();
     setJoined(false); setMicOn(false); setSt({ conns: {}, levels: {} });
-    await m?.leave();
+    await m?.leave(opts);
   };
 
   const choose = async (id) => {
@@ -136,6 +202,25 @@ export default function AppVoice({ docked }) {
     if (was) { await leave(); join(id); }
   };
 
+  const createRoom = async (e) => {
+    e.preventDefault();
+    const clean = newName.trim().slice(0, 30);
+    if (!clean || busy) return;
+    const id = `vr-${Math.random().toString(36).slice(2, 10)}`;
+    setErr("");
+    try {
+      await setDoc(doc(db, "voice_rooms", id), { name: clean, by: uid, byName: name || "", at: Date.now() });
+      setNewName("");
+      setPick(id);
+      if (mesh.current) await leave();
+      join(id);
+    } catch { setErr("Non sono riuscito a creare la stanza: riprova."); }
+  };
+  const removeRoom = (id) => {
+    if (roomId === id) setPick(null);
+    deleteDoc(doc(db, "voice_rooms", id)).catch(() => setErr("Non sono riuscito a togliere la stanza."));
+  };
+
   // push-to-talk: tieni premuto (dito o mouse)
   const pttDown = (e) => { e.preventDefault(); holding.current = true; applyMic(true); };
   const pttUp = () => { if (!holding.current) return; holding.current = false; applyMic(false); };
@@ -143,7 +228,15 @@ export default function AppVoice({ docked }) {
   const speaking = (u) => joined && (st.levels[u] || 0) > SPEAK && (u !== uid || micOn);
   const talkingNow = live.filter((p) => !p.muted && speaking(p.uid));
   const isSala = roomId === SALA;
-  const members = isSala ? live.map((p) => ({ uid: p.uid, name: p.name })) : room?.members || [];
+  const isOpenChan = isSala || isVr(roomId);
+  const chanName = isSala ? "Sala comune" : isVr(roomId) ? rooms?.find((r) => r.id === roomId)?.name || "Stanza" : room?.name || "Il mio gruppo";
+  const canRemove = (r) => (r.by === uid || isAdminEmail(currentUser?.email)) && !counts[r.id];
+  const channels = [
+    { id: SALA, icon: "🍺", name: "Sala comune" },
+    ...(room ? [{ id: room.id, icon: "🗝", name: room.name || "Il mio gruppo" }] : []),
+    ...(rooms || []).map((r) => ({ id: r.id, icon: "🎙", name: r.name, room: r })),
+  ];
+  const members = isOpenChan ? live.map((p) => ({ uid: p.uid, name: p.name })) : room?.members || [];
   const roster = members.map((m) => {
     const p = live.find((x) => x.uid === m.uid);
     const conn = m.uid === uid ? (joined ? "connected" : null) : st.conns[m.uid] || null;
@@ -160,7 +253,7 @@ export default function AppVoice({ docked }) {
   );
   const wake = joined && st.audio && st.audio !== "running" ? <button type="button" className="sgv-mic sgv-wake" aria-label="Attiva l'audio" title="Attiva l'audio" onClick={() => mesh.current?.unlockAudio()}>🔊</button> : null;
   const bar = (
-    <div className={`sgv${joined ? " is-joined" : ""}`} onPointerDown={() => mesh.current?.unlockAudio()}>
+    <div className={`sgv${joined ? " is-joined" : inVoice.size ? " has-people" : ""}`} onPointerDown={() => mesh.current?.unlockAudio()}>
       <div className="sgv-bar">
         <button type="button" className={`sgv-pill${talkingNow.length ? " is-talk" : ""}`} aria-expanded={open} aria-label={`Chat vocale: ${inVoice.size} in voce${talkingNow.length ? `, parla ${talkingNow.map((p) => p.name).join(", ")}` : ""}`} title="Chat vocale" onClick={() => setOpen((o) => !o)}>
           <span aria-hidden="true">🎧</span>
@@ -176,14 +269,24 @@ export default function AppVoice({ docked }) {
       {docked ? (slot ? createPortal(bar, slot) : null) : joined ? <div className="sgv-fight" onPointerDown={() => mesh.current?.unlockAudio()}>{wake}{micBtn}</div> : null}
       {open && docked && (
         <div className="sgv-panel" role="dialog" aria-label="Chat vocale">
-          {room && (
-            <div className="sgv-modes" role="group" aria-label="Canale">
-              <button type="button" className={isSala ? "is-on" : ""} aria-pressed={isSala} disabled={busy} onClick={() => choose(SALA)}>🍺 Sala comune</button>
-              <button type="button" className={!isSala ? "is-on" : ""} aria-pressed={!isSala} disabled={busy} onClick={() => choose(room.id)}>🗝 {room.name || "Il mio gruppo"}</button>
-            </div>
-          )}
-          {!room && <p className="sgv-title">🍺 Sala comune</p>}
-          {isSala && !roster.length && <p className="sgv-hint">Non c'è ancora nessuno in voce.</p>}
+          <ul className="sgv-chans" aria-label="Canali vocali">
+            {channels.map((c) => (
+              <li key={c.id}>
+                <button type="button" className={c.id === roomId ? "is-on" : ""} aria-pressed={c.id === roomId} disabled={busy} onClick={() => choose(c.id)}>
+                  <span aria-hidden="true">{c.icon}</span>
+                  <span className="sgv-chan-name">{c.name}</span>
+                  {!!counts[c.id] && <em>{counts[c.id]}</em>}
+                </button>
+                {c.room && canRemove(c.room) && <button type="button" className="sgv-chan-x" aria-label={`Togli la stanza ${c.name}`} title="Togli la stanza" onClick={() => removeRoom(c.id)}>✕</button>}
+              </li>
+            ))}
+          </ul>
+          <form className="sgv-new" onSubmit={createRoom}>
+            <input value={newName} maxLength={30} placeholder="Nome della nuova stanza" aria-label="Nome della nuova stanza" onChange={(e) => setNewName(e.target.value)} />
+            <button type="submit" disabled={busy || !newName.trim()}>＋ Crea</button>
+          </form>
+          <p className="sgv-title">{chanName}</p>
+          {isOpenChan && !roster.length && <p className="sgv-hint">Non c'è ancora nessuno in voce.</p>}
           <ul className="sgv-list">
             {roster.map((m) => (
               <li key={m.uid} style={clsStyle(m.cls)} className={speaking(m.uid) && !m.muted ? "is-talk" : ""}>
@@ -196,23 +299,23 @@ export default function AppVoice({ docked }) {
 
           {!joined ? (
             <>
-              <button type="button" className="sgv-btn sgv-btn--go" disabled={busy} onClick={() => join()}>{busy ? "⏳ Accendo il microfono…" : "🎧 Entra nella chat vocale"}</button>
-              <p className="sgv-hint">{isSala ? "Ti sentono tutti quelli entrati in questa sala." : "Vi sentite solo fra voi del gruppo."} Resti collegato cambiando pagina. Il browser chiederà il permesso del microfono.</p>
+              <button type="button" className="sgv-btn sgv-btn--go" disabled={busy} onClick={() => join()}>{busy ? "⏳ Accendo il microfono…" : `🎧 Entra in ${chanName}`}</button>
+              <p className="sgv-hint">{isOpenChan ? "Ti sente chiunque entri in questo canale." : "Vi sentite solo fra voi del gruppo."} {mode === "open" ? "Entri col microfono aperto: parli e basta, niente da premere." : "Per parlare tieni premuto il tasto del microfono."} Resti collegato su ogni pagina. La prima volta il browser chiede il permesso del microfono.</p>
             </>
           ) : (
             <>
-              <p className="sgv-hint">Il microfono si comanda dal tasto accanto alle cuffie, anche a pannello chiuso: {mode === "ptt" ? "«🎙 Tieni premuto» per parlare" : "«🎙 Aperto / 🔇 Muto» per accenderlo e spegnerlo"} · il tondo cambia modo (✋ tieni premuto, 🔓 sempre aperto) · ✕ esce dalla voce.</p>
+              <p className="sgv-hint">{mode === "ptt" ? "Tieni premuto il tasto 🎙 accanto alle cuffie per parlare." : "Parli e ti sentono, su qualsiasi pagina. Il tasto 🎙 accanto alle cuffie mette il muto."}</p>
               <div className="sgv-modes" role="group" aria-label="Modo del microfono">
-                <button type="button" className={mode === "ptt" ? "is-on" : ""} aria-pressed={mode === "ptt"} onClick={() => setMode("ptt")}>✋ Tieni premuto</button>
                 <button type="button" className={mode === "open" ? "is-on" : ""} aria-pressed={mode === "open"} onClick={() => setMode("open")}>🔓 Sempre aperto</button>
+                <button type="button" className={mode === "ptt" ? "is-on" : ""} aria-pressed={mode === "ptt"} onClick={() => setMode("ptt")}>✋ Tieni premuto</button>
               </div>
               <button type="button" className="sgv-btn" onClick={() => { const v = !speakers; setSpeakers(v); mesh.current?.setSpeakersOn(v); }}>{speakers ? "🔈 Silenzia gli altri" : "🔊 Riattiva l'audio"}</button>
               {!!others.length && Object.values(st.conns).some((c) => c === "relay") && (
-                <p className="sgv-hint">ℹ Con chi è «via server» la voce passa dal server del sito: funziona su qualsiasi rete, con circa 1 secondo di ritardo. Intanto si continua a provare il collegamento diretto, più veloce.</p>
+                <p className="sgv-hint">ℹ Con chi è «via server» la voce passa dal server del sito: funziona su qualsiasi rete, con poco più di 1 secondo di ritardo. Intanto si continua a provare il collegamento diretto, più veloce.</p>
               )}
             </>
           )}
-          {joined && <button type="button" className="sgv-btn sgv-btn--x" onClick={leave}>✕ Esci dalla chat vocale</button>}
+          {joined && <button type="button" className="sgv-btn sgv-btn--x" onClick={() => leave()}>✕ Esci dalla chat vocale</button>}
           {joined && (
             <details className="sgv-diag">
               <summary>🔧 Diagnostica (per l'assistenza)</summary>
