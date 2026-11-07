@@ -241,7 +241,7 @@ ${left}`;
   return `Wide first-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
 Subject: ${subject}
 Both forearms leave the image through the BOTTOM border. Exactly TWO hands, no more.
-FRAMING (very important): the WHOLE weapon is visible, tip included, nothing of the weapon is cut by the TOP border: leave an empty magenta margin above it. Nothing else in the image.
+FRAMING (very important): the WHOLE weapon is visible, tip included, nothing of the weapon is cut by the TOP border: leave an empty magenta margin above it. If the weapon is long, tilt it more toward the upper-left so that it fits entirely. Nothing else in the image.
 Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;

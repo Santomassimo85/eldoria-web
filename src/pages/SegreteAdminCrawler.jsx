@@ -98,7 +98,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     let image = "";
     // tagliata in alto? si rifà UNA volta da sola (se esce di nuovo tagliata la si tiene, con l'avviso)
     for (let tries = 0; tries < 2; tries++) {
-      const img = await askImage({ prompt: handPrompt(h), aspectRatio: "16:9" });
+      const img = await askImage({ prompt: handPrompt(h), aspectRatio: "4:3" });
       image = await dataUrlToTransparentDataUrl(img, 480);
       if (!(await touchesTop(image))) break;
     }
@@ -191,7 +191,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
 
       <div className="sga-card">
         <h3 className="sga-h3">Mani e armi <small>{HANDS.length - handsMissing.length} su {HANDS.length} · viste da chi le impugna</small></h3>
-        <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite ha TUTTE E DUE le mani, larghe quanto la scena: la destra con l'arma e la sinistra libera (o con lo scudo, per chi lo può portare); così i guanti e le misure vengono uguali. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG largo 16:9 col fondo trasparente, le mani che entrano dal bordo in basso.</p>
+        <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite ha TUTTE E DUE le mani, larghe quanto la scena: la destra con l'arma e la sinistra libera (o con lo scudo, per chi lo può portare); così i guanti e le misure vengono uguali. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG 4:3 col fondo trasparente, le mani che entrano dal bordo in basso.</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera quelli mancanti (${handsMissing.length})` : "✓ Tutte le mani hanno lo sprite"}
         </button>
