@@ -13,7 +13,7 @@ export async function askImage(body) {
 }
 // sprite frontale di un mostro: se c'è lo sprite classico l'IA parte da lì, così resta lo stesso mostro
 export async function frontSpriteUrl(m) {
-  const img = await askImage({ prompt: frontPrompt(m.name, m.desc, !!m.imageUrl), ...(m.imageUrl ? { refs: [m.imageUrl] } : {}) });
+  const img = await askImage({ prompt: frontPrompt(m.name, m.desc, !!m.imageUrl), aspectRatio: "3:4", ...(m.imageUrl ? { refs: [m.imageUrl] } : {}) });
   const clean = await dataUrlToTransparentDataUrl(img, 256);
   const blob = await (await fetch(clean)).blob();
   const ref = storageRef(storage, `segrete/fronte-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
