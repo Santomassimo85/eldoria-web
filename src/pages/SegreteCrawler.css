@@ -45,3 +45,5 @@
 .cw-bar i.low { background: #e0624f; }
 .cw-pm small { color: #c9bfad; font-size: .68rem; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .cw-foe.is-pick { animation: none; } }
+/* da qui partono gli incantesimi di chi tiene il focus nella sinistra */
+.cw-hand { position: absolute; left: 8%; top: 64%; width: 20%; height: 16%; pointer-events: none; }
