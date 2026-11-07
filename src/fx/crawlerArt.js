@@ -125,10 +125,10 @@ function offHand(kind) {
     for (const [x, y] of [[0, 72], [76, 72], [6, 132], [72, 132], [38, 46]]) s.ell(x, y, 2, 2, 0xb8bcc4); // ribattini
     s.rect(-6, 82, 88, 9, 0x3a2414).rect(-6, 112, 88, 9, 0x3a2414); // cinghie di cuoio
     s.rect(30, 74, 16, 50, 0x5a3a24).ell(38, 98, 13, 16, 0x8a92a0).ell(34, 92, 6, 6, 0xa8b0bc); // impugnatura e pugno
-  } else { // mano aperta da incantatore: la riserva disegna anche la fiamma
-    s.line(100, 104, 142, 140, (k) => 16 + k * 16, 0x2c3f8a).ell(92, 96, 12, 11, SKIN);
-    for (let i = 0; i < 4; i++) s.line(86 + i * 5, 90, 76 + i * 7, 72 + (i === 0 ? 8 : 0), 4, SKIN);
-    s.ell(82, 60, 7, 10, 0xff8a34).ell(82, 63, 3, 5, 0xffe0a0);
+  } else { // mano semiaperta, come per bilanciare il colpo
+    s.line(104, 110, 142, 140, (k) => 14 + k * 10, SLEEVE).ell(94, 100, 13, 12, GLOVE);
+    for (let i = 0; i < 4; i++) s.line(86 + i * 6, 94, 78 + i * 7, 84 + Math.abs(i - 1.5) * 3, 5, GLOVE);
+    s.line(104, 100, 108, 86, 5, GLOVE);
   }
   return s.done();
 }
@@ -139,19 +139,44 @@ export function proceduralHands(main, off) {
   const R = cacheR[key];
   if (off === "none") return { R, L: null };
   if (off === "mirror") return { R, L: R, mirrorL: true };
-  const k = `off:${off}`;
+  const k = `off:${off === "magic" ? "hand" : off}`;
   if (!cacheR[k]) cacheR[k] = offHand(off);
   return { R, L: cacheR[k], mirrorL: off !== "shield" };
 }
 
-/* quali mani vede un eroe. Due mani = nessun oggetto a sinistra; scudo se lo porta; chi lancia
-   incantesimi tiene la mano libera; gli altri impugnano due armi uguali. */
-const CASTERS = new Set(["wizard", "sorcerer", "warlock", "druid", "cleric", "bard", "paladin"]);
+/* GUANTI PER CLASSE (2026-11-07, richiesta dell'utente): stesse mani per tutte le armi di una classe.
+   Le mani di una classe si generano partendo dalla sua mano sinistra semiaperta (immagine di
+   riferimento), così guanto, misura e tratto restano uguali. Chiave: hand_{voce}__{guanto}. */
+export const GLOVES = {
+  gauntlet: { name: "Guanti d'arme", icon: "🛡", desc: "an articulated steel plate gauntlet with a short steel cuff", classes: ["fighter", "paladin", "cleric"] },
+  leather: { name: "Guanti di pelle", icon: "🧤", desc: "a worn brown leather glove with a laced leather bracer", classes: ["barbarian", "ranger", "rogue", "druid", "bard"] },
+  wraps: { name: "Bende da monaco", icon: "🥋", desc: "a bare hand wrapped in off-white cloth bandages up to the wrist, monk hand wraps", classes: ["monk"] },
+  cloth: { name: "Mani da incantatore", icon: "✋", desc: "a bare hand with the cuff of a dark blue wizard robe sleeve at the wrist, a simple ring", classes: ["wizard", "sorcerer", "warlock"] },
+};
+export const gloveOf = (cls) => Object.keys(GLOVES).find((g) => GLOVES[g].classes.includes(cls)) || "leather";
+export const handDoc = (key, glove) => `hand_${key}__${glove}`;
+/* quali mani vede un eroe: l'arma a una mano sempre a destra; a sinistra lo scudo SOLO se lo
+   impugna, altrimenti la mano semiaperta; le armi a due mani le tengono tutte e due. */
 export function handSpec(hero, weaponKey, twoHanded) {
-  if (hero?.gear?.shield) return { main: weaponKey, off: "shield" };
-  if (twoHanded) return { main: weaponKey, off: "none" };
-  if (CASTERS.has(hero?.cls)) return { main: weaponKey, off: "magic" };
-  return { main: weaponKey, off: "mirror" };
+  const glove = gloveOf(hero?.cls);
+  if (twoHanded) return { main: weaponKey, off: "none", glove };
+  if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
+  return { main: weaponKey, off: "hand", glove };
+}
+/* la lista per l'admin: per ogni guanto la mano sinistra, lo scudo (se quelle classi lo portano),
+   le armi delle sue classi e le armi speciali fatte su quelle armi */
+export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf }) {
+  const out = [];
+  Object.entries(GLOVES).forEach(([glove, g]) => {
+    out.push({ key: "open", glove, kind: "open", name: "Mano sinistra semiaperta", icon: "✋" });
+    if (g.classes.some((c) => armorProf(c).shield)) out.push({ key: "shield", glove, kind: "shield", name: "Scudo", icon: "🛡" });
+    const weapons = [...new Set(g.classes.flatMap((c) => WEAPON_CHOICES[c] || []))];
+    weapons.forEach((k) => out.push({ key: k, glove, kind: "weapon", name: WEAPONS[k].name, weaponName: WEAPONS[k].name, icon: WEAPONS[k].icon, two: TWO_HANDED.has(k) }));
+    Object.entries(ITEMS).filter(([id, it]) => weapons.includes(it.base) && !/_[12]$/.test(id)).forEach(([id, it]) => out.push({
+      key: id, glove, kind: "weapon", special: true, name: it.name, icon: it.icon, weaponName: `${WEAPONS[it.base].name} called "${it.name}"`, desc: it.desc, two: TWO_HANDED.has(it.base),
+    }));
+  });
+  return out;
 }
 
 /* ── prompt per l'IA ── */
@@ -175,15 +200,25 @@ Setting: ${d.name}${d.desc ? ` — ${d.desc}` : ""}.${idea ? ` Details: ${idea}.
 The texture MUST tile perfectly: left edge matches right edge, top edge matches bottom edge. Completely flat and orthographic: NO perspective, NO vanishing point, NO horizon, no lighting direction, no vignette, even brightness across the whole image.
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
 
-const HAND_WHAT = {
-  shield: "the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: we look at the INSIDE of the shield, never its painted front. Visible: the wooden planks of the back, iron rim, rivets coming through, two leather straps and the wooden grip with a gloved fist closed around it. NO arm, NO sleeve, NO elbow: only the fist on the grip. The shield is big, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left quarter of the image, held low and close to the viewer, with realistic first-person perspective (the near edge larger than the far edge)",
-  magic: "a LEFT open hand with sleeve entering from the BOTTOM-LEFT corner of the image, palm up, fingers spread, ready to cast a spell, no flame",
-};
-export const handPrompt = (key, weaponName, desc) => `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
-Subject: ${HAND_WHAT[key] || `a RIGHT gloved hand and forearm entering from the BOTTOM-RIGHT corner of the image, gripping a ${weaponName}${desc ? ` (${desc})` : ""}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT`}.
-The arm MUST touch the corner of the image and be cut off by the image border. Nothing else in the image. Detailed shading with 3 or 4 tones per material, thick dark outline.
+// e = voce di handEntries; withRef = c'è la mano sinistra di quel guanto come riferimento
+export function handPrompt(e, withRef) {
+  const glove = GLOVES[e.glove]?.desc || GLOVES.leather.desc;
+  const SIZE = "HAND SIZE (very important, identical for every sprite of this set): the hand is seen from the back, about ONE FIFTH of the image width, only the hand and the wrist are visible and the wrist is cut by the image border right away: NO forearm, NO elbow, NO arm.";
+  const subject = {
+    open: `the hero's LEFT hand wearing ${glove}, half open and relaxed, fingers slightly spread and curled, held low for balance, as when swinging a weapon with the other hand. The hand sits near the BOTTOM-LEFT corner of the image, the wrist touching the bottom border. Nothing else in the image, lots of empty background`,
+    shield: `the BACK (inner side) of a sturdy round fantasy shield, exactly as the hero holding it sees it with his own eyes: the INSIDE of the shield, never its painted front. Visible: wooden planks, iron rim, rivets coming through, two leather straps and the grip, with the hero's LEFT hand wearing ${glove} closed around the grip. Big shield, slightly tilted, partly out of frame, entering from the BOTTOM-LEFT corner and covering the lower left part of the image, held low and close, realistic first-person perspective (the near edge larger than the far edge)`,
+    weapon: e.two
+      ? `BOTH hands of the hero wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""} held diagonally, hands near the BOTTOM-RIGHT of the image, the weapon BIG and CHUNKY, pointing UP and to the LEFT`
+      : `the hero's RIGHT hand wearing ${glove}, gripping a ${e.weaponName}${e.desc ? ` (${e.desc})` : ""}. The hand sits near the BOTTOM-RIGHT corner, the wrist touching the bottom border. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes, it fills most of the image and points UP and slightly to the LEFT`,
+  }[e.kind];
+  return `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
+Subject: ${subject}.
+${e.kind === "shield" ? "Only the hand on the grip, NO arm, NO sleeve." : SIZE}
+${withRef ? "The attached image shows the OTHER hand of the SAME hero: copy EXACTLY the same glove (design, materials, colors), the same hand size in pixels, the same pixel density and the same drawing style, so the two hands look like a pair." : ""}
+Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;
+}
 
 // tessera dall'IA → 128×128 che si ripete senza righe: i bordi si fondono col lato opposto
 export function bakeTile(dataUrl, size = 128, blend = 10) {

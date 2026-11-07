@@ -17,7 +17,7 @@ import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
-import { handSpec } from "../fx/crawlerArt";
+import { handSpec, handDoc } from "../fx/crawlerArt";
 import { bagOf, battleItem, itemTarget } from "../data/segreteItems";
 import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
@@ -170,15 +170,16 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   const me = run?.heroes.find((h) => h.uid === uid) || null;
   const weaponKey = me ? me.weapon || WEAPON_CHOICES[me.cls]?.[0] || "spada_lunga" : "";
-  const offKey = me ? handSpec(me, weaponKey, TWO_HANDED.has(weaponKey)).off : "";
+  const spec = me ? handSpec(me, weaponKey, TWO_HANDED.has(weaponKey)) : null;
+  const offKey = spec?.off || "", glove = spec?.glove || "";
   const specialKey = me?.wItem && !/_[12]$/.test(me.wItem) ? me.wItem : ""; // arma speciale: ha il suo sprite
   useEffect(() => {
     if (!eng || !weaponKey) return;
-    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", `hand_${k}`)).then((s) => s.data()?.image || "").catch(() => "") : "");
-    Promise.all([read(specialKey), read(weaponKey), offKey === "shield" || offKey === "magic" ? read(offKey) : ""]).then(([special, base, offUrl]) => {
-      eng.setHands(`${weaponKey}:${specialKey}:${offKey}`, { main: weaponKey, off: offKey, mainUrl: special || base, offUrl });
+    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, glove))).then((s) => s.data()?.image || "").catch(() => "") : "");
+    Promise.all([read(specialKey), read(weaponKey), offKey === "none" ? "" : read(offKey === "hand" ? "open" : offKey)]).then(([special, base, offUrl]) => {
+      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, mainUrl: special || base, offUrl });
     });
-  }, [eng, weaponKey, specialKey, offKey]);
+  }, [eng, weaponKey, specialKey, offKey, glove]);
 
   // i PF sugli sprite scendono quando ARRIVA il colpo, non quando risponde il server
   const lag = useMemo(() => {

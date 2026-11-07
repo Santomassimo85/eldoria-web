@@ -318,8 +318,9 @@ export class CrawlerEngine {
   }
   drawHands() {
     const { ctx, hands, pose, cam } = this, k = W / 240, b = Math.round(cam.bob * 1.1);
-    const size = hands.big ? H * 0.66 : null;
-    const dims = (s) => { const w = s.naturalWidth || s.width, h = s.naturalHeight || s.height; return size ? [size * (w / h), size] : [w * k, h * k]; };
+    // stessa misura per tutte e due le mani: i disegni sono fatti in scala uguale
+    const size = H * 0.66;
+    const dims = (s) => { const w = s.naturalWidth || s.width, h = s.naturalHeight || s.height; return [size * (w / h), size]; };
     if (hands.L) {
       const [w, h] = dims(hands.L);
       ctx.save();
