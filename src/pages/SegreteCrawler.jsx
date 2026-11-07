@@ -174,6 +174,17 @@ function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
 
 /* LO SCRIGNO SI APRE: coperchio e monete nella scena, poi gli oggetti uno alla volta. Per ogni oggetto
    ogni giocatore ha tirato un d20 (sul server): il tuo dado rotola davvero, poi si vedono tutti i tiri e chi vince. */
+// le monete che salgono contando, come nei vecchi giochi
+function CountUp({ to, ms = 900 }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now(); let raf = 0;
+    const step = () => { const k = Math.min(1, (performance.now() - t0) / ms); setV(Math.round(to * k)); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms]);
+  return v;
+}
 function ChestReveal({ chest, uid, onDone }) {
   const [stage, setStage] = useState(0); // 0 si apre · 1 monete · 2+i oggetto i (2+n = fine)
   const [showRolls, setShowRolls] = useState(-1);
@@ -200,28 +211,28 @@ function ChestReveal({ chest, uid, onDone }) {
   const done = stage >= 2 + chest.items.length;
   return (
     <div className="sgb-end cw-reveal">
-      <p className="sgb-result">💰 {chest.by} apre lo scrigno!</p>
-      {stage >= 1 && <p className="cw-reveal-coins">{COIN_ICON} <b>+{chest.coins}</b> Monete Antiche a testa</p>}
-      {!chest.items.length && stage >= 1 && <p>Nessun oggetto, solo monete.</p>}
+      <p className="cw-reveal-head"><span>✦ TESORO ✦</span>{chest.by} apre lo scrigno!</p>
+      {stage >= 1 && <p className="cw-reveal-coins"><i aria-hidden="true" />+<b><CountUp to={chest.coins} /></b> Monete Antiche a testa</p>}
+      {!chest.items.length && stage >= 1 && <p className="cw-reveal-none">Nessun oggetto, solo monete.</p>}
       <ul className="cw-reveal-items">
         {chest.items.map((it, i) => {
           if (stage < 2 + i) return null;
           const item = itemOf(it.id), shown = showRolls >= i || stage > 2 + i, rolls = it.rerolls ? it.rerolls[it.rerolls.length - 1] : it.rolls;
           return (
             <li key={i} className={it.rare ? "is-rare" : ""}>
-              <span className="cw-reveal-it">{item?.icon || "🎁"} <b>{item?.name || it.id}</b>{it.rare ? <em> · RARO!</em> : null}</span>
+              <span className="cw-reveal-it"><span className="cw-reveal-ico">{item?.icon || "🎁"}</span><b>{item?.name || it.id}</b>{it.rare ? <em>RARO!</em> : null}</span>
               {shown ? (
                 <span className="cw-reveal-rolls">
                   {it.rolls.map((r) => <span key={r.uid} className={r.uid === it.winner && !it.rerolls ? "win" : ""}>🎲 {r.uid === uid ? "Tu" : r.name} {r.v}</span>)}
                   {it.rerolls && <span className="tie">pareggio, si ritira: {rolls.map((r) => `${r.uid === uid ? "Tu" : r.name} ${r.v}`).join(" · ")}</span>}
-                  <b className="cw-reveal-win">→ {it.winner === uid ? "a te!" : it.winnerName || "nessuno"}</b>
+                  <b className={`cw-reveal-win${it.winner === uid ? " is-me" : ""}`}>▶ {it.winner === uid ? "È TUO!" : it.winnerName || "nessuno"}</b>
                 </span>
               ) : <span className="cw-reveal-rolls">🎲 si tira…</span>}
             </li>
           );
         })}
       </ul>
-      {done && <button type="button" className="sgb-btn" onClick={onDone}>Continua</button>}
+      {done && <button type="button" className="sgb-btn cw-reveal-ok" onClick={onDone}>▶ Continua</button>}
     </div>
   );
 }

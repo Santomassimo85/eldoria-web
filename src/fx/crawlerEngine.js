@@ -144,6 +144,74 @@ function mipOf(t) {
   return t.mip;
 }
 
+
+/* LO SCRIGNO A PIXEL (2026-11-07 sera): 32 pixel di larghezza, legno a fasce, ferri d'oro con borchie,
+   serratura; aperto = coperchio ribaltato all'indietro e un mucchio di monete con gemme. */
+const CHEST_W = 32;
+const CHEST_SPARK_SHUT = [[6, 9], [25, 9], [16, 15], [6, 21], [25, 21]];
+const CHEST_SPARK_OPEN = [[9, 12], [14, 10], [19, 11], [23, 12], [12, 13], [17, 9], [21, 13]];
+const chestCache = {};
+function chestSprite(frame) {
+  if (chestCache[frame]) return chestCache[frame];
+  const H = 30, cv = document.createElement("canvas"); cv.width = CHEST_W; cv.height = H;
+  const g = cv.getContext("2d");
+  const P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  const O = "#1a0f08", W0 = "#3e2410", W1 = "#6b4423", W2 = "#86572d", W3 = "#a8743f", G0 = "#7a5410", G1 = "#d4a63a", G2 = "#f6d77a", IR = "#2b2724";
+  const bodyTop = 17, bodyBot = 28; // corpo: righe 17..28
+  // ── CORPO ──
+  P(1, bodyTop - 1, 30, bodyBot - bodyTop + 3, O);
+  P(2, bodyTop, 28, bodyBot - bodyTop + 1, W1);
+  for (const y of [20, 24]) { P(2, y, 28, 1, W0); P(2, y + 1, 28, 1, W2); }
+  P(2, bodyTop, 28, 1, W3); P(2, bodyBot, 28, 1, W0);
+  for (let x = 4; x < 30; x += 7) P(x, bodyTop + 1, 1, 2, W0); // venature
+  const band = (x, y0, y1) => { P(x - 1, y0, 5, y1 - y0 + 1, O); P(x, y0, 3, y1 - y0 + 1, G1); P(x, y0, 1, y1 - y0 + 1, G2); P(x + 2, y0, 1, y1 - y0 + 1, G0); };
+  band(4, bodyTop, bodyBot); band(25, bodyTop, bodyBot);
+  for (const x of [5, 26]) for (const y of [bodyTop + 2, bodyTop + 6, bodyTop + 10]) P(x, y, 1, 1, "#fff3c0");
+  // angoli di ferro in basso
+  P(1, bodyBot - 1, 3, 3, IR); P(28, bodyBot - 1, 3, 3, IR);
+  // piedini
+  P(2, bodyBot + 1, 3, 1, O); P(27, bodyBot + 1, 3, 1, O);
+  if (frame === 2) {
+    // ── APERTO: coperchio ribaltato dietro (si vede il dentro), monete ammucchiate ──
+    P(3, 1, 26, 9, O); P(2, 3, 28, 7, O);
+    P(4, 2, 24, 7, W0); P(3, 4, 26, 5, W0);
+    for (const y of [4, 7]) P(3, y, 26, 1, "#2c190a");
+    P(3, 9, 26, 1, G0);
+    for (const x of [5, 26]) { P(x - 1, 2, 3, 8, G0); P(x - 1, 2, 1, 8, G1); }
+    // il mucchio di monete
+    P(2, 12, 28, 6, O);
+    P(3, 11, 26, 6, G1); P(6, 10, 20, 1, G1); P(10, 9, 12, 1, G1); P(13, 8, 6, 1, G1);
+    P(6, 9, 4, 1, O); P(22, 9, 4, 1, O); P(10, 8, 3, 1, O); P(19, 8, 3, 1, O); P(13, 7, 6, 1, O);
+    const coin = [[5, 13], [8, 12], [11, 11], [14, 9], [17, 10], [20, 11], [23, 12], [26, 13], [9, 14], [15, 13], [21, 14], [12, 15], [18, 15], [6, 15], [25, 15]];
+    coin.forEach(([x, y], i) => { P(x, y, 2, 1, i % 3 ? G2 : "#fff3c0"); P(x, y + 1, 2, 1, G0); });
+    // gemme
+    for (const [x, y, c1, c2] of [[10, 12, "#e0624f", "#ff9a8a"], [19, 12, "#4f8de0", "#a5ccff"], [15, 11, "#3fb85a", "#9ff0a8"], [23, 14, "#b46be0", "#e3b8ff"]]) { P(x, y, 2, 2, c1); P(x, y, 1, 1, c2); }
+    // bordo davanti del corpo sopra il mucchio
+    P(2, bodyTop, 28, 1, W3);
+  } else {
+    // ── CHIUSO / SOCCHIUSO: coperchio a cupola ──
+    const lift = frame === 1 ? 2 : 0, lt = 5 - lift;
+    const dome = [[8, 23], [5, 26], [3, 28], [2, 29]]; // righe in alto più strette
+    dome.forEach(([x0, x1], i) => P(x0 - 1, lt + i - 1, x1 - x0 + 3, 1, O));
+    P(1, lt + 3, 30, 12 - 3 - lift + lift, O);
+    dome.forEach(([x0, x1], i) => P(x0, lt + i, x1 - x0 + 1, 1, i === 0 ? W3 : i === 1 ? W2 : W1));
+    const lb = bodyTop - 2 - lift; // ultima riga del coperchio
+    P(2, lt + 4, 28, lb - lt - 4 + 1, W1);
+    for (const y of [lt + 6, lt + 9]) if (y < lb) { P(2, y, 28, 1, W0); P(2, y - 1, 28, 1, W2); }
+    // fascia in fondo al coperchio
+    P(1, lb, 30, 2, O); P(2, lb, 28, 1, G1); P(2, lb, 28, 1, G2); P(2, lb + 1 > lb ? lb : lb, 28, 1, G1);
+    band(4, lt + 2, lb); band(25, lt + 2, lb);
+    for (const x of [5, 26]) for (const y of [lt + 4, lt + 8]) P(x, y, 1, 1, "#fff3c0");
+    if (frame === 1) { P(2, lb + 1, 28, 2, "#ffe27a"); P(5, lb + 1, 22, 1, "#fffbe0"); }
+    // serratura
+    const ly = bodyTop - 3 - lift;
+    P(12, ly - 1, 8, 8, O); P(13, ly, 6, 6, G1); P(13, ly, 6, 1, G2); P(13, ly, 1, 6, G2); P(18, ly, 1, 6, G0); P(13, ly + 5, 6, 1, G0);
+    P(15, ly + 2, 2, 2, O); P(15, ly + 4, 2, 1, O); P(16, ly + 4, 0, 0, O);
+  }
+  chestCache[frame] = cv;
+  return cv;
+}
+
 export class CrawlerEngine {
   constructor(canvas, fg) {
     this.cv = canvas; canvas.width = W; canvas.height = H;
@@ -498,41 +566,46 @@ export class CrawlerEngine {
   drawChest(t) {
     const c = this.chest; if (!c) return;
     const { ctx, cam } = this;
-    if (c.opening) { const k = clamp((performance.now() - c.t0) / 700, 0, 1); c.open = 1 - (1 - k) ** 3; if (k >= 1) c.opening = false; if (!c.burst && k > 0.25) { c.burst = true; this.coinBurst(); } }
+    if (c.opening) { const k = clamp((performance.now() - c.t0) / 900, 0, 1); c.open = k; if (k >= 1) c.opening = false; if (!c.burst && k > 0.45) { c.burst = true; this.coinBurst(); } }
     const dz = this.roomY + 0.5 + 2.4 - cam.y; if (dz < 0.4) return;
-    const sc = SC / dz, w = 1.0 * sc, hb = 0.42 * sc, hl = 0.24 * sc, cx = W / 2, foot = HZ + CAM * sc + Math.round(cam.bob * 0.5);
-    const x0 = cx - w / 2, top = foot - hb;
-    this.chestBox = { x: x0, y: top - hl - 2, w, h: hb + hl + 2, cx, foot };
-    const line = Math.max(0.6, sc * 0.012);
-    ctx.globalAlpha = 0.45; ctx.fillStyle = "#000"; ctx.fillRect(x0 - w * 0.06, foot - sc * 0.03, w * 1.12, sc * 0.06); ctx.globalAlpha = 1;
-    // luce che esce quando è aperto
-    if (c.open > 0) {
-      const g = ctx.createRadialGradient(cx, top, 0, cx, top, w * 1.1);
-      g.addColorStop(0, `rgba(255,226,120,${(0.55 * c.open).toFixed(2)})`); g.addColorStop(1, "rgba(255,200,80,0)");
-      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(cx - w * 1.2, top - w * 1.2, w * 2.4, w * 1.6); ctx.globalCompositeOperation = "source-over";
+    const sc = SC / dz, w = 1.05 * sc, p = w / CHEST_W, cx = W / 2, foot = HZ + CAM * sc + Math.round(cam.bob * 0.5);
+    // scalino di pietra sotto lo scrigno
+    const dw = w * 1.3, dh = p * 3, dx = cx - dw / 2, dy = foot - dh * 0.6;
+    ctx.globalAlpha = 0.5; ctx.fillStyle = "#000"; ctx.fillRect(dx - p * 2, dy + dh - p, dw + p * 4, p * 2); ctx.globalAlpha = 1;
+    ctx.fillStyle = "#14110f"; ctx.fillRect(dx - p, dy - p, dw + p * 2, dh + p * 2);
+    ctx.fillStyle = "#4a4540"; ctx.fillRect(dx, dy, dw, dh);
+    ctx.fillStyle = "#6a635b"; ctx.fillRect(dx, dy, dw, p);
+    ctx.fillStyle = "#2e2a26"; for (let i = 1; i < 5; i++) ctx.fillRect(dx + (dw * i) / 5, dy + p, p, dh - p);
+    const frame = c.open < 0.2 ? 0 : c.open < 0.5 ? 1 : 2;
+    const spr = chestSprite(frame), sh = spr.height * p, x0 = Math.round(cx - w / 2), top = dy - sh + p * 2;
+    this.chestBox = { x: x0, y: top, w, h: sh, cx, foot: dy };
+    // luce dorata: colonne a fasce che salgono quando è aperto
+    if (frame > 0) {
+      const k = frame === 1 ? 0.45 : 1, lt = top + sh * 0.42;
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(cx, lt, 0, cx, lt, w * 1.2);
+      g.addColorStop(0, `rgba(255,220,110,${(0.5 * k).toFixed(2)})`); g.addColorStop(1, "rgba(255,190,70,0)");
+      ctx.fillStyle = g; ctx.fillRect(cx - w * 1.3, lt - w * 1.3, w * 2.6, w * 1.8);
+      if (frame === 2 && !this.calm) {
+        for (let i = 0; i < 5; i++) {
+          const bx = x0 + w * (0.16 + i * 0.17), bw = p * (2 + (i % 2)), al = 0.12 + 0.1 * Math.abs(Math.sin(t / 500 + i * 1.7));
+          ctx.fillStyle = `rgba(255,226,140,${al.toFixed(2)})`; ctx.fillRect(Math.round(bx), lt - sh * 1.6, bw, sh * 1.6);
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
     }
-    const box = (x, y, ww, hh, fill) => { ctx.fillStyle = "#1a0f08"; ctx.fillRect(x - line, y - line, ww + line * 2, hh + line * 2); ctx.fillStyle = fill; ctx.fillRect(x, y, ww, hh); };
-    // corpo: assi di legno, fasce d'oro, borchie
-    box(x0, top, w, hb, "#6b4423");
-    ctx.fillStyle = "#57361b"; for (let i = 1; i < 3; i++) ctx.fillRect(x0, top + (hb * i) / 3 - line * 0.5, w, line);
-    ctx.fillStyle = "#8a5a30"; ctx.fillRect(x0, top, w, line * 1.5);
-    for (const fx of [0.12, 0.88]) { ctx.fillStyle = "#1a0f08"; ctx.fillRect(x0 + w * fx - w * 0.055 - line, top, w * 0.11 + line * 2, hb); ctx.fillStyle = "#d4a63a"; ctx.fillRect(x0 + w * fx - w * 0.055, top, w * 0.11, hb); ctx.fillStyle = "#f6d77a"; ctx.fillRect(x0 + w * fx - w * 0.055, top, w * 0.03, hb); }
-    // dentro (si vede quando il coperchio è alzato): monete che luccicano
-    if (c.open > 0.05) {
-      ctx.fillStyle = "#2a1608"; ctx.fillRect(x0 + line, top - hl * 0.25 * c.open, w - line * 2, hl * 0.3 * c.open + line);
-      for (let i = 0; i < 9; i++) { const px = x0 + w * (0.18 + (i * 0.083)), py = top - hl * 0.12 * c.open + Math.sin(i * 2.3) * line; ctx.fillStyle = i % 3 ? "#f2c14e" : "#fff0a8"; ctx.fillRect(px, py, w * 0.07, w * 0.05); }
-    }
-    // coperchio: chiuso a cupola; aperto si ribalta all'indietro (si schiaccia e sale)
-    const lidH = hl * (1 - c.open * 0.78), lidY = top - lidH - c.open * hl * 0.55;
-    box(x0, lidY, w, lidH, c.open > 0.5 ? "#4f3018" : "#7a4f2a");
-    if (c.open < 0.5) {
-      ctx.fillStyle = "#8f6236"; ctx.fillRect(x0, lidY, w, line * 1.5);
-      for (const fx of [0.12, 0.88]) { ctx.fillStyle = "#d4a63a"; ctx.fillRect(x0 + w * fx - w * 0.055, lidY, w * 0.11, lidH); }
-      // serratura
-      const lw = w * 0.16, lh = hb * 0.42, lx = cx - lw / 2, ly = top - lh * 0.45;
-      box(lx, ly, lw, lh, "#d4a63a"); ctx.fillStyle = "#f6d77a"; ctx.fillRect(lx, ly, lw, line); ctx.fillStyle = "#1a0f08"; ctx.fillRect(cx - line * 0.8, ly + lh * 0.35, line * 1.6, lh * 0.4);
-      // scintille d'invito, finché è chiuso
-      if (!this.calm) for (let i = 0; i < 3; i++) { const ph = (t / 900 + i / 3) % 1, sx = x0 + w * (0.2 + 0.3 * i) + Math.sin(t / 400 + i) * w * 0.05, sy = lidY - ph * hl * 1.4; ctx.globalAlpha = 1 - ph; ctx.fillStyle = "#fff3c4"; ctx.fillRect(sx, sy, line * 1.6, line * 1.6); }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(spr, x0, top, w, sh);
+    // luccichii a pixel: sull'oro quando è aperto, sulle fasce quando è chiuso (invito a toccarlo)
+    if (!this.calm) {
+      const pts = frame === 2 ? CHEST_SPARK_OPEN : CHEST_SPARK_SHUT;
+      pts.forEach(([sx, sy], i) => {
+        const ph = (t / 700 + i * 0.37) % 1; if (ph > 0.35) return;
+        const s = ph < 0.18 ? 1 : 2, X = x0 + sx * p, Y = top + sy * p;
+        ctx.fillStyle = "#fffbe0";
+        ctx.fillRect(X - p * 0.5, Y - p * (s - 0.5), p, p * (s * 2 - 1)); ctx.fillRect(X - p * (s - 0.5), Y - p * 0.5, p * (s * 2 - 1), p);
+      });
+      if (frame === 0) for (let i = 0; i < 3; i++) { const ph = (t / 1100 + i / 3) % 1, sx = x0 + w * (0.22 + 0.28 * i) + Math.sin(t / 400 + i) * w * 0.04, sy = top - ph * sh * 0.8; ctx.globalAlpha = 1 - ph; ctx.fillStyle = "#ffe9a0"; ctx.fillRect(Math.round(sx), Math.round(sy), p * 1.2, p * 1.2); }
       ctx.globalAlpha = 1;
     }
   }

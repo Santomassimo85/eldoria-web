@@ -94,3 +94,32 @@
 .cw-lg-roll { display: inline-block; margin: 0 2px; padding: 0 5px; border: 1px solid var(--side); color: var(--side); background: rgba(0,0,0,.35); font: 700 .8em "Pixelify Sans", monospace; white-space: nowrap; }
 .cw-lg-dr { display: inline-block; margin-left: 6px; padding: 0 6px; background: rgba(255,179,71,.16); border: 1px solid rgba(255,179,71,.45); color: #ffd08a; font: 700 .78em "Pixelify Sans", monospace; white-space: nowrap; }
 .cw-pm-cls { display: block; font-style: normal; font-size: .62rem; line-height: 1.1; color: color-mix(in srgb, var(--cls, #c9bfad) 70%, #c9bfad); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* LA FINESTRA DEL TESORO (2026-11-07 sera): riquadro da vecchio gioco di ruolo, blu notte con doppia
+   cornice chiara, scritte a pixel, monete che contano, ogni oggetto in uno "slot" con l'icona incassata. */
+.cw .cw-reveal { position: relative; justify-items: stretch; gap: 8px; padding: 12px 14px 14px; margin: 4px 0; color: #f3ead8;
+  font-family: "Pixelify Sans", monospace; background: linear-gradient(180deg, #1d2a6e 0%, #121a4a 55%, #0b1133 100%);
+  border: 3px solid #e9e2cf; box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, inset 0 0 0 4px #4d63b3, 0 8px 20px rgba(0,0,0,.6);
+  clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+.cw-reveal-head { display: grid; gap: 2px; margin: 0; text-align: center; font-size: 1.02rem; font-weight: 700; color: #fff7e6; text-shadow: 2px 2px 0 #000; }
+.cw-reveal-head span { font-size: 1.25rem; letter-spacing: .12em; color: #ffd76a; text-shadow: 2px 2px 0 #7a4a08, 4px 4px 0 #000; animation: cw-gold 1.6s steps(4) infinite; }
+@keyframes cw-gold { 50% { color: #fff3b0; } }
+.cw .cw-reveal-coins { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; padding: 5px 8px; font-size: 1rem; color: #e9e2cf; background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 2px #2f3f86; text-shadow: 1px 1px 0 #000; }
+.cw-reveal-coins b { font-size: 1.3rem; color: #ffd76a; min-width: 2ch; text-align: right; }
+.cw-reveal-coins i { width: 14px; height: 14px; flex: none; background: #f2c14e; box-shadow: inset -3px -3px 0 #b07a18, inset 2px 2px 0 #fff0a8, 0 0 0 2px #000; animation: cw-coin .5s steps(2) infinite; }
+@keyframes cw-coin { 50% { transform: scaleX(.45); } }
+.cw-reveal-none { margin: 0; text-align: center; color: #c7cbe6; }
+.cw .cw-reveal-items { gap: 7px; margin: 0; }
+.cw .cw-reveal-items li { padding: 7px 9px; background: rgba(0,0,0,.32); border: 0; box-shadow: inset 0 0 0 2px #2f3f86; animation: cw-slot .3s steps(3); }
+.cw .cw-reveal-items li.is-rare { background: rgba(120,60,190,.28); box-shadow: inset 0 0 0 2px #b98cff, 0 0 12px rgba(185,140,255,.45); }
+@keyframes cw-slot { from { transform: scale(.85); opacity: 0; } }
+.cw-reveal-it { display: flex; align-items: center; gap: 8px; font-size: .98rem; color: #fff7e6; text-shadow: 1px 1px 0 #000; }
+.cw-reveal-ico { display: grid; place-items: center; width: 30px; height: 30px; flex: none; font-size: 1.15rem; background: #0a0f2c; box-shadow: inset 0 0 0 2px #000, inset 0 0 0 3px #6c7fc4; }
+.cw .cw-reveal-items li.is-rare em { margin-left: auto; padding: 1px 6px; font-size: .74rem; color: #1a0b2e; background: #d6b8ff; animation: cw-gold 1s steps(2) infinite; }
+.cw .cw-reveal-rolls { font-family: "Pixelify Sans", monospace; font-size: .8rem; color: #c7cbe6; padding-left: 38px; }
+.cw .cw-reveal-rolls .win { color: #7dff8a; }
+.cw .cw-reveal-win { color: #ffd76a; }
+.cw .cw-reveal-win.is-me { color: #7dff8a; animation: cw-blink .7s steps(2) infinite; }
+@keyframes cw-blink { 50% { opacity: .35; } }
+.cw .cw-reveal-ok { justify-self: center; font-family: "Pixelify Sans", monospace; }
+@media (prefers-reduced-motion: reduce) { .cw-reveal-head span, .cw-reveal-coins i, .cw .cw-reveal-items li, .cw .cw-reveal-win.is-me, .cw .cw-reveal-items li.is-rare em { animation: none; } }

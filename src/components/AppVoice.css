@@ -62,3 +62,14 @@ body.vc-live .sgb-log { padding-right: 56px; }
 .sgv-new input::placeholder { color: #b8ac96; }
 .sgv-new button { min-height: 38px; padding: 4px 10px; border-radius: 3px; cursor: pointer; border: 1px solid #5fd16b; background: rgba(95,209,107,.15); color: #f3ead8; font: 700 .84rem system-ui, sans-serif; }
 .sgv-new button:disabled { opacity: .5; }
+
+/* Chi è online + chiamate (2026-11-07) */
+.sgv-online { display: grid; gap: 5px; padding-top: 6px; border-top: 1px solid rgba(243,234,216,.15); }
+.sgv-online .sgv-list li { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.sgv-online .sgv-where { grid-column: 2 / -1; margin-top: -3px; color: #9fd8a6; }
+.sgv-call { min-height: 32px; padding: 2px 9px; border-radius: 3px; border: 1px solid #f2c14e; background: rgba(242,193,78,.15); color: #ffe39a; font: 700 .78rem system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+.sgv-call:disabled { border-color: rgba(95,209,107,.6); background: none; color: #9fd8a6; cursor: default; }
+.sgv-invite { display: grid; gap: 6px; padding: 8px; border: 1px solid #f2c14e; background: rgba(242,193,78,.12); }
+.sgv-invite p { margin: 0; color: #fff7e6; }
+.sgv-invite div { display: flex; flex-wrap: wrap; gap: 6px; }
+.sgv-panel, .sgv-panel * { box-sizing: border-box; }

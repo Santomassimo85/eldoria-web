@@ -252,6 +252,11 @@ service cloud.firestore {
     match /dungeon_voice/sala-comune/{doc=**} {
       allow read, write: if isLoggedIn();
     }
+    // Chi ha l'app aperta (2026-11-07): ognuno scrive solo il suo, lo leggono tutti i loggati
+    match /app_presence/{uid} {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn() && request.auth.uid == uid;
+    }
     // Stanze vocali create dai giocatori (2026-11-07): il loro canale ha id vr-*
     match /voice_rooms/{roomId} {
       allow read: if isLoggedIn();

@@ -10,10 +10,12 @@
    ogni 45 s (getDocs), non in diretta: il battito di chi parla costerebbe una lettura a ogni pagina. */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { useLocation, useNavigate } from "react-router-dom";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isAdminEmail } from "../utils/roles";
+import { isHiddenUid } from "../data/hiddenPlayers";
 import { VoiceMesh, peersCol, makeFreshness } from "../utils/segreteVoice";
 import { classInfo, clsStyle } from "../data/segrete";
 import "./AppVoice.css";
@@ -37,6 +39,13 @@ const readResume = () => {
   } catch { return null; }
 };
 const SPEAK = 0.04;
+/* CHI È ONLINE (2026-11-07): `app_presence/{uid}` = {name, at, hidden, voice, voiceName}. Lo scrive l'app
+   aperta e in primo piano ogni 2 minuti (e subito quando entri o esci dalla voce); passando in secondo
+   piano scrive hidden. Online = app in primo piano con un battito degli ultimi 5 minuti. Si legge solo
+   a pannello aperto. */
+const PRES_MS = 2 * 60000;
+const ONLINE_MS = 5 * 60000;
+const CALL_GAP_MS = 2 * 60000; // una chiamata alla stessa persona ogni 2 minuti
 // Nell'app (WebView di Capacitor) i link del sito restano dentro l'app, che non scarica file:
 // un indirizzo di un ALTRO dominio invece Capacitor lo apre nel browser del telefono, che scarica l'APK.
 const APK_EXTERNAL_URL = "https://raw.githubusercontent.com/Santomassimo85/eldoria-web/main/public/app/crit-happens.apk";
@@ -65,6 +74,11 @@ export default function AppVoice({ docked }) {
   const [speakers, setSpeakers] = useState(true);
   const [st, setSt] = useState({ conns: {}, levels: {} });
   const [, tick] = useState(0);
+  const [online, setOnline] = useState([]);
+  const [called, setCalled] = useState({}); // uid -> ora della chiamata
+  const [invite, setInvite] = useState(null); // {id, from}: ti hanno chiamato in questo canale
+  const location = useLocation();
+  const navigate = useNavigate();
   const mesh = useRef(null);
   const want = useRef(null); // canale in cui vuoi stare: dopo un'uscita non tua (app in secondo piano, ricarica) si rientra
   const holding = useRef(false);
@@ -91,6 +105,33 @@ export default function AppVoice({ docked }) {
     const t = setInterval(load, 45000);
     return () => clearInterval(t);
   }, [roomId, uid, watch]);
+  // la mia presenza: app aperta e in primo piano
+  const presVoice = useRef(null);
+  useEffect(() => {
+    if (!uid || !name) return undefined;
+    const ref = doc(db, "app_presence", uid);
+    const put = () => { if (document.visibilityState === "visible") setDoc(ref, { name, at: Date.now(), hidden: false, ...presVoice.current }, { merge: true }).catch(() => {}); };
+    const vis = () => { if (document.visibilityState === "visible") put(); else setDoc(ref, { hidden: true }, { merge: true }).catch(() => {}); };
+    put();
+    const t = setInterval(put, PRES_MS);
+    document.addEventListener("visibilitychange", vis);
+    window.addEventListener("pagehide", vis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", vis); };
+  }, [uid, name]);
+  // chi è online: solo a pannello aperto
+  useEffect(() => (uid && open ? onSnapshot(collection(db, "app_presence"), (s) => {
+    setOnline(s.docs.map((d) => ({ uid: d.id, ...d.data() })));
+  }, () => setOnline([])) : undefined), [uid, open]);
+  // arrivato da una chiamata (?voce=canale&da=nome): si apre il pannello con l'invito
+  useEffect(() => {
+    const q = new URLSearchParams(location.search), id = q.get("voce");
+    if (!id || !uid) return;
+    setInvite({ id, from: q.get("da") || "" });
+    setOpen(true);
+    q.delete("voce"); q.delete("da");
+    const rest = q.toString();
+    navigate(`${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`, { replace: true });
+  }, [location.search, uid]); // eslint-disable-line react-hooks/exhaustive-deps
   // le stanze dei giocatori: si leggono solo a pannello aperto o in voce
   useEffect(() => (uid && watch ? onSnapshot(collection(db, "voice_rooms"), (s) => {
     setRooms(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => Date.now() - (Number(r.at) || 0) < VR_FRESH_MS)
@@ -121,7 +162,7 @@ export default function AppVoice({ docked }) {
   }, [pick, room?.id, rooms, joined]);
   useEffect(() => {
     if (!open) return undefined;
-    const away = (e) => { if (!e.target.closest?.(".sgv-panel, .sgv-pill")) setOpen(false); };
+    const away = (e) => { if (!e.target.closest?.(".sgv-panel, .sgv-pill")) { setOpen(false); setInvite(null); } };
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
   }, [open]);
@@ -173,6 +214,12 @@ export default function AppVoice({ docked }) {
       .then((p) => { if (p.state === "granted" || (p.state !== "denied" && window.Capacitor?.isNativePlatform?.())) join(id); else want.current = null; })
       .catch(() => join(id));
   }, [uid, name, room?.id]);
+
+  const chanLabel = (id) => (!id ? "" : id === SALA ? "Sala comune" : isVr(id) ? rooms?.find((r) => r.id === id)?.name || "Stanza" : room?.id === id ? room.name || "Gruppo" : "Gruppo");
+  useEffect(() => {
+    presVoice.current = { voice: chan || null, voiceName: chan ? chanLabel(chan) : null };
+    if (uid && name) setDoc(doc(db, "app_presence", uid), { name, at: Date.now(), hidden: document.visibilityState !== "visible", ...presVoice.current }, { merge: true }).catch(() => {});
+  }, [chan, uid, name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fresh = useRef(null);
   if (!fresh.current) fresh.current = makeFreshness();
@@ -251,6 +298,24 @@ export default function AppVoice({ docked }) {
     deleteDoc(doc(db, "voice_rooms", id)).catch(() => setErr("Non sono riuscito a togliere la stanza."));
   };
 
+  // chiamare qualcuno nel canale (notifica: campanella + push; il tocco apre il pannello sul canale)
+  const callIn = (p) => {
+    const id = roomId, label = chanLabel(id);
+    setCalled((c) => ({ ...c, [p.uid]: Date.now() }));
+    addDoc(collection(db, "notifications"), {
+      userId: p.uid, title: "🎧 Ti chiamano in chat vocale",
+      message: `${name || "Un giocatore"} ti aspetta in «${label}»: tocca per entrare.`,
+      link: `/?voce=${encodeURIComponent(id)}&da=${encodeURIComponent(name || "")}`, openLink: true,
+      read: false, timestamp: serverTimestamp(),
+    }).catch(() => { setCalled((c) => ({ ...c, [p.uid]: 0 })); setErr("Non sono riuscito a mandare la chiamata."); });
+  };
+  const acceptInvite = async () => {
+    const id = invite?.id; setInvite(null);
+    if (!id) return;
+    if (mesh.current) { if (mesh.current.roomId !== id) { await leave(); join(id); } }
+    else join(id);
+  };
+
   // push-to-talk: tieni premuto (dito o mouse)
   const pttDown = (e) => { e.preventDefault(); holding.current = true; applyMic(true); };
   const pttUp = () => { if (!holding.current) return; holding.current = false; applyMic(false); };
@@ -272,6 +337,13 @@ export default function AppVoice({ docked }) {
     const conn = m.uid === uid ? (joined ? "connected" : null) : st.conns[m.uid] || null;
     return { ...m, in: inVoice.has(m.uid), muted: p?.muted, conn };
   });
+
+  const now = Date.now();
+  const onlineList = online
+    .filter((p) => p.uid !== uid && !p.hidden && now - (Number(p.at) || 0) < ONLINE_MS && !isHiddenUid(p.uid))
+    .sort((a, b) => (b.voice ? 1 : 0) - (a.voice ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
+  const groupOnly = !isOpenChan && room?.id === roomId;
+  const canCall = (p) => !(p.voice === roomId) && (!groupOnly || (room?.memberIds || []).includes(p.uid));
 
   if (!uid) return null;
   const micBtn = !joined ? null : mode === "ptt" ? (
@@ -299,6 +371,15 @@ export default function AppVoice({ docked }) {
       {docked ? (slot ? createPortal(bar, slot) : null) : createPortal(<div className="sgv-fight">{bar}</div>, document.body)}
       {open && createPortal(
         <div className={`sgv-panel${docked ? "" : " sgv-panel--fight"}`} role="dialog" aria-label="Chat vocale">
+          {invite && (
+            <div className="sgv-invite">
+              <p>📣 {invite.from ? <b>{invite.from}</b> : "Qualcuno"} ti chiama in <b>«{chanLabel(invite.id)}»</b></p>
+              <div>
+                <button type="button" className="sgv-btn sgv-btn--go" disabled={busy || (joined && roomId === invite.id)} onClick={acceptInvite}>{joined && roomId === invite.id ? "✓ Ci sei già" : busy ? "⏳ Entro…" : "🎧 Entra adesso"}</button>
+                <button type="button" className="sgv-btn" onClick={() => setInvite(null)}>Più tardi</button>
+              </div>
+            </div>
+          )}
           <ul className="sgv-chans" aria-label="Canali vocali">
             {channels.map((c) => (
               <li key={c.id}>
@@ -326,6 +407,28 @@ export default function AppVoice({ docked }) {
               </li>
             ))}
           </ul>
+
+          <div className="sgv-online">
+            <p className="sgv-title">🟢 Online adesso{onlineList.length ? ` (${onlineList.length})` : ""}</p>
+            {!onlineList.length ? <p className="sgv-hint">Nessun altro ha l'app aperta in questo momento.</p> : (
+              <ul className="sgv-list">
+                {onlineList.map((p) => {
+                  const recent = now - (called[p.uid] || 0) < CALL_GAP_MS;
+                  return (
+                    <li key={p.uid}>
+                      <span className="sgv-ico" aria-hidden="true">{p.voice ? "🎧" : "📱"}</span>
+                      <span className="sgv-name">{p.name || "Giocatore"}</span>
+                      {p.voice === roomId ? <small>con te in voce</small> : canCall(p) ? (
+                        <button type="button" className="sgv-call" disabled={recent} onClick={() => callIn(p)} title={`Chiama ${p.name} in ${chanName}`}>{recent ? "✓ chiamato" : "📣 Chiama"}</button>
+                      ) : <small>solo del gruppo</small>}
+                      {p.voice && p.voice !== roomId && <small className="sgv-where">in voce · {p.voiceName || "un altro canale"}</small>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <p className="sgv-hint">«Chiama» gli manda una notifica: toccandola si apre la chat vocale su «{chanName}».</p>
+          </div>
 
           {!joined ? (
             <>

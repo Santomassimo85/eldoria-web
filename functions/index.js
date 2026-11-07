@@ -527,7 +527,8 @@ exports.pushOnNotification = onDocumentCreated('notifications/{id}', async (even
     uids: [data.userId],
     title: data.title || "Crit Happens",
     body: data.message || "",
-    url: "/notifications",
+    // openLink (2026-11-07, chiamate in chat vocale): il tocco porta al link, non alla lista
+    url: data.openLink && typeof data.link === "string" && data.link.startsWith("/") ? data.link : "/notifications",
     tag: `notif-${event.params.id}`,
   });
 });
