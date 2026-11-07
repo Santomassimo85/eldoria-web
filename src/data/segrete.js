@@ -75,6 +75,9 @@ export function mergeMonsters(docs = []) {
     .filter((m) => !m.hidden);
 }
 
+// Vista in prima persona (2026-11-07): false = solo il Master principale. true = tutti.
+export const CRAWLER_PUBLIC = false;
+
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;
 // colore di ogni classe nella lobby delle Segrete (carte, slot del gruppo, scheda dell'eroe)

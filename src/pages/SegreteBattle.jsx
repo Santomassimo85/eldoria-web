@@ -32,7 +32,7 @@ const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `$
 
 /* Icone di stato sopra lo sprite (senza riquadro): solo il simbolo, il numero dei
    round che restano, alone verde = bonus, rosso = malus. Effetti attivi finché round < until. */
-function statusIcons(c, round) {
+export function statusIcons(c, round) {
   const fx = c.fx || {};
   const untilOf = (u) => (typeof u === "number" ? u : u?.until || 0);
   const on = (u) => !!u && round < untilOf(u);
@@ -115,17 +115,17 @@ function Fighter({ c, isTurn, done, selectable, picked, onPick, classSprite, fla
 
 /* Cronaca (2026-11-06): i tiri "(🎲12+5=17 vs CA 14)" hanno il colore di chi tira: la classe per
    gli eroi, rosso pieno per i mostri (il rosso del Barbaro è simile, per questo il mostro ha il fondo). */
-const rowSide = (l, run) => {
+export const rowSide = (l, run) => {
   const id = l?.actor || l?.from;
   const c = id ? [...(run.heroes || []), ...(run.foes || [])].find((x) => x.id === id) : null;
   if (!c) return { cls: "", style: undefined };
   return c.side === "h" ? { cls: " by-hero", style: clsStyle(c.cls) } : { cls: " by-foe", style: undefined };
 };
-function LogText({ l, run }) {
+export function LogText({ l, run }) {
   if (!l) return null;
   const { cls, style } = rowSide(l, run);
   if (!cls) return l.txt;
-  return String(l.txt).split(/((🎲[^)]*))/).map((p, i) => (i % 2
+  return String(l.txt).split(/(\(🎲[^)]*\))/).map((p, i) => (i % 2
     ? <span key={i} className={`sgb-roll${cls}`} style={style}>{p.slice(1, -1)}</span>
     : p));
 }
@@ -457,7 +457,7 @@ export default function SegreteBattle({ room, uid }) {
 /* Bottino (2026-11-05): cosa hai preso finora, sala per sala (run.gains[uid] dal motore). */
 const floorLabel = (run, fl) => (fl > run.floors ? "👑 Boss" : `🚪 Sala ${fl}`);
 const gainText = (g) => (g.it ? `${itemOf(g.it)?.icon || "🎁"} ${itemOf(g.it)?.name || g.it}` : `${COIN_ICON} ${g.c}`);
-function FloorGains({ run, uid }) {
+export function FloorGains({ run, uid }) {
   const list = ((run.gains || {})[uid] || []).filter((g) => g.fl === run.floor);
   if (!list.length) return <p className="sgb-gain-none">In questa sala non hai raccolto niente.</p>;
   const coins = list.reduce((t, g) => t + (g.c || 0), 0);
@@ -466,7 +466,7 @@ function FloorGains({ run, uid }) {
       {list.filter((g) => g.it).map((g, i) => <span key={i}> · {gainText(g)}</span>)}</p>
   );
 }
-function SpoilsBox({ run, uid, spoils, hidden }) {
+export function SpoilsBox({ run, uid, spoils, hidden }) {
   const [open, setOpen] = useState(false);
   const gains = (run.gains || {})[uid] || [];
   if ((run.heroes || []).find((h) => h.uid === uid)?.helper) {
@@ -500,7 +500,7 @@ function SpoilsBox({ run, uid, spoils, hidden }) {
   );
 }
 
-function actInfo(a, lv) {
+export function actInfo(a, lv) {
   if (a.kind === "defend") return "+4 CA fino al tuo turno";
   if (a.kind === "heal") return a.flat ? `cura ${lv * 5}` : `cura ${a.dice}${a.plusMod ? "+mod" : ""}`;
   if (a.kind === "heal_all") return `cura tutti ${a.dice}+mod`;
@@ -524,7 +524,7 @@ function foeActionLine(a) {
   const save = a.hitMode === "save" || area;
   return `${dice}${save ? ` · TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${a.saveDC || 12}${a.halfOnSave !== false ? " (metà se lo superi)" : ""}` : ` · +${a.bonus || 0} al colpire`}${area ? " · tutto il gruppo" : ""}`;
 }
-function FoeCard({ f, known, kills, round, onClose }) {
+export function FoeCard({ f, known, kills, round, onClose }) {
   const q = "????";
   const list = (arr) => (arr || []).map((k) => DMG_LABEL[k] || k).join(", ");
   const icons = f.hp > 0 ? statusIcons(f, round) : [];

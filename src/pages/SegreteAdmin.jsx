@@ -25,6 +25,8 @@ import {
   ActionsList, DefensesPicker, FacingPicker, SpriteDropzone, blankAction, sanitizeActions, pixelArtPrompt,
   dataUrlToTransparentBlob, defensesOf,
 } from "./WorldBossAdmin";
+import CrawlerArtTab from "./SegreteAdminCrawler";
+import { frontSpriteUrl } from "../utils/crawlerGen";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 import "./SegreteAdmin.css";
@@ -42,7 +44,7 @@ const cleanMonster = (m) => ({
   level: num(m.level, 1, 20, 1), hp: num(m.hp, 1, 2000, 10), ac: num(m.ac, 5, 30, 12),
   init: num(m.init, -5, 15, 0), save: num(m.save, -5, 15, 0),
   dungeons: Array.isArray(m.dungeons) ? m.dungeons : [],
-  imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "", facing: m.facing === "right" ? "right" : "left",
+  imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "", frontImageUrl: m.frontImageUrl || "", facing: m.facing === "right" ? "right" : "left",
   size: sizeOf(m),
   actions: sanitizeActions(m.actions, 1),
   ...defensesOf(m),
@@ -145,7 +147,7 @@ export default function SegreteAdmin() {
       </div>
 
       <div className="sga-tabs">
-        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["bottino", "🎁 Bottino"]].map(([k, l]) => (
+        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["bottino", "🎁 Bottino"], ["crawler", "🎮 Prima persona"]].map(([k, l]) => (
           <button key={k} type="button" aria-pressed={tab === k} className={tab === k ? "is-on" : ""} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -153,6 +155,7 @@ export default function SegreteAdmin() {
       {tab === "dungeon" && <DungeonsTab dungeons={dungeons} monsters={monsters} />}
       {tab === "bestiario" && <BestiaryTab dungeons={dungeons} monsters={monsters} wbMinions={wbMinions} wbBosses={wbBosses} />}
       {tab === "bottino" && <LootTab dungeons={dungeons} />}
+      {tab === "crawler" && <CrawlerArtTab dungeons={dungeons} monsters={monsters} />}
     </section>
   );
 }
@@ -366,6 +369,17 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
       set(dead ? { deadImageUrl: url } : { imageUrl: url });
     } catch (e) { alert("Sprite: " + (e.message || e)); } finally { flag(key, false); }
   };
+  const genFront = async () => {
+    if (!form.name.trim()) return alert("Dai prima un nome al mostro.");
+    flag("front", true);
+    try { set({ frontImageUrl: await frontSpriteUrl(form) }); }
+    catch (e) { alert("Sprite frontale: " + (e.message || e)); } finally { flag("front", false); }
+  };
+  const onFrontFile = async (file) => {
+    flag("front", true);
+    try { set({ frontImageUrl: await uploadPng(await fileToSpriteBlob(file)) }); }
+    catch (e) { alert(e.message); } finally { flag("front", false); }
+  };
   const onSpriteFile = (dead) => async (file) => {
     const key = dead ? "dead" : "alive";
     flag(key, true);
@@ -461,6 +475,8 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
             onFile={onSpriteFile(false)} onClear={() => set({ imageUrl: "" })} onGenerate={() => genSprite(false)} />
           <SpriteDropzone label="Morto" icon="💀" value={form.deadImageUrl} uploading={false} generating={busy.dead}
             onFile={onSpriteFile(true)} onClear={() => set({ deadImageUrl: "" })} onGenerate={() => genSprite(true)} accent="var(--sangue)" />
+          <SpriteDropzone label="Frontale (prima persona)" icon="🎮" value={form.frontImageUrl} uploading={false} generating={busy.front}
+            onFile={onFrontFile} onClear={() => set({ frontImageUrl: "" })} onGenerate={genFront} />
         </div>
         <div className="sga-btns">
           {!form.imageUrl && <button type="button" className="adm-btn" disabled={busy.alive} onClick={() => genSprite(false)}>✨ Genera lo sprite</button>}

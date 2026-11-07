@@ -36,4 +36,4 @@ export function castPose(el) {
   ], { duration: 320, easing: "steps(3, end)", composite: "add" });
 }
 // il "campo" che contiene uno sprite (per la scossa)
-export const stageOf = (el) => el?.closest?.(".rpg-battle-scene, .sgb-field, .cv-field, .al-field, .pd-field") || null;
+export const stageOf = (el) => el?.closest?.(".rpg-battle-scene, .sgb-field, .cw-stage, .cv-field, .al-field, .pd-field") || null;

@@ -279,6 +279,11 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if false; // bestiario scoperto: lo scrive solo segreteDo
     }
+    // Art della vista in prima persona delle Segrete (2026-11-07): tessere e armi, come data URL
+    match /dungeon_tiles/{tileId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
     match /dungeon_types/{typeId} {
       allow read: if isLoggedIn();
       allow write: if isMaster();

@@ -1,0 +1,37 @@
+/* Le Segrete in prima persona: una colonna da telefono. Scena, cronaca, azioni, party in basso.
+   Pannelli, azioni e cronaca riusano SegreteBattle.css; qui solo il campo e il party. */
+.cw { display: flex; flex-direction: column; max-width: 640px; height: 100svh; background: #0d0a0c; }
+.cw-top { padding-right: 56px; }
+.cw-stage { position: relative; flex: none; width: min(100%, calc(54svh * 264 / 255)); margin: 0 auto; line-height: 0; overflow: hidden; background: #000; }
+.cw-stage canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.cw-foe { position: absolute; padding: 0; border: 0; background: none; color: inherit; cursor: default; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+.cw-foe.is-dead { pointer-events: none; }
+.cw-foe.is-pick { cursor: crosshair; outline: 2px dashed #f2c14e; outline-offset: 1px; animation: cw-pick 1s steps(2) infinite; }
+.cw-foe.is-picked { outline: 2px solid #fff; }
+.cw-foe:focus-visible { outline: 2px solid #f2c14e; }
+@keyframes cw-pick { 50% { outline-color: rgba(242,193,78,.25); } }
+.cw-foe .cw-pips { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); display: flex; flex-wrap: wrap-reverse; justify-content: center; width: max-content; max-width: 150px; line-height: 1.1; }
+
+.cw .sgb-log { flex: none; }
+.cw-panel { flex: 1 1 auto; min-height: 96px; overflow-y: auto; padding: 8px; }
+.cw-panel .sgb-acts { grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.cw-party { position: sticky; bottom: 0; z-index: 5; flex: none; display: grid; grid-template-columns: repeat(var(--cw-n, 4), minmax(0, 1fr)); gap: 4px; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); background: #0d0a0c; border-top: 2px solid #000; }
+.cw-pm { position: relative; min-width: 0; display: grid; justify-items: center; gap: 2px; padding: 22px 2px 3px; border: 0; background: #1b171c; color: #f3ead8; font: 12px var(--sgb-read, system-ui, sans-serif); cursor: default; touch-action: manipulation; }
+.cw-pm.is-me { background: #2a242b; box-shadow: inset 0 -3px 0 var(--cls, #e0a85a); }
+.cw-pm.is-pick { cursor: pointer; outline: 2px dashed #f2c14e; outline-offset: -2px; }
+.cw-pm.is-picked { outline: 2px solid #fff; outline-offset: -2px; }
+.cw-pm-st { position: absolute; top: 2px; left: 0; right: 0; display: flex; justify-content: center; min-height: 18px; }
+.cw-pm .cw-pips { --stp-size: 15px; display: flex; gap: 1px; line-height: 1; transform: scale(.82); transform-origin: top center; }
+.cw-face { position: relative; width: 44px; height: 44px; display: grid; place-items: center; overflow: visible; border: 2px solid var(--cls, #888); background: #17131a; }
+.cw-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; image-rendering: pixelated; }
+.cw-pm.is-turn .cw-face { box-shadow: 0 0 0 2px #f2c14e; }
+.cw-pm.is-dead .cw-face img { filter: grayscale(1) brightness(.5); }
+.cw-done { position: absolute; right: -4px; top: -6px; font: 700 15px "Pixelify Sans", monospace; color: #5fd16b; text-shadow: 1px 1px #000; }
+.cw-nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; color: var(--cls, #f3ead8); }
+.cw-bar { width: 90%; height: 6px; background: #000; }
+.cw-bar i { display: block; height: 100%; background: #5fd16b; transition: width .25s steps(4); }
+.cw-bar i.low { background: #e0624f; }
+.cw-pm small { color: #c9bfad; font-size: .68rem; white-space: nowrap; }
+@media (min-width: 700px) { .cw { border-inline: 2px solid #000; } }
+@media (prefers-reduced-motion: reduce) { .cw-foe.is-pick { animation: none; } }

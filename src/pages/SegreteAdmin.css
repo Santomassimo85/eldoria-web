@@ -63,3 +63,12 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-loot .sga-mcard-img img { image-rendering: auto; object-fit: contain; }
 .sga-loot-chips button { min-height: 30px; font-size: .8rem; }
 .sga-loot-chips small { align-self: center; color: var(--osso-2); }
+
+/* Prima persona (2026-11-07) */
+.sga-cw { display: grid; gap: 12px; }
+.sga-cw-prev { display: block; width: min(100%, 420px); height: auto; margin: 8px auto 0; image-rendering: pixelated; background: #000; }
+.sga-cw-row { display: grid; gap: 6px; margin-top: 10px; }
+.sga-cw-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.sga-cw-tile { position: relative; margin: 0; display: grid; gap: 4px; justify-items: stretch; text-align: center; }
+.sga-cw-tile > img, .sga-cw-tile > span { width: 100%; aspect-ratio: 1; object-fit: cover; image-rendering: pixelated; display: grid; place-items: center; background: rgba(0,0,0,.35); color: var(--osso-3, #b8ac96); font-size: .85rem; }
+.sga-cw-tile figcaption { font-size: .82rem; }

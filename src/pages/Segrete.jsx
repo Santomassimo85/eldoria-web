@@ -2,7 +2,7 @@
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
    Il combattimento (motore sul server + IA dei nemici) arriva nella fase 3. */
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -11,13 +11,14 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  CRAWLER_PUBLIC, MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
 import SegreteDungeonInfo from "./SegreteDungeonInfo";
 import SegreteBattle from "./SegreteBattle";
+const SegreteCrawler = lazy(() => import("./SegreteCrawler"));
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
@@ -372,6 +373,23 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
   );
 }
 
+const CRAWLER_KEY = "sgr_crawler";
+const readCrawler = () => { try { return localStorage.getItem(CRAWLER_KEY) !== "0"; } catch { return true; } };
+// la lotta: classica per tutti; il Master (o tutti con CRAWLER_PUBLIC) vede quella in prima persona
+function BattleView({ room, uid, master }) {
+  const [on, setOn] = useState(readCrawler);
+  const can = master || CRAWLER_PUBLIC;
+  const flip = () => { const v = !on; setOn(v); try { localStorage.setItem(CRAWLER_KEY, v ? "1" : "0"); } catch { /* niente */ } };
+  return (
+    <>
+      {can && on
+        ? <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}><SegreteCrawler room={room} uid={uid} /></Suspense>
+        : <SegreteBattle room={room} uid={uid} />}
+      {can && <div className="sgr-room-actions"><button type="button" className="sgr-btn sgr-btn--ghost" onClick={flip}>{on ? "🖼 Passa alla vista classica" : "🎮 Passa alla prima persona"}</button></div>}
+    </>
+  );
+}
+
 function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes, onPick, onFix }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
@@ -381,7 +399,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
   if (room.status === "running" || room.status === "done") {
     return (
       <>
-        <SegreteBattle room={room} uid={uid} />
+        <BattleView room={room} uid={uid} master={master} />
         {master && (
           <div className="sgr-room-actions">
             <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => reopenRoom(room.id))}>↺ Riporta in stanza (Master)</button>
