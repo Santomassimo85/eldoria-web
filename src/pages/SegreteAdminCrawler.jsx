@@ -11,7 +11,7 @@ import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt, twoHandedFor } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -50,7 +50,7 @@ function Preview({ dungeons, monsters, tiles }) {
   useEffect(() => { eng.current?.setFoes(foes); }, [cv, fg, foes]);
   const choices = WEAPON_CHOICES[cls] || [];
   const wk = choices.includes(weapon) ? weapon : choices[0];
-  const canShield = armorProf(cls).shield && !TWO_HANDED.has(wk);
+  const canShield = armorProf(cls).shield && !twoHandedFor(cls, wk, TWO_HANDED.has(wk));
   const { off, glove } = handSpec({ cls, gear: { shield: canShield && shield } }, wk, TWO_HANDED.has(wk));
   const hp = tiles[handDoc(pairKey(wk, off), glove)]?.image || "";
   useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hp.length}`, { main: wk, off, pairUrl: hp }); }, [cv, fg, wk, off, glove, hp]);
@@ -66,7 +66,7 @@ function Preview({ dungeons, monsters, tiles }) {
           <select className="admin-field-input" value={wk} onChange={(e) => setWeapon(e.target.value)}>{choices.map((k) => <option key={k} value={k}>{WEAPONS[k].name}</option>)}</select></label>
       </div>
       {canShield && <label className="sga-check"><input type="checkbox" checked={shield} onChange={(e) => setShield(e.target.checked)} /> Impugna lo scudo</label>}
-      <p className="sga-hint">{GLOVES[gloveOf(cls)].name} · {off === "shield" ? "scudo a sinistra" : off === "none" ? "arma a due mani" : "mano sinistra semiaperta"}</p>
+      <p className="sga-hint">{GLOVES[gloveOf(cls)].name} · {off === "shield" ? "scudo a sinistra" : off === "none" ? "arma a due mani" : GLOVES[gloveOf(cls)].focus ? "focus arcano a sinistra" : "mano sinistra semiaperta"}</p>
       <div className="sga-cw-prev">
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="Anteprima della stanza in prima persona" />
         <canvas ref={setFg} aria-hidden="true" />
@@ -206,7 +206,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
                   <figure key={id} className="sga-cw-tile">
                     {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
                     {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
-                    <figcaption>{h.name}{h.special ? " ★" : ""} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : "+ mano libera"}</small></figcaption>
+                    <figcaption>{h.name}{h.special ? " ★" : ""} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
                     <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : "✨ Genera"}</button>
                     <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
                     {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}

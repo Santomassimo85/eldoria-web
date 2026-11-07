@@ -151,7 +151,10 @@ export const GLOVES = {
   gauntlet: { name: "Guanti d'arme", icon: "🛡", desc: "an articulated steel plate gauntlet with a short steel cuff", classes: ["fighter", "paladin", "cleric"] },
   leather: { name: "Guanti di pelle", icon: "🧤", desc: "a worn brown leather glove with a laced leather bracer", classes: ["barbarian", "ranger", "rogue", "druid", "bard"] },
   wraps: { name: "Bende da monaco", icon: "🥋", desc: "a bare hand wrapped in off-white cloth bandages up to the wrist, monk hand wraps", classes: ["monk"] },
-  cloth: { name: "Mani da incantatore", icon: "✋", desc: "a bare hand with the cuff of a dark blue wizard robe sleeve at the wrist, a simple ring", classes: ["wizard", "sorcerer", "warlock"] },
+  cloth: { name: "Mani da incantatore", icon: "✋", desc: "a bare hand with the cuff of a dark blue wizard robe sleeve at the wrist, a simple ring", classes: ["wizard", "sorcerer"],
+    focus: "an arcane focus: a glowing blue crystal orb or a large faceted magic gem, held up in the open palm" },
+  pact: { name: "Mani del patto", icon: "💀", desc: "a pale bare hand with the cuff of a black and deep purple robe sleeve at the wrist, a dark iron ring", classes: ["warlock"],
+    focus: "a warlock's focus: a small human skull with faint violet light in the eye sockets, or a large dark violet gem, held in the open palm" },
 };
 export const gloveOf = (cls) => Object.keys(GLOVES).find((g) => GLOVES[g].classes.includes(cls)) || "leather";
 export const handDoc = (key, glove) => `hand_${key}__${glove}`;
@@ -159,8 +162,11 @@ export const handDoc = (key, glove) => `hand_${key}__${glove}`;
 export const pairKey = (weapon, off) => `${weapon}~${off}`;
 /* quali mani vede un eroe: l'arma a una mano sempre a destra; a sinistra lo scudo SOLO se lo
    impugna, altrimenti la mano semiaperta; le armi a due mani le tengono tutte e due. */
-export function handSpec(hero, weaponKey, twoHanded) {
-  const glove = gloveOf(hero?.cls);
+// armi che una classe tiene SEMPRE a due mani anche se di solito ne basta una
+const TWO_FOR = { monk: ["bastone"] };
+export const twoHandedFor = (cls, weaponKey, twoHanded) => !!twoHanded || (TWO_FOR[cls] || []).includes(weaponKey);
+export function handSpec(hero, weaponKey, twoHandedWeapon) {
+  const glove = gloveOf(hero?.cls), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
   if (twoHanded) return { main: weaponKey, off: "none", glove };
   if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
   return { main: weaponKey, off: "hand", glove };
@@ -172,7 +178,7 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
   Object.entries(GLOVES).forEach(([glove, g]) => {
     const weapons = [...new Set(g.classes.flatMap((c) => WEAPON_CHOICES[c] || []))];
     // con lo scudo: solo le armi a una mano di classi che lo possono portare
-    const withShield = new Set(g.classes.filter((c) => armorProf(c).shield).flatMap((c) => WEAPON_CHOICES[c] || []).filter((k) => !TWO_HANDED.has(k)));
+    const withShield = new Set(g.classes.filter((c) => armorProf(c).shield).flatMap((c) => WEAPON_CHOICES[c] || []).filter((k) => !g.classes.some((c) => twoHandedFor(c, k, TWO_HANDED.has(k)))));
     const items = [
       ...weapons.map((k) => ({ item: k, base: k, name: WEAPONS[k].name, icon: WEAPONS[k].icon, weaponName: EN[k] || WEAPONS[k].name })),
       ...Object.entries(ITEMS).filter(([id, it]) => weapons.includes(it.base) && !/_[12]$/.test(id)).map(([id, it]) => ({
@@ -180,7 +186,8 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
       })),
     ];
     items.forEach((it) => {
-      const two = TWO_HANDED.has(it.base);
+      // a due mani: le armi a due mani, e quelle che le classi di questo guanto tengono sempre a due mani
+      const two = g.classes.some((c) => twoHandedFor(c, it.base, TWO_HANDED.has(it.base)));
       out.push({ ...it, glove, kind: "pair", two, off: two ? "none" : "hand", key: pairKey(it.item, two ? "none" : "hand") });
       if (withShield.has(it.base)) out.push({ ...it, glove, kind: "pair", two: false, off: "shield", key: pairKey(it.item, "shield") });
     });
@@ -222,10 +229,10 @@ const BUILD = {
   mazza: "a straight shaft with a flanged metal mace head at the top; the fist closes around the shaft in its lower half",
   mazzafrusto: "a short straight handle; a spiked iron ball hangs from a short chain fixed to the top of the handle; the fist closes around the handle",
   lancia: "a long straight wooden spear shaft with a leaf-shaped steel point at the top; the fist closes around the shaft at about one third of its length; the point stays inside the image",
-  bastone: "a long straight wooden quarterstaff; the fist closes around it at about one third of its length; the top end stays inside the image",
+  bastone: "a long straight iron-shod wooden quarterstaff with metal caps at both ends; the fist closes around it at about one third of its length; the top end stays inside the image",
   ascia_bip: "a long straight wooden shaft with a double-bladed axe head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
   maglio: "a long straight wooden shaft with a big rectangular hammer head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
-  arco_lungo: "a tall wooden longbow held vertical by the LEFT fist in the middle of the bow; the RIGHT hand, lower and to the right, pulls the string back with an arrow nocked; the arrow points forward, away from the viewer",
+  arco_lungo: "BOTH hands on the bow: the LEFT fist grips a tall wooden longbow in the middle, holding it vertical; an arrow is NOCKED on the string and rests on the bow beside the left fist, pointing forward away from the viewer; the RIGHT hand, close to the viewer, pulls the string back with two fingers on the nock of the arrow",
   balestra_l: "a light crossbow seen from behind, pointing forward away from the viewer; the RIGHT hand on the stock with a finger near the trigger, the LEFT hand supporting the front of the stock from below; a bolt is loaded",
   pugni: "no weapon: both fists clenched and raised in a boxing guard",
 };
@@ -242,11 +249,13 @@ export function handPrompt(e) {
   const special = WHERE[e.base];
   const left = e.off === "shield"
     ? "LEFT third of the image: the LEFT hand holds a round shield, seen from BEHIND as the hero sees it: the inside of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield sits low in the bottom-left corner and does not reach the center."
-    : "LEFT third of the image: the LEFT hand, EMPTY, half open and relaxed, fingers slightly curled, held low in the bottom-left corner.";
+    : GLOVES[e.glove]?.focus
+      ? `LEFT third of the image: the LEFT hand, low in the bottom-left corner, palm up, holds ${GLOVES[e.glove].focus}.`
+      : "LEFT third of the image: the LEFT hand, EMPTY, half open and relaxed, fingers slightly curled, held low in the bottom-left corner.";
   const layout = special
     ? `Both hands and the weapon (${weapon}). ${special}`
     : e.off === "none"
-      ? `RIGHT half of the image: BOTH hands holding the ${weapon} UPRIGHT, almost VERTICAL (tilted at most 10 degrees), the whole weapon visible from the bottom of the handle to the top, with empty space above it. The LEFT half and the CENTER stay EMPTY.`
+      ? `RIGHT half of the image: BOTH hands (one above the other) holding the ${weapon} UPRIGHT, almost VERTICAL (tilted at most 10 degrees), the whole weapon visible from the bottom of the handle to the top, with empty space above it. The LEFT half and the CENTER stay EMPTY.`
       : `RIGHT third of the image: the RIGHT hand, near the bottom, holds the ${weapon} UPRIGHT, almost VERTICAL (tilted at most 10 degrees), the whole weapon visible from the pommel to the tip, with empty space above the tip.
 CENTER third of the image: EMPTY (the enemies are seen there).
 ${left}`;
