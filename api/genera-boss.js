@@ -5,6 +5,7 @@
 // Vive su Vercel. La chiave Anthropic resta qui, nascosta.
 // { tipo: "nemico" } = Forgia dei Nemici (scheda 5e completa, vedi _enemy.js).
 import { generaNemico } from "./_enemy.js";
+import { generaMostroSegrete } from "./_segreteMonster.js";
 
 export const config = { maxDuration: 90 };
 
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
   const { tipo = "boss", contesto = "", evita } = req.body || {};
   if (tipo === "bonus") return generaBonus(req.body || {}, res);
   if (tipo === "nemico") return generaNemico(req.body || {}, res);
+  if (tipo === "segrete") return generaMostroSegrete(req.body || {}, res);
   const isMinion = tipo === "minion";
   const seme = Math.floor(Math.random() * 1e9);
 

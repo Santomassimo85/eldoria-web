@@ -146,8 +146,18 @@ const sanitizeAction = (a = {}, i = 0) => {
     halfOnSave: a.halfOnSave !== false,
     hitMode: a.hitMode === "save" ? "save" : "hit",
     saveDC: clamp(parseInt(a.saveDC) || 13, 5, 30),
+    // stato inflitto (solo Segrete, 2026-11-07): prima il salvataggio lo cancellava
+    ...(cleanInflict(a.inflict) ? { inflict: cleanInflict(a.inflict) } : {}),
   };
 };
+const INFLICT_OPTIONS = [["", "Automatico (dal danno)"], ["none", "Nessuno"], ["burn", "🔥 Bruciato"], ["poison", "☠ Avvelenato"], ["frozen", "🧊 Congelato"], ["paralyzed", "⚡ Paralizzato"], ["petrified", "🗿 Pietrificato"], ["frightened", "😱 Spaventato"], ["blinded", "🌑 Accecato"], ["slow", "🐌 Rallentato"], ["confused", "😵 Confuso"]];
+const INFLICT_KEYS = ["none", "burn", "poison", "frozen", "paralyzed", "petrified", "frightened", "blinded", "slow", "confused"];
+function cleanInflict(f) {
+  if (f === "none") return "none";
+  if (!f || typeof f !== "object" || !INFLICT_KEYS.includes(f.key)) return null;
+  if (f.key === "none") return "none";
+  return { key: f.key, chance: clamp(parseInt(f.chance) || 25, 5, 100), ...(VALID_SAVE.includes(f.save) ? { save: f.save } : {}) };
+}
 
 export const sanitizeActions = (arr, min) => {
   const out = (Array.isArray(arr) ? arr : []).map(sanitizeAction).slice(0, MAX_ACTIONS);
@@ -240,7 +250,7 @@ export const DefensesPicker = ({ value, onChange }) => {
   );
 };
 
-const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
+const ActionEditor = ({ action, idx, onChange, onRemove, canRemove, withInflict = false }) => {
   const type = action.type || "attack";
   const meta = ACTION_TYPES.find((t) => t.value === type) || ACTION_TYPES[0];
   const isSave = action.hitMode === "save" || (action.aoeShape && action.aoeShape !== "single");
@@ -309,6 +319,35 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
         </div>
       )}
 
+      {withInflict && type === "attack" && (() => {
+        const inf = action.inflict && action.inflict !== "none" ? action.inflict : null;
+        const val = action.inflict === "none" ? "none" : inf?.key || "";
+        return (
+          <div className="wb-act-row">
+            <label className="wb-mini wb-mini--wide" title="Stato che può mettere all'eroe colpito. Automatico = lo deduce dal tipo di danno (fuoco = bruciato, gelo = congelato…).">
+              <span>Stato inflitto</span>
+              <select className="admin-field-input" value={val} onChange={(e) => {
+                const k = e.target.value;
+                onChange({ inflict: !k ? undefined : k === "none" ? "none" : { key: k, chance: inf?.chance ?? 25, ...(inf?.save ? { save: inf.save } : {}) } });
+              }}>
+                {INFLICT_OPTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </label>
+            {inf && (<>
+              <label className="wb-mini"><span>Prob. %</span>
+                <input className="admin-field-input" type="number" min="5" max="100" value={inf.chance ?? 25} onChange={(e) => onChange({ inflict: { ...inf, chance: e.target.value } })} />
+              </label>
+              <label className="wb-mini"><span>TS</span>
+                <select className="admin-field-input" value={inf.save || ""} onChange={(e) => onChange({ inflict: { ...inf, save: e.target.value || undefined } })}>
+                  <option value="">—</option>
+                  {SAVES.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+                </select>
+              </label>
+            </>)}
+          </div>
+        );
+      })()}
+
       {TIMED_TYPES.includes(type) && (
         <div className="wb-act-row">
           {type === "buff_ca" && (
@@ -328,7 +367,7 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
 };
 
 /* Lista di azioni con "+ Aggiungi" (boss e minion). */
-export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) => {
+export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni", withInflict = false }) => {
   const update = (i, patch) => onChange(actions.map((a, k) => (k === i ? { ...a, ...patch } : a)));
   return (
     <div className="wb-actions-section">
@@ -339,7 +378,7 @@ export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni" }) =>
       </div>
       <div className="wb-actions-grid">
         {actions.map((a, idx) => (
-          <ActionEditor key={idx} action={a} idx={idx}
+          <ActionEditor key={idx} action={a} idx={idx} withInflict={withInflict}
             onChange={(patch) => update(idx, patch)}
             onRemove={() => actions.length > min && onChange(actions.filter((_, k) => k !== idx))}
             canRemove={actions.length > min} />

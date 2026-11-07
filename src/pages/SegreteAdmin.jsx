@@ -22,24 +22,26 @@ import {
   DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
 import {
-  ActionsList, DefensesPicker, FacingPicker, SpriteDropzone, blankAction, sanitizeActions, pixelArtPrompt,
+  ActionsList, DefensesPicker, FacingPicker, blankAction, sanitizeActions, pixelArtPrompt,
   dataUrlToTransparentBlob, defensesOf,
 } from "./WorldBossAdmin";
 import CrawlerArtTab from "./SegreteAdminCrawler";
-import { frontSpriteUrl } from "../utils/crawlerGen";
+import { frontSpriteUrl, refOnMagenta } from "../utils/crawlerGen";
+import { DAMAGE_TYPES } from "./worldBossEffects";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 import "./SegreteAdmin.css";
 
 const blankMonster = (dungeon = "") => ({
   name: "", desc: "", role: "minion", level: 1, hp: 12, ac: 12, init: 1, save: 1,
-  dungeons: dungeon ? [dungeon] : [], imageUrl: "", deadImageUrl: "", facing: "left",
+  dungeons: dungeon ? [dungeon] : [], imageUrl: "", deadImageUrl: "", frontImageUrl: "", facing: "left", icon: "", look: "",
   actions: [blankAction(0)], resistances: [], vulnerabilities: [], immunities: [],
 });
 const num = (v, lo, hi, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const cleanMonster = (m) => ({
   name: String(m.name || "").trim().slice(0, 60),
   desc: String(m.desc || "").trim().slice(0, 600),
+  look: String(m.look || "").trim().slice(0, 600),
   role: MONSTER_ROLES.some((r) => r.key === m.role) ? m.role : "minion",
   level: num(m.level, 1, 20, 1), hp: num(m.hp, 1, 2000, 10), ac: num(m.ac, 5, 30, 12),
   init: num(m.init, -5, 15, 0), save: num(m.save, -5, 15, 0),
@@ -356,11 +358,12 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     const key = dead ? "dead" : "alive";
     flag(key, true);
     try {
+      const ref = dead && form.imageUrl ? await refOnMagenta(form.imageUrl) : "";
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          prompt: pixelArtPrompt(form.name, form.desc, dead, { deadStyle: "corpse", withRef: !!(dead && form.imageUrl) }),
-          ...(dead && form.imageUrl ? { refs: [form.imageUrl] } : {}), tono: getImageTone(),
+          prompt: pixelArtPrompt(form.name, form.look || form.desc, dead, { deadStyle: "corpse", withRef: !!ref }),
+          ...(ref ? { refs: [ref], refMode: "same" } : {}), tono: getImageTone(),
         }),
       });
       const data = await r.json();
@@ -375,35 +378,38 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     try { set({ frontImageUrl: await frontSpriteUrl(form) }); }
     catch (e) { alert("Sprite frontale: " + (e.message || e)); } finally { flag("front", false); }
   };
-  const onFrontFile = async (file) => {
-    flag("front", true);
-    try { set({ frontImageUrl: await uploadPng(await fileToSpriteBlob(file)) }); }
-    catch (e) { alert(e.message); } finally { flag("front", false); }
+  const onSpriteFile = (k) => async (file) => {
+    const fk = k === "deadImageUrl" ? "dead" : k === "frontImageUrl" ? "front" : "alive";
+    flag(fk, true);
+    try { set({ [k]: await uploadPng(await fileToSpriteBlob(file)) }); }
+    catch (e) { alert(e.message); } finally { flag(fk, false); }
   };
-  const onSpriteFile = (dead) => async (file) => {
-    const key = dead ? "dead" : "alive";
-    flag(key, true);
-    try { const url = await uploadPng(await fileToSpriteBlob(file)); set(dead ? { deadImageUrl: url } : { imageUrl: url }); }
-    catch (e) { alert(e.message); } finally { flag(key, false); }
-  };
-  // L'IA scrive la scheda (stesso endpoint dei minion/boss del World Boss)
-  const generate = async () => {
-    flag("gen", true);
+  /* L'IA scrive la scheda (2026-11-07, rifatto): endpoint dedicato alle Segrete (api/_segreteMonster.js)
+     con resistenze, vulnerabilità, immunità, taglia, aspetto per lo sprite e stati inflitti. Senza spunto
+     tira a sorte tipo di creatura e modo di combattere, e riceve TUTTI i nomi del bestiario da evitare:
+     prima lo spunto era fisso ("mostro base di D&D") e uscivano sempre gli stessi. */
+  const generate = async (mode) => {
+    flag("gen", mode);
     try {
-      const dn = (form.dungeons || []).map((k) => dungeons.find((d) => d.key === k)?.name).filter(Boolean).join(", ");
-      const ctx = [hint.trim() || form.name, dn && `vive nel dungeon: ${dn}`, `ruolo: ${roleInfo(form.role).label}`, `livello ${form.level} (scala D&D 5e)`, "mostro del bestiario base di D&D 5e se possibile"].filter(Boolean).join(" · ");
+      const ds = (form.dungeons || []).map((k) => dungeons.find((d) => d.key === k)).filter(Boolean);
+      const dungeon = ds.length ? { name: ds.map((d) => d.name).join(" / "), desc: ds.map((d) => d.desc).filter(Boolean).join(" ") } : {};
       const r = await fetch("/api/genera-boss", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tipo: form.role === "boss" ? "boss" : "minion", contesto: ctx, evita: monsters.map((m) => m.name).filter(Boolean) }),
+        body: JSON.stringify({
+          tipo: "segrete", dungeon, role: form.role, level: num(form.level, 1, 20, 1), spunto: hint.trim(),
+          evita: monsters.filter((m) => m.id !== form.id).map((m) => m.name).filter(Boolean),
+          current: mode === "complete" && form.name.trim() ? { name: form.name, desc: form.desc, level: form.level, role: form.role } : null,
+        }),
       });
-      const data = await r.json();
-      if (!r.ok || data.error) throw new Error(data.error || "Generazione fallita.");
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.error || !data.monster) throw new Error(data.error || "Generazione fallita.");
+      const m = data.monster;
       set({
-        name: data.name || form.name,
-        desc: data.description || form.desc,
-        hp: data.hp ?? data.maxHp ?? form.hp,
-        ac: data.ac ?? form.ac,
-        actions: sanitizeActions(data.actions, 1),
+        name: m.name || form.name, icon: m.icon || form.icon || "", desc: m.desc || form.desc, look: m.look || "",
+        size: m.size || form.size, level: m.level ?? form.level, hp: m.hp ?? form.hp, ac: m.ac ?? form.ac,
+        init: m.init ?? form.init, save: m.save ?? form.save,
+        ...defensesOf(m),
+        actions: sanitizeActions((m.actions || []).map((a) => ({ ...a, range: 1, aoeSize: a.aoeShape && a.aoeShape !== "single" ? 2 : 1 })), 1),
       });
     } catch (e) { alert("Genera mostro: " + (e.message || e)); } finally { flag("gen", false); }
   };
@@ -421,70 +427,121 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
   };
 
   if (form) {
+    const defs = defensesOf(form);
+    const defLine = [["immunities", "🚫 Immune"], ["resistances", "½ Resiste"], ["vulnerabilities", "×2 Debole"]]
+      .filter(([k]) => defs[k].length).map(([k, l]) => `${l}: ${defs[k].map((x) => DAMAGE_TYPES.find((d) => d.key === x)?.label || x).join(", ")}`);
+    const sprites = [
+      { k: "imageUrl", fk: "alive", title: "Laterale (vivo)", use: "Lotta classica. Fallo per primo: gli altri due partono da lui.", gen: () => genSprite(false), mirror: form.facing !== "right" },
+      { k: "deadImageUrl", fk: "dead", title: "Morto", use: "Lotta classica, quando cade.", gen: () => genSprite(true), wait: !form.imageUrl },
+      { k: "frontImageUrl", fk: "front", title: "Frontale", use: "Prima persona: il mostro guarda il giocatore.", gen: genFront },
+    ];
     return (
-      <div className="sga-card sga-form">
-        <h2 className="sga-h2">{form.id ? `✎ ${form.name}` : "Nuovo mostro"}</h2>
+      <div className="sga-card sga-form sga-mform">
+        <h2 className="sga-h2">{form.icon ? `${form.icon} ` : ""}{form.id ? form.name || "Mostro" : "Nuovo mostro"}{form.base ? <small className="sga-badge">di base</small> : null}</h2>
+
         <div className="sga-ai">
+          <div className="sga-ai-head"><b>✨ Fatti aiutare dall'IA</b><small>Scrive nome, aspetto, numeri, resistenze e debolezze, azioni e stati. Usa i dungeon, il ruolo e il livello scelti qui sotto.</small></div>
           <input className="admin-field-input" value={hint} onChange={(e) => setHint(e.target.value)}
-            placeholder='Spunto per l&apos;IA (facoltativo): es. "goblin arciere", "ragno gigante", "salamandra"' />
-          <button type="button" className="adm-btn" disabled={busy.gen} onClick={generate}>{busy.gen ? "⏳ Scrivo…" : "✨ Scrivi la scheda con l'IA"}</button>
-        </div>
-        <div className="sga-row">
-          <label className="sga-field"><span>Nome</span>
-            <input className="admin-field-input" value={form.name} onChange={(e) => set({ name: e.target.value })} /></label>
-          <label className="sga-field sga-field--s"><span>Ruolo</span>
-            <select className="admin-field-input" value={form.role} onChange={(e) => set({ role: e.target.value })}>
-              {MONSTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.icon} {r.label}</option>)}
-            </select></label>
-          <label className="sga-field sga-field--s"><span>Taglia</span>
-            <select className="admin-field-input" value={sizeOf(form)} onChange={(e) => set({ size: e.target.value })}>
-              {MONSTER_SIZES.map((z) => <option key={z.key} value={z.key}>{z.label}{z.scale !== 1 ? ` (×${String(z.scale).replace(".", ",")} in lotta)` : ""}</option>)}
-            </select></label>
-        </div>
-        <p className="sga-hint">{roleInfo(form.role).hint}</p>
-        <div className="sga-row">
-          {[["level", "Livello", 1, 20], ["hp", "PF", 1, 2000], ["ac", "CA", 5, 30], ["init", "Iniziativa +", -5, 15], ["save", "Tiri salvezza +", -5, 15]].map(([k, l, lo, hi]) => (
-            <label key={k} className="sga-field sga-field--xs"><span>{l}</span>
-              <input className="admin-field-input" type="number" min={lo} max={hi} value={form[k]} onChange={(e) => set({ [k]: e.target.value })} /></label>
-          ))}
-        </div>
-        <label className="sga-field"><span>Descrizione / aspetto (serve anche all'IA per lo sprite)</span>
-          <textarea className="admin-field-input" rows={2} value={form.desc} onChange={(e) => set({ desc: e.target.value })} /></label>
-
-        <h3 className="sga-h3">Dove esce</h3>
-        <div className="sga-chips">
-          {dungeons.map((d) => {
-            const on = (form.dungeons || []).includes(d.key);
-            return (
-              <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""}
-                onClick={() => set({ dungeons: on ? form.dungeons.filter((k) => k !== d.key) : [...(form.dungeons || []), d.key] })}>
-                {d.icon} {d.name}
-              </button>
-            );
-          })}
+            placeholder='Spunto (facoltativo): es. "ragno che sputa acido", "cavaliere non morto". Vuoto = creatura a sorpresa' />
+          <div className="sga-btns">
+            <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy.gen} onClick={() => generate("new")}>{busy.gen === "new" ? "⏳ Scrivo…" : "🎲 Mostro nuovo"}</button>
+            {form.name.trim() && <button type="button" className="adm-btn" disabled={!!busy.gen} onClick={() => generate("complete")}>{busy.gen === "complete" ? "⏳ Scrivo…" : "✨ Completa questa scheda"}</button>}
+          </div>
         </div>
 
-        <ActionsList actions={form.actions} min={1} onChange={(actions) => set({ actions })} title="⚔ Azioni (attacchi, incantesimi, aree, cure…)" />
-        <h3 className="sga-h3">Resistenze</h3>
-        <DefensesPicker value={form} onChange={(d) => set(d)} />
+        <section className="sga-sec">
+          <h3 className="sga-sec-h"><span>1</span> Chi è</h3>
+          <div className="sga-row">
+            <label className="sga-field sga-field--xs"><span>Icona</span>
+              <input className="admin-field-input" value={form.icon || ""} maxLength={8} placeholder={roleInfo(form.role).icon} onChange={(e) => set({ icon: e.target.value })} /></label>
+            <label className="sga-field"><span>Nome</span>
+              <input className="admin-field-input" value={form.name} onChange={(e) => set({ name: e.target.value })} /></label>
+          </div>
+          <div className="sga-row">
+            <label className="sga-field sga-field--s"><span>Ruolo</span>
+              <select className="admin-field-input" value={form.role} onChange={(e) => set({ role: e.target.value })}>
+                {MONSTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.icon} {r.label}</option>)}
+              </select></label>
+            <label className="sga-field sga-field--s"><span>Taglia</span>
+              <select className="admin-field-input" value={sizeOf(form)} onChange={(e) => set({ size: e.target.value })}>
+                {MONSTER_SIZES.map((z) => <option key={z.key} value={z.key}>{z.label}{z.scale !== 1 ? ` (×${String(z.scale).replace(".", ",")})` : ""}</option>)}
+              </select></label>
+            <label className="sga-field sga-field--xs"><span>Livello</span>
+              <input className="admin-field-input" type="number" min="1" max="20" value={form.level} onChange={(e) => set({ level: e.target.value })} /></label>
+          </div>
+          <p className="sga-hint">{roleInfo(form.role).hint}</p>
+          <label className="sga-field"><span>Descrizione (la leggono i giocatori)</span>
+            <textarea className="admin-field-input" rows={2} value={form.desc} onChange={(e) => set({ desc: e.target.value })} /></label>
+          <label className="sga-field"><span>Aspetto per il disegno (in inglese, facoltativo: se c'è lo sprite usa questo)</span>
+            <textarea className="admin-field-input" rows={2} value={form.look || ""} placeholder="es. gaunt grey ghoul with long black claws, torn burial rags" onChange={(e) => set({ look: e.target.value })} /></label>
+          <span className="sga-field-l">Dove esce</span>
+          <div className="sga-chips">
+            {dungeons.map((d) => {
+              const on = (form.dungeons || []).includes(d.key);
+              return (
+                <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""}
+                  onClick={() => set({ dungeons: on ? form.dungeons.filter((k) => k !== d.key) : [...(form.dungeons || []), d.key] })}>
+                  {d.icon} {d.name}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-        <h3 className="sga-h3">Sprite</h3>
-        <ImageTonePicker />
-        <div className="sga-sprites">
-          <SpriteDropzone label="Vivo" icon="👹" value={form.imageUrl} uploading={false} generating={busy.alive}
-            onFile={onSpriteFile(false)} onClear={() => set({ imageUrl: "" })} onGenerate={() => genSprite(false)} />
-          <SpriteDropzone label="Morto" icon="💀" value={form.deadImageUrl} uploading={false} generating={busy.dead}
-            onFile={onSpriteFile(true)} onClear={() => set({ deadImageUrl: "" })} onGenerate={() => genSprite(true)} accent="var(--sangue)" />
-          <SpriteDropzone label="Frontale (prima persona)" icon="🎮" value={form.frontImageUrl} uploading={false} generating={busy.front}
-            onFile={onFrontFile} onClear={() => set({ frontImageUrl: "" })} onGenerate={genFront} />
-        </div>
-        <div className="sga-btns">
-          {!form.imageUrl && <button type="button" className="adm-btn" disabled={busy.alive} onClick={() => genSprite(false)}>✨ Genera lo sprite</button>}
-          {form.imageUrl && !form.deadImageUrl && <button type="button" className="adm-btn" disabled={busy.dead} onClick={() => genSprite(true)}>✨ Genera lo sprite morto</button>}
-          {form.imageUrl && <button type="button" className="adm-btn" disabled={busy.alive} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(false)}>🧽 Ripulisci il vivo</button>}
-          {form.deadImageUrl && <button type="button" className="adm-btn" disabled={busy.dead} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(true)}>🧽 Ripulisci il morto</button>}
-        </div>
-        <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
+        <section className="sga-sec">
+          <h3 className="sga-sec-h"><span>2</span> Numeri</h3>
+          <div className="sga-row">
+            {[["hp", "PF", 1, 2000], ["ac", "CA", 5, 30], ["init", "Iniziativa +", -5, 15], ["save", "Tiri salvezza +", -5, 15]].map(([k, l, lo, hi]) => (
+              <label key={k} className="sga-field sga-field--xs"><span>{l}</span>
+                <input className="admin-field-input" type="number" min={lo} max={hi} value={form[k]} onChange={(e) => set({ [k]: e.target.value })} /></label>
+            ))}
+          </div>
+          <p className="sga-hint">In partita PF e danni si adattano al gruppo: questi numeri dicono quanto è forte rispetto agli altri mostri.</p>
+        </section>
+
+        <section className="sga-sec">
+          <h3 className="sga-sec-h"><span>3</span> Resistenze e debolezze</h3>
+          <p className="sga-hint">Tocca un tipo di danno: — normale · ½ resiste · ×2 debole · 🚫 immune.</p>
+          <DefensesPicker value={form} onChange={(d) => set(d)} />
+          <p className={`sga-defline${defLine.length ? "" : " is-empty"}`}>{defLine.length ? defLine.join(" · ") : "⚠ Nessuna resistenza o debolezza: in D&D quasi ogni mostro ne ha almeno una."}</p>
+        </section>
+
+        <section className="sga-sec">
+          <h3 className="sga-sec-h"><span>4</span> Azioni</h3>
+          <ActionsList actions={form.actions} min={1} withInflict onChange={(actions) => set({ actions })} title="⚔ Attacchi, incantesimi, aree, cure…" />
+        </section>
+
+        <section className="sga-sec">
+          <h3 className="sga-sec-h"><span>5</span> Sprite</h3>
+          <ImageTonePicker />
+          <div className="sga-spr">
+            {sprites.map((sp) => {
+              const src = form[sp.k], on = busy[sp.fk];
+              return (
+                <div key={sp.k} className={`sga-spr-card${src ? " has-img" : ""}`}>
+                  <div className="sga-spr-img">
+                    {on ? <span className="sga-spr-wait">⏳ L'IA disegna…</span>
+                      : src ? <img src={src} alt={`${sp.title} di ${form.name}`} className={sp.mirror ? "mirror" : ""} />
+                        : <span className="sga-spr-none">{form.icon || roleInfo(form.role).icon}<small>manca</small></span>}
+                  </div>
+                  <b>{sp.title}</b>
+                  <small>{sp.use}</small>
+                  <div className="sga-spr-btns">
+                    <button type="button" className="adm-btn adm-btn--gold" disabled={!!on} onClick={sp.gen} title={sp.wait ? "Meglio dopo il laterale: così resta lo stesso mostro" : ""}>{src ? "✨ Rigenera" : "✨ Genera"}</button>
+                    <label className="adm-btn sga-spr-up">📁 Carica<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onSpriteFile(sp.k)(f); e.target.value = ""; }} /></label>
+                    {src && sp.k !== "frontImageUrl" && <button type="button" className="adm-btn" disabled={!!on} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(sp.k === "deadImageUrl")}>🧽</button>}
+                    {src && <button type="button" className="adm-btn" disabled={!!on} aria-label={`Togli lo sprite ${sp.title}`} onClick={() => set({ [sp.k]: "" })}>✕</button>}
+                  </div>
+                  {sp.wait && !src && <small className="sga-spr-note">Prima genera il laterale: il morto parte da lui.</small>}
+                </div>
+              );
+            })}
+          </div>
+          <details className="sga-fold">
+            <summary>Verso nella lotta classica</summary>
+            <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
+          </details>
+        </section>
 
         <div className="sga-savebar">
           <button type="button" className="adm-btn adm-btn--gold" disabled={busy.save} onClick={save}>{busy.save ? "Salvo…" : "💾 Salva"}</button>
@@ -538,12 +595,14 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
         {list.map((m) => (
           <button key={m.id} type="button" className="sga-card sga-mcard" onClick={() => setForm({ ...blankMonster(), ...m })}>
             <div className="sga-mcard-img">
-              {m.imageUrl ? <img src={m.imageUrl} alt="" className={m.facing === "right" ? "" : "mirror"} /> : <span aria-hidden="true">{roleInfo(m.role).icon}</span>}
+              {m.imageUrl ? <img src={m.imageUrl} alt="" className={m.facing === "right" ? "" : "mirror"} /> : m.frontImageUrl ? <img src={m.frontImageUrl} alt="" /> : <span aria-hidden="true">{m.icon || roleInfo(m.role).icon}</span>}
             </div>
             <div className="sga-mcard-main">
               <b>{m.name}</b>
               <small>{roleInfo(m.role).icon} {roleInfo(m.role).label} · {MONSTER_SIZES.find((z) => z.key === sizeOf(m))?.label} · Lv {m.level} · {m.hp} PF · CA {m.ac}</small>
               <small>{(m.actions || []).map((a) => a.name).filter(Boolean).join(" · ") || "nessuna azione"}</small>
+              <small>{[["resistances", "½"], ["vulnerabilities", "×2"], ["immunities", "🚫"]].map(([k, t]) => ((m[k] || []).length ? `${t} ${(m[k] || []).map((x) => DAMAGE_TYPES.find((d) => d.key === x)?.icon || x).join("")}` : "")).filter(Boolean).join("  ") || "⚠ niente resistenze o debolezze"}</small>
+              <small>{m.imageUrl ? "🖼" : "▫"} laterale · {m.deadImageUrl ? "💀" : "▫"} morto · {m.frontImageUrl ? "🎮" : "▫"} frontale</small>
               <small className="sga-mcard-d">{(m.dungeons || []).map((k) => dungeons.find((d) => d.key === k)?.icon || "").join(" ") || "⚠ in nessun dungeon"}</small>
             </div>
           </button>

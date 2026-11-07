@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile, refs, characters, aspectRatio, tono, qualita } = req.body || {};
+  const { prompt, npc, stile, refs, characters, aspectRatio, tono, qualita, refMode } = req.body || {};
   // Formato dell'immagine (es. "16:9" per gli sfondi di battaglia). Solo
   // quelli che Gemini accetta; altrimenti il suo predefinito (quadrato).
   const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
@@ -123,7 +123,12 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
 
   try {
     const refParts = await buildRefParts(refs);
-    if (refParts.length) {
+    // refMode "same" (2026-11-07, sprite dei mostri): il riferimento è LA STESSA creatura e il prompt
+    // dice già cosa cambiare; le istruzioni dei ritratti ("solo il volto, non copiare la posa") lo confondevano.
+    if (refParts.length && refMode === "same") {
+      finalPrompt = `${finalPrompt}
+The attached image is ONLY a reference for the identity of the subject (species, anatomy, colors, equipment, pixel style). Ignore its background. Follow the pose, angle and composition written above, NOT the pose of the reference.`;
+    } else if (refParts.length) {
       const chars = Array.isArray(characters) ? characters : [];
       let castBlock = "";
       if (chars.length) {

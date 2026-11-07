@@ -37,12 +37,25 @@ export async function askImage(body) {
   if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
   return data.immagine;
 }
+// Lo sprite salvato ha il fondo trasparente: come riferimento all'IA va messo sul magenta (sul nero
+// trasparente l'IA perdeva la sagoma e a volte ridisegnava lo stesso sprite di tre quarti).
+export async function refOnMagenta(url) {
+  try {
+    const b = await (await fetch(url)).blob();
+    const src = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(b); });
+    const i = await loadImg(src), k = Math.min(1, 512 / Math.max(i.width, i.height));
+    const c = document.createElement("canvas"); c.width = Math.round(i.width * k); c.height = Math.round(i.height * k);
+    const g = c.getContext("2d"); g.fillStyle = "#ff00ff"; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingEnabled = false; g.drawImage(i, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png");
+  } catch { return url; }
+}
 // sprite frontale di un mostro: se c'è lo sprite classico l'IA parte da lì, così resta lo stesso mostro
 export async function frontSpriteUrl(m) {
-  const img = await askImage({ prompt: frontPrompt(m.name, m.desc, !!m.imageUrl), aspectRatio: "3:4", ...(m.imageUrl ? { refs: [m.imageUrl] } : {}) });
+  const ref = m.imageUrl ? await refOnMagenta(m.imageUrl) : "";
+  const img = await askImage({ prompt: frontPrompt(m.name, m.look || m.desc, !!ref, m.size), aspectRatio: "3:4", ...(ref ? { refs: [ref], refMode: "same" } : {}) });
   const clean = await dataUrlToTransparentDataUrl(img, 256);
   const blob = await (await fetch(clean)).blob();
-  const ref = storageRef(storage, `segrete/fronte-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
-  await uploadBytes(ref, blob, { contentType: "image/png" });
-  return getDownloadURL(ref);
+  const sref = storageRef(storage, `segrete/fronte-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
+  await uploadBytes(sref, blob, { contentType: "image/png" });
+  return getDownloadURL(sref);
 }

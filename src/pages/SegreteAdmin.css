@@ -85,3 +85,35 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-special { display: grid; gap: 6px; margin: 8px 0; padding: 8px; border-left: 3px solid #f2c14e; background: rgba(242,193,78,.06); }
 .sga-cw-sp-h { margin: 0; }
 .sga-cw-sp-h small { display: block; opacity: .8; }
+
+/* Scheda del mostro (2026-11-07, riordinata): sezioni numerate, IA in testa, tre sprite uguali */
+.sga-mform .sga-ai { display: grid; gap: 8px; }
+.sga-ai-head { display: grid; gap: 2px; }
+.sga-ai-head small { color: var(--osso-2); }
+.sga-ai .sga-btns { margin: 0; }
+.sga-badge { margin-left: 8px; padding: 2px 8px; font: 600 .75rem var(--font-ui, serif); vertical-align: middle; border: 1px solid rgba(var(--osso-rgb), .3); border-radius: 3px; color: var(--osso-2); }
+.sga-sec { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(var(--osso-rgb), .12); }
+.sga-sec-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 700 1.05rem var(--font-ui, serif); }
+.sga-sec-h span { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 3px; background: rgba(var(--el-rgb), .22); border: 1px solid var(--el); font: 700 .85rem var(--font-num, serif); }
+.sga-field-l { display: block; margin: 8px 0 4px; font: 600 .78rem var(--font-ui, serif); color: var(--osso-2); }
+.sga-defline { margin: 8px 0 0; font-size: .9rem; }
+.sga-defline.is-empty { color: #e0a24a; }
+.sga-spr { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr)); gap: 10px; margin-top: 8px; }
+.sga-spr-card { display: grid; gap: 6px; align-content: start; padding: 10px; border: 1px solid rgba(var(--osso-rgb), .16); border-radius: 3px; background: var(--roccia-1); }
+.sga-spr-card.has-img { border-color: rgba(var(--el-rgb), .55); }
+.sga-spr-card > small { color: var(--osso-2); font-size: .82rem; }
+.sga-spr-img { aspect-ratio: 1; display: grid; place-items: center; border-radius: 3px; overflow: hidden;
+  background: repeating-conic-gradient(rgba(255,255,255,.06) 0 25%, transparent 0 50%) 0 0 / 16px 16px, rgba(0,0,0,.3); }
+.sga-spr-img img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
+.sga-spr-img img.mirror { transform: scaleX(-1); }
+.sga-spr-none { display: grid; justify-items: center; font-size: 2.6rem; opacity: .6; }
+.sga-spr-none small { font-size: .78rem; }
+.sga-spr-wait { font-size: .95rem; color: var(--osso-2); }
+.sga-spr-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.sga-spr-btns .adm-btn { min-height: 36px; }
+.sga-spr-up { cursor: pointer; }
+.sga-spr-note { color: #e0a24a !important; }
+.sga-fold { margin-top: 10px; }
+.sga-fold summary { cursor: pointer; padding: 6px 8px; font-weight: 700; background: rgba(255,255,255,.04); border: 1px solid rgba(var(--osso-rgb), .12); }
+.sga-fold[open] summary { margin-bottom: 8px; }
+.sga-cw-mat { color: var(--osso-2); font-size: .82rem; }

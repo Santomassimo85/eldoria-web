@@ -215,9 +215,10 @@ export function weaponEffectsText(it, w) {
 const BG = "CRITICAL: render the subject ALONE on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). One flat magenta color: no gradient, no ground shadow, no scenery. No text, no frame, no border. Do NOT use magenta, pink or purple anywhere on the subject, and no glow, aura, halo, smoke or particles around it: the outline must be a clean dark line directly against the flat magenta.";
 const STYLE = "Style: crisp 16-bit pixel art like a classic 1990s first-person dungeon RPG, limited palette, clean hard outlines, NO anti-aliasing, NO blur.";
 
-export const frontPrompt = (name, desc, withRef) => `Pixel art sprite of a single fantasy monster for a first-person dungeon crawler: the player stands in front of it and looks straight at it.
-${withRef ? "The attached image is this EXACT creature seen from another angle. Keep the SAME individual: species, anatomy, colors, armor, clothes and weapons, same pixel-art style." : ""}
-Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}
+const SIZE_EN = { tiny: "a tiny creature", small: "a small creature", large: "a large, massive creature", huge: "a huge, towering creature", gargantuan: "a colossal creature" };
+export const frontPrompt = (name, desc, withRef, size) => `Pixel art sprite of a single fantasy monster for a first-person dungeon crawler: the player stands in front of it and looks straight at it.
+${withRef ? "The attached image shows this EXACT creature in a THREE-QUARTER view. Redraw the SAME individual (species, anatomy, colors, armor, clothes, weapons, pixel style) but rotated to face the camera head-on. Do NOT copy the reference pose." : ""}
+Subject: ${name || "fantasy monster"}${SIZE_EN[size] ? `, ${SIZE_EN[size]}` : ""}.${desc ? ` Description: ${desc}.` : ""}
 Pose: FULL BODY, strictly FRONT VIEW, facing the viewer straight on, chest and face turned to the camera, symmetrical stance, feet on the bottom of the image, menacing, ready to attack. NOT in profile, NOT three-quarter view.
 ${STYLE}
 ${BG}`;
@@ -227,10 +228,38 @@ const TILE_WHAT = {
   floor: "a dungeon FLOOR surface seen from directly above",
   ceil: "a dungeon CEILING surface seen from directly below, darker than the walls",
 };
-export const tilePrompt = (d, slot, idea) => `Seamless tileable square texture for a first-person dungeon crawler: ${TILE_WHAT[slot]}.
-Setting: ${d.name}${d.desc ? ` — ${d.desc}` : ""}.${idea ? ` Details: ${idea}.` : ""}
+/* MATERIALI PER DUNGEON (2026-11-07): prima la richiesta diceva solo nome e descrizione (che parla
+   di mostri, non di muri) e le tessere uscivano tutte uguali, pietra grigia. Ora ogni dungeon ha il suo
+   materiale per parete/pavimento/soffitto e la sua tavolozza; i dungeon nuovi lo deducono dalle parole
+   del nome e della descrizione (ghiaccio, lava, palude, sabbia, ossa, cristallo, fogna…). Si può
+   sempre scrivere il materiale a mano nel dungeon (campo `tiles`). */
+const MATERIALS = [
+  { re: /segret|prigion|cella|celle|carcer|fortezz|castell/, colors: "cold grey and blue-grey stone, dark mortar, rusty iron", wall: "square-cut grey stone blocks with dark mortar, rusty iron rings and chain marks, damp stains", floor: "worn grey flagstones with cracks, puddles and scattered straw", ceil: "rough dark stone vault with heavy wooden beams and cobwebs" },
+  { re: /magma|lava|vulcan|fuoco|fiamm|brace|infern|fornac/, colors: "black basalt, deep reds and glowing orange", wall: "black volcanic basalt with glowing orange lava cracks and veins", floor: "cracked black obsidian and cooled lava crust with glowing seams", ceil: "dark scorched rock with ember-red glowing fissures and soot" },
+  { re: /ghiacc|gelo|neve|brina|invern|frozen|ice/, colors: "pale cyan, icy blue and white", wall: "translucent blue glacier ice with deep cracks, frozen bubbles and frost", floor: "smooth frozen ice sheet with snow drifts and frost patterns", ceil: "icy blue rock with hanging icicles and frost" },
+  { re: /palud|fango|acquitrin|stagn|marci|bosco|foresta|giungl/, colors: "murky greens, olive and black-brown", wall: "slimy mossy stones and rotting wooden planks covered in moss, vines and mushrooms", floor: "thick black mud with puddles of stagnant water, reeds and roots", ceil: "tangled roots, hanging moss and dripping slime" },
+  { re: /tempio|sabbi|desert|piramid|santuari|rovin|culto|sepolt/, colors: "sandstone yellows, gold and dusty ochre", wall: "carved sandstone blocks with faded relief carvings and gold trims", floor: "dusty sandstone floor tiles with sand in the cracks and engraved patterns", ceil: "carved sandstone ceiling with geometric patterns and gold details" },
+  { re: /cript|tomb|ossa|ossari|catacomb|cimiter|necro|morti/, colors: "bone white, grey and sickly green", wall: "catacomb walls made of stacked skulls and bones set in grey stone", floor: "cracked tomb slabs with bone fragments and dust", ceil: "low stone vault with skulls in niches and cobwebs" },
+  { re: /cristall|gemm|arcan|magic|astral/, colors: "violet, amethyst and glowing cyan", wall: "dark rock studded with glowing violet and cyan crystals", floor: "polished dark stone with crystal shards and engraved arcane runes", ceil: "rock ceiling with clusters of glowing crystals" },
+  { re: /fogn|scolo|canal|abiss|marin|sommers|annegat/, colors: "teal, dark green and wet black", wall: "wet green-black brick with algae, barnacles and water stains", floor: "wet stone with shallow water channels and slime", ceil: "dripping arched brick with algae" },
+  { re: /cavern|grott|galleri|minier|tana|sottosuol/, colors: "warm browns, ochre and dark umber", wall: "rough natural cave rock, uneven earth-brown stone with mineral veins and roots", floor: "packed earth and gravel with small rocks and pebbles", ceil: "dark cave rock with small stalactites and dripping water" },
+];
+const plain = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+export const materialOf = (d) => {
+  if (d?.tiles && (d.tiles.wall || d.tiles.floor || d.tiles.ceil)) return { colors: d.tiles.colors || "", ...d.tiles };
+  const key = plain(d?.key), txt = `${plain(d?.name)} ${plain(d?.desc)}`;
+  return MATERIALS.find((m) => m.re.test(key)) || MATERIALS.find((m) => m.re.test(plain(d?.name))) || MATERIALS.find((m) => m.re.test(txt)) || null;
+};
+export const tilePrompt = (d, slot, idea) => {
+  const m = materialOf(d), what = { wall: "walls", floor: "floor", ceil: "ceiling" }[slot];
+  return `Seamless tileable square texture for a first-person dungeon crawler: ${TILE_WHAT[slot]}.
+Dungeon: "${d.name}"${d.desc ? ` (${d.desc})` : ""}.
+MATERIAL (the most important part: this dungeon must NOT look like a generic grey stone dungeon): ${m?.[slot] || `the ${what} that a place called "${d.name}" would really have, with its own materials and colors`}.${m?.colors ? `
+Color palette: ${m.colors}.` : ""}${idea ? `
+Extra details from the Game Master (follow them): ${idea}.` : ""}
 The texture MUST tile perfectly: left edge matches right edge, top edge matches bottom edge. Completely flat and orthographic: NO perspective, NO vanishing point, NO horizon, no lighting direction, no vignette, even brightness across the whole image.
-Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
+Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface itself (details that belong to the surface are fine): no characters, no furniture, no text, no frame.`;
+};
 
 const EN = { spada_lunga: "longsword", scimitarra: "scimitar", stocco: "rapier", martello: "warhammer", mazza: "flanged mace", mazzafrusto: "flail", lancia: "spear", bastone: "quarterstaff", ascia_bip: "double-bladed greataxe", maglio: "great maul", arco_lungo: "longbow", balestra_l: "light crossbow", pugni: "bare fist" };
 /* RICHIESTA DELLE MANI (2026-11-07, riscritta): istruzioni semplici e senza contraddizioni.

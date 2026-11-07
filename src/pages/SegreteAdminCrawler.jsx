@@ -11,7 +11,7 @@ import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, pairKey, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, materialOf, pairKey, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -79,7 +79,8 @@ function Preview({ dungeons, monsters, tiles }) {
 export default function CrawlerArtTab({ dungeons, monsters }) {
   const [tiles, setTiles] = useState({});
   const [busy, setBusy] = useState("");
-  const [idea, setIdea] = useState("");
+  // idea per le tessere: una per dungeon (prima era una sola per tutti)
+  const [ideas, setIdeas] = useState({});
   const [front, setFront] = useState(null); // {done, total, failed}
   const [handsDone, setHandsDone] = useState("");
   useEffect(() => onSnapshot(collection(db, "dungeon_tiles"), (s) => { const m = {}; s.docs.forEach((d) => { m[d.id] = d.data(); }); setTiles(m); }, () => {}), []);
@@ -88,10 +89,12 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     setBusy(key);
     try { await fn(); } catch (e) { alert(`Non riuscito: ${e.message || e}`); } finally { setBusy(""); }
   };
-  const genTile = (d, slot) => run(`${d.key}:${slot}`, async () => {
-    const img = await askImage({ prompt: tilePrompt(d, slot, idea.trim()), aspectRatio: "1:1" });
+  const makeTile = async (d, slot) => {
+    const img = await askImage({ prompt: tilePrompt(d, slot, (ideas[d.key] || "").trim()), aspectRatio: "1:1" });
     await setDoc(doc(db, "dungeon_tiles", d.key), { [slot]: await bakeTile(img), updatedAt: serverTimestamp() }, { merge: true });
-  });
+  };
+  const genTile = (d, slot) => run(`${d.key}:${slot}`, () => makeTile(d, slot));
+  const genAllTiles = (d) => run(`${d.key}:all`, async () => { for (const [slot] of SLOTS) await makeTile(d, slot); });
   const dropTile = (d, slot) => setDoc(doc(db, "dungeon_tiles", d.key), { [slot]: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   const idOf = (h) => handDoc(h.key, h.glove);
   // L'ASPETTO DELLE ARMI SPECIALI (2026-11-07): testo in dungeon_tiles/look_<arma>, scritto dall'IA dai
@@ -199,25 +202,34 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
 
       <div className="sga-card">
         <h3 className="sga-h3">Pareti, pavimento e soffitto <small>tessere che si ripetono, una serie per dungeon</small></h3>
-        <textarea className="admin-field-input" rows={2} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder='Idea per le tessere (facoltativa): es. "mattoni con muschio", "ghiaccio con crepe azzurre"' />
-        {dungeons.map((d) => (
-          <div key={d.key} className="sga-cw-row">
-            <b>{d.icon} {d.name}</b>
-            <div className="sga-cw-tiles">
-              {SLOTS.map(([slot, label]) => {
-                const src = tiles[d.key]?.[slot];
-                return (
-                  <figure key={slot} className="sga-cw-tile">
-                    {src ? <img src={src} alt={`${label} di ${d.name}`} /> : <span>riserva</span>}
-                    <figcaption>{label}</figcaption>
-                    <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genTile(d, slot)}>{busy === `${d.key}:${slot}` ? "⏳" : "✨ Genera"}</button>
-                    {src && <button type="button" className="sga-x" aria-label={`Togli ${label}`} onClick={() => dropTile(d, slot)}>✕</button>}
-                  </figure>
-                );
-              })}
+        <p className="sga-hint">Ogni dungeon ha il suo materiale (sotto il nome): l'IA lo usa insieme al nome e alla descrizione. Per cambiarlo scrivi un'idea nella casella del dungeon.</p>
+        {dungeons.map((d) => {
+          const mat = materialOf(d);
+          return (
+            <div key={d.key} className="sga-cw-row">
+              <b>{d.icon} {d.name}</b>
+              <small className="sga-cw-mat">{mat ? `🧱 ${mat.wall} · 🎨 ${mat.colors}` : "🧱 materiale deciso dall'IA dal nome del dungeon"}</small>
+              <div className="sga-row">
+                <input className="admin-field-input" value={ideas[d.key] || ""} onChange={(e) => setIdeas((m) => ({ ...m, [d.key]: e.target.value }))}
+                  placeholder='Idea per le tessere (facoltativa): es. "mattoni con muschio", "ghiaccio con crepe azzurre"' />
+                <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genAllTiles(d)}>{busy === `${d.key}:all` ? "⏳ Disegno…" : "✨ Genera tutte e tre"}</button>
+              </div>
+              <div className="sga-cw-tiles">
+                {SLOTS.map(([slot, label]) => {
+                  const src = tiles[d.key]?.[slot];
+                  return (
+                    <figure key={slot} className="sga-cw-tile">
+                      {src ? <img src={src} alt={`${label} di ${d.name}`} /> : <span>riserva</span>}
+                      <figcaption>{label}</figcaption>
+                      <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genTile(d, slot)}>{busy === `${d.key}:${slot}` ? "⏳" : src ? "✨ Rigenera" : "✨ Genera"}</button>
+                      {src && <button type="button" className="sga-x" aria-label={`Togli ${label}`} onClick={() => dropTile(d, slot)}>✕</button>}
+                    </figure>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="sga-card">
