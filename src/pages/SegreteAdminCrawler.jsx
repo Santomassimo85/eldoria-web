@@ -9,7 +9,7 @@ import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import { askImage, frontSpriteUrl } from "../utils/crawlerGen";
+import { askImage, dropExtraHand, flipX, frontSpriteUrl } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
 import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, tilePrompt } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
@@ -96,9 +96,12 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   const idOf = (h) => handDoc(h.key, h.glove);
   const refs = useRef({}); // mani sinistre appena generate, prima che arrivi lo snapshot
   const makeHand = async (h) => {
-    const ref = h.kind === "open" ? "" : refs.current[h.glove] || tiles[handDoc("open", h.glove)]?.image || "";
+    const left = h.kind === "open" ? "" : refs.current[h.glove] || tiles[handDoc("open", h.glove)]?.image || "";
+    // per l'arma il modello è la mano rovesciata (una destra), così l'IA non ridisegna la sinistra
+    const ref = left && h.kind === "weapon" ? await flipX(left) : left;
     const img = await askImage({ prompt: handPrompt(h, !!ref), aspectRatio: "1:1", ...(ref ? { refs: [ref] } : {}) });
-    const image = await dataUrlToTransparentDataUrl(img, 320);
+    let image = await dataUrlToTransparentDataUrl(img, 320);
+    if (h.kind === "weapon" && !h.two) image = (await dropExtraHand(image)) || image;
     if (h.kind === "open") refs.current[h.glove] = image;
     await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
   };
@@ -123,6 +126,15 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     });
   };
   const dropHand = (h) => setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: deleteField() }, { merge: true }).catch((e) => alert(e.message));
+  const extra = HANDS.filter((h) => h.kind === "weapon" && !h.two && tiles[idOf(h)]?.image);
+  const fixExtra = () => run("fix", async () => {
+    let fixed = 0;
+    for (const h of extra) {
+      const out = await dropExtraHand(tiles[idOf(h)].image);
+      if (out) { await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: out, updatedAt: serverTimestamp() }, { merge: true }); fixed++; }
+    }
+    alert(fixed ? `Ripulite ${fixed} armi.` : "Nessuna mano in più trovata.");
+  });
   // le prove di prima, senza guanto: non le usa più nessuno
   const old = Object.keys(tiles).filter((k) => /^hand_[^_].*$/.test(k) && !k.includes("__") && tiles[k]?.image);
 
@@ -183,6 +195,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
           {handsDone ? `⏳ ${handsDone}…` : handsMissing.length ? `✨ Genera quelli mancanti (${handsMissing.length})` : "✓ Tutte le mani hanno lo sprite"}
         </button>
+        {!!extra.length && <p className="sga-hint">{extra.length} armi a una mano già generate: se hanno una mano in più in basso a sinistra, questo la cancella senza rigenerarle (gratis). <button type="button" className="adm-btn" disabled={!!busy} onClick={fixExtra}>🧽 Togli le mani in più</button></p>}
         {!!old.length && <p className="sga-hint">Ci sono {old.length} prove vecchie senza guanto, che la lotta non usa più. <button type="button" className="adm-btn" onClick={() => old.forEach((k) => setDoc(doc(db, "dungeon_tiles", k), { image: deleteField() }, { merge: true }))}>🗑 Togli le prove vecchie</button></p>}
         {Object.entries(GLOVES).map(([glove, g]) => (
           <div key={glove} className="sga-cw-row">

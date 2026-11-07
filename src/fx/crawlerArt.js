@@ -214,7 +214,10 @@ export function handPrompt(e, withRef) {
   return `First-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
 Subject: ${subject}.
 ${e.kind === "shield" ? "Only the hand on the grip, NO arm, NO sleeve." : SIZE}
-${withRef ? "The attached image shows the OTHER hand of the SAME hero: copy EXACTLY the same glove (design, materials, colors), the same hand size in pixels, the same pixel density and the same drawing style, so the two hands look like a pair." : ""}
+${withRef ? (e.kind === "weapon"
+    ? `The attached image is ONLY a style and size reference: it shows the hero's ${e.two ? "glove" : "RIGHT hand"}. Draw ${e.two ? "the hands" : "THIS SAME hand"} with EXACTLY the same glove (design, materials, colors), the same hand size in pixels and the same drawing style, now gripping the weapon. Do NOT copy the reference image as a separate object.`
+    : "The attached image is ONLY a style and size reference showing the hero's glove: draw the hand on the grip with EXACTLY the same glove, size and drawing style. Do NOT copy the reference image as a separate object.") : ""}
+${e.kind === "weapon" && !e.two ? "EXACTLY ONE HAND in the whole image: the right hand holding the weapon. NO left hand, NO second hand, NO extra hands anywhere. The BOTTOM-LEFT part of the image must stay EMPTY flat magenta." : ""}
 Detailed shading with 3 or 4 tones per material, thick dark outline.
 ${STYLE}
 ${BG}`;
