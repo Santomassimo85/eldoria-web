@@ -209,40 +209,51 @@ Setting: ${d.name}${d.desc ? ` — ${d.desc}` : ""}.${idea ? ` Details: ${idea}.
 The texture MUST tile perfectly: left edge matches right edge, top edge matches bottom edge. Completely flat and orthographic: NO perspective, NO vanishing point, NO horizon, no lighting direction, no vignette, even brightness across the whole image.
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface: no characters, no objects, no text, no frame.`;
 
-// e = voce di handEntries; withRef = c'è la mano sinistra di quel guanto come riferimento
 const EN = { spada_lunga: "longsword", scimitarra: "scimitar", stocco: "rapier", martello: "warhammer", mazza: "flanged mace", mazzafrusto: "flail", lancia: "spear", bastone: "quarterstaff", ascia_bip: "double-bladed greataxe", maglio: "great maul", arco_lungo: "longbow", balestra_l: "light crossbow", pugni: "bare fist" };
-const BLADE = "GRIP (very important, like a real swordsman): the closed fist wraps around the HANDLE only. The crossguard sits just ABOVE the fist, the pommel sticks out just BELOW the little finger, the whole blade rises from the top of the fist. The hand NEVER touches the blade or the crossguard. The weapon is held upright and firm, the blade tilted about 25 degrees toward the upper-left, as in a classic first-person RPG idle pose. We see the back of the hand and the knuckles, the thumb wrapped around the handle.";
-const HAFT = "GRIP (very important, realistic): the closed fist wraps around the wooden SHAFT near its lower end, the head of the weapon at the TOP of the image, the shaft rising from the fist toward the upper-left, tilted about 25 degrees. The hand never touches the head. We see the back of the hand and the knuckles.";
-const GRIP = {
-  spada_lunga: BLADE, scimitarra: BLADE, stocco: `${BLADE} The rapier has a swept hilt cage around the fist.`,
-  martello: HAFT, mazza: HAFT, mazzafrusto: `${HAFT} The spiked ball hangs from a short chain at the top of the handle.`, lancia: `${HAFT} The spear is long: its point reaches the top of the image.`,
-  bastone: "GRIP: the fist holds the long wooden staff vertically at about one third of its length; the staff rises to the top of the image, its lower part goes out of the bottom border.",
-  ascia_bip: "GRIP: BOTH fists on the long wooden shaft, the right one near the bottom border and the left one higher up, the double-bladed axe head at the top of the image, the shaft tilted toward the upper-left.",
-  maglio: "GRIP: BOTH fists on the long wooden shaft, the right one near the bottom border and the left one higher up, the big hammer head at the top of the image, the shaft tilted toward the upper-left.",
-  arco_lungo: "GRIP: the LEFT fist holds the middle of the longbow, which stands almost vertical in the center-left of the image; the RIGHT hand, near the bottom-right, draws the string back with an arrow nocked; the arrow points forward into the image.",
-  balestra_l: "GRIP: the light crossbow is seen from behind, pointing forward into the image; the RIGHT hand holds the stock with the finger near the trigger, the LEFT hand supports the front of the stock from below; a bolt is loaded.",
-  pugni: "POSE: the right fist is clenched and raised in a boxing guard, knuckles toward the viewer's front, no weapon at all.",
+/* RICHIESTA DELLE MANI (2026-11-07, riscritta): istruzioni semplici e senza contraddizioni.
+   Immagine 4:3 divisa in tre: arma QUASI VERTICALE nel terzo destro, centro VUOTO (lì si vedono i
+   nemici), mano libera o scudo nel terzo sinistro. Per ogni tipo d'arma: com'è fatta e come si tiene. */
+const BLADE = "a straight, symmetric blade; the crossguard is a straight bar exactly PERPENDICULAR to the blade and centered on it; the handle continues the blade in a straight line below the crossguard; a round pommel at the bottom of the handle. The fist closes around the handle just below the crossguard, thumb wrapped around it; the hand never touches the blade";
+const BUILD = {
+  spada_lunga: BLADE,
+  scimitarra: "a curved single-edged blade that curves gently backward; a small straight crossguard perpendicular to the handle; the fist closes around the handle just below the crossguard",
+  stocco: `a long thin straight rapier blade; a swept hilt cage of curved bars around the fist; ${BLADE.split("; ").slice(2).join("; ")}`,
+  martello: "a straight wooden shaft with a metal warhammer head at the top, the head perpendicular to the shaft; the fist closes around the shaft in its lower half",
+  mazza: "a straight shaft with a flanged metal mace head at the top; the fist closes around the shaft in its lower half",
+  mazzafrusto: "a short straight handle; a spiked iron ball hangs from a short chain fixed to the top of the handle; the fist closes around the handle",
+  lancia: "a long straight wooden spear shaft with a leaf-shaped steel point at the top; the fist closes around the shaft at about one third of its length; the point stays inside the image",
+  bastone: "a long straight wooden quarterstaff; the fist closes around it at about one third of its length; the top end stays inside the image",
+  ascia_bip: "a long straight wooden shaft with a double-bladed axe head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
+  maglio: "a long straight wooden shaft with a big rectangular hammer head at the top, the head perpendicular to the shaft; BOTH fists on the shaft, one above the other",
+  arco_lungo: "a tall wooden longbow held vertical by the LEFT fist in the middle of the bow; the RIGHT hand, lower and to the right, pulls the string back with an arrow nocked; the arrow points forward, away from the viewer",
+  balestra_l: "a light crossbow seen from behind, pointing forward away from the viewer; the RIGHT hand on the stock with a finger near the trigger, the LEFT hand supporting the front of the stock from below; a bolt is loaded",
+  pugni: "no weapon: both fists clenched and raised in a boxing guard",
 };
-// e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite
-// (mani in più). Il guanto uguale lo dà la descrizione del guanto, la stessa per tutte le voci.
+const WHERE = {
+  arco_lungo: "The bow and both hands stay in the LEFT and RIGHT parts of the image, the CENTER stays as empty as possible.",
+  balestra_l: "The crossbow sits low in the lower half of the image, so the upper CENTER stays empty.",
+  pugni: "The LEFT fist in the LEFT third, the RIGHT fist in the RIGHT third, the CENTER stays EMPTY.",
+};
+// e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite.
 export function handPrompt(e) {
   const glove = GLOVES[e.glove]?.desc || GLOVES.leather.desc;
   const weapon = `${e.weaponName}${e.desc ? ` (${e.desc})` : ""}`;
-  const grip = GRIP[e.base] ? `\n${GRIP[e.base]}` : "";
-  const left = {
-    hand: `The LEFT hand, at the BOTTOM-LEFT, is EMPTY: half open and relaxed, fingers slightly spread and curled, held low for balance as when swinging the weapon with the other hand.`,
-    shield: `The LEFT hand, at the BOTTOM-LEFT, holds a sturdy round shield seen from BEHIND, exactly as the hero sees it: the INSIDE of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield covers the lower left part of the image, held low and close.`,
-  }[e.off];
-  const subject = e.off === "none"
-    ? `BOTH hands and forearms of the hero, wearing ${glove}, gripping a ${weapon}, entering from the BOTTOM of the image. The weapon is BIG and CHUNKY, held diagonally, pointing UP and to the LEFT.${grip}`
-    : `BOTH hands and forearms of the hero, BOTH wearing the SAME gloves (${glove}), the two hands the SAME size, spanning the WHOLE width of the image.
-The RIGHT hand, at the BOTTOM-RIGHT, holds a ${weapon}. The weapon is BIG and CHUNKY, thick and heavy with bold readable shapes.${grip}
+  const build = BUILD[e.base] ? `\nHow the weapon is made and held: ${BUILD[e.base]}.` : "";
+  const special = WHERE[e.base];
+  const left = e.off === "shield"
+    ? "LEFT third of the image: the LEFT hand holds a round shield, seen from BEHIND as the hero sees it: the inside of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield sits low in the bottom-left corner and does not reach the center."
+    : "LEFT third of the image: the LEFT hand, EMPTY, half open and relaxed, fingers slightly curled, held low in the bottom-left corner.";
+  const layout = special
+    ? `Both hands and the weapon (${weapon}). ${special}`
+    : e.off === "none"
+      ? `RIGHT half of the image: BOTH hands holding the ${weapon} UPRIGHT, almost VERTICAL (tilted at most 10 degrees), the whole weapon visible from the bottom of the handle to the top, with empty space above it. The LEFT half and the CENTER stay EMPTY.`
+      : `RIGHT third of the image: the RIGHT hand, near the bottom, holds the ${weapon} UPRIGHT, almost VERTICAL (tilted at most 10 degrees), the whole weapon visible from the pommel to the tip, with empty space above the tip.
+CENTER third of the image: EMPTY (the enemies are seen there).
 ${left}`;
-  return `Wide first-person view pixel art sprite for a classic dungeon crawler, as seen through the eyes of the hero.
-Subject: ${subject}
-Both forearms leave the image through the BOTTOM border. Exactly TWO hands, no more.
-FRAMING (very important): the WHOLE weapon is visible, tip included, nothing of the weapon is cut by the TOP border: leave an empty magenta margin above it. If the weapon is long, tilt it more toward the upper-left so that it fits entirely. Nothing else in the image.
-Detailed shading with 3 or 4 tones per material, thick dark outline.
+  return `Pixel art sprite for a first-person dungeon crawler: the hero's own hands, seen from behind, exactly as the hero sees them.
+Both hands wear the SAME gloves: ${glove}. The two hands are the SAME size. The forearms leave the image through the BOTTOM border. Exactly TWO hands.
+${layout}${build}
+The weapon is drawn cleanly and solidly, every part straight and aligned, thick dark outline, 3 or 4 tones of shading per material. Nothing else in the image.
 ${STYLE}
 ${BG}`;
 }
