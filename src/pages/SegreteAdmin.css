@@ -121,3 +121,21 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-empty { display: grid; gap: 4px; padding-top: 4px; border-top: 1px dashed rgba(var(--osso-rgb), .2); }
 .sga-cw-empty img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; image-rendering: pixelated; background: rgba(0,0,0,.35); }
 .sga-cw-empty small { color: #e0a24a; font-size: .74rem; }
+
+/* Prima persona a sotto-schede (2026-11-08): Dungeon · Armi e mani · Mostri di fronte · Anteprima */
+.sga-subtabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid rgba(var(--osso-rgb), .14); border-radius: 3px; background: var(--roccia-1); }
+.sga-subtabs button { flex: 1 1 150px; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 12px; border-radius: 3px; cursor: pointer;
+  font: 700 .92rem var(--font-ui, serif); border: 1px solid transparent; background: transparent; color: var(--osso-2); }
+.sga-subtabs button small { padding: 1px 7px; border-radius: 3px; font: 600 .74rem var(--font-num, serif); background: rgba(var(--osso-rgb), .1); }
+.sga-subtabs button.is-on { color: var(--osso); border-color: var(--el); background: rgba(var(--el-rgb), .18); }
+.sga-cw-glove { margin-top: 10px; border: 1px solid rgba(var(--osso-rgb), .14); border-radius: 3px; background: var(--roccia-1); }
+.sga-cw-glove > summary { cursor: pointer; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.sga-cw-glove > summary small { color: var(--osso-2); }
+.sga-cw-glove[open] > summary { border-bottom: 1px solid rgba(var(--osso-rgb), .12); }
+.sga-cw-glove > :not(summary) { margin-left: 10px; margin-right: 10px; }
+.sga-cw-fronts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 12px; }
+.sga-cw-front { margin: 0; display: grid; gap: 3px; text-align: center; }
+.sga-cw-front img, .sga-cw-front span { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; image-rendering: pixelated; display: grid; place-items: center; font-size: 2rem; background: rgba(0,0,0,.3); border-radius: 3px; }
+.sga-cw-front.is-missing span { opacity: .45; outline: 1px dashed rgba(224,162,74,.6); }
+.sga-cw-front figcaption { font-size: .74rem; color: var(--osso-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) { .sga-subtabs button { flex: 1 1 45%; } }

@@ -84,6 +84,8 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   const [ideas, setIdeas] = useState({});
   const [front, setFront] = useState(null); // {done, total, failed}
   const [handsDone, setHandsDone] = useState("");
+  const [part, setPart] = useState(() => { try { return localStorage.getItem("sga_cw_part") || "dungeon"; } catch { return "dungeon"; } });
+  const pickPart = (k) => { setPart(k); try { localStorage.setItem("sga_cw_part", k); } catch { /* niente */ } };
   useEffect(() => onSnapshot(collection(db, "dungeon_tiles"), (s) => { const m = {}; s.docs.forEach((d) => { m[d.id] = d.data(); }); setTiles(m); }, () => {}), []);
   const run = async (key, fn) => {
     if (busy) return;
@@ -205,21 +207,44 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
     alert(`Fatto: ${missing.length - failed} frontali su ${missing.length}.${failed ? " Quelli mancanti si possono rigenerare con lo stesso tasto." : ""}`);
   };
 
+  const tilesDone = dungeons.reduce((n, d) => n + SLOTS.filter(([sl]) => tiles[d.key]?.[sl]).length, 0);
+  const PARTS = [
+    ["dungeon", "🧱 Dungeon", `${tilesDone}/${dungeons.length * SLOTS.length}`],
+    ["armi", "🗡 Armi e mani", `${HANDS.length - handsMissing.length}/${HANDS.length}`],
+    ["mostri", "👹 Mostri di fronte", `${monsters.length - missing.length}/${monsters.length}`],
+    ["prova", "👁 Anteprima", ""],
+  ];
   return (
     <div className="sga-cw">
-      <p className="sga-hint">Questa è l'art della vista in prima persona, che per ora vedi solo tu. Finché un pezzo manca si usa la riserva disegnata dal codice. I giocatori continuano a vedere la lotta classica.</p>
-      <ImageTonePicker />
-      <Preview dungeons={dungeons} monsters={monsters} tiles={tiles} />
+      <p className="sga-hint">L'art della vista in prima persona. Finché un pezzo manca si usa la riserva disegnata dal codice.</p>
+      {/* SOTTO-SCHEDE (2026-11-08): prima dungeon, armi e mostri erano un'unica pagina lunghissima */}
+      <div className="sga-subtabs">
+        {PARTS.map(([k, l, n]) => (
+          <button key={k} type="button" aria-pressed={part === k} className={part === k ? "is-on" : ""} onClick={() => pickPart(k)}>
+            {l}{n && <small>{n}</small>}
+          </button>
+        ))}
+      </div>
+      {part !== "prova" && <ImageTonePicker />}
+      {part === "prova" && <Preview dungeons={dungeons} monsters={monsters} tiles={tiles} />}
 
-      <div className="sga-card">
+      {part === "mostri" && <div className="sga-card">
         <h3 className="sga-h3">Sprite frontali <small>{monsters.length - missing.length} su {monsters.length}</small></h3>
         <p className="sga-hint">I mostri ora si guardano in faccia: serve uno sprite di fronte. L'IA parte dallo sprite che hai già, così resta lo stesso mostro. Si possono fare uno per uno nella scheda del mostro.</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!missing.length || !!front} onClick={genFronts}>
           {front ? `⏳ ${front.done}/${front.total}…` : missing.length ? `✨ Genera i frontali mancanti (${missing.length})` : "✓ Tutti i mostri hanno il frontale"}
         </button>
-      </div>
+        <div className="sga-cw-fronts">
+          {monsters.map((m) => (
+            <figure key={m.id} className={`sga-cw-front${m.frontImageUrl ? "" : " is-missing"}`}>
+              {m.frontImageUrl ? <img src={m.frontImageUrl} alt={m.name} /> : <span>{m.icon || "👹"}</span>}
+              <figcaption>{m.name}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>}
 
-      <div className="sga-card">
+      {part === "dungeon" && <div className="sga-card">
         <h3 className="sga-h3">Pareti, pavimento e soffitto <small>tessere che si ripetono, una serie per dungeon</small></h3>
         <p className="sga-hint">Ogni dungeon ha il suo materiale (sotto il nome): l'IA lo usa insieme al nome e alla descrizione. Per cambiarlo scrivi un'idea nella casella del dungeon.</p>
         {dungeons.map((d) => {
@@ -249,9 +274,9 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      <div className="sga-card">
+      {part === "armi" && <div className="sga-card">
         <h3 className="sga-h3">Mani e armi <small>{HANDS.length - handsMissing.length} su {HANDS.length} · viste da chi le impugna</small></h3>
         <p className="sga-hint">Ogni classe ha i suoi guanti. Ogni sprite ha TUTTE E DUE le mani, larghe quanto la scena: la destra con l'arma e la sinistra libera (o con lo scudo, per chi lo può portare); così i guanti e le misure vengono uguali. Le +1 e +2 usano lo sprite dell'arma base, le armi speciali il loro. Da «Carica» puoi mettere un tuo disegno: PNG 4:3 col fondo trasparente, le mani che entrano dal bordo in basso.</p>
         <button type="button" className="adm-btn adm-btn--gold" disabled={!handsMissing.length || !!busy} onClick={genAllHands}>
@@ -263,8 +288,8 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
           const specials = [...new Set(all.filter((h) => h.special).map((h) => h.item))];
           const baseDone = base.filter((h) => tiles[idOf(h)]?.image).length;
           return (
-            <div key={glove} className="sga-cw-row">
-              <b>{g.icon} {g.name} <small>· {g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")}</small></b>
+            <details key={glove} className="sga-cw-glove">
+              <summary><b>{g.icon} {g.name}</b> <small>{g.classes.map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")} · {all.filter((h) => tiles[idOf(h)]?.image).length}/{all.length}</small></summary>
               <details className="sga-cw-base">
                 <summary>Armi base · {baseDone} su {base.length}{baseDone < base.length ? " ⚠ ne mancano" : " ✓"}</summary>
                 <div className="sga-cw-tiles">{base.map(tile)}</div>
@@ -284,10 +309,10 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
                   </div>
                 );
               })}
-            </div>
+            </details>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
