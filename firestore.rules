@@ -276,6 +276,11 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if false; // la partita la scrive solo la funzione segreteDo
     }
+    // oggetti delle Segrete creati dal Master (2026-11-08): li legge il gioco, li scrive il Master
+    match /segrete_items/{itemId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
     match /segrete_loot/{lootId} {
       allow read: if isLoggedIn();
       allow write: if isMaster(); // il server (segreteDo) lo segna vinto con l'admin SDK

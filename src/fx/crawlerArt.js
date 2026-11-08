@@ -186,7 +186,7 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
     const items = [
       ...weapons.map((k) => ({ item: k, base: k, name: WEAPONS[k].name, icon: WEAPONS[k].icon, weaponName: EN[k] || WEAPONS[k].name })),
       ...Object.entries(ITEMS).filter(([id, it]) => weapons.includes(it.base) && !/_[12]$/.test(id)).map(([id, it]) => ({
-        item: id, base: it.base, name: it.name, icon: it.icon, special: true, desc: it.desc, weaponName: `magic ${EN[it.base] || WEAPONS[it.base].name} named "${it.name}"`,
+        item: id, base: it.base, name: it.name, icon: it.icon, special: true, desc: it.desc, ...(it.look ? { look: it.look } : {}), weaponName: `magic ${EN[it.base] || WEAPONS[it.base].name} named "${it.name}"`,
       })),
     ];
     items.forEach((it) => {
@@ -196,6 +196,27 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
       if (withShield.has(it.base)) out.push({ ...it, glove, kind: "pair", two: false, off: "shield", key: pairKey(it.item, "shield") });
       // presa a due mani (armi versatili): lo sprite con tutte e due le mani sull'arma
       if (!two && g.classes.some((c) => canTwoHand(c, it.base))) out.push({ ...it, glove, kind: "pair", two: true, off: "none", key: pairKey(it.item, "none") });
+    });
+  });
+  return out;
+}
+
+/* ARMATURE SPECIALI IN PRIMA PERSONA (2026-11-08): in prima persona si vedono avambracci e mani;
+   un'armatura con `look` (aspetto di maniche e guanti, in inglese) ha le sue mani: per ogni arma delle
+   classi che la possono portare, lo stesso sprite con il guanto «a-<idArmatura>». La lotta le cerca
+   prima di quelle del guanto di classe (armorGlove). */
+export const armorGlove = (itemId) => `a-${itemId}`;
+export function armorHandEntries(itemId, it, { WEAPONS, WEAPON_CHOICES, TWO_HANDED, gearUsers, armorProf, canTwoHand = () => false }) {
+  if (!it || it.kind !== "armor" || !it.look) return [];
+  const glove = armorGlove(itemId), out = [], seen = new Set();
+  gearUsers(it).forEach((cls) => {
+    (WEAPON_CHOICES[cls] || []).forEach((k) => {
+      const base = { item: k, base: k, name: WEAPONS[k].name, icon: WEAPONS[k].icon, weaponName: EN[k] || WEAPONS[k].name, glove, gloveDesc: it.look, baseGlove: gloveOf(cls), kind: "pair", armor: itemId };
+      const two = twoHandedFor(cls, k, TWO_HANDED.has(k));
+      const push = (off, tw) => { const key = pairKey(k, off); if (seen.has(key)) return; seen.add(key); out.push({ ...base, two: tw, off, key }); };
+      push(two ? "none" : "hand", two);
+      if (!two && armorProf(cls).shield) push("shield", false);
+      if (!two && canTwoHand(cls, k)) push("none", true);
     });
   });
   return out;
@@ -294,14 +315,15 @@ const WHERE = {
 };
 // e = voce di handEntries. Nessuna immagine di riferimento: l'IA la ricopiava dentro lo sprite.
 export function handPrompt(e) {
-  const glove = GLOVES[e.glove]?.desc || GLOVES.leather.desc;
+  const glove = e.gloveDesc || GLOVES[e.glove]?.desc || GLOVES.leather.desc;
+  const gk = GLOVES[e.glove] ? e.glove : e.baseGlove;
   const weapon = `${e.weaponName}${e.look ? ` — its look: ${e.look}` : e.desc ? ` (${e.desc})` : ""}`;
   const build = BUILD[e.base] ? `\nHow the weapon is made and held: ${BUILD[e.base]}.` : "";
   const special = WHERE[e.base];
   const left = e.off === "shield"
     ? "LEFT third of the image: the LEFT hand holds a round shield, seen from BEHIND as the hero sees it: the inside of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield sits low in the bottom-left corner and does not reach the center."
-    : GLOVES[e.glove]?.focus
-      ? `LEFT third of the image: the LEFT hand, low in the bottom-left corner, palm up, holds ${GLOVES[e.glove].focus}.`
+    : GLOVES[gk]?.focus
+      ? `LEFT third of the image: the LEFT hand, low in the bottom-left corner, palm up, holds ${GLOVES[gk].focus}.`
       : "LEFT third of the image: the LEFT hand, EMPTY, half open and relaxed, fingers slightly curled, held low in the bottom-left corner.";
   const layout = special
     ? `Both hands and the weapon (${weapon}). ${special}`
@@ -311,7 +333,7 @@ export function handPrompt(e) {
 CENTER third of the image: EMPTY (the enemies are seen there).
 ${left}`;
   return `Pixel art sprite for a first-person dungeon crawler: the hero's own hands, seen from behind, exactly as the hero sees them.
-Both hands wear the SAME gloves: ${glove}. The two hands are the SAME size. The forearms leave the image through the BOTTOM border. Exactly TWO hands.
+${e.gloveDesc ? `Both forearms and hands wear the SAME armor: sleeves, bracers and gloves of ${glove}` : `Both hands wear the SAME gloves: ${glove}`}. The two hands are the SAME size. The forearms leave the image through the BOTTOM border. Exactly TWO hands.
 ${layout}${build}
 The weapon is drawn cleanly and solidly, every part straight and aligned, thick dark outline, 3 or 4 tones of shading per material. Nothing else in the image.
 ${STYLE}

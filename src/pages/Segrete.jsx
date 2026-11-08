@@ -30,6 +30,7 @@ import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, he
 const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
 import { SgIcon } from "../components/GameIcon";
 import { DIFF_TONE } from "../data/segreteIcons";
+import { useSegreteItems } from "../utils/segreteItemsLive";
 import "./Segrete.css";
 
 const tsMs = (t) => (t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : 0);
@@ -113,6 +114,7 @@ export default function Segrete() {
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
   const master = isMainMaster(currentUser?.email);
+  useSegreteItems(); // oggetti creati dal Master: uniti a ITEMS, la pagina si ridisegna quando cambiano
 
   const [charData, setCharData] = useState(null);
   const [custom, setCustom] = useState([]);

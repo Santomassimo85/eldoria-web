@@ -67,6 +67,7 @@ __export(segreteServer_exports, {
   nextRunsPatch: () => nextRunsPatch,
   openChest: () => openChest,
   poolFor: () => poolFor,
+  registerCustomItems: () => registerCustomItems,
   romeDay: () => romeDay,
   runsOf: () => runsOf,
   storyLevelOf: () => storyLevelOf,
@@ -806,6 +807,110 @@ var dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
 var GIFT_FEE = 50;
 var GIFT_DAILY = 3;
 var giftsToday = (charData, day = romeDay()) => charData?.storyGiftDay?.day === day ? Number(charData.storyGiftDay.n) || 0 : 0;
+var CUSTOM_PREFIX = "x_";
+var DMG_KEYS = ["slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "thunder", "acid", "poison", "necrotic", "radiant", "force", "psychic"];
+var ITEM_KINDS = {
+  weapon: { it: "Arma", icon: "\u2694" },
+  armor: { it: "Armatura / veste", icon: "\u{1F6E1}" },
+  shield: { it: "Scudo", icon: "\u{1F6E1}" },
+  heal: { it: "Cura", icon: "\u{1F9EA}" },
+  revive: { it: "Rianima", icon: "\u{1FAB6}" },
+  cleanse: { it: "Purifica un alleato", icon: "\u{1F33F}" },
+  cleanse_party: { it: "Purifica il gruppo", icon: "\u{1F4A7}" },
+  panacea: { it: "Panacea (tutti gli stati)", icon: "\u2728" },
+  buff: { it: "Potenziamento", icon: "\u{1F9B8}" },
+  throw: { it: "Da lancio (un nemico)", icon: "\u{1F525}" },
+  throw_area: { it: "Da lancio (tutti i nemici)", icon: "\u{1F4A5}" }
+};
+var num = (v, lo, hi, d) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : d;
+};
+var dice = (v, d = "1d6") => {
+  const m = /^(\d{1,2})d(4|6|8|10|12|20)$/.exec(String(v || "").trim());
+  return m ? `${Math.min(10, +m[1])}d${m[2]}` : d;
+};
+var dmgK = (v, d = "fire") => DMG_KEYS.includes(v) ? v : d;
+var str = (v, n) => String(v || "").trim().slice(0, n);
+var dmgList = (v) => [...new Set((Array.isArray(v) ? v : []).filter((k) => DMG_KEYS.includes(k)))];
+var thornsOf = (t) => t && Number(t.chance) > 0 ? { chance: num(t.chance, 5, 100, 25), dice: dice(t.dice, "1d4"), dmg: dmgK(t.dmg, "bludgeoning") } : null;
+function normalizeCustomItem(d = {}) {
+  const kind = ITEM_KINDS[d.kind] ? d.kind : null;
+  if (!kind) return null;
+  const it = {
+    name: str(d.name, 60) || "Oggetto senza nome",
+    icon: str(d.icon, 8) || ITEM_KINDS[kind].icon,
+    kind,
+    custom: true,
+    rarity: RARITY[d.rarity] ? d.rarity : "uncommon",
+    desc: str(d.desc, 300),
+    price: num(d.price, 0, 1e5, 0),
+    daily: num(d.daily, 1, 10, 1),
+    ...Array.isArray(d.dungeons) && d.dungeons.length ? { dungeons: d.dungeons.map((x) => str(x, 40)).filter(Boolean) } : {},
+    ...DIFF_RANK[d.minDiff] ? { minDiff: d.minDiff } : {},
+    ...str(d.look, 600) ? { look: str(d.look, 600) } : {}
+  };
+  if (kind === "weapon") {
+    if (!WEAPONS[d.base]) return null;
+    it.base = d.base;
+    it.plus = num(d.plus, 0, 3, 0);
+    it.special = true;
+    const f = d.fx || {}, fx = {};
+    if (f.extra?.[0]) fx.extra = [dice(f.extra[0], "1d4"), dmgK(f.extra[1])];
+    for (const k of ["burn", "poison"]) if (f[k] && Number(f[k].chance) > 0) fx[k] = { chance: num(f[k].chance, 5, 100, 20), dice: dice(f[k].dice, "1d4"), turns: num(f[k].turns, 1, 4, 2) };
+    if (f.slow && Number(f.slow.chance) > 0) fx.slow = { chance: num(f.slow.chance, 5, 100, 25), turns: num(f.slow.turns, 1, 3, 1) };
+    if (f.stun && Number(f.stun.chance) > 0) fx.stun = { chance: num(f.stun.chance, 5, 50, 10) };
+    if (fx.extra && Number(f.drain) > 0) fx.drain = num(f.drain, 10, 100, 50);
+    if (Number(f.crit) >= 17 && Number(f.crit) <= 19) fx.crit = num(f.crit, 17, 19, 19);
+    if (f.multi && Number(f.multi.double) > 0) fx.multi = { double: num(f.multi.double, 5, 50, 20), none: num(f.multi.none, 0, 30, 0) };
+    if (Object.keys(fx).length) it.fx = fx;
+  } else if (kind === "armor" || kind === "shield") {
+    if (kind === "armor") {
+      if (!ARMORS[d.base]) return null;
+      it.base = d.base;
+    }
+    it.plus = num(d.plus, 0, 3, 0);
+    const res = dmgList(d.res);
+    if (res.length) it.res = res;
+    if (Number(d.saveBonus) > 0) it.saveBonus = num(d.saveBonus, 1, 3, 1);
+    const th = thornsOf(d.thorns);
+    if (th) it.thorns = th;
+  } else if (kind === "heal") {
+    it.dice = dice(d.dice, "2d4");
+    it.flat = num(d.flat, 0, 50, 0);
+  } else if (kind === "revive") it.pct = num(d.pct, 10, 100, 50);
+  else if (kind === "buff") {
+    it.buff = d.buff === "adv" ? "adv" : "ac";
+    if (it.buff === "ac") it.value = num(d.value, 1, 5, 2);
+    it.turns = num(d.turns, 1, 5, 2);
+  } else if (kind === "throw") {
+    it.dice = dice(d.dice, "2d6");
+    it.dmg = dmgK(d.dmg);
+  } else if (kind === "throw_area") {
+    it.dice = dice(d.dice, "2d6");
+    it.dmg = dmgK(d.dmg);
+    it.save = ["str", "dex", "con", "int", "wis", "cha"].includes(d.save) ? d.save : "dex";
+    it.dc = num(d.dc, 8, 22, 13);
+  }
+  return it;
+}
+var customIds = [];
+function registerCustomItems(list = []) {
+  customIds.forEach((id) => {
+    delete ITEMS[id];
+  });
+  customIds = [];
+  list.forEach((d) => {
+    if (!d?.id || !String(d.id).startsWith(CUSTOM_PREFIX) || d.hidden) return;
+    const it = normalizeCustomItem(d);
+    if (it) {
+      ITEMS[d.id] = it;
+      customIds.push(d.id);
+    }
+  });
+  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0));
+  return customIds.length;
+}
 
 // src/data/arenaClassSprites.js
 var ARENA_CLASSES = [
@@ -1046,8 +1151,8 @@ function withRng(fn, body) {
 }
 var die = (s) => 1 + Math.floor(rnd() * s);
 var d20 = () => die(20);
-function parseDice(str) {
-  const m = /^(\d+)d(\d+)$/.exec(String(str || "").trim());
+function parseDice(str2) {
+  const m = /^(\d+)d(\d+)$/.exec(String(str2 || "").trim());
   return m ? [Number(m[1]), Number(m[2])] : [1, 6];
 }
 function roll(n, s) {
@@ -1125,6 +1230,8 @@ function makeHero(m) {
     res: def.res,
     ...def.thorns ? { thorns: def.thorns } : {},
     gear: { armor: def.armorName, shield: def.shieldName },
+    // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
+    ...hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {},
     ...def.shield ? { shieldAc: 2 + (itemOf(hero.shieldItem)?.kind === "shield" ? itemOf(hero.shieldItem).plus || 0 : 0) } : {},
     fx: {},
     uses,
@@ -2383,6 +2490,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   nextRunsPatch,
   openChest,
   poolFor,
+  registerCustomItems,
   romeDay,
   runsOf,
   storyLevelOf,

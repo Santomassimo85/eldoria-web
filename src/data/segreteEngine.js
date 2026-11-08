@@ -80,6 +80,8 @@ export function makeHero(m) {
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
     ...(okItem ? { wItem: wItem.id } : {}), res: def.res, ...(def.thorns ? { thorns: def.thorns } : {}),
     gear: { armor: def.armorName, shield: def.shieldName },
+    // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
+    ...(hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {}),
     ...(def.shield ? { shieldAc: 2 + (itemOf(hero.shieldItem)?.kind === "shield" ? itemOf(hero.shieldItem).plus || 0 : 0) } : {}),
     fx: {}, uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):

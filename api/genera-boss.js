@@ -6,6 +6,7 @@
 // { tipo: "nemico" } = Forgia dei Nemici (scheda 5e completa, vedi _enemy.js).
 import { generaNemico } from "./_enemy.js";
 import { generaMostroSegrete } from "./_segreteMonster.js";
+import { generaOggettoSegrete } from "./_segreteItem.js";
 
 export const config = { maxDuration: 90 };
 
@@ -23,6 +24,7 @@ export default async function handler(req, res) {
   if (tipo === "bonus") return generaBonus(req.body || {}, res);
   if (tipo === "nemico") return generaNemico(req.body || {}, res);
   if (tipo === "segrete") return generaMostroSegrete(req.body || {}, res);
+  if (tipo === "segreteItem") return generaOggettoSegrete(req.body || {}, res);
   const isMinion = tipo === "minion";
   const seme = Math.floor(Math.random() * 1e9);
 

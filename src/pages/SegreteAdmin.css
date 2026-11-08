@@ -139,3 +139,18 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-cw-front.is-missing span { opacity: .45; outline: 1px dashed rgba(224,162,74,.6); }
 .sga-cw-front figcaption { font-size: .74rem; color: var(--osso-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 640px) { .sga-subtabs button { flex: 1 1 45%; } }
+
+/* Oggetti delle Segrete (2026-11-08) */
+.sgi-h4 { margin: 12px 0 4px; font: 700 .9rem var(--font-ui, serif); color: var(--osso-2); }
+.sgi-fx { margin: 6px 0; padding: 6px 10px; border: 1px solid rgba(var(--osso-rgb), .12); border-radius: 3px; }
+.sgi-fx.is-on { border-color: rgba(var(--el-rgb), .6); background: rgba(var(--el-rgb), .07); }
+.sgi-fx .sga-check { margin: 2px 0; }
+.sgi-users { margin: 4px 0 10px; padding: 8px 10px; border-left: 3px solid #6fd48a; background: rgba(111,212,138,.08); }
+.sgi-users.is-none { border-color: #e0a24a; background: rgba(224,162,74,.08); }
+.sgi-sum { margin: 0 0 8px; padding: 8px 10px; background: var(--roccia-1); border-radius: 3px; font-size: .92rem; }
+.sgi-card { border-top-color: var(--rar, var(--el)) !important; }
+.sgi-card.is-hidden { opacity: .55; }
+.sgi-card .sga-mcard-main small { white-space: normal; }
+.sgi-rar { color: var(--rar, var(--osso-2)) !important; font-weight: 700; }
+.sgi-base { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; }
+.sgi-base span { padding: 3px 8px; font-size: .82rem; border: 1px solid rgba(var(--osso-rgb), .14); border-radius: 3px; background: var(--roccia-1); }

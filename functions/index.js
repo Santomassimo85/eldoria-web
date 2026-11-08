@@ -1945,6 +1945,14 @@ exports.petAward = onCall(
 // next (sala successiva), flee (abbandona), heroCreate/heroAsi/heroPick/heroRespec (eroe di classe).
 // Vittoria = PE all'eroe di classe (characters.storyChars[cls].xp, permanente) + Corone + forse un oggetto.
 const segreteBundle = require("./segreteBundle");
+// oggetti creati dal Master nell'admin delle Segrete (2026-11-08): si uniscono a ITEMS del motore
+let segreteItemsAt = 0;
+async function loadSegreteItems(db) {
+  if (Date.now() - segreteItemsAt < 30000) return;
+  const snap = await db.collection("segrete_items").get();
+  segreteBundle.registerCustomItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  segreteItemsAt = Date.now();
+}
 const segreteRng = () => crypto.randomInt(0, 2 ** 31) / 2 ** 31;
 // Il Master principale non ha i limiti dei dungeon (1 al giorno, 3 a settimana): uid letto una volta.
 let segreteMasterUid = null;
@@ -1961,6 +1969,7 @@ exports.segreteDo = onCall(
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const op = String(request.data?.op || "");
     const db = admin.firestore();
+    if (op !== "voiceIce") await loadSegreteItems(db).catch((e) => console.warn("[segrete_items]", e?.message || e));
 
     // ── Chat vocale (2026-11-05): server ICE per WebRTC. Con le chiavi di Cloudflare TURN
     //    (CF_TURN_KEY_ID + CF_TURN_API_TOKEN in functions/.env.eldoria-web) dà anche il "ponte"

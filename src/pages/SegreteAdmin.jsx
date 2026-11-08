@@ -26,6 +26,8 @@ import {
   dataUrlToTransparentBlob, defensesOf,
 } from "./WorldBossAdmin";
 import CrawlerArtTab from "./SegreteAdminCrawler";
+import SegreteAdminItems from "./SegreteAdminItems";
+import { useSegreteItems } from "../utils/segreteItemsLive";
 import { frontSpriteUrl, refOnMagenta } from "../utils/crawlerGen";
 import { DAMAGE_TYPES } from "./worldBossEffects";
 import "./admin.css";
@@ -116,6 +118,7 @@ export default function SegreteAdmin() {
   const [monsterDocs, setMonsters] = useState([]);
   // + mostri di base del codice (2026-11-06)
   const monsters = useMemo(() => mergeMonsters(monsterDocs), [monsterDocs]);
+  const { version: itemsV } = useSegreteItems(); // oggetti creati qui: uniti a ITEMS
   const [wbMinions, setWbMinions] = useState([]);
   const [wbBosses, setWbBosses] = useState([]);
 
@@ -149,15 +152,16 @@ export default function SegreteAdmin() {
       </div>
 
       <div className="sga-tabs">
-        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["bottino", "🎁 Bottino"], ["crawler", "🎮 Prima persona"]].map(([k, l]) => (
+        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["oggetti", "⚔ Oggetti"], ["bottino", "🎁 Bottino Foundry"], ["crawler", "🎮 Prima persona"]].map(([k, l]) => (
           <button key={k} type="button" aria-pressed={tab === k} className={tab === k ? "is-on" : ""} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
 
       {tab === "dungeon" && <DungeonsTab dungeons={dungeons} monsters={monsters} />}
       {tab === "bestiario" && <BestiaryTab dungeons={dungeons} monsters={monsters} wbMinions={wbMinions} wbBosses={wbBosses} />}
+      {tab === "oggetti" && <SegreteAdminItems dungeons={dungeons} />}
       {tab === "bottino" && <LootTab dungeons={dungeons} />}
-      {tab === "crawler" && <CrawlerArtTab dungeons={dungeons} monsters={monsters} />}
+      {tab === "crawler" && <CrawlerArtTab dungeons={dungeons} monsters={monsters} itemsV={itemsV} />}
     </section>
   );
 }
@@ -654,7 +658,7 @@ function LootTab({ dungeons }) {
   );
   return (
     <>
-      <p className="sga-hint">Gli oggetti si creano dalla <Link to="/dm-admin/market">Forgia del Mercato Nero</Link> scegliendo «🗝 Le Segrete» come destinazione. Alla vittoria di un dungeon, con la probabilità scelta nel dungeon, uno di questi va a un eroe a caso del gruppo e arriva su Foundry (Fetch admin) come un'asta vinta.</p>
+      <p className="sga-hint">Premi «veri» da portare su Foundry (creati in passato dalla Forgia del Mercato). Gli oggetti del GIOCO delle Segrete si creano nella piega «⚔ Oggetti». Alla vittoria di un dungeon, con la probabilità scelta nel dungeon, uno di questi va a un eroe a caso del gruppo e arriva su Foundry (Fetch admin) come un'asta vinta.</p>
       <h3 className="sga-h3">In palio <small>{pool.length}</small></h3>
       {!pool.length && <p className="sga-hint">Il forziere è vuoto: i gruppi vincono solo Corone e livelli.</p>}
       <div className="sga-grid">{pool.map(card)}</div>

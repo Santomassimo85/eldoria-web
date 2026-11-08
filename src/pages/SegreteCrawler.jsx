@@ -17,7 +17,7 @@ import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
-import { handSpec, handDoc, pairKey } from "../fx/crawlerArt";
+import { armorGlove, handSpec, handDoc, pairKey } from "../fx/crawlerArt";
 // colpo d'arma? Le righe nuove lo dicono (w: 1, dal server); per le vecchie: forme da mischia, o freccia
 // fisica (balestra). Freccia Acida e gli altri incantesimi hanno un elemento: partono dal focus.
 const MELEE_FX = new Set(["slash", "smash", "thrust", "punch"]);
@@ -318,15 +318,21 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const spec = me ? handSpec(me, weaponKey, TWO_HANDED.has(weaponKey)) : null;
   const offKey = spec?.off || "", glove = spec?.glove || "";
   const specialKey = me?.wItem && !/_[12]$/.test(me.wItem) ? me.wItem : ""; // arma speciale: ha il suo sprite
+  // armatura speciale con il suo aspetto (2026-11-08): maniche e guanti suoi
+  const armorKey = me?.armorItem && itemOf(me.armorItem)?.look ? me.armorItem : "";
   useEffect(() => {
     if (!eng || !weaponKey) return;
     // empty = lo stesso sprite con la freccia già scoccata (arco e balestra)
-    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, glove))).then((s) => s.data() || {}).catch(() => ({})) : Promise.resolve({}));
-    Promise.all([specialKey ? read(pairKey(specialKey, offKey)) : {}, read(pairKey(weaponKey, offKey))]).then(([special, base]) => {
-      const use = special.image ? special : base;
-      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "" });
+    const read = (k, gl = glove) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, gl))).then((s) => s.data() || {}).catch(() => ({})) : Promise.resolve({}));
+    Promise.all([
+      specialKey ? read(pairKey(specialKey, offKey)) : {},
+      armorKey ? read(pairKey(weaponKey, offKey), armorGlove(armorKey)) : {},
+      read(pairKey(weaponKey, offKey)),
+    ]).then(([special, armor, base]) => {
+      const use = special.image ? special : armor.image ? armor : base;
+      eng.setHands(`${weaponKey}:${specialKey}:${armorKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "" });
     });
-  }, [eng, weaponKey, specialKey, offKey, glove]);
+  }, [eng, weaponKey, specialKey, armorKey, offKey, glove]);
 
   // i PF sugli sprite scendono quando ARRIVA il colpo, non quando risponde il server
   const lag = useMemo(() => {

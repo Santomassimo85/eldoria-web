@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { db, storage } from "../firebase";
 import "./admin.css";
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { mergeDungeons } from "../data/segrete";
 import { ref as storageRef, uploadBytes, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
@@ -331,9 +330,6 @@ export default function MarketAdmin() {
   const { currentUser } = useAuth();
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState(initialFormData);
-  const [segreteTypes, setSegreteTypes] = useState([]);
-  useEffect(() => onSnapshot(collection(db, "dungeon_types"), (s) => setSegreteTypes(s.docs.map((d) => ({ key: d.id, ...d.data() }))), () => {}), []);
-  const segreteDungeonList = useMemo(() => mergeDungeons(segreteTypes), [segreteTypes]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [globalCountdown, setGlobalCountdown] = useState("");
@@ -1473,36 +1469,7 @@ export default function MarketAdmin() {
           </div>
 
           <form onSubmit={handleSubmit} className="mkadm-form">
-            {!editId && (
-              <div className="mkadm-field mkadm-dest">
-                <label>Dove va a finire</label>
-                <div className="mkadm-dest-row">
-                  {[["mercato", "🏪 Mercato Nero", "all'asta come sempre"], ["segrete", "🗝 Le Segrete", "bottino dello story mode"]].map(([k, l, h]) => (
-                    <button key={k} type="button" aria-pressed={formData.destination === k}
-                      className={`mkadm-dest-btn${formData.destination === k ? " is-on" : ""}`}
-                      onClick={() => setFormData({ ...formData, destination: k })}>
-                      <b>{l}</b><small>{h}</small>
-                    </button>
-                  ))}
-                </div>
-                {formData.destination === "segrete" && (
-                  <>
-                    <small className="mkadm-dest-hint">Esce in (nessuno scelto = in tutti i dungeon). Lo vince un eroe del gruppo che conquista il dungeon e arriva su Foundry come le aste.</small>
-                    <div className="mkadm-dest-row">
-                      {segreteDungeonList.map((d) => {
-                        const on = (formData.segreteDungeons || []).includes(d.key);
-                        return (
-                          <button key={d.key} type="button" aria-pressed={on} className={`mkadm-dest-chip${on ? " is-on" : ""}`}
-                            onClick={() => setFormData({ ...formData, segreteDungeons: on ? formData.segreteDungeons.filter((k) => k !== d.key) : [...(formData.segreteDungeons || []), d.key] })}>
-                            {d.icon} {d.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            {/* «Le Segrete» come destinazione è stata spostata nell'admin delle Segrete (piega ⚔ Oggetti, 2026-11-08) */}
             <div className="mkadm-field">
               <div className="mkadm-label-row">
                 <label>Nome oggetto</label>

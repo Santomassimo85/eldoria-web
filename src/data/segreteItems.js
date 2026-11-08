@@ -13,7 +13,7 @@
    la pozione base si compra facile (25), il resto costa 2–10 dungeon, un'arma +1 ≈ un mese.
    `daily` = quanti se ne possono comprare al giorno (giorno di Roma), per giocatore:
    characters.storyShopDay = {day, n: {id: quantità}}. Lo controlla il server (shopBuy). */
-import { WEAPONS, WEAPON_CHOICES, ARMOR_PROF, armorProf, canWear } from "./segreteKits";
+import { WEAPONS, WEAPON_CHOICES, ARMOR_PROF, ARMORS, armorProf, canWear } from "./segreteKits";
 
 export const COIN_NAME = "Monete Antiche";
 export const COIN_ICON = "🪙";
@@ -231,3 +231,82 @@ export const dailyLimit = (id) => Number(ITEMS[id]?.daily) || 1;
 export const GIFT_FEE = 50;
 export const GIFT_DAILY = 3;
 export const giftsToday = (charData, day = romeDay()) => (charData?.storyGiftDay?.day === day ? Number(charData.storyGiftDay.n) || 0 : 0);
+
+/* ═══ OGGETTI CREATI DAL MASTER (2026-11-08) ═══════════════════
+   Si creano nell'admin delle Segrete (piega «⚔ Oggetti») e stanno in segrete_items/{id}
+   (id con il prefisso CUSTOM_PREFIX). Hanno lo STESSO formato degli oggetti qui sopra, quindi
+   il motore li usa come gli altri: armi (base + plus + fx al colpo), armature e scudi (plus,
+   resistenze, +TS, spine) e oggetti da lotta. Il sito li unisce a ITEMS con registerCustomItems
+   (utils/segreteItemsLive.js), il server lo fa a ogni chiamata di segreteDo. `look` = aspetto
+   in inglese per gli sprite (armi in mano, maniche e guanti delle armature in prima persona). */
+export const CUSTOM_PREFIX = "x_";
+export const DMG_KEYS = ["slashing", "piercing", "bludgeoning", "fire", "cold", "lightning", "thunder", "acid", "poison", "necrotic", "radiant", "force", "psychic"];
+export const ITEM_KINDS = {
+  weapon: { it: "Arma", icon: "⚔" },
+  armor: { it: "Armatura / veste", icon: "🛡" },
+  shield: { it: "Scudo", icon: "🛡" },
+  heal: { it: "Cura", icon: "🧪" },
+  revive: { it: "Rianima", icon: "🪶" },
+  cleanse: { it: "Purifica un alleato", icon: "🌿" },
+  cleanse_party: { it: "Purifica il gruppo", icon: "💧" },
+  panacea: { it: "Panacea (tutti gli stati)", icon: "✨" },
+  buff: { it: "Potenziamento", icon: "🦸" },
+  throw: { it: "Da lancio (un nemico)", icon: "🔥" },
+  throw_area: { it: "Da lancio (tutti i nemici)", icon: "💥" },
+};
+const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : d; };
+const dice = (v, d = "1d6") => { const m = /^(\d{1,2})d(4|6|8|10|12|20)$/.exec(String(v || "").trim()); return m ? `${Math.min(10, +m[1])}d${m[2]}` : d; };
+const dmgK = (v, d = "fire") => (DMG_KEYS.includes(v) ? v : d);
+const str = (v, n) => String(v || "").trim().slice(0, n);
+const dmgList = (v) => [...new Set((Array.isArray(v) ? v : []).filter((k) => DMG_KEYS.includes(k)))];
+const thornsOf = (t) => (t && Number(t.chance) > 0 ? { chance: num(t.chance, 5, 100, 25), dice: dice(t.dice, "1d4"), dmg: dmgK(t.dmg, "bludgeoning") } : null);
+// un oggetto creato dal Master → formato di ITEMS (null se non valido). Usato da admin, sito e server.
+export function normalizeCustomItem(d = {}) {
+  const kind = ITEM_KINDS[d.kind] ? d.kind : null;
+  if (!kind) return null;
+  const it = {
+    name: str(d.name, 60) || "Oggetto senza nome", icon: str(d.icon, 8) || ITEM_KINDS[kind].icon, kind, custom: true,
+    rarity: RARITY[d.rarity] ? d.rarity : "uncommon", desc: str(d.desc, 300),
+    price: num(d.price, 0, 100000, 0), daily: num(d.daily, 1, 10, 1),
+    ...(Array.isArray(d.dungeons) && d.dungeons.length ? { dungeons: d.dungeons.map((x) => str(x, 40)).filter(Boolean) } : {}),
+    ...(DIFF_RANK[d.minDiff] ? { minDiff: d.minDiff } : {}),
+    ...(str(d.look, 600) ? { look: str(d.look, 600) } : {}),
+  };
+  if (kind === "weapon") {
+    if (!WEAPONS[d.base]) return null;
+    it.base = d.base; it.plus = num(d.plus, 0, 3, 0); it.special = true;
+    const f = d.fx || {}, fx = {};
+    if (f.extra?.[0]) fx.extra = [dice(f.extra[0], "1d4"), dmgK(f.extra[1])];
+    for (const k of ["burn", "poison"]) if (f[k] && Number(f[k].chance) > 0) fx[k] = { chance: num(f[k].chance, 5, 100, 20), dice: dice(f[k].dice, "1d4"), turns: num(f[k].turns, 1, 4, 2) };
+    if (f.slow && Number(f.slow.chance) > 0) fx.slow = { chance: num(f.slow.chance, 5, 100, 25), turns: num(f.slow.turns, 1, 3, 1) };
+    if (f.stun && Number(f.stun.chance) > 0) fx.stun = { chance: num(f.stun.chance, 5, 50, 10) };
+    if (fx.extra && Number(f.drain) > 0) fx.drain = num(f.drain, 10, 100, 50);
+    if (Number(f.crit) >= 17 && Number(f.crit) <= 19) fx.crit = num(f.crit, 17, 19, 19);
+    if (f.multi && (Number(f.multi.double) > 0)) fx.multi = { double: num(f.multi.double, 5, 50, 20), none: num(f.multi.none, 0, 30, 0) };
+    if (Object.keys(fx).length) it.fx = fx;
+  } else if (kind === "armor" || kind === "shield") {
+    if (kind === "armor") { if (!ARMORS[d.base]) return null; it.base = d.base; }
+    it.plus = num(d.plus, 0, 3, 0);
+    const res = dmgList(d.res); if (res.length) it.res = res;
+    if (Number(d.saveBonus) > 0) it.saveBonus = num(d.saveBonus, 1, 3, 1);
+    const th = thornsOf(d.thorns); if (th) it.thorns = th;
+  } else if (kind === "heal") { it.dice = dice(d.dice, "2d4"); it.flat = num(d.flat, 0, 50, 0); }
+  else if (kind === "revive") it.pct = num(d.pct, 10, 100, 50);
+  else if (kind === "buff") { it.buff = d.buff === "adv" ? "adv" : "ac"; if (it.buff === "ac") it.value = num(d.value, 1, 5, 2); it.turns = num(d.turns, 1, 5, 2); }
+  else if (kind === "throw") { it.dice = dice(d.dice, "2d6"); it.dmg = dmgK(d.dmg); }
+  else if (kind === "throw_area") { it.dice = dice(d.dice, "2d6"); it.dmg = dmgK(d.dmg); it.save = ["str", "dex", "con", "int", "wis", "cha"].includes(d.save) ? d.save : "dex"; it.dc = num(d.dc, 8, 22, 13); }
+  return it;
+}
+// unisce gli oggetti del Master a ITEMS (e alla bottega). Si può chiamare più volte: toglie quelli spariti.
+let customIds = [];
+export function registerCustomItems(list = []) {
+  customIds.forEach((id) => { delete ITEMS[id]; });
+  customIds = [];
+  list.forEach((d) => {
+    if (!d?.id || !String(d.id).startsWith(CUSTOM_PREFIX) || d.hidden) return;
+    const it = normalizeCustomItem(d);
+    if (it) { ITEMS[d.id] = it; customIds.push(d.id); }
+  });
+  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0));
+  return customIds.length;
+}

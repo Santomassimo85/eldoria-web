@@ -7,16 +7,14 @@ import { db } from "../firebase";
 import ImageTonePicker from "../components/ImageTonePicker";
 import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf, canTwoHand } from "../data/segreteKits";
-import { ITEMS } from "../data/segreteItems";
+import { ITEMS, gearUsers } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, refOnMagenta, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, isRangedHand, materialOf, pairKey, releasedPrompt, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, armorHandEntries, isRangedHand, materialOf, pairKey, releasedPrompt, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
-// la lista: per ogni guanto la mano sinistra, lo scudo, le armi delle sue classi e le armi speciali
-const HANDS = handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf, canTwoHand });
 const fileToUrl = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
 // una foto caricata dal PC: solo rimpicciolita, il fondo trasparente deve già averlo
 const fitHand = (src) => new Promise((res, rej) => {
@@ -77,7 +75,14 @@ function Preview({ dungeons, monsters, tiles }) {
   );
 }
 
-export default function CrawlerArtTab({ dungeons, monsters }) {
+export default function CrawlerArtTab({ dungeons, monsters, itemsV = 0 }) {
+  // la lista: per ogni guanto la mano sinistra, lo scudo, le armi delle sue classi e le armi speciali
+  // (anche quelle create dal Master nella piega Oggetti: si ricalcola quando cambiano)
+  const HANDS = useMemo(() => handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorProf, canTwoHand }), [itemsV]); // eslint-disable-line react-hooks/exhaustive-deps
+  // armature speciali con un aspetto: le loro mani (maniche e guanti), per ogni arma di chi le porta
+  const ARMOR_HANDS = useMemo(() => Object.entries(ITEMS).filter(([, it]) => it.kind === "armor")
+    .map(([id, it]) => ({ id, it, entries: armorHandEntries(id, it, { WEAPONS, WEAPON_CHOICES, TWO_HANDED, gearUsers, armorProf, canTwoHand }) })), [itemsV]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ALL_HANDS = useMemo(() => [...HANDS, ...ARMOR_HANDS.flatMap((a) => a.entries)], [HANDS, ARMOR_HANDS]);
   const [tiles, setTiles] = useState({});
   const [busy, setBusy] = useState("");
   // idea per le tessere: una per dungeon (prima era una sola per tutti)
@@ -102,7 +107,8 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
   const idOf = (h) => handDoc(h.key, h.glove);
   // L'ASPETTO DELLE ARMI SPECIALI (2026-11-07): testo in dungeon_tiles/look_<arma>, scritto dall'IA dai
   // danni e dagli effetti, ritoccabile; entra nella richiesta dello sprite.
-  const lookOf = (item) => tiles[`look_${item}`]?.text || "";
+  // armi create nella piega Oggetti: il loro aspetto è già nell'oggetto
+  const lookOf = (item) => tiles[`look_${item}`]?.text || ITEMS[item]?.look || "";
   const [drafts, setDrafts] = useState({});
   const draftOf = (item) => (drafts[item] ?? lookOf(item));
   const genLook = (h) => run(`look:${h.item}`, async () => {
@@ -152,7 +158,7 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
       <figure key={id} className="sga-cw-tile">
         {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
         {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
-        <figcaption>{h.special ? "" : h.name} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
+        <figcaption>{h.special ? "" : h.name} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.baseGlove || h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
         <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : src ? "✨ Rigenera" : "✨ Genera sprite"}</button>
         <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
         {src && isRangedHand(h.base) && (
@@ -177,20 +183,30 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
       if (failed) alert(`${failed} sprite non generati: riprova con lo stesso tasto.`);
     });
   };
+  const genArmorHands = (a) => {
+    const todo = a.entries.filter((h) => !tiles[idOf(h)]?.image);
+    if (!todo.length || !window.confirm(`Generare ${todo.length} sprite delle mani con «${a.it.name}»? Circa 3 centesimi l'uno di credito Gemini.`)) return;
+    run(`armor:${a.id}`, async () => {
+      let failed = 0;
+      for (let i = 0; i < todo.length; i++) { setHandsDone(`${i}/${todo.length}`); try { await makeHand(todo[i]); } catch { failed++; } }
+      setHandsDone("");
+      if (failed) alert(`${failed} sprite non generati: riprova con lo stesso tasto.`);
+    });
+  };
   const dropHand = (h) => setDoc(doc(db, "dungeon_tiles", idOf(h)), { image: deleteField() }, { merge: true }).catch((e) => alert(e.message));
   // armi già salvate tagliate in alto: avviso sulla miniatura
   const [cut, setCut] = useState({});
   useEffect(() => {
     let live = true;
-    HANDS.forEach((h) => {
+    ALL_HANDS.forEach((h) => {
       const src = tiles[idOf(h)]?.image;
       if (!src) return;
       touchesTop(src).then((v) => { if (live) setCut((m) => (m[idOf(h)] === v ? m : { ...m, [idOf(h)]: v })); }).catch(() => {});
     });
     return () => { live = false; };
-  }, [tiles]);
+  }, [tiles, ALL_HANDS]); // eslint-disable-line react-hooks/exhaustive-deps
   // le prove di prima, senza guanto: non le usa più nessuno
-  const ids = new Set(HANDS.map(idOf));
+  const ids = new Set(ALL_HANDS.map(idOf));
   const old = Object.keys(tiles).filter((k) => k.startsWith("hand_") && !ids.has(k) && tiles[k]?.image);
 
   const missing = monsters.filter((m) => !m.frontImageUrl);
@@ -309,6 +325,22 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
                   </div>
                 );
               })}
+            </details>
+          );
+        })}
+        <h3 className="sga-h3">Armature speciali <small>maniche e guanti in prima persona</small></h3>
+        <p className="sga-hint">Un'armatura con il suo aspetto (piega «⚔ Oggetti») cambia avambracci e guanti di chi la indossa: per ogni arma delle classi che la possono portare serve il suo sprite. Finché manca si vedono i guanti normali della classe.</p>
+        {ARMOR_HANDS.map((a) => {
+          if (!a.entries.length) return a.it.custom ? <p key={a.id} className="sga-hint">{a.it.icon} <b>{a.it.name}</b>: manca l'aspetto (maniche e guanti), scrivilo nella piega «⚔ Oggetti».</p> : null;
+          const done = a.entries.filter((h) => tiles[idOf(h)]?.image).length;
+          return (
+            <details key={a.id} className="sga-cw-glove">
+              <summary><b>{a.it.icon} {a.it.name}</b> <small>{gearUsers(a.it).map((c) => STORY_CLASSES.find((x) => x.key === c)?.it || c).join(", ")} · {done}/{a.entries.length}</small></summary>
+              <p className="sga-hint">{a.it.look}</p>
+              <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy || done === a.entries.length} onClick={() => genArmorHands(a)}>
+                {busy === `armor:${a.id}` ? `⏳ ${handsDone}…` : done < a.entries.length ? `✨ Genera quelli mancanti (${a.entries.length - done})` : "✓ Tutti fatti"}
+              </button>
+              <div className="sga-cw-tiles">{a.entries.map(tile)}</div>
             </details>
           );
         })}
