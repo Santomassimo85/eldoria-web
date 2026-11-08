@@ -367,8 +367,55 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove, withInflict 
 };
 
 /* Lista di azioni con "+ Aggiungi" (boss e minion). */
-export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni", withInflict = false }) => {
+/* riga di riepilogo di un'azione (lista compatta, 2026-11-08) */
+const INFL_ICO = { burn: "🔥", poison: "☠", frozen: "🧊", paralyzed: "⚡", petrified: "🗿", frightened: "😱", blinded: "🌑", slow: "🐌", confused: "😵" };
+export const actionSummary = (a = {}) => {
+  const t = a.type || "attack";
+  const dice = `${a.diceNum || 1}${a.diceType || "d6"}`;
+  if (t === "attack") {
+    const save = a.hitMode === "save" || (a.aoeShape && a.aoeShape !== "single");
+    const area = a.aoeShape && a.aoeShape !== "single" ? " · area" : "";
+    const inf = a.inflict && a.inflict !== "none" ? ` · ${INFL_ICO[a.inflict.key] || ""}${a.inflict.chance}%` : "";
+    return `${dice}${save ? ` · TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${a.saveDC || 13}` : ` · +${a.bonus || 0} a colpire`}${a.dmgType ? ` · ${a.dmgType}` : ""}${area}${inf}`;
+  }
+  if (t === "heal") return `cura ${dice}${a.bonus ? `+${a.bonus}` : ""}`;
+  if (t === "buff_ca") return `+${a.acBonus || 2} CA · ${a.durationTurns || 2} turni`;
+  if (t === "buff_adv") return `vantaggio · ${a.durationTurns || 2} turni`;
+  return `svantaggio agli eroi · ${a.durationTurns || 2} turni`;
+};
+export const ActionsList = ({ actions, min, onChange, title = "⚔ Azioni", withInflict = false, compact = false }) => {
   const update = (i, patch) => onChange(actions.map((a, k) => (k === i ? { ...a, ...patch } : a)));
+  const [open, setOpen] = useState(compact ? -1 : null);
+  // compatta (Segrete, stile menu da gioco): una riga per azione, tocco = si apre l'editor di quella
+  if (compact) {
+    return (
+      <div className="wb-actions-section wb-actions--menu">
+        <ul className="wb-act-menu">
+          {actions.map((a, idx) => {
+            const meta = ACTION_TYPES.find((t) => t.value === (a.type || "attack")) || ACTION_TYPES[0];
+            const on = open === idx;
+            return (
+              <li key={idx} className={on ? "is-open" : ""}>
+                <button type="button" className="wb-act-line" aria-expanded={on} onClick={() => setOpen(on ? -1 : idx)}>
+                  <span className="wb-act-ico">{meta.label.split(" ")[0]}</span>
+                  <b>{a.name || `Azione ${idx + 1}`}</b>
+                  <small>{actionSummary(a)}</small>
+                </button>
+                {on && (
+                  <ActionEditor action={a} idx={idx} withInflict={withInflict}
+                    onChange={(patch) => update(idx, patch)}
+                    onRemove={() => { if (actions.length > min) { onChange(actions.filter((_, k) => k !== idx)); setOpen(-1); } }}
+                    canRemove={actions.length > min} />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <button type="button" className="wb-add-action-btn" disabled={actions.length >= MAX_ACTIONS}
+          onClick={() => { onChange([...actions, blankAction(actions.length)]); setOpen(actions.length); }}>＋ Nuova azione ({actions.length}/{MAX_ACTIONS})</button>
+      </div>
+    );
+  }
   return (
     <div className="wb-actions-section">
       <div className="wb-actions-head">

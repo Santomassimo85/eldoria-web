@@ -1,0 +1,149 @@
+/* SCHEDE «MENU DA JRPG» (2026-11-08): creazione di mostri e oggetti nell'admin delle Segrete.
+   Finestre blu notte con doppia cornice bianca, testo bianco, titoli e numeri a pixel (Pixelify
+   Sans), il cursore ▶ sulla voce scelta come nei menu dei vecchi giochi. Tutto sotto .jrpg. */
+.jrpg {
+  --jw-top: #2a3c9e; --jw-bot: #0c1450; --jw-line: #f4f1ea; --jw-dark: #05082a; --jw-hi: #ffe27a; --jw-mute: #b9c2f0;
+  --jw-pix: "DotGothic16", "Pixelify Sans", ui-monospace, monospace; --jw-read: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: grid; gap: 12px; max-width: 980px; color: #fff; font-family: var(--jw-read);
+}
+.jrpg *, .jrpg *::before, .jrpg *::after { box-sizing: border-box; }
+.jrpg, .jrpg > *, .jrpg .jw-stat-main, .jrpg .jw-stats label, .jrpg .sga-field { min-width: 0; }
+.jrpg .jw {
+  position: relative; display: block; padding: 12px 14px; color: #fff;
+  background: linear-gradient(180deg, var(--jw-top), var(--jw-bot));
+  border: 3px solid var(--jw-line); border-radius: 7px;
+  box-shadow: 0 0 0 3px var(--jw-dark), inset 0 0 0 2px var(--jw-dark), 0 6px 0 3px rgba(0,0,0,.35);
+}
+.jrpg .jw-h, .jrpg .jw-h4 {
+  margin: 0 0 10px; font: 400 1.05rem var(--jw-pix); letter-spacing: .08em; text-transform: uppercase; color: var(--jw-hi); text-shadow: 2px 2px 0 var(--jw-dark);
+}
+.jrpg .jw-h small { margin-left: 8px; font: 400 .74rem var(--jw-pix); letter-spacing: 0; text-transform: none; color: var(--jw-mute); text-shadow: none; }
+.jrpg .jw-h4 { margin: 14px 0 6px; font-size: .86rem; color: #fff; }
+
+/* campi */
+.jrpg input:not([type="checkbox"]):not([type="file"]), .jrpg select, .jrpg textarea, .jrpg .admin-field-input {
+  width: 100%; min-height: 38px; padding: 6px 10px; border-radius: 3px; color: #fff; font: 400 1rem var(--jw-pix);
+  background: rgba(5, 8, 42, .72); border: 2px solid rgba(244, 241, 234, .55); box-shadow: inset 0 2px 0 rgba(0,0,0,.35);
+}
+.jrpg textarea { font: 400 .95rem var(--jw-read); line-height: 1.35; }
+.jrpg input:focus, .jrpg select:focus, .jrpg textarea:focus { outline: none; border-color: var(--jw-hi); }
+.jrpg input::placeholder, .jrpg textarea::placeholder { color: rgba(185, 194, 240, .6); }
+.jrpg select option { background: #0c1450; color: #fff; }
+.jrpg .sga-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.jrpg .sga-field { display: grid; gap: 4px; flex: 1 1 200px; margin: 4px 0; }
+.jrpg .sga-field--s { flex: 0 1 180px; } .jrpg .sga-field--xs { flex: 0 1 110px; }
+.jrpg .sga-field > span, .jrpg .jw-field > span, .jrpg .sga-field-l { font: 400 .74rem var(--jw-pix); letter-spacing: .06em; text-transform: uppercase; color: var(--jw-mute); }
+.jrpg .jw-field { display: grid; gap: 4px; margin: 8px 0; }
+.jrpg .sga-hint { margin: 6px 0; color: var(--jw-mute); font-size: .86rem; }
+.jrpg .sga-check { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; font: 400 .92rem var(--jw-pix); }
+.jrpg input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--jw-hi); }
+
+/* menu: voci senza riquadro, il cursore ▶ sulla scelta */
+.jrpg .jw-menu { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.jrpg .jw-menu--grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr)); gap: 2px 14px; }
+.jrpg .jw-menu button {
+  position: relative; min-height: 34px; padding: 4px 6px 4px 22px; border: 0; border-radius: 3px; background: transparent; cursor: pointer;
+  color: #fff; font: 400 .95rem var(--jw-pix); text-align: left;
+}
+.jrpg .jw-menu button:hover { background: rgba(255,255,255,.08); }
+.jrpg .jw-menu button[aria-pressed="true"] { color: var(--jw-hi); }
+.jrpg .jw-menu button[aria-pressed="true"]::before { content: "▶"; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); font-size: .8rem; color: var(--jw-hi); animation: jw-blink 1s steps(2) infinite; }
+.jrpg .jw-menu .jw-rar[aria-pressed="true"] { color: var(--rc, var(--jw-hi)); }
+@keyframes jw-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .jrpg .jw-menu button[aria-pressed="true"]::before { animation: none; } }
+
+/* finestra di stato */
+.jrpg .jw-status { display: grid; grid-template-columns: 120px 1fr; gap: 12px 16px; align-items: start; }
+.jrpg .jw-face { width: 120px; aspect-ratio: 1; display: grid; place-items: center; border: 2px solid rgba(244,241,234,.6); border-radius: 4px;
+  background: repeating-conic-gradient(rgba(255,255,255,.05) 0 25%, transparent 0 50%) 0 0 / 12px 12px, rgba(5,8,42,.6); font-size: 3.4rem; }
+.jrpg .jw-face img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
+.jrpg .jw-face img.mirror, .jrpg .jw-spr-img img.mirror { transform: scaleX(-1); }
+.jrpg .jw-stat-main { display: grid; gap: 8px; min-width: 0; }
+.jrpg .jw-name-row { display: flex; gap: 8px; align-items: center; }
+.jrpg .jw-name-row .jw-icon-in { flex: 0 0 56px; width: 56px; text-align: center; font-size: 1.3rem; }
+.jrpg .jw-name-row .jw-name-in { flex: 1; font-size: 1.25rem; text-transform: uppercase; letter-spacing: .04em; }
+.jrpg .jw-tag { padding: 2px 8px; font: 400 .72rem var(--jw-pix); border: 1px solid var(--jw-mute); border-radius: 3px; color: var(--jw-mute); white-space: nowrap; }
+.jrpg .jw-stats { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.jrpg .jw-stats label { display: grid; gap: 2px; flex: 0 1 96px; }
+.jrpg .jw-stats label > span { font: 400 .78rem var(--jw-pix); letter-spacing: .1em; color: var(--jw-hi); }
+.jrpg .jw-stats input { font-size: 1.35rem !important; text-align: center; }
+.jrpg .jw-stats label:last-child:has(select) { flex: 1 1 140px; }
+.jrpg .jw-defs, .jrpg .jw-sum, .jrpg .jw-users { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; font: 400 .95rem var(--jw-pix); }
+.jrpg .jw-defs .is-weak { color: #ff9a8a; }
+.jrpg .jw-defs .is-warn, .jrpg .jw-users.is-warn { color: #ffbf6a; }
+.jrpg .jw-sum { color: #fff; }
+.jrpg .jw-users { color: #9cf0b4; }
+.jrpg .jw-desc { grid-column: 1 / -1; }
+
+/* IA e comandi */
+.jrpg .jw-ai { display: grid; gap: 8px; }
+.jrpg .jw-ai .jw-h { margin: 0; }
+.jrpg .jw-cmds, .jrpg .jw-cmdbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.jrpg .jw-cmds button, .jrpg .jw-cmdbar button, .jrpg .jw-spr-btns button, .jrpg .jw-spr-btns label {
+  min-height: 38px; padding: 6px 14px 6px 24px; position: relative; cursor: pointer; border-radius: 4px;
+  font: 400 .92rem var(--jw-pix); letter-spacing: .05em; color: #fff;
+  background: rgba(5,8,42,.55); border: 2px solid rgba(244,241,234,.7);
+}
+.jrpg .jw-cmds button:hover:not(:disabled), .jrpg .jw-cmdbar button:hover:not(:disabled), .jrpg .jw-spr-btns button:hover:not(:disabled), .jrpg .jw-spr-btns label:hover { border-color: var(--jw-hi); color: var(--jw-hi); }
+.jrpg .jw-cmds button:hover:not(:disabled)::before, .jrpg .jw-cmdbar button:hover:not(:disabled)::before { content: "▶"; position: absolute; left: 7px; font-size: .7rem; top: 50%; transform: translateY(-50%); }
+.jrpg button:disabled { opacity: .5; cursor: default; }
+.jrpg .jw-cmdbar { position: sticky; bottom: 8px; z-index: 4; }
+.jrpg .jw-cmdbar .is-main { color: var(--jw-hi); border-color: var(--jw-hi); }
+.jrpg .jw-cmdbar .is-danger { margin-left: auto; color: #ff9a8a; border-color: #ff9a8a; }
+
+/* sprite */
+.jrpg .jw-sprites { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 10px; margin-bottom: 10px; }
+.jrpg .jw-spr { display: grid; gap: 4px; align-content: start; }
+.jrpg .jw-spr > b { font: 400 .92rem var(--jw-pix); text-transform: uppercase; letter-spacing: .06em; }
+.jrpg .jw-spr > small { color: var(--jw-mute); font-size: .8rem; }
+.jrpg .jw-spr-img { aspect-ratio: 1; display: grid; place-items: center; border: 2px solid rgba(244,241,234,.5); border-radius: 4px;
+  background: repeating-conic-gradient(rgba(255,255,255,.05) 0 25%, transparent 0 50%) 0 0 / 12px 12px, rgba(5,8,42,.6); font: 400 2.4rem var(--jw-pix); }
+.jrpg .jw-spr-img img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
+.jrpg .jw-spr-img .is-none { color: rgba(185,194,240,.5); }
+.jrpg .jw-spr-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.jrpg .jw-spr-btns button, .jrpg .jw-spr-btns label { padding: 4px 10px; min-height: 34px; font-size: .82rem; display: inline-flex; align-items: center; }
+
+/* avanzate */
+.jrpg .jw-adv > summary { cursor: pointer; margin: 0; list-style: none; }
+.jrpg .jw-adv > summary::-webkit-details-marker { display: none; }
+.jrpg .jw-adv > summary::before { content: "▶ "; font-size: .8rem; }
+.jrpg .jw-adv[open] > summary { margin-bottom: 10px; }
+.jrpg .jw-adv[open] > summary::before { content: "▼ "; }
+
+/* azioni a menu (ActionsList compact) */
+.jrpg .wb-actions--menu { margin: 0; }
+.jrpg .wb-act-menu { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.jrpg .wb-act-line {
+  width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 0 8px; align-items: center; padding: 6px 8px 6px 26px; position: relative;
+  border: 0; border-radius: 3px; background: transparent; color: #fff; cursor: pointer; text-align: left;
+}
+.jrpg .wb-act-line:hover { background: rgba(255,255,255,.08); }
+.jrpg .wb-act-line[aria-expanded="true"]::before, .jrpg .wb-act-line:hover::before { content: "▶"; position: absolute; left: 7px; top: 50%; transform: translateY(-50%); font-size: .75rem; color: var(--jw-hi); }
+.jrpg .wb-act-line .wb-act-ico { grid-row: span 2; font-size: 1.2rem; text-align: center; }
+.jrpg .wb-act-line b { font: 400 1rem var(--jw-pix); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jrpg .wb-act-line small { color: var(--jw-mute); font: 400 .82rem var(--jw-pix); }
+.jrpg .wb-act-menu li.is-open { background: rgba(5,8,42,.45); border-radius: 4px; padding-bottom: 6px; }
+.jrpg .wb-act-menu .wb-action-block { margin: 4px 8px 0; background: transparent; border: 1px dashed rgba(244,241,234,.35); box-shadow: none; color: #fff; }
+.jrpg .wb-action-block label span, .jrpg .wb-action-block .wb-half { color: var(--jw-mute); }
+.jrpg .wb-add-action-btn { min-height: 36px; padding: 4px 12px; border-radius: 4px; cursor: pointer; font: 400 .88rem var(--jw-pix); color: #fff; background: rgba(5,8,42,.55); border: 2px dashed rgba(244,241,234,.6); }
+
+/* resistenze (DefensesPicker) e tono del disegno sul blu */
+.jrpg .wb-defs { color: #fff; }
+.jrpg .wb-def { color: #fff; background: rgba(5,8,42,.55); border-color: rgba(244,241,234,.35); }
+.jrpg .wb-facing, .jrpg .wb-facing small, .jrpg .wb-facing i { color: #fff; }
+.jrpg .imgtone-label { color: var(--jw-mute); }
+
+/* effetti delle armi */
+.jrpg .sgi-fx { margin: 4px 0; padding: 4px 8px; border: 1px solid rgba(244,241,234,.18); border-radius: 4px; }
+.jrpg .sgi-fx.is-on { border-color: var(--jw-hi); background: rgba(255,226,122,.07); }
+
+@media (max-width: 640px) {
+  .jrpg .jw { padding: 10px; }
+  .jrpg .jw-status { grid-template-columns: minmax(0, 1fr); }
+  .jrpg .jw-stats label { flex: 1 1 26%; }
+  .jrpg .jw-stats label:has(select) { flex: 1 1 100%; }
+  .jrpg .jw-cmds button { flex: 1 1 auto; }
+  .jrpg .jw-face { width: 96px; margin: 0 auto; }
+  .jrpg .jw-stats label { flex: 1 1 28%; }
+  .jrpg .jw-cmdbar .is-danger { margin-left: 0; }
+}

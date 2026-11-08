@@ -126,34 +126,43 @@ export default function SegreteAdminItems({ dungeons }) {
   if (form) {
     const k = form.kind, fx = form.fx || {}, gear = ["weapon", "armor", "shield"].includes(k);
     const tg = (key, def) => ({ on: !!fx[key], onToggle: (v) => setFx(key, v ? def : null) });
+    /* SCHEDA «MENU DA JRPG» (2026-11-08): finestra di stato in cima con tipo, nome, rarità e cosa fa;
+       poi una finestra per parte, il resto in «Avanzate» (SegreteJrpg.css). */
     return (
-      <div className="sga-card sga-form sga-mform">
-        <h2 className="sga-h2">{form.icon || ITEM_KINDS[k]?.icon} {form.id ? form.name || "Oggetto" : "Nuovo oggetto"}</h2>
-
-        <div className="sga-ai">
-          <div className="sga-ai-head"><b>✨ Fatti aiutare dall'IA</b><small>Scrive nome, aspetto, numeri ed effetti con le regole delle Segrete. Usa il tipo, la base (se l'hai cambiata) e i dungeon scelti qui sotto.</small></div>
-          <input className="admin-field-input" value={idea} onChange={(e) => setIdea(e.target.value)} placeholder='Idea (facoltativa): es. "ascia di un nano ubriaco che a volte manca", "veste di seta nera che resiste al necrotico"' />
-          <div className="sga-btns"><button type="button" className="adm-btn adm-btn--gold" disabled={!!busy} onClick={generate}>{busy === "ai" ? "⏳ Scrivo…" : "✨ Crea con l'IA"}</button></div>
+      <div className="jrpg">
+        <div className="jw jw-status">
+          <div className="jw-face"><span>{form.icon || ITEM_KINDS[k]?.icon}</span></div>
+          <div className="jw-stat-main">
+            <div className="jw-name-row">
+              <input className="jw-icon-in" value={form.icon || ""} maxLength={8} placeholder={ITEM_KINDS[k]?.icon} aria-label="Icona" onChange={(e) => set({ icon: e.target.value })} />
+              <input className="jw-name-in" value={form.name} placeholder="NOME DELL'OGGETTO" aria-label="Nome" onChange={(e) => set({ name: e.target.value })} />
+            </div>
+            <div className="jw-menu jw-menu--row" role="group" aria-label="Rarità">
+              {Object.entries(RARITY).map(([r, v]) => <button key={r} type="button" aria-pressed={form.rarity === r} style={{ "--rc": v.color }} className="jw-rar" onClick={() => set({ rarity: r })}>{v.it}</button>)}
+            </div>
+            <p className="jw-sum">{norm ? itemSummary(norm) : "—"}</p>
+            {gear && <p className={`jw-users${users.length ? "" : " is-warn"}`}>{users.length ? `👤 ${users.map(clsName).join(", ")}` : "⚠ nessuna classe lo può usare"}</p>}
+          </div>
         </div>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>1</span> Cos'è</h3>
-          <div className="sga-chips">
+        <div className="jw">
+          <h3 className="jw-h">Cos'è</h3>
+          <div className="jw-menu jw-menu--grid">
             {Object.entries(ITEM_KINDS).map(([key, v]) => (
-              <button key={key} type="button" aria-pressed={k === key} className={k === key ? "is-on" : ""} onClick={() => set({ kind: key, base: blank(key).base })}>{v.icon} {v.it}</button>
+              <button key={key} type="button" aria-pressed={k === key} onClick={() => set({ kind: key, base: blank(key).base })}>{v.icon} {v.it}</button>
             ))}
           </div>
-          <div className="sga-row">
-            <label className="sga-field sga-field--xs"><span>Icona</span><input className="admin-field-input" value={form.icon || ""} maxLength={8} placeholder={ITEM_KINDS[k]?.icon} onChange={(e) => set({ icon: e.target.value })} /></label>
-            <label className="sga-field"><span>Nome</span><input className="admin-field-input" value={form.name} onChange={(e) => set({ name: e.target.value })} /></label>
-            <label className="sga-field sga-field--s"><span>Rarità</span>
-              <select className="admin-field-input" value={form.rarity} onChange={(e) => set({ rarity: e.target.value })}>{Object.entries(RARITY).map(([r, v]) => <option key={r} value={r}>{v.it}</option>)}</select></label>
-          </div>
-        </section>
+        </div>
+
+        <div className="jw jw-ai">
+          <h3 className="jw-h">✨ Fatti aiutare dall'IA</h3>
+          <input className="jw-in" value={idea} onChange={(e) => setIdea(e.target.value)} placeholder='Idea (facoltativa): "ascia di un nano ubriaco", "veste di seta nera"…' />
+          <div className="jw-cmds"><button type="button" disabled={!!busy} onClick={generate}>{busy === "ai" ? "⏳ SCRIVO…" : "✨ CREA CON L'IA"}</button></div>
+        </div>
 
         {k === "weapon" && (
-          <section className="sga-sec">
-            <h3 className="sga-sec-h"><span>2</span> Arma</h3>
+          <section className="jw">
+            <h3 className="jw-h">Arma</h3>
             <div className="sga-row">
               <label className="sga-field sga-field--s"><span>Arma base</span>
                 <select className="admin-field-input" value={form.base} onChange={(e) => set({ base: e.target.value })}>
@@ -161,7 +170,7 @@ export default function SegreteAdminItems({ dungeons }) {
                 </select></label>
               <NumF label="Magica +" v={form.plus} min={0} max={3} on={(v) => set({ plus: v })} />
             </div>
-            <h4 className="sgi-h4">Effetti al colpo</h4>
+            <h4 className="jw-h4">Effetti al colpo</h4>
             <FxToggle label="Danno in più a ogni colpo" {...tg("extra", ["1d4", "fire"])}>
               <DiceF label="Dadi" v={fx.extra?.[0]} on={(v) => setFx("extra", [v, fx.extra?.[1] || "fire"])} />
               <DmgF label="Tipo" v={fx.extra?.[1]} on={(v) => setFx("extra", [fx.extra?.[0] || "1d4", v])} />
@@ -193,8 +202,8 @@ export default function SegreteAdminItems({ dungeons }) {
         )}
 
         {(k === "armor" || k === "shield") && (
-          <section className="sga-sec">
-            <h3 className="sga-sec-h"><span>2</span> {k === "armor" ? "Armatura" : "Scudo"}</h3>
+          <section className="jw">
+            <h3 className="jw-h">{k === "armor" ? "Armatura" : "Scudo"}</h3>
             <div className="sga-row">
               {k === "armor" && (
                 <label className="sga-field"><span>Armatura base (decide chi la porta)</span>
@@ -206,7 +215,7 @@ export default function SegreteAdminItems({ dungeons }) {
               <NumF label="+ ai TS" v={form.saveBonus} min={0} max={3} on={(v) => set({ saveBonus: v })} />
             </div>
             <span className="sga-field-l">Resistenze ai danni</span>
-            <div className="sga-chips">
+            <div className="jw-menu">
               {DMG_KEYS.map((d) => { const on = (form.res || []).includes(d); return <button key={d} type="button" aria-pressed={on} className={on ? "is-on" : ""} onClick={() => set({ res: on ? form.res.filter((x) => x !== d) : [...(form.res || []), d] })}>{DMG_LABEL[d]}</button>; })}
             </div>
             <div className={`sgi-fx${form.thorns ? " is-on" : ""}`}>
@@ -223,8 +232,8 @@ export default function SegreteAdminItems({ dungeons }) {
         )}
 
         {!gear && (
-          <section className="sga-sec">
-            <h3 className="sga-sec-h"><span>2</span> Effetto in lotta</h3>
+          <section className="jw">
+            <h3 className="jw-h">Effetto in lotta</h3>
             <p className="sga-hint">Si usa col turno, come un'azione, e si consuma.</p>
             <div className="sga-row">
               {(k === "heal" || k === "throw" || k === "throw_area") && <DiceF label={k === "heal" ? "PF curati" : "Danno"} v={form.dice} on={(v) => set({ dice: v })} />}
@@ -247,10 +256,8 @@ export default function SegreteAdminItems({ dungeons }) {
           </section>
         )}
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>3</span> Chi lo usa e dove si trova</h3>
-          {gear && <p className={`sgi-users${users.length ? "" : " is-none"}`}>{users.length ? <>👤 Usabile da: <b>{users.map(clsName).join(", ")}</b></> : "⚠ Nessuna classe lo può usare con questa base"}</p>}
-          {!gear && <p className="sgi-users">👤 Usabile da tutte le classi</p>}
+        <section className="jw">
+            <h3 className="jw-h">Dove si trova</h3>
           {k === "shield" && <p className="sga-hint">Lo scudo va solo con un'arma a una mano.</p>}
           <div className="sga-row">
             <NumF label={`Prezzo in bottega ${COIN_ICON}`} v={form.price} max={100000} w="s" on={(v) => set({ price: v })} />
@@ -261,14 +268,13 @@ export default function SegreteAdminItems({ dungeons }) {
               </select></label>
           </div>
           <p className="sga-hint">{Number(form.price) > 0 ? "Si compra in Bottega e si può anche trovare." : "Prezzo 0 = non si compra: si trova solo addosso ai mostri."} Dungeon: nessuno scelto = in tutti.</p>
-          <div className="sga-chips">
+          <div className="jw-menu">
             {dungeons.filter((d) => !d.hidden).map((d) => { const on = (form.dungeons || []).includes(d.key); return <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""} onClick={() => set({ dungeons: on ? form.dungeons.filter((x) => x !== d.key) : [...(form.dungeons || []), d.key] })}>{d.icon} {d.name}</button>; })}
           </div>
         </section>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>4</span> Testi e aspetto</h3>
-          <p className="sgi-sum">{norm ? itemSummary(norm) : "—"}</p>
+        <details className="jw jw-adv">
+          <summary className="jw-h">Avanzate · testi e aspetto</summary>
           <label className="sga-field"><span>Descrizione per i giocatori (vuota = la riga qui sopra)</span>
             <textarea className="admin-field-input" rows={2} value={form.desc} placeholder={norm ? itemSummary(norm) : ""} onChange={(e) => set({ desc: e.target.value })} /></label>
           {(k === "weapon" || k === "armor") && (
@@ -277,13 +283,13 @@ export default function SegreteAdminItems({ dungeons }) {
           )}
           {(k === "weapon" || k === "armor") && <p className="sga-hint">Gli sprite si generano da «🎮 Prima persona» → «🗡 Armi e mani», dopo aver salvato.{k === "armor" && !form.look ? " Senza aspetto in prima persona si vedono i guanti normali della classe." : ""}</p>}
           <label className="sga-check"><input type="checkbox" checked={!!form.hidden} onChange={(e) => set({ hidden: e.target.checked })} /> Nascosto (non esce e non si vende)</label>
-        </section>
+        </details>
 
-        <div className="sga-savebar">
-          <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy} onClick={save}>{busy === "save" ? "Salvo…" : "💾 Salva"}</button>
-          <button type="button" className="adm-btn" onClick={() => setForm(null)}>Annulla</button>
-          {form.id && <button type="button" className="adm-btn" onClick={() => setForm({ ...form, id: undefined, name: `${form.name} (copia)` })}>⧉ Duplica</button>}
-          {form.id && <button type="button" className="adm-btn adm-btn--danger" onClick={remove}>🗑 Elimina</button>}
+        <div className="jw jw-cmdbar">
+          <button type="button" className="is-main" disabled={!!busy} onClick={save}>{busy === "save" ? "SALVO…" : "💾 SALVA"}</button>
+          <button type="button" onClick={() => setForm(null)}>ESCI</button>
+          {form.id && <button type="button" onClick={() => setForm({ ...form, id: undefined, name: `${form.name} (copia)` })}>DUPLICA</button>}
+          {form.id && <button type="button" className="is-danger" onClick={remove}>ELIMINA</button>}
         </div>
       </div>
     );

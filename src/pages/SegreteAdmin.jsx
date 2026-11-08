@@ -33,6 +33,7 @@ import { DAMAGE_TYPES } from "./worldBossEffects";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 import "./SegreteAdmin.css";
+import "./SegreteJrpg.css";
 
 const blankMonster = (dungeon = "") => ({
   name: "", desc: "", role: "minion", level: 1, hp: 12, ac: 12, init: 1, save: 1,
@@ -432,126 +433,117 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
 
   if (form) {
     const defs = defensesOf(form);
-    const defLine = [["immunities", "🚫 Immune"], ["resistances", "½ Resiste"], ["vulnerabilities", "×2 Debole"]]
-      .filter(([k]) => defs[k].length).map(([k, l]) => `${l}: ${defs[k].map((x) => DAMAGE_TYPES.find((d) => d.key === x)?.label || x).join(", ")}`);
+    const dmgIco = (x) => DAMAGE_TYPES.find((d) => d.key === x)?.icon || x;
     const sprites = [
-      { k: "imageUrl", fk: "alive", title: "Laterale (vivo)", use: "Lotta classica. Fallo per primo: gli altri due partono da lui.", gen: () => genSprite(false), mirror: form.facing !== "right" },
-      { k: "deadImageUrl", fk: "dead", title: "Morto", use: "Lotta classica, quando cade.", gen: () => genSprite(true), wait: !form.imageUrl },
-      { k: "frontImageUrl", fk: "front", title: "Frontale", use: "Prima persona: il mostro guarda il giocatore.", gen: genFront },
+      { k: "imageUrl", fk: "alive", title: "Laterale", use: "lotta classica · fallo per primo", gen: () => genSprite(false), mirror: form.facing !== "right" },
+      { k: "deadImageUrl", fk: "dead", title: "Morto", use: "quando cade", gen: () => genSprite(true), wait: !form.imageUrl },
+      { k: "frontImageUrl", fk: "front", title: "Frontale", use: "prima persona", gen: genFront },
     ];
+    const face = form.frontImageUrl || form.imageUrl;
+    /* SCHEDA DEL MOSTRO «MENU DA JRPG» (2026-11-08, richiesta dell'utente: più semplice, stile vecchio
+       gioco). Finestre blu con doppia cornice (SegreteJrpg.css): in vista solo quello che conta
+       (stato, IA, dove esce, azioni, difese, sprite), il resto in «Avanzate». */
     return (
-      <div className="sga-card sga-form sga-mform">
-        <h2 className="sga-h2">{form.icon ? `${form.icon} ` : ""}{form.id ? form.name || "Mostro" : "Nuovo mostro"}{form.base ? <small className="sga-badge">di base</small> : null}</h2>
+      <div className="jrpg">
+        <div className="jw jw-status">
+          <div className={`jw-face${face ? "" : " is-empty"}`}>
+            {face ? <img src={face} alt="" className={!form.frontImageUrl && form.facing !== "right" ? "mirror" : ""} /> : <span>{form.icon || roleInfo(form.role).icon}</span>}
+          </div>
+          <div className="jw-stat-main">
+            <div className="jw-name-row">
+              <input className="jw-icon-in" value={form.icon || ""} maxLength={8} placeholder={roleInfo(form.role).icon} aria-label="Icona" onChange={(e) => set({ icon: e.target.value })} />
+              <input className="jw-name-in" value={form.name} placeholder="NOME DEL MOSTRO" aria-label="Nome" onChange={(e) => set({ name: e.target.value })} />
+              {form.base && <span className="jw-tag">di base</span>}
+            </div>
+            <div className="jw-menu jw-menu--row" role="group" aria-label="Ruolo">
+              {MONSTER_ROLES.map((r) => <button key={r.key} type="button" aria-pressed={form.role === r.key} onClick={() => set({ role: r.key })}>{r.label}</button>)}
+            </div>
+            <div className="jw-stats">
+              {[["level", "LV", 1, 20], ["hp", "PF", 1, 2000], ["ac", "CA", 5, 30]].map(([k, l, lo, hi]) => (
+                <label key={k}><span>{l}</span><input type="number" min={lo} max={hi} value={form[k]} onChange={(e) => set({ [k]: e.target.value })} /></label>
+              ))}
+              <label><span>TAGLIA</span>
+                <select value={sizeOf(form)} onChange={(e) => set({ size: e.target.value })}>{MONSTER_SIZES.map((z) => <option key={z.key} value={z.key}>{z.label}</option>)}</select></label>
+            </div>
+            <p className="jw-defs">
+              {defs.immunities.length > 0 && <span>IMMUNE {defs.immunities.map(dmgIco).join("")}</span>}
+              {defs.resistances.length > 0 && <span>RESISTE {defs.resistances.map(dmgIco).join("")}</span>}
+              {defs.vulnerabilities.length > 0 && <span className="is-weak">DEBOLE {defs.vulnerabilities.map(dmgIco).join("")}</span>}
+              {!defs.immunities.length && !defs.resistances.length && !defs.vulnerabilities.length && <span className="is-warn">⚠ nessuna resistenza o debolezza</span>}
+            </p>
+          </div>
+          <textarea className="jw-desc" rows={2} value={form.desc} placeholder="Descrizione per i giocatori…" onChange={(e) => set({ desc: e.target.value })} />
+        </div>
 
-        <div className="sga-ai">
-          <div className="sga-ai-head"><b>✨ Fatti aiutare dall'IA</b><small>Scrive nome, aspetto, numeri, resistenze e debolezze, azioni e stati. Usa i dungeon, il ruolo e il livello scelti qui sotto.</small></div>
-          <input className="admin-field-input" value={hint} onChange={(e) => setHint(e.target.value)}
-            placeholder='Spunto (facoltativo): es. "ragno che sputa acido", "cavaliere non morto". Vuoto = creatura a sorpresa' />
-          <div className="sga-btns">
-            <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy.gen} onClick={() => generate("new")}>{busy.gen === "new" ? "⏳ Scrivo…" : "🎲 Mostro nuovo"}</button>
-            {form.name.trim() && <button type="button" className="adm-btn" disabled={!!busy.gen} onClick={() => generate("complete")}>{busy.gen === "complete" ? "⏳ Scrivo…" : "✨ Completa questa scheda"}</button>}
+        <div className="jw jw-ai">
+          <h3 className="jw-h">✨ Fatti aiutare dall'IA</h3>
+          <input className="jw-in" value={hint} onChange={(e) => setHint(e.target.value)} placeholder='Spunto (facoltativo): "ragno che sputa acido"… vuoto = a sorpresa' />
+          <div className="jw-cmds">
+            <button type="button" disabled={!!busy.gen} onClick={() => generate("new")}>{busy.gen === "new" ? "⏳ SCRIVO…" : "🎲 MOSTRO NUOVO"}</button>
+            {form.name.trim() && <button type="button" disabled={!!busy.gen} onClick={() => generate("complete")}>{busy.gen === "complete" ? "⏳ SCRIVO…" : "✨ COMPLETA LA SCHEDA"}</button>}
           </div>
         </div>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>1</span> Chi è</h3>
-          <div className="sga-row">
-            <label className="sga-field sga-field--xs"><span>Icona</span>
-              <input className="admin-field-input" value={form.icon || ""} maxLength={8} placeholder={roleInfo(form.role).icon} onChange={(e) => set({ icon: e.target.value })} /></label>
-            <label className="sga-field"><span>Nome</span>
-              <input className="admin-field-input" value={form.name} onChange={(e) => set({ name: e.target.value })} /></label>
-          </div>
-          <div className="sga-row">
-            <label className="sga-field sga-field--s"><span>Ruolo</span>
-              <select className="admin-field-input" value={form.role} onChange={(e) => set({ role: e.target.value })}>
-                {MONSTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.icon} {r.label}</option>)}
-              </select></label>
-            <label className="sga-field sga-field--s"><span>Taglia</span>
-              <select className="admin-field-input" value={sizeOf(form)} onChange={(e) => set({ size: e.target.value })}>
-                {MONSTER_SIZES.map((z) => <option key={z.key} value={z.key}>{z.label}{z.scale !== 1 ? ` (×${String(z.scale).replace(".", ",")})` : ""}</option>)}
-              </select></label>
-            <label className="sga-field sga-field--xs"><span>Livello</span>
-              <input className="admin-field-input" type="number" min="1" max="20" value={form.level} onChange={(e) => set({ level: e.target.value })} /></label>
-          </div>
-          <p className="sga-hint">{roleInfo(form.role).hint}</p>
-          <label className="sga-field"><span>Descrizione (la leggono i giocatori)</span>
-            <textarea className="admin-field-input" rows={2} value={form.desc} onChange={(e) => set({ desc: e.target.value })} /></label>
-          <label className="sga-field"><span>Aspetto per il disegno (in inglese, facoltativo: se c'è lo sprite usa questo)</span>
-            <textarea className="admin-field-input" rows={2} value={form.look || ""} placeholder="es. gaunt grey ghoul with long black claws, torn burial rags" onChange={(e) => set({ look: e.target.value })} /></label>
-          <span className="sga-field-l">Dove esce</span>
-          <div className="sga-chips">
+        <div className="jw">
+          <h3 className="jw-h">Dove esce</h3>
+          <div className="jw-menu">
             {dungeons.map((d) => {
               const on = (form.dungeons || []).includes(d.key);
-              return (
-                <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""}
-                  onClick={() => set({ dungeons: on ? form.dungeons.filter((k) => k !== d.key) : [...(form.dungeons || []), d.key] })}>
-                  {d.icon} {d.name}
-                </button>
-              );
+              return <button key={d.key} type="button" aria-pressed={on} onClick={() => set({ dungeons: on ? form.dungeons.filter((k) => k !== d.key) : [...(form.dungeons || []), d.key] })}>{d.icon} {d.name}</button>;
             })}
           </div>
-        </section>
+        </div>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>2</span> Numeri</h3>
-          <div className="sga-row">
-            {[["hp", "PF", 1, 2000], ["ac", "CA", 5, 30], ["init", "Iniziativa +", -5, 15], ["save", "Tiri salvezza +", -5, 15]].map(([k, l, lo, hi]) => (
-              <label key={k} className="sga-field sga-field--xs"><span>{l}</span>
-                <input className="admin-field-input" type="number" min={lo} max={hi} value={form[k]} onChange={(e) => set({ [k]: e.target.value })} /></label>
-            ))}
-          </div>
-          <p className="sga-hint">In partita PF e danni si adattano al gruppo: questi numeri dicono quanto è forte rispetto agli altri mostri.</p>
-        </section>
+        <div className="jw">
+          <h3 className="jw-h">Azioni</h3>
+          <ActionsList actions={form.actions} min={1} withInflict compact onChange={(actions) => set({ actions })} />
+        </div>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>3</span> Resistenze e debolezze</h3>
-          <p className="sga-hint">Tocca un tipo di danno: — normale · ½ resiste · ×2 debole · 🚫 immune.</p>
+        <div className="jw">
+          <h3 className="jw-h">Resistenze e debolezze <small>tocca: — · ½ resiste · ×2 debole · 🚫 immune</small></h3>
           <DefensesPicker value={form} onChange={(d) => set(d)} />
-          <p className={`sga-defline${defLine.length ? "" : " is-empty"}`}>{defLine.length ? defLine.join(" · ") : "⚠ Nessuna resistenza o debolezza: in D&D quasi ogni mostro ne ha almeno una."}</p>
-        </section>
+        </div>
 
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>4</span> Azioni</h3>
-          <ActionsList actions={form.actions} min={1} withInflict onChange={(actions) => set({ actions })} title="⚔ Attacchi, incantesimi, aree, cure…" />
-        </section>
-
-        <section className="sga-sec">
-          <h3 className="sga-sec-h"><span>5</span> Sprite</h3>
-          <ImageTonePicker />
-          <div className="sga-spr">
+        <div className="jw">
+          <h3 className="jw-h">Sprite</h3>
+          <div className="jw-sprites">
             {sprites.map((sp) => {
               const src = form[sp.k], on = busy[sp.fk];
               return (
-                <div key={sp.k} className={`sga-spr-card${src ? " has-img" : ""}`}>
-                  <div className="sga-spr-img">
-                    {on ? <span className="sga-spr-wait">⏳ L'IA disegna…</span>
-                      : src ? <img src={src} alt={`${sp.title} di ${form.name}`} className={sp.mirror ? "mirror" : ""} />
-                        : <span className="sga-spr-none">{form.icon || roleInfo(form.role).icon}<small>manca</small></span>}
+                <div key={sp.k} className="jw-spr">
+                  <div className="jw-spr-img">
+                    {on ? <span>⏳</span> : src ? <img src={src} alt={sp.title} className={sp.mirror ? "mirror" : ""} /> : <span className="is-none">?</span>}
                   </div>
-                  <b>{sp.title}</b>
-                  <small>{sp.use}</small>
-                  <div className="sga-spr-btns">
-                    <button type="button" className="adm-btn adm-btn--gold" disabled={!!on} onClick={sp.gen} title={sp.wait ? "Meglio dopo il laterale: così resta lo stesso mostro" : ""}>{src ? "✨ Rigenera" : "✨ Genera"}</button>
-                    <label className="adm-btn sga-spr-up">📁 Carica<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onSpriteFile(sp.k)(f); e.target.value = ""; }} /></label>
-                    {src && sp.k !== "frontImageUrl" && <button type="button" className="adm-btn" disabled={!!on} title="Toglie il viola rimasto nel fondo e sui bordi" onClick={() => cleanOne(sp.k === "deadImageUrl")}>🧽</button>}
-                    {src && <button type="button" className="adm-btn" disabled={!!on} aria-label={`Togli lo sprite ${sp.title}`} onClick={() => set({ [sp.k]: "" })}>✕</button>}
+                  <b>{sp.title}</b><small>{sp.use}</small>
+                  <div className="jw-spr-btns">
+                    <button type="button" disabled={!!on} onClick={sp.gen} title={sp.wait ? "Meglio dopo il laterale" : ""}>{src ? "✨ RIFAI" : "✨ GENERA"}</button>
+                    <label>📁<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onSpriteFile(sp.k)(f); e.target.value = ""; }} /></label>
+                    {src && sp.k !== "frontImageUrl" && <button type="button" disabled={!!on} title="Toglie il viola rimasto" onClick={() => cleanOne(sp.k === "deadImageUrl")}>🧽</button>}
+                    {src && <button type="button" disabled={!!on} aria-label={`Togli ${sp.title}`} onClick={() => set({ [sp.k]: "" })}>✕</button>}
                   </div>
-                  {sp.wait && !src && <small className="sga-spr-note">Prima genera il laterale: il morto parte da lui.</small>}
                 </div>
               );
             })}
           </div>
-          <details className="sga-fold">
-            <summary>Verso nella lotta classica</summary>
-            <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
-          </details>
-        </section>
+          <ImageTonePicker />
+        </div>
 
-        <div className="sga-savebar">
-          <button type="button" className="adm-btn adm-btn--gold" disabled={busy.save} onClick={save}>{busy.save ? "Salvo…" : "💾 Salva"}</button>
-          <button type="button" className="adm-btn" onClick={() => setForm(null)}>Annulla</button>
-          {form.id && <button type="button" className="adm-btn" onClick={duplicate}>⧉ Duplica</button>}
-          {form.id && <button type="button" className="adm-btn adm-btn--danger" onClick={remove}>🗑 Elimina</button>}
+        <details className="jw jw-adv">
+          <summary className="jw-h">Avanzate</summary>
+          <div className="jw-stats">
+            <label><span>INIZIATIVA</span><input type="number" min="-5" max="15" value={form.init} onChange={(e) => set({ init: e.target.value })} /></label>
+            <label><span>TIRI SALVEZZA</span><input type="number" min="-5" max="15" value={form.save} onChange={(e) => set({ save: e.target.value })} /></label>
+          </div>
+          <label className="jw-field"><span>Aspetto per il disegno (inglese)</span>
+            <textarea className="jw-in" rows={2} value={form.look || ""} placeholder="gaunt grey ghoul with long black claws" onChange={(e) => set({ look: e.target.value })} /></label>
+          <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
+        </details>
+
+        <div className="jw jw-cmdbar">
+          <button type="button" className="is-main" disabled={busy.save} onClick={save}>{busy.save ? "SALVO…" : "💾 SALVA"}</button>
+          <button type="button" onClick={() => setForm(null)}>ESCI</button>
+          {form.id && <button type="button" onClick={duplicate}>DUPLICA</button>}
+          {form.id && <button type="button" className="is-danger" onClick={remove}>ELIMINA</button>}
         </div>
       </div>
     );
