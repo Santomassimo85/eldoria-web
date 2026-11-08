@@ -67,6 +67,7 @@
 
 /* da qui partono gli incantesimi di chi tiene il focus nella sinistra */
 .cw-hand { position: absolute; left: 8%; top: 64%; width: 20%; height: 16%; pointer-events: none; }
+.cw-bow { position: absolute; left: 38%; top: 60%; width: 24%; height: 20%; pointer-events: none; }
 /* lo scrigno (2026-11-07) */
 .cw-chest { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
 .cw-chest span { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); padding: 3px 9px; white-space: nowrap; font: 700 .86rem "Pixelify Sans", monospace; color: #1d1406; background: #f2c14e; box-shadow: 0 2px 0 #7a5410, 0 0 12px rgba(255,215,106,.6); animation: cw-tap 1.1s ease-in-out infinite; }

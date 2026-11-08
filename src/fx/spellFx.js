@@ -389,6 +389,32 @@ function trail(el, pal, x, y, vx, vy, s) {
 }
 
 /* ── IMPATTO per elemento (anche usato da solo) ── */
+const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
+// una freccia a pixel: punta in (x, y), lunga len, verso ang. tint = colore della punta per le elementali
+function drawArrow(x, y, ang, len, tint) {
+  const c = Math.cos(ang), sn = Math.sin(ang), th = Math.max(1, Math.round(len / 14));
+  const px = (u, v, col, w = th) => { ctx.fillStyle = col; ctx.fillRect(Math.round(x - c * u - sn * v - w / 2), Math.round(y - sn * u + c * v - w / 2), w, w); };
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  const step = Math.max(0.6, th * 0.7);
+  for (let u = 0; u <= len; u += step) px(u, 0, "#1a110b", th + 2); // contorno scuro
+  for (let u = 0; u <= len; u += step) px(u, 0, u < len * 0.18 ? (tint || "#c4ccd8") : "#8a5a30");
+  const hw = Math.max(2, len * 0.09); // punta a triangolo
+  for (let u = 0; u <= len * 0.18; u += step) { const w = hw * (u / (len * 0.18)); for (let v = -w; v <= w; v += step) px(u, v, u < len * 0.05 ? "#ffffff" : (tint || "#c4ccd8")); }
+  for (let u = len * 0.7; u <= len; u += step) { const w = Math.max(2, hw * 2.4 * ((u - len * 0.7) / (len * 0.3))); for (let v = -w; v <= w; v += step) px(u, v, Math.abs(v) < step ? "#8a5a30" : Math.abs(v) > w - step ? "#1a110b" : (Math.round(u / step) % 3 ? "#d8433a" : "#f3ead8")); } // piume
+}
+// la freccia arriva: niente lampo da incantesimo, solo schegge di legno, polvere e qualche scintilla
+function arrowHitAt(el, pal, x, y, s, ang, { crit = false } = {}) {
+  const k = crit ? 1.4 : 1;
+  actor(0, 120, (t) => blob(x, y, s * (0.8 + t) * k, "#fff1c4", (1 - t) * 0.55));
+  for (let i = 0; i < 9 * k; i++) {
+    const a = ang + Math.PI + rr(-0.9, 0.9), sp = rr(50, 120);
+    add({ type: "sq", c: i % 2 ? "#8a5a30" : "#c9a06a", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: 220, drag: 0.04, r: rr(0.6, 1.1), r1: 0.4, life: rr(0.35, 0.6) });
+  }
+  for (let i = 0; i < 4 * k; i++) add({ type: "spark", c: "#ffffff", x, y, vx: rr(-90, 90), vy: rr(-90, 40), drag: 0.08, r: 1, life: rr(0.15, 0.3) });
+  for (let i = 0; i < 4; i++) add({ type: "smoke", c: "#8a8070", x: x + rr(-0.5, 0.5) * s, y: y + rr(-0.3, 0.3) * s, vx: rr(-15, 15), vy: -rr(5, 20), r: s * 0.4, r1: s * 1.1, life: rr(0.4, 0.6), a: 0.45 });
+  if (el !== "physical") impactAt(el, pal, x, y, s * 0.7, { crit });
+}
+
 function impactAt(el, pal, x, y, s, { crit = false, ground = null } = {}) {
   const k = crit ? 1.35 : 1;
   const gy = ground ?? y + s * 1.1;
@@ -516,13 +542,42 @@ export function playSpell(o) {
   const fast = reduced() ? 0.6 : 1;
   let hit = 0;
   switch (o.kind) {
-    case "bolt":
     case "arrow": {
+      /* FRECCIA VERA (2026-11-07): asta di legno, punta di ferro e piume, niente bagliori né lampo di
+         lancio (prima era il proiettile delle magie, più piccolo). Si rimpicciolisce andando lontano
+         (da chi tira a chi la riceve: in prima persona parte grande dall'arco). Frecce elementali:
+         la stessa freccia con una scia leggera del loro colore. Impatto: schegge e polvere. */
+      const dur = 280 * fast;
+      const dx = tx - fx, dy = ty - fy, dist = Math.hypot(dx, dy) || 1;
+      const arc = Math.min(18, dist * 0.06);
+      const L0 = clampN(S(from.size || 120) * 0.55, 10, 56), L1 = clampN(S(to.size || 120) * 0.4, 9, 30);
+      let px = fx, py = fy;
+      actor(delay, dur, (t) => {
+        const x = fx + dx * t, y = fy + dy * t - Math.sin(Math.PI * t) * arc;
+        const ang = Math.atan2(y - py || dy, x - px || dx), len = L0 + (L1 - L0) * t;
+        if (el !== "physical") for (let i = 1; i <= 3; i++) blob(x - Math.cos(ang) * len * 0.3 * i, y - Math.sin(ang) * len * 0.3 * i, len * 0.12, pal[1], 0.35 / i);
+        drawArrow(x, y, ang, len, el === "physical" ? null : pal[1]);
+        // scia: due righe sottili dietro le piume
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 0.35; ctx.strokeStyle = "#f3ead8"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x - Math.cos(ang) * len, y - Math.sin(ang) * len); ctx.lineTo(x - Math.cos(ang) * len * 1.8, y - Math.sin(ang) * len * 1.8); ctx.stroke();
+        ctx.globalAlpha = 1;
+        px = x; py = y;
+      });
+      hit = delay + dur;
+      if (o.quiet) { /* niente impatto */ } else if (o.miss) actor(hit, 1, () => missAt(pal, tx, ty, ts));
+      else {
+        actor(hit, 1, () => arrowHitAt(el, pal, tx, ty, ts, Math.atan2(dy, dx), opts));
+        if (o.kill) actor(hit + 250, 1, () => deathAt(pal, tx, ty, ts));
+      }
+      kick();
+      return hit;
+    }
+    case "bolt": {
       // proiettile con la coda: palla di fuoco, scheggia, globo...
-      const dur = (o.kind === "arrow" ? 300 : 460) * fast;
+      const dur = 460 * fast;
       const dx = tx - fx, dy = ty - fy;
-      const arc = Math.min(30, Math.hypot(dx, dy) * 0.12) * (o.kind === "arrow" ? 0.4 : 1);
-      const head = o.kind === "arrow" ? ts * 0.55 : ts * 1.15;
+      const arc = Math.min(30, Math.hypot(dx, dy) * 0.12);
+      const head = ts * 1.15;
       let px = fx, py = fy;
       // bagliore di lancio
       actor(delay, 220, (t) => { blob(fx, fy, ts * (2 + t * 2), pal[1], (1 - t) * 0.7); ring(fx, fy, ts * (1 + t * 3), pal[1], 1, 1 - t, 0.6); });

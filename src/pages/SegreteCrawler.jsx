@@ -37,6 +37,7 @@ const ROW_GAP_MS = 900;
 const DICE_GAP_MS = 250;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vfxKey = (id) => `seg-${id}`;
+const BOW_KEY = "seg-my-bow"; // da dove parte la freccia in prima persona: l'arco, in basso al centro
 const HAND_KEY = "seg-my-focus"; // la mano sinistra (focus, mano libera o scudo), in basso a sinistra nella scena
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
@@ -319,9 +320,11 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const specialKey = me?.wItem && !/_[12]$/.test(me.wItem) ? me.wItem : ""; // arma speciale: ha il suo sprite
   useEffect(() => {
     if (!eng || !weaponKey) return;
-    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, glove))).then((s) => s.data()?.image || "").catch(() => "") : "");
-    Promise.all([specialKey ? read(pairKey(specialKey, offKey)) : "", read(pairKey(weaponKey, offKey))]).then(([special, base]) => {
-      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: special || base });
+    // empty = lo stesso sprite con la freccia già scoccata (arco e balestra)
+    const read = (k) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, glove))).then((s) => s.data() || {}).catch(() => ({})) : Promise.resolve({}));
+    Promise.all([specialKey ? read(pairKey(specialKey, offKey)) : {}, read(pairKey(weaponKey, offKey))]).then(([special, base]) => {
+      const use = special.image ? special : base;
+      eng.setHands(`${weaponKey}:${specialKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "" });
     });
   }, [eng, weaponKey, specialKey, offKey, glove]);
 
@@ -418,8 +421,11 @@ export default function SegreteCrawler({ room, uid, tools }) {
           targets.forEach((id) => { if ((l.nums?.[id] ?? -1) < 0) { e?.flash(id); if (id === myId) e?.hurt(); } });
         };
         // chi agisce si muove: le tue armi, oppure il mostro che si fa avanti
+        // con l'arco la freccia parte allo scocco, non quando le mani iniziano a tendere
+        const myShot = l.fx === "arrow" && who === myId && isWeaponRow(l) && e?.ranged;
         if (l.fx && who === myId) e?.attack(isWeaponRow(l) ? l.fx : "cast");
         else if (l.fx && who && String(who).startsWith("f")) e?.lunge(who);
+        if (myShot) await sleep(e.releaseMs());
         if (l.fx && targets.length) {
           await new Promise((res) => {
             let done = false;
@@ -428,7 +434,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
             setVfxMsgs((m) => [...m.slice(-20), {
               id: `seg-${room.id}-${startKey}-${l.i}`, effect: l.fx, effectEl: l.el,
               effectTargets: targets.map(vfxKey),
-              effectFrom: focusHand && who === myId && !isWeaponRow(l) ? HAND_KEY : l.from ? vfxKey(l.from) : undefined,
+              effectFrom: myShot ? BOW_KEY : focusHand && who === myId && !isWeaponRow(l) ? HAND_KEY : l.from ? vfxKey(l.from) : undefined,
               effectMissTargets: l.kind === "miss" ? targets.map(vfxKey) : [], effectKill: (l.kill || []).map(vfxKey),
               effectNums: nums,
               onImpact: (ms) => timers.current.push(setTimeout(finish, ms + 40)),
@@ -530,6 +536,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="La stanza del dungeon vista in prima persona" />
         <canvas ref={setFg} className="cw-fg" aria-hidden="true" />
         {me && <span className="cw-hand" data-vfx-target={HAND_KEY} aria-hidden="true" />}
+        {me && <span className="cw-bow" data-vfx-target={BOW_KEY} aria-hidden="true" />}
         {run.status === "treasure" && !walking && (
           <button type="button" className="cw-chest" ref={(el) => bind("chest", el)} disabled={busy} onClick={openChest} aria-label="Apri lo scrigno">
             <span>{busy ? "…" : "Toccami!"}</span>

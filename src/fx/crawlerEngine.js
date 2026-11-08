@@ -19,7 +19,12 @@ const MOVES = {
   smash: { ms: 480, R: [[0, 0, 0, 0, 1], [0.35, 0.12, 6, -34, 1], [0.52, -0.4, -24, 26, 1.08], [0.7, -0.42, -26, 28, 1.08], [1, 0, 0, 0, 1]] },
   thrust: { ms: 400, R: [[0, 0, 0, 0, 1], [0.3, 0.05, 8, 14, 0.94], [0.5, -0.12, -48, -34, 1.28], [0.66, -0.12, -48, -34, 1.28], [1, 0, 0, 0, 1]] },
   punch: { ms: 340, R: [[0, 0, 0, 0, 1], [0.25, 0, 10, 12, 0.95], [0.42, -0.05, -70, -40, 1.38], [0.56, -0.05, -70, -40, 1.38], [1, 0, 0, 0, 1]] },
-  shoot: { ms: 520, R: [[0, 0, 0, 0, 1], [0.45, 0, 0, 6, 0.97], [0.55, 0, 0, -8, 1.04], [0.75, 0, 0, -3, 1.01], [1, 0, 0, 0, 1]] },
+  /* TIRO CON L'ARCO (2026-11-07): tendi (le mani vengono indietro e un po' giù, l'arco trema) → scocchi
+     (contraccolpo secco in avanti) → la freccia non c'è più → abbassi le mani a prendere una freccia
+     nuova e le rialzi: la freccia ricompare. RELEASE = istante dello scocco, EMPTY = finestra senza freccia. */
+  shoot: { ms: 1050, R: [[0, 0, 0, 0, 1], [0.34, 0.015, 4, 9, 1.06], [0.4, 0.015, 4, 9, 1.06], [0.44, -0.035, -2, -12, 0.99], [0.56, 0, 0, -2, 1], [0.72, 0, 6, 46, 1], [0.8, 0, 6, 48, 1], [1, 0, 0, 0, 1]], release: 0.42, empty: [0.42, 0.78] },
+  // balestra: niente da tendere, mira, scatto del grilletto con rinculo, poi ricarica (giù e su)
+  shootX: { ms: 900, R: [[0, 0, 0, 0, 1], [0.14, 0, 0, 3, 1.02], [0.2, -0.05, 4, -14, 0.98], [0.36, 0, 0, -2, 1], [0.62, 0, 8, 44, 1], [0.72, 0, 8, 46, 1], [1, 0, 0, 0, 1]], release: 0.18, empty: [0.18, 0.7] },
   cast: { ms: 520, R: [[0, 0, 0, 0, 1], [0.4, 0.04, 0, -12, 1.02], [0.6, 0.04, 0, -12, 1.02], [1, 0, 0, 0, 1]] },
 };
 const LEFT = {
@@ -29,6 +34,7 @@ const LEFT = {
   still: [[0, 0, 0, 0, 1], [1, 0, 0, 0, 1]],
 };
 const RANGED = new Set(["arco_lungo", "balestra_l"]);
+const SHOOT_OF = { arco_lungo: "shoot", balestra_l: "shootX" };
 // valore della curva al tempo k (tra un fotogramma e l'altro si passa in modo morbido)
 function curve(keys, k) {
   let i = 0;
@@ -256,11 +262,13 @@ export class CrawlerEngine {
     this.handKey = key;
     const out = proceduralHands(spec.main, spec.off);
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
-    const [m, o, p] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl)]);
+    const [m, o, p, pe] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl)]);
     if (this.handKey !== key || this.dead) return;
     this.ranged = RANGED.has(spec.main);
+    this.shootKind = SHOOT_OF[spec.main] || "shoot";
     this.offKind = spec.off;
-    if (p) { this.hands = { pair: p, cutR: topRow(p), split: spec.off === "none" ? null : splitOf(p) }; return; }
+    // pairEmpty = lo stesso sprite con la freccia già scoccata (facoltativo)
+    if (p) { this.hands = { pair: p, pairEmpty: pe, cutR: topRow(p), split: spec.off === "none" || this.ranged ? null : splitOf(p) }; return; } // arco e balestra: le due mani si muovono insieme
     if (m) { out.R = m; out.big = true; out.cutR = topRow(m); if (spec.off === "mirror") out.L = m; }
     if (o) { out.L = o; out.mirrorL = false; out.big = true; } // l'IA disegna già il braccio sinistro
     this.hands = out;
@@ -311,10 +319,19 @@ export class CrawlerEngine {
   }
   // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
   attack(fx) {
-    const kind = MOVES[fx] ? fx : fx === "arrow" ? (this.ranged ? "shoot" : "cast") : "cast";
+    const kind = MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
     const ms = MOVES[kind].ms;
     this.act = { kind, t0: performance.now(), ms };
     return new Promise((res) => setTimeout(res, this.calm ? 60 : ms));
+  }
+  // dopo quanti ms dall'inizio del tiro parte la freccia (per far partire l'effetto allo scocco)
+  releaseMs() { const m = MOVES[this.shootKind || "shoot"]; return this.calm || !this.ranged ? 0 : Math.round(m.ms * m.release); }
+  // la freccia è già partita e non è ancora stata ripresa?
+  arrowGone() {
+    const a = this.act, m = a && MOVES[a.kind];
+    if (!m?.empty || this.calm) return false;
+    const k = (performance.now() - a.t0) / a.ms;
+    return k >= m.empty[0] && k < m.empty[1];
   }
   swing(fx = "slash") { return this.attack(fx); }
   cast() { return this.attack("cast"); }
@@ -324,7 +341,7 @@ export class CrawlerEngine {
     if (!a || this.calm) return { R: NO_MOVE, L: NO_MOVE };
     const k = (performance.now() - a.t0) / a.ms;
     if (k >= 1) { this.act = null; return { R: NO_MOVE, L: NO_MOVE }; }
-    const left = a.kind === "cast" ? LEFT.cast : this.offKind === "shield" ? LEFT.shield : a.kind === "shoot" ? LEFT.still : LEFT.melee;
+    const left = a.kind === "cast" ? LEFT.cast : this.offKind === "shield" ? LEFT.shield : MOVES[a.kind].release != null ? LEFT.still : LEFT.melee;
     return { R: curve(MOVES[a.kind].R, k), L: curve(left, k) };
   }
   async lunge(id) {
@@ -525,7 +542,9 @@ export class CrawlerEngine {
       else ctx.drawImage(img, sx, 0, sw, img.height, x, y, w, h);
       ctx.restore();
     };
+    const gone = this.arrowGone();
     if (hands.pair) { // un'immagine sola con le due mani, larga quanto la scena
+      const img = gone && hands.pairEmpty ? hands.pairEmpty : hands.pair;
       const iw = hands.pair.naturalWidth || hands.pair.width, ih = hands.pair.naturalHeight || hands.pair.height;
       const grow = hands.cutR ? Math.max(1, (H + 10) / ((W * ih) / iw)) : 1, w = W * grow, h = ((W * ih) / iw) * grow;
       const x0 = (W - w) / 2, y0 = H + 4 + b - h, sc = w / iw;
@@ -534,7 +553,7 @@ export class CrawlerEngine {
         part(sp.L, x0, y0, wl, h, mv.L, x0 + wl * 0.4, y0 + h);
         part(sp.R, x0 + wl, y0, w - wl, h, mv.R, x0 + wl + (w - wl) * 0.7, y0 + h); // perno: il polso, in basso
       } else {
-        part(hands.pair, x0, y0, w, h, mv.R, W / 2 + W * 0.15, y0 + h);
+        part(img, x0, y0, w, h, mv.R, W / 2 + W * 0.15, y0 + h);
       }
       return;
     }
@@ -552,7 +571,7 @@ export class CrawlerEngine {
     if (hands.R) {
       // arma tagliata dall'IA in alto: più grande, il bordo tagliato finisce fuori dallo schermo
       const [w0, h0] = dims(hands.R), grow = hands.cutR ? (H + 10) / h0 : 1, w = w0 * grow, h = h0 * grow;
-      part(hands.R, W - w, H + 4 + b - h, w, h, mv.R, W - w * 0.2, H + 4 + b);
+      part(gone && hands.R0 ? hands.R0 : hands.R, W - w, H + 4 + b - h, w, h, mv.R, W - w * 0.2, H + 4 + b);
     }
   }
   /* LO SCRIGNO (2026-11-07): in fondo alla sala del tesoro. setChest("closed") lo mette; openChest() alza il

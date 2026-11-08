@@ -9,9 +9,9 @@ import { sizeScale } from "../data/segrete";
 import { WEAPONS, WEAPON_CHOICES, TWO_HANDED, armorProf, canTwoHand } from "../data/segreteKits";
 import { ITEMS } from "../data/segreteItems";
 import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
-import { askImage, frontSpriteUrl, touchesTop } from "../utils/crawlerGen";
+import { askImage, frontSpriteUrl, refOnMagenta, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
-import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, materialOf, pairKey, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
+import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, isRangedHand, materialOf, pairKey, releasedPrompt, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -52,8 +52,8 @@ function Preview({ dungeons, monsters, tiles }) {
   const wk = choices.includes(weapon) ? weapon : choices[0];
   const canShield = armorProf(cls).shield && !twoHandedFor(cls, wk, TWO_HANDED.has(wk));
   const { off, glove } = handSpec({ cls, gear: { shield: canShield && shield } }, wk, TWO_HANDED.has(wk));
-  const hp = tiles[handDoc(pairKey(wk, off), glove)]?.image || "";
-  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hp.length}`, { main: wk, off, pairUrl: hp }); }, [cv, fg, wk, off, glove, hp]);
+  const hp = tiles[handDoc(pairKey(wk, off), glove)]?.image || "", he = tiles[handDoc(pairKey(wk, off), glove)]?.empty || "";
+  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hp.length}:${he.length}`, { main: wk, off, pairUrl: hp, pairEmptyUrl: he }); }, [cv, fg, wk, off, glove, hp, he]);
   return (
     <div className="sga-card">
       <h3 className="sga-h3">Anteprima <small>come la vede il giocatore, con l'art salvata</small></h3>
@@ -71,6 +71,7 @@ function Preview({ dungeons, monsters, tiles }) {
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="Anteprima della stanza in prima persona" />
         <canvas ref={setFg} aria-hidden="true" />
       </div>
+      <div className="sga-btns"><button type="button" className="adm-btn" onClick={() => eng.current?.attack(WEAPONS[wk]?.ranged || wk === "arco_lungo" || wk === "balestra_l" ? "arrow" : "slash")}>▶ Prova il colpo</button></div>
       {!foes.length && <p className="sga-hint">Nessun mostro in questo dungeon.</p>}
     </div>
   );
@@ -123,12 +124,24 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
       image = await dataUrlToTransparentDataUrl(img, 480);
       if (!(await touchesTop(image))) break;
     }
-    await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
+    // arco e balestra: anche il fotogramma con la freccia già scoccata (per l'animazione del tiro)
+    const empty = isRangedHand(h.base) ? await makeEmpty(image, h.base).catch(() => "") : "";
+    await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, ...(empty ? { empty } : { empty: deleteField() }), updatedAt: serverTimestamp() }, { merge: true });
   };
+  const makeEmpty = async (image, base) => {
+    const img = await askImage({ prompt: releasedPrompt(base), refs: [await refOnMagenta(image)], refMode: "same", aspectRatio: "4:3" });
+    return dataUrlToTransparentDataUrl(img, 480);
+  };
+  const genEmpty = (h) => run(`empty:${idOf(h)}`, async () => {
+    const src = tiles[idOf(h)]?.image;
+    if (!src) throw new Error("Prima genera lo sprite.");
+    const img = await askImage({ prompt: releasedPrompt(h.base), refs: [await refOnMagenta(src)], refMode: "same", aspectRatio: "4:3" });
+    await setDoc(doc(db, "dungeon_tiles", idOf(h)), { empty: await dataUrlToTransparentDataUrl(img, 480), updatedAt: serverTimestamp() }, { merge: true });
+  });
   const genHand = (h) => run(`hand:${idOf(h)}`, () => makeHand(h));
   const upHand = (h, file) => run(`hand:${idOf(h)}`, async () => {
     const image = await fitHand(await fileToUrl(file));
-    await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, updatedAt: serverTimestamp() });
+    await setDoc(doc(db, "dungeon_tiles", idOf(h)), { image, empty: deleteField(), updatedAt: serverTimestamp() }, { merge: true });
   });
   const handsMissing = HANDS.filter((h) => !tiles[idOf(h)]?.image);
   const tile = (h) => {
@@ -140,6 +153,12 @@ export default function CrawlerArtTab({ dungeons, monsters }) {
         <figcaption>{h.special ? "" : h.name} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
         <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : src ? "✨ Rigenera" : "✨ Genera sprite"}</button>
         <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
+        {src && isRangedHand(h.base) && (
+          <div className="sga-cw-empty">
+            {tiles[id]?.empty ? <img src={tiles[id].empty} alt={`${h.name} dopo il tiro`} /> : <small>manca il fotogramma «scoccato»: senza, la freccia resta sull'arco</small>}
+            <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genEmpty(h)}>{busy === `empty:${id}` ? "⏳" : tiles[id]?.empty ? "🏹 Rifai «scoccato»" : "🏹 Genera «scoccato»"}</button>
+          </div>
+        )}
         {src && <button type="button" className="sga-x" aria-label={`Togli ${h.name}`} onClick={() => dropHand(h)}>✕</button>}
       </figure>
     );

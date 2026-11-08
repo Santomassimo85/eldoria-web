@@ -113,7 +113,7 @@ const DRAW = {
   mazzafrusto: (s) => { arm(s, 90, 92); s.line(92, 96, 72, 56, 6, LEATHER); for (let i = 0; i < 6; i++) s.ell(70 - i * 3, 50 - i * 4, 2, 2, STEEL2); s.ell(50, 22, 13, 13, STEEL2); [[36, 22], [64, 22], [50, 7], [40, 12], [60, 12]].forEach(([x, y]) => s.ell(x, y, 3, 3, STEEL)); },
   bastone: (s) => { s.line(100, 121, 66, 14, 6, WOOD); arm(s, 90, 92, 0x2c3f8a, SKIN); s.ell(63, 12, 9, 10, 0x6fb4ff).ell(61, 9, 3, 3, 0xe0f4ff).line(54, 22, 72, 19, 3, GOLD); },
   lancia: (s) => { s.line(104, 121, 62, 22, 5, WOOD); arm(s, 92, 94, 0x4a5a3a, SKIN); s.line(62, 24, 48, 2, (k) => 11 - k * 9, STEEL).line(56, 26, 70, 22, 3, GOLD); },
-  arco_lungo: (s) => { for (let i = 0; i < 60; i++) { const k = i / 59; s.ell(58 + Math.sin(k * 3.14) * 22, 2 + k * 118, 3, 3, WOOD); } s.line(58, 2, 58, 120, 1, 0xe8e0d0).line(112, 62, 34, 62, 2, 0xc8b890).line(44, 58, 34, 62, 3, STEEL); arm(s, 84, 66, 0x3f6a4a, SKIN); },
+  arco_lungo: (s, empty) => { for (let i = 0; i < 60; i++) { const k = i / 59; s.ell(58 + Math.sin(k * 3.14) * 22, 2 + k * 118, 3, 3, WOOD); } s.line(58, 2, 58, 120, 1, 0xe8e0d0); if (!empty) s.line(112, 62, 34, 62, 2, 0xc8b890).line(44, 58, 34, 62, 3, STEEL); arm(s, 84, 66, 0x3f6a4a, SKIN); },
   balestra_l: (s) => { s.line(106, 110, 54, 44, 8, WOOD); for (let i = 0; i < 40; i++) { const k = i / 39; s.ell(26 + k * 66, 58 - Math.sin(k * 3.14) * 16 + k * -12, 2, 2, STEEL2); } s.line(26, 58, 92, 46, 1, 0xe8e0d0); arm(s, 96, 100, 0x2c3f8a, SKIN); },
   pugni: (s) => { s.line(102, 104, 142, 140, (k) => 18 + k * 14, SKIN); s.ell(86, 86, 20, 19, SKIN); for (let i = 0; i < 4; i++) s.line(70 + i * 9, 74, 72 + i * 9, 92, 7, 0xc89a78); s.ell(80, 100, 8, 6, 0xc89a78); },
 };
@@ -137,11 +137,15 @@ export function proceduralHands(main, off) {
   const key = DRAW[main] ? main : "spada_lunga";
   if (!cacheR[key]) { const s = Spr(130, 122); DRAW[key](s); cacheR[key] = s.done(); }
   const R = cacheR[key];
-  if (off === "none") return { R, L: null };
-  if (off === "mirror") return { R, L: R, mirrorL: true };
+  // l'arco appena scoccato: la stessa immagine senza la freccia (2026-11-07)
+  const ek = `${key}:empty`;
+  if (key === "arco_lungo" && !cacheR[ek]) { const s = Spr(130, 122); DRAW[key](s, true); cacheR[ek] = s.done(); }
+  const R0 = cacheR[ek] || null;
+  if (off === "none") return { R, R0, L: null };
+  if (off === "mirror") return { R, R0, L: R, mirrorL: true };
   const k = `off:${off === "magic" ? "hand" : off}`;
   if (!cacheR[k]) cacheR[k] = offHand(off);
-  return { R, L: cacheR[k], mirrorL: off !== "shield" };
+  return { R, R0, L: cacheR[k], mirrorL: off !== "shield" };
 }
 
 /* GUANTI PER CLASSE (2026-11-07, richiesta dell'utente): stesse mani per tutte le armi di una classe.
@@ -313,6 +317,16 @@ The weapon is drawn cleanly and solidly, every part straight and aligned, thick 
 ${STYLE}
 ${BG}`;
 }
+
+/* ARCO E BALESTRA SCOCCATI (2026-11-07): secondo fotogramma dello stesso sprite, senza freccia o
+   quadrello, per l'animazione del tiro (tendi → scocca → la freccia sparisce → ricarichi e ricompare).
+   Si genera partendo dallo sprite già fatto (immagine di riferimento), così resta identico. */
+export const isRangedHand = (base) => base === "arco_lungo" || base === "balestra_l";
+export const releasedPrompt = (base) => `Edit the attached pixel art sprite. Output the SAME image: identical hands, gloves, ${base === "balestra_l" ? "crossbow" : "bow"}, position, size, framing, colors and pixel style, on the same flat magenta (#FF00FF) background.
+The ONLY change: the ${base === "balestra_l" ? "crossbow bolt has just been shot: there is NO bolt loaded on the crossbow" : "arrow has just been released: there is NO arrow anymore. The bowstring is straight and relaxed between the two tips of the bow, and the right hand is open, fingers relaxed, a little behind where it held the string"}.
+Do NOT add anything else: no arrow, no motion lines, no effects, no text.
+${STYLE}
+${BG}`;
 
 // tessera dall'IA → 128×128 che si ripete senza righe: i bordi si fondono col lato opposto
 export function bakeTile(dataUrl, size = 128, blend = 10) {

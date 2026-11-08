@@ -117,3 +117,7 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-fold summary { cursor: pointer; padding: 6px 8px; font-weight: 700; background: rgba(255,255,255,.04); border: 1px solid rgba(var(--osso-rgb), .12); }
 .sga-fold[open] summary { margin-bottom: 8px; }
 .sga-cw-mat { color: var(--osso-2); font-size: .82rem; }
+/* arco e balestra: il fotogramma "scoccato" sotto lo sprite (2026-11-07) */
+.sga-cw-empty { display: grid; gap: 4px; padding-top: 4px; border-top: 1px dashed rgba(var(--osso-rgb), .2); }
+.sga-cw-empty img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; image-rendering: pixelated; background: rgba(0,0,0,.35); }
+.sga-cw-empty small { color: #e0a24a; font-size: .74rem; }
