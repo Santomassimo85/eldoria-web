@@ -1077,7 +1077,8 @@ export function openChest(s, uid, now) {
   const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
   takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));
   const ids = [];
-  const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0);
+  // In gruppo lo scrigno è più pieno: +2 oggetti base per ogni eroe oltre il primo (aiuti e fuggiti non contano).
+  const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0) + Math.max(0, takers.length - 1) * 2;
   for (let i = 0; i < n; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
   if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1)) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
   const items = ids.map((id) => {
