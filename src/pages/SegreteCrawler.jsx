@@ -369,7 +369,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     if (chestSeen.current !== startKey) { chestSeen.current = startKey; setChestDone(run.status === "won"); }
     if (run.status === "treasure") eng.setChest("closed");
     else if (run.status === "won" && run.chest) { eng.setChest(chestDone ? "open" : "closed"); if (!chestDone && chestOpened.current !== startKey) { chestOpened.current = startKey; eng.openChest(); } }
-    else if (!run.treasure) eng.setChest(null);
+    else eng.setChest(null);
   }, [eng, run?.status, run?.chest, run?.treasure, startKey, chestDone]); // eslint-disable-line react-hooks/exhaustive-deps
   // nessuno lo apre: dopo un minuto e mezzo lo apre il server (lo chiede chiunque del gruppo)
   const chestAsked = useRef("");
@@ -647,9 +647,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
         )}
         {!playing && (run.status === "lost" || (run.status === "won" && (!run.chest || chestDone))) && (
           <div className="sgb-end">
-            <p className="sgb-result">{run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
+            <p className="sgb-result">{run.mimic?.result === "lost" ? "Il Mimic vi ha sconfitti: scrigno perduto, bottino precedente e PE conservati." : run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
             {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({classInfo(l.cls)?.it}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
-            {run.status === "won" && !!run.corone && <p>🪙 +{run.corone} Corone a ogni eroe rimasto fino alla fine{(run.heroes || []).some((h) => h.helper) ? " (non a chi è venuto ad aiutare)" : ""}.</p>}
             {run.loot && (
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}
                 <span>🎁 Nel forziere del boss: <b>{run.loot.name}</b>, va a <b>{run.loot.winner}</b>{run.loot.uid === uid ? " (a te!)" : ""}. Arriverà nella scheda su Foundry.</span></p>

@@ -85,7 +85,7 @@ export function makeHero(m) {
     ...(def.shield ? { shieldAc: 2 + (itemOf(hero.shieldItem)?.kind === "shield" ? itemOf(hero.shieldItem).plus || 0 : 0) } : {}),
     fx: {}, uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
-    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
+    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti
     ...(m.helper ? { helper: true } : {}),
   };
 }
@@ -313,7 +313,6 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     dungeonName: dungeon.name, dungeonIcon: dungeon.icon || "🗝",
     bg: (dungeon.backgrounds || []).length ? pick(dungeon.backgrounds) : "",
     floors: dungeon.floors || 3, floor: 1, status: "fight",
-    corone: Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5,
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
@@ -790,6 +789,20 @@ function confusedPick(s, c) {
 
 /* ── giro dei turni ──────────────────────────────────── */
 function checkEnd(s) {
+  if (s.mimic && s.mimic.result === "fight") {
+    if (!s.heroes.some(alive)) {
+      s.mimic.result = "lost";
+      s.status = "won";
+      log(s, "Il Mimic vi ha sconfitti: perdete solo lo scrigno. Il bottino delle sale e i PE sono salvi.", { kind: "end" });
+      return true;
+    }
+    if (!s.foes.some(alive)) {
+      s.mimic.result = "won";
+      awardChest(s, s.mimic.byUid, s.turnAt || 0);
+      return true;
+    }
+    return false;
+  }
   if (!s.heroes.some(alive)) { s.status = "lost"; log(s, "☠ Il gruppo è caduto. Le Segrete si richiudono su di voi: tutto è perduto.", { kind: "end" }); return true; }
   if (!s.foes.some(alive)) {
     floorCoins(s);
@@ -924,6 +937,7 @@ function floorCoins(s) {
 }
 // Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
 export function lootDead(s) {
+  if (s.mimic) return; // Il Mimic custodisce solo il premio dello scrigno.
   // chi aiuta (limiti pieni) non entra nel tiro del bottino; se aiutano tutti, i mostri non lasciano niente
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
@@ -1065,6 +1079,7 @@ export function nextFloor(s, bestiary, now) {
 /* LO SCRIGNO (2026-11-07). Uno del gruppo lo apre: Monete Antiche in più a ognuno, 1–3 oggetti base e,
    raramente, un oggetto raro. Ogni oggetto lo vince chi fa il tiro più alto con un d20 (i pareggi si ritirano).
    Va tutto nel bottino (spoils), che il server consegna alla vittoria come il resto. */
+export const MIMIC_CHANCE = 0.10;
 export const CHEST_AUTO_MS = 90 * 1000;
 export const CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
 export const CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
@@ -1073,6 +1088,27 @@ export function openChest(s, uid, now) {
   if (s.status !== "treasure") throw new Error("Qui non c'è nessuno scrigno da aprire.");
   const opener = s.heroes.find((h) => h.uid === uid);
   if (!opener) throw new Error("Non sei in questo gruppo.");
+  if (rnd() < MIMIC_CHANCE) {
+    const D = diffOf(s.diff);
+    s.mimic = { result: "fight", byUid: uid, eligible: s.heroes.filter((h) => !h.fled && !h.helper).map((h) => h.uid) };
+    const lv = partyLevel(s);
+    const foe = makeFoe({ id: "mimic", name: "Mimic", icon: "👹", role: "elite", level: lv, hp: 40, ac: 13,
+      actions: [A("Morso", 2, "d6", 5), A("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })] }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
+    s.foes = balanceFoes([foe], s.heroes, false);
+    foe.maxHp = foe.hp = Math.round(foe.maxHp * D.hp);
+    foe.cap.dmg *= D.dmg;
+    foe.cap.hit += D.plus; foe.cap.dc += D.plus; foe.ac += D.plus; foe.save += D.plus;
+    s.status = "fight";
+    s.round = 1;
+    rollInitiative(s);
+    log(s, "Lo scrigno spalanca le fauci: è un Mimic! Se cadete perderete solo il tesoro dello scrigno.", { kind: "room" });
+    startHeroPhase(s, now);
+    return;
+  }
+  awardChest(s, uid, now);
+}
+function awardChest(s, uid, now) {
+  const opener = s.heroes.find((h) => h.uid === uid);
   const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
   const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
   takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));

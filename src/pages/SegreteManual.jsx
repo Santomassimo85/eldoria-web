@@ -25,7 +25,7 @@ export default function SegreteManual() {
           <li><b>Gruppi</b>: crea un gruppo (da 1 a {MAX_PARTY} eroi) scegliendo il dungeon, oppure entra in uno aperto. Puoi invitare altri giocatori: ricevono una notifica.</li>
           <li>Nel gruppo potete parlarvi con la <b>chat vocale</b> (tasto 🎧 Voce in basso a sinistra, in lotta in alto): microfono a «tieni premuto» o sempre aperto.</li>
           <li>Tutti premono <b>▶ Avvia</b>: quando l'hanno premuto tutti si scende.</li>
-          <li>Si combatte sala dopo sala fino al boss. Se il gruppo vince, ognuno porta a casa PE, Corone, {COIN_NAME} e il bottino. <b>Se il gruppo cade, si perde tutto quello trovato.</b></li>
+          <li>Si combatte sala dopo sala fino al boss. Se il gruppo vince, ognuno porta a casa PE, {COIN_NAME} e il bottino. <b>Se il gruppo cade prima dello scrigno, si perde tutto quello trovato.</b></li>
         </ol>
       </Fold>
 
@@ -108,7 +108,7 @@ export default function SegreteManual() {
           <li>Con ogni classe: <b>{DAILY_RUNS} dungeon completi al giorno</b>. Nessun limite settimanale, e la domenica non si azzera niente.</li>
           <li>Un dungeon conta solo dopo aver ripulito {RUN_COUNTS_AFTER} sale (o vinto): se il gruppo cade prima, si può riprovare.</li>
           <li>Se un eroe ha finito i suoi dungeon, puoi giocare con un eroe di un'altra classe.</li>
-          <li><b>🤝 Come aiuto:</b> anche con i limiti pieni puoi entrare in un gruppo (per esempio se serve proprio la tua classe). Giochi normalmente, ma non prendi PE, monete, oggetti né Corone, e il dungeon non ti si conta.</li>
+          <li><b>🤝 Come aiuto:</b> anche con i limiti pieni puoi entrare in un gruppo (per esempio se serve proprio la tua classe). Giochi normalmente, ma non prendi PE, monete o oggetti, e il dungeon non ti si conta.</li>
         </ul>
       </Fold>
 
@@ -116,7 +116,7 @@ export default function SegreteManual() {
         <ul>
           <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco.</li>
           <li>I mostri a volte lasciano monete o un oggetto, che va a un eroe tirato a sorte (2 eroi d4, 3 eroi d6, 4 eroi d8: 1–2 il primo, 3–4 il secondo…): gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
-          <li>Il bottino si consegna solo se il gruppo <b>vince</b> il dungeon.</li>
+          <li>Il bottino si consegna se il gruppo <b>vince</b> il dungeon. Lo scrigno finale ha il <b>10%</b> di essere un Mimic: se vi sconfigge conservate bottino precedente e PE, perdendo solo lo scrigno; se lo uccidete ricevete anche il tesoro. Le Segrete assegnano solo Monete Antiche, mai Corone del Mercato Nero.</li>
           <li><b>🎁 Regali:</b> dallo Zaino puoi regalare un oggetto a un altro giocatore per {GIFT_FEE} {COIN_NAME}, al massimo {GIFT_DAILY} al giorno. Un'arma montata su un eroe va prima rimessa nello zaino (tasto «↩ Nello zaino»), poi la può prendere un altro tuo eroe o la puoi regalare.</li>
           <li>Lo zaino è unico per tutti i tuoi eroi. In lotta usare un oggetto vale come l'azione del round.</li>
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>

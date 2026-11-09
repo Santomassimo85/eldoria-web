@@ -188,7 +188,7 @@ function DungeonsTab({ dungeons, monsters }) {
       await setDoc(doc(db, "dungeon_types", key), {
         name: draft.name.trim().slice(0, 40), icon: (draft.icon || "🗝").slice(0, 4), desc: String(draft.desc || "").slice(0, 300),
         floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), backgrounds: draft.backgrounds || [], hidden: !!draft.hidden,
-        corone: num(draft.corone, 0, 100, 5), lootChance: num(draft.lootChance, 0, 100, 35),
+        lootChance: num(draft.lootChance, 0, 100, 35),
         updatedAt: serverTimestamp(),
       }, { merge: true });
       close();
@@ -236,8 +236,6 @@ function DungeonsTab({ dungeons, monsters }) {
             <input className="admin-field-input" type="number" min="1" max="10" value={draft.floors} onChange={(e) => set({ floors: e.target.value })} /></label>
         </div>
         <div className="sga-row">
-          <label className="sga-field sga-field--s" title="Corone a ogni eroe che vince il dungeon"><span>Corone a testa (vittoria)</span>
-            <input className="admin-field-input" type="number" min="0" max="100" value={draft.corone ?? 5} onChange={(e) => set({ corone: e.target.value })} /></label>
           <label className="sga-field sga-field--s" title="Probabilità che il gruppo trovi un oggetto del forziere (lo prende un eroe a caso)"><span>Probabilità oggetto %</span>
             <input className="admin-field-input" type="number" min="0" max="100" value={draft.lootChance ?? 35} onChange={(e) => set({ lootChance: e.target.value })} /></label>
         </div>
@@ -288,7 +286,7 @@ function DungeonsTab({ dungeons, monsters }) {
               </div>
               <b>{d.icon} {d.name}{d.hidden ? " · nascosto" : ""}</b>
               <small>{d.floors || DEFAULT_FLOORS} sale + boss · {(d.backgrounds || []).length} sfondi · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
-              <small>🪙 {d.corone ?? 5} Corone a testa · 🎁 {d.lootChance ?? 35}% oggetto</small>
+              <small>🎁 {d.lootChance ?? 35}% oggetto · 10% Mimic nello scrigno finale</small>
             </button>
           );
         })}
@@ -652,7 +650,7 @@ function LootTab({ dungeons }) {
     <>
       <p className="sga-hint">Premi «veri» da portare su Foundry (creati in passato dalla Forgia del Mercato). Gli oggetti del GIOCO delle Segrete si creano nella piega «⚔ Oggetti». Alla vittoria di un dungeon, con la probabilità scelta nel dungeon, uno di questi va a un eroe a caso del gruppo e arriva su Foundry (Fetch admin) come un'asta vinta.</p>
       <h3 className="sga-h3">In palio <small>{pool.length}</small></h3>
-      {!pool.length && <p className="sga-hint">Il forziere è vuoto: i gruppi vincono solo Corone e livelli.</p>}
+      {!pool.length && <p className="sga-hint">Il forziere è vuoto: i gruppi vincono Monete Antiche, bottino delle sale e PE.</p>}
       <div className="sga-grid">{pool.map(card)}</div>
       <h3 className="sga-h3">Già vinti <small>{won.length}</small></h3>
       <div className="sga-grid">{won.map(card)}</div>

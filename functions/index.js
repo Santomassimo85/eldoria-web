@@ -2372,14 +2372,13 @@ exports.segreteDo = onCall(
             });
           }
           if (run.status === "won") {
-            const winners = run.heroes.filter((h) => !h.fled && !h.helper);
+            const winners = run.heroes.filter((h) => !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled));
             const snaps = winners.map((h) => [h, charMap[h.uid]]);
             // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
             const lootPool = lootQ.docs.filter((d) => { const ds = d.data().dungeons || []; return !ds.length || ds.includes(run.type); });
             const D = segreteBundle.diffOf(run.diff);
-            const corone = Math.max(0, Math.min(100, Math.round(Number(run.corone ?? 5) * D.corone)));
             const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35) * D.chest));
-            if (lootPool.length && winners.length && crypto.randomInt(0, 100) < chance) {
+            if (run.mimic?.result !== "lost" && lootPool.length && winners.length && crypto.randomInt(0, 100) < chance) {
               const item = lootPool[crypto.randomInt(0, lootPool.length)];
               const w = winners[crypto.randomInt(0, winners.length)];
               const data = { id: item.id, ...item.data() };
@@ -2390,12 +2389,12 @@ exports.segreteDo = onCall(
               });
               run.loot = { name: data.name || "Oggetto", img: data.img || "", uid: w.uid, winner: w.name };
             }
-            run.corone = corone;
+            run.corone = 0;
             run.levelUps = [];
             for (const [h, cs] of snaps) {
               if (!cs.exists) continue;
               const hero = segreteBundle.heroOf(cs.data(), h.cls);
-              const patch = corone ? { platinum: admin.firestore.FieldValue.increment(corone) } : {};
+              const patch = {};
               // bottino della spedizione (Monete Antiche delle sale e dei mostri, oggetti trovati)
               const sp = (run.spoils || {})[h.uid];
               if (sp) {
@@ -2422,13 +2421,13 @@ exports.segreteDo = onCall(
             if (!cs?.exists) return;
             const sp = (run.spoils || {})[h.uid] || {};
             const lu = (run.levelUps || []).find((l) => l.uid === h.uid);
-            const won = run.status === "won" && !h.fled && !h.helper;
+            const won = run.status === "won" && !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled);
             const entry = {
               at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝", diff: run.diff || "facile",
               cls: h.cls, result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
               coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
               xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,
-              corone: won ? (run.corone || 0) : 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",
+              corone: 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",
             };
             const prev = Array.isArray(cs.data().storyLog) ? cs.data().storyLog : [];
             tx.update(cs.ref, { storyLog: [...prev, entry].slice(-40) });

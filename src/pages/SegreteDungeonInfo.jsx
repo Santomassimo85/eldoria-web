@@ -1,7 +1,7 @@
 /* LE SEGRETE · "📜 Cosa c'è qui" (2026-11-06): pannello piccolo e richiudibile sotto il
    dungeon scelto. Per ogni difficoltà: livello minimo, quanto picchiano i mostri, che nemici
    si incontrano (il nome solo se quel tipo è già stato sconfitto almeno una volta), monete,
-   PE, Corone, probabilità di drop e tutti gli oggetti che possono cadere con la loro %.
+   PE, Monete Antiche, probabilità di drop e tutti gli oggetti che possono cadere con la loro %.
    I numeri escono dalle stesse costanti del motore: se cambia il bilanciamento, cambia qui. */
 import { SgIcon } from "../components/GameIcon";
 import { DIFF_TONE } from "../data/segreteIcons";
@@ -66,7 +66,6 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
 
   if (!dungeon) return null;
   const ch = DROP_CHANCE[role];
-  const corone = Math.round((Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5) * D.corone);
   const chest = Math.min(100, (Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35) * D.chest);
   const chestItems = (data?.chest || []).filter((l) => !(l.dungeons || []).length || l.dungeons.includes(key));
   const xpWin = Math.round(XP_PER_ROOM * (floors + 1) * D.xp);
@@ -120,7 +119,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
         <h4 className="sgi-h">🏆 Premi se il gruppo vince</h4>
         <ul className="sgi-prizes">
           <li>⭐ PE: <b>{xpWin}</b> a eroe, uguali per tutti i livelli</li>
-          <li>👑 Corone: <b>{corone}</b> a eroe</li>
+          <li>Scrigno finale: <b>10% Mimic</b>. Se vi sconfigge perdete solo lo scrigno; il bottino precedente e i PE sono salvi.</li>
           <li>{COIN_ICON} {COIN_NAME}: <b>1d{FLOOR_COINS_DIE}{D.coins !== 1 ? ` ×${num(D.coins)}` : ""}</b> a sala ripulita (in media ~{Math.round(10.5 * D.coins * (floors + 1))} a dungeon) + quelle dei mostri</li>
           {["minion", "elite", "boss"].map((r) => {
             const c = DROP_CHANCE[r];

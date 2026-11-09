@@ -966,9 +966,9 @@ var DEFAULT_DUNGEONS = [
   { key: "tempio", name: "Il Tempio Sepolto", icon: "\u{1F3DB}", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." }
 ];
 var DIFFICULTIES = [
-  { key: "facile", name: "Facile", icon: "\u{1F7E2}", rank: 0, minLevel: 1, hp: 1, dmg: 1, plus: 0, elite: 0.4, coins: 1, xp: 1, corone: 1, item: 1, chest: 1, boost: {}, desc: "Il dungeon di sempre: per tutti i livelli." },
-  { key: "medio", name: "Medio", icon: "\u{1F7E1}", rank: 1, minLevel: 8, hp: 1.12, dmg: 1.08, plus: 0, elite: 0.5, coins: 1.5, xp: 1.3, corone: 1.4, item: 1.5, chest: 1.25, boost: { rare: 1.5, veryRare: 1.5 }, desc: "Mostri pi\xF9 duri e pi\xF9 \xE9lite. Pi\xF9 monete, PE e oggetti rari." },
-  { key: "leggenda", name: "Leggenda", icon: "\u{1F534}", rank: 2, minLevel: 12, hp: 1.2, dmg: 1.12, plus: 1, elite: 0.55, coins: 2, xp: 1.6, corone: 2, item: 2, chest: 1.5, boost: { rare: 2, veryRare: 3 }, desc: "Solo per veterani: i mostri picchiano forte. Bottino doppio e oggetti che non escono altrove." }
+  { key: "facile", name: "Facile", icon: "\u{1F7E2}", rank: 0, minLevel: 1, hp: 1, dmg: 1, plus: 0, elite: 0.4, coins: 1, xp: 1, item: 1, chest: 1, boost: {}, desc: "Il dungeon di sempre: per tutti i livelli." },
+  { key: "medio", name: "Medio", icon: "\u{1F7E1}", rank: 1, minLevel: 8, hp: 1.12, dmg: 1.08, plus: 0, elite: 0.5, coins: 1.5, xp: 1.3, item: 1.5, chest: 1.25, boost: { rare: 1.5, veryRare: 1.5 }, desc: "Mostri pi\xF9 duri e pi\xF9 \xE9lite. Pi\xF9 monete, PE e oggetti rari." },
+  { key: "leggenda", name: "Leggenda", icon: "\u{1F534}", rank: 2, minLevel: 12, hp: 1.2, dmg: 1.12, plus: 1, elite: 0.55, coins: 2, xp: 1.6, item: 2, chest: 1.5, boost: { rare: 2, veryRare: 3 }, desc: "Solo per veterani: i mostri picchiano forte. Bottino doppio e oggetti che non escono altrove." }
 ];
 var diffOf = (key) => DIFFICULTIES.find((d) => d.key === key) || DIFFICULTIES[0];
 var BA = (name, diceNum, diceType, bonus, extra = {}) => ({ type: "attack", name, diceNum, diceType, bonus, hitMode: "hit", aoeShape: "single", dmgType: "", ...extra });
@@ -1236,7 +1236,7 @@ function makeHero(m) {
     fx: {},
     uses,
     // aiuto (2026-11-05): ha finito i dungeon di oggi/settimana con quella classe (o i 3 del giorno):
-    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti né Corone
+    // gioca per aiutare il gruppo ma non prende PE, monete, oggetti
     ...m.helper ? { helper: true } : {}
   };
 }
@@ -1493,7 +1493,6 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     floors: dungeon.floors || 3,
     floor: 1,
     status: "fight",
-    corone: Number.isFinite(Number(dungeon.corone)) ? Number(dungeon.corone) : 5,
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35,
     round: 1,
     order: [],
@@ -2037,6 +2036,20 @@ function confusedPick(s, c) {
   return pool.length ? pick(pool) : null;
 }
 function checkEnd(s) {
+  if (s.mimic && s.mimic.result === "fight") {
+    if (!s.heroes.some(alive)) {
+      s.mimic.result = "lost";
+      s.status = "won";
+      log(s, "Il Mimic vi ha sconfitti: perdete solo lo scrigno. Il bottino delle sale e i PE sono salvi.", { kind: "end" });
+      return true;
+    }
+    if (!s.foes.some(alive)) {
+      s.mimic.result = "won";
+      awardChest(s, s.mimic.byUid, s.turnAt || 0);
+      return true;
+    }
+    return false;
+  }
   if (!s.heroes.some(alive)) {
     s.status = "lost";
     log(s, "\u2620 Il gruppo \xE8 caduto. Le Segrete si richiudono su di voi: tutto \xE8 perduto.", { kind: "end" });
@@ -2175,6 +2188,7 @@ function floorCoins(s) {
   if (got.length) log(s, `\u{1FA99} Monete Antiche dalla sala: ${got.join(" \xB7 ")}.`, { kind: "loot" });
 }
 function lootDead(s) {
+  if (s.mimic) return;
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
   const D = diffOf(s.diff);
@@ -2326,6 +2340,7 @@ function nextFloor(s, bestiary, now) {
   log(s, "\u{1F525} Breve riposo: recuperate fiato e incantesimi.", { kind: "room" });
   startFloor(s, bestiary, now);
 }
+var MIMIC_CHANCE = 0.1;
 var CHEST_AUTO_MS = 90 * 1e3;
 var CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
 var CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
@@ -2334,6 +2349,38 @@ function openChest(s, uid, now) {
   if (s.status !== "treasure") throw new Error("Qui non c'\xE8 nessuno scrigno da aprire.");
   const opener = s.heroes.find((h) => h.uid === uid);
   if (!opener) throw new Error("Non sei in questo gruppo.");
+  if (rnd() < MIMIC_CHANCE) {
+    const D = diffOf(s.diff);
+    s.mimic = { result: "fight", byUid: uid, eligible: s.heroes.filter((h) => !h.fled && !h.helper).map((h) => h.uid) };
+    const lv = partyLevel(s);
+    const foe = makeFoe({
+      id: "mimic",
+      name: "Mimic",
+      icon: "\u{1F479}",
+      role: "elite",
+      level: lv,
+      hp: 40,
+      ac: 13,
+      actions: [A("Morso", 2, "d6", 5), A("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })]
+    }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
+    s.foes = balanceFoes([foe], s.heroes, false);
+    foe.maxHp = foe.hp = Math.round(foe.maxHp * D.hp);
+    foe.cap.dmg *= D.dmg;
+    foe.cap.hit += D.plus;
+    foe.cap.dc += D.plus;
+    foe.ac += D.plus;
+    foe.save += D.plus;
+    s.status = "fight";
+    s.round = 1;
+    rollInitiative(s);
+    log(s, "Lo scrigno spalanca le fauci: \xE8 un Mimic! Se cadete perderete solo il tesoro dello scrigno.", { kind: "room" });
+    startHeroPhase(s, now);
+    return;
+  }
+  awardChest(s, uid, now);
+}
+function awardChest(s, uid, now) {
+  const opener = s.heroes.find((h) => h.uid === uid);
   const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
   const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
   takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));

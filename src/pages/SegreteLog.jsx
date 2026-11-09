@@ -57,7 +57,7 @@ export default function SegreteLog({ charData }) {
       <h2 className="sgr-h2">📜 Storico di oggi <span className="sgr-coins">{COIN_ICON} +{coinsToday(charData, today)} oggi</span></h2>
       {todayList.length
         ? <ul className="sgl-list">{todayList.map((e) => <Row key={e.at} e={e} />)}</ul>
-        : <p className="sgr-empty">Oggi non hai ancora finito un dungeon. Qui trovi, per ogni spedizione, cosa hai portato a casa: {COIN_NAME}, oggetti, PE e Corone.</p>}
+        : <p className="sgr-empty">Oggi non hai ancora finito un dungeon. Qui trovi, per ogni spedizione, cosa hai portato a casa: {COIN_NAME}, oggetti e PE.</p>}
       {!!older.length && (
         <button type="button" className="sgr-btn sgr-btn--ghost sgl-more" aria-expanded={all} onClick={() => setAll((a) => !a)}>
           {all ? "Nascondi i giorni prima ▴" : `Giorni prima (${older.length}) ▾`}
