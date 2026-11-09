@@ -111,6 +111,7 @@ function MoveChip({ m, on, disabled, onClick, title }) {
 }
 function MovePanel({ pet, onLearn, onMoveset }) {
   const sp = PET_DEX[pet.species];
+  const groupId = React.useId();
   const set = battleMoves(pet);
   const known = knownMoves(pet);
   const learned = learnedMoves(pet);
@@ -128,7 +129,7 @@ function MovePanel({ pet, onLearn, onMoveset }) {
             onClick={() => toggle(m)} title={set.includes(m) ? "Togli dalla lotta" : set.length >= MAX_MOVES ? `Ne porta già ${MAX_MOVES}: togline una` : "Porta in lotta"} />
         ))}
       </div>
-      <h4>Innate</h4>
+      <details className="pd-move-fold"><summary>Mosse innate</summary>
       <ul className="pd-moves">
         {sp.moves.map((m, i) => {
           const mv = PET_DEX_MOVES[m];
@@ -140,25 +141,25 @@ function MovePanel({ pet, onLearn, onMoveset }) {
             </li>
           );
         })}
-      </ul>
+      </ul></details>
       <h4>Gradi delle mosse <small>una a scelta per grado · attacchi {TYPE_ICON[sp.type]} o neutri, incantesimi solo {TYPE_ICON[sp.type]} {TYPE_LABEL[sp.type]}</small></h4>
       {MOVE_GRADES.map((lvl, i) => {
         const grade = i + 1;
         const open = grade <= g;
         const pick = (pet.learned || {})[grade];
         return (
-          <div key={grade} className={`pd-grade${open ? "" : " is-locked"}`}>
-            <div className="pd-grade-head">
+          <details key={grade} name={groupId} className={`pd-grade pd-move-fold${open ? "" : " is-locked"}`}>
+            <summary className="pd-grade-head">
               <b>Grado {GRADE_ROMAN[i]}</b>
               <small>{open ? (pick && learned.includes(pick) ? `imparata: ${PET_DEX_MOVES[pick].name}` : "✨ scegli una mossa") : `🔒 al Lv ${lvl}`}</small>
-            </div>
+            </summary>
             <div className="pd-mgrid">
               {learnPool(pet.species, grade).map((m) => (
                 <MoveChip key={m} m={m} on={pick === m} disabled={!open || pick === m}
                   onClick={() => onLearn(grade, m)} title={open ? (pick ? `Impara ${PET_DEX_MOVES[m].name} al posto di ${PET_DEX_MOVES[pick]?.name}` : `Impara ${PET_DEX_MOVES[m].name}`) : `Si sblocca al Lv ${lvl}`} />
               ))}
             </div>
-          </div>
+          </details>
         );
       })}
     </div>
@@ -1060,11 +1061,13 @@ function StarterPick({ art, onPick }) {
 }
 
 /* ── squadra e collezione ─────────────────────────────────── */
-function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset, onEvolve, stones = 0 }) {
+function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd, isMascot, onMascot, onLearn, onMoveset, onEvolve, stones = 0, den, uid, run }) {
   const sp = PET_DEX[pet.species];
   const st = petStats(pet);
   const evo = evoStage(pet);
   const [open, setOpen] = useState(false);
+  const [section, setSection] = useState(null);
+  const detailId = React.useId();
   const [nick, setNick] = useState(pet.nick || "");
   return (
     <article className={`pd-card${inTeam ? " is-team" : ""}${isMascot ? " is-mascot" : ""}`}>
@@ -1082,11 +1085,7 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         <p className={`pd-xpday${xpTodayOf(pet) >= DAILY_XP_CAP ? " is-full" : ""}`} title={`Ogni pet prende al massimo ${DAILY_XP_CAP} PE al giorno`}>
           PE di oggi {xpTodayOf(pet)}/{DAILY_XP_CAP}{xpTodayOf(pet) >= DAILY_XP_CAP ? " · pieno, domani riparte" : ""}
         </p>
-        <dl className="pd-stats pd-stats--row">
-          <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
-          <div><dt>DIF</dt><dd>{st.def}</dd></div><div><dt>VEL</dt><dd>{st.spd}</dd></div>
-          <div><dt>CA</dt><dd>{st.ac}</dd></div><div><dt>Colpire</dt><dd>+{st.toHit}</dd></div>
-        </dl>
+        <p className="pd-card-vitals">PF <b>{st.hp}</b> <span>CA <b>{st.ac}</b></span></p>
         {pet.charm && PET_BAG[pet.charm.id] && <p className="pd-holding">{PET_BAG[pet.charm.id].icon} Tiene {PET_BAG[pet.charm.id].name} · {pet.charm.left} lotte</p>}
         <div className="pd-card-actions">
           <button type="button" className="pd-btn" onClick={onToggle} disabled={!inTeam && !canAdd}>
@@ -1099,15 +1098,35 @@ function PetCard({ pet, art, inTeam, slot, onToggle, onRename, onRelease, canAdd
         </div>
         {open && (
           <div className="pd-card-more">
-            <p className="pd-fine">{evo ? EVOLUTIONS[pet.species].desc : sp.desc}</p>
-            <ResLine species={pet.species} evo={evo} />
-            <EvoBox pet={pet} art={art} onEvolve={onEvolve} stones={stones} />
-            <MovePanel pet={pet} onLearn={onLearn} onMoveset={onMoveset} />
-            <div className="pd-rename">
-              <input value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
-              <button type="button" className="pd-btn" onClick={() => onRename(nick)}>Rinomina</button>
+            <div className="pd-detail-nav" aria-label="Dettagli del pet">
+              {[["profile", "Profilo"], ["moves", "Mosse"], ["evolution", "Evoluzione"], ["items", "Oggetti"], ["manage", "Gestione"]].map(([key, label]) => (
+                <button key={key} type="button" id={`${detailId}-${key}`} className={`pd-detail-toggle${section === key ? " is-on" : ""}`}
+                  aria-expanded={section === key} aria-controls={`${detailId}-panel`} onClick={() => setSection((v) => v === key ? null : key)}>
+                  {label}<span aria-hidden="true">{section === key ? "−" : "+"}</span>
+                </button>
+              ))}
             </div>
-            <button type="button" className="pd-btn pd-btn--danger" onClick={onRelease}>Libera nel bosco</button>
+            {section && <div className="pd-detail-panel" id={`${detailId}-panel`} role="region" aria-labelledby={`${detailId}-${section}`}>
+              {section === "profile" && <>
+                <p className="pd-fine">{evo ? EVOLUTIONS[pet.species].desc : sp.desc}</p>
+                <ResLine species={pet.species} evo={evo} />
+        <dl className="pd-stats pd-stats--row">
+          <div><dt>PF</dt><dd>{st.hp}</dd></div><div><dt>ATK</dt><dd>{st.atk}</dd></div>
+          <div><dt>DIF</dt><dd>{st.def}</dd></div><div><dt>VEL</dt><dd>{st.spd}</dd></div>
+          <div><dt>CA</dt><dd>{st.ac}</dd></div><div><dt>Colpire</dt><dd>+{st.toHit}</dd></div>
+        </dl>
+              </>}
+              {section === "moves" && <MovePanel pet={pet} onLearn={onLearn} onMoveset={onMoveset} />}
+              {section === "evolution" && (EVOLUTIONS[pet.species] ? <EvoBox pet={pet} art={art} onEvolve={onEvolve} stones={stones} /> : <p className="pd-fine">Questo pet non ha un’evoluzione.</p>)}
+              {section === "items" && <PetDetailItems pet={pet} den={den} uid={uid} run={run} onEvolve={onEvolve} />}
+              {section === "manage" && <>
+                <div className="pd-rename">
+                  <input aria-label="Nome del pet" value={nick} maxLength={18} placeholder={sp.name} onChange={(e) => setNick(e.target.value)} />
+                  <button type="button" className="pd-btn" onClick={() => onRename(nick)}>Rinomina</button>
+                </div>
+                <button type="button" className="pd-btn pd-btn--danger" onClick={onRelease}>Libera nel bosco</button>
+              </>}
+            </div>}
           </div>
         )}
       </div>
@@ -1128,7 +1147,7 @@ function TeamTab({ uid, den, art, run }) {
   const lead = (p) => run(() => setTeam(uid, [p.id, ...den.team.filter((x) => x !== p.id)]), `${p.nick || formName(p)} entra in campo per primo.`);
   const card = (p, i) => (
     <PetCard
-      key={p.id} pet={p} art={art} inTeam={den.team.includes(p.id)} slot={i}
+      key={p.id} pet={p} art={art} den={den} uid={uid} run={run} inTeam={den.team.includes(p.id)} slot={i}
       canAdd={den.team.length < MAX_TEAM}
       onToggle={() => toggle(p)}
       onRename={(n) => run(() => renamePet(uid, p.id, n), "Nome cambiato.")}
@@ -1548,35 +1567,60 @@ function ChallengesTab({ uid, char, den, matches, master, run, openMatch }) {
   );
 }
 
+function PetDetailItems({ pet, den, uid, run, onEvolve }) {
+  const [selected, setSelected] = useState("");
+  const owned = BAG_ORDER.filter((id) => den.items?.[id] > 0 && PET_BAG[id].kind !== "battle"
+    && (PET_BAG[id].kind !== "evo" || (EVOLUTIONS[pet.species] && !evoStage(pet)))
+    && (PET_BAG[id].kind !== "scroll" || !knownMoves(pet).includes(PET_BAG[id].move)));
+  const id = owned.includes(selected) ? selected : "";
+  return <div className="pd-pet-items">
+    <p className="pd-fine">Scegli un oggetto della bisaccia da usare su <b>{pet.nick || formName(pet)}</b>.</p>
+    {owned.length ? <label className="pd-pet-item-picker">Oggetti disponibili
+      <select value={id} onChange={(e) => setSelected(e.target.value)}>
+        <option value="">Scegli un oggetto</option>
+        {owned.map((key) => <option key={key} value={key}>{PET_BAG[key].name} ×{den.items[key]}</option>)}
+      </select>
+    </label> : <p className="pd-fine">Non hai oggetti utilizzabili su questo pet.</p>}
+    {id && <>
+      <p className="pd-fine">{PET_BAG[id].desc}{PET_BAG[id].fights ? ` Dura ${PET_BAG[id].fights} lotte.` : ""}</p>
+      <BagUse key={`${pet.id}-${id}`} id={id} den={den} uid={uid} run={run} fixedPetId={pet.id}
+        onDone={() => setSelected("")} onEvolve={(_, stone) => onEvolve(stone)} />
+    </>}
+    <p className="pd-fine">Pozioni, antidoti ed elisir si usano durante la lotta, dal pulsante Oggetti.</p>
+  </div>;
+}
+
 /* ── Bisaccia del Domatore: oggetti posseduti e bottega ──── */
-function BagUse({ id, den, onDone, run, uid, onEvolve }) {
+function BagUse({ id, den, onDone, run, uid, onEvolve, fixedPetId = null }) {
   const it = PET_BAG[id];
   const pets = it.kind === "evo" ? den.pets.filter((p) => EVOLUTIONS[p.species] && !evoStage(p)) : den.pets;
-  const [petId, setPetId] = useState(pets[0]?.id || "");
+  const [petId, setPetId] = useState(fixedPetId || pets[0]?.id || "");
   const [forget, setForget] = useState("");
-  const pet = den.pets.find((p) => p.id === petId);
+  const pet = pets.find((p) => p.id === (fixedPetId || petId));
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   const known = pet ? knownMoves(pet) : [];
-  const go = () => {
-    if (!pet) return;
+  const go = async () => {
+    if (!pet || pending.current || !(den.items?.[id] > 0)) return;
     const name = pet.nick || PET_DEX[pet.species].name;
     if (it.kind === "evo") { onEvolve(pet, !canEvolve(pet)); onDone(); return; }
-    if (it.kind === "charm") {
-      if (pet.charm && !window.confirm(`${name} tiene già ${PET_BAG[pet.charm.id]?.name}: si perde. Continuare?`)) return;
-      return run(() => giveCharm(uid, pet.id, id), `${name} tiene ${it.name}.`).then(onDone);
-    }
-    if (it.kind === "scroll") {
-      if (!forget) return;
-      return run(() => teachScroll(uid, pet.id, id, forget), `${name} dimentica ${PET_DEX_MOVES[forget].name} e impara ${PET_DEX_MOVES[it.move].name}!`).then(onDone);
-    }
-    return run(() => applyGrowthItem(uid, pet.id, id), `${it.name} usata su ${name}!`).then(onDone);
+    if (it.kind === "charm" && pet.charm && !window.confirm(`${name} tiene già ${PET_BAG[pet.charm.id]?.name}: si perde. Continuare?`)) return;
+    if (it.kind === "scroll" && (!forget || known.includes(it.move))) return;
+    const task = it.kind === "charm" ? () => giveCharm(uid, pet.id, id)
+      : it.kind === "scroll" ? () => teachScroll(uid, pet.id, id, forget)
+      : () => applyGrowthItem(uid, pet.id, id);
+    pending.current = true; setBusy(true);
+    try {
+      await run(async () => { await task(); onDone(); }, `${it.name} usata su ${name}!`);
+    } finally { pending.current = false; setBusy(false); }
   };
   return (
     <div className="pd-baguse">
-      <label>Su quale pet?
+      {!fixedPetId && <label>Su quale pet?
         <select value={petId} onChange={(e) => { setPetId(e.target.value); setForget(""); }}>
           {pets.map((p) => <option key={p.id} value={p.id}>{p.nick || formName(p)} · Lv {p.level} · {TYPE_ICON[PET_DEX[p.species].type]}{p.charm ? ` · tiene ${PET_BAG[p.charm.id]?.icon}` : ""}</option>)}
         </select>
-      </label>
+      </label>}
       {it.kind === "evo" && !pets.length && <p className="pd-fine">Nessun pet da far evolvere: sono tutti già evoluti.</p>}
       {it.kind === "evo" && pet && canEvolve(pet) && <p className="pd-fine">Ha già il livello per evolversi: la pietra non si consuma.</p>}
       {it.kind === "scroll" && pet && (
@@ -1589,8 +1633,8 @@ function BagUse({ id, den, onDone, run, uid, onEvolve }) {
           </label>
         )
       )}
-      <button type="button" className="pd-btn pd-btn--main" disabled={!pet || (it.kind === "scroll" && (!forget || known.includes(it.move)))} onClick={go}>Usa</button>
-      <button type="button" className="pd-btn pd-btn--ghost" onClick={onDone}>Annulla</button>
+      <button type="button" className="pd-btn pd-btn--main" disabled={busy || !pet || !(den.items?.[id] > 0) || (it.kind === "scroll" && (!forget || known.includes(it.move)))} onClick={go}>{busy ? "In corso..." : fixedPetId ? `Usa su ${pet?.nick || (pet && formName(pet)) || "questo pet"}` : "Usa"}</button>
+      <button type="button" className="pd-btn pd-btn--ghost" disabled={busy} onClick={onDone}>Annulla</button>
     </div>
   );
 }

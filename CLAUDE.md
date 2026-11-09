@@ -1,3 +1,7 @@
+## PET: DETTAGLI COMPATTI E OGGETTI DIRETTI (2026-11-09)
+- PetCard: dettagli in cinque sezioni espandibili esclusive (Profilo, Mosse, Evoluzione, Oggetti, Gestione). Riepilogo PF/CA nella carta, statistiche complete nel Profilo. Mosse innate e singoli gradi chiusi in details; un solo grado aperto per gruppo.
+- Oggetti: PetDetailItems mostra quelli posseduti e compatibili, BagUse fixedPetId fissa il destinatario al pet aperto. Stesse operazioni server della Bisaccia per crescita, amuleti, pergamene ed evoluzione; oggetti da battaglia restano solo in lotta. BagUse disabilita durante invio e chiude soltanto se l'operazione riesce. Nessuna modifica a regole o server.
+
 ## WORLD BOSS: CAMPO FERMO RESPONSIVE (2026-11-09)
 - `rpg-screen--fighting` solo durante la battaglia attiva: fino a 1024px o dispositivi touch bassi, testata e campo sticky sotto la navbar. Campo 31svh (120-300px), 25svh (76-124px) in landscape basso; sprite scalati al campo e controlli scorrono nella pagina. Overflow orizzontale clip su html/body della sola battaglia per non rompere sticky. Desktop e fuori combattimento mantengono il layout normale. ROW_STEP degli eroi mai negativo sui campi bassi.
 

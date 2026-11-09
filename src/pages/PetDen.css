@@ -118,6 +118,25 @@
 .pd-xp { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: .75rem; color: var(--pd-mute); }
 .pd-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .pd-card-more { margin-top: 10px; display: grid; gap: 8px; }
+.pd-card-vitals { display: flex; gap: 16px; margin: 5px 0; font-size: .85rem; color: var(--pd-mute); }
+.pd-card-vitals b { color: var(--pd-ink); font-family: var(--font-num); }
+.pd-detail-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(105px, 100%), 1fr)); gap: 5px; }
+.pd-detail-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 42px; padding: 8px 10px; border: 1px solid var(--pd-s3); border-radius: 4px; background: var(--pd-s2); color: var(--pd-ink); font: inherit; cursor: pointer; }
+.pd-detail-toggle.is-on { border-color: var(--pd-acc); background: var(--pd-s3); }
+.pd-detail-toggle:focus-visible, .pd-move-fold > summary:focus-visible { outline: 2px solid var(--pd-acc); outline-offset: 2px; }
+.pd-detail-panel { min-width: 0; padding: 10px; border: 1px solid var(--pd-s3); border-radius: 4px; background: var(--pd-s1); display: grid; gap: 10px; overflow-wrap: anywhere; }
+.pd-detail-panel .pd-fine { margin: 0; }
+.pd-detail-panel .pd-rename { flex-wrap: wrap; }
+.pd-detail-panel .pd-rename input { min-width: 0; flex: 1 1 100px; }
+.pd-move-fold { min-width: 0; border: 1px solid var(--pd-s3); border-radius: 4px; padding: 8px; }
+.pd-move-fold > summary { cursor: pointer; min-height: 34px; color: var(--pd-ink); align-content: center; }
+.pd-move-fold[open] > summary { margin-bottom: 8px; }
+.pd-move-fold > .pd-grade-head { display: list-item; }
+.pd-move-fold > .pd-grade-head small { display: block; padding-left: 16px; }
+.pd-pet-items { display: grid; gap: 10px; min-width: 0; }
+.pd-pet-item-picker { display: grid; gap: 5px; font-size: .85rem; }
+.pd-pet-item-picker select, .pd-detail-panel .pd-baguse select { width: 100%; max-width: 100%; min-width: 0; min-height: 42px; background: var(--pd-s2); color: var(--pd-ink); border: 1px solid var(--pd-s3); border-radius: 4px; padding: 6px; font: inherit; }
+.pd-detail-panel .pd-btn { max-width: 100%; white-space: normal; }
 .pd-moves { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .pd-moves li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; background: rgba(0,0,0,.25); border-radius: 3px; font-size: .88rem; }
 .pd-moves li small { color: var(--pd-mute); }
