@@ -1010,23 +1010,63 @@
 .rpg-scene-actions.done { border-color: var(--rpg-border); color: var(--rpg-dim); }
 .rpg-scene-actions .rpg-turn-pips i { width: 10px; height: 10px; }
 
-/* ── PALCO FERMO SUL TELEFONO (2026-10-13): testata + campo restano in alto,
-   sotto scorrono azioni/status/log in metà schermo. Sul desktop il wrapper
-   non esiste per il layout (display: contents) e la testata resta sticky da sola. ── */
+/* Campo sempre visibile durante il fight su telefoni/tablet. Lo scroll resta
+   quello della pagina: nessun pannello interno che intrappoli i gesti touch. */
 .rpg-stage { display: contents; }
-@media (max-width: 639px) {
-  .rpg-stage {
-    display: block;
-    position: sticky; top: var(--navbar-h, 80px); z-index: 50;
-    background: var(--ossidiana);
+@media (max-width: 1024px), (max-height: 500px) and (pointer: coarse) {
+  /* hidden su un antenato crea un contenitore di scroll e rompe sticky. */
+  html:has(.rpg-screen--fighting),
+  body:has(.rpg-screen--fighting) { overflow-x: clip; }
+  .rpg-screen--fighting {
+    --wb-scene-h: clamp(120px, 31svh, 300px);
+    --wb-stage-top: var(--navbar-h, 80px);
   }
-  .rpg-stage .rpg-action-banner { position: relative; top: 0; padding: 6px 12px; }
-  .rpg-stage .rpg-banner-text { font-size: .95rem; white-space: nowrap; }
-  .rpg-stage .rpg-battle-scene { height: 40svh; min-height: 200px; max-height: 400px; }
-  .rpg-battle-interface--mobile .rpg-log-scroll { height: 40svh; max-height: 40svh; }
-  .rpg-boss-sprite { height: clamp(120px, 30svh, 240px); }
-  .rpg-boss-zone.has-minions .rpg-boss-sprite { height: clamp(90px, 22svh, 190px); }
-  .rpg-scene-actions { top: 6px; right: 6px; font-size: .7rem; padding: 4px 8px; }
+  .rpg-screen--fighting .rpg-stage {
+    display: block;
+    position: sticky;
+    top: var(--wb-stage-top);
+    z-index: 50;
+    flex: 0 0 auto;
+    align-self: stretch;
+    background: var(--ossidiana);
+    box-shadow: 0 8px 20px rgba(var(--ossidiana-rgb), .65);
+  }
+  .rpg-screen--fighting .rpg-stage .rpg-action-banner {
+    position: relative; top: auto; min-height: 28px;
+    padding: 5px clamp(8px, 2vw, 16px); gap: 6px;
+  }
+  .rpg-screen--fighting .rpg-stage .rpg-banner-text {
+    min-width: 0; font-size: clamp(.8rem, 2.2vw, 1rem); white-space: nowrap;
+  }
+  .rpg-screen--fighting .rpg-stage .rpg-battle-scene {
+    height: var(--wb-scene-h); min-height: 0; max-height: none;
+  }
+  .rpg-screen--fighting .rpg-boss-zone {
+    width: 48%; flex-wrap: nowrap; gap: 4px; padding: 0 4px 6px;
+  }
+  .rpg-screen--fighting .rpg-boss-sprite-wrap { min-width: 0; flex: 1 1 auto; }
+  .rpg-screen--fighting .rpg-boss-sprite {
+    height: calc(var(--wb-scene-h) * .78); max-width: 100%;
+  }
+  .rpg-screen--fighting .rpg-boss-zone.has-minions .rpg-boss-sprite {
+    height: calc(var(--wb-scene-h) * .64);
+  }
+  .rpg-screen--fighting .rpg-minion-row { max-width: 46%; gap: 2px 4px; flex: 0 0 auto; }
+  .rpg-screen--fighting .rpg-minion-wrap { --spr: clamp(28px, calc(var(--wb-scene-h) * .22), 64px); }
+  .rpg-screen--fighting .rpg-party-zone { width: 52%; }
+  .rpg-screen--fighting .rpg-char-wrap { --spr: clamp(32px, min(12vw, calc(var(--wb-scene-h) * .3)), 84px); }
+  .rpg-screen--fighting :is(.rpg-char-name-tag, .rpg-minion-tag) {
+    font-size: .62rem; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rpg-screen--fighting .rpg-scene-actions { top: 5px; right: 5px; font-size: .65rem; padding: 3px 6px; }
+  .rpg-screen--fighting .rpg-dm-topbar { gap: 4px; }
+  .rpg-screen--fighting .rpg-topbar-btn { font-size: .6rem; padding: 4px 6px; }
+  .rpg-screen--fighting .rpg-dm-badge { display: none; }
+}
+@media (max-height: 500px) and (max-width: 1024px), (max-height: 500px) and (pointer: coarse) {
+  .rpg-screen--fighting { --wb-scene-h: clamp(76px, 25svh, 124px); }
+  .rpg-screen--fighting .rpg-stage .rpg-action-banner { min-height: 24px; padding-block: 3px; }
+  .rpg-screen--fighting .rpg-st-pips { display: none; }
 }
 
 /* 2026-11-04: icone di stato con effetto e durata (StatusPips) sopra gli sprite */

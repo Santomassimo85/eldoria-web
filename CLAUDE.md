@@ -1,3 +1,6 @@
+## WORLD BOSS: CAMPO FERMO RESPONSIVE (2026-11-09)
+- `rpg-screen--fighting` solo durante la battaglia attiva: fino a 1024px o dispositivi touch bassi, testata e campo sticky sotto la navbar. Campo 31svh (120-300px), 25svh (76-124px) in landscape basso; sprite scalati al campo e controlli scorrono nella pagina. Overflow orizzontale clip su html/body della sola battaglia per non rompere sticky. Desktop e fuori combattimento mantengono il layout normale. ROW_STEP degli eroi mai negativo sui campi bassi.
+
 ## WORLD BOSS: ANIMAZIONI DELLE SEGRETE (2026-11-09)
 - Il World Boss usa gia VfxLayer canvas: worldBossSpells.pickEffectForAction ora sceglie le forme dettagliate del motore delle Segrete (affondi, martellate, pugni, artigli, morsi, raggi, soffi, palla di fuoco, dardi multipli, onde, piogge, nubi, risucchi e maledizioni). Cure/scudi/buff restano tali. WorldBossVfx raffina anche i messaggi generici del boss automatico dal nome, senza cambiare regole o funzione server. Movimento degli sprite attaccanti con strikePose, solo nella scena World Boss; impatti e numeri restano sincronizzati al motore condiviso.
 

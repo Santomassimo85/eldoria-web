@@ -1911,7 +1911,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
     : charData ? [{ id: currentUser.uid, ...charData }] : [];
 
   return (
-    <div className="rpg-screen">
+    <div className={`rpg-screen${fightStarted && !isGameOver ? " rpg-screen--fighting" : ""}`}>
       <VfxLayer messages={messages} selfUid={currentUser?.uid} canvas />
 
       {/* ── PALCO: testata + campo di battaglia. Sul telefono resta fermo in alto
@@ -2015,7 +2015,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             .filter(p => hasActedIn(turnState, p.id))
             .map((p, i) => {
               const COLS       = isMobile ? 3 : 4;
-              const ROW_STEP   = partyZoneHeight > 0 ? Math.min(140, (partyZoneHeight - 80) / Math.max(1, Math.ceil(partyForDisplay.filter(x => hasActedIn(turnState, x.id)).length / COLS) - 0.5)) : 120;
+              const ROW_STEP   = partyZoneHeight > 0 ? Math.max(8, Math.min(140, (partyZoneHeight - 80) / Math.max(1, Math.ceil(partyForDisplay.filter(x => hasActedIn(turnState, x.id)).length / COLS) - 0.5))) : 120;
               const col        = i % COLS;
               const row        = Math.floor(i / COLS);
               const jX         = ((i * 47 + 13) % 28) - 14;
