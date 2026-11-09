@@ -1,3 +1,6 @@
+## WORLD BOSS: ANIMAZIONI DELLE SEGRETE (2026-11-09)
+- Il World Boss usa gia VfxLayer canvas: worldBossSpells.pickEffectForAction ora sceglie le forme dettagliate del motore delle Segrete (affondi, martellate, pugni, artigli, morsi, raggi, soffi, palla di fuoco, dardi multipli, onde, piogge, nubi, risucchi e maledizioni). Cure/scudi/buff restano tali. WorldBossVfx raffina anche i messaggi generici del boss automatico dal nome, senza cambiare regole o funzione server. Movimento degli sprite attaccanti con strikePose, solo nella scena World Boss; impatti e numeri restano sincronizzati al motore condiviso.
+
 ## SEGRETE: PUGNALI E COMPLETE (2026-11-09)
 - Pugnali: animazione dedicata `daggerThrust`, inclinazione della lama e affondo, scala contenuta (distinta dal pugno); `singleAttack` impedisce che il Furtivo erediti il doppio colpo o gli attacchi casuali delle armi.
 - Animazioni: ogni tiro d'arma porta `hand` nella cronaca (pugnali R/L; mosse punch del Monaco L/R con `unarmed`). CrawlerEngine anima la mano indicata, anche rotazione/scala della sinistra procedurale, mostra temporaneamente i pugni al posto dell'arma e la ripristina. Sprite pugni `pugni~mirror`, admin aggiornato; coda attende la fine dell'animazione. Test `scripts/test-segrete-hands.cjs`.

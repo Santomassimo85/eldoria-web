@@ -15,7 +15,8 @@ import "./WorldBossVfx.css";
 import { spellSound } from "../utils/petAudio";
 import { playSpell } from "../fx/spellFx";
 import { popNumber, popTag } from "../fx/hitNumbers";
-import { shake, recoil, castPose, stageOf } from "../fx/hitFeel";
+import { shake, recoil, castPose, strikePose, stageOf } from "../fx/hitFeel";
+import { pickEffectForAction } from "./worldBossSpells";
 import { whenDiceIdle } from "../components/DiceRoll";
 
 // ── Suoni (mp3 già in public/sounds) ─────────────────────────────────────────
@@ -132,6 +133,10 @@ const SOFT_KINDS = new Set(["cloud", "curse", "sleep", "roar"]);
 function normalizeEffect(msg) {
   let kind = msg.effect, el = msg.effectEl;
   if (!el && LEGACY[kind]) [kind, el] = LEGACY[kind];
+  // Anche i messaggi del boss automatico usano le forme ricche delle Segrete.
+  if (msg.actionName && ["slash", "bolt", "aoe"].includes(kind)) {
+    kind = pickEffectForAction({ name: msg.actionName.split(" → ")[0], category: msg.category }, kind).kind;
+  }
   if (!LEGACY[kind] && !FROM_KINDS.has(kind) && !ON_KINDS.has(kind) && !SOFT_KINDS.has(kind) && kind !== "fireball") kind = "bolt";
   return { kind, el: el || "arcane" };
 }
@@ -189,7 +194,7 @@ function domePixels(Rx, Ry, P) {
 // `selfUid`: i tiri degli altri arrivano col d20 3D a schermo (msg.dice): l effetto parte
 // quando il dado si è fermato, come per chi ha tirato.
 // `canvas` (2026-11-04): gli effetti li disegna il motore "RPG old style" di src/fx/spellFx.js
-// (luce, fumo, fiamme, scariche) invece dei pixel in DOM. Lo usano Arena e Segrete; il World Boss no.
+// (luce, fumo, fiamme, scariche) invece dei pixel in DOM. Lo usano Arena, Segrete e World Boss.
 export function VfxLayer({ messages, selfUid = null, canvas = false }) {
   const seenRef = useRef(new Set());
   const mountedAtRef = useRef(Date.now());
@@ -320,6 +325,10 @@ function playCanvas(msg, targets) {
   const elOfKey = (k) => document.querySelector(`[data-vfx-target="${k}"]`);
   // chi lancia una magia (dardo, area, maledizione) si illumina
   const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
+  if (caster && stageOf(caster)?.matches(".rpg-battle-scene") && ["slash", "thrust", "smash", "punch", "claw", "bite", "stomp", "arrow"].includes(kind)) {
+    const source = anchorOf(msg.effectFrom);
+    strikePose(caster, kind, source ? Math.sign(anchors[0].a.x - source.x) || 1 : 1);
+  }
   if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball", "vine"].includes(kind)) castPose(caster);
   // Palla di Fuoco: UNA palla verso il centro dei bersagli, poi esplode su ognuno
   let lobAt = 0;

@@ -219,11 +219,40 @@ export const SAVE_LABEL_IT = { str: "FOR", dex: "DES", con: "COS", int: "INT", w
 // ── Azione → {kind, el} per l'effetto a schermo ─────────────────────────────
 // Una cura resta una cura anche con un tipo di danno assegnato. Il chiamante può
 // forzare la forma (heal/buff/shield/debuff/aoe) passando `kind`.
+const DETAILED_EFFECTS = [
+  [/magic missiles?|dard[oi] incantat[oi]/, "missiles"],
+  [/fireball|palla di fuoco|sfera infuocata|flaming sphere/, "fireball"],
+  [/burning hands|mani brucianti|cone of cold|cono di freddo|soffio|breath/, "breath"],
+  [/chain lightning|catena di fulmini|lightning bolt|raggio|\bbeam\b|\bray\b|eldritch blast|deflagrazione|witch bolt/, "beam"],
+  [/ice storm|tempesta di ghiaccio|pioggia|\brain\b|hail/, "rain"],
+  [/call lightning|invocare il fulmine|richiamo del fulmine|sacred flame|fiamma sacra|flame strike/, "strike"],
+  [/thunderwave|onda di tuono|onda di ki|\bwave\b|ondata/, "wave"],
+  [/vampir|risucchio|\bdrain\b/, "drain"],
+  [/thorn whip|frusta di spine|rovi|entangle|intralciare/, "vine"],
+  [/cloud|nube|nebbia|nauseante/, "cloud"],
+  [/\bsleep\b|\bsonno\b|ipnosi|hypnotic/, "sleep"],
+  [/maledizione|\bcurse\b|\bhex\b|toll the dead|rintocco|beffa|vicious mockery|sussurri|dissonant whispers/, "curse"],
+  [/terremoto|earthquake|calpesta|\bstomp\b/, "stomp"],
+  [/spike|spuntoni|spine dal|trappola/, "spikes"],
+  [/ruggito|\broar\b/, "roar"],
+  [/morso|\bbite\b|zanne|\bfangs?\b/, "bite"],
+  [/artigli|\bclaws?\b/, "claw"],
+  [/pugn[oi]|raffica di colpi|flurry of blows|unarmed|senz.armi|calcio|testata/, "punch"],
+  [/martello|hammer|mazza|\bmace\b|\bmaul\b|maglio|bastone|staff|randello|\bclub\b|mazzafrusto|flail/, "smash"],
+  [/spada corta|short ?sword|stocco|rapier|pugnal|dagger|lancia|\bspear\b|tridente|trident|affondo|\bthrust\b/, "thrust"],
+  [/spada|sword|ascia|\baxe\b|scimitar|fendente|\bslash\b/, "slash"],
+];
+
 export function pickEffectForAction(action, kind = null) {
   if (!action) return { kind: kind || "slash", el: "physical" };
   const name = plain(action.name);
   if (!kind && /(cura|cure|guari|heal|parola guaritrice|lay on hands|imposizione|ristora|goodberry|bacca)/.test(name)) return { kind: "heal", el: "radiant" };
-  return { kind: kind || attackShapeFor(action), el: elementFor(action) };
+  const base = kind || attackShapeFor(action);
+  // Cura, scudo e potenziamenti mantengono sempre la forma richiesta.
+  if (!["slash", "bolt", "aoe"].includes(base)) return { kind: base, el: elementFor(action) };
+  const detail = DETAILED_EFFECTS.find(([re]) => re.test(name));
+  const areaShape = base === "aoe" ? { cone: "breath", line: "beam", cube: "wave", cylinder: "rain" }[action.aoeShape] : null;
+  return { kind: detail?.[1] || areaShape || base, el: elementFor(action) };
 }
 
 // ── ABILITÀ dei PG (categoria "Abilità" della sync Foundry) ────────────────

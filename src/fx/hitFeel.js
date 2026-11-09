@@ -35,5 +35,20 @@ export function castPose(el) {
     { transform: "scale(1)", filter: "none" },
   ], { duration: 320, easing: "steps(3, end)", composite: "add" });
 }
+// Nel World Boss anche l'attaccante accompagna il colpo, come nelle Segrete.
+export function strikePose(el, kind, dir = 1) {
+  if (!el?.animate || reduced()) return;
+  const heavy = ["smash", "stomp"].includes(kind);
+  const ranged = kind === "arrow";
+  const reach = ranged ? -5 : heavy ? 14 : kind === "thrust" ? 24 : 18;
+  const twist = kind === "slash" || kind === "claw" ? -7 * dir : heavy ? 5 * dir : 0;
+  el.animate([
+    { transform: "translate(0, 0) rotate(0deg)" },
+    { transform: `translate(${-5 * dir}px, ${heavy ? -5 : 2}px) rotate(${-twist / 2}deg)`, offset: 0.28 },
+    { transform: `translate(${reach * dir}px, ${heavy ? 3 : -2}px) rotate(${twist}deg)`, offset: 0.48 },
+    { transform: `translate(${reach * dir * 0.65}px, 0) rotate(${twist / 2}deg)`, offset: 0.65 },
+    { transform: "translate(0, 0) rotate(0deg)" },
+  ], { duration: heavy ? 480 : 400, easing: "ease-in-out", composite: "add" });
+}
 // il "campo" che contiene uno sprite (per la scossa)
 export const stageOf = (el) => el?.closest?.(".rpg-battle-scene, .sgb-field, .cw-stage, .cv-field, .al-field, .pd-field") || null;
