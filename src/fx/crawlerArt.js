@@ -105,7 +105,7 @@ const blade = (s, wide = 13) => { s.line(82, 78, 30, 8, (k) => wide - k * (wide 
 const DRAW = {
   spada_lunga: (s) => { arm(s, 88, 90); s.line(84, 88, 96, 104, 6, LEATHER).line(70, 88, 96, 72, 6, GOLD); blade(s); },
   scimitarra: (s) => { arm(s, 88, 90, 0x4a3a2e, 0x6a5240); s.line(70, 88, 94, 74, 5, GOLD); for (let i = 0; i < 40; i++) { const k = i / 39; s.ell(82 - k * 52 - Math.sin(k * 3.14) * 12, 78 - k * 70 + Math.sin(k * 3.14) * 6, 5 - k * 3, 5 - k * 3, STEEL); } },
-  pugnali: (s) => { arm(s, 90, 96, 0x4a3a2e, 0x6a5240); s.line(88, 92, 66, 51, (k) => 9 - k * 7, STEEL).line(78, 88, 91, 80, 4, GOLD); },
+  pugnali: (s) => { arm(s, 90, 96, 0x4a3a2e, 0x6a5240); s.line(88, 92, 60, 27, (k) => 10 - k * 8, STEEL).line(86, 86, 61, 29, 2, 0xf0f4fa).line(78, 88, 91, 80, 4, GOLD); },
   stocco: (s) => { arm(s, 90, 92, 0x4a3a50, 0x6a5a70); s.ell(84, 86, 11, 9, GOLD).line(82, 80, 34, 4, (k) => 6 - k * 4, STEEL).line(80, 76, 36, 6, 1, 0xf0f4fa); },
   ascia_bip: (s) => { arm(s, 92, 96, 0x6a3a2a, SKIN); s.line(100, 114, 62, 22, 7, WOOD).ell(46, 26, 19, 21, STEEL).ell(80, 16, 16, 18, STEEL2).ell(38, 26, 8, 16, 0xf0f4fa); },
   martello: (s) => { arm(s, 90, 92); s.line(94, 100, 62, 32, 6, LEATHER).rect(36, 12, 46, 26, STEEL2).rect(36, 12, 46, 6, STEEL); },

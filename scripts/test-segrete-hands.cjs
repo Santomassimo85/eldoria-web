@@ -9,8 +9,8 @@ function load(file) {
 const { CrawlerEngine } = load('src/fx/crawlerEngine.js');
 const A = load('src/fx/crawlerArt.js');
 const K = load('src/data/segreteKits.js');
-function strikes(cls, weapon, actionId, rng = 0.5) {
-  const s = E.withRng(() => 0.5, () => E.newRun({ room: { type: 'segrete' }, heroes: [{ uid: 'one', name: 'Hero', cls, hero: { weapon, picks: ['ki', 'stordente'], xp: K.xpForLevel(3), xpv: 2 } }], bestiary: [], dungeon: { name: 'Test', floors: 1 }, now: 1000 }));
+function strikes(cls, weapon, actionId, rng = 0.5, level = 3) {
+  const s = E.withRng(() => 0.5, () => E.newRun({ room: { type: 'segrete' }, heroes: [{ uid: 'one', name: 'Hero', cls, hero: { weapon, picks: ['ki', 'stordente'], xp: K.xpForLevel(level), xpv: 2 } }], bestiary: [], dungeon: { name: 'Test', floors: 1 }, now: 1000 }));
   s.foes = [{ id: 'f_test', side: 'f', name: 'Target', hp: 1000, maxHp: 1000, ac: 5, fx: {}, res: [], imm: [], vul: [] }];
   s.order = []; s.acted = {}; s.status = 'fight';
   E.withRng(() => rng, () => E.act(s, 'one', { actionId, targetId: 'f_test' }, 2000));
@@ -29,8 +29,20 @@ assert.ok(strikes('monk', 'bastone', 'stordente').every(l => l.hand === 'L' && l
 assert.deepEqual(strikes('monk', 'bastone', 'arma').map(l => l.hand), ['R']);
 assert.ok(strikes('monk', 'bastone', 'arma').every(l => !l.unarmed));
 assert.deepEqual(strikes('rogue', 'pugnali', 'arma').map(l => l.hand), ['R', 'L']);
+for (let level = 1; level <= 20; level++) {
+  const sneak = strikes('rogue', 'pugnali', 'furtivo', 0.5, level);
+  assert.equal(sneak.length, 1);
+  assert.equal(sneak[0].dmg, 3 + 4 * Math.ceil(level / 2));
+  assert.equal(sneak[0].fx, 'thrust');
+}
 const engine = Object.create(CrawlerEngine.prototype);
 engine.calm = false; engine.offKind = 'none';
+engine.mainWeapon = 'pugnali';
+engine.attack('thrust', { hand: 'R' });
+assert.equal(engine.act.kind, 'daggerThrust');
+engine.act.t0 = performance.now() - 215;
+const stab = engine.moveNow();
+assert.ok(stab.R.rot < -0.5 && stab.R.s < 1.1);
 engine.act = { kind: 'punch', hand: 'L', unarmed: true, t0: performance.now() - 170, ms: 340 };
 let mv = engine.moveNow();
 assert.ok(mv.L.dx > 60 && mv.L.s > 1.3);

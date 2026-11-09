@@ -18,6 +18,7 @@ const MOVES = {
   slash: { ms: 430, R: [[0, 0, 0, 0, 1], [0.32, 0.3, 16, -16, 1], [0.5, -0.62, -46, 6, 1.04], [0.68, -0.66, -48, 8, 1.04], [1, 0, 0, 0, 1]] },
   smash: { ms: 480, R: [[0, 0, 0, 0, 1], [0.35, 0.12, 6, -34, 1], [0.52, -0.4, -24, 26, 1.08], [0.7, -0.42, -26, 28, 1.08], [1, 0, 0, 0, 1]] },
   thrust: { ms: 400, R: [[0, 0, 0, 0, 1], [0.3, 0.05, 8, 14, 0.94], [0.5, -0.12, -48, -34, 1.28], [0.66, -0.12, -48, -34, 1.28], [1, 0, 0, 0, 1]] },
+  daggerThrust: { ms: 430, R: [[0, 0, 0, 0, 1], [0.25, 0.18, 10, 8, 0.98], [0.46, -0.65, -42, -26, 1.08], [0.60, -0.65, -44, -28, 1.08], [1, 0, 0, 0, 1]] },
   punch: { ms: 340, R: [[0, 0, 0, 0, 1], [0.25, 0, 10, 12, 0.95], [0.42, -0.05, -70, -40, 1.38], [0.56, -0.05, -70, -40, 1.38], [1, 0, 0, 0, 1]] },
   /* TIRO CON L'ARCO (2026-11-07): tendi (le mani vengono indietro e un po' giù, l'arco trema) → scocchi
      (contraccolpo secco in avanti) → la freccia non c'è più → abbassi le mani a prendere una freccia
@@ -266,6 +267,7 @@ export class CrawlerEngine {
     const [m, o, p, pe, fp] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl), up(spec.punchPairUrl)]);
     if (this.handKey !== key || this.dead) return;
     this.fists = fp ? { pair: fp, cutR: topRow(fp), split: splitOf(fp) } : fists;
+    this.mainWeapon = spec.main;
     this.ranged = RANGED.has(spec.main);
     this.shootKind = SHOOT_OF[spec.main] || "shoot";
     this.offKind = spec.off;
@@ -321,7 +323,7 @@ export class CrawlerEngine {
   }
   // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
   attack(fx, { hand = "R", unarmed = false } = {}) {
-    const kind = MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
+    const kind = fx === "thrust" && this.mainWeapon === "pugnali" ? "daggerThrust" : MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
     const ms = this.calm ? 60 : MOVES[kind].ms;
     this.act = { kind, hand, unarmed, t0: performance.now(), ms };
     return new Promise((res) => setTimeout(res, this.calm ? 60 : ms));

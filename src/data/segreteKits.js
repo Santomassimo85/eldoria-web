@@ -252,7 +252,7 @@ export const KITS = {
       { id: "palmo", name: "Palmo Tremante", icon: "🖐", kind: "save", dice: "6d10", dmg: "necrotic", save: "con", half: true, min: 12, uses: 1 },
     ] },
   rogue: { hitDie: 8, ac: 15, armor: "light", stat: "dex", rec: ["dex", "con"],
-    base: [{ id: "furtivo", useWeapon: true, name: "Attacco Furtivo", icon: "🌒", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "sneak", riderDmg: "piercing", uses: 3, info: "+metà livello in d6" }],
+    base: [{ id: "furtivo", useWeapon: true, name: "Attacco Furtivo", icon: "🌒", kind: "weapon", dice: "1d8", dmg: "piercing", attacks: 1, singleAttack: true, rider: "sneak", riderDmg: "piercing", uses: 3, info: "un colpo: danno arma +1d6 (un altro d6 ogni 2 livelli dopo il primo)" }],
     pool: [
       { id: "nascondersi", name: "Nascondersi", icon: "🫥", kind: "buff", buff: "adv", turns: 2, self: true, min: 1, uses: 2 },
       { id: "veleno_r", name: "Lama Avvelenata", icon: "☠", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
@@ -340,7 +340,7 @@ export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem 
   const k = kitOf(cls);
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
-  const withWeapon = (a) => (a.useWeapon ? { ...a, ...(w.attacks ? { attacks: w.attacks } : {}), dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
+  const withWeapon = (a) => (a.useWeapon ? { ...a, ...((a.attacks || w.attacks) ? { attacks: a.attacks || w.attacks } : {}), ...(a.rider === "sneak" ? { info: `un colpo: ${w.dice} +${sneakDiceOf(lv)}d6` } : {}), dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
   const grip = canTwoHand(cls, w0.key)
     ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} · riprendi lo scudo` : `${VERSATILE[w0.key]} · niente scudo` }] : [];
@@ -374,7 +374,9 @@ export function heroMaxHp(cls, lv, st, rolls = []) {
 export const heroAc = (cls, st, g = {}) => heroDefense(cls, st, g).ac;
 export const heroDc = (cls, lv, st) => 8 + profOf(lv) + mainMod(cls, st);
 export const heroHit = (cls, lv, st) => profOf(lv) + mainMod(cls, st);
+export const sneakDiceOf = (lv) => 1 + Math.floor((Math.max(1, lv) - 1) / 2);
 export function attacksOf(cls, lv, action) {
+  if (action.singleAttack) return 1;
   const extra = lv >= 5 && kitOf(cls).extraAttacks && (action.kind === "weapon") ? 1 + (cls === "fighter" && lv >= 11) : 0;
   return (action.attacks || 1) + extra + (action.bonusAttacks || 0);
 }

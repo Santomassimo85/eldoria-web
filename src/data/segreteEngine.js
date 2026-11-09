@@ -12,7 +12,7 @@
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
-import { canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
+import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
 import { sizeOf, diffOf, MIMIC_MONSTER } from "./segrete";
 
 export const LOG_MAX = 80;
@@ -446,7 +446,7 @@ function heroAct(s, h, a, target) {
     let n = attacksOf(h.cls, lv, a);
     const wfx = a.kind === "weapon" ? a.wfx || null : null;
     // Arco del Ratto Ubriaco & co.: a volte un colpo in più, a volte nessuno
-    if (wfx?.multi) {
+    if (wfx?.multi && !a.singleAttack) {
       const r = die(100);
       if (r <= (wfx.multi.none || 0)) {
         log(s, `${a.icon} ${h.name} → ${a.name}: si inceppa, niente colpi questo turno!`, { kind: "miss", actor: h.id, targets: [target.id] });
@@ -486,7 +486,7 @@ function heroAct(s, h, a, target) {
       let extra = "";
       if (a.rider && k === 0 && alive(target)) {
         let rn, rs;
-        if (a.rider === "sneak") { rn = Math.ceil(lv / 2); rs = 6; } else { [rn, rs] = diceFor({ ...a, dice: a.rider }, lv); }
+        if (a.rider === "sneak") { rn = sneakDiceOf(lv); rs = 6; } else { [rn, rs] = diceFor({ ...a, dice: a.rider }, lv); }
         if (r.crit) rn *= 2;
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
         total += rd; extra = ` +${rd} ${DMG_IT[a.riderDmg] || ""}`;
