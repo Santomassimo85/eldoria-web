@@ -55,6 +55,7 @@ export function statusIcons(c, round) {
   if (on(fx.frightened)) out.push({ k: "fear", ico: "😱", n: left(fx.frightened), good: false, tag: "paura", t: "Spaventato: svantaggio, non può curare né aiutare gli altri (Tonico)" });
   if (on(fx.blinded)) out.push({ k: "blind", ico: "🌑", n: left(fx.blinded), good: false, tag: "cieco", t: "Accecato: svantaggio, chi lo attacca ha vantaggio (Tonico)" });
   if (on(fx.slow)) out.push({ k: "slow", ico: "🐌", n: left(fx.slow), good: false, tag: "lento", t: "Rallentato: svantaggio agli attacchi (Tonico o Bomba d'Acqua)" });
+  if (on(fx.taunt)) out.push({ k: "taunt", ico: "📣", n: left(fx.taunt), good: false, tag: "provocato", t: "Provocato: attacca soltanto il guerriero che lo ha sfidato" });
   if (on(fx.confused)) out.push({ k: "conf", ico: "😵", n: left(fx.confused), good: false, tag: "confuso", t: "Confuso: sceglie l'azione ma il bersaglio esce a caso, anche un compagno (Tonico)" });
   return out;
 }
@@ -507,6 +508,7 @@ export function SpoilsBox({ run, uid, spoils, hidden }) {
 }
 
 export function actInfo(a, lv) {
+  if ((a.cantrip || a.kind === "taunt" || a.id === "cura_c") && a.info) return a.info;
   if (a.kind === "defend") return "+4 CA fino al tuo turno";
   if (a.kind === "grip") return `${a.info} · gratis`;
   if (a.kind === "heal") return a.flat ? `cura ${lv * 5}` : `cura ${a.dice}${a.plusMod ? "+mod" : ""}`;

@@ -202,7 +202,7 @@ export function weaponMod(cls, st, a) {
 /* armor: "heavy" = CA fissa · "light" = CA − 3 + DES · "unarmored" = 10 + DES + (COS|SAG) */
 export const KITS = {
   fighter: { hitDie: 10, ac: 17, armor: "heavy", stat: "str", rec: ["str", "con"], extraAttacks: true,
-    base: [{ id: "respiro", name: "Secondo Respiro", icon: "❤", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }],
+    base: [{ id: "respiro", name: "Secondo Respiro", icon: "❤", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }, { id: "taunt", name: "Provocazione", icon: "📣", kind: "taunt", save: "wis", turns: 2, uses: 2, info: "tutti i nemici: TS SAG (8 + competenza + FOR) o attaccano solo te per 2 turni" }],
     pool: [
       { id: "poderoso", useWeapon: true, name: "Attacco Poderoso", icon: "💥", kind: "weapon", dice: "1d8", dmg: "slashing", bonusDmg: "lv/2", min: 1, uses: 2, info: "+metà livello ai danni" },
       { id: "parata", name: "Muro di Scudi", icon: "🛡", kind: "buff", buff: "ac", value: 3, turns: 2, self: true, min: 1, uses: 1 },
@@ -292,7 +292,7 @@ export const KITS = {
       { id: "dito", name: "Dito della Morte", icon: "☠", kind: "save", dice: "7d8", flat: 20, dmg: "necrotic", save: "con", half: true, min: 15, uses: 1 },
     ] },
   druid: { hitDie: 8, ac: 14, armor: "light", stat: "wis", rec: ["wis", "con"],
-    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "🌿", kind: "spell", dice: "1d6", dmg: "piercing", scale: true }, { id: "cura_d", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
+    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "🌿", kind: "spell", dice: "1d6", dmg: "piercing", scale: true }, { id: "cura_d", name: "Cura Ferite di Gruppo", icon: "💚", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG · 3 usi per sala" }],
     pool: [
       { id: "onda", name: "Onda Tonante", icon: "🌊", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "pelle", name: "Pelle di Corteccia", icon: "🌳", kind: "buff", buff: "ac", value: 3, turns: 3, min: 1, uses: 1 },
@@ -302,9 +302,9 @@ export const KITS = {
       { id: "tempesta", name: "Tempesta di Ghiaccio", icon: "🌨", kind: "save", dice: "4d6", dmg: "cold", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true, inflict: { key: "frozen", left: 1 }, info: "chi fallisce resta congelato 1 turno" },
     ] },
   cleric: { hitDie: 8, ac: 18, armor: "heavy", stat: "wis", rec: ["wis", "con"],
-    base: [{ id: "cura_c", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
+    base: [{ id: "cura_c", name: "Cura Ferite di Gruppo", icon: "💚", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG · 3 usi per sala" }],
     pool: [
-      { id: "fiamma", name: "Fiamma Sacra", icon: "🕯", kind: "save", dice: "1d8", dmg: "radiant", save: "dex", scale: true, min: 1 },
+      { id: "fiamma", name: "Fiamma Sacra", icon: "🕯", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "Trucchetto infinito: 1d8 + SAG, metà radioso e metà fuoco · TS DES nega" },
       { id: "benedire_c", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
       { id: "arma_spir", name: "Arma Spirituale", icon: "🗡", kind: "missile", dice: "1d8", dmg: "force", plusMod: true, min: 3, uses: 3, grow: true },
       { id: "parola", name: "Parola Guaritrice di Massa", icon: "🙏", kind: "heal_all", dice: "1d4", plusMod: true, min: 3, uses: 2, grow: true },

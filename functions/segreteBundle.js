@@ -249,7 +249,7 @@ var KITS = {
     stat: "str",
     rec: ["str", "con"],
     extraAttacks: true,
-    base: [{ id: "respiro", name: "Secondo Respiro", icon: "\u2764", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }],
+    base: [{ id: "respiro", name: "Secondo Respiro", icon: "\u2764", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }, { id: "taunt", name: "Provocazione", icon: "\u{1F4E3}", kind: "taunt", save: "wis", turns: 2, uses: 2, info: "tutti i nemici: TS SAG (8 + competenza + FOR) o attaccano solo te per 2 turni" }],
     pool: [
       { id: "poderoso", useWeapon: true, name: "Attacco Poderoso", icon: "\u{1F4A5}", kind: "weapon", dice: "1d8", dmg: "slashing", bonusDmg: "lv/2", min: 1, uses: 2, info: "+met\xE0 livello ai danni" },
       { id: "parata", name: "Muro di Scudi", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 3, turns: 2, self: true, min: 1, uses: 1 },
@@ -401,7 +401,7 @@ var KITS = {
     armor: "light",
     stat: "wis",
     rec: ["wis", "con"],
-    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "\u{1F33F}", kind: "spell", dice: "1d6", dmg: "piercing", scale: true }, { id: "cura_d", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
+    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "\u{1F33F}", kind: "spell", dice: "1d6", dmg: "piercing", scale: true }, { id: "cura_d", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" }],
     pool: [
       { id: "onda", name: "Onda Tonante", icon: "\u{1F30A}", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "pelle", name: "Pelle di Corteccia", icon: "\u{1F333}", kind: "buff", buff: "ac", value: 3, turns: 3, min: 1, uses: 1 },
@@ -417,9 +417,9 @@ var KITS = {
     armor: "heavy",
     stat: "wis",
     rec: ["wis", "con"],
-    base: [{ id: "cura_c", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", dice: "1d8", plusMod: true, uses: 3, grow: true }],
+    base: [{ id: "cura_c", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" }],
     pool: [
-      { id: "fiamma", name: "Fiamma Sacra", icon: "\u{1F56F}", kind: "save", dice: "1d8", dmg: "radiant", save: "dex", scale: true, min: 1 },
+      { id: "fiamma", name: "Fiamma Sacra", icon: "\u{1F56F}", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "Trucchetto infinito: 1d8 + SAG, met\xE0 radioso e met\xE0 fuoco \xB7 TS DES nega" },
       { id: "benedire_c", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
       { id: "arma_spir", name: "Arma Spirituale", icon: "\u{1F5E1}", kind: "missile", dice: "1d8", dmg: "force", plusMod: true, min: 3, uses: 3, grow: true },
       { id: "parola", name: "Parola Guaritrice di Massa", icon: "\u{1F64F}", kind: "heal_all", dice: "1d4", plusMod: true, min: 3, uses: 2, grow: true },
@@ -1472,6 +1472,7 @@ var ACTION_FX = {
   risata: "sleep"
 };
 function heroVfx(a) {
+  if (a.kind === "taunt") return { fx: "roar", el: "physical" };
   if (a.kind === "defend") return { fx: "shield", el: "arcane" };
   const pick2 = [].concat(ACTION_FX[a.id] || []);
   if (a.kind === "weapon") {
@@ -1683,6 +1684,17 @@ function heroAct(s, h, a, target) {
     log(s, `\u{1F6E1} ${h.name} si mette in difesa (+4 CA fino al suo turno).`, { kind: "buff", actor: h.id, targets: [h.id] });
     return ev;
   }
+  if (a.kind === "taunt") {
+    const dc = 8 + profOf(lv) + (st.str || 0);
+    const foes = s.foes.filter(alive);
+    const parts = foes.map((t) => {
+      const sv = d20() + (t.saves?.wis ?? t.save ?? 0);
+      if (sv < dc) t.fx.taunt = { by: h.id, until: s.round + a.turns };
+      return `${t.name}: ${sv < dc ? `provocato per ${a.turns} turni` : "resiste"} (TS SAG ${sv})`;
+    });
+    log(s, `${a.icon} ${h.name} usa ${a.name} (CD ${dc}): ${parts.join(" / ")}.`, { kind: "debuff", actor: h.id, targets: foes.map((t) => t.id) });
+    return ev;
+  }
   if (a.kind === "weapon" || a.kind === "spell") {
     let n = attacksOf(h.cls, lv, a);
     const wfx = a.kind === "weapon" ? a.wfx || null : null;
@@ -1785,19 +1797,22 @@ function heroAct(s, h, a, target) {
     const dc = heroDc(h.cls, lv, st) + (h.armorDc || 0);
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
-    const rolled = roll(dn, ds), base = rolled.t + flatOf(a.flat);
+    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0), base = rolled.t + plusDmg;
     const parts = [];
     targets.forEach((t) => {
       const sv = d20() + (t.save || 0);
       const ok = sv >= dc;
       const notes = [];
-      const dmg = ok ? a.half ? applyDamage(s, t, Math.floor(base / 2), a.dmg, notes) : 0 : applyDamage(s, t, base, a.dmg, notes);
+      const amount = ok ? a.half ? Math.floor(base / 2) : 0 : base;
+      const types = a.damageTypes || [a.dmg];
+      const total = Math.max(0, amount);
+      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes), 0);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
       const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
       parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " \u{1F4AB} stordito" : ""}${inf}${t.hp <= 0 ? " \u{1F480}" : ""}`);
     });
-    log(s, `${a.icon} ${h.name} \u2192 ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id), dr: { n: dn, s: ds, r: rolled.r, p: flatOf(a.flat) } });
+    log(s, `${a.icon} ${h.name} \u2192 ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id), dr: { n: dn, s: ds, r: rolled.r, p: plusDmg } });
     return ev;
   }
   if (a.kind === "heal" || a.kind === "heal_all") {
@@ -1853,18 +1868,21 @@ function foeAct(s, f) {
   const singles = acts.filter((a2) => a2.type === "attack" && (!a2.aoeShape || a2.aoeShape === "single"));
   const buffs = acts.filter((a2) => a2.type === "buff_ca" && !(f.fx.ac || []).some((e) => fxOn(s, e)) || a2.type === "buff_adv" && !fxOn(s, f.fx.adv));
   const debuffs = acts.filter((a2) => a2.type === "debuff_dis");
+  const provokedBy = fxOn(s, f.fx.taunt) ? heroes.find((h) => h.id === f.fx.taunt.by) : null;
+  if (!provokedBy && f.fx.taunt) delete f.fx.taunt;
   let a;
   const canHeal = (f.heals || 0) < HEAL_MAX && !(f.healRound && s.round - f.healRound < HEAL_COOLDOWN);
-  if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
+  if (provokedBy) a = singles.length ? pick(singles) : areas.length ? pick(areas) : A("Attacco provocato", 1, "d6", 3);
+  else if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
   else if (areas.length && heroes.length >= 2 && rnd() < 0.55) a = pick(areas);
   else if (buffs.length && rnd() < 0.25) a = pick(buffs);
   else if (debuffs.length && rnd() < 0.25) a = pick(debuffs);
   else a = singles.length ? pick(singles) : pick(acts);
   const weakest = [...heroes].sort((x, y) => x.hp - y.hp)[0];
   const lastHitter = heroes.find((h) => h.id === f.lastHitBy);
-  let tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  let tgt = provokedBy || (rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes));
   let confusedTxt = "";
-  if (fxOn(s, f.fx.confused)) {
+  if (!provokedBy && fxOn(s, f.fx.confused)) {
     const c = confusedPick(s, f);
     if (c && c !== tgt) {
       tgt = c;
@@ -1904,7 +1922,7 @@ function foeAct(s, f) {
     return;
   }
   if (a.type === "debuff_dis") {
-    const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
+    const tg = !provokedBy && a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
     tg.forEach((t) => {
       t.fx.dis = s.round + turns + 1;
     });
@@ -1916,7 +1934,7 @@ function foeAct(s, f) {
   const sides = parseDice(`1${a.diceType || "d6"}`)[1];
   const isSave = a.hitMode === "save" || a.aoeShape && a.aoeShape !== "single";
   if (isSave) {
-    const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
+    const tg = !provokedBy && a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
     const dc = f.cap?.dc ?? (Number(a.saveDC) || 12) + (f.adapt?.hit || 0);
     const rolled2 = roll(n, sides), mult2 = (f.adapt?.mult || 1) * capMult(n, sides, tg.length);
     const base = Math.max(1, Math.round((rolled2.t + lvlBonus) * mult2));

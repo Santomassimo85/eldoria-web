@@ -262,6 +262,7 @@ const ACTION_FX = {
   beffa: "curse", sussurri: "curse", risata: "sleep",
 };
 function heroVfx(a) {
+  if (a.kind === "taunt") return { fx: "roar", el: "physical" };
   if (a.kind === "defend") return { fx: "shield", el: "arcane" };
   const pick = [].concat(ACTION_FX[a.id] || []);
   if (a.kind === "weapon") {
@@ -442,6 +443,17 @@ function heroAct(s, h, a, target) {
     log(s, `🛡 ${h.name} si mette in difesa (+4 CA fino al suo turno).`, { kind: "buff", actor: h.id, targets: [h.id] });
     return ev;
   }
+  if (a.kind === "taunt") {
+    const dc = 8 + profOf(lv) + (st.str || 0);
+    const foes = s.foes.filter(alive);
+    const parts = foes.map((t) => {
+      const sv = d20() + (t.saves?.wis ?? t.save ?? 0);
+      if (sv < dc) t.fx.taunt = { by: h.id, until: s.round + a.turns };
+      return `${t.name}: ${sv < dc ? `provocato per ${a.turns} turni` : "resiste"} (TS SAG ${sv})`;
+    });
+    log(s, `${a.icon} ${h.name} usa ${a.name} (CD ${dc}): ${parts.join(" / ")}.`, { kind: "debuff", actor: h.id, targets: foes.map((t) => t.id) });
+    return ev;
+  }
   if (a.kind === "weapon" || a.kind === "spell") {
     let n = attacksOf(h.cls, lv, a);
     const wfx = a.kind === "weapon" ? a.wfx || null : null;
@@ -516,19 +528,22 @@ function heroAct(s, h, a, target) {
     const dc = (heroDc(h.cls, lv, st) + (h.armorDc || 0));
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
-    const rolled = roll(dn, ds), base = rolled.t + flatOf(a.flat);
+    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0), base = rolled.t + plusDmg;
     const parts = [];
     targets.forEach((t) => {
       const sv = d20() + (t.save || 0);
       const ok = sv >= dc;
       const notes = [];
-      const dmg = ok ? (a.half ? applyDamage(s, t, Math.floor(base / 2), a.dmg, notes) : 0) : applyDamage(s, t, base, a.dmg, notes);
+      const amount = ok ? (a.half ? Math.floor(base / 2) : 0) : base;
+      const types = a.damageTypes || [a.dmg];
+      const total = Math.max(0, amount);
+      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes), 0);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
       const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
       parts.push(`${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${notes.length ? ` ${notes.join(",")}` : ""}${!ok && a.stun && alive(t) ? " 💫 stordito" : ""}${inf}${t.hp <= 0 ? " 💀" : ""}`);
     });
-    log(s, `${a.icon} ${h.name} → ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id), dr: { n: dn, s: ds, r: rolled.r, p: flatOf(a.flat) } });
+    log(s, `${a.icon} ${h.name} → ${a.name} (TS ${a.save.toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: h.id, targets: targets.map((t) => t.id), dr: { n: dn, s: ds, r: rolled.r, p: plusDmg } });
     return ev;
   }
   if (a.kind === "heal" || a.kind === "heal_all") {
@@ -580,11 +595,14 @@ function foeAct(s, f) {
   const singles = acts.filter((a) => a.type === "attack" && (!a.aoeShape || a.aoeShape === "single"));
   const buffs = acts.filter((a) => (a.type === "buff_ca" && !(f.fx.ac || []).some((e) => fxOn(s, e))) || (a.type === "buff_adv" && !fxOn(s, f.fx.adv)));
   const debuffs = acts.filter((a) => a.type === "debuff_dis");
+  const provokedBy = fxOn(s, f.fx.taunt) ? heroes.find((h) => h.id === f.fx.taunt.by) : null;
+  if (!provokedBy && f.fx.taunt) delete f.fx.taunt;
   let a;
   // CURE DEI MOSTRI (2026-11-05, segnalato Kraelthar che si curava a ogni turno): al massimo una
   // cura ogni 3 round per mostro (HEAL_COOLDOWN), 3 cure per sala (HEAL_MAX), probabilità 50% invece di 80%
   const canHeal = (f.heals || 0) < HEAL_MAX && !(f.healRound && s.round - f.healRound < HEAL_COOLDOWN);
-  if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
+  if (provokedBy) a = singles.length ? pick(singles) : areas.length ? pick(areas) : A("Attacco provocato", 1, "d6", 3);
+  else if (hurt && heals.length && canHeal && rnd() < 0.5) a = pick(heals);
   else if (areas.length && heroes.length >= 2 && rnd() < 0.55) a = pick(areas);
   else if (buffs.length && rnd() < 0.25) a = pick(buffs);
   else if (debuffs.length && rnd() < 0.25) a = pick(debuffs);
@@ -592,10 +610,10 @@ function foeAct(s, f) {
   // bersaglio: spesso il più ferito, a volte chi lo ha colpito per ultimo, sennò a caso
   const weakest = [...heroes].sort((x, y) => x.hp - y.hp)[0];
   const lastHitter = heroes.find((h) => h.id === f.lastHitBy);
-  let tgt = rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes);
+  let tgt = provokedBy || (rnd() < 0.45 ? weakest : lastHitter && rnd() < 0.5 ? lastHitter : pick(heroes));
   // confuso: il bersaglio esce a caso, anche un altro mostro
   let confusedTxt = "";
-  if (fxOn(s, f.fx.confused)) { const c = confusedPick(s, f); if (c && c !== tgt) { tgt = c; confusedTxt = `😵 ${f.name} è confuso e se la prende con ${c.name}! `; } }
+  if (!provokedBy && fxOn(s, f.fx.confused)) { const c = confusedPick(s, f); if (c && c !== tgt) { tgt = c; confusedTxt = `😵 ${f.name} è confuso e se la prende con ${c.name}! `; } }
   const nm = a.name || "Attacco";
   const lvlBonus = Math.max(-3, Math.floor((f.level || 1) / 3) + (f.adapt?.dmg || 0));
   // danno medio oltre il tetto del gruppo → si riduce in proporzione
@@ -625,7 +643,7 @@ function foeAct(s, f) {
   if (a.type === "buff_ca") { f.fx.ac = [...(f.fx.ac || []), { v: Number(a.acBonus) || 2, until: s.round + turns + 1 }]; log(s, `🛡 ${f.name} → ${nm}: +${Number(a.acBonus) || 2} CA per ${turns} turni.`, { kind: "buff", actor: f.id, targets: [f.id] }); return; }
   if (a.type === "buff_adv") { f.fx.adv = s.round + turns + 1; log(s, `⬆ ${f.name} → ${nm}: vantaggio agli attacchi per ${turns} turni.`, { kind: "buff", actor: f.id, targets: [f.id] }); return; }
   if (a.type === "debuff_dis") {
-    const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
+    const tg = !provokedBy && a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
     tg.forEach((t) => { t.fx.dis = s.round + turns + 1; });
     log(s, `⬇ ${f.name} → ${nm}: ${tg.map((t) => t.name).join(", ")} a svantaggio per ${turns} turni.`, { kind: "debuff", actor: f.id, targets: tg.map((t) => t.id) });
     return;
@@ -636,7 +654,7 @@ function foeAct(s, f) {
   const sides = parseDice(`1${a.diceType || "d6"}`)[1];
   const isSave = a.hitMode === "save" || (a.aoeShape && a.aoeShape !== "single");
   if (isSave) {
-    const tg = a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
+    const tg = !provokedBy && a.aoeShape && a.aoeShape !== "single" ? heroes : [tgt];
     const dc = f.cap?.dc ?? ((Number(a.saveDC) || 12) + (f.adapt?.hit || 0));
     const rolled = roll(n, sides), mult = (f.adapt?.mult || 1) * capMult(n, sides, tg.length);
     const base = Math.max(1, Math.round((rolled.t + lvlBonus) * mult));

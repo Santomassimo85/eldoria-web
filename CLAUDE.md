@@ -1,3 +1,7 @@
+## SEGRETE: CHIERICO E PROVOCAZIONE (2026-11-09)
+- Fiamma Sacra: scelta del chierico etichettata trucchetto infinito, danno fisso totale 1d8 + SAG, diviso fra radioso (arrotondato sopra) e fuoco; TS DES nega, difese applicate separatamente alle due quote. Cura Ferite di Gruppo (cura_c): base, heal_all 1d8 + SAG a ogni alleato non fuggito, 3 usi/sala, senza crescita dei dadi.
+- Guerriero: Provocazione base (taunt), 2 usi/sala, TS SAG per ogni nemico contro 8 + competenza + FOR. Fallimento = fx.taunt {by, until}, per il turno nemico corrente e il prossimo. Impone azioni di attacco e bersaglio unico sul guerriero, anche per nemici con sole aree; prevale su confusione e finisce se il guerriero cade/fugge. Stato visibile e animazione roar. Rigenerare bundle e pubblicare segreteDo insieme al sito.
+
 ## PET: DETTAGLI COMPATTI E OGGETTI DIRETTI (2026-11-09)
 - PetCard: dettagli in cinque sezioni espandibili esclusive (Profilo, Mosse, Evoluzione, Oggetti, Gestione). Riepilogo PF/CA nella carta, statistiche complete nel Profilo. Mosse innate e singoli gradi chiusi in details; un solo grado aperto per gruppo.
 - Oggetti: PetDetailItems mostra quelli posseduti e compatibili, BagUse fixedPetId fissa il destinatario al pet aperto. Stesse operazioni server della Bisaccia per crescita, amuleti, pergamene ed evoluzione; oggetti da battaglia restano solo in lotta. BagUse disabilita durante invio e chiude soltanto se l'operazione riesce. Nessuna modifica a regole o server.
