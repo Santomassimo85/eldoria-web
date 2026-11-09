@@ -18,7 +18,9 @@ const MOVES = {
   slash: { ms: 430, R: [[0, 0, 0, 0, 1], [0.32, 0.3, 16, -16, 1], [0.5, -0.62, -46, 6, 1.04], [0.68, -0.66, -48, 8, 1.04], [1, 0, 0, 0, 1]] },
   smash: { ms: 480, R: [[0, 0, 0, 0, 1], [0.35, 0.12, 6, -34, 1], [0.52, -0.4, -24, 26, 1.08], [0.7, -0.42, -26, 28, 1.08], [1, 0, 0, 0, 1]] },
   thrust: { ms: 400, R: [[0, 0, 0, 0, 1], [0.3, 0.05, 8, 14, 0.94], [0.5, -0.12, -48, -34, 1.28], [0.66, -0.12, -48, -34, 1.28], [1, 0, 0, 0, 1]] },
-  daggerThrust: { ms: 430, R: [[0, 0, 0, 0, 1], [0.25, 0.18, 10, 8, 0.98], [0.46, -0.65, -42, -26, 1.08], [0.60, -0.65, -44, -28, 1.08], [1, 0, 0, 0, 1]] },
+  // Il polso ruota PRIMA dell'affondo; il braccio poi si distende lungo la lama.
+  // Le ultime due colonne deformano separatamente larghezza/lunghezza del braccio.
+  daggerThrust: { ms: 560, R: [[0, 0, 0, 0, 1, 1, 1], [0.22, -0.55, 20, 18, 0.98, 1, 1], [0.34, -0.55, 18, 18, 0.98, 1, 1], [0.49, -0.55, -12, -42, 0.92, 0.84, 1.18], [0.60, -0.55, -14, -42, 0.92, 0.84, 1.18], [0.78, -0.55, 18, 18, 0.98, 1, 1], [1, 0, 0, 0, 1, 1, 1]] },
   punch: { ms: 340, R: [[0, 0, 0, 0, 1], [0.25, 0, 10, 12, 0.95], [0.42, -0.05, -70, -40, 1.38], [0.56, -0.05, -70, -40, 1.38], [1, 0, 0, 0, 1]] },
   /* TIRO CON L'ARCO (2026-11-07): tendi (le mani vengono indietro e un po' giù, l'arco trema) → scocchi
      (contraccolpo secco in avanti) → la freccia non c'è più → abbassi le mani a prendere una freccia
@@ -41,9 +43,50 @@ function curve(keys, k) {
   let i = 0;
   while (i < keys.length - 2 && k > keys[i + 1][0]) i++;
   const a = keys[i], b = keys[i + 1], t = clamp((k - a[0]) / Math.max(0.001, b[0] - a[0]), 0, 1), e = t * t * (3 - 2 * t);
-  return { rot: a[1] + (b[1] - a[1]) * e, dx: a[2] + (b[2] - a[2]) * e, dy: a[3] + (b[3] - a[3]) * e, s: a[4] + (b[4] - a[4]) * e };
+  return { rot: a[1] + (b[1] - a[1]) * e, dx: a[2] + (b[2] - a[2]) * e, dy: a[3] + (b[3] - a[3]) * e, s: a[4] + (b[4] - a[4]) * e, sx: (a[5] ?? 1) + ((b[5] ?? 1) - (a[5] ?? 1)) * e, sy: (a[6] ?? 1) + ((b[6] ?? 1) - (a[6] ?? 1)) * e };
 }
 const NO_MOVE = { rot: 0, dx: 0, dy: 0, s: 1 };
+
+// Deforma il braccio lungo l'affondo, mantenendo attaccata al bordo la base
+// dell'avambraccio. Muovere rigidamente l'intero sprite sembrava un pugno volante.
+export function thrustArmPoint(x, y, w, h, m, px, py, k, u, v) {
+  const ox = x + u * w, oy = y + v * h;
+  const weight = Math.min(1, Math.max(0, (1 - v) * 2.5));
+  const rx = (ox - px) * m.s * (m.sx ?? 1), ry = (oy - py) * m.s * (m.sy ?? 1);
+  const tx = px + m.dx * k + Math.cos(m.rot) * rx - Math.sin(m.rot) * ry;
+  const ty = py + m.dy * k + Math.sin(m.rot) * rx + Math.cos(m.rot) * ry;
+  return { x: ox + (tx - ox) * weight, y: oy + (ty - oy) * weight };
+}
+function drawThrustArm(ctx, img, x, y, w, h, m, px, py, k) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const point = (u, v) => thrustArmPoint(x, y, w, h, m, px, py, k, u, v);
+  const triangle = (src, dst) => {
+    const [s0, s1, s2] = src, [p0, p1, p2] = dst;
+    const ux = s1[0] - s0[0], uy = s1[1] - s0[1], vx = s2[0] - s0[0], vy = s2[1] - s0[1];
+    const det = ux * vy - uy * vx;
+    const a = ((p1.x - p0.x) * vy - (p2.x - p0.x) * uy) / det;
+    const b = ((p1.y - p0.y) * vy - (p2.y - p0.y) * uy) / det;
+    const c = ((p2.x - p0.x) * ux - (p1.x - p0.x) * vx) / det;
+    const d = ((p2.y - p0.y) * ux - (p1.y - p0.y) * vx) / det;
+    // Sovrapposizione subpixel: evita fessure fra i triangoli del braccio.
+    const cx = (p0.x + p1.x + p2.x) / 3, cy = (p0.y + p1.y + p2.y) / 3;
+    const edge = (p) => {
+      const len = Math.hypot(p.x - cx, p.y - cy) || 1;
+      return { x: p.x + (p.x - cx) * 0.75 / len, y: p.y + (p.y - cy) * 0.75 / len };
+    };
+    const [q0, q1, q2] = dst.map(edge);
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(q0.x, q0.y); ctx.lineTo(q1.x, q1.y); ctx.lineTo(q2.x, q2.y); ctx.closePath(); ctx.clip();
+    ctx.transform(a, b, c, d, p0.x - a * s0[0] - c * s0[1], p0.y - b * s0[0] - d * s0[1]);
+    ctx.drawImage(img, 0, 0); ctx.restore();
+  };
+  for (let i = 0; i < 16; i++) {
+    const v0 = i / 16, v1 = (i + 1) / 16, y0 = v0 * ih, y1 = v1 * ih;
+    const tl = point(0, v0), tr = point(1, v0), bl = point(0, v1), br = point(1, v1);
+    triangle([[0, y0], [iw, y0], [0, y1]], [tl, tr, bl]);
+    triangle([[iw, y0], [iw, y1], [0, y1]], [tr, br, bl]);
+  }
+}
 // dove separare le due mani: la colonna più vuota nella fascia centrale dello sprite
 function splitOf(img) {
   try {
@@ -543,10 +586,14 @@ export class CrawlerEngine {
     const hands = this.act?.unarmed && this.fists ? this.fists : this.hands;
     // disegna img nel riquadro (x, y, w, h) con il movimento m, che ruota attorno a (px, py)
     const part = (img, x, y, w, h, m, px, py, sx = 0, sw = null) => {
+      if (this.act?.kind === "daggerThrust" && (m.dx || m.dy || m.rot) && sw == null) {
+        drawThrustArm(ctx, img, x, y, w, h, m, px, py, k);
+        return;
+      }
       ctx.save();
       ctx.translate(px + m.dx * k, py + m.dy * k);
       ctx.rotate(m.rot);
-      ctx.scale(m.s, m.s);
+      ctx.scale(m.s * (m.sx ?? 1), m.s * (m.sy ?? 1));
       ctx.translate(-px, -py);
       if (sw == null) ctx.drawImage(img, x, y, w, h);
       else ctx.drawImage(img, sx, 0, sw, img.height, x, y, w, h);

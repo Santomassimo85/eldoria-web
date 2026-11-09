@@ -6,7 +6,7 @@ function load(file) {
   const code = esbuild.buildSync({ entryPoints: [file], bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
   const mod = new Module(file, module); mod._compile(code, file); return mod.exports;
 }
-const { CrawlerEngine } = load('src/fx/crawlerEngine.js');
+const { CrawlerEngine, thrustArmPoint } = load('src/fx/crawlerEngine.js');
 const A = load('src/fx/crawlerArt.js');
 const K = load('src/data/segreteKits.js');
 function strikes(cls, weapon, actionId, rng = 0.5, level = 3) {
@@ -40,9 +40,14 @@ engine.calm = false; engine.offKind = 'none';
 engine.mainWeapon = 'pugnali';
 engine.attack('thrust', { hand: 'R' });
 assert.equal(engine.act.kind, 'daggerThrust');
-engine.act.t0 = performance.now() - 215;
+engine.act.t0 = performance.now() - 280;
 const stab = engine.moveNow();
-assert.ok(stab.R.rot < -0.5 && stab.R.s < 1.1);
+assert.ok(stab.R.rot < -0.5 && stab.R.s < 1);
+assert.ok(stab.R.sy > 1.1 && stab.R.sx < 0.9 && stab.R.dy < -40);
+const pinned = thrustArmPoint(100, 50, 150, 200, stab.R, 230, 250, 1, 1, 1);
+assert.deepEqual(pinned, { x: 250, y: 250 });
+const wrist = thrustArmPoint(100, 50, 150, 200, stab.R, 230, 250, 1, 0.6, 0.6);
+assert.ok(wrist.y < 170);
 engine.act = { kind: 'punch', hand: 'L', unarmed: true, t0: performance.now() - 170, ms: 340 };
 let mv = engine.moveNow();
 assert.ok(mv.L.dx > 60 && mv.L.s > 1.3);
