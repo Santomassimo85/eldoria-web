@@ -366,7 +366,7 @@ export class CrawlerEngine {
   }
   // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
   attack(fx, { hand = "R", unarmed = false } = {}) {
-    const kind = fx === "thrust" && this.mainWeapon === "pugnali" ? "daggerThrust" : MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
+    const kind = MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
     const ms = this.calm ? 60 : MOVES[kind].ms;
     this.act = { kind, hand, unarmed, t0: performance.now(), ms };
     return new Promise((res) => setTimeout(res, this.calm ? 60 : ms));
