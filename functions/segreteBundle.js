@@ -972,7 +972,10 @@ var DEFAULT_DUNGEONS = [
   // 2026-11-06
   { key: "ghiaccio", name: "Il Ghiacciaio Eterno", icon: "\u{1F9CA}", desc: "Gallerie di ghiaccio azzurro e vento che taglia: lupi dell'inverno, mefiti di brina e la Regina di Brina." },
   { key: "palude", name: "La Palude Marcia", icon: "\u{1F438}", desc: "Acqua nera, nebbia e fango che risucchia: annegati che si rialzano e troll che non muoiono mai del tutto." },
-  { key: "tempio", name: "Il Tempio Sepolto", icon: "\u{1F3DB}", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." }
+  { key: "tempio", name: "Il Tempio Sepolto", icon: "\u{1F3DB}", desc: "Rovine di un culto dimenticato sotto la sabbia: guardiani di pietra, morti inquieti e trappole antiche." },
+  { key: "cripta", name: "La Cripta degli Echi", icon: "\u{1F480}", desc: "Catacombe di ossa e pietra nera, percorse da sussurri. Scheletri, spettri e il Cantore Sepolto.", tiles: { colors: "bone white, black stone, ghostly green", wall: "black stone burial niches filled with bones and skulls", floor: "cracked funeral slabs and scattered bones", ceil: "low vaulted crypt ceiling with carved skulls" } },
+  { key: "forgia", name: "La Forgia della Tempesta", icon: "\u26A1", desc: "Una fucina di rame e ferro carica di fulmini. Costrutti, fabbri runici e il Colosso della Tempesta.", tiles: { colors: "dark iron, copper, electric blue", wall: "riveted dark iron panels with copper conduits and blue electrical coils", floor: "iron grates and copper runic circuits", ceil: "heavy iron beams and insulated copper cables" } },
+  { key: "abisso", name: "L'Abisso Sommerso", icon: "\u{1F30A}", desc: "Un santuario sprofondato nel mare, fra coralli e riflessi turchesi. Predatori abissali e la Regina delle Maree.", tiles: { colors: "deep navy, turquoise, sea green", wall: "flooded temple stone covered in barnacles and dark coral", floor: "wet mosaic slabs with seaweed and shallow water", ceil: "dark stone arches under shimmering blue water" } }
 ];
 var DIFFICULTIES = [
   { key: "facile", name: "Facile", icon: "\u{1F7E2}", rank: 0, minLevel: 1, hp: 1, dmg: 1, plus: 0, elite: 0.4, coins: 1, xp: 1, item: 1, chest: 1, boost: {}, desc: "Il dungeon di sempre: per tutti i livelli." },
@@ -1119,7 +1122,16 @@ var BASE_MONSTERS = [
       { type: "buff_ca", name: "Corazza di Ghiaccio", acBonus: 2, durationTurns: 2 },
       { type: "debuff_dis", name: "Tormenta Accecante", durationTurns: 2 }
     ]
-  }
+  },
+  { id: "base-custode-ossa", name: "Custode d'Ossa", icon: "\u{1F480}", role: "minion", level: 2, hp: 16, ac: 13, init: 1, save: 1, dungeons: ["cripta"], desc: "Scheletro in armatura spezzata armato di una lancia d'osso.", resistances: [], vulnerabilities: ["bludgeoning", "radiant"], immunities: ["poison"], actions: [BA("Lancia d'Osso", 1, "d8", 4)] },
+  { id: "base-spettro-eco", name: "Spettro degli Echi", icon: "\u{1F47B}", role: "elite", level: 4, hp: 38, ac: 14, init: 3, save: 3, dungeons: ["cripta"], desc: "Spirito incatenato che assorbe la luce delle torce.", resistances: ["necrotic", "cold"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Tocco Sepolcrale", 2, "d6", 5, { dmgType: "oscurit\xE0" }), { type: "debuff_dis", name: "Sussurri dei Morti", durationTurns: 2 }] },
+  { id: "base-cantore-sepolto", name: "Il Cantore Sepolto", icon: "\u{1F451}", role: "boss", size: "large", level: 6, hp: 95, ac: 16, init: 2, save: 4, dungeons: ["cripta"], desc: "Re scheletrico con una corona d'ossa e una campana funebre al posto dello scettro.", resistances: ["necrotic"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Scettro d'Ossa", 2, "d8", 6), BA("Rintocco Funebre", 4, "d8", 0, { dmgType: "oscurit\xE0", hitMode: "save", aoeShape: "sphere", saveAbility: "wis", saveDC: 14, halfOnSave: true }), { type: "buff_ca", name: "Corteo delle Ossa", acBonus: 2, durationTurns: 2 }] },
+  { id: "base-sentinella-rame", name: "Sentinella di Rame", icon: "\u{1F916}", role: "minion", level: 2, hp: 18, ac: 14, init: 0, save: 1, dungeons: ["forgia"], desc: "Automa di rame con una piccola bobina elettrica sul dorso.", resistances: ["lightning"], vulnerabilities: ["acid"], immunities: ["poison"], actions: [BA("Pugno di Rame", 1, "d8", 4), BA("Scintilla", 1, "d6", 4, { dmgType: "fulmine" })] },
+  { id: "base-fabbro-runico", name: "Fabbro Runico", icon: "\u{1F528}", role: "elite", level: 4, hp: 44, ac: 15, init: 0, save: 3, dungeons: ["forgia"], desc: "Gigante corazzato con un martello attraversato da scariche blu.", resistances: ["fire"], vulnerabilities: ["cold"], immunities: [], actions: [BA("Martello della Forgia", 2, "d8", 5, { dmgType: "fulmine" }), { type: "buff_ca", name: "Piastre Runiche", acBonus: 2, durationTurns: 2 }] },
+  { id: "base-colosso-tempesta", name: "Colosso della Tempesta", icon: "\u26A1", role: "boss", size: "huge", level: 6, hp: 100, ac: 16, init: 1, save: 4, dungeons: ["forgia"], desc: "Colosso di ferro e rame con un nucleo di fulmini imprigionati nel petto.", resistances: ["lightning", "fire"], vulnerabilities: ["acid"], immunities: ["poison"], actions: [BA("Maglio del Tuono", 2, "d10", 6), BA("Onda Elettrica", 4, "d8", 0, { dmgType: "fulmine", hitMode: "save", aoeShape: "sphere", saveAbility: "dex", saveDC: 14, halfOnSave: true }), { type: "buff_adv", name: "Sovraccarico", durationTurns: 2 }] },
+  { id: "base-predatore-abissale", name: "Predatore Abissale", icon: "\u{1F41F}", role: "minion", level: 2, hp: 16, ac: 12, init: 3, save: 1, dungeons: ["abisso"], desc: "Pesce anfibio dai denti trasparenti che striscia fra i coralli.", resistances: ["cold"], vulnerabilities: ["lightning"], immunities: [], actions: [BA("Morso Abissale", 1, "d8", 4)] },
+  { id: "base-guardiano-corallo", name: "Guardiano di Corallo", icon: "\u{1F980}", role: "elite", level: 4, hp: 46, ac: 16, init: -1, save: 2, dungeons: ["abisso"], desc: "Granchio gigante ricoperto di coralli affilati e conchiglie antiche.", resistances: ["cold", "slashing"], vulnerabilities: ["lightning", "bludgeoning"], immunities: [], actions: [BA("Chela di Corallo", 2, "d8", 5), BA("Getto di Salamoia", 2, "d6", 4, { dmgType: "veleno" })] },
+  { id: "base-regina-maree", name: "Regina delle Maree", icon: "\u{1F419}", role: "boss", size: "huge", level: 6, hp: 96, ac: 15, init: 2, save: 4, dungeons: ["abisso"], desc: "Antica creatura tentacolare con una corona di coralli e occhi turchesi luminosi.", resistances: ["cold"], vulnerabilities: ["lightning"], immunities: ["poison"], actions: [BA("Tentacolo Abissale", 2, "d10", 6), BA("Onda delle Profondit\xE0", 4, "d8", 0, { dmgType: "ghiaccio", hitMode: "save", aoeShape: "cone", saveAbility: "str", saveDC: 14, halfOnSave: true }), { type: "debuff_dis", name: "Nube d'Inchiostro", durationTurns: 2 }] }
 ];
 function mergeMonsters(docs = []) {
   const ids = new Set(docs.map((d) => d.id));
@@ -1136,7 +1148,7 @@ function mergeDungeons(custom = []) {
   custom.forEach((d) => {
     if (d?.key) map.set(d.key, { ...map.get(d.key) || {}, ...d });
   });
-  return [...map.values()].filter((d) => !d.hidden);
+  return [...map.values()].filter((d) => !d.hidden && d.active !== false);
 }
 var DEFAULT_FLOORS = 3;
 var MONSTER_SIZES = [

@@ -2259,7 +2259,8 @@ exports.segreteDo = onCall(
           if (run) return { ok: true, already: true };
           const typeSnap = await tx.get(db.collection("dungeon_types").doc(room.type));
           const dungeon = segreteBundle.mergeDungeons(typeSnap.exists ? [{ key: room.type, ...typeSnap.data() }] : [])
-            .find((d) => d.key === room.type) || { key: room.type, name: "Le Segrete", icon: "🗝" };
+            .find((d) => d.key === room.type);
+          if (!dungeon) throw new Error("Questo dungeon non è attivo. Il capo deve scegliere un altro dungeon.");
           const bestiary = await loadBestiary();
           const week = segreteBundle.currentWeekKey();
           const day = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });

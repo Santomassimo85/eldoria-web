@@ -154,3 +154,8 @@ button.sga-card:hover { border-color: var(--el); }
 .sgi-rar { color: var(--rar, var(--osso-2)) !important; font-weight: 700; }
 .sgi-base { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; }
 .sgi-base span { padding: 3px 8px; font-size: .82rem; border: 1px solid rgba(var(--osso-rgb), .14); border-radius: 3px; background: var(--roccia-1); }
+.sga-dungeon-availability { margin: 12px 0 18px; padding: 12px; border: 1px solid var(--roccia-3); border-radius: 4px; }
+.sga-dungeon-availability legend { color: var(--osso); font-weight: 700; }
+.sga-dungeon-switches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 8px; }
+.sga-dungeon-switches .sga-check { min-height: 44px; padding: 8px; background: var(--roccia-2); border-radius: 4px; }
+.sga-dungeon-switches small { margin-left: auto; color: var(--osso-2); }

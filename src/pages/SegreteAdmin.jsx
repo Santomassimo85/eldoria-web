@@ -147,7 +147,7 @@ export default function SegreteAdmin() {
           <p className="adm-sub">Tipi di dungeon con i loro sfondi, e il bestiario dei mostri che ci vivono.</p>
         </div>
         <div className="adm-mast-aside">
-          <div className="adm-stat"><span>Dungeon</span><strong>{dungeons.filter((d) => !d.hidden).length}</strong></div>
+          <div className="adm-stat"><span>Dungeon</span><strong>{dungeons.filter((d) => !d.hidden && d.active !== false).length}</strong></div>
           <div className="adm-stat"><span>Mostri</span><strong>{monsters.length}</strong></div>
         </div>
       </div>
@@ -187,7 +187,7 @@ function DungeonsTab({ dungeons, monsters }) {
     try {
       await setDoc(doc(db, "dungeon_types", key), {
         name: draft.name.trim().slice(0, 40), icon: (draft.icon || "🗝").slice(0, 4), desc: String(draft.desc || "").slice(0, 300),
-        floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), backgrounds: draft.backgrounds || [], hidden: !!draft.hidden,
+        floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), backgrounds: draft.backgrounds || [], hidden: !!draft.hidden, active: draft.active !== false,
         lootChance: num(draft.lootChance, 0, 100, 35),
         updatedAt: serverTimestamp(),
       }, { merge: true });
@@ -262,7 +262,7 @@ function DungeonsTab({ dungeons, monsters }) {
           <button type="button" className="adm-btn" disabled={!!busy} onClick={generate}>{busy === "bg" ? "⏳ Disegno…" : "✨ Genera con l'IA"}</button>
         </div>
 
-        <label className="sga-check"><input type="checkbox" checked={!!draft.hidden} onChange={(e) => set({ hidden: e.target.checked })} /> Nascosto (i giocatori non lo possono scegliere)</label>
+        <label className="sga-check"><input type="checkbox" checked={!draft.hidden && draft.active !== false} onChange={(e) => set({ active: e.target.checked, hidden: false })} /> Attivo e selezionabile dai giocatori</label>
         <div className="sga-savebar">
           <button type="button" className="adm-btn adm-btn--gold" disabled={!!busy} onClick={save}>{busy === "save" ? "Salvo…" : "💾 Salva"}</button>
           <button type="button" className="adm-btn" onClick={close}>Annulla</button>
@@ -275,16 +275,28 @@ function DungeonsTab({ dungeons, monsters }) {
   return (
     <>
       <div className="sga-btns"><button type="button" className="adm-btn adm-btn--gold" onClick={() => open(null)}>＋ Nuovo dungeon</button></div>
+      <fieldset className="sga-dungeon-availability">
+        <legend>Dungeon attivi e selezionabili</legend>
+        <p className="sga-hint">Disattivare un dungeon impedisce nuove partenze; le spedizioni in corso possono finire.</p>
+        <div className="sga-dungeon-switches">{dungeons.map((d) => <label key={d.key} className="sga-check">
+          <input type="checkbox" checked={!d.hidden && d.active !== false} disabled={!!busy} onChange={async (e) => {
+            const active = e.target.checked;
+            setBusy(`active:${d.key}`);
+            try { await setDoc(doc(db, "dungeon_types", d.key), { active, ...(active ? { hidden: false } : {}), updatedAt: serverTimestamp() }, { merge: true }); }
+            catch (err) { alert(err.message); } finally { setBusy(""); }
+          }} /> {d.name}<small>{!d.hidden && d.active !== false ? "Attivo" : "Disattivato"}</small>
+        </label>)}</div>
+      </fieldset>
       <div className="sga-grid">
         {dungeons.map((d) => {
           const n = monsters.filter((m) => (m.dungeons || []).includes(d.key));
           const bosses = n.filter((m) => m.role === "boss").length;
           return (
-            <button key={d.key} type="button" className={`sga-card sga-dcard${d.hidden ? " is-hidden" : ""}`} onClick={() => open(d)}>
+            <button key={d.key} type="button" className={`sga-card sga-dcard${(d.hidden || d.active === false) ? " is-hidden" : ""}`} onClick={() => open(d)}>
               <div className="sga-dcard-bg" style={d.backgrounds?.[0] ? { backgroundImage: `url(${d.backgrounds[0]})` } : undefined}>
                 {!d.backgrounds?.[0] && <span aria-hidden="true">{d.icon}</span>}
               </div>
-              <b>{d.icon} {d.name}{d.hidden ? " · nascosto" : ""}</b>
+              <b>{d.icon} {d.name}{d.hidden || d.active === false ? " · disattivato" : ""}</b>
               <small>{d.floors || DEFAULT_FLOORS} sale + boss · {(d.backgrounds || []).length} sfondi · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
               <small>🎁 {d.lootChance ?? 35}% oggetto · 10% Mimic nello scrigno finale</small>
             </button>

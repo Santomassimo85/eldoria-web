@@ -73,7 +73,7 @@ export const SG_ICONS = {
   },
   dungeon: {
     segrete: "dungeon-gate", caverna: "cave-entrance", magma: "volcano", ghiaccio: "ice-iris",
-    palude: "swamp", tempio: "greek-temple",
+    palude: "swamp", tempio: "greek-temple", cripta: "death-skull", forgia: "lightning-storm", abisso: "swamp",
   },
   diff: { facile: "broken-skull", medio: "death-skull", leggenda: "crowned-skull" },
   monster: {

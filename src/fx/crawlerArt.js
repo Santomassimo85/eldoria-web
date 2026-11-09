@@ -65,6 +65,9 @@ export const TILE_THEMES = {
   ghiaccio: { wall: () => rock([0x1d3a58, 0x4a80a8, 0x9fcfe8], 9), floor: () => rock([0x1f3e5c, 0x55899f, 0xa8d4e8], 12), ceil: () => rock([0x12263c, 0x2c5272, 0x5c94b8], 8), amb: 0.42, tint: [0.84, 0.96, 1.16], flame: 0x9fdcff },
   palude: { wall: () => bricks([0x151d14, 0x37452f, 0x667055], 32, 16, moss), floor: () => rock([0x0f1a12, 0x2b3d27, 0x4e6240], 14), ceil: () => rock([0x0b120c, 0x1d2a1b, 0x33432c], 9), amb: 0.48, tint: [0.88, 1.08, 0.74], flame: 0xb8e060 },
   tempio: { wall: () => bricks([0x4a3618, 0x9a7a44, 0xdcbf80], 32, 32), floor: () => bricks([0x3c2c14, 0x7f6236, 0xba9c64], 16, 16), ceil: () => bricks([0x281c0e, 0x5a4425, 0x8a6c3e], 32, 16), amb: 0.6, tint: [1.1, 0.96, 0.76], flame: 0xffc060 },
+  cripta: { wall: () => bricks([0x121a17, 0x35423b, 0x9b9b7d], 32, 16), floor: () => bricks([0x141817, 0x38423c, 0x73776b], 32, 32), ceil: () => rock([0x0b1110, 0x26302a, 0x414a3b], 10), amb: 0.4, tint: [0.82, 1.1, 0.85], flame: 0x8fe6a0 },
+  forgia: { wall: () => bricks([0x141c28, 0x3c5064, 0xa88555], 32, 16), floor: () => bricks([0x151d24, 0x394452, 0x718796], 16, 16), ceil: () => bricks([0x0b1320, 0x263547, 0x4a6078], 32, 16), amb: 0.55, tint: [0.8, 1, 1.2], flame: 0x65caff },
+  abisso: { wall: () => rock([0x071c29, 0x164951, 0x4e8b83], 12, moss), floor: () => bricks([0x071c26, 0x1e4c55, 0x517f86], 32, 32), ceil: () => rock([0x06101f, 0x163147, 0x365c71], 10), amb: 0.38, tint: [0.72, 1.06, 1.2], flame: 0x63e5dc },
 };
 // un'immagine già quadrata e leggibile → tessera per il motore
 export function tileFromImage(img, size = 128) {

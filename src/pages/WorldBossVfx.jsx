@@ -325,7 +325,7 @@ function playCanvas(msg, targets) {
   const elOfKey = (k) => document.querySelector(`[data-vfx-target="${k}"]`);
   // chi lancia una magia (dardo, area, maledizione) si illumina
   const caster = msg.effectFrom ? elOfKey(msg.effectFrom) : null;
-  if (caster && stageOf(caster)?.matches(".rpg-battle-scene") && ["slash", "thrust", "smash", "punch", "claw", "bite", "stomp", "arrow"].includes(kind)) {
+  if (caster && stageOf(caster)?.matches(".rpg-battle-scene, .cv-field, .al-field") && ["slash", "thrust", "smash", "punch", "claw", "bite", "stomp", "arrow"].includes(kind)) {
     const source = anchorOf(msg.effectFrom);
     strikePose(caster, kind, source ? Math.sign(anchors[0].a.x - source.x) || 1 : 1);
   }

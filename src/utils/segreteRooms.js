@@ -7,9 +7,15 @@
 import { collection, doc, runTransaction, serverTimestamp, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
-import { MAX_PARTY, allReady } from "../data/segrete";
+import { MAX_PARTY, allReady, mergeDungeons } from "../data/segrete";
 
 const roomsCol = () => collection(db, "dungeon_rooms");
+
+async function requireActiveDungeon(tx, key) {
+  const snap = await tx.get(doc(db, "dungeon_types", key));
+  const dungeon = mergeDungeons(snap.exists() ? [{ key, ...snap.data() }] : []).find((d) => d.key === key);
+  if (!dungeon) throw new Error("Questo dungeon non è attivo. Scegli un altro dungeon.");
+}
 
 function memberFrom(uid, char, cls, level) {
   return {
@@ -23,6 +29,7 @@ function memberFrom(uid, char, cls, level) {
 export async function createRoom(uid, char, { name, type, cls, level, difficulty = "facile" }) {
   const ref = doc(roomsCol());
   await runTransaction(db, async (tx) => {
+    await requireActiveDungeon(tx, type);
     tx.set(ref, {
       name: String(name || "").trim().slice(0, 40) || `Gruppo di ${char?.name || "?"}`,
       type, difficulty, hostUid: uid,
@@ -40,14 +47,16 @@ async function editRoom(roomId, fn) {
     const s = await tx.get(ref);
     if (!s.exists()) throw new Error("La stanza non esiste più.");
     const room = s.data();
-    const patch = fn(room);
+    const patch = await fn(room, tx);
+    if (patch?.status === "running" || (patch?.type && patch.type !== room.type)) await requireActiveDungeon(tx, patch.type || room.type);
     if (patch === "delete") { tx.delete(ref); return null; }
     if (patch) tx.update(ref, { ...patch, updatedAt: serverTimestamp() });
     return patch;
   });
 }
 
-export const joinRoom = (roomId, uid, char, cls, level) => editRoom(roomId, (room) => {
+export const joinRoom = (roomId, uid, char, cls, level) => editRoom(roomId, async (room, tx) => {
+  await requireActiveDungeon(tx, room.type);
   if (room.status !== "open") throw new Error("Il gruppo è già partito.");
   if (room.memberIds.includes(uid)) return null;
   if (room.members.length >= MAX_PARTY) throw new Error(`Il gruppo è pieno (${MAX_PARTY} su ${MAX_PARTY}).`);

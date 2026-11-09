@@ -153,6 +153,9 @@ export default function Segrete() {
   }, [charData, cls]);
 
   const dungeons = useMemo(() => mergeDungeons(custom), [custom]);
+  useEffect(() => {
+    if (!dungeons.some((d) => d.key === type)) setType(dungeons[0]?.key || "");
+  }, [dungeons, type]);
   const dungeonOf = (key) => dungeons.find((d) => d.key === key) || { key, name: key, icon: "🗝" };
   const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
   const meInRoom = myRoom ? roomMember(myRoom, uid) : null;
@@ -163,7 +166,7 @@ export default function Segrete() {
   const invitedTo = (r) => (r.invited || []).find((i) => i.uid === uid) || null;
   const fresh = (r, ms) => Date.now() - tsMs(r.updatedAt || r.createdAt) < ms;
   const openRooms = rooms
-    .filter((r) => r.status === "open" && r.id !== myRoom?.id && (fresh(r, 2 * 864e5) || invitedTo(r) || master))
+    .filter((r) => r.status === "open" && dungeons.some((d) => d.key === r.type) && r.id !== myRoom?.id && (fresh(r, 2 * 864e5) || invitedTo(r) || master))
     .sort((a, b) => Number(invitedTo(b)) - Number(invitedTo(a)) || tsMs(b.updatedAt) - tsMs(a.updatedAt));
   const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id && (fresh(r, 6 * 36e5) || master));
   const invites = openRooms.filter(invitedTo).length;
@@ -297,6 +300,7 @@ export default function Segrete() {
               <summary className="sgr-h2">✚ Crea un gruppo</summary>
               <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
               <p className="sgr-label">Dove scendete</p>
+              {!dungeons.length && <p className="sgr-hint">Nessun dungeon attivo. Il Master può attivarli dall’admin delle Segrete.</p>}
               <div className="sgr-dpick" role="radiogroup" aria-label="Dungeon">
                 {dungeons.map((d) => (
                   <button key={d.key} type="button" role="radio" aria-checked={type === d.key}
@@ -311,7 +315,7 @@ export default function Segrete() {
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
               <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
-              <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls)}
+              <button type="button" className="sgr-cta" disabled={busy || !type || !dungeons.length || !cls || !heroReady(charData, cls)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
                 onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls), difficulty: diff }))}>
                 Crea il gruppo
@@ -410,6 +414,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
   const host = room.hostUid === uid;
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
   const readyN = room.members.filter((m) => m.ready).length;
+  const dungeonActive = dungeons.some((d) => d.key === room.type);
 
   if (room.status === "running" || room.status === "done") {
     return (
@@ -458,12 +463,13 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       {me && heroOf(charData, me.cls) && !armorChosen(me.cls, heroOf(charData, me.cls)) && (
         <button type="button" className="sgr-gear-alert" onClick={() => onFix?.(me.cls)}>⚠ Il tuo {classInfo(me.cls)?.it} non ha ancora scelto l'armatura (ora usa quella di base). <b>Sistemala →</b></button>
       )}
+      {!dungeonActive && <p className="sgr-err">Questo dungeon è disattivato. Il capo deve sceglierne uno attivo per partire.</p>}
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && (
         <p className="sgr-helper">🤝 Con {classInfo(me?.cls)?.it || "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>
       )}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && !heroReady(charData, me?.cls))}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!dungeonActive || !heroReady(charData, me?.cls)))}
           onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
           {me?.ready ? "✓ Pronto — annulla" : canRun ? "▶ Avvia" : "▶ Avvia come aiuto"}
         </button>
@@ -474,7 +480,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
 
       <div className="sgr-room-actions">
         <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => leaveRoom(room.id, uid))}>Esci dal gruppo</button>
-        {master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => forceStart(room.id))}>▶ Avvia comunque (Master)</button>}
+        {master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy || !dungeonActive} onClick={() => run(() => forceStart(room.id))}>▶ Avvia comunque (Master)</button>}
       </div>
     </section>
   );

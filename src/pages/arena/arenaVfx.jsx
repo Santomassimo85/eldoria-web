@@ -1,3 +1,4 @@
+import { pickEffectForAction } from "../worldBossSpells";
 // Effetti a schermo dell'Arena: dal testo della riga di log alla forma/elemento dei pixel del World Boss.
 // Estratto da Arena.jsx (2026-10-27): stesso codice, solo spostato.
 
@@ -13,7 +14,7 @@
 // effectEl (fire · frost · lightning · poison · darkness · radiant · arcane · physical),
 // miss (sbuffo "mancato" al posto dello scoppio). Solo testo: la logica di
 // combattimento non cambia. Ordine: esito → cure/scudi/buff/debuff → elemento → forma.
-export const ARENA_FX_OFFENSIVE = new Set(["slash", "arrow", "bolt", "aoe", "debuff"]);
+export const ARENA_FX_OFFENSIVE = new Set(["slash", "arrow", "bolt", "aoe", "debuff", "thrust", "smash", "punch", "claw", "bite", "beam", "breath", "fireball", "missiles", "strike", "rain", "wave", "drain", "vine", "cloud", "curse", "sleep", "stomp", "spikes", "roar"]);
 export const AOE_SPELL_RE = /(palla di fuoco|onda tonante|onda di tuono|frantumare|mani brucianti|cono di freddo|\bfulmine\b|tempesta|deflagraz|esplosion|\bbomba\b|soffio|nube|sfera infuocata|raggio di luna|pioggia|turbine)/;
 export const RANGED_RE = /(\barco\b|frecc|balestra|pistol|fucile|moschetto|fionda|giavellotto|da lancio|dardo\b(?! incantato| di fuoco)|\btiro\b|picchiata|raffica)/;
 export function arenaFxElement(text) {
@@ -25,7 +26,7 @@ export function arenaFxElement(text) {
   if (/(necro|tenebr|oscur|\bombra\b|vampir|hadar|sussurr|gelido tocco|tocco gelido|maledi)/.test(text)) return "darkness";
   return null;
 }
-export function classifyArenaVfx(entry) {
+function basicArenaVfx(entry) {
   if (!entry || typeof entry !== "object") return null;
   const text = (entry.pub || entry.att || "").toLowerCase();
   if (!text) return null;
@@ -53,6 +54,16 @@ export function classifyArenaVfx(entry) {
   if (/(colpisce|colpisci|attacc|fendente|carica|furtivo|colpo|mischia|lama|taglia|morso|artigli|pugno|calcio|danni)/.test(text)) return { kind: "slash", el: el || "physical", miss };
   if (el) return { kind: "bolt", el, miss };
   return null;
+}
+export function classifyArenaVfx(entry) {
+  const fx = basicArenaVfx(entry);
+  if (!fx) return fx;
+  const text = (entry.pub || entry.att || "").toLowerCase();
+  if (fx.kind === "heal" && /tocco vampirico|vampiric touch|drena/.test(text) && entry.defId) return { ...fx, kind: "drain", el: "darkness" };
+  if (["heal", "buff", "shield"].includes(fx.kind)) return fx;
+  const rich = pickEffectForAction({ name: entry.pub || entry.att || "" }, fx.kind === "debuff" ? "bolt" : /raffica di colpi|colpo stordente/.test(text) ? "slash" : fx.kind);
+  if (/raffica di colpi|colpo stordente/.test(text)) return { ...fx, kind: "punch" };
+  return { ...fx, kind: fx.kind === "debuff" && rich.kind === "bolt" ? "debuff" : rich.kind };
 }
 // Codici legacy di `lastFx` (heal · slash · ranged · fire · frost · lightning · poison · magic)
 // oppure già {kind, el} → formato VfxLayer.
