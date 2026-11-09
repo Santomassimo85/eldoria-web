@@ -13,7 +13,7 @@
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
 import { canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND } from "./segreteKits";
-import { sizeOf, diffOf } from "./segrete";
+import { sizeOf, diffOf, MIMIC_MONSTER } from "./segrete";
 
 export const LOG_MAX = 80;
 export const AFK_MS = 5 * 60 * 1000; // 5 minuti per agire (2026-11-05, prima 10)
@@ -154,7 +154,7 @@ export const CROWD_CHANCE = 0.42;
 export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
   // `_anyBoss` = boss di altri dungeon (li passa il server): si usano solo se questo dungeon non ha un boss suo
-  const own = bestiary.filter((m) => !m._anyBoss);
+  const own = bestiary.filter((m) => !m._anyBoss && m.id !== "mimic");
   const all = own.length ? own : FALLBACK_MONSTERS;
   const fit = (role, max, list = all) => {
     const of = list.filter((m) => (m.role || "minion") === role);
@@ -1048,12 +1048,12 @@ export function useItem(s, uid, { itemId, targetId }, now) {
 }
 
 // Chi sparisce per AFK_MS: si difende da solo (lo chiede chiunque del gruppo).
-export function timeout(s, now) {
+export function timeout(s, now, mimicSource = MIMIC_MONSTER) {
   // nessuno apre lo scrigno: dopo un po' si apre da solo (lo apre il primo del gruppo)
   if (s.status === "treasure") {
     if (now - (s.chestAt || 0) < CHEST_AUTO_MS) throw new Error("Lo scrigno aspetta ancora qualcuno.");
     const h = s.heroes.find((x) => !x.fled) || s.heroes[0];
-    return openChest(s, h.uid, now);
+    return openChest(s, h.uid, now, mimicSource);
   }
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
@@ -1084,7 +1084,7 @@ export const CHEST_AUTO_MS = 90 * 1000;
 export const CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
 export const CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
 export const CHEST_RARE_CHANCE = 0.04; // per la difficoltà si moltiplica per il "chest" (Leggenda 6%)
-export function openChest(s, uid, now) {
+export function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
   if (s.status !== "treasure") throw new Error("Qui non c'è nessuno scrigno da aprire.");
   const opener = s.heroes.find((h) => h.uid === uid);
   if (!opener) throw new Error("Non sei in questo gruppo.");
@@ -1092,8 +1092,7 @@ export function openChest(s, uid, now) {
     const D = diffOf(s.diff);
     s.mimic = { result: "fight", byUid: uid, eligible: s.heroes.filter((h) => !h.fled && !h.helper).map((h) => h.uid) };
     const lv = partyLevel(s);
-    const foe = makeFoe({ id: "mimic", name: "Mimic", icon: "👹", role: "elite", level: lv, hp: 40, ac: 13,
-      actions: [A("Morso", 2, "d6", 5), A("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })] }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
+    const foe = makeFoe({ ...MIMIC_MONSTER, ...mimicSource, id: "mimic", role: "elite", level: lv }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
     s.foes = balanceFoes([foe], s.heroes, false);
     foe.maxHp = foe.hp = Math.round(foe.maxHp * D.hp);
     foe.cap.dmg *= D.dmg;

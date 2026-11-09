@@ -45,7 +45,17 @@ export const diffOf = (key) => DIFFICULTIES.find((d) => d.key === key) || DIFFIC
    bestiario (dungeon_monsters). Il Master li modifica dall'admin: il salvataggio crea un doc
    con lo STESSO id che li sovrascrive; eliminarli = doc con hidden: true. */
 const BA = (name, diceNum, diceType, bonus, extra = {}) => ({ type: "attack", name, diceNum, diceType, bonus, hitMode: "hit", aoeShape: "single", dmgType: "", ...extra });
+export const MIMIC_MONSTER = {
+  id: "mimic", name: "Mimic", icon: "👹", role: "elite", size: "medium", level: 1,
+  hp: 40, ac: 13, init: 0, save: 0, dungeons: [],
+  desc: "Uno scrigno vivente con denti e lingua: appare solo nel tesoro finale (10%).",
+  look: "A living wooden treasure chest mimic with iron bands, lid open as a huge mouth lined with sharp ivory teeth, a long purple tongue and sticky acidic pseudopods. Recognizable treasure chest silhouette, sinister dungeon monster, no humanoid body.",
+  imageUrl: "", deadImageUrl: "", frontImageUrl: "", facing: "left",
+  resistances: [], vulnerabilities: [], immunities: [],
+  actions: [BA("Morso", 2, "d6", 5), BA("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })],
+};
 export const BASE_MONSTERS = [
+  MIMIC_MONSTER,
   { id: "base-lupo-invernale", name: "Lupo Invernale", icon: "🐺", role: "minion", size: "medium", level: 2, hp: 15, ac: 13, init: 2, save: 1, dungeons: ["ghiaccio"],
     desc: "Lupo dal pelo bianco come la neve, caccia in branco e morde alle gambe.", resistances: ["cold"], vulnerabilities: ["fire"], immunities: [],
     actions: [BA("Morso Gelido", 1, "d8", 4, { dmgType: "ghiaccio" }), { type: "buff_adv", name: "Ululato del Branco", durationTurns: 2 }] },

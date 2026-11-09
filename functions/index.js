@@ -2248,10 +2248,10 @@ exports.segreteDo = onCall(
         const loadBestiary = async () => {
           // + mostri di base del codice (2026-11-06), sovrascrivibili/nascondibili dal Master
           const all = segreteBundle.mergeMonsters((await tx.get(db.collection("dungeon_monsters"))).docs.map((d) => ({ id: d.id, ...d.data() })));
-          const own = all.filter((m) => (m.dungeons || []).includes(room.type));
+          const own = all.filter((m) => m.id !== "mimic" && (m.dungeons || []).includes(room.type));
           if (own.some((m) => m.role === "boss")) return own;
           // il dungeon non ha un boss suo: si pesca fra i boss degli altri dungeon (2026-11-05)
-          return own.concat(all.filter((m) => m.role === "boss" && !own.some((o) => o.id === m.id)).map((m) => ({ ...m, _anyBoss: true })));
+          return own.concat(all.filter((m) => m.id !== "mimic" && m.role === "boss" && !own.some((o) => o.id === m.id)).map((m) => ({ ...m, _anyBoss: true })));
         };
 
         if (op === "init") {
@@ -2299,6 +2299,12 @@ exports.segreteDo = onCall(
         }
 
         if (!run) throw new Error("La partita non è ancora iniziata.");
+        // Load the saved Mimic for both manual and automatic final-chest opening.
+        let mimicSource;
+        if ((op === "chest" || op === "timeout") && run.status === "treasure") {
+          const mimicSnap = await tx.get(db.collection("dungeon_monsters").doc("mimic"));
+          mimicSource = segreteBundle.mergeMonsters(mimicSnap.exists ? [{ ...mimicSnap.data(), id: "mimic", hidden: false }] : []).find((m) => m.id === "mimic");
+        }
         const before = run.seq || 0;
         let ev = null;
         let bagPatch = null;
@@ -2314,12 +2320,12 @@ exports.segreteDo = onCall(
         } else if (op === "act") {
           ev = segreteBundle.withRng(segreteRng, () => segreteBundle.act(run, uid, { actionId: String(request.data?.actionId || ""), targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
         } else if (op === "timeout") {
-          segreteBundle.withRng(segreteRng, () => segreteBundle.timeout(run, now));
+          segreteBundle.withRng(segreteRng, () => segreteBundle.timeout(run, now, mimicSource));
         } else if (op === "next") {
           const bestiary = await loadBestiary();
           segreteBundle.withRng(segreteRng, () => segreteBundle.nextFloor(run, bestiary, now));
         } else if (op === "chest") { // lo scrigno dopo il boss (2026-11-07)
-          segreteBundle.withRng(segreteRng, () => segreteBundle.openChest(run, uid, now));
+          segreteBundle.withRng(segreteRng, () => segreteBundle.openChest(run, uid, now, mimicSource));
         } else if (op === "flee") {
           segreteBundle.withRng(segreteRng, () => segreteBundle.flee(run, uid, now));
         } else {

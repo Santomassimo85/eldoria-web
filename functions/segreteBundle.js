@@ -972,7 +972,31 @@ var DIFFICULTIES = [
 ];
 var diffOf = (key) => DIFFICULTIES.find((d) => d.key === key) || DIFFICULTIES[0];
 var BA = (name, diceNum, diceType, bonus, extra = {}) => ({ type: "attack", name, diceNum, diceType, bonus, hitMode: "hit", aoeShape: "single", dmgType: "", ...extra });
+var MIMIC_MONSTER = {
+  id: "mimic",
+  name: "Mimic",
+  icon: "\u{1F479}",
+  role: "elite",
+  size: "medium",
+  level: 1,
+  hp: 40,
+  ac: 13,
+  init: 0,
+  save: 0,
+  dungeons: [],
+  desc: "Uno scrigno vivente con denti e lingua: appare solo nel tesoro finale (10%).",
+  look: "A living wooden treasure chest mimic with iron bands, lid open as a huge mouth lined with sharp ivory teeth, a long purple tongue and sticky acidic pseudopods. Recognizable treasure chest silhouette, sinister dungeon monster, no humanoid body.",
+  imageUrl: "",
+  deadImageUrl: "",
+  frontImageUrl: "",
+  facing: "left",
+  resistances: [],
+  vulnerabilities: [],
+  immunities: [],
+  actions: [BA("Morso", 2, "d6", 5), BA("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })]
+};
 var BASE_MONSTERS = [
+  MIMIC_MONSTER,
   {
     id: "base-lupo-invernale",
     name: "Lupo Invernale",
@@ -1303,7 +1327,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 var CROWD_CHANCE = 0.42;
 function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize, eliteChance = 0.4 }) {
   const boss = floor > floors;
-  const own = bestiary.filter((m) => !m._anyBoss);
+  const own = bestiary.filter((m) => !m._anyBoss && m.id !== "mimic");
   const all = own.length ? own : FALLBACK_MONSTERS;
   const fit = (role, max, list = all) => {
     const of = list.filter((m) => (m.role || "minion") === role);
@@ -2308,11 +2332,11 @@ function useItem(s, uid, { itemId, targetId }, now) {
   afterHeroAction(s, now);
   return { actor: h.id, roll: null, item: itemId };
 }
-function timeout(s, now) {
+function timeout(s, now, mimicSource = MIMIC_MONSTER) {
   if (s.status === "treasure") {
     if (now - (s.chestAt || 0) < CHEST_AUTO_MS) throw new Error("Lo scrigno aspetta ancora qualcuno.");
     const h = s.heroes.find((x) => !x.fled) || s.heroes[0];
-    return openChest(s, h.uid, now);
+    return openChest(s, h.uid, now, mimicSource);
   }
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   const late = pendingHeroes(s);
@@ -2345,7 +2369,7 @@ var CHEST_AUTO_MS = 90 * 1e3;
 var CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
 var CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
 var CHEST_RARE_CHANCE = 0.04;
-function openChest(s, uid, now) {
+function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
   if (s.status !== "treasure") throw new Error("Qui non c'\xE8 nessuno scrigno da aprire.");
   const opener = s.heroes.find((h) => h.uid === uid);
   if (!opener) throw new Error("Non sei in questo gruppo.");
@@ -2353,16 +2377,7 @@ function openChest(s, uid, now) {
     const D = diffOf(s.diff);
     s.mimic = { result: "fight", byUid: uid, eligible: s.heroes.filter((h) => !h.fled && !h.helper).map((h) => h.uid) };
     const lv = partyLevel(s);
-    const foe = makeFoe({
-      id: "mimic",
-      name: "Mimic",
-      icon: "\u{1F479}",
-      role: "elite",
-      level: lv,
-      hp: 40,
-      ac: 13,
-      actions: [A("Morso", 2, "d6", 5), A("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })]
-    }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
+    const foe = makeFoe({ ...MIMIC_MONSTER, ...mimicSource, id: "mimic", role: "elite", level: lv }, 0, s.heroes.filter((h) => !h.fled).length, "", lv);
     s.foes = balanceFoes([foe], s.heroes, false);
     foe.maxHp = foe.hp = Math.round(foe.maxHp * D.hp);
     foe.cap.dmg *= D.dmg;

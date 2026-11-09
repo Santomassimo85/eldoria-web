@@ -19,7 +19,7 @@ import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 import { cleanSpriteDataUrl } from "../utils/aiSprite";
 import {
-  DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
+  DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MIMIC_MONSTER, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
 import {
   ActionsList, DefensesPicker, FacingPicker, blankAction, sanitizeActions, pixelArtPrompt,
@@ -311,6 +311,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
 
   const save = async () => {
     const m = cleanMonster(form);
+    if (form.id === "mimic") { m.dungeons = []; m.role = "elite"; }
     if (!m.name) return alert("Dai un nome al mostro.");
     flag("save", true);
     try {
@@ -484,12 +485,14 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
 
         <div className="jw">
           <h3 className="jw-h">Dove esce</h3>
+          {form.id === "mimic" ? <p className="sga-hint">Solo nello scrigno finale di tutti i dungeon (10%). Genera gli sprite qui sotto e premi SALVA: saranno usati anche dal Mimic dello scrigno. Il livello si adatta al gruppo.</p> : <>
           <div className="jw-menu">
             {dungeons.map((d) => {
               const on = (form.dungeons || []).includes(d.key);
               return <button key={d.key} type="button" aria-pressed={on} onClick={() => set({ dungeons: on ? form.dungeons.filter((k) => k !== d.key) : [...(form.dungeons || []), d.key] })}>{d.icon} {d.name}</button>;
             })}
           </div>
+          </>}
         </div>
 
         <div className="jw">
@@ -541,7 +544,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
           <button type="button" className="is-main" disabled={busy.save} onClick={save}>{busy.save ? "SALVO…" : "💾 SALVA"}</button>
           <button type="button" onClick={() => setForm(null)}>ESCI</button>
           {form.id && <button type="button" onClick={duplicate}>DUPLICA</button>}
-          {form.id && <button type="button" className="is-danger" onClick={remove}>ELIMINA</button>}
+          {form.id && form.id !== "mimic" && <button type="button" className="is-danger" onClick={remove}>ELIMINA</button>}
         </div>
       </div>
     );
@@ -550,6 +553,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
   return (
     <>
       <div className="sga-btns">
+        <button type="button" className="adm-btn adm-btn--gold" onClick={() => setForm({ ...blankMonster(), ...MIMIC_MONSTER, ...(monsters.find((m) => m.id === "mimic") || {}), id: "mimic", base: true })}>👹 Mimic dello scrigno · Sprite</button>
         <button type="button" className="adm-btn adm-btn--gold" onClick={() => setForm(blankMonster(filter !== "all" && filter !== "none" ? filter : ""))}>＋ Nuovo mostro</button>
         <button type="button" className="adm-btn" aria-pressed={showImport} onClick={() => setShowImport((v) => !v)}>📥 Importa dal World Boss</button>
       </div>
