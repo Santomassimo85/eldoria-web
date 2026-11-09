@@ -13,7 +13,7 @@
    la pozione base si compra facile (25), il resto costa 2–10 dungeon, un'arma +1 ≈ un mese.
    `daily` = quanti se ne possono comprare al giorno (giorno di Roma), per giocatore:
    characters.storyShopDay = {day, n: {id: quantità}}. Lo controlla il server (shopBuy). */
-import { WEAPONS, WEAPON_CHOICES, ARMOR_PROF, ARMORS, armorProf, canWear } from "./segreteKits";
+import { WEAPONS, WEAPON_CHOICES, ARMOR_PROF, ARMORS, HEAVY_ARMOR_TEXT, weaponOf, armorProf, canWear } from "./segreteKits";
 
 export const COIN_NAME = "Monete Antiche";
 export const COIN_ICON = "🪙";
@@ -130,14 +130,19 @@ Object.values(SPECIAL_WEAPONS).forEach((w) => { w.kind = "weapon"; w.price = 0; 
 Object.values(ARMOR_ITEMS).forEach((a) => { if (a.price == null) a.price = 0; });
 
 export const ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS, ...SPECIAL_WEAPONS, ...ARMOR_ITEMS };
-export const itemOf = (id) => (ITEMS[id] ? { id, ...ITEMS[id] } : null);
+export const itemOf = (id) => {
+  const it = ITEMS[id];
+  if (!it) return null;
+  return { id, ...it, ...(it.kind === "armor" && ARMORS[it.base]?.cat === "heavy" ? { desc: `${it.desc || ""} / ${HEAVY_ARMOR_TEXT}.` } : {}) };
+};
 export const SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
 export const isGear = (it) => !!it && (it.kind === "weapon" || it.kind === "armor" || it.kind === "shield");
 export const battleItem = (id) => { const it = itemOf(id); return it && !isGear(it) ? it : null; };
 // equipaggiamento dell'eroe con gli oggetti risolti (per heroDefense / heroAc di segreteKits)
 export function heroGear(hero = {}, cls) {
   const wi = itemOf(hero?.weaponItem);
-  return { armor: hero?.armor, shield: hero?.shield, weapon: (wi?.kind === "weapon" ? wi.base : hero?.weapon) || WEAPON_CHOICES[cls]?.[0], armorItem: itemOf(hero?.armorItem), shieldItem: itemOf(hero?.shieldItem) };
+  const validWeapon = wi?.kind === "weapon" && (WEAPON_CHOICES[cls] || []).includes(wi.base);
+  return { armor: hero?.armor, shield: hero?.shield, weapon: weaponOf(cls, validWeapon ? wi.base : hero?.weapon).key, armorItem: itemOf(hero?.armorItem), shieldItem: itemOf(hero?.shieldItem) };
 }
 // chi può usare un equipaggiamento: classi (chiavi)
 export function gearUsers(it) {

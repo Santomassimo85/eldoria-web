@@ -9,7 +9,7 @@ import { sgIconName } from "../data/segreteIcons";
 import { classInfo } from "../data/segrete";
 import { bagOf, itemOf, heroGear, RARITY } from "../data/segreteItems";
 import {
-  weaponChoices, heroDefense, armorChoices, armorProf, armorChosen, ARMORS, ARMOR_CAT_IT, TWO_HANDED, fxLine, DMG_ALL, DMG_SHORT, WSTAT_LABEL, canWear,
+  weaponChoices, heroDefense, armorChoices, armorProf, armorChosen, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, fxLine, DMG_ALL, DMG_SHORT, WSTAT_LABEL, canWear,
 } from "../data/segreteKits";
 
 const sign = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "=");
@@ -38,7 +38,8 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
   const [open, setOpen] = useState(chosen ? null : "armor");
   const toggle = (k) => setOpen((o) => (o === k ? null : k));
 
-  const wItem = itemOf(hero.weaponItem);
+  const equippedWeapon = itemOf(hero.weaponItem);
+  const wItem = equippedWeapon && weaponChoices(cls).some((w) => w.key === equippedWeapon.base) ? equippedWeapon : null;
   const aItem = itemOf(hero.armorItem);
   const sItem = itemOf(hero.shieldItem);
   const bases = weaponChoices(cls);
@@ -53,8 +54,8 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
 
   const slots = [
     { k: "weapon", label: "Arma", gi: sgIconName("item", wItem) || sgIconName("weapon", w.key), rarity: wItem?.rarity, icon: wItem?.icon || w.icon, name: wItem ? wItem.name : w.name,
-      sub: `${w.dice}${wItem?.plus ? ` +${wItem.plus}` : ""} ${DMG_SHORT[w.dmg] || ""}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}`, n: bagW.length },
-    { k: "armor", label: "Armatura", gi: sgIconName("item", aItem) || sgIconName("armor", def.key), rarity: aItem?.rarity, icon: def.armorIcon, name: def.armorName, sub: `CA ${def.ac}${def.res.length ? ` · resiste a ${def.res.map((r) => DMG_ALL[r]).join(", ")}` : ""}${def.saveBonus ? ` · +${def.saveBonus} TS` : ""}${def.perk ? ` · ✦ ${def.perk.text}` : ""}`, n: bagA.length, warn: !chosen },
+      sub: `${w.attacks ? `${w.attacks} attacchi da ` : ""}${w.dice}${wItem?.plus ? ` +${wItem.plus}` : ""} ${DMG_SHORT[w.dmg] || ""}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}`, n: bagW.length },
+    { k: "armor", label: "Armatura", gi: sgIconName("item", aItem) || sgIconName("armor", def.key), rarity: aItem?.rarity, icon: def.armorIcon, name: def.armorName, sub: `CA ${def.ac}${def.attackPenalty ? ` / ${def.attackPenalty}` : ""}${def.res.length ? ` · resiste a ${def.res.map((r) => DMG_ALL[r]).join(", ")}` : ""}${def.saveBonus ? ` · +${def.saveBonus} TS` : ""}${def.perk ? ` · ✦ ${def.perk.text}` : ""}`, n: bagA.length, warn: !chosen },
     ...(prof.shield ? [{ k: "shield", label: "Scudo", gi: shieldOn ? sgIconName("item", sItem) || sgIconName("armor", "scudo") : null, rarity: sItem?.rarity, icon: shieldOn ? sItem?.icon || "🛡" : "—", name: shieldOn ? def.shieldName : twoH ? "arma a due mani" : "nessuno",
       sub: shieldOn ? `+${2 + (sItem?.plus || 0)} CA` : twoH ? "con un'arma a due mani niente scudo" : "+2 CA se lo imbracci", n: bagS.length }] : []),
   ];
@@ -105,7 +106,7 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
             const ac = acWith({ armor: k, armorItem: null });
             return (
               <Opt key={k} on={chosen && armorKey === k} icon={a.icon} gi={sgIconName("armor", k)} name={a.name} tag={`CA ${ac}`} delta={ac - def.ac} disabled={busy}
-                sub={`${ARMOR_CAT_IT[a.cat]}${a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? " + DES (max +2)" : " + DES"}` : ""}${a.perk ? ` · ✦ ${a.perk.text}` : ""}`}
+                sub={`${ARMOR_CAT_IT[a.cat]}${a.cat === "heavy" ? ` / ${HEAVY_ARMOR_TEXT}` : ""}${a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? " + DES (max +2)" : " + DES"}` : ""}${a.perk ? ` · ✦ ${a.perk.text}` : ""}`}
                 onClick={() => send({ op: "heroArmor", cls, armor: k, shield: hero.shield !== false })} />
             );
           })}
@@ -116,7 +117,7 @@ export default function SegreteGear({ cls, hero, st, charData, busy, send }) {
             return <Opt key={it.id} icon={it.icon} gi={sgIconName("item", it)} name={`${it.name} ×${bag[it.id]}`} rarity={it.rarity} tag={`CA ${ac}`} delta={ac - def.ac} disabled={busy} sub={it.desc}
               onClick={() => send({ op: "heroEquip", cls, slot: "armor", itemId: it.id })} />;
           })}
-          {!bagA.length && !aItem && <p className="sgg-note">Mezza Armatura, Stecche e Piastre si comprano in Bottega; quelle magiche si trovano nei dungeon (guarda "📜 Cosa c'è qui").</p>}
+          {!bagA.length && !aItem && <p className="sgg-note">Mezza Armatura e Stecche si comprano in Bottega; quelle magiche si trovano nei dungeon (guarda "📜 Cosa c'è qui").</p>}
           {aItem && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => send({ op: "heroEquip", cls, slot: "armor", itemId: null })}>↩ Rimetti {aItem.name} nello zaino</button>}
         </div>
       )}

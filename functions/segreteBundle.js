@@ -124,6 +124,7 @@ var WEAPONS = {
   mazzafrusto: { name: "Mazzafrusto", icon: "\u26D3", dice: "1d8", dmg: "bludgeoning", wstat: "str" },
   arco_lungo: { name: "Arco Lungo", icon: "\u{1F3F9}", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
   scimitarra: { name: "Scimitarra", icon: "\u{1F5E1}", dice: "1d6", dmg: "slashing", wstat: "fin" },
+  pugnali: { name: "Due Pugnali", icon: "\u{1F5E1}", dice: "1d4", dmg: "piercing", wstat: "fin", attacks: 2 },
   stocco: { name: "Stocco", icon: "\u{1F5E1}", dice: "1d8", dmg: "piercing", wstat: "fin" },
   bastone: { name: "Bastone Ferrato", icon: "\u{1F9AF}", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
   lancia: { name: "Lancia", icon: "\u{1F531}", dice: "1d6", dmg: "piercing", wstat: "str" },
@@ -137,7 +138,7 @@ var WEAPON_CHOICES = {
   paladin: ["spada_lunga", "mazzafrusto"],
   ranger: ["arco_lungo", "scimitarra"],
   monk: ["pugni", "bastone", "lancia"],
-  rogue: ["stocco", "scimitarra"],
+  rogue: ["stocco", "pugnali"],
   wizard: ["bastone", "balestra_l"],
   sorcerer: ["bastone", "balestra_l"],
   warlock: ["mazza", "lancia"],
@@ -150,9 +151,9 @@ var WSTAT_LABEL = { str: "FOR", dex: "DES", fin: "FOR o DES" };
 var weaponChoices = (cls) => (WEAPON_CHOICES[cls] || WEAPON_CHOICES.fighter).map((k) => ({ key: k, ...WEAPONS[k], wstat: cls === "monk" ? "fin" : WEAPONS[k].wstat }));
 function weaponOf(cls, key) {
   const list = weaponChoices(cls);
-  return list.find((w) => w.key === key) || list[0];
+  return list.find((w) => w.key === (cls === "rogue" && key === "scimitarra" ? "pugnali" : key)) || list[0];
 }
-var weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...w.vfx ? { vfx: w.vfx } : {}, ...wItem?.fx ? { wfx: wItem.fx } : {}, info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` \xB7 ${fxLine(wItem.fx)}` : ""}` });
+var weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, ...w.attacks ? { attacks: w.attacks } : {}, plus: plus || 0, ...w.vfx ? { vfx: w.vfx } : {}, ...wItem?.fx ? { wfx: wItem.fx } : {}, info: `${w.attacks ? `${w.attacks} attacchi da ` : ""}${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} \xB7 ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` \xB7 ${fxLine(wItem.fx)}` : ""}` });
 function fxLine(fx = {}) {
   const out = [];
   if (fx.extra) out.push(`+${fx.extra[0]} ${DMG_ALL[fx.extra[1]] || ""}`);
@@ -179,8 +180,9 @@ var ARMORS = {
   anelli: { name: "Cotta ad Anelli", icon: "\u26D3", cat: "heavy", base: 14, dex: 0, start: true, perk: { save: 1, hp: 4, text: "anelli larghi, si respira: +4 PF e +1 ai TS" } },
   maglia: { name: "Cotta di Maglia", icon: "\u26D3", cat: "heavy", base: 16, dex: 0, start: true },
   stecche: { name: "Armatura a Stecche", icon: "\u{1F6E1}", cat: "heavy", base: 17, dex: 0 },
-  piastre: { name: "Armatura di Piastre", icon: "\u{1F3F0}", cat: "heavy", base: 18, dex: 0 }
+  piastre: { start: true, name: "Armatura Completa di Piastre", icon: "\u{1F3F0}", cat: "heavy", base: 18, dex: 0 }
 };
+var HEAVY_ARMOR_TEXT = "ingombro per tiro: 50% normale, 25% -1 a colpire, 25% svantaggio";
 var ARMOR_PROF = {
   fighter: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
   paladin: { cats: ["light", "medium", "heavy"], shield: true, def: "maglia" },
@@ -219,6 +221,7 @@ function heroDefense(cls, st, g = {}) {
     ac,
     key,
     cat: ar.cat,
+    ...ar.cat === "heavy" ? { attackPenalty: HEAVY_ARMOR_TEXT } : {},
     shield,
     canShield,
     perk: ar.perk || null,
@@ -452,7 +455,7 @@ function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null,
   const k = kitOf(cls);
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
-  const withWeapon = (a) => a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
+  const withWeapon = (a) => a.useWeapon ? { ...a, ...w.attacks ? { attacks: w.attacks } : {}, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
   const grip = canTwoHand(cls, w0.key) ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} \xB7 riprendi lo scudo` : `${VERSATILE[w0.key]} \xB7 niente scudo` }] : [];
   return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...grip, DEFEND];
@@ -726,7 +729,11 @@ Object.values(ARMOR_ITEMS).forEach((a) => {
   if (a.price == null) a.price = 0;
 });
 var ITEMS = { ...BASE_ITEMS, ...WEAPON_ITEMS, ...SPECIAL_WEAPONS, ...ARMOR_ITEMS };
-var itemOf = (id) => ITEMS[id] ? { id, ...ITEMS[id] } : null;
+var itemOf = (id) => {
+  const it = ITEMS[id];
+  if (!it) return null;
+  return { id, ...it, ...it.kind === "armor" && ARMORS[it.base]?.cat === "heavy" ? { desc: `${it.desc || ""} / ${HEAVY_ARMOR_TEXT}.` } : {} };
+};
 var SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
 var isGear = (it) => !!it && (it.kind === "weapon" || it.kind === "armor" || it.kind === "shield");
 var battleItem = (id) => {
@@ -1224,7 +1231,7 @@ function makeHero(m) {
   const maxHp = heroMaxHp(m.cls, lv, st, hero.hpRolls || []);
   const wItem = itemOf(hero.weaponItem);
   const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
-  const weaponKey = okItem ? wItem.base : hero.weapon || null;
+  const weaponKey = weaponOf(m.cls, okItem ? wItem.base : hero.weapon).key;
   const weaponPlus = okItem ? wItem.plus || 0 : 0;
   const def = heroDefense(m.cls, st, { armor: hero.armor, shield: hero.shield, weapon: weaponKey || weaponChoices(m.cls)[0]?.key, armorItem: itemOf(hero.armorItem), shieldItem: itemOf(hero.shieldItem) });
   const uses = {};
@@ -1253,6 +1260,7 @@ function makeHero(m) {
     ...okItem ? { wItem: wItem.id } : {},
     res: def.res,
     ...def.thorns ? { thorns: def.thorns } : {},
+    armorCategory: def.cat,
     gear: { armor: def.armorName, shield: def.shieldName },
     // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
     ...hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {},
@@ -1623,9 +1631,9 @@ function applyDamage(s, target, amount, type, notes) {
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
 }
-function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
+function attackRoll(s, att, def, bonus, { adv = false, dis = false, critAt = 20 } = {}) {
   let a = adv || fxOn(s, att.fx.adv) || !!def.fx?.paralyzed || !!def.fx?.petrified || fxOn(s, def.fx?.blinded);
-  let d = fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
+  let d = dis || fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
   if (a && d) {
     a = false;
     d = false;
@@ -1699,10 +1707,15 @@ function heroAct(s, h, a, target) {
         if (!others.length) break;
         target = others[0];
       }
-      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv, critAt: wfx?.crit || 20 });
+      const heavy = h.armorCategory === "heavy" || !h.armorCategory && /cotta|stecche|piastre|catene del carceriere/i.test(h.gear?.armor || "");
+      const burden = heavy ? die(100) : 0;
+      const armorMalus = burden > 50 && burden <= 75 ? 1 : 0;
+      const actualHit = hitW - armorMalus;
+      const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
+      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: wfx?.crit || 20 });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
       if (!r.hit) {
-        log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } });
+        log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${actualHit}=${r.total} vs CA ${r.ac})${advTag(r)}${burdenTag}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } });
         continue;
       }
       let [dn, ds] = diceFor(a, lv);
@@ -1749,7 +1762,7 @@ function heroAct(s, h, a, target) {
       if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st) + (h.armorDc || 0));
       log(
         s,
-        `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
+        `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${actualHit}=${r.total})${advTag(r)}${burdenTag}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice }, dr: { n: dn, s: ds, r: rolled.r, p: plusDmg } }
       );
     }

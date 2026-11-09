@@ -14,7 +14,7 @@ import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
 import { itemOf, heroGear } from "../data/segreteItems";
 import {
-  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
+  kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY, RESPEC_COST,
 } from "../data/segreteKits";
 
@@ -46,7 +46,7 @@ function WeaponPicker({ cls, value, onPick, disabled }) {
           className={`sgh-pick${value === w.key ? " is-on" : ""}`} onClick={() => onPick(w.key)}>
           <span className="sgh-act">
             <SgIcon kind="weapon" of={w} frame size="sm" /> <b>{w.name}</b>{w.ranged ? <em> · a distanza</em> : null}
-            <small>{w.dice} {DMG_SHORT[w.dmg]} · usa {WSTAT_LABEL[w.wstat]}</small>
+            <small>{w.attacks ? `${w.attacks} attacchi da ` : ""}{w.dice} {DMG_SHORT[w.dmg]} · usa {WSTAT_LABEL[w.wstat]}</small>
           </span>
         </button>
       ))}
@@ -70,7 +70,7 @@ function ArmorPicker({ cls, st, weapon, value, shield, onPick, disabled }) {
               className={`sgh-pick${value === k ? " is-on" : ""}`} onClick={() => onPick(k, shield)}>
               <span className="sgh-act">
                 <SgIcon kind="armor" of={k} fallback={a.icon} frame size="sm" /> <b>{a.name}</b> <em>· CA {ac}</em>
-                <small>{a.perk ? <b className="sgh-perk">✦ {a.perk.text} · </b> : null}{ARMOR_CAT_IT[a.cat]}{a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? ` + DES (max +${a.dex})` : " + DES"}` : ""}</small>
+                <small>{a.perk ? <b className="sgh-perk">✦ {a.perk.text} · </b> : null}{ARMOR_CAT_IT[a.cat]}{a.cat === "heavy" ? ` / ${HEAVY_ARMOR_TEXT}` : ""}{a.cat === "unarmored" ? ` · 10 + DES + ${cls === "monk" ? "SAG" : "COS"}` : a.base ? ` · ${a.base}${a.dex === 0 ? "" : a.dex < 9 ? ` + DES (max +${a.dex})` : " + DES"}` : ""}</small>
               </span>
             </button>
           );
@@ -177,7 +177,8 @@ export default function SegreteHero({ cls, charData }) {
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
-  const wItem = itemOf(hero.weaponItem);
+  const equippedWeapon = itemOf(hero.weaponItem);
+  const wItem = equippedWeapon && weaponChoices(cls).some((w) => w.key === equippedWeapon.base) ? equippedWeapon : null;
   const acts = heroActions(cls, lv, hero.picks || [], wItem?.base || hero.weapon, wItem?.plus || 0, wItem).filter((a) => a.kind !== "defend");
   const gear = heroGear(hero, cls);
   const def = heroDefense(cls, st, gear);

@@ -68,7 +68,7 @@ export function makeHero(m) {
   // arma magica equipaggiata: vale solo se è di uno dei due tipi d'arma della classe
   const wItem = itemOf(hero.weaponItem);
   const okItem = wItem?.kind === "weapon" && weaponChoices(m.cls).some((w) => w.key === wItem.base);
-  const weaponKey = okItem ? wItem.base : hero.weapon || null;
+  const weaponKey = weaponOf(m.cls, okItem ? wItem.base : hero.weapon).key;
   const weaponPlus = okItem ? wItem.plus || 0 : 0;
   // armatura e scudo (2026-11-06): CA, resistenze, +TS e "spine" dagli oggetti equipaggiati
   const def = heroDefense(m.cls, st, { armor: hero.armor, shield: hero.shield, weapon: weaponKey || weaponChoices(m.cls)[0]?.key, armorItem: itemOf(hero.armorItem), shieldItem: itemOf(hero.shieldItem) });
@@ -79,6 +79,7 @@ export function makeHero(m) {
     hp: maxHp + def.hpBonus, maxHp: maxHp + def.hpBonus, ac: def.ac, init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus, st,
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
     ...(okItem ? { wItem: wItem.id } : {}), res: def.res, ...(def.thorns ? { thorns: def.thorns } : {}),
+    armorCategory: def.cat,
     gear: { armor: def.armorName, shield: def.shieldName },
     // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
     ...(hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {}),
@@ -393,9 +394,9 @@ function applyDamage(s, target, amount, type, notes) {
   target.hp = Math.max(0, target.hp - dmg);
   return dmg;
 }
-function attackRoll(s, att, def, bonus, { adv = false, critAt = 20 } = {}) {
+function attackRoll(s, att, def, bonus, { adv = false, dis = false, critAt = 20 } = {}) {
   let a = adv || fxOn(s, att.fx.adv) || !!def.fx?.paralyzed || !!def.fx?.petrified || fxOn(s, def.fx?.blinded);
-  let d = fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
+  let d = dis || fxOn(s, att.fx.dis) || fxOn(s, att.fx.frightened) || fxOn(s, att.fx.blinded) || fxOn(s, att.fx.slow);
   if (a && d) { a = false; d = false; }
   const r1 = d20(); const r2 = a || d ? d20() : null;
   const nat = r2 == null ? r1 : a ? Math.max(r1, r2) : Math.min(r1, r2);
@@ -464,9 +465,15 @@ function heroAct(s, h, a, target) {
         if (!others.length) break;
         target = others[0];
       }
-      const r = attackRoll(s, h, target, hitW, { adv: !!a.adv, critAt: wfx?.crit || 20 });
+      // Ingombro estratto per ciascun tiro, anche sulle armature magiche.
+      const heavy = h.armorCategory === "heavy" || (!h.armorCategory && /cotta|stecche|piastre|catene del carceriere/i.test(h.gear?.armor || ""));
+      const burden = heavy ? die(100) : 0;
+      const armorMalus = burden > 50 && burden <= 75 ? 1 : 0;
+      const actualHit = hitW - armorMalus;
+      const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
+      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: wfx?.crit || 20 });
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
-      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${hitW}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } }); continue; }
+      if (!r.hit) { log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: manca (🎲${r.nat}+${actualHit}=${r.total} vs CA ${r.ac})${advTag(r)}${burdenTag}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } }); continue; }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
       const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
@@ -489,7 +496,7 @@ function heroAct(s, h, a, target) {
       if (a.drain && total > 0) { const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + Math.floor(total / 2)); extra += ` · si cura di ${h.hp - before}`; }
       if (wfx && alive(target)) { const w = weaponHitFx(s, h, target, wfx, r.crit, notes); total += w.dmg; extra += w.txt; }
       if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, (heroDc(h.cls, lv, st) + (h.armorDc || 0)));
-      log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${hitW}=${r.total})${advTag(r)}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
+      log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (🎲${r.nat}+${actualHit}=${r.total})${advTag(r)}${burdenTag}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`,
         { kind: r.crit ? "crit" : "hit", actor: h.id, targets: [target.id], dmg: total, roll: { nat: r.nat, dice: r.dice }, dr: { n: dn, s: ds, r: rolled.r, p: plusDmg } });
     }
     return ev;

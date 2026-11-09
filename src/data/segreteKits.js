@@ -68,6 +68,7 @@ export const WEAPONS = {
   mazzafrusto: { name: "Mazzafrusto", icon: "⛓", dice: "1d8", dmg: "bludgeoning", wstat: "str" },
   arco_lungo: { name: "Arco Lungo", icon: "🏹", dice: "1d8", dmg: "piercing", wstat: "dex", ranged: true },
   scimitarra: { name: "Scimitarra", icon: "🗡", dice: "1d6", dmg: "slashing", wstat: "fin" },
+  pugnali: { name: "Due Pugnali", icon: "🗡", dice: "1d4", dmg: "piercing", wstat: "fin", attacks: 2 },
   stocco: { name: "Stocco", icon: "🗡", dice: "1d8", dmg: "piercing", wstat: "fin" },
   bastone: { name: "Bastone Ferrato", icon: "🦯", dice: "1d6", dmg: "bludgeoning", wstat: "str" },
   lancia: { name: "Lancia", icon: "🔱", dice: "1d6", dmg: "piercing", wstat: "str" },
@@ -81,7 +82,7 @@ export const WEAPON_CHOICES = {
   paladin: ["spada_lunga", "mazzafrusto"],
   ranger: ["arco_lungo", "scimitarra"],
   monk: ["pugni", "bastone", "lancia"],
-  rogue: ["stocco", "scimitarra"],
+  rogue: ["stocco", "pugnali"],
   wizard: ["bastone", "balestra_l"],
   sorcerer: ["bastone", "balestra_l"],
   warlock: ["mazza", "lancia"],
@@ -95,11 +96,11 @@ export const weaponChoices = (cls) => (WEAPON_CHOICES[cls] || WEAPON_CHOICES.fig
 // arma dell'eroe: quella scelta, altrimenti la prima della classe (eroi creati prima delle armi)
 export function weaponOf(cls, key) {
   const list = weaponChoices(cls);
-  return list.find((w) => w.key === key) || list[0];
+  return list.find((w) => w.key === (cls === "rogue" && key === "scimitarra" ? "pugnali" : key)) || list[0];
 }
 // plus = arma magica equipaggiata (+1/+2 a colpire e ai danni, vedi segreteItems.js)
 // wItem = oggetto arma equipaggiato (nome proprio ed effetti al colpo `fx`, 2026-11-06)
-export const weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, plus: plus || 0, ...(w.vfx ? { vfx: w.vfx } : {}), ...(wItem?.fx ? { wfx: wItem.fx } : {}), info: `${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}` });
+export const weaponAction = (w, plus = 0, wItem = null) => ({ id: "arma", name: wItem?.name || (plus ? `${w.name} +${plus}` : w.name), icon: wItem?.icon || w.icon, kind: "weapon", dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, weaponKey: w.key, ...(w.attacks ? { attacks: w.attacks } : {}), plus: plus || 0, ...(w.vfx ? { vfx: w.vfx } : {}), ...(wItem?.fx ? { wfx: wItem.fx } : {}), info: `${w.attacks ? `${w.attacks} attacchi da ` : ""}${w.dice}${plus ? `+${plus}` : ""} ${DMG_SHORT[w.dmg] || ""} · ${WSTAT_LABEL[w.wstat]}${wItem?.fx ? ` · ${fxLine(wItem.fx)}` : ""}` });
 // testo breve degli effetti al colpo di un'arma speciale
 export function fxLine(fx = {}) {
   const out = [];
@@ -137,8 +138,9 @@ export const ARMORS = {
   anelli: { name: "Cotta ad Anelli", icon: "⛓", cat: "heavy", base: 14, dex: 0, start: true, perk: { save: 1, hp: 4, text: "anelli larghi, si respira: +4 PF e +1 ai TS" } },
   maglia: { name: "Cotta di Maglia", icon: "⛓", cat: "heavy", base: 16, dex: 0, start: true },
   stecche: { name: "Armatura a Stecche", icon: "🛡", cat: "heavy", base: 17, dex: 0 },
-  piastre: { name: "Armatura di Piastre", icon: "🏰", cat: "heavy", base: 18, dex: 0 },
+  piastre: { start: true, name: "Armatura Completa di Piastre", icon: "🏰", cat: "heavy", base: 18, dex: 0 },
 };
+export const HEAVY_ARMOR_TEXT = "ingombro per tiro: 50% normale, 25% -1 a colpire, 25% svantaggio";
 export const ARMOR_CAT_IT = { none: "abiti", mage: "magia", unarmored: "senz'armatura", light: "leggera", medium: "media", heavy: "pesante" };
 // competenze del manuale D&D (2026-11-06, ricontrollate): il Chierico base NON porta le pesanti,
 // il Druido non porta armature di metallo (`no`: Giaco di Maglia, Scaglie, Mezza Armatura)
@@ -181,7 +183,7 @@ export function heroDefense(cls, st, g = {}) {
   const parts = [ai, shield ? si : null].filter(Boolean);
   const perk = ar.perk || {};
   return {
-    ac, key, cat: ar.cat, shield, canShield, perk: ar.perk || null,
+    ac, key, cat: ar.cat, ...(ar.cat === "heavy" ? { attackPenalty: HEAVY_ARMOR_TEXT } : {}), shield, canShield, perk: ar.perk || null,
     hitBonus: perk.hit || 0, dcBonus: perk.dc || 0, hpBonus: perk.hp || 0,
     armorName: ai ? ai.name : ar.name, armorIcon: ai ? ai.icon : ar.icon,
     shieldName: shield ? (si ? si.name : "Scudo") : "",
@@ -338,7 +340,7 @@ export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem 
   const k = kitOf(cls);
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
-  const withWeapon = (a) => (a.useWeapon ? { ...a, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
+  const withWeapon = (a) => (a.useWeapon ? { ...a, ...(w.attacks ? { attacks: w.attacks } : {}), dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
   const grip = canTwoHand(cls, w0.key)
     ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} · riprendi lo scudo` : `${VERSATILE[w0.key]} · niente scudo` }] : [];

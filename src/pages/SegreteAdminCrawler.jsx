@@ -64,7 +64,7 @@ function Preview({ dungeons, monsters, tiles }) {
           <select className="admin-field-input" value={wk} onChange={(e) => setWeapon(e.target.value)}>{choices.map((k) => <option key={k} value={k}>{WEAPONS[k].name}</option>)}</select></label>
       </div>
       {canShield && <label className="sga-check"><input type="checkbox" checked={shield} onChange={(e) => setShield(e.target.checked)} /> Impugna lo scudo</label>}
-      <p className="sga-hint">{GLOVES[gloveOf(cls)].name} · {off === "shield" ? "scudo a sinistra" : off === "none" ? "arma a due mani" : GLOVES[gloveOf(cls)].focus ? "focus arcano a sinistra" : "mano sinistra semiaperta"}</p>
+      <p className="sga-hint">{GLOVES[gloveOf(cls)].name} · {off === "mirror" ? "un pugnale per mano" : off === "shield" ? "scudo a sinistra" : off === "none" ? "arma a due mani" : GLOVES[gloveOf(cls)].focus ? "focus arcano a sinistra" : "mano sinistra semiaperta"}</p>
       <div className="sga-cw-prev">
         <canvas ref={setCv} width={CW_W} height={CW_H} aria-label="Anteprima della stanza in prima persona" />
         <canvas ref={setFg} aria-hidden="true" />
@@ -158,7 +158,7 @@ export default function CrawlerArtTab({ dungeons, monsters, itemsV = 0 }) {
       <figure key={id} className="sga-cw-tile">
         {src ? <img src={src} alt={h.name} /> : <span>{h.icon}</span>}
         {src && cut[id] && <em className="sga-cw-cut">⚠ tagliata: rigenerala</em>}
-        <figcaption>{h.special ? "" : h.name} <small>{h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.baseGlove || h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
+        <figcaption>{h.special ? "" : h.name} <small>{h.off === "mirror" ? "due pugnali" : h.off === "shield" ? "+ scudo" : h.off === "none" ? "a due mani" : GLOVES[h.baseGlove || h.glove]?.focus ? "+ focus arcano" : "+ mano libera"}</small></figcaption>
         <button type="button" className="adm-btn" disabled={!!busy} onClick={() => genHand(h)}>{busy === `hand:${id}` ? "⏳" : src ? "✨ Rigenera" : "✨ Genera sprite"}</button>
         <label className="adm-btn sga-cw-up">📁 Carica<input type="file" accept="image/png,image/webp" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) upHand(h, file); e.target.value = ""; }} /></label>
         {src && isRangedHand(h.base) && (

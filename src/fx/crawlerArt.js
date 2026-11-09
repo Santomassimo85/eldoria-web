@@ -105,6 +105,7 @@ const blade = (s, wide = 13) => { s.line(82, 78, 30, 8, (k) => wide - k * (wide 
 const DRAW = {
   spada_lunga: (s) => { arm(s, 88, 90); s.line(84, 88, 96, 104, 6, LEATHER).line(70, 88, 96, 72, 6, GOLD); blade(s); },
   scimitarra: (s) => { arm(s, 88, 90, 0x4a3a2e, 0x6a5240); s.line(70, 88, 94, 74, 5, GOLD); for (let i = 0; i < 40; i++) { const k = i / 39; s.ell(82 - k * 52 - Math.sin(k * 3.14) * 12, 78 - k * 70 + Math.sin(k * 3.14) * 6, 5 - k * 3, 5 - k * 3, STEEL); } },
+  pugnali: (s) => { arm(s, 90, 96, 0x4a3a2e, 0x6a5240); s.line(88, 92, 66, 51, (k) => 9 - k * 7, STEEL).line(78, 88, 91, 80, 4, GOLD); },
   stocco: (s) => { arm(s, 90, 92, 0x4a3a50, 0x6a5a70); s.ell(84, 86, 11, 9, GOLD).line(82, 80, 34, 4, (k) => 6 - k * 4, STEEL).line(80, 76, 36, 6, 1, 0xf0f4fa); },
   ascia_bip: (s) => { arm(s, 92, 96, 0x6a3a2a, SKIN); s.line(100, 114, 62, 22, 7, WOOD).ell(46, 26, 19, 21, STEEL).ell(80, 16, 16, 18, STEEL2).ell(38, 26, 8, 16, 0xf0f4fa); },
   martello: (s) => { arm(s, 90, 92); s.line(94, 100, 62, 32, 6, LEATHER).rect(36, 12, 46, 26, STEEL2).rect(36, 12, 46, 6, STEEL); },
@@ -171,6 +172,7 @@ const TWO_FOR = { monk: ["bastone"] };
 export const twoHandedFor = (cls, weaponKey, twoHanded) => !!twoHanded || (TWO_FOR[cls] || []).includes(weaponKey);
 export function handSpec(hero, weaponKey, twoHandedWeapon) {
   const glove = gloveOf(hero?.cls), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
+  if (weaponKey === "pugnali") return { main: weaponKey, off: "mirror", glove };
   if (twoHanded || hero?.twoHand) return { main: weaponKey, off: "none", glove };
   if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
   return { main: weaponKey, off: "hand", glove };
@@ -192,7 +194,7 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
     items.forEach((it) => {
       // a due mani: le armi a due mani, e quelle che le classi di questo guanto tengono sempre a due mani
       const two = g.classes.some((c) => twoHandedFor(c, it.base, TWO_HANDED.has(it.base)));
-      out.push({ ...it, glove, kind: "pair", two, off: two ? "none" : "hand", key: pairKey(it.item, two ? "none" : "hand") });
+      out.push({ ...it, glove, kind: "pair", two, off: it.base === "pugnali" ? "mirror" : two ? "none" : "hand", key: pairKey(it.item, it.base === "pugnali" ? "mirror" : two ? "none" : "hand") });
       if (withShield.has(it.base)) out.push({ ...it, glove, kind: "pair", two: false, off: "shield", key: pairKey(it.item, "shield") });
       // presa a due mani (armi versatili): lo sprite con tutte e due le mani sull'arma
       if (!two && g.classes.some((c) => canTwoHand(c, it.base))) out.push({ ...it, glove, kind: "pair", two: true, off: "none", key: pairKey(it.item, "none") });
@@ -214,7 +216,7 @@ export function armorHandEntries(itemId, it, { WEAPONS, WEAPON_CHOICES, TWO_HAND
       const base = { item: k, base: k, name: WEAPONS[k].name, icon: WEAPONS[k].icon, weaponName: EN[k] || WEAPONS[k].name, glove, gloveDesc: it.look, baseGlove: gloveOf(cls), kind: "pair", armor: itemId };
       const two = twoHandedFor(cls, k, TWO_HANDED.has(k));
       const push = (off, tw) => { const key = pairKey(k, off); if (seen.has(key)) return; seen.add(key); out.push({ ...base, two: tw, off, key }); };
-      push(two ? "none" : "hand", two);
+      push(k === "pugnali" ? "mirror" : two ? "none" : "hand", two);
       if (!two && armorProf(cls).shield) push("shield", false);
       if (!two && canTwoHand(cls, k)) push("none", true);
     });
@@ -288,12 +290,13 @@ The texture MUST tile perfectly: left edge matches right edge, top edge matches 
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface itself (details that belong to the surface are fine): no characters, no furniture, no text, no frame.`;
 };
 
-const EN = { spada_lunga: "longsword", scimitarra: "scimitar", stocco: "rapier", martello: "warhammer", mazza: "flanged mace", mazzafrusto: "flail", lancia: "spear", bastone: "quarterstaff", ascia_bip: "double-bladed greataxe", maglio: "great maul", arco_lungo: "longbow", balestra_l: "light crossbow", pugni: "bare fist" };
+const EN = { pugnali: "dagger", spada_lunga: "longsword", scimitarra: "scimitar", stocco: "rapier", martello: "warhammer", mazza: "flanged mace", mazzafrusto: "flail", lancia: "spear", bastone: "quarterstaff", ascia_bip: "double-bladed greataxe", maglio: "great maul", arco_lungo: "longbow", balestra_l: "light crossbow", pugni: "bare fist" };
 /* RICHIESTA DELLE MANI (2026-11-07, riscritta): istruzioni semplici e senza contraddizioni.
    Immagine 4:3 divisa in tre: arma QUASI VERTICALE nel terzo destro, centro VUOTO (lì si vedono i
    nemici), mano libera o scudo nel terzo sinistro. Per ogni tipo d'arma: com'è fatta e come si tiene. */
 const BLADE = "a straight, symmetric blade; the crossguard is a straight bar exactly PERPENDICULAR to the blade and centered on it; the handle continues the blade in a straight line below the crossguard; a round pommel at the bottom of the handle. The fist closes around the handle just below the crossguard, thumb wrapped around it; the hand never touches the blade";
 const BUILD = {
+  pugnali: "TWO short straight double-edged steel daggers, one in EACH hand; small crossguards, leather grips; no scimitar, no long sword",
   spada_lunga: BLADE,
   scimitarra: "a curved single-edged blade that curves gently backward; a small straight crossguard perpendicular to the handle; the fist closes around the handle just below the crossguard",
   stocco: `a long thin straight rapier blade; a swept hilt cage of curved bars around the fist; ${BLADE.split("; ").slice(2).join("; ")}`,
@@ -320,7 +323,9 @@ export function handPrompt(e) {
   const weapon = `${e.weaponName}${e.look ? ` — its look: ${e.look}` : e.desc ? ` (${e.desc})` : ""}`;
   const build = BUILD[e.base] ? `\nHow the weapon is made and held: ${BUILD[e.base]}.` : "";
   const special = WHERE[e.base];
-  const left = e.off === "shield"
+  const left = e.off === "mirror"
+    ? "LEFT third: the LEFT fist holds the SECOND matching short dagger upright, fully visible. Exactly two daggers, one per hand. Keep the center EMPTY."
+    : e.off === "shield"
     ? "LEFT third of the image: the LEFT hand holds a round shield, seen from BEHIND as the hero sees it: the inside of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield sits low in the bottom-left corner and does not reach the center."
     : GLOVES[gk]?.focus
       ? `LEFT third of the image: the LEFT hand, low in the bottom-left corner, palm up, holds ${GLOVES[gk].focus}.`

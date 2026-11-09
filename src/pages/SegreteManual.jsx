@@ -80,7 +80,7 @@ export default function SegreteManual() {
           <li><b>Scudo</b> +2 CA, solo con un'arma a una mano.</li>
           <li><b>✊ Impugna a due mani</b>: chi non è un incantatore (Guerriero, Barbaro, Paladino, Ranger, Ladro, Monaco) con <b>Spada Lunga</b> o <b>Bastone</b> in lotta può impugnarla a due mani: Spada Lunga 1d10 invece di 1d8, Bastone 1d8 invece di 1d6, ma lo scudo va via con la sua CA. Cambiare presa è gratis e non consuma il turno, però solo prima di agire nel round.</li>
           <li><b>✦ Le armature più leggere hanno un vantaggio</b>, così non sono mai una scelta inutile: {Object.values(ARMORS).filter((x) => x.perk).map((x) => `${x.name} (${x.perk.text.split(": ")[1]})`).join(" · ")}. Valgono anche le loro versioni +1.</li>
-          <li>Mezza armatura, Armatura a Stecche e Piastre si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
+          <li>Il Paladino e il Guerriero possono scegliere anche l’Armatura Completa di Piastre. Tutte le pesanti hanno ingombro a ogni tiro per colpire: 50% normale, 25% -1, 25% svantaggio. Mezza armatura e Armatura a Stecche si comprano in Bottega; quelle magiche (+1, resistenze ai danni, spine…) e gli scudi speciali si trovano solo nei dungeon.</li>
         </ul>
         <div className="sgm-classes">
           {STORY_CLASSES.map((c) => (
