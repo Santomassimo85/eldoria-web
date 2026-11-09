@@ -261,9 +261,11 @@ export class CrawlerEngine {
     if (this.handKey === key) return;
     this.handKey = key;
     const out = proceduralHands(spec.main, spec.off);
+    const fists = proceduralHands("pugni", "mirror");
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
-    const [m, o, p, pe] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl)]);
+    const [m, o, p, pe, fp] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl), up(spec.punchPairUrl)]);
     if (this.handKey !== key || this.dead) return;
+    this.fists = fp ? { pair: fp, cutR: topRow(fp), split: splitOf(fp) } : fists;
     this.ranged = RANGED.has(spec.main);
     this.shootKind = SHOOT_OF[spec.main] || "shoot";
     this.offKind = spec.off;
@@ -318,10 +320,10 @@ export class CrawlerEngine {
     return new Promise((res) => { this.anims.push({ t0: performance.now(), ms, fn, res }); setTimeout(() => res(), ms + 400); });
   }
   // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
-  attack(fx) {
+  attack(fx, { hand = "R", unarmed = false } = {}) {
     const kind = MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
-    const ms = MOVES[kind].ms;
-    this.act = { kind, t0: performance.now(), ms };
+    const ms = this.calm ? 60 : MOVES[kind].ms;
+    this.act = { kind, hand, unarmed, t0: performance.now(), ms };
     return new Promise((res) => setTimeout(res, this.calm ? 60 : ms));
   }
   // dopo quanti ms dall'inizio del tiro parte la freccia (per far partire l'effetto allo scocco)
@@ -338,11 +340,16 @@ export class CrawlerEngine {
   // movimento del momento per la destra (con l'arma) e per la sinistra
   moveNow() {
     const a = this.act;
-    if (!a || this.calm) return { R: NO_MOVE, L: NO_MOVE };
+    if (!a) return { R: NO_MOVE, L: NO_MOVE };
     const k = (performance.now() - a.t0) / a.ms;
     if (k >= 1) { this.act = null; return { R: NO_MOVE, L: NO_MOVE }; }
+    if (this.calm) return { R: NO_MOVE, L: NO_MOVE };
     const left = a.kind === "cast" ? LEFT.cast : this.offKind === "shield" ? LEFT.shield : MOVES[a.kind].release != null ? LEFT.still : LEFT.melee;
-    return { R: curve(MOVES[a.kind].R, k), L: curve(left, k) };
+    if (a.hand === "L") {
+      const strike = curve(MOVES[a.kind].R, k);
+      return { R: NO_MOVE, L: { ...strike, dx: -strike.dx, rot: -strike.rot } };
+    }
+    return { R: curve(MOVES[a.kind].R, k), L: a.unarmed || this.offKind === "mirror" ? NO_MOVE : curve(left, k) };
   }
   async lunge(id) {
     const f = this.byId.get(id); if (!f) return;
@@ -529,8 +536,9 @@ export class CrawlerEngine {
     }
   }
   drawHands() {
-    const { ctx, hands, cam } = this, k = W / 240, b = Math.round(cam.bob * 1.1);
+    const { ctx, cam } = this, k = W / 240, b = Math.round(cam.bob * 1.1);
     const mv = this.moveNow();
+    const hands = this.act?.unarmed && this.fists ? this.fists : this.hands;
     // disegna img nel riquadro (x, y, w, h) con il movimento m, che ruota attorno a (px, py)
     const part = (img, x, y, w, h, m, px, py, sx = 0, sw = null) => {
       ctx.save();
@@ -563,9 +571,9 @@ export class CrawlerEngine {
     if (hands.L) {
       const [w, h] = dims(hands.L), y = H - h + 4 + b;
       ctx.save();
-      ctx.translate(mv.L.dx * k, mv.L.dy * k);
       if (hands.mirrorL) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-      ctx.drawImage(hands.L, 0, y, w, h);
+      const lm = hands.mirrorL ? { ...mv.L, dx: -mv.L.dx, rot: -mv.L.rot } : mv.L;
+      part(hands.L, 0, y, w, h, lm, w * 0.2, H + 4 + b);
       ctx.restore();
     }
     if (hands.R) {

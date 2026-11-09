@@ -1713,6 +1713,9 @@ function heroAct(s, h, a, target) {
       const actualHit = hitW - armorMalus;
       const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
       const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: wfx?.crit || 20 });
+      const unarmed = h.cls === "monk" && heroVfx(a)?.fx === "punch";
+      const hand = unarmed ? k % 2 ? "R" : "L" : h.weapon === "pugnali" ? k % 2 ? "L" : "R" : "R";
+      if (curVfx) curVfx = { ...curVfx, hand, ...unarmed ? { unarmed: true } : {} };
       if (k === 0) ev.roll = { nat: r.nat, dice: r.dice };
       if (!r.hit) {
         log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: manca (\u{1F3B2}${r.nat}+${actualHit}=${r.total} vs CA ${r.ac})${advTag(r)}${burdenTag}.`, { kind: "miss", actor: h.id, targets: [target.id], roll: { nat: r.nat, dice: r.dice } });
@@ -2181,6 +2184,7 @@ function act(s, uid, { actionId, targetId }, now) {
     }
   }
   curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
+  if (h.cls === "monk" && curVfx?.fx === "punch") curVfx = { ...curVfx, hand: "L", unarmed: true, w: 1 };
   let ev;
   try {
     ev = heroAct(s, h, a, target);

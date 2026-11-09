@@ -172,7 +172,7 @@ const TWO_FOR = { monk: ["bastone"] };
 export const twoHandedFor = (cls, weaponKey, twoHanded) => !!twoHanded || (TWO_FOR[cls] || []).includes(weaponKey);
 export function handSpec(hero, weaponKey, twoHandedWeapon) {
   const glove = gloveOf(hero?.cls), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
-  if (weaponKey === "pugnali") return { main: weaponKey, off: "mirror", glove };
+  if ((weaponKey === "pugnali" || weaponKey === "pugni")) return { main: weaponKey, off: "mirror", glove };
   if (twoHanded || hero?.twoHand) return { main: weaponKey, off: "none", glove };
   if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
   return { main: weaponKey, off: "hand", glove };
@@ -194,7 +194,7 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
     items.forEach((it) => {
       // a due mani: le armi a due mani, e quelle che le classi di questo guanto tengono sempre a due mani
       const two = g.classes.some((c) => twoHandedFor(c, it.base, TWO_HANDED.has(it.base)));
-      out.push({ ...it, glove, kind: "pair", two, off: it.base === "pugnali" ? "mirror" : two ? "none" : "hand", key: pairKey(it.item, it.base === "pugnali" ? "mirror" : two ? "none" : "hand") });
+      out.push({ ...it, glove, kind: "pair", two, off: (it.base === "pugnali" || it.base === "pugni") ? "mirror" : two ? "none" : "hand", key: pairKey(it.item, (it.base === "pugnali" || it.base === "pugni") ? "mirror" : two ? "none" : "hand") });
       if (withShield.has(it.base)) out.push({ ...it, glove, kind: "pair", two: false, off: "shield", key: pairKey(it.item, "shield") });
       // presa a due mani (armi versatili): lo sprite con tutte e due le mani sull'arma
       if (!two && g.classes.some((c) => canTwoHand(c, it.base))) out.push({ ...it, glove, kind: "pair", two: true, off: "none", key: pairKey(it.item, "none") });
@@ -216,7 +216,7 @@ export function armorHandEntries(itemId, it, { WEAPONS, WEAPON_CHOICES, TWO_HAND
       const base = { item: k, base: k, name: WEAPONS[k].name, icon: WEAPONS[k].icon, weaponName: EN[k] || WEAPONS[k].name, glove, gloveDesc: it.look, baseGlove: gloveOf(cls), kind: "pair", armor: itemId };
       const two = twoHandedFor(cls, k, TWO_HANDED.has(k));
       const push = (off, tw) => { const key = pairKey(k, off); if (seen.has(key)) return; seen.add(key); out.push({ ...base, two: tw, off, key }); };
-      push(k === "pugnali" ? "mirror" : two ? "none" : "hand", two);
+      push((k === "pugnali" || k === "pugni") ? "mirror" : two ? "none" : "hand", two);
       if (!two && armorProf(cls).shield) push("shield", false);
       if (!two && canTwoHand(cls, k)) push("none", true);
     });
@@ -323,7 +323,9 @@ export function handPrompt(e) {
   const weapon = `${e.weaponName}${e.look ? ` — its look: ${e.look}` : e.desc ? ` (${e.desc})` : ""}`;
   const build = BUILD[e.base] ? `\nHow the weapon is made and held: ${BUILD[e.base]}.` : "";
   const special = WHERE[e.base];
-  const left = e.off === "mirror"
+  const left = e.off === "mirror" && e.base === "pugni"
+    ? "LEFT third: the LEFT hand is a CLOSED EMPTY FIST, ready to punch. The RIGHT hand is also a CLOSED EMPTY FIST. No weapons. Keep the center EMPTY."
+    : e.off === "mirror"
     ? "LEFT third: the LEFT fist holds the SECOND matching short dagger upright, fully visible. Exactly two daggers, one per hand. Keep the center EMPTY."
     : e.off === "shield"
     ? "LEFT third of the image: the LEFT hand holds a round shield, seen from BEHIND as the hero sees it: the inside of the shield (wooden planks, iron rim, rivets, two leather straps, the fist closed around the grip), never its painted front. The shield sits low in the bottom-left corner and does not reach the center."

@@ -328,9 +328,10 @@ export default function SegreteCrawler({ room, uid, tools }) {
       specialKey ? read(pairKey(specialKey, offKey)) : {},
       armorKey ? read(pairKey(weaponKey, offKey), armorGlove(armorKey)) : {},
       read(pairKey(weaponKey, offKey)),
-    ]).then(([special, armor, base]) => {
+      glove === "wraps" ? read(pairKey("pugni", "mirror")) : {},
+    ]).then(([special, armor, base, fists]) => {
       const use = special.image ? special : armor.image ? armor : base;
-      eng.setHands(`${weaponKey}:${specialKey}:${armorKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "" });
+      eng.setHands(`${weaponKey}:${specialKey}:${armorKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "", punchPairUrl: fists.image || "" });
     });
   }, [eng, weaponKey, specialKey, armorKey, offKey, glove]);
 
@@ -429,7 +430,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
         // chi agisce si muove: le tue armi, oppure il mostro che si fa avanti
         // con l'arco la freccia parte allo scocco, non quando le mani iniziano a tendere
         const myShot = l.fx === "arrow" && who === myId && isWeaponRow(l) && e?.ranged;
-        if (l.fx && who === myId) e?.attack(isWeaponRow(l) ? l.fx : "cast");
+        let handAnimation;
+        if (l.fx && who === myId) handAnimation = e?.attack(isWeaponRow(l) ? l.fx : "cast", { hand: l.hand || "R", unarmed: !!l.unarmed });
         else if (l.fx && who && String(who).startsWith("f")) e?.lunge(who);
         if (myShot) await sleep(e.releaseMs());
         if (l.fx && targets.length) {
@@ -455,6 +457,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
           });
           land();
         }
+        if (handAnimation) await handAnimation;
         await sleep(l.fx ? ROW_GAP_MS : l.roll ? 500 : 250);
         queued.current = Math.max(0, queued.current - 1);
       }
