@@ -72,6 +72,10 @@
         {
           "type": "feature",
           "text": "Segrete: Onda Tonante ha una vera onda di pressione; Freccia Acida è un dardo liquido con spruzzi e corrosione. L’acido infligge ×1,5 danni contro armature e corpi metallici, mai per le sole armi."
+        },
+        {
+          "type": "feature",
+          "text": "Arena: al via del Master tutti hanno 30 minuti per acquisti e assetto prima del primo round, anche con partecipanti dispari. Sottoclassi acquistabili subito; le pause Bottega successive restano di un'ora."
         }
       ]
     },

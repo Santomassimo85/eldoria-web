@@ -14,6 +14,7 @@ import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../com
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 import { ARENA_SUBCLASSES, SUBCLASS_PRICE } from "../data/arenaSubclasses";
 import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
+import TimerDisplay from "../components/TimerDisplay";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -94,14 +95,8 @@ export default function ArenaMarket() {
 
   const vetrinaItems = marketItems.filter(it => it.active);
 
-  // ── Sottoclassi (2026-10-10): una per classe a settimana, 50 MA, solo dopo
-  // aver CONCLUSO almeno un fight di torneo nella settimana (matchHistory è
-  // scritto a fine match di torneo, con la data). Il Master non ha il vincolo.
+  // Le sottoclassi si acquistano subito, come gli altri articoli della Bottega.
   const ownedSubclasses = weekly.subclasses || {};
-  const fightDoneThisWeek = (arenaMeta?.matchHistory || []).some(
-    e => e.uid === currentUser?.uid && e.ts && currentWeekKey(new Date(e.ts)) === weekKey
-  );
-  const subUnlocked = isMaster || fightDoneThisWeek;
 
   // ── Quando si può comprare (2026-10-04) ──────────────────────────────────
   // Gli acquisti non toccano MAI un match in corso: la merce si monta solo al
@@ -135,7 +130,6 @@ export default function ArenaMarket() {
   // ── Acquisto di una sottoclasse (transazione: monete, settimana, una per classe) ──
   const buySubclass = async (classKey, opt) => {
     if (!currentUser || subBusy) return;
-    if (!subUnlocked) { showMsg("Le sottoclassi si sbloccano dopo aver concluso il tuo primo fight di torneo della settimana.", "err"); return; }
     if (buyLocked) { showMsg("Stai combattendo: potrai acquistare appena finisce il tuo match.", "err"); return; }
     setSubBusy(true);
     try {
@@ -306,7 +300,12 @@ export default function ArenaMarket() {
               </div>
             )}
             {arenaMeta?.phase === "shopping" ? (
-              <div className="am-message">🛒 Pausa Bottega aperta: acquista e ri-equipaggiati, il prossimo round parte allo scadere del tempo.</div>
+              <div className="am-message">
+                {arenaMeta.initialShopping
+                  ? "🛒 Preparazione iniziale: 30 minuti per acquisti, sottoclassi e assetto prima del primo round. "
+                  : "🛒 Pausa Bottega aperta: acquista e ri-equipaggiati prima del prossimo round. "}
+                <TimerDisplay expiryDate={arenaMeta.shopEndsAt} />
+              </div>
             ) : buyLocked ? (
               <div className="am-message am-message--err">⚔ Stai combattendo: gli acquisti si aprono appena finisce il tuo match.</div>
             ) : buyLater ? (
@@ -404,9 +403,7 @@ export default function ArenaMarket() {
                     a <strong>{SUBCLASS_PRICE} Monete</strong>, e resta tua fino a <strong>{weekEndLabel(weekKey)}</strong>.
                     Al loadout del torneo scegli ogni volta se combattere con la classe base o con la sottoclasse. Nelle <strong>Sfide Libere</strong> (contro l'IA e tra amici) sono invece <strong>tutte già sbloccate</strong>, gratis.
                   </p>
-                  {!subUnlocked && (
-                    <div className="am-message am-message--err">🔒 Si sbloccano dopo che hai <strong>concluso il tuo primo fight di torneo</strong> della settimana.</div>
-                  )}
+
                   <div className="bt-sotto-classi" aria-label="Scegli la classe">
                     {classList.map(c => (
                       <button key={c.key} type="button" aria-pressed={c.key === openCls?.key}
@@ -424,7 +421,6 @@ export default function ArenaMarket() {
                         const canAfford = coins >= SUBCLASS_PRICE;
                         const label = isMine ? "✔ Tua questa settimana"
                           : other ? "Hai scelto l'altra"
-                          : !subUnlocked ? "🔒 Dopo il primo fight"
                           : buyLocked ? "⚔ A fine match"
                           : !canAfford ? "Monete insufficienti"
                           : `Sblocca · ${SUBCLASS_PRICE} MA`;
@@ -444,7 +440,7 @@ export default function ArenaMarket() {
                               ))}
                             </ul>
                             <button className="am-buy-btn" type="button"
-                              disabled={isMine || other || !subUnlocked || buyLocked || !canAfford || subBusy}
+                              disabled={isMine || other || buyLocked || !canAfford || subBusy}
                               onClick={() => buySubclass(openCls.key, opt)}>
                               {label}
                             </button>
@@ -532,7 +528,7 @@ export default function ArenaMarket() {
                       <li>📜 <strong>Spell Scroll</strong>: sono pergamene magiche con un numero di <strong>cariche</strong> e una <strong>caratteristica</strong> per usarle (decise dal Master). Alcuni richiedono un <strong>punteggio minimo</strong> in quella caratteristica: se il tuo è più basso non puoi equipaggiarlo. Le equipaggi dalla tab <strong>Magie</strong> e le lanci anche se di livello alto. ⚠️ Alcuni scroll, per essere equipaggiati, ti fanno <strong>rinunciare a degli spell slot di classe</strong> (es. −1 slot di Lv2 e −1 di Lv3): lo vedi scritto sulla carta.</li>
                       <li>⚔️ <strong>Armi e armature</strong>: le armi comprate compaiono nella selezione <strong>Armi</strong> e contano come armi vere; le <strong>armature</strong> della Bottega hanno una <strong>CA fissa</strong> (es. 12 = hai 12 di CA, la DES non si somma; lo <strong>scudo</strong> aggiunge comunque +1) e <strong>sostituiscono</strong> l'armatura base: se ne indossi una, le base si disattivano.</li>
                       <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
-                      <li>🎓 <strong>Sottoclassi</strong>: ogni classe ne ha due (archetipi di D&amp;D, con passive e abilità proprie). Costano <strong>{SUBCLASS_PRICE} Monete</strong>, se ne sblocca <strong>una per classe</strong> e solo dopo aver <strong>concluso il primo fight di torneo</strong> della settimana. Restano tue fino a domenica alle 23:00: al loadout del torneo (anche al ri-equipaggiamento tra i round) scegli se usare la classe base o la sottoclasse. Nelle Sfide Libere (IA e amici) le sottoclassi sono tutte sbloccate e gratis.</li>
+                      <li>🎓 <strong>Sottoclassi</strong>: ogni classe ne ha due (archetipi di D&amp;D, con passive e abilità proprie). Costano <strong>{SUBCLASS_PRICE} Monete</strong>, se ne sblocca <strong>una per classe</strong> e sono acquistabili <strong>subito, prima del primo fight</strong>. Restano tue fino a domenica alle 23:00: al loadout del torneo (anche al ri-equipaggiamento tra i round) scegli se usare la classe base o la sottoclasse. Nelle Sfide Libere (IA e amici) le sottoclassi sono tutte sbloccate e gratis.</li>
                     </ul>
                     <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
                   </details>

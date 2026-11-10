@@ -11,6 +11,7 @@ import { popAt } from "../fx/hitNumbers";
 import StatusPips from "../components/StatusPips";
 import { awardPetPoints } from "../utils/pet";
 import { getSubclassDef, subclassToMount } from "../data/arenaSubclasses";
+import { beginTournamentShopping, promoteArenaShopping } from "../data/arenaShopping";
 import ArenaSubclassOffer from "../components/ArenaSubclassOffer";
 import { currentWeekKey, ARENA_TOURNAMENT_BONUS } from "../data/arenaWeek";
 import { serverClockOffset } from "../data/serverClock";
@@ -2628,9 +2629,10 @@ export default function Arena() {
     const existingIds = new Set((matches || []).map(m => m.matchId));
     if (pending.matches.some(m => existingIds.has(m.matchId))) return;
 
-    const shopEndsAt = new Date(Date.now() + ARENA_SHOP_DURATION).toISOString();
+    const shopEndsAt = new Date(arenaNow() + ARENA_SHOP_DURATION).toISOString();
     await updateDoc(doc(db, "arena_meta", "global"), {
       phase: "shopping",
+      initialShopping: false,
       shopEndsAt,
       pendingNextMatches: pending.matches,
       pendingNextRound: pending.round,
@@ -2653,32 +2655,21 @@ export default function Arena() {
   // Promuove il round in coda (spostamento dati, con lock a transazione così
   // client e Cloud Function non creano doppioni). Idempotente: se la fase non è
   // più "shopping" non fa nulla.
-  const commitPendingPromotion = async () => {
+  const commitPendingPromotion = async (force = false) => {
     const ref = doc(db, "arena_meta", "global");
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return;
       const d = snap.data();
-      if (d.phase !== "shopping") return;
-      const pending = Array.isArray(d.pendingNextMatches) ? d.pendingNextMatches : [];
-      const existing = Array.isArray(d.matches) ? d.matches : [];
-      const existingIds = new Set(existing.map(m => m.matchId));
-      const toAdd = pending.filter(m => !existingIds.has(m.matchId));
-      tx.update(ref, {
-        matches: [...existing, ...toAdd],
-        currentRound: d.pendingNextRound || (d.currentRound || 1) + 1,
-        phase: "combat",
-        shopEndsAt: null,
-        pendingNextMatches: null,
-        pendingNextRound: null,
-      });
+      const patch = promoteArenaShopping(d, arenaNow(), force);
+      if (patch) tx.update(ref, patch);
     });
   };
 
   // Override MANUALE del Master ("avanza ora", salta l'attesa dell'ora).
   const promotePendingRoundNow = async () => {
     if (!(arenaMeta?.pendingNextMatches?.length)) return advanceRound();
-    await commitPendingPromotion();
+    await commitPendingPromotion(true);
   };
 
   // Auto-avanzamento lato client: quando l'ora di shopping scade, il primo
@@ -2688,7 +2679,7 @@ export default function Arena() {
     if (arenaMeta?.phase !== "shopping" || !arenaMeta?.shopEndsAt) return;
     const endMs = new Date(arenaMeta.shopEndsAt).getTime();
     const tick = () => {
-      if (Date.now() >= endMs) commitPendingPromotion().catch(e => console.error("[arena] auto-promote:", e));
+      if (arenaNow() >= endMs) commitPendingPromotion().catch(e => console.error("[arena] auto-promote:", e));
     };
     tick();
     const id = setInterval(tick, 15000);
@@ -2762,10 +2753,10 @@ export default function Arena() {
       nth = await runTransaction(db, async (tx) => {
         const ref = doc(db, "arena_meta", "global");
         const cur = (await tx.get(ref)).data() || {};
-        if (cur.phase === "combat") throw new Error("già avviato");
+        if (cur.phase !== "registration") throw new Error("già avviato");
         const n = (cur.weekTournaments?.weekKey === wk ? (cur.weekTournaments.count || 0) : 0) + 1;
         tx.update(ref, {
-          matches: initialMatches, phase: "combat", currentRound: 1, tournamentWinner: null,
+          ...beginTournamentShopping(existingFun, initialMatches.filter(m => m.kind !== "fun"), arenaNow()),
           groupA, groupB,
           participants,               // include l'eventuale bot di riserva iniettato
           masterUid: currentUser.uid, // chi pilota i PG-bot durante il torneo
@@ -7333,7 +7324,7 @@ export default function Arena() {
         && !subclassToMount(arenaMeta, currentUser.uid, myArenaWeekly, currentWeekKey()) && (() => {
         const snap = arenaMeta.characterSnapshots[currentUser.uid];
         // In pausa Bottega solo a chi gioca il prossimo round (non agli esclusi dalla finale).
-        if (arenaMeta.phase === "shopping" && Array.isArray(arenaMeta.pendingNextMatches)
+        if (arenaMeta.phase === "shopping" && !arenaMeta.initialShopping && Array.isArray(arenaMeta.pendingNextMatches)
           && !arenaMeta.pendingNextMatches.some(m => (m.players || []).some(p => p.id === currentUser.uid))) return null;
         const owned = myArenaWeekly?.weekKey === currentWeekKey() ? (myArenaWeekly.purchases || []) : [];
         const actNames = new Set((snap.selectedActions || []).map(a => a.name));
@@ -7365,7 +7356,7 @@ export default function Arena() {
                   </ul>
                 </>
               ) : (
-                <p className="aso-desc">Il round è finito: prima del prossimo puoi cambiare armi, incantesimi, armatura, compagno, oggetti e montare gli acquisti della Bottega.</p>
+                <p className="aso-desc">{arenaMeta.initialShopping ? "Hai 30 minuti prima del primo round: acquista anche la sottoclasse e prepara il tuo assetto." : "Il round è finito: prima del prossimo puoi cambiare armi, incantesimi, armatura, compagno, oggetti e montare gli acquisti della Bottega."}</p>
               )}
               <p className="aso-domanda">L'assetto che salvi resta per tutti i prossimi round del torneo.</p>
               <div className="aso-azioni">
@@ -7555,11 +7546,11 @@ export default function Arena() {
             {arenaMeta.phase === "shopping" && (
               <div className="arena-shop-banner arena-shop-banner--pulse">
                 <div className="arena-shop-banner-head">
-                  <span className="arena-shop-banner-tag">🛒 Pausa Bottega — riequipaggiati!</span>
+                  <span className="arena-shop-banner-tag">{arenaMeta.initialShopping ? "🛒 Preparazione iniziale — 30 minuti" : "🛒 Pausa Bottega — riequipaggiati!"}</span>
                   <TimerDisplay expiryDate={arenaMeta.shopEndsAt} />
                 </div>
                 <p className="arena-shop-banner-txt">
-                  Round completato. Prima del prossimo round puoi <strong>comprare al Mercato</strong> e poi
+                  {arenaMeta.initialShopping ? "Il Master ha dato il via: hai 30 minuti per prepararti prima del primo round, anche se sei di riposo. Puoi " : "Round completato. Prima del prossimo round puoi "}<strong>comprare al Mercato, scegliere la sottoclasse</strong> e poi
                   {" "}<strong>cambiare armi, incantesimi, armatura, pet e oggetti</strong>. Il round parte da solo allo scadere del tempo.
                 </p>
                 <div className="arena-shop-banner-actions">
@@ -8232,6 +8223,7 @@ export default function Arena() {
               keepUids.forEach(uid => { if (allSnaps[uid]) preservedSnaps[uid] = allSnaps[uid]; });
               await updateDoc(doc(db, "arena_meta", "global"), {
                 phase: "registration", prizes: arenaMeta.prizes || "",
+                initialShopping: false, shopEndsAt: null, pendingNextMatches: null, pendingNextRound: null,
                 participants: [], matches: preservedFun,
                 characterSnapshots: preservedSnaps, tournamentWinner: null,
                 currentRound: 1, matchHistory: [],

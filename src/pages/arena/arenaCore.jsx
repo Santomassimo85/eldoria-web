@@ -5,7 +5,7 @@ import { AI_BOT_PREFIX } from "./arenaAi";
 // Il timer parte solo dopo che entrambi hanno premuto "Iniziamo" (sono live): 5 minuti a testa.
 export const ARENA_INITIATIVE_DURATION = 5 * 60 * 1000;       // 5 minuti per tirare iniziativa
 export const ARENA_TURN_DURATION       = 5 * 60 * 1000;       // 5 minuti per fare la propria azione
-export const ARENA_SHOP_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora di acquisti tra un round e l'altro
+export { ARENA_SHOP_DURATION } from "../../data/arenaShopping";
 export const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
 
 // Ora del SERVER per scadenze e timeout dei turni (src/data/serverClock.js). Prima

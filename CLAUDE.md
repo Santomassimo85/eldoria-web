@@ -528,3 +528,10 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - createRoom crea in transazione anche voice_rooms con lo stesso ID: il canale WebRTC resta lo stesso e sopravvive al gruppo. Join conserva anche vecchie stanze. Backfill eseguito sui 3 gruppi esistenti (Soran, Karlberht, Temistocle). Stanze persistenti finche rimosse esplicitamente da proprietario/Master quando vuote.
 - Regole: canali dei dungeon esistenti o registrati aperti ai loggati. Pubblicare firestore:rules insieme al frontend; test elenco pubblico/persistenza/deduplicazione e build.
 
+
+### Arena - preparazione iniziale e sottoclassi (2026-11-10)
+- Dal via del Master: shopping iniziale di 30 minuti, primi match in pendingNextMatches con pendingNextRound 1. Tutti gli iscritti possono aggiornare l'assetto, inclusi bye e gironi dispari. Poi restano le pause di 60 minuti tra round. Il Master puo usare Avanza ora.
+- Sottoclassi acquistabili subito: rimosso il requisito di un fight concluso. Prezzo, una per classe/settimana e blocco durante il proprio combattimento invariati.
+- src/data/arenaShopping.js condiviso con functions/arenaShopping.js (npm run build:arena-shopping): promozione unica client/server, orologio server, timer iniziativa dei bot ricreato alla promozione, readyCheck umano conservato. Reset nuova iscrizione pulisce la fase iniziale. Deploy mirato arenaAutoAdvance + pushOnArenaUpdate.
+- Verifiche scripts/test-arena-shopping.cjs: 2/3/5/6 iscritti, bye, finale diretta, sottoclasse senza fight, limite 30 minuti, pause 1 ora, nessun doppione, parita client/server. Build Vite OK.
+

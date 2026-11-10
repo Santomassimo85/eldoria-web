@@ -313,6 +313,7 @@ exports.arenaWeeklyReset = onSchedule(
 // promuove i match del round successivo (GIÀ pre-calcolati dal client in
 // `pendingNextMatches`). La funzione fa solo uno SPOSTAMENTO di dati: nessuna
 // logica di combattimento vive qui, così non può divergere dal client.
+const { promoteArenaShopping } = require("./arenaShopping");
 exports.arenaAutoAdvance = onSchedule(
     { schedule: "every 1 minutes", timeZone: "Europe/Rome", region: "us-central1" },
     async () => {
@@ -323,28 +324,8 @@ exports.arenaAutoAdvance = onSchedule(
                 const snap = await tx.get(ref);
                 if (!snap.exists) return;
                 const data = snap.data();
-                if (data.phase !== "shopping") return;
-                if (!data.shopEndsAt) return;
-                const endMs = data.shopEndsAt.toMillis
-                    ? data.shopEndsAt.toMillis()
-                    : new Date(data.shopEndsAt).getTime();
-                if (Date.now() < endMs) return;
-
-                const pending = data.pendingNextMatches;
-                if (!Array.isArray(pending) || pending.length === 0) {
-                    // Niente da promuovere: chiudi comunque la fase shopping.
-                    tx.update(ref, { phase: "combat", shopEndsAt: null, pendingNextMatches: null, pendingNextRound: null });
-                    return;
-                }
-                const existing = Array.isArray(data.matches) ? data.matches : [];
-                tx.update(ref, {
-                    matches: [...existing, ...pending],
-                    currentRound: data.pendingNextRound || (data.currentRound || 1) + 1,
-                    phase: "combat",
-                    shopEndsAt: null,
-                    pendingNextMatches: null,
-                    pendingNextRound: null,
-                });
+                const patch = promoteArenaShopping(data, Date.now());
+                if (patch) tx.update(ref, patch);
             });
         } catch (err) {
             console.error("❌ arenaAutoAdvance fallita:", err);
@@ -671,9 +652,11 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
     await sendPush({
       uids,
       title: "🛒 Bottega Arena aperta!",
-      body: "Il round è concluso: hai 1 ora per fare acquisti al Mercato Arena prima del prossimo round.",
+      body: after.initialShopping
+        ? "Il torneo sta per iniziare: hai 30 minuti per acquisti, sottoclassi e assetto prima del primo round."
+        : "Il round è concluso: hai 1 ora per fare acquisti al Mercato Arena prima del prossimo round.",
       url: "/arena",
-      tag: `arena-shop-R${after.currentRound || ""}`,
+      tag: `arena-shop-${after.initialShopping ? "initial" : "R" + (after.currentRound || "")}`,
     });
   }
 

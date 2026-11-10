@@ -3,8 +3,8 @@
 // ArenaMarket.jsx (acquisto in Bottega).
 //
 // Ogni classe ha DUE sottoclassi (archetipi di D&D 5e). Si comprano in Bottega
-// con le Monete Arena (SUBCLASS_PRICE), UNA per classe a settimana, e solo dopo
-// aver CONCLUSO almeno un fight di torneo nella settimana. Restano valide fino
+// con le Monete Arena (SUBCLASS_PRICE), UNA per classe a settimana, disponibili
+// subito anche prima del primo fight di torneo. Restano valide fino
 // alla chiusura della settimana (domenica 23:00): vivono in
 // `characters.arenaWeekly.subclasses = { [classKey]: subclassKey }`, che il
 // reset settimanale cancella insieme agli altri acquisti. Come tutta la Bottega
