@@ -252,7 +252,9 @@ export const KITS = {
       { id: "palmo", name: "Palmo Tremante", icon: "🖐", kind: "save", dice: "6d10", dmg: "necrotic", save: "con", half: true, min: 12, uses: 1 },
     ] },
   rogue: { hitDie: 8, ac: 15, armor: "light", stat: "dex", rec: ["dex", "con"],
-    base: [{ id: "furtivo", useWeapon: true, name: "Attacco Furtivo", icon: "🌒", kind: "weapon", dice: "1d8", dmg: "piercing", attacks: 1, singleAttack: true, rider: "sneak", riderDmg: "piercing", uses: 3, info: "un colpo: danno arma +1d6 (un altro d6 ogni 2 livelli dopo il primo)" }],
+    // 2026-11-10: l'Attacco Furtivo scatta da solo (motore: una volta per round sul primo colpo d'arma a segno,
+    // con vantaggio o con un altro eroe in piedi nel gruppo). Colpo Mirato dà il vantaggio per farlo scattare.
+    base: [{ id: "mirato", name: "Colpo Mirato", icon: "🎯", kind: "buff", buff: "adv", turns: 2, self: true, uses: 3, info: "vantaggio per 2 turni: l'Attacco Furtivo scatta anche da solo" }],
     pool: [
       { id: "nascondersi", name: "Nascondersi", icon: "🫥", kind: "buff", buff: "adv", turns: 2, self: true, min: 1, uses: 2 },
       { id: "veleno_r", name: "Lama Avvelenata", icon: "☠", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
@@ -312,10 +314,10 @@ export const KITS = {
       { id: "guarigione", name: "Guarigione", icon: "💖", kind: "heal", flat: "lv*6", min: 12, uses: 1 },
     ] },
   bard: { hitDie: 8, ac: 14, armor: "light", stat: "cha", rec: ["cha", "dex"],
-    base: [{ id: "beffa", name: "Beffa Crudele", icon: "🎭", kind: "save", dice: "1d4", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" }],
+    base: [{ id: "beffa", name: "Beffa Crudele", icon: "🎭", kind: "save", dice: "1d6", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" },
+      { id: "ispirazione", name: "Ispirazione Bardica", icon: "🎶", kind: "buff", buff: "inspire", value: 3, turns: 2, uses: 3, info: "un alleato: vantaggio e +3 danni per 2 turni" }],
     pool: [
       { id: "parola_b", name: "Parola Guaritrice", icon: "🎵", kind: "heal", dice: "1d4", plusMod: true, min: 1, uses: 3, grow: true },
-      { id: "ispirazione", name: "Ispirazione Bardica", icon: "🎶", kind: "buff", buff: "adv", turns: 2, min: 1, uses: 2 },
       { id: "onda_b", name: "Onda Tonante", icon: "🌊", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "sussurri", name: "Sussurri Dissonanti", icon: "👂", kind: "save", dice: "3d6", dmg: "psychic", save: "wis", half: true, min: 3, uses: 2, grow: true, inflict: { key: "confused", turns: 1 }, info: "chi fallisce resta confuso" },
       { id: "riposo", name: "Canto di Riposo", icon: "🎼", kind: "heal_all", dice: "1d8", plusMod: true, min: 3, uses: 1, grow: true },
@@ -495,10 +497,10 @@ export const SUBCLASSES = {
         { id: "sc_segreti", name: "Segreti Magici", icon: "📜", kind: "save", dice: "8d6", dmg: "fire", save: "dex", area: true, half: true, min: 11, uses: 1, grow: true, info: "una Palla di Fuoco rubata" },
       ] },
     { key: "valore", name: "Collegio del Valore", icon: "🛡", desc: "Il bardo guerriero, in prima linea.",
-      passive: { ac: 1, wHit: 1 }, passiveTxt: "+1 CA · +1 a colpire con le armi",
+      passive: { ac: 1, wHit: 1, extraAttack: true }, passiveTxt: "attacco extra con le armi · +1 CA · +1 a colpire",
       actions: [
         { id: "sc_ispira_b", name: "Ispirazione in Battaglia", icon: "🎶", kind: "buff", buff: "dmg", value: 4, turns: 2, allParty: true, min: 5, uses: 1, info: "+4 danni a tutto il gruppo" },
-        { id: "sc_colpo_b", useWeapon: true, name: "Attacco del Valoroso", icon: "⚔", kind: "weapon", dice: "1d8", dmg: "piercing", bonusAttacks: 1, min: 11, uses: 3, info: "un attacco in più" },
+        { id: "sc_colpo_b", useWeapon: true, name: "Colpo Incantato", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "2d8", riderDmg: "thunder", min: 11, uses: 2, grow: true, info: "+2d8 da tuono al primo colpo" },
       ] },
   ],
 };
@@ -545,7 +547,9 @@ export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem 
   const subActs = sub ? sub.actions.filter((a) => (a.min || 1) <= lv).map((a) => ({ ...a, sub: sub.key })) : [];
   const grip = canTwoHand(cls, w0.key)
     ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} · riprendi lo scudo` : `${VERSATILE[w0.key]} · niente scudo` }] : [];
-  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
+  const wa = weaponAction(w, plus, wItem);
+  if (cls === "rogue") wa.info += ` · Furtivo +${sneakDiceOf(lv)}d6 (1 per round, con vantaggio o un alleato)`;
+  return [wa, ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */
@@ -630,8 +634,11 @@ export function validRespec(cls, hero, stats, picks) {
   if (!list.every((id) => pool.some((a) => a.id === id))) return { error: "Abilità non disponibile al tuo livello." };
   return { stats: base, asi, picks: list };
 }
+// abilità ancora nelle liste da scegliere (2026-11-10: l'Ispirazione del Bardo è passata fra le base
+// e non deve più contare come scelta fatta)
+const POOL_IDS = new Set(Object.values(KITS).flatMap((k) => k.pool.map((a) => a.id)));
 export function heroPending(hero) {
   const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
-  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).length) };
+  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id)).length) };
 }

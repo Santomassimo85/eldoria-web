@@ -341,7 +341,9 @@ var KITS = {
     armor: "light",
     stat: "dex",
     rec: ["dex", "con"],
-    base: [{ id: "furtivo", useWeapon: true, name: "Attacco Furtivo", icon: "\u{1F312}", kind: "weapon", dice: "1d8", dmg: "piercing", attacks: 1, singleAttack: true, rider: "sneak", riderDmg: "piercing", uses: 3, info: "un colpo: danno arma +1d6 (un altro d6 ogni 2 livelli dopo il primo)" }],
+    // 2026-11-10: l'Attacco Furtivo scatta da solo (motore: una volta per round sul primo colpo d'arma a segno,
+    // con vantaggio o con un altro eroe in piedi nel gruppo). Colpo Mirato dà il vantaggio per farlo scattare.
+    base: [{ id: "mirato", name: "Colpo Mirato", icon: "\u{1F3AF}", kind: "buff", buff: "adv", turns: 2, self: true, uses: 3, info: "vantaggio per 2 turni: l'Attacco Furtivo scatta anche da solo" }],
     pool: [
       { id: "nascondersi", name: "Nascondersi", icon: "\u{1FAE5}", kind: "buff", buff: "adv", turns: 2, self: true, min: 1, uses: 2 },
       { id: "veleno_r", name: "Lama Avvelenata", icon: "\u2620", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
@@ -437,10 +439,12 @@ var KITS = {
     armor: "light",
     stat: "cha",
     rec: ["cha", "dex"],
-    base: [{ id: "beffa", name: "Beffa Crudele", icon: "\u{1F3AD}", kind: "save", dice: "1d4", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" }],
+    base: [
+      { id: "beffa", name: "Beffa Crudele", icon: "\u{1F3AD}", kind: "save", dice: "1d6", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" },
+      { id: "ispirazione", name: "Ispirazione Bardica", icon: "\u{1F3B6}", kind: "buff", buff: "inspire", value: 3, turns: 2, uses: 3, info: "un alleato: vantaggio e +3 danni per 2 turni" }
+    ],
     pool: [
       { id: "parola_b", name: "Parola Guaritrice", icon: "\u{1F3B5}", kind: "heal", dice: "1d4", plusMod: true, min: 1, uses: 3, grow: true },
-      { id: "ispirazione", name: "Ispirazione Bardica", icon: "\u{1F3B6}", kind: "buff", buff: "adv", turns: 2, min: 1, uses: 2 },
       { id: "onda_b", name: "Onda Tonante", icon: "\u{1F30A}", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "sussurri", name: "Sussurri Dissonanti", icon: "\u{1F442}", kind: "save", dice: "3d6", dmg: "psychic", save: "wis", half: true, min: 3, uses: 2, grow: true, inflict: { key: "confused", turns: 1 }, info: "chi fallisce resta confuso" },
       { id: "riposo", name: "Canto di Riposo", icon: "\u{1F3BC}", kind: "heal_all", dice: "1d8", plusMod: true, min: 3, uses: 1, grow: true },
@@ -755,11 +759,11 @@ var SUBCLASSES = {
       name: "Collegio del Valore",
       icon: "\u{1F6E1}",
       desc: "Il bardo guerriero, in prima linea.",
-      passive: { ac: 1, wHit: 1 },
-      passiveTxt: "+1 CA \xB7 +1 a colpire con le armi",
+      passive: { ac: 1, wHit: 1, extraAttack: true },
+      passiveTxt: "attacco extra con le armi \xB7 +1 CA \xB7 +1 a colpire",
       actions: [
         { id: "sc_ispira_b", name: "Ispirazione in Battaglia", icon: "\u{1F3B6}", kind: "buff", buff: "dmg", value: 4, turns: 2, allParty: true, min: 5, uses: 1, info: "+4 danni a tutto il gruppo" },
-        { id: "sc_colpo_b", useWeapon: true, name: "Attacco del Valoroso", icon: "\u2694", kind: "weapon", dice: "1d8", dmg: "piercing", bonusAttacks: 1, min: 11, uses: 3, info: "un attacco in pi\xF9" }
+        { id: "sc_colpo_b", useWeapon: true, name: "Colpo Incantato", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "2d8", riderDmg: "thunder", min: 11, uses: 2, grow: true, info: "+2d8 da tuono al primo colpo" }
       ]
     }
   ]
@@ -797,7 +801,9 @@ function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null,
   const sub = lv >= SUBCLASS_LEVEL ? subclassOf(cls, subclass) : null;
   const subActs = sub ? sub.actions.filter((a) => (a.min || 1) <= lv).map((a) => ({ ...a, sub: sub.key })) : [];
   const grip = canTwoHand(cls, w0.key) ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} \xB7 riprendi lo scudo` : `${VERSATILE[w0.key]} \xB7 niente scudo` }] : [];
-  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
+  const wa = weaponAction(w, plus, wItem);
+  if (cls === "rogue") wa.info += ` \xB7 Furtivo +${sneakDiceOf(lv)}d6 (1 per round, con vantaggio o un alleato)`;
+  return [wa, ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -871,10 +877,11 @@ function validRespec(cls, hero, stats, picks) {
   if (!list.every((id) => pool.some((a) => a.id === id))) return { error: "Abilit\xE0 non disponibile al tuo livello." };
   return { stats: base, asi, picks: list };
 }
+var POOL_IDS = new Set(Object.values(KITS).flatMap((k) => k.pool.map((a) => a.id)));
 function heroPending(hero) {
   const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
-  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).length) };
+  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id)).length) };
 }
 
 // src/data/segreteItems.js
@@ -2056,7 +2063,7 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "weapon" || a.kind === "spell") {
-    let n = attacksOf(h.cls, lv, a);
+    let n = attacksOf(h.cls, lv, a) + (sp.extraAttack && a.kind === "weapon" && !a.singleAttack && !kitOf(h.cls).extraAttacks ? 1 : 0);
     const wfx = a.kind === "weapon" ? a.wfx || null : null;
     if (wfx?.multi && !a.singleAttack) {
       const r = die(100);
@@ -2075,6 +2082,7 @@ function heroAct(s, h, a, target) {
       h.fx.reckless = s.round + 2;
       h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2);
     }
+    const sneakKey = `${s.floor}:${s.round}`;
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
         const others = s.foes.filter(alive);
@@ -2114,6 +2122,14 @@ function heroAct(s, h, a, target) {
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
         total += rd;
         extra = ` +${rd} ${DMG_IT[a.riderDmg] || ""}`;
+        if (a.rider === "sneak") h.sneakAt = sneakKey;
+      }
+      if (h.cls === "rogue" && a.kind === "weapon" && h.sneakAt !== sneakKey && alive(target) && (r.adv || s.heroes.some((x) => x !== h && alive(x) && !x.fled))) {
+        const sn = sneakDiceOf(lv) * (r.crit ? 2 : 1);
+        const sd = applyDamage(s, target, roll(sn, 6).t, a.dmg, notes);
+        total += sd;
+        extra += ` +${sd} furtivo \u{1F312}`;
+        h.sneakAt = sneakKey;
       }
       if (a.riderDis && alive(target)) {
         target.fx.dis = s.round + 1 + a.riderDis;
@@ -2209,8 +2225,12 @@ function heroAct(s, h, a, target) {
       if (a.buff === "adv") t.fx.adv = until;
       if (a.buff === "dmg") t.fx.dmg = { v: a.value, until };
       if (a.buff === "rage") t.fx.rage = { v: a.value, until };
+      if (a.buff === "inspire") {
+        t.fx.adv = until;
+        t.fx.dmg = { v: a.value, until };
+      }
     });
-    const what = a.buff === "ac" ? `+${a.value} CA` : a.buff === "adv" ? "vantaggio agli attacchi" : a.buff === "rage" ? `+${a.value} danni e danni fisici dimezzati` : `+${a.value} danni`;
+    const what = a.buff === "inspire" ? `vantaggio e +${a.value} danni` : a.buff === "ac" ? `+${a.value} CA` : a.buff === "adv" ? "vantaggio agli attacchi" : a.buff === "rage" ? `+${a.value} danni e danni fisici dimezzati` : `+${a.value} danni`;
     log(s, `${a.icon} ${h.name} \u2192 ${a.name}: ${tg.map((t) => t.name).join(", ")} ${what} per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "buff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
   }
@@ -2302,10 +2322,11 @@ function foeAct(s, f) {
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
-      const dmg2 = ok ? a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0 : applyDamage(s, t, base, type, []);
+      const evade = tg.length > 1 && t.cls === "rogue" && t.level >= 7;
+      const dmg2 = evade ? ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, []) : ok ? a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0 : applyDamage(s, t, base, type, []);
       const inf = !ok ? foeInflict(a, type) : null;
       const stTxt2 = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
-      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) \u2212${dmg2}${stTxt2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv})${evade ? " \u{1F938} elude" : ""} \u2212${dmg2}${stTxt2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
     });
     log(s, `\u{1F300} ${f.name} \u2192 ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" \xB7 ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id), dr: { n, s: sides, r: rolled2.r, p: lvlBonus, x: Math.round(mult2 * 100) / 100 } });
     return;

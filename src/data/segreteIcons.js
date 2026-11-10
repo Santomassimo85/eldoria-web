@@ -50,7 +50,7 @@ export const SG_ICONS = {
     mimetismo: "hood", trappola: "wolf-trap", fulminante: "lightning-bow",
     raffica: "punch-blast", schivata: "dodge", ki: "fist", vento: "wind-slap", stordente: "punch",
     integrita: "lotus", ondata: "wave-strike", palmo: "palm",
-    furtivo: "backstab", nascondersi: "cloak-dagger", veleno_r: "dripping-knife", basso: "high-kick",
+    furtivo: "backstab", mirato: "backstab", nascondersi: "cloak-dagger", veleno_r: "dripping-knife", basso: "high-kick",
     prodigiosa: "acrobatic", fumogena: "smoke-bomb", assassinare: "decapitation",
     dardo_fuoco: "fire-ray", dardo_inc: "magic-palm", raggio_gelo: "ice-bolt", scudo: "magic-shield",
     mani_w: "flame-spin", acida: "acid-blob", palla_fuoco: "fireball", ipnosi: "spiral-bloom", cono_freddo: "frozen-orb",

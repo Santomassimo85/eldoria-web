@@ -29,6 +29,15 @@ export default function SegreteManual() {
         </ol>
       </Fold>
 
+      <Fold icon="🌒" title="Ladro e Bardo">
+        <ul>
+          <li><b>Attacco Furtivo</b>: scatta da solo una volta per round, sul primo colpo d'arma a segno, se hai vantaggio o se nel gruppo c'è un altro eroe in piedi. Danno: +1d6 ogni 2 livelli (Lv 1: 1d6, Lv 5: 3d6, Lv 19: 10d6), doppio col critico.</li>
+          <li><b>🎯 Colpo Mirato</b> (Ladro, 3 per sala): vantaggio per 2 turni, così il furtivo scatta anche da solo.</li>
+          <li><b>🤸 Elusione</b> (Ladro dal Lv 7): contro le aree dei mostri niente danni se superi il TS, metà se lo fallisci.</li>
+          <li><b>🎶 Ispirazione Bardica</b> (Bardo, sempre, 3 per sala): un alleato ha vantaggio e +3 danni per 2 turni. <b>Beffa Crudele</b> fa 1d6 (cresce coi livelli).</li>
+        </ul>
+      </Fold>
+
       <Fold icon="🎓" title="Le sottoclassi">
         <p>Dal Lv {SUBCLASS_LEVEL}, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una. Tratto passivo e azioni (Lv 5 · Lv 11):</p>
         <ul>

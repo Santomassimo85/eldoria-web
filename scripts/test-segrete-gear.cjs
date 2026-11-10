@@ -19,12 +19,8 @@ assert.ok(!K.WEAPON_CHOICES.rogue.includes('scimitarra'));
 const actions = K.heroActions('rogue', 1, [], 'pugnali');
 assert.equal(K.attacksOf('rogue', 1, actions[0]), 2);
 assert.equal(actions[0].dice, '1d4');
-assert.equal(actions.find(a => a.id === 'furtivo').attacks, 1);
-for (let lv = 1; lv <= 20; lv++) {
-  const a = K.heroActions('rogue', lv, [], 'pugnali').find(a => a.id === 'furtivo');
-  assert.equal(K.attacksOf('rogue', lv, a), 1);
-  assert.equal(K.sneakDiceOf(lv), Math.ceil(lv / 2));
-}
+assert.equal(actions.find(a => a.id === 'mirato').uses, 3);
+for (let lv = 1; lv <= 20; lv++) assert.equal(K.sneakDiceOf(lv), Math.ceil(lv / 2));
 assert.equal(A.handSpec({ cls: 'rogue' }, 'pugnali', false).off, 'mirror');
 const hands = A.handEntries({ ...K, ITEMS: {} });
 const daggers = hands.find(e => e.base === 'pugnali');

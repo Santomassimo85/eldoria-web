@@ -467,7 +467,8 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "weapon" || a.kind === "spell") {
-    let n = attacksOf(h.cls, lv, a);
+    // Collegio del Valore & co.: attacco extra dalla sottoclasse
+    let n = attacksOf(h.cls, lv, a) + (sp.extraAttack && a.kind === "weapon" && !a.singleAttack && !kitOf(h.cls).extraAttacks ? 1 : 0);
     const wfx = a.kind === "weapon" ? a.wfx || null : null;
     // Arco del Ratto Ubriaco & co.: a volte un colpo in più, a volte nessuno
     if (wfx?.multi && !a.singleAttack) {
@@ -483,6 +484,7 @@ function heroAct(s, h, a, target) {
     const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit;
     // Attacco Irruento (2026-11-06): vantaggio e −2 CA per 2 turni (questo e il prossimo)
     if (a.selfDis) { h.fx.reckless = s.round + 2; h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2); }
+    const sneakKey = `${s.floor}:${s.round}`;
     for (let k = 0; k < n; k++) {
       if (!alive(target)) {
         const others = s.foes.filter(alive);
@@ -514,6 +516,16 @@ function heroAct(s, h, a, target) {
         if (r.crit) rn *= 2;
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
         total += rd; extra = ` +${rd} ${DMG_IT[a.riderDmg] || ""}`;
+        if (a.rider === "sneak") h.sneakAt = sneakKey;
+      }
+      // ATTACCO FURTIVO AUTOMATICO (2026-11-10, come in D&D): una volta per round, sul primo colpo d'arma
+      // a segno, se il ladro ha vantaggio o c'è un altro eroe in piedi nel gruppo
+      if (h.cls === "rogue" && a.kind === "weapon" && h.sneakAt !== sneakKey && alive(target)
+        && (r.adv || s.heroes.some((x) => x !== h && alive(x) && !x.fled))) {
+        const sn = sneakDiceOf(lv) * (r.crit ? 2 : 1);
+        const sd = applyDamage(s, target, roll(sn, 6).t, a.dmg, notes);
+        total += sd; extra += ` +${sd} furtivo 🌒`;
+        h.sneakAt = sneakKey;
       }
       if (a.riderDis && alive(target)) { target.fx.dis = s.round + 1 + a.riderDis; extra += " · a svantaggio"; }
       if (a.stunSave && alive(target)) {
@@ -586,8 +598,9 @@ function heroAct(s, h, a, target) {
       if (a.buff === "adv") t.fx.adv = until;
       if (a.buff === "dmg") t.fx.dmg = { v: a.value, until };
       if (a.buff === "rage") t.fx.rage = { v: a.value, until };
+      if (a.buff === "inspire") { t.fx.adv = until; t.fx.dmg = { v: a.value, until }; }
     });
-    const what = a.buff === "ac" ? `+${a.value} CA` : a.buff === "adv" ? "vantaggio agli attacchi" : a.buff === "rage" ? `+${a.value} danni e danni fisici dimezzati` : `+${a.value} danni`;
+    const what = a.buff === "inspire" ? `vantaggio e +${a.value} danni` : a.buff === "ac" ? `+${a.value} CA` : a.buff === "adv" ? "vantaggio agli attacchi" : a.buff === "rage" ? `+${a.value} danni e danni fisici dimezzati` : `+${a.value} danni`;
     log(s, `${a.icon} ${h.name} → ${a.name}: ${tg.map((t) => t.name).join(", ")} ${what} per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "buff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
   }
@@ -674,11 +687,14 @@ function foeAct(s, f) {
     const parts = tg.map((t) => {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
-      const dmg = ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0) : applyDamage(s, t, base, type, []);
+      // Elusione del ladro (Lv 7, come in D&D): sulle aree dei mostri niente danni se supera il TS, metà se fallisce
+      const evade = tg.length > 1 && t.cls === "rogue" && t.level >= 7;
+      const dmg = evade ? (ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, []))
+        : ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0) : applyDamage(s, t, base, type, []);
       // chi fallisce il TS può prendersi anche lo stato (senza un secondo tiro salvezza)
       const inf = !ok ? foeInflict(a, type) : null;
       const stTxt = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
-      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv}) −${dmg}${stTxt}${t.hp <= 0 ? " 💀" : ""}`;
+      return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv})${evade ? " 🤸 elude" : ""} −${dmg}${stTxt}${t.hp <= 0 ? " 💀" : ""}`;
     });
     log(s, `🌀 ${f.name} → ${nm} (TS ${String(a.saveAbility || "dex").toUpperCase()} CD ${dc}): ${parts.join(" · ")}.`, { kind: "hit", actor: f.id, targets: tg.map((t) => t.id), dr: { n, s: sides, r: rolled.r, p: lvlBonus, x: Math.round(mult * 100) / 100 } });
     return;
