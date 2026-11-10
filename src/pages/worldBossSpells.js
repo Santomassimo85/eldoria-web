@@ -123,17 +123,36 @@ export function damageFormulaFor(action, fallback = "1d6") {
 }
 
 // ── Magie che colpiscono SEMPRE (niente tiro per colpire) ───────────────────
-// Dardo Incantato / Magic Missile: 3 dardi da 1d4+1 danni da forza ciascuno,
-// tutti a segno. Ritorna {darts, formula} oppure null per le altre azioni.
+// Regola World Boss: un lancio, 3d4 TOTALI + modificatore da incantatore.
+// La formula aggregata della sync non va moltiplicata per il numero di dardi.
 const AUTO_HIT = [
-  [/magic missile|dardo incantato|dardi incantati/, { darts: 3, fallback: "1d4+1" }],
+  [/magic missile|dardo incantato|dardi incantati/, { darts: 3, formula: "3d4" }],
 ];
 export function autoHitSpellFor(action) {
   const name = plain(action?.name);
   const hit = AUTO_HIT.find(([re]) => re.test(name));
   if (!hit) return null;
-  const { darts, fallback } = hit[1];
-  return { darts, formula: damageFormulaFor(action, fallback).replace(/s+/g, "") };
+  const { darts, formula } = hit[1];
+  const category = plain(action.category);
+  const level = category.match(/(?:livello|level)\s*(\d+)/);
+  const slotLevel = /trucchetto|cantrip/.test(category) || action.usesSpellSlot === false ? 0
+    : Math.max(0, Number(action.spellLevel ?? action.level ?? level?.[1]) || 0);
+  return { darts, formula, plusMod: true, slotLevel };
+}
+
+export function spendAutoHitSpellSlot(auto, slots) {
+  if (!auto.slotLevel) return null;
+  const entries = Object.entries(slots || {});
+  const available = entries.filter(([, slot]) => Number(slot?.value) > 0);
+  const exact = available.find(([, slot]) => new RegExp(`^(livello|level)\\s*${auto.slotLevel}$`, "i").test(slot.label || ""));
+  const pact = available.find(([, slot]) => /patto|pact/i.test(slot.label || "")
+    && Number(String(slot.label).match(/(?:liv\.?|level)\s*(\d+)/i)?.[1]) >= auto.slotLevel);
+  const selected = exact || pact;
+  if (!selected) throw new Error(`Nessuno slot di livello ${auto.slotLevel} disponibile.`);
+  const [key, slot] = selected;
+  const next = Array.isArray(slots) ? [...slots] : { ...slots };
+  next[key] = { ...slot, value: Number(slot.value) - 1 };
+  return next;
 }
 
 // ── Magie ad AREA ───────────────────────────────────────────────────────────

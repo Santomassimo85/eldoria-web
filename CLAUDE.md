@@ -501,3 +501,9 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 
 ### Verifica
 - Build: `npx vite build`. Dev: `npx vite --port 5188`. Test mobile 414px + desktop 1568px. Applica il test B&N a ogni pagina.
+
+### World Boss - Dardo Incantato (2026-11-10)
+- Un solo tiro aggregato 3d4 + modificatore da incantatore; i tre dardi restano visivi.
+- Consuma un solo slot per azioni con livello, nessuno per trucchetti/azioni senza slot. Slot e danno salvati nella stessa transazione.
+- Build Vite completata.
+

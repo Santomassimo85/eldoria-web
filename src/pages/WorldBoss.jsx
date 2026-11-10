@@ -31,7 +31,7 @@ import TimerDisplay from "../components/TimerDisplay";
 import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import StatusPips from "../components/StatusPips";
 import { VfxLayer } from "./WorldBossVfx";
-import { pickEffectForAction, areaSpellFor, autoHitSpellFor, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
+import { pickEffectForAction, areaSpellFor, autoHitSpellFor, spendAutoHitSpellSlot, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { resetWorldBossFight } from "../data/worldBossReset";
 import { deliverBossRewards, deliverySummaryText } from "../data/worldBossRewardsDelivery";
@@ -292,6 +292,17 @@ const statSave = (charData, key) => readStat(charData, key).save;
 // Spellcasting modifier: highest of INT/WIS/CHA — works for any caster class.
 function getSpellMod(charData) {
   return Math.max(statMod(charData, "int"), statMod(charData, "wis"), statMod(charData, "cha"));
+}
+
+// Dardo Incantato usa la caratteristica da incantatore, una sola volta.
+function autoHitSpellMod(profile, action) {
+  const explicit = action.spellcastingAbility || profile.spellcastingAbility || profile.stats?.spellcastingAbility;
+  if (["int", "wis", "cha"].includes(explicit)) return statMod(profile, explicit);
+  const cls = String(profile.class || "").toLowerCase();
+  if (/wizard|mago|artificer|artefice/.test(cls)) return statMod(profile, "int");
+  if (/cleric|chierico|druid|ranger/.test(cls)) return statMod(profile, "wis");
+  if (/sorcerer|stregone|warlock|bard|bardo|paladin/.test(cls)) return statMod(profile, "cha");
+  return getSpellMod(profile);
 }
 
 // 5e proficiency bonus: quello salvato dalla sync (stats.prof) se c'è, altrimenti dal livello
@@ -1168,48 +1179,50 @@ export default function WorldBoss() {
     }
   };
 
-  // Magia che colpisce SEMPRE (Dardo Incantato): niente d20, ogni dardo tira il suo
-  // danno e tutti vanno a segno sul bersaglio scelto.
+  // Tre dardi visivi, ma UN tiro aggregato: 3d4 + modificatore, UN solo slot.
   const castAutoHitSpell = async (action, auto) => {
     const boss = currentTarget;
-    if (!boss || isUserLocked) return;
+    if (!boss || isUserLocked || !canFightNow()) return;
+    try { spendAutoHitSpellSlot(auto, charData?.spellSlots); }
+    catch (err) { window.alert(err.message); return; }
     if (!(await claimTurn())) return;
-    const formula = auto.formula.replace(/@mod/g, getSpellMod(charData));
-    const darts = [];
-    let totalDamage = 0;
-    for (let i = 0; i < auto.darts; i++) { const r = rollDetail(formula); darts.push(r); totalDamage += r.total; }
-    const rolledDamage = totalDamage;
-    const autoRes = applyResist(boss, damageTypeFor(action), totalDamage);
-    totalDamage = autoRes.dmg;
-    const currentShield = boss.shield || 0;
-    const currentHp = boss.hp || 0;
-    let rem = totalDamage, newShield = currentShield, newHp = currentHp;
-    if (currentShield > 0) {
-      if (currentShield >= rem) { newShield -= rem; rem = 0; }
-      else { rem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - rem); }
-    } else { newHp = Math.max(0, currentHp - rem); }
+    const rolled = rollDetail(auto.formula);
     try {
-      await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
-      let damageRoll = `🎯 ${auto.darts} dardi: ${darts.map((d) => `${d.detail}=${d.total}`).join(" · ")} = ${autoRes.note ? `${rolledDamage}${autoRes.note} → ` : ""}💥 ${totalDamage} DANNI!`;
-      if (newShield < currentShield) damageRoll += " 🛡️ Scudo colpito!";
-      if (newHp <= 0) damageRoll += ` ☠ ${boss.name} cade!`;
+      const result = await runTransaction(db, async (tx) => {
+        const targetRef = enemyRef(boss), casterRef = doc(db, "characters", myUid);
+        const [targetSnap, casterSnap] = await Promise.all([tx.get(targetRef), tx.get(casterRef)]);
+        if (worldBossNightPaused() || turnState.nightPaused) throw new Error("World Boss in pausa fino alle 05:00.");
+        if (!targetSnap.exists() || !casterSnap.exists()) throw new Error("Bersaglio o personaggio non disponibile.");
+        const target = targetSnap.data(), caster = casterSnap.data();
+        if (!(target.hp > 0)) throw new Error("Il bersaglio è già a terra.");
+        const slots = spendAutoHitSpellSlot(auto, caster.spellSlots);
+        const mod = autoHitSpellMod(caster, action), raw = Math.max(0, rolled.total + mod);
+        const res = applyResist(target, damageTypeFor(action), raw);
+        const shield = Math.max(0, Number(target.shield) || 0);
+        const shieldHit = Math.min(shield, res.dmg);
+        const newHp = Math.max(0, target.hp - Math.max(0, res.dmg - shield));
+        tx.update(targetRef, { hp: newHp, shield: shield - shieldHit });
+        if (slots) tx.update(casterRef, { spellSlots: slots });
+        return { mod, raw, totalDamage: res.dmg, note: res.note, newHp, shieldHit };
+      });
+      const { mod, raw, totalDamage, note, newHp, shieldHit } = result;
+      const signedMod = `${mod >= 0 ? "+" : ""}${mod}`;
+      let damageRoll = `3 dardi / un tiro: ${rolled.detail}${signedMod} = ${raw}${note || ""} / ${totalDamage} DANNI!`;
+      if (shieldHit > 0) damageRoll += " Scudo colpito!";
+      if (newHp <= 0) damageRoll += ` ${boss.name} cade!`;
       await addDoc(collection(db, "world_boss_chat"), {
-        type: "action", senderName: charData?.name || "Eroe",
-        actionName: `${action.name} → ${boss.name}`,
-        hitRoll: `✨ Colpisce sempre: ${auto.darts} dardi da ${formula}, nessun tiro per colpire`,
-        damageRoll,
-        uid: currentUser.uid, category: action.category,
-        timestamp: serverTimestamp(),
+        type: "action", senderName: charData?.name || "Eroe", actionName: `${action.name} → ${boss.name}`,
+        hitRoll: `Colpisce sempre: 3d4${signedMod} totali, nessun tiro per colpire${auto.slotLevel ? "; 1 slot consumato" : "; senza slot"}`,
+        damageRoll, uid: currentUser.uid, category: action.category, timestamp: serverTimestamp(),
         ...fxFields(action, [boss.vfxKey], { kind: "bolt", from: `player-${myUid}`, kill: newHp <= 0 ? [boss.vfxKey] : [], nums: [{ t: boss.vfxKey, v: -totalDamage }] }),
       });
-      if (activeBosses[0]?.id) {
-        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-          [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
-        });
-      }
+      if (activeBosses[0]?.id) await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+        [`attackCounts.${activeBosses[0].id}.${currentUser.uid}`]: increment(1),
+      });
       await afterAction();
     } catch (err) {
-      console.error("Errore magia a colpo sicuro:", err);
+      releaseClaim();
+      window.alert(err.message || "Non è stato possibile lanciare Dardo Incantato.");
     }
   };
 
@@ -2703,6 +2716,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                               const title = used ? "Già usata in questa battaglia (una volta per battaglia)"
                                 : skill ? `${skillTagFor(skill)}${skill.limited ? " · una volta per battaglia" : ""}`
                                 : isArea ? "Magia ad area: colpisce tutti i nemici in campo" : undefined;
+                              const autoHit = !skill && autoHitSpellFor(action);
                               const skillDice = skill && !used ? (skill.perLevel ? `${skill.perLevel}×liv` : String(skill.formula || "").replace(/@mod/g, "mod")) : "";
                               return (
                                 <button key={idx} className={`rpg-action-btn${used ? " is-used" : ""}`} onClick={() => handleActionRoll(action)} disabled={isUserLocked || used} title={title}>
@@ -2711,7 +2725,8 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                                     : skill ? <span className={`rpg-action-aoe rpg-action-skill rpg-action-skill--${skill.kind}`}>{skillTagFor(skill)}</span>
                                     : isArea ? <span className="rpg-action-aoe">area</span> : null}
                                   {skillDice && <span className="rpg-action-bonus">{skillDice}</span>}
-                                  {!skill && action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
+                                  {autoHit && <span className="rpg-action-bonus">3d4 + mod / {autoHit.slotLevel ? "1 slot" : "senza slot"}</span>}
+                                  {!skill && !autoHit && action.bonus && <span className="rpg-action-bonus"> {/^[+-]/.test(String(action.bonus).trim()) ? String(action.bonus).trim() : `+${action.bonus}`}</span>}
                                 </button>
                               );
                             })}
