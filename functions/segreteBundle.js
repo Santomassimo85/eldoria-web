@@ -1779,6 +1779,7 @@ function acOf(s, c) {
 }
 var curVfx = null;
 var curTags = {};
+var curDamage = {};
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
   const row = { i: s.seq, txt, ...curVfx && extra.targets ? curVfx : {}, ...extra };
@@ -1794,6 +1795,9 @@ function log(s, txt, extra = {}) {
       const f = byId(s, id);
       if (f && seen[id] != null && f.hp !== seen[id]) nums[id] = f.hp - seen[id];
     });
+    row.targets.forEach((id) => {
+      if (curDamage[id] > 0) nums[id] = -curDamage[id];
+    });
     if (Object.keys(nums).length) row.nums = nums;
   }
   if (row.targets) {
@@ -1804,6 +1808,7 @@ function log(s, txt, extra = {}) {
     if (Object.keys(tags).length) row.tags = tags;
   }
   curTags = {};
+  curDamage = {};
   const nextSeen = {};
   all.forEach((f) => {
     nextSeen[f.id] = f.hp;
@@ -2030,6 +2035,7 @@ function applyDamage(s, target, amount, type, notes) {
     curTags[target.id] = "rage";
   }
   target.hp = Math.max(0, target.hp - dmg);
+  curDamage[target.id] = (curDamage[target.id] || 0) + dmg;
   return dmg;
 }
 function attackRoll(s, att, def, bonus, { adv = false, dis = false, critAt = 20 } = {}) {

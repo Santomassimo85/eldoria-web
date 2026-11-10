@@ -228,6 +228,8 @@ function acOf(s, c) {
 let curVfx = null;
 // scritte sotto il numero (IMMUNE / RESISTE / VULNERABILE / FURIA) raccolte da applyDamage fino alla prossima riga
 let curTags = {};
+// Danno effettivo dopo le difese, compresa la parte oltre i PF rimasti.
+let curDamage = {};
 function log(s, txt, extra = {}) {
   s.seq = (s.seq || 0) + 1;
   const row = { i: s.seq, txt, ...(curVfx && extra.targets ? curVfx : {}), ...extra };
@@ -242,6 +244,7 @@ function log(s, txt, extra = {}) {
   if (row.targets) {
     const nums = {};
     row.targets.forEach((id) => { const f = byId(s, id); if (f && seen[id] != null && f.hp !== seen[id]) nums[id] = f.hp - seen[id]; });
+    row.targets.forEach((id) => { if (curDamage[id] > 0) nums[id] = -curDamage[id]; });
     if (Object.keys(nums).length) row.nums = nums;
   }
   if (row.targets) {
@@ -250,6 +253,7 @@ function log(s, txt, extra = {}) {
     if (Object.keys(tags).length) row.tags = tags;
   }
   curTags = {};
+  curDamage = {};
   const nextSeen = {};
   all.forEach((f) => { nextSeen[f.id] = f.hp; });
   s.hpSeen = nextSeen;
@@ -412,6 +416,7 @@ function applyDamage(s, target, amount, type, notes) {
   } else if ((target.res || []).includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
   else if (fxOn(s, target.fx.rage) && (PHYS.includes(type) || (subP(target).rageAll && type !== "psychic"))) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
   target.hp = Math.max(0, target.hp - dmg);
+  curDamage[target.id] = (curDamage[target.id] || 0) + dmg;
   return dmg;
 }
 function attackRoll(s, att, def, bonus, { adv = false, dis = false, critAt = 20 } = {}) {

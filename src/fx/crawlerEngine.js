@@ -366,6 +366,8 @@ export class CrawlerEngine {
   }
   // fx della riga di cronaca: slash · smash · thrust · punch (corpo a corpo), arrow (a distanza), altro = incantesimo
   attack(fx, { hand = "R", unarmed = false } = {}) {
+    // I pugnali usano lo stesso fendente dello sprite delle spade, alternando le mani.
+    if (this.mainWeapon === "pugnali" && fx === "thrust" && !unarmed) fx = "slash";
     const kind = MOVES[fx] && fx !== "shoot" ? fx : fx === "arrow" || fx === "shoot" ? (this.ranged ? this.shootKind : "cast") : "cast";
     const ms = this.calm ? 60 : MOVES[kind].ms;
     this.act = { kind, hand, unarmed, t0: performance.now(), ms };

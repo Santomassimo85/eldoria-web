@@ -6,12 +6,12 @@ function load(file) {
   const code = esbuild.buildSync({ entryPoints: [file], bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
   const mod = new Module(file, module); mod._compile(code, file); return mod.exports;
 }
-const { CrawlerEngine, thrustArmPoint } = load('src/fx/crawlerEngine.js');
+const { CrawlerEngine } = load('src/fx/crawlerEngine.js');
 const A = load('src/fx/crawlerArt.js');
 const K = load('src/data/segreteKits.js');
-function strikes(cls, weapon, actionId, rng = 0.5, level = 3, adv = false) {
+function strikes(cls, weapon, actionId, rng = 0.5, level = 3, adv = false, hp = 1000, res = []) {
   const s = E.withRng(() => 0.5, () => E.newRun({ room: { type: 'segrete' }, heroes: [{ uid: 'one', name: 'Hero', cls, hero: { weapon, picks: ['ki', 'stordente'], xp: K.xpForLevel(level), xpv: 2 } }], bestiary: [], dungeon: { name: 'Test', floors: 1 }, now: 1000 }));
-  s.foes = [{ id: 'f_test', side: 'f', name: 'Target', hp: 1000, maxHp: 1000, ac: 5, fx: {}, res: [], imm: [], vul: [] }];
+  s.foes = [{ id: 'f_test', side: 'f', name: 'Target', hp, maxHp: 1000, ac: 5, fx: {}, res, imm: [], vul: [] }];
   s.order = []; s.acted = {}; s.status = 'fight';
   if (adv) s.heroes[0].fx.adv = 99;
   E.withRng(() => rng, () => E.act(s, 'one', { actionId, targetId: 'f_test' }, 2000));
@@ -44,15 +44,25 @@ const engine = Object.create(CrawlerEngine.prototype);
 engine.calm = false; engine.offKind = 'none';
 engine.mainWeapon = 'pugnali';
 engine.attack('thrust', { hand: 'R' });
-assert.equal(engine.act.kind, 'daggerThrust');
-engine.act.t0 = performance.now() - 280;
-const stab = engine.moveNow();
-assert.ok(stab.R.rot < -0.5 && stab.R.s < 1);
-assert.ok(stab.R.sy > 1.1 && stab.R.sx < 0.9 && stab.R.dy < -40);
-const pinned = thrustArmPoint(100, 50, 150, 200, stab.R, 230, 250, 1, 1, 1);
-assert.deepEqual(pinned, { x: 250, y: 250 });
-const wrist = thrustArmPoint(100, 50, 150, 200, stab.R, 230, 250, 1, 0.6, 0.6);
-assert.ok(wrist.y < 170);
+assert.equal(engine.act.kind, 'slash');
+for (const hand of ['R', 'L']) {
+  engine.attack('thrust', { hand });
+  engine.act.t0 = performance.now() - 215;
+  const dagger = engine.moveNow();
+  engine.mainWeapon = 'spada_lunga';
+  engine.attack('slash', { hand });
+  engine.act.t0 = performance.now() - 215;
+  const sword = engine.moveNow();
+  for (const key of ['dx', 'dy', 'rot', 's']) assert.ok(Math.abs(dagger[hand][key] - sword[hand][key]) < 0.1);
+  engine.mainWeapon = 'pugnali';
+}
+for (const res of [[], ['piercing']]) {
+  const normal = strikes('rogue', 'pugnali', 'arma', 0.5, 3, false, 1000, res)[0];
+  const lethal = strikes('rogue', 'pugnali', 'arma', 0.5, 3, false, 1, res)[0];
+  assert.equal(lethal.dmg, normal.dmg);
+  assert.equal(lethal.nums.f_test, -normal.dmg);
+  assert.ok(lethal.kill.includes('f_test'));
+}
 engine.act = { kind: 'punch', hand: 'L', unarmed: true, t0: performance.now() - 170, ms: 340 };
 let mv = engine.moveNow();
 assert.ok(mv.L.dx > 60 && mv.L.s > 1.3);

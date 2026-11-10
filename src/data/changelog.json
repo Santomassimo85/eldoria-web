@@ -60,6 +60,10 @@
         {
           "type": "fix",
           "text": "Manuale delle Segrete aggiornato con tutte le regole nuove."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: i pugnali colpiscono con il movimento delle spade; i numeri sui bersagli mostrano il danno completo anche sui colpi mortali."
         }
       ]
     },
