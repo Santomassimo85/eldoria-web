@@ -31,7 +31,7 @@ import TimerDisplay from "../components/TimerDisplay";
 import { showD20Roll, preloadDice3D } from "../components/DiceRoll";
 import StatusPips from "../components/StatusPips";
 import { VfxLayer } from "./WorldBossVfx";
-import { pickEffectForAction, areaSpellFor, autoHitSpellFor, spendAutoHitSpellSlot, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
+import { pickEffectForAction, areaSpellFor, autoHitSpellFor, spendAutoHitSpellSlot, smiteSlotOptions, spendSmiteSlot, damageFormulaFor, elementFor, SAVE_LABEL_IT, skillKindFor, skillTagFor, isSkillCategory } from "./worldBossSpells";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { resetWorldBossFight } from "../data/worldBossReset";
 import { deliverBossRewards, deliverySummaryText } from "../data/worldBossRewardsDelivery";
@@ -1232,15 +1232,26 @@ export default function WorldBoss() {
     const boss = currentTarget; // il nemico scelto (boss o minion)
     if (!boss || isUserLocked) return;
     const rider = opts.rider || null;
-    const riderSkill = rider ? skillKindFor(rider) : null;
+    const riderSkill = rider ? skillKindFor(rider, charData) : null;
+    let smiteChoice = null;
+    if (riderSkill?.smite) {
+      try { smiteChoice = spendSmiteSlot(charData?.spellSlots, opts.smiteSlot); }
+      catch (err) { window.alert(err.message); return; }
+    }
 
     // ── ABILITÀ del PG (categoria "Abilità"): smite/colpi psionici sull'arma, cure, scudi,
     // +CA, attacchi a TS o ad area. Le passive non arrivano qui (filtrate in groupedActions).
-    const skill = !rider && isSkillCategory(action.category) ? skillKindFor(action) : null;
+    const skill = !rider && isSkillCategory(action.category) ? skillKindFor(action, charData) : null;
     if (skill) {
       if (isSkillUsed(action, skill)) { window.alert(`"${action.name}" è già stata usata in questa battaglia.`); return; }
       if (skill.kind === "rider") {
         if (!myWeapons.length) { window.alert(`Per usare "${action.name}" serve un'arma nella scheda.`); return; }
+        if (skill.smite) {
+          const slots = smiteSlotOptions(charData?.spellSlots);
+          if (!slots.length) { window.alert("Nessuno slot disponibile per Smite."); return; }
+          setWeaponPicker({ skill: action, weapons: myWeapons, smiteSlot: slots[0].key });
+          return;
+        }
         if (myWeapons.length === 1) { await handleActionRoll(myWeapons[0], { rider: action }); return; }
         setWeaponPicker({ skill: action, weapons: myWeapons });
         return;
@@ -1391,9 +1402,9 @@ export default function WorldBoss() {
         let riderNote = "";
         let riderDamage = 0;
         if (rider && riderSkill) {
-          const r = rollDetail(resolveSkillFormula(riderSkill));
+          const r = rollDetail(smiteChoice?.formula || resolveSkillFormula(riderSkill));
           riderDamage = r.total;
-          riderNote = ` + ${rider.name} ${r.detail}=${r.total}`;
+          riderNote = ` + ${rider.name} ${r.detail}=${r.total}${smiteChoice ? ` (slot ${smiteChoice.level})` : ""}`;
         }
         if (isCritical) { totalDamage *= 2; riderDamage *= 2; }
         let dieDetail = diePart ? `Dado ${diePart}[${rolls.join("+")}]` : "Danno fisso";
@@ -1413,6 +1424,7 @@ export default function WorldBoss() {
         }
         // Resistenze del nemico: l'arma col suo tipo, il rider (smite…) col suo.
         const rolledTotal = totalDamage + riderDamage;
+        const weaponDamage = totalDamage;
         const wRes = applyResist(boss, damageTypeFor(action), totalDamage);
         const rRes = riderDamage ? applyResist(boss, damageTypeFor(rider), riderDamage) : { dmg: 0, note: "" };
         totalDamage = wRes.dmg + rRes.dmg;
@@ -1427,7 +1439,31 @@ export default function WorldBoss() {
           if (currentShield >= dmgRem) { newShield -= dmgRem; dmgRem = 0; }
           else { dmgRem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - dmgRem); }
         } else { newHp = Math.max(0, currentHp - dmgRem); }
-        await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
+        if (smiteChoice) {
+          try {
+            await runTransaction(db, async (tx) => {
+              const targetRef = enemyRef(boss), casterRef = doc(db, "characters", myUid);
+              const [targetSnap, casterSnap] = await Promise.all([tx.get(targetRef), tx.get(casterRef)]);
+              if (worldBossNightPaused() || turnState.nightPaused) throw new Error("World Boss in pausa fino alle 05:00.");
+              if (!targetSnap.exists() || !casterSnap.exists() || !(targetSnap.data().hp > 0)) throw new Error("Bersaglio o personaggio non disponibile.");
+              const spent = spendSmiteSlot(casterSnap.data().spellSlots, opts.smiteSlot);
+              if (spent.formula !== smiteChoice.formula) throw new Error("Gli slot sono cambiati: scegli di nuovo Smite.");
+              const fresh = targetSnap.data();
+              const damage = applyResist(fresh, damageTypeFor(action), weaponDamage).dmg
+                + applyResist(fresh, damageTypeFor(rider), riderDamage).dmg;
+              const shield = Math.max(0, Number(fresh.shield) || 0);
+              newShield = Math.max(0, shield - damage);
+              newHp = Math.max(0, Number(fresh.hp) - Math.max(0, damage - shield));
+              totalDamage = damage;
+              tx.update(targetRef, { hp: newHp, shield: newShield });
+              tx.update(casterRef, { spellSlots: spent.slots });
+            });
+          } catch (err) {
+            releaseClaim();
+            window.alert(err.message || "Smite non riuscito.");
+            return;
+          }
+        } else await updateDoc(enemyRef(boss), { hp: newHp, shield: newShield });
         actionData.damageRoll = `${damageString} = ${resNote ? `${rolledTotal}${resNote} → ` : ""}💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
         if (newHp <= 0) actionData.damageRoll += ` ☠ ${boss.name} cade!`;
@@ -1908,7 +1944,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
       // Categoria "Abilità": entrano SOLO quelle usabili (danno / cura / scudo / +CA) riconosciute
       // da skillKindFor; le passive restano fuori. Doppioni: una voce sola, tenendo quella con i dadi.
       if (isSkillCategory(cat)) {
-        if (!skillKindFor(action)) return acc;
+        if (!skillKindFor(action, charData)) return acc;
         if (!acc[cat]) acc[cat] = [];
         const key = String(action.name || "").trim().toLowerCase();
         if (seenSkills.has(key)) {
@@ -2710,14 +2746,16 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                         {openSections[cat] && (
                           <div className="rpg-acc-content">
                             {groupedActions[cat].map((action, idx) => {
-                              const skill = isSkillCategory(cat) ? skillKindFor(action) : null;
+                              const skill = isSkillCategory(cat) ? skillKindFor(action, charData) : null;
                               const used = skill ? isSkillUsed(action, skill) : false;
                               const isArea = skill ? skill.kind === "area" : !!areaSpellFor(action);
                               const title = used ? "Già usata in questa battaglia (una volta per battaglia)"
                                 : skill ? `${skillTagFor(skill)}${skill.limited ? " · una volta per battaglia" : ""}`
                                 : isArea ? "Magia ad area: colpisce tutti i nemici in campo" : undefined;
                               const autoHit = !skill && autoHitSpellFor(action);
-                              const skillDice = skill && !used ? (skill.perLevel ? `${skill.perLevel}×liv` : String(skill.formula || "").replace(/@mod/g, "mod")) : "";
+                              const skillDice = skill && !used ? (skill.smite
+                                ? [...new Set(smiteSlotOptions(charData?.spellSlots).map((s) => s.formula))].join(" / ") || "nessuno slot"
+                                : skill.perLevel ? `${skill.perLevel}×liv` : String(skill.formula || "").replace(/@mod/g, "mod")) : "";
                               return (
                                 <button key={idx} className={`rpg-action-btn${used ? " is-used" : ""}`} onClick={() => handleActionRoll(action)} disabled={isUserLocked || used} title={title}>
                                   <span className="rpg-action-name">{action.name}</span>
@@ -2755,10 +2793,21 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
               </div>
               <button className="rpg-spell-picker-close" onClick={() => setWeaponPicker(null)} aria-label="Chiudi">✕</button>
             </div>
+            {weaponPicker.smiteSlot != null && (
+              <label className="rpg-spell-picker-desc" style={{ display: "block", padding: "0 16px 12px" }}>
+                Slot di Smite (consumato solo se colpisci)
+                <select value={weaponPicker.smiteSlot} style={{ display: "block", width: "100%", marginTop: 8 }}
+                  onChange={(e) => setWeaponPicker((p) => ({ ...p, smiteSlot: e.target.value }))}>
+                  {smiteSlotOptions(charData?.spellSlots).map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}: +{s.formula} radianti ({s.remaining} rimasti)</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="rpg-spell-picker-list">
               {weaponPicker.weapons.map((w, i) => (
                 <button key={i} className="rpg-spell-picker-row"
-                  onClick={async () => { const sk = weaponPicker.skill; setWeaponPicker(null); await handleActionRoll(w, { rider: sk }); }}>
+                  onClick={async () => { const { skill: sk, smiteSlot } = weaponPicker; setWeaponPicker(null); await handleActionRoll(w, { rider: sk, smiteSlot }); }}>
                   <span className="rpg-spell-picker-mark">⚔</span>
                   <span className="rpg-spell-picker-name">{w.name}</span>
                   <span className="rpg-spell-picker-hp">{w.damage && w.damage !== "0" ? w.damage : "1d6"}{parseInt(w.bonus) ? ` · +${parseInt(w.bonus)}` : ""}</span>

@@ -318,13 +318,40 @@ function skillSaveFor(desc) {
   return f ? f[1] : null;
 }
 
-export function skillKindFor(action) {
+export function smiteSlotOptions(slots) {
+  return Object.entries(slots || {}).flatMap(([key, slot]) => {
+    const match = String(slot?.label || "").match(/(?:livello|level|liv\.?)\s*(\d+)/i);
+    const level = Number(match?.[1]);
+    return level > 0 && Number(slot.value) > 0
+      ? [{ key, level, label: slot.label, remaining: Number(slot.value), formula: `${Math.min(5, level + 1)}d8` }] : [];
+  }).sort((a, b) => a.level - b.level);
+}
+
+export function spendSmiteSlot(slots, key) {
+  const selected = smiteSlotOptions(slots).find((s) => s.key === key);
+  if (!selected) throw new Error("Lo slot scelto per Smite non è più disponibile.");
+  const next = Array.isArray(slots) ? [...slots] : { ...slots };
+  next[key] = { ...slots[key], value: Number(slots[key].value) - 1 };
+  return { slots: next, ...selected };
+}
+
+export function skillKindFor(action, profile = {}) {
   if (!action || !isSkillCategory(action.category)) return null;
   const name = plain(action.name).trim();
   if (!name || SKILL_SKIP.test(name)) return null;
   const desc = plain(action.description);
   const text = `${name} ${desc}`;
   const limited = SKILL_LIMITED.test(desc);
+  // La sync elimina i dadi inline della progressione: risolverli dal livello vero.
+  if (/breath weapon|arma a soffio|soffio del drago/.test(name)) {
+    const level = Math.max(1, Number(profile.level) || 1);
+    const dice = 1 + Number(level >= 5) + Number(level >= 11) + Number(level >= 17);
+    const area = areaSpellFor(action);
+    return { kind: "area", formula: `${dice}d10`, limited, area: { save: "dex", half: true, ...area, dcAbility: area?.dcAbility || "con" } };
+  }
+  if (/^(divine smite|punizione divina)$/.test(name)) {
+    return { kind: "rider", formula: "2d8", limited: false, smite: true };
+  }
   const field = skillDamageField(action);
   const descDie = firstDie(desc);
   const known = SKILL_KNOWN_DMG.find(([re]) => re.test(name))?.[1] || "";

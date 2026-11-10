@@ -507,3 +507,9 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - Consuma un solo slot per azioni con livello, nessuno per trucchetti/azioni senza slot. Slot e danno salvati nella stessa transazione.
 - Build Vite completata.
 
+
+### World Boss - Soffio e Divine Smite (2026-11-10)
+- skillKindFor riceve il profilo: Breath Weapon usa 1/2/3/4d10 ai livelli 1/5/11/17, anche con dadi inline mancanti o campo damage obsoleto. CD su COS.
+- Divine Smite: scelta dello slot nel selettore arma, 2d8 con slot 1 e +1d8 per livello slot fino a 5d8; non cresce automaticamente col livello PG. Danno e consumo di un solo slot in transazione; nessun consumo se manca il colpo. Etichette e log mostrano la formula effettiva.
+- Verificati soglie del Soffio e slot sulla scheda reale di Palar (livello 5); build Vite completata.
+
