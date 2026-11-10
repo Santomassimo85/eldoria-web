@@ -18,6 +18,7 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-h3 { margin: 18px 0 8px; font: 700 1rem var(--font-ui, serif); }
 .sga-h3 small { font-weight: 400; color: var(--osso-2); margin-left: 6px; }
 .sga-hint { margin: 6px 0; color: var(--osso-2); font-size: .9rem; }
+.sga-x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 3px; cursor: pointer; background: rgba(0,0,0,.6); color: #fff; }
 .sga-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 
 .sga-dcard { display: grid; gap: 4px; padding: 0 0 12px; overflow: hidden; }
@@ -36,12 +37,6 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-ai { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 10px; border: 1px dashed rgba(var(--el-rgb), .5); border-radius: 3px; }
 .sga-ai input { flex: 1 1 260px; }
 
-.sga-bgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 8px; margin-bottom: 10px; }
-.sga-bg { position: relative; margin: 0; aspect-ratio: 16 / 9; border-radius: 3px; overflow: hidden; background: var(--roccia-1); }
-.sga-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.sga-bg--empty { display: grid; place-items: center; align-content: center; font-size: 2.4rem; color: var(--osso-2); }
-.sga-bg--empty small { font-size: .8rem; }
-.sga-x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 3px; cursor: pointer; background: rgba(0,0,0,.6); color: #fff; }
 
 .sga-sprites { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px; }
 .sga-savebar { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; margin: 18px -14px -14px; padding: 12px 14px; background: var(--roccia-3, var(--roccia-2)); border-top: 1px solid rgba(var(--osso-rgb), .16); }
@@ -49,7 +44,6 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-mcard { display: flex; gap: 12px; align-items: center; }
 .sga-mcard-img { flex: none; width: 76px; height: 76px; display: grid; place-items: center; font-size: 2.2rem; background: var(--roccia-1); border-radius: 3px; }
 .sga-mcard-img img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
-.sga-mcard-img img.mirror { transform: scaleX(-1); }
 .sga-mcard-main { display: grid; gap: 2px; min-width: 0; }
 .sga-mcard-main small { color: var(--osso-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sga-import { margin-bottom: 12px; }
@@ -105,7 +99,6 @@ button.sga-card:hover { border-color: var(--el); }
 .sga-spr-img { aspect-ratio: 1; display: grid; place-items: center; border-radius: 3px; overflow: hidden;
   background: repeating-conic-gradient(rgba(255,255,255,.06) 0 25%, transparent 0 50%) 0 0 / 16px 16px, rgba(0,0,0,.3); }
 .sga-spr-img img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
-.sga-spr-img img.mirror { transform: scaleX(-1); }
 .sga-spr-none { display: grid; justify-items: center; font-size: 2.6rem; opacity: .6; }
 .sga-spr-none small { font-size: .78rem; }
 .sga-spr-wait { font-size: .95rem; color: var(--osso-2); }

@@ -59,7 +59,7 @@ export default function AdminPanel() {
       label: "Battaglia", color: "#f87171", glyph: "⚔",
       items: [
         { icon: "👹", label: "World Boss Fight", desc: "Crea boss, attivali e gestisci gli HP live.",         path: "/dm-admin/world-boss" },
-        { icon: "🗝", label: "Le Segrete",      desc: "Dungeon dello story mode: sfondi e bestiario dei mostri.", path: "/dm-admin/segrete" },
+        { icon: "🗝", label: "Le Segrete",      desc: "Dungeon, bestiario, oggetti e grafica in prima persona.", path: "/dm-admin/segrete" },
         { icon: "🧝", label: "Sprite Personaggi",desc: "Sprite di PG e minion per il Boss Fight.",            path: "/dm-admin/player-sprites" },
       ],
     },

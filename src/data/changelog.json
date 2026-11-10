@@ -64,6 +64,10 @@
         {
           "type": "fix",
           "text": "Segrete: i pugnali colpiscono con il movimento delle spade; i numeri sui bersagli mostrano il danno completo anche sui colpi mortali."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: rimossa la vecchia vista 2D. L’admin ora gestisce solo la prima persona, con sprite frontali, texture dei dungeon e armi in mano."
         }
       ]
     },

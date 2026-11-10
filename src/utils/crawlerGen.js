@@ -49,9 +49,10 @@ export async function refOnMagenta(url) {
     return c.toDataURL("image/png");
   } catch { return url; }
 }
-// sprite frontale di un mostro: se c'è lo sprite classico l'IA parte da lì, così resta lo stesso mostro
+// Usa il frontale esistente come riferimento; accetta anche immagini già archiviate.
 export async function frontSpriteUrl(m) {
-  const ref = m.imageUrl ? await refOnMagenta(m.imageUrl) : "";
+  const source = m.frontImageUrl || m.imageUrl;
+  const ref = source ? await refOnMagenta(source) : "";
   const img = await askImage({ prompt: frontPrompt(m.name, m.look || m.desc, !!ref, m.size), aspectRatio: "3:4", ...(ref ? { refs: [ref], refMode: "same" } : {}) });
   const clean = await dataUrlToTransparentDataUrl(img, 256);
   const blob = await (await fetch(clean)).blob();

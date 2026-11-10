@@ -4,9 +4,8 @@
    - Gruppi da 1 a MAX_PARTY giocatori, si parte quando TUTTI premono Avvia.
    - Tipi di dungeon (caverna, segrete, magma…): quelli base qui sotto, il
      Master ne aggiunge/modifica in dungeon_types/{key} (fase 2). Ogni tipo
-     avrà i suoi mostri e i suoi sfondi.
-   - Livello di STORIA per classe: si accumula giocando e si azzera con la
-     settimana dell'Arena (domenica 23:00, currentWeekKey).
+     ha i suoi mostri frontali e le texture in dungeon_tiles/{key}.
+   - Eroi permanenti per classe: livello e progressione si accumulano giocando.
    ============================================================ */
 import { ARENA_CLASSES } from "./arenaClassSprites";
 import { currentWeekKey } from "./arenaWeek";
@@ -75,7 +74,7 @@ export const MIMIC_MONSTER = {
   hp: 40, ac: 13, init: 0, save: 0, dungeons: [],
   desc: "Uno scrigno vivente con denti e lingua: appare solo nel tesoro finale (10%).",
   look: "A living wooden treasure chest mimic with iron bands, lid open as a huge mouth lined with sharp ivory teeth, a long purple tongue and sticky acidic pseudopods. Recognizable treasure chest silhouette, sinister dungeon monster, no humanoid body.",
-  imageUrl: "", deadImageUrl: "", frontImageUrl: "", facing: "left",
+  frontImageUrl: "",
   resistances: [], vulnerabilities: [], immunities: [],
   actions: [BA("Morso", 2, "d6", 5), BA("Pseudopode acido", 2, "d6", 5, { dmgType: "acido" })],
 };
@@ -119,8 +118,6 @@ export function mergeMonsters(docs = []) {
     .filter((m) => !m.hidden);
 }
 
-// Vista in prima persona (2026-11-07): false = solo il Master principale. true = tutti.
-export const CRAWLER_PUBLIC = true;
 
 export const STORY_CLASSES = ARENA_CLASSES.map(({ key, it, icon }) => ({ key, it, icon }));
 export const classInfo = (key) => STORY_CLASSES.find((c) => c.key === key) || null;
@@ -153,10 +150,10 @@ export const roomFull = (room) => (room?.members || []).length >= MAX_PARTY;
 export const allReady = (room) => (room?.members || []).length > 0 && room.members.every((m) => m.ready);
 
 /* ── Bestiario e tipi di dungeon del Master (fase 2) ──────────────
-   dungeon_types/{key}: { name, icon, desc, floors, backgrounds: [url], hidden }
+   dungeon_types/{key}: { name, icon, desc, floors, hidden }
      floors = incontri prima del boss (il boss è l'ultima sala).
    dungeon_monsters/{id}: { name, desc, role, level, hp, ac, init, save,
-     dungeons: [key], imageUrl, deadImageUrl, facing, actions: [azione World
+     dungeons: [key], frontImageUrl, actions: [azione World
      Boss], resistances, vulnerabilities, immunities, source }
      role: minion (gruppi), elite (da solo o con 1-2 minion), boss (ultima sala). */
 export const DEFAULT_FLOORS = 3;

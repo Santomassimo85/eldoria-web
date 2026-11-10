@@ -1,6 +1,4 @@
-/* Admin delle Segrete, piega "Prima persona" (2026-11-07): tutta l'art della vista nuova.
-   Anteprima dal vivo · pareti/pavimento/soffitto per dungeon · armi in mano · sprite frontali.
-   La vista classica non usa niente di tutto questo: frontImageUrl è un campo a parte. */
+/* Grafica delle Segrete: anteprima, texture dei dungeon, armi e sprite frontali. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, deleteField, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "../firebase";

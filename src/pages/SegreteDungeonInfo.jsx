@@ -102,7 +102,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
                       const k = !!data?.known?.[m.id];
                       return (
                         <li key={m.id} title={k ? m.desc || m.name : "Non ancora sconfitto da nessuno: il nome si scopre combattendo."}>
-                          {k && m.imageUrl ? <img src={m.imageUrl} alt="" /> : k ? <SgIcon kind="monster" of={m} fallback={m.icon || "👹"} size="md" /> : <span aria-hidden="true">❔</span>}
+                          {k && (m.frontImageUrl || m.imageUrl) ? <img src={m.frontImageUrl || m.imageUrl} alt="" /> : k ? <SgIcon kind="monster" of={m} fallback={m.icon || "👹"} size="md" /> : <span aria-hidden="true">❔</span>}
                           <b>{k ? m.name : "???"}</b>
                           <em>{MONSTER_SIZES.find((x) => x.key === sizeOf(m))?.label || ""}</em>
                         </li>

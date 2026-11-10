@@ -1,0 +1,94 @@
+/* Pannelli, comandi e schede della lotta in prima persona. */
+.sgb { --sgb-read: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; max-width: 1100px; margin: 0 auto; font-family: var(--sgb-read); color: #f3ead8; }
+.sgb-loading { min-height: 50vh; display: grid; place-items: center; font-size: 1.1rem; color: #d8ccb4; }
+.sgb-err { margin: 0 0 8px; padding: 8px 10px; background: rgba(160,40,40,.25); border: 1px solid rgba(224,98,79,.7); color: #fff; font-size: .9rem; }
+
+.sgb-top { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #15111c; border-bottom: 2px solid #000; }
+.sgb-where { flex: 1; font-weight: 700; font-size: .92rem; }
+.sgb-flee { border: 1px solid rgba(243,234,216,.35); background: transparent; color: #f3ead8; padding: 6px 10px; font: 600 .82rem var(--sgb-read); cursor: pointer; }
+
+.sgb-log { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-bottom: 2px solid #000; background: #1b1622; color: #fff7e6; font: 600 .92rem/1.35 var(--sgb-read); text-align: left; cursor: pointer; }
+.sgb-log-text { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; animation: sgb-in .3s ease; }
+.sgb-log-n { color: #f2c14e; }
+.sgb-log-list { margin: 0; padding: 4px 0; list-style: none; max-height: 45vh; overflow-y: auto; background: rgba(12,10,18,.97); border-bottom: 2px solid #000; }
+.sgb-log-list li { padding: 7px 12px; border-bottom: 1px solid rgba(243,234,216,.08); font-size: .88rem; line-height: 1.4; }
+.sgb-log-list li.k-room, .sgb-log-list li.k-end { color: #f2c14e; font-weight: 700; }
+.sgb-log-list li.k-heal { color: #8ee69a; }
+.sgb-log-list li.k-crit { color: #ffb4a4; }
+@keyframes sgb-in { from { opacity: 0; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .sgb-log-text { animation: none; } }
+
+.sgb-emoji { font-size: 3rem; line-height: 1; }
+
+.sgb-panel { padding: 10px; background: #15111c; }
+.sgb-turn { margin: 0 0 8px; font-weight: 700; font-size: .95rem; }
+.sgb-turn--wait { font-weight: 500; color: #e9dcc4; }
+.sgb-acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 6px; }
+.sgb-act { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; min-height: 56px; padding: 7px 10px; text-align: left; cursor: pointer; border: 2px solid rgba(224,168,90,.75); background: rgba(10,8,16,.85); color: #fff; font: inherit; }
+.sgb-act.k-spell, .sgb-act.k-save, .sgb-act.k-missile { border-color: rgba(192,139,255,.8); }
+.sgb-act.k-heal, .sgb-act.k-heal_all { border-color: rgba(95,209,107,.8); }
+.sgb-act.k-buff, .sgb-act.k-defend { border-color: rgba(127,211,255,.75); }
+.sgb-act:disabled { opacity: .45; cursor: default; }
+.sgb-act-ico { grid-row: 1 / span 2; }
+.sgb-act-name { font-weight: 700; font-size: .95rem; padding-right: 34px; }
+.sgb-act-info { font-size: .78rem; color: #f2d79b; }
+.sgb-act-uses { position: absolute; top: 5px; right: 6px; padding: 1px 5px; font-size: .72rem; font-weight: 700; background: rgba(0,0,0,.6); border: 1px solid rgba(243,234,216,.45); }
+.sgb-pickmsg { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: .95rem; }
+.sgb-end { display: grid; gap: 6px; justify-items: start; }
+.sgb-end p { margin: 0; }
+.sgb-result { font-size: 1.15rem; font-weight: 800; color: #f2c14e; }
+.sgb-btn { min-height: 44px; padding: 8px 16px; border: 0; cursor: pointer; background: #f2c14e; color: #1d1406; font: 700 .95rem var(--sgb-read); }
+.sgb-btn--ghost { background: transparent; color: #f3ead8; border: 1px solid rgba(243,234,216,.4); }
+.sgb-btn:disabled { opacity: .5; cursor: default; }
+
+@media (max-width: 760px) {
+  .sgb-acts { grid-template-columns: 1fr 1fr; }
+  .sgb-act-name { font-size: .86rem; }
+}
+.sgb-loot { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #f2c14e; background: rgba(242,193,78,.12); }
+.sgb-loot img { width: 54px; height: 54px; object-fit: contain; }
+
+/* scheda del nemico (pressione lunga) */
+.sgb-card-back { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.65); }
+.sgb-card { position: relative; width: min(420px, 100%); max-height: 85vh; overflow-y: auto; padding: 16px; background: #15111c; border: 2px solid #f2c14e; color: #f3ead8; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.sgb-card-x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 1rem; cursor: pointer; }
+.sgb-card-head { display: flex; gap: 12px; align-items: center; padding-right: 36px; }
+.sgb-card-head img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; }
+.sgb-card-head b { display: block; font-size: 1.15rem; color: #fff; }
+.sgb-card-head small { display: block; font-size: .82rem; color: #d8ccb4; }
+.sgb-card-head small.is-known { color: #8ee69a; }
+.sgb-card-head small.is-unknown { color: #f2c14e; }
+.sgb-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 4px; }
+.sgb-card-stats div { padding: 8px 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(243,234,216,.15); }
+.sgb-card-stats dt { font-size: .74rem; color: #d8ccb4; text-transform: uppercase; letter-spacing: .08em; }
+.sgb-card-stats dd { margin: 2px 0 0; font-size: 1.2rem; font-weight: 800; color: #fff; }
+.sgb-card .sgb-card-h { margin: 12px 0 4px; font-weight: 800; color: #f2c14e; font-size: .9rem; }
+.sgb-card-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: .9rem; }
+.sgb-card-list li { padding: 5px 8px; background: rgba(0,0,0,.25); color: #f3ead8; }
+.sgb-card-list li span { display: inline-block; min-width: 9.5em; color: #d8ccb4; }
+.sgb-card .sgb-card-q { margin: 0; font-size: 1.3rem; font-weight: 800; letter-spacing: .2em; color: #8a7f6f; }
+.sgb-card .sgb-card-hint { margin: 12px 0 0; font-size: .85rem; color: #d8ccb4; }
+
+/* Zaino e bottino (2026-11-04) */
+.sgb-act.k-item { border-color: rgba(111, 212, 138, .75); }
+.sgb-bag { display: grid; gap: 8px; }
+.sgr-page .sgb-spoils, .sgb-spoils { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed #f2c14e; background: rgba(242,193,78,.08); color: #f3ead8; font-size: .9rem; }
+.sgb-spoils b { color: #ffe39a; }
+
+/* bottino sala per sala (2026-11-05) */
+.sgb-spoils { padding: 0; }
+.sgb-spoils-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 7px 10px; border: 0; background: none; cursor: pointer; text-align: left; color: #f3ead8; font: 600 .9rem system-ui, -apple-system, "Segoe UI", sans-serif; }
+.sgb-spoils-head small { color: #e9dcc4; font-weight: 400; }
+.sgb-spoils-head em { margin-left: auto; font-style: normal; color: #f2c14e; font-size: .8rem; white-space: nowrap; }
+.sgb-spoils-list { list-style: none; margin: 0; padding: 4px 10px 8px; display: grid; gap: 4px; border-top: 1px dashed rgba(242,193,78,.5); }
+.sgb-spoils-list li { display: grid; grid-template-columns: 82px 1fr; gap: 6px; align-items: baseline; font: .85rem/1.35 system-ui, sans-serif; }
+.sgr-page .sgb-spoils-list li > b { color: #ffe39a; }
+.sgb-gain { display: inline-block; margin: 0 8px 2px 0; color: #fff7e6; }
+.sgb-gain small { color: #cbbfa6; font-size: .74rem; }
+.sgr-page .sgb-gain-floor { margin: 4px 0 8px; padding: 6px 10px; border-left: 3px solid #f2c14e; background: rgba(242,193,78,.1); color: #fff7e6; }
+.sgr-page .sgb-gain-floor b { color: #ffe39a; }
+.sgr-page .sgb-gain-none { margin: 4px 0 8px; color: #cbbfa6; font-style: italic; }
+
+.sgb-endbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.sgr-page .sgb-endnote { margin: 6px 0 0; font-size: .85rem; color: #e9dcc4; }
+

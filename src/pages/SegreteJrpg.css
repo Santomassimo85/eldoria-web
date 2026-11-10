@@ -57,7 +57,6 @@
 .jrpg .jw-face { width: 120px; aspect-ratio: 1; display: grid; place-items: center; border: 2px solid rgba(244,241,234,.6); border-radius: 4px;
   background: repeating-conic-gradient(rgba(255,255,255,.05) 0 25%, transparent 0 50%) 0 0 / 12px 12px, rgba(5,8,42,.6); font-size: 3.4rem; }
 .jrpg .jw-face img { max-width: 92%; max-height: 92%; image-rendering: pixelated; }
-.jrpg .jw-face img.mirror, .jrpg .jw-spr-img img.mirror { transform: scaleX(-1); }
 .jrpg .jw-stat-main { display: grid; gap: 8px; min-width: 0; }
 .jrpg .jw-name-row { display: flex; gap: 8px; align-items: center; }
 .jrpg .jw-name-row .jw-icon-in { flex: 0 0 56px; width: 56px; text-align: center; font-size: 1.3rem; }
@@ -130,7 +129,6 @@
 /* resistenze (DefensesPicker) e tono del disegno sul blu */
 .jrpg .wb-defs { color: #fff; }
 .jrpg .wb-def { color: #fff; background: rgba(5,8,42,.55); border-color: rgba(244,241,234,.35); }
-.jrpg .wb-facing, .jrpg .wb-facing small, .jrpg .wb-facing i { color: #fff; }
 .jrpg .imgtone-label { color: var(--jw-mute); }
 
 /* effetti delle armi */

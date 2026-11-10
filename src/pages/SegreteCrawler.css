@@ -1,5 +1,5 @@
 /* Le Segrete in prima persona: una colonna da telefono. Scena, cronaca, azioni, party in basso.
-   Pannelli, azioni e cronaca riusano SegreteBattle.css; qui solo il campo e il party. */
+   Pannelli, azioni e cronaca riusano SegreteCombat.css; qui solo il campo e il party. */
 .cw.sgb { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; max-width: none; margin: 0; padding-top: env(safe-area-inset-top, 0px); background: #0d0a0c; }
 .cw > * { box-sizing: border-box; width: 100%; max-width: 640px; margin-inline: auto; }
 .cw-top { padding: 4px 56px 4px 8px; font-size: .84rem; min-height: 40px; }

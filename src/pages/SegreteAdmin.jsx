@@ -1,34 +1,24 @@
-/* LE SEGRETE · admin (fase 2, 2026-11-04) = /dm-admin/segrete
-   Due pieghe:
-   - Dungeon: i tipi (caverna, segrete, magma…) con icona, descrizione, numero
-     di sale prima del boss e SFONDI (caricati dal PC o generati con l'IA, uno
-     o più per tipo: in partita se ne pesca uno). dungeon_types/{key}.
-   - Bestiario: i mostri (dungeon_monsters), con ruolo (gregario/élite/boss),
-     livello, PF, CA, iniziativa, TS, azioni nello STESSO formato del World Boss
-     (attacchi, tiri salvezza, aree, cure, +CA, vantaggio/svantaggio),
-     resistenze, sprite vivo/morto e i dungeon in cui escono. Si possono
-     generare con l'IA o importare dai minion/boss del World Boss. */
-import { useEffect, useMemo, useRef, useState } from "react";
+/* Console delle Segrete: dungeon, bestiario, oggetti, bottino e grafica in prima persona. */
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { getDownloadURL, ref as storageRef, uploadBytes, uploadString } from "firebase/storage";
+import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { db, storage } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isAdminEmail } from "../utils/roles";
-import { getImageTone } from "../data/imageTone";
 import ImageTonePicker from "../components/ImageTonePicker";
 import { cleanSpriteDataUrl } from "../utils/aiSprite";
 import {
   DEFAULT_DUNGEONS, DEFAULT_FLOORS, mergeMonsters, MIMIC_MONSTER, MONSTER_ROLES, MONSTER_SIZES, sizeOf, roleInfo, dungeonSlug,
 } from "../data/segrete";
 import {
-  ActionsList, DefensesPicker, FacingPicker, blankAction, sanitizeActions, pixelArtPrompt,
-  dataUrlToTransparentBlob, defensesOf,
+  ActionsList, DefensesPicker, blankAction, sanitizeActions,
+  defensesOf,
 } from "./WorldBossAdmin";
 import CrawlerArtTab from "./SegreteAdminCrawler";
 import SegreteAdminItems from "./SegreteAdminItems";
 import { useSegreteItems } from "../utils/segreteItemsLive";
-import { frontSpriteUrl, refOnMagenta } from "../utils/crawlerGen";
+import { frontSpriteUrl } from "../utils/crawlerGen";
 import { DAMAGE_TYPES } from "./worldBossEffects";
 import "./admin.css";
 import "./WorldBossAdmin.css";
@@ -37,7 +27,7 @@ import "./SegreteJrpg.css";
 
 const blankMonster = (dungeon = "") => ({
   name: "", desc: "", role: "minion", level: 1, hp: 12, ac: 12, init: 1, save: 1,
-  dungeons: dungeon ? [dungeon] : [], imageUrl: "", deadImageUrl: "", frontImageUrl: "", facing: "left", icon: "", look: "",
+  dungeons: dungeon ? [dungeon] : [], frontImageUrl: "", icon: "", look: "",
   actions: [blankAction(0)], resistances: [], vulnerabilities: [], immunities: [],
 });
 const num = (v, lo, hi, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
@@ -49,7 +39,7 @@ const cleanMonster = (m) => ({
   level: num(m.level, 1, 20, 1), hp: num(m.hp, 1, 2000, 10), ac: num(m.ac, 5, 30, 12),
   init: num(m.init, -5, 15, 0), save: num(m.save, -5, 15, 0),
   dungeons: Array.isArray(m.dungeons) ? m.dungeons : [],
-  imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "", frontImageUrl: m.frontImageUrl || "", facing: m.facing === "right" ? "right" : "left",
+  frontImageUrl: m.frontImageUrl || "",
   size: sizeOf(m),
   actions: sanitizeActions(m.actions, 1),
   ...defensesOf(m),
@@ -57,26 +47,8 @@ const cleanMonster = (m) => ({
   ...(m.icon ? { icon: String(m.icon).slice(0, 8) } : {}),
 });
 
-const toJpegDataUrl = (src, max = 1280) => new Promise((res, rej) => {
-  const i = new Image();
-  i.crossOrigin = "anonymous";
-  i.onload = () => {
-    const scale = i.width > max ? max / i.width : 1;
-    const c = document.createElement("canvas");
-    c.width = Math.round(i.width * scale); c.height = Math.round(i.height * scale);
-    c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
-    res(c.toDataURL("image/jpeg", 0.8));
-  };
-  i.onerror = () => rej(new Error("immagine non leggibile"));
-  i.src = src;
-});
 const fileToDataUrl = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
 const uid8 = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-async function uploadJpeg(dataUrl) {
-  const ref = storageRef(storage, `segrete/bg-${uid8()}.jpg`);
-  await uploadString(ref, dataUrl, "data_url", { contentType: "image/jpeg" });
-  return getDownloadURL(ref);
-}
 async function uploadPng(blob) {
   const ref = storageRef(storage, `segrete/mostro-${uid8()}.png`);
   await uploadBytes(ref, blob, { contentType: "image/png" });
@@ -106,11 +78,6 @@ const fileToSpriteBlob = (file) => fileToDataUrl(file).then((src) => new Promise
   };
   img.onerror = rej; img.src = src;
 }));
-
-const bgPrompt = (d, idea) => `Wide 16:9 background scene for a turn-based fight between a party of up to four fantasy heroes and a group of monsters, high-quality SERIOUS dark-fantasy pixel art like a polished modern 2D RPG: detailed 32-bit-era shading, rich but limited palette, crisp pixels, no anti-aliasing, no blur.
-Setting: a Dungeons & Dragons dungeon: ${d.name}${d.desc ? ` — ${d.desc}` : ""}.${idea ? ` Details: ${idea}.` : ""}
-Composition (IMPORTANT): a wide flat floor area. The heroes will stand in the LOWER-LEFT foreground, the monsters in the RIGHT middle ground: keep both areas clear, flat and simple. Scenery and details around the edges and at the top; the bottom strip stays calm because a menu will cover it.
-EMPTY SCENE: no characters, no people, no creatures, no weapons on the ground, no text, no UI, no frame, no border.`;
 
 export default function SegreteAdmin() {
   const { currentUser } = useAuth();
@@ -144,7 +111,7 @@ export default function SegreteAdmin() {
         <div className="adm-mast-main">
           <span className="adm-eyebrow">🗝 Sala della Gloria · Storia</span>
           <h1 className="adm-title">Le Segrete</h1>
-          <p className="adm-sub">Tipi di dungeon con i loro sfondi, e il bestiario dei mostri che ci vivono.</p>
+          <p className="adm-sub">Dungeon, mostri, oggetti e grafica della spedizione in prima persona.</p>
         </div>
         <div className="adm-mast-aside">
           <div className="adm-stat"><span>Dungeon</span><strong>{dungeons.filter((d) => !d.hidden && d.active !== false).length}</strong></div>
@@ -153,7 +120,7 @@ export default function SegreteAdmin() {
       </div>
 
       <div className="sga-tabs">
-        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["oggetti", "⚔ Oggetti"], ["bottino", "🎁 Bottino Foundry"], ["crawler", "🎮 Prima persona"]].map(([k, l]) => (
+        {[["dungeon", "🏰 Dungeon"], ["bestiario", "👹 Bestiario"], ["oggetti", "⚔ Oggetti"], ["bottino", "🎁 Bottino Foundry"], ["crawler", "🎮 Grafica e armi"]].map(([k, l]) => (
           <button key={k} type="button" aria-pressed={tab === k} className={tab === k ? "is-on" : ""} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -171,11 +138,9 @@ export default function SegreteAdmin() {
 function DungeonsTab({ dungeons, monsters }) {
   const [editKey, setEditKey] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [idea, setIdea] = useState("");
   const [busy, setBusy] = useState("");
-  const fileRef = useRef(null);
 
-  const open = (d) => { setEditKey(d?.key || "__new"); setDraft(d ? { floors: DEFAULT_FLOORS, backgrounds: [], ...d } : { key: "", name: "", icon: "🗝", desc: "", floors: DEFAULT_FLOORS, backgrounds: [], hidden: false }); setIdea(""); };
+  const open = (d) => { setEditKey(d?.key || "__new"); setDraft(d ? { floors: DEFAULT_FLOORS, ...d } : { key: "", name: "", icon: "🗝", desc: "", floors: DEFAULT_FLOORS, hidden: false }); };
   const close = () => { setEditKey(null); setDraft(null); };
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -187,7 +152,7 @@ function DungeonsTab({ dungeons, monsters }) {
     try {
       await setDoc(doc(db, "dungeon_types", key), {
         name: draft.name.trim().slice(0, 40), icon: (draft.icon || "🗝").slice(0, 4), desc: String(draft.desc || "").slice(0, 300),
-        floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), backgrounds: draft.backgrounds || [], hidden: !!draft.hidden, active: draft.active !== false,
+        floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), hidden: !!draft.hidden, active: draft.active !== false,
         lootChance: num(draft.lootChance, 0, 100, 35),
         updatedAt: serverTimestamp(),
       }, { merge: true });
@@ -200,29 +165,6 @@ function DungeonsTab({ dungeons, monsters }) {
     if (!window.confirm(`Eliminare il dungeon «${draft.name}»? I mostri restano nel bestiario.`)) return;
     await deleteDoc(doc(db, "dungeon_types", editKey)); close();
   };
-  const addBg = async (dataUrl) => {
-    const url = await uploadJpeg(await toJpegDataUrl(dataUrl));
-    setDraft((d) => ({ ...d, backgrounds: [...(d.backgrounds || []), url] }));
-  };
-  const onFile = async (f) => {
-    if (!f) return;
-    setBusy("bg");
-    try { await addBg(await fileToDataUrl(f)); } catch (e) { alert(e.message); } finally { setBusy(""); }
-  };
-  const generate = async () => {
-    if (!draft.name.trim()) return alert("Dai prima un nome al dungeon.");
-    setBusy("bg");
-    try {
-      const r = await fetch("/api/genera-immagine", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: bgPrompt(draft, idea.trim()), aspectRatio: "16:9", tono: getImageTone() }),
-      });
-      const data = await r.json();
-      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
-      await addBg(data.immagine);
-    } catch (e) { alert("Generazione sfondo fallita: " + (e.message || e)); } finally { setBusy(""); }
-  };
-
   if (draft) {
     return (
       <div className="sga-card sga-form">
@@ -243,24 +185,7 @@ function DungeonsTab({ dungeons, monsters }) {
           <textarea className="admin-field-input" rows={2} value={draft.desc || ""} onChange={(e) => set({ desc: e.target.value })} /></label>
         {editKey !== "__new" && <p className="sga-hint">Chiave: <code>{editKey}</code> · mostri di questo dungeon nel bestiario: {monsters.filter((m) => (m.dungeons || []).includes(editKey)).length}</p>}
 
-        <h3 className="sga-h3">Sfondi <small>in partita se ne pesca uno a caso</small></h3>
-        <div className="sga-bgs">
-          {(draft.backgrounds || []).map((u, i) => (
-            <figure key={u} className="sga-bg">
-              <img src={u} alt={`Sfondo ${i + 1}`} />
-              <button type="button" className="sga-x" aria-label="Togli lo sfondo" onClick={() => set({ backgrounds: draft.backgrounds.filter((x) => x !== u) })}>✕</button>
-            </figure>
-          ))}
-          {!(draft.backgrounds || []).length && <div className="sga-bg sga-bg--empty">{draft.icon || "🗝"}<small>nessuno sfondo</small></div>}
-        </div>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
-        <textarea className="admin-field-input" rows={2} value={idea} onChange={(e) => setIdea(e.target.value)}
-          placeholder='Idea per il disegno (facoltativa): es. "stalattiti di cristallo azzurro", "ponte di pietra sulla lava"' />
-        <ImageTonePicker />
-        <div className="sga-btns">
-          <button type="button" className="adm-btn" disabled={!!busy} onClick={() => fileRef.current?.click()}>📁 Carica dal PC</button>
-          <button type="button" className="adm-btn" disabled={!!busy} onClick={generate}>{busy === "bg" ? "⏳ Disegno…" : "✨ Genera con l'IA"}</button>
-        </div>
+        <p className="sga-hint">Pareti, pavimento e soffitto si gestiscono nella scheda Grafica e armi.</p>
 
         <label className="sga-check"><input type="checkbox" checked={!draft.hidden && draft.active !== false} onChange={(e) => set({ active: e.target.checked, hidden: false })} /> Attivo e selezionabile dai giocatori</label>
         <div className="sga-savebar">
@@ -293,11 +218,9 @@ function DungeonsTab({ dungeons, monsters }) {
           const bosses = n.filter((m) => m.role === "boss").length;
           return (
             <button key={d.key} type="button" className={`sga-card sga-dcard${(d.hidden || d.active === false) ? " is-hidden" : ""}`} onClick={() => open(d)}>
-              <div className="sga-dcard-bg" style={d.backgrounds?.[0] ? { backgroundImage: `url(${d.backgrounds[0]})` } : undefined}>
-                {!d.backgrounds?.[0] && <span aria-hidden="true">{d.icon}</span>}
-              </div>
+              <div className="sga-dcard-bg"><span aria-hidden="true">{d.icon}</span></div>
               <b>{d.icon} {d.name}{d.hidden || d.active === false ? " · disattivato" : ""}</b>
-              <small>{d.floors || DEFAULT_FLOORS} sale + boss · {(d.backgrounds || []).length} sfondi · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
+              <small>{d.floors || DEFAULT_FLOORS} sale + boss · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
               <small>🎁 {d.lootChance ?? 35}% oggetto · 10% Mimic nello scrigno finale</small>
             </button>
           );
@@ -339,22 +262,22 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     else await deleteDoc(doc(db, "dungeon_monsters", form.id));
     setForm(null);
   };
-  const cleanOne = async (dead) => {
-    const k = dead ? "deadImageUrl" : "imageUrl";
-    flag(dead ? "dead" : "alive", true);
+  const cleanOne = async () => {
+    const k = "frontImageUrl";
+    flag("front", true);
     try { const u = await recleanSprite(form[k]); if (u) set({ [k]: u }); else alert("Era già pulito."); }
     catch (e) { alert(`Non riuscito: ${e.message}. Rigeneralo con ✨.`); }
-    finally { flag(dead ? "dead" : "alive", false); }
+    finally { flag("front", false); }
   };
   const cleanAll = async () => {
-    const todo = monsters.filter((m) => m.imageUrl || m.deadImageUrl);
+    const todo = monsters.filter((m) => m.frontImageUrl);
     if (!todo.length || !window.confirm(`Ripulire dagli avanzi viola gli sprite di ${todo.length} mostri? Si sovrascrivono (il disegno resta, sparisce solo il fondo magenta rimasto).`)) return;
     flag("cleanAll", "0/" + todo.length);
     let fixed = 0, failed = 0;
     for (let i = 0; i < todo.length; i++) {
       const m = todo[i];
       const patch = {};
-      for (const k of ["imageUrl", "deadImageUrl"]) {
+      for (const k of ["frontImageUrl"]) {
         if (!m[k]) continue;
         try { const u = await recleanSprite(m[k]); if (u) patch[k] = u; } catch { failed++; }
       }
@@ -369,25 +292,6 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
   };
   const duplicate = () => setForm((f) => ({ ...f, id: undefined, base: undefined, name: `${f.name} (copia)` }));
 
-  const genSprite = async (dead) => {
-    if (!form.name.trim()) return alert("Dai prima un nome al mostro.");
-    const key = dead ? "dead" : "alive";
-    flag(key, true);
-    try {
-      const ref = dead && form.imageUrl ? await refOnMagenta(form.imageUrl) : "";
-      const r = await fetch("/api/genera-immagine", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          prompt: pixelArtPrompt(form.name, form.look || form.desc, dead, { deadStyle: "corpse", withRef: !!ref }),
-          ...(ref ? { refs: [ref], refMode: "same" } : {}), tono: getImageTone(),
-        }),
-      });
-      const data = await r.json();
-      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
-      const url = await uploadPng(await dataUrlToTransparentBlob(data.immagine));
-      set(dead ? { deadImageUrl: url } : { imageUrl: url });
-    } catch (e) { alert("Sprite: " + (e.message || e)); } finally { flag(key, false); }
-  };
   const genFront = async () => {
     if (!form.name.trim()) return alert("Dai prima un nome al mostro.");
     flag("front", true);
@@ -395,7 +299,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
     catch (e) { alert("Sprite frontale: " + (e.message || e)); } finally { flag("front", false); }
   };
   const onSpriteFile = (k) => async (file) => {
-    const fk = k === "deadImageUrl" ? "dead" : k === "frontImageUrl" ? "front" : "alive";
+    const fk = "front";
     flag(fk, true);
     try { set({ [k]: await uploadPng(await fileToSpriteBlob(file)) }); }
     catch (e) { alert(e.message); } finally { flag(fk, false); }
@@ -436,7 +340,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
       role: kind === "boss" ? "boss" : "minion",
       level: num(src.gradoSfida, 1, 20, kind === "boss" ? 5 : 1),
       hp: num(src.hp ?? src.maxHp, 1, 2000, 10), ac: num(src.ac, 5, 30, 12),
-      imageUrl: src.imageUrl || "", deadImageUrl: src.deadImageUrl || "", facing: src.facing === "right" ? "right" : "left",
+      frontImageUrl: src.frontImageUrl || "",
       actions: sanitizeActions(src.actions, 1), ...defensesOf(src), source: `wb-${kind}:${src.id}`,
     });
     setShowImport(false);
@@ -445,12 +349,8 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
   if (form) {
     const defs = defensesOf(form);
     const dmgIco = (x) => DAMAGE_TYPES.find((d) => d.key === x)?.icon || x;
-    const sprites = [
-      { k: "imageUrl", fk: "alive", title: "Laterale", use: "lotta classica · fallo per primo", gen: () => genSprite(false), mirror: form.facing !== "right" },
-      { k: "deadImageUrl", fk: "dead", title: "Morto", use: "quando cade", gen: () => genSprite(true), wait: !form.imageUrl },
-      { k: "frontImageUrl", fk: "front", title: "Frontale", use: "prima persona", gen: genFront },
-    ];
-    const face = form.frontImageUrl || form.imageUrl;
+    const sprites = [{ k: "frontImageUrl", fk: "front", title: "Sprite del mostro", use: "Frontale, rivolto verso il giocatore", gen: genFront }];
+    const face = form.frontImageUrl;
     /* SCHEDA DEL MOSTRO «MENU DA JRPG» (2026-11-08, richiesta dell'utente: più semplice, stile vecchio
        gioco). Finestre blu con doppia cornice (SegreteJrpg.css): in vista solo quello che conta
        (stato, IA, dove esce, azioni, difese, sprite), il resto in «Avanzate». */
@@ -458,7 +358,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
       <div className="jrpg">
         <div className="jw jw-status">
           <div className={`jw-face${face ? "" : " is-empty"}`}>
-            {face ? <img src={face} alt="" className={!form.frontImageUrl && form.facing !== "right" ? "mirror" : ""} /> : <span>{form.icon || roleInfo(form.role).icon}</span>}
+            {face ? <img src={face} alt="" /> : <span>{form.icon || roleInfo(form.role).icon}</span>}
           </div>
           <div className="jw-stat-main">
             <div className="jw-name-row">
@@ -529,9 +429,9 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
                   </div>
                   <b>{sp.title}</b><small>{sp.use}</small>
                   <div className="jw-spr-btns">
-                    <button type="button" disabled={!!on} onClick={sp.gen} title={sp.wait ? "Meglio dopo il laterale" : ""}>{src ? "✨ RIFAI" : "✨ GENERA"}</button>
+                    <button type="button" disabled={!!on} onClick={sp.gen}>{src ? "✨ RIFAI" : "✨ GENERA"}</button>
                     <label>📁<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onSpriteFile(sp.k)(f); e.target.value = ""; }} /></label>
-                    {src && sp.k !== "frontImageUrl" && <button type="button" disabled={!!on} title="Toglie il viola rimasto" onClick={() => cleanOne(sp.k === "deadImageUrl")}>🧽</button>}
+                    {src && <button type="button" disabled={!!on} title="Toglie il viola rimasto" onClick={cleanOne}>🧽</button>}
                     {src && <button type="button" disabled={!!on} aria-label={`Togli ${sp.title}`} onClick={() => set({ [sp.k]: "" })}>✕</button>}
                   </div>
                 </div>
@@ -549,7 +449,6 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
           </div>
           <label className="jw-field"><span>Aspetto per il disegno (inglese)</span>
             <textarea className="jw-in" rows={2} value={form.look || ""} placeholder="gaunt grey ghoul with long black claws" onChange={(e) => set({ look: e.target.value })} /></label>
-          <FacingPicker value={form.facing} onChange={(facing) => set({ facing })} imageUrl={form.imageUrl} name={form.name} />
         </details>
 
         <div className="jw jw-cmdbar">
@@ -571,7 +470,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
       </div>
       {showImport && (
         <div className="sga-card sga-import">
-          <p className="sga-hint">Copia nome, PF, CA, azioni, resistenze e sprite in un mostro nuovo (poi scegli dungeon e livello e salvi).</p>
+          <p className="sga-hint">Copia nome, PF, CA, azioni e resistenze in un mostro nuovo. Poi scegli il dungeon, genera lo sprite frontale e salva.</p>
           {[["minion", wbMinions], ["boss", wbBosses]].map(([kind, arr]) => (
             <div key={kind}>
               <h3 className="sga-h3">{kind === "boss" ? "👑 Boss" : "🐀 Minion"} del World Boss</h3>
@@ -605,14 +504,14 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
         {list.map((m) => (
           <button key={m.id} type="button" className="sga-card sga-mcard" onClick={() => setForm({ ...blankMonster(), ...m })}>
             <div className="sga-mcard-img">
-              {m.imageUrl ? <img src={m.imageUrl} alt="" className={m.facing === "right" ? "" : "mirror"} /> : m.frontImageUrl ? <img src={m.frontImageUrl} alt="" /> : <span aria-hidden="true">{m.icon || roleInfo(m.role).icon}</span>}
+              {m.frontImageUrl ? <img src={m.frontImageUrl} alt="" /> : <span aria-hidden="true">{m.icon || roleInfo(m.role).icon}</span>}
             </div>
             <div className="sga-mcard-main">
               <b>{m.name}</b>
               <small>{roleInfo(m.role).icon} {roleInfo(m.role).label} · {MONSTER_SIZES.find((z) => z.key === sizeOf(m))?.label} · Lv {m.level} · {m.hp} PF · CA {m.ac}</small>
               <small>{(m.actions || []).map((a) => a.name).filter(Boolean).join(" · ") || "nessuna azione"}</small>
               <small>{[["resistances", "½"], ["vulnerabilities", "×2"], ["immunities", "🚫"]].map(([k, t]) => ((m[k] || []).length ? `${t} ${(m[k] || []).map((x) => DAMAGE_TYPES.find((d) => d.key === x)?.icon || x).join("")}` : "")).filter(Boolean).join("  ") || "⚠ niente resistenze o debolezze"}</small>
-              <small>{m.imageUrl ? "🖼" : "▫"} laterale · {m.deadImageUrl ? "💀" : "▫"} morto · {m.frontImageUrl ? "🎮" : "▫"} frontale</small>
+              <small>{m.frontImageUrl ? "✓ Sprite pronto" : "⚠ Sprite frontale da creare"}</small>
               <small className="sga-mcard-d">{(m.dungeons || []).map((k) => dungeons.find((d) => d.key === k)?.icon || "").join(" ") || "⚠ in nessun dungeon"}</small>
             </div>
           </button>

@@ -11,13 +11,12 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  CRAWLER_PUBLIC, MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
 import SegreteDungeonInfo from "./SegreteDungeonInfo";
-import SegreteBattle from "./SegreteBattle";
 const SegreteCrawler = lazy(() => import("./SegreteCrawler"));
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
@@ -309,7 +308,7 @@ export default function Segrete() {
                   </button>
                 ))}
               </div>
-              {(() => { const d = dungeonOf(type); return d.desc ? <p className="sgr-dpick-desc" style={d.backgrounds?.[0] ? { backgroundImage: `linear-gradient(90deg, rgba(10,8,14,.94) 40%, rgba(10,8,14,.55)), url(${d.backgrounds[0]})` } : undefined}>{d.icon} <b>{d.name}</b> · {d.desc}</p> : null; })()}
+              {(() => { const d = dungeonOf(type); return d.desc ? <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p> : null; })()}
               <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: classInfo(cls)?.it || "Il tuo eroe", level: level(cls) }] : []} />
               <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
@@ -379,33 +378,14 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
   );
 }
 
-const CRAWLER_KEY = "sgr_crawler";
-const readCrawler = () => { try { return localStorage.getItem(CRAWLER_KEY) !== "0"; } catch { return true; } };
-/* la lotta (2026-11-07): con CRAWLER_PUBLIC tutti vedono quella in prima persona, senza scelta.
-   La classica (SegreteBattle) resta nel codice, messa da parte: la può richiamare solo il Master. */
+// La lotta usa sempre la vista in prima persona.
 function BattleView({ room, uid, master, onReopen, busy }) {
-  const [pref, setPref] = useState(readCrawler);
-  const can = master || CRAWLER_PUBLIC;
-  const on = can && (master ? pref : true);
-  const flip = () => { const v = !pref; setPref(v); try { localStorage.setItem(CRAWLER_KEY, v ? "1" : "0"); } catch { /* niente */ } };
-  const reopen = master && <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={onReopen}>↺ Riporta in stanza (Master)</button>;
-  if (on) {
-    return (
-      <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}>
-        <SegreteCrawler room={room} uid={uid} tools={master ? <div className="cw-tools"><button type="button" onClick={flip}>🖼 Vista classica (solo Master)</button>{reopen}</div> : null} />
-      </Suspense>
-    );
-  }
   return (
-    <>
-      <SegreteBattle room={room} uid={uid} />
-      {master && (
-        <div className="sgr-room-actions">
-          {can && <button type="button" className="sgr-btn sgr-btn--ghost" onClick={flip}>🎮 Passa alla prima persona</button>}
-          {reopen}
-        </div>
-      )}
-    </>
+    <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}>
+      <SegreteCrawler room={room} uid={uid} tools={master ? <div className="cw-tools">
+        <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={onReopen}>↺ Riporta in stanza (Master)</button>
+      </div> : null} />
+    </Suspense>
   );
 }
 

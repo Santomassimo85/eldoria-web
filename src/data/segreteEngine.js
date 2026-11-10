@@ -152,7 +152,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   return {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
     level: Number(src.level) || 1, hp: maxHp, maxHp, ac: cap.ac, init: Number(src.init) || 0, save: cap.save,
-    img: src.imageUrl || "", deadImg: src.deadImageUrl || "", icon: src.icon || "", facing: src.facing || "left", size: sizeOf(src),
+    img: src.frontImageUrl || src.imageUrl || "", frontImg: src.frontImageUrl || "", icon: src.icon || "", size: sizeOf(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5), res: src.resistances || [], vul: src.vulnerabilities || [], imm: src.immunities || [],
@@ -327,7 +327,6 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
   const s = {
     roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey, diff: diffOf(room.difficulty).key,
     dungeonName: dungeon.name, dungeonIcon: dungeon.icon || "🗝",
-    bg: (dungeon.backgrounds || []).length ? pick(dungeon.backgrounds) : "",
     floors: dungeon.floors || 3, floor: 1, status: "fight",
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),

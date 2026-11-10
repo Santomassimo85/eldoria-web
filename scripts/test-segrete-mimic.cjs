@@ -65,14 +65,16 @@ console.log('Segrete: Mimic threshold, victory, defeat and automatic opening pas
 for (const automatic of [false, true]) {
   const s = chestRun(); s.chestAt = 1000;
   const saved = E.mergeMonsters([{ id: 'mimic', imageUrl: 'https://example.test/alive.png',
-    deadImageUrl: 'https://example.test/dead.png', facing: 'right',
+    frontImageUrl: 'https://example.test/front.png',
     actions: [{ type: 'attack', name: 'Morso personalizzato', diceNum: 2, diceType: 'd6', bonus: 5 }],
   }]).find((m) => m.id === 'mimic');
   E.withRng(() => 0, () => automatic ? E.timeout(s, 100000, saved) : E.openChest(s, 'one', 2000, saved));
   assert.equal(s.foes[0].src, 'mimic');
-  assert.equal(s.foes[0].img, saved.imageUrl);
-  assert.equal(s.foes[0].deadImg, saved.deadImageUrl);
-  assert.equal(s.foes[0].facing, 'right');
+  assert.equal(s.foes[0].img, saved.frontImageUrl);
+  assert.equal(s.foes[0].frontImg, saved.frontImageUrl);
+  assert.equal(s.foes[0].deadImg, undefined);
+  assert.equal(s.foes[0].facing, undefined);
+  assert.equal(s.bg, undefined);
   assert.equal(s.foes[0].actions[0].name, 'Morso personalizzato');
 }
 console.log('Segrete: saved admin Mimic sprites and attacks passed for manual and automatic opening.');

@@ -1,10 +1,5 @@
-/* LE SEGRETE IN PRIMA PERSONA (2026-11-07): la stessa lotta di SegreteBattle.jsx con un'altra vista.
-   Stessi dati (dungeon_runs, scritto solo dal server), stesse operazioni di segreteDo, stessa coda
-   dado → effetto → danno, stessi pannelli di azioni, zaino, bottino e fine dungeon. Cambia il campo:
-   la stanza in prospettiva di src/fx/crawlerEngine.js, le armi in mano, il party in basso.
-   Per ora la vede solo il Master principale (Segrete.jsx, CRAWLER_PUBLIC in data/segrete.js).
-   I bottoni sopra i mostri (.cw-foe) sono trasparenti e seguono gli sprite: servono per mirare, per la
-   scheda (pressione lunga) e come ancora degli effetti (data-vfx-target), come gli sprite classici. */
+/* Le Segrete: combattimento in prima persona, sincronizzato con dungeon_runs.
+   Il server risolve le azioni; la coda mostra dado, effetto e danno in sequenza. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
@@ -29,8 +24,9 @@ import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom, backToRoom } from "../utils/segreteRooms";
-import { statusIcons, FloorGains, SpoilsBox, FoeCard, actInfo } from "./SegreteBattle";
-import "./SegreteBattle.css";
+import { FloorGains, SpoilsBox, FoeCard } from "./SegreteCombatUI";
+import { statusIcons, actInfo } from "../utils/segreteCombat";
+import "./SegreteCombat.css";
 import "./SegreteCrawler.css";
 
 const ROW_GAP_MS = 900;
@@ -382,7 +378,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
   }, [run?.status, startKey, room.id]);
   const hover = (id) => engRef.current?.setHover(id);
 
-  /* ── coda della lotta: dado → effetto → danno, una riga alla volta (come SegreteBattle) ── */
+  /* ── coda della lotta: dado → effetto → danno, una riga alla volta ── */
   const timers = useRef([]);
   const sendP = useRef(Promise.resolve());
   const mounted = useRef(true);
@@ -534,7 +530,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
       <VfxLayer messages={vfxMsgs} selfUid={uid} canvas />
       {inspect && (() => {
         const f = run.foes.find((x) => x.id === inspect);
-        return f ? <FoeCard f={f} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
+        return f ? <FoeCard f={{ ...f, frontImg: fronts[f.src] || f.frontImg }} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
       })()}
       <div className="sgb-top cw-top">
         <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
