@@ -1,6 +1,69 @@
 {
   "versions": [
     {
+      "version": "91",
+      "date": "2026-11-10",
+      "title": "Le Segrete · sottoclassi, Compagnia e tante novità",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "🎓 Sottoclassi: 2 per classe, dal Lv 5, 2000 Monete Antiche l'una. Ognuna dà un tratto sempre attivo e due azioni nuove."
+        },
+        {
+          "type": "feature",
+          "text": "🤝 Compagnia: in gruppo piccoli bonus che crescono col numero di eroi (TS, colpire, PF, più monete e PE)."
+        },
+        {
+          "type": "feature",
+          "text": "🎮 Vista in prima persona per tutti, con animazioni delle armi e degli incantesimi."
+        },
+        {
+          "type": "feature",
+          "text": "💰 Sala del tesoro dopo il boss: scrigno con monete e oggetti (vinti col d20), più pieno in gruppo, e a volte è un Mimic!"
+        },
+        {
+          "type": "feature",
+          "text": "🗝 Tre dungeon nuovi: Cripta degli Echi, Forgia della Tempesta, Abisso Sommerso."
+        },
+        {
+          "type": "feature",
+          "text": "⚔ Armi e armature speciali con effetti (bruciatura, veleno, stordimento, resistenze, spine). Bottega e Zaino divisi per tipo."
+        },
+        {
+          "type": "mechanics",
+          "text": "✊ Spada lunga e bastone si possono impugnare a due mani (dado più grosso, niente scudo)."
+        },
+        {
+          "type": "mechanics",
+          "text": "🛡 Guerriero e Paladino possono scegliere la Completa di Piastre. Le armature pesanti hanno ingombro a ogni tiro."
+        },
+        {
+          "type": "mechanics",
+          "text": "🌒 Ladro: Attacco Furtivo automatico una volta per round, Colpo Mirato (vantaggio 2 turni) ed Elusione dal Lv 7. Arma a scelta fra Stocco e Due Pugnali."
+        },
+        {
+          "type": "mechanics",
+          "text": "🎶 Bardo: Ispirazione Bardica sempre disponibile (vantaggio e +3 danni a un alleato), Beffa Crudele più forte."
+        },
+        {
+          "type": "mechanics",
+          "text": "🕯 Chierico: Fiamma Sacra trucchetto infinito e Cura Ferite di Gruppo. 📣 Guerriero: Provocazione."
+        },
+        {
+          "type": "balance",
+          "text": "Da soli un po' meno PE (×0,75); le Segrete danno solo Monete Antiche, niente più Corone."
+        },
+        {
+          "type": "fix",
+          "text": "Il secondo dungeon nello stesso gruppo ora anima di nuovo dado, effetti e numeri."
+        },
+        {
+          "type": "fix",
+          "text": "Manuale delle Segrete aggiornato con tutte le regole nuove."
+        }
+      ]
+    },
+    {
       "version": "90",
       "date": "2026-07-05",
       "title": "Arena · gli acquisti della Bottega si equipaggiano a scelta",
