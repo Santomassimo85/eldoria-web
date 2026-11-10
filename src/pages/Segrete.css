@@ -475,3 +475,13 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgs-legend summary { cursor: pointer; color: var(--el, #e0a85a); font-weight: 600; }
 .sgs-legend ul { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; padding: 0; list-style: none; }
 .sgr-page .sgs-legend li { color: var(--osso-2, #d8ccb4); }
+
+/* SOTTOCLASSI (2026-11-10) */
+.sgh-subs { display: grid; gap: 10px; margin-top: 8px; }
+.sgh-sub-card { padding: 10px; border: 1px solid rgba(var(--osso-rgb, 236,229,214), .22); background: rgba(0,0,0,.18); }
+.sgh-sub-card.is-on { border-color: var(--cls, var(--el, #e0a85a)); box-shadow: inset 0 0 0 1px var(--cls, var(--el, #e0a85a)); }
+.sgh-sub-card > small { display: block; color: var(--osso-2, #d8ccb4); }
+.sgh-sub-name { margin: 0 0 4px; }
+.sgh-sub-name em { color: var(--el, #e0a85a); font-style: normal; font-size: .85rem; }
+.sgh-sub-passive { margin: 6px 0; font-size: .88rem; color: #f2c14e; }
+.sgh-sub-card .sgh-row { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }

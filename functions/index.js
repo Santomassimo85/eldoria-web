@@ -2126,7 +2126,7 @@ exports.segreteDo = onCall(
     }
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor" || op === "heroRespec") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor" || op === "heroRespec" || op === "heroSubclass") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -2148,9 +2148,25 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
-          if (op === "heroArmor" || op === "heroWeapon" || op === "heroRespec") {
+          if (op === "heroArmor" || op === "heroWeapon" || op === "heroRespec" || op === "heroSubclass") {
             const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
             if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia equipaggiamento quando hai finito.");
+          }
+          if (op === "heroSubclass") {
+            // sottoclassi (2026-11-10): comprarne una (Monete Antiche, eroe al livello minimo) o
+            // scegliere quale usare fra quelle già comprate (gratis). key "" = nessuna.
+            const key = String(request.data?.key || "");
+            const owned = Array.isArray(hero.subclasses) ? hero.subclasses : [];
+            if (!key) { tx.update(ref, { [`storyChars.${cls}.subclass`]: admin.firestore.FieldValue.delete() }); return { ok: true }; }
+            if (!segreteBundle.subclassOf(cls, key)) throw new Error("Sottoclasse sconosciuta.");
+            if (owned.includes(key)) { tx.update(ref, { [`storyChars.${cls}.subclass`]: key }); return { ok: true }; }
+            const lvl = segreteBundle.heroLevel(hero);
+            if (lvl < segreteBundle.SUBCLASS_LEVEL) throw new Error(`Serve l'eroe almeno al livello ${segreteBundle.SUBCLASS_LEVEL}.`);
+            const coins = segreteBundle.coinsOf(cs.data());
+            const cost = segreteBundle.SUBCLASS_COST;
+            if (coins < cost) throw new Error(`Servono ${cost} Monete Antiche, ne hai ${coins}.`);
+            tx.update(ref, { [`storyChars.${cls}.subclasses`]: [...owned, key], [`storyChars.${cls}.subclass`]: key, storyCoins: coins - cost });
+            return { ok: true, bought: true };
           }
           if (op === "heroRespec") {
             // reset (2026-11-06): nuove caratteristiche e abilità, livello e PE restano.

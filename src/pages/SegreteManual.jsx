@@ -1,7 +1,7 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
 import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
-import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS, RESPEC_COST } from "../data/segreteKits";
+import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS, RESPEC_COST, SUBCLASS_COST, SUBCLASS_LEVEL, SUBCLASSES } from "../data/segreteKits";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -27,6 +27,15 @@ export default function SegreteManual() {
           <li>Tutti premono <b>▶ Avvia</b>: quando l'hanno premuto tutti si scende.</li>
           <li>Si combatte sala dopo sala fino al boss. Se il gruppo vince, ognuno porta a casa PE, {COIN_NAME} e il bottino. <b>Se il gruppo cade prima dello scrigno, si perde tutto quello trovato.</b></li>
         </ol>
+      </Fold>
+
+      <Fold icon="🎓" title="Le sottoclassi">
+        <p>Dal Lv {SUBCLASS_LEVEL}, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una. Tratto passivo e azioni (Lv 5 · Lv 11):</p>
+        <ul>
+          {STORY_CLASSES.filter((c) => SUBCLASSES[c.key]).map((c) => SUBCLASSES[c.key].map((sc) => (
+            <li key={`${c.key}-${sc.key}`} style={clsStyle(c.key)}><b>{c.it} · {sc.icon} {sc.name}</b>: {sc.passiveTxt} · {sc.actions.map((a) => a.name).join(" · ")}</li>
+          )))}
+        </ul>
       </Fold>
 
       <Fold icon="⚔" title="Il combattimento">
@@ -60,6 +69,7 @@ export default function SegreteManual() {
           <li><b>♻ Reset dell'eroe</b>: dalla scheda dell'eroe rifai caratteristiche e abilità per {RESPEC_COST} {COIN_NAME}. Livello, PE, PF tirati ed equipaggiamento restano; non si può fare durante un dungeon. Le armi si cambiano sempre gratis.</li>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
           <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Chi entra da solo prende un po' meno PE (×0,75). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li><b>🎓 Sottoclassi</b>: dal Lv {SUBCLASS_LEVEL} ogni classe può comprarne due (dalla scheda dell'eroe, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una). Ognuna dà un tratto sempre attivo e due azioni nuove (al Lv 5 e al Lv 11). Comprate restano tue: ne usi una alla volta e la cambi gratis fuori dai dungeon.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
           <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>
         </ul>

@@ -34,6 +34,9 @@ __export(segreteServer_exports, {
   SOLO_XP_MULT: () => SOLO_XP_MULT,
   STAT_KEYS: () => STAT_KEYS,
   STAT_MAX: () => STAT_MAX,
+  SUBCLASSES: () => SUBCLASSES,
+  SUBCLASS_COST: () => SUBCLASS_COST,
+  SUBCLASS_LEVEL: () => SUBCLASS_LEVEL,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
   XP_VERSION: () => XP_VERSION,
   act: () => act,
@@ -71,6 +74,7 @@ __export(segreteServer_exports, {
   romeDay: () => romeDay,
   runsOf: () => runsOf,
   storyLevelOf: () => storyLevelOf,
+  subclassOf: () => subclassOf,
   timeout: () => timeout,
   useItem: () => useItem,
   validNewHero: () => validNewHero,
@@ -444,6 +448,339 @@ var KITS = {
     ]
   }
 };
+var SUBCLASS_COST = 2e3;
+var SUBCLASS_LEVEL = 5;
+var SUBCLASSES = {
+  fighter: [
+    {
+      key: "campione",
+      name: "Campione",
+      icon: "\u{1F3C6}",
+      desc: "Forza bruta e resistenza: colpi critici pi\xF9 frequenti.",
+      passive: { critAt: 19, hpLv: 1 },
+      passiveTxt: "critico con 19\u201320 \xB7 +1 PF per livello",
+      actions: [
+        { id: "sc_assalto", useWeapon: true, name: "Assalto del Campione", icon: "\u{1F3C6}", kind: "weapon", dice: "1d8", dmg: "slashing", adv: true, bonusDmg: "lv/2", min: 5, uses: 2, info: "a vantaggio, +met\xE0 livello ai danni" },
+        { id: "sc_baluardo", name: "Ultimo Baluardo", icon: "\u2764", kind: "heal", dice: "3d10", plusLevel: true, self: true, min: 11, uses: 1 }
+      ]
+    },
+    {
+      key: "maestro",
+      name: "Maestro di Battaglia",
+      icon: "\u2694",
+      desc: "Tattico: manovre che sbilanciano e spaventano.",
+      passive: { wHit: 1 },
+      passiveTxt: "+1 a colpire con le armi",
+      actions: [
+        { id: "sc_sbilancia", useWeapon: true, name: "Attacco Sbilanciante", icon: "\u{1F300}", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "1d8", riderDis: 2, min: 5, uses: 3, grow: true, info: "+1d8 (dado di superiorit\xE0) e il nemico a svantaggio" },
+        { id: "sc_minaccia", useWeapon: true, name: "Colpo Minaccioso", icon: "\u{1F631}", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", inflict: { key: "frightened", turns: 2 }, min: 11, uses: 2, info: "+2d8 e il nemico spaventato" }
+      ]
+    }
+  ],
+  barbarian: [
+    {
+      key: "berserker",
+      name: "Cammino del Berserker",
+      icon: "\u{1FA93}",
+      desc: "Furia cieca: colpi in pi\xF9 e terrore.",
+      passive: { wDmg: 1 },
+      passiveTxt: "+1 danni con le armi",
+      actions: [
+        { id: "sc_frenesia", useWeapon: true, name: "Frenesia", icon: "\u{1FA93}", kind: "weapon", dice: "1d12", dmg: "slashing", bonusAttacks: 1, min: 5, uses: 2, info: "un attacco in pi\xF9" },
+        { id: "sc_intimida", name: "Presenza Intimidatoria", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, inflict: { key: "frightened" }, min: 11, uses: 1, info: "tutti i nemici spaventati" }
+      ]
+    },
+    {
+      key: "orso",
+      name: "Totem dell'Orso",
+      icon: "\u{1F43B}",
+      desc: "Lo spirito dell'orso: in furia resisti quasi a tutto.",
+      passive: { rageAll: true, hpLv: 1 },
+      passiveTxt: "in Furia dimezzi TUTTI i danni (non psichici) \xB7 +1 PF per livello",
+      actions: [
+        { id: "sc_ruggito_orso", name: "Ruggito dell'Orso", icon: "\u{1F43B}", kind: "taunt", save: "wis", turns: 2, min: 5, uses: 1, info: "tutti i nemici: TS SAG o attaccano solo te per 2 turni" },
+        { id: "sc_pelle_orso", name: "Pelle d'Orso", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 3, turns: 3, self: true, min: 11, uses: 1 }
+      ]
+    }
+  ],
+  paladin: [
+    {
+      key: "devozione",
+      name: "Giuramento di Devozione",
+      icon: "\u{1F607}",
+      desc: "Il cavaliere luminoso: protegge e scaccia il male.",
+      passive: { heal: 2, save: 1 },
+      passiveTxt: "+2 a ogni cura \xB7 +1 ai TS",
+      actions: [
+        { id: "sc_arma_cons", name: "Arma Consacrata", icon: "\u2728", kind: "buff", buff: "adv", turns: 3, self: true, min: 5, uses: 1, info: "vantaggio per 3 turni" },
+        { id: "sc_scaccia", name: "Scacciare gli Empi", icon: "\u2600", kind: "save", dice: "3d8", dmg: "radiant", save: "wis", area: true, half: true, inflict: { key: "frightened", turns: 2 }, min: 11, uses: 1, grow: true, info: "tutti i nemici \xB7 chi fallisce \xE8 spaventato" }
+      ]
+    },
+    {
+      key: "vendetta",
+      name: "Giuramento di Vendetta",
+      icon: "\u{1F5E1}",
+      desc: "Il castigo: un nemico alla volta, fino in fondo.",
+      passive: { wDmg: 1, wHit: 1 },
+      passiveTxt: "+1 a colpire e ai danni con le armi",
+      actions: [
+        { id: "sc_inimicizia", name: "Voto di Inimicizia", icon: "\u{1F3AF}", kind: "buff", buff: "dmg", value: 4, turns: 3, self: true, min: 5, uses: 1 },
+        { id: "sc_vendicativa", useWeapon: true, name: "Punizione Vendicativa", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "4d8", riderDmg: "radiant", inflict: { key: "frightened", turns: 2 }, min: 11, uses: 1, grow: true, info: "+4d8 radiosi e il nemico spaventato" }
+      ]
+    }
+  ],
+  ranger: [
+    {
+      key: "cacciatore",
+      name: "Cacciatore",
+      icon: "\u{1F3F9}",
+      desc: "Specialista dei bersagli grossi e dei gruppi.",
+      passive: { wDmg: 2 },
+      passiveTxt: "+2 danni con le armi",
+      actions: [
+        { id: "sc_colosso", useWeapon: true, name: "Uccisore di Colossi", icon: "\u{1F5FF}", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "2d8", min: 5, uses: 2, grow: true, info: "+2d8 al primo colpo" },
+        { id: "sc_turbine_c", name: "Turbine del Cacciatore", icon: "\u{1F32A}", kind: "save", dice: "4d8", dmg: "slashing", save: "dex", area: true, half: true, min: 11, uses: 1, grow: true }
+      ]
+    },
+    {
+      key: "bestie",
+      name: "Signore delle Bestie",
+      icon: "\u{1F43A}",
+      desc: "Un lupo combatte al tuo fianco.",
+      passive: { ac: 1 },
+      passiveTxt: "+1 CA (il lupo ti copre)",
+      actions: [
+        { id: "sc_lupo", name: "Morso del Lupo", icon: "\u{1F43A}", kind: "spell", dice: "2d6", dmg: "piercing", attacks: 2, min: 5, uses: 3, info: "il lupo morde due volte" },
+        { id: "sc_branco", name: "Assalto del Branco", icon: "\u{1F43E}", kind: "save", dice: "4d8", dmg: "piercing", save: "dex", area: true, half: true, inflict: { key: "slow", turns: 1 }, min: 11, uses: 1, grow: true, info: "tutti i nemici \xB7 chi fallisce \xE8 rallentato" }
+      ]
+    }
+  ],
+  monk: [
+    {
+      key: "mano_aperta",
+      name: "Via della Mano Aperta",
+      icon: "\u270B",
+      desc: "Maestro dei colpi a mano nuda.",
+      passive: { wHit: 1, wDmg: 1 },
+      passiveTxt: "+1 a colpire e ai danni coi colpi",
+      actions: [
+        { id: "sc_mano", useWeapon: true, name: "Tecnica della Mano Aperta", icon: "\u270B", kind: "weapon", dice: "1d6", dmg: "bludgeoning", attacks: 2, riderDis: 1, min: 5, uses: 3, info: "due colpi e il nemico a svantaggio" },
+        { id: "sc_quiete", name: "Onda di Quiete", icon: "\u{1F9D8}", kind: "save", dice: "5d10", dmg: "force", save: "con", half: true, stun: 1, min: 11, uses: 1, info: "chi fallisce resta stordito" }
+      ]
+    },
+    {
+      key: "ombra",
+      name: "Via dell'Ombra",
+      icon: "\u{1F311}",
+      desc: "Ninja: buio, inganno e colpi alle spalle.",
+      passive: { ac: 1 },
+      passiveTxt: "+1 CA",
+      actions: [
+        { id: "sc_passo_ombra", name: "Passo d'Ombra", icon: "\u{1F311}", kind: "buff", buff: "adv", turns: 2, self: true, min: 5, uses: 2 },
+        { id: "sc_oscurita", name: "Oscurit\xE0", icon: "\u2B1B", kind: "debuff", area: true, turns: 2, inflict: { key: "blinded" }, min: 11, uses: 1, info: "tutti i nemici accecati" }
+      ]
+    }
+  ],
+  rogue: [
+    {
+      key: "assassino",
+      name: "Assassino",
+      icon: "\u{1F5E1}",
+      desc: "Colpi letali e veleni.",
+      passive: { critAt: 19 },
+      passiveTxt: "critico con 19\u201320",
+      actions: [
+        { id: "sc_letale", useWeapon: true, name: "Colpo Letale", icon: "\u{1F5E1}", kind: "weapon", dice: "1d8", dmg: "piercing", attacks: 1, singleAttack: true, adv: true, rider: "sneak", riderDmg: "piercing", bonusDmg: "lv/2", min: 5, uses: 1, info: "a vantaggio: attacco furtivo + met\xE0 livello" },
+        { id: "sc_veleno_ass", useWeapon: true, name: "Veleno dell'Assassino", icon: "\u2620", kind: "weapon", dice: "1d8", dmg: "piercing", rider: "3d6", riderDmg: "poison", inflict: { key: "poison" }, min: 11, uses: 2, info: "+3d6 veleno e il nemico avvelenato" }
+      ]
+    },
+    {
+      key: "mistificatore",
+      name: "Mistificatore Arcano",
+      icon: "\u{1F52E}",
+      desc: "Ladro e mago: dardi e illusioni.",
+      passive: { save: 1, sDmg: 1 },
+      passiveTxt: "+1 ai TS \xB7 +1 danni degli incantesimi",
+      actions: [
+        { id: "sc_dardo_mist", name: "Dardo Incantato", icon: "\u2728", kind: "missile", dice: "3d4", flat: 3, dmg: "force", min: 5, uses: 2, grow: true },
+        { id: "sc_trama", name: "Trama Ingannevole", icon: "\u{1F52E}", kind: "save", dice: "4d6", dmg: "psychic", save: "wis", half: true, inflict: { key: "confused", turns: 1 }, min: 11, uses: 1, grow: true, info: "chi fallisce resta confuso" }
+      ]
+    }
+  ],
+  wizard: [
+    {
+      key: "invocazione",
+      name: "Scuola di Invocazione",
+      icon: "\u{1F525}",
+      desc: "Pura potenza distruttiva.",
+      passive: { sDmg: "mod" },
+      passiveTxt: "+INT ai danni degli incantesimi",
+      actions: [
+        { id: "sc_sfera", name: "Sfera Instabile", icon: "\u{1F4A5}", kind: "save", dice: "6d6", dmg: "force", save: "dex", area: true, half: true, min: 5, uses: 1, grow: true },
+        { id: "sc_sovraccarico", name: "Raggio Sovraccarico", icon: "\u26A1", kind: "spell", dice: "6d10", dmg: "force", min: 11, uses: 1, grow: true }
+      ]
+    },
+    {
+      key: "abiurazione",
+      name: "Scuola di Abiurazione",
+      icon: "\u{1F530}",
+      desc: "Barriere e protezioni per tutto il gruppo.",
+      passive: { ac: 1, hpLv: 1 },
+      passiveTxt: "+1 CA \xB7 +1 PF per livello (guardia arcana)",
+      actions: [
+        { id: "sc_guardia", name: "Guardia Arcana", icon: "\u{1F530}", kind: "buff", buff: "ac", value: 3, turns: 2, allParty: true, min: 5, uses: 1 },
+        { id: "sc_contro", name: "Controincantesimo", icon: "\u{1F6AB}", kind: "debuff", area: true, turns: 2, min: 11, uses: 1, info: "tutti i nemici a svantaggio" }
+      ]
+    }
+  ],
+  sorcerer: [
+    {
+      key: "draconica",
+      name: "Stirpe Draconica",
+      icon: "\u{1F409}",
+      desc: "Sangue di drago: scaglie e soffio.",
+      passive: { ac: 1, hpLv: 1, sDmg: 2, res: ["fire"] },
+      passiveTxt: "+1 CA \xB7 +1 PF per livello \xB7 +2 danni degli incantesimi \xB7 resiste al fuoco",
+      actions: [
+        { id: "sc_soffio", name: "Soffio del Drago", icon: "\u{1F409}", kind: "save", dice: "4d6", dmg: "fire", save: "dex", area: true, half: true, min: 5, uses: 1, grow: true },
+        { id: "sc_presenza", name: "Presenza Draconica", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, inflict: { key: "frightened" }, min: 11, uses: 1, info: "tutti i nemici spaventati" }
+      ]
+    },
+    {
+      key: "selvaggia",
+      name: "Magia Selvaggia",
+      icon: "\u{1F300}",
+      desc: "Il caos che ribolle nel sangue.",
+      passive: { critAt: 19 },
+      passiveTxt: "critico con 19\u201320 anche con gli incantesimi",
+      actions: [
+        { id: "sc_caos", name: "Ondata del Caos", icon: "\u{1F300}", kind: "save", dice: "3d10", dmg: "force", save: "dex", area: true, half: true, inflict: { key: "confused", turns: 1 }, min: 5, uses: 1, grow: true, info: "tutti i nemici \xB7 chi fallisce \xE8 confuso" },
+        { id: "sc_fortuna", name: "Fortuna Piegata", icon: "\u{1F340}", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 11, uses: 1 }
+      ]
+    }
+  ],
+  warlock: [
+    {
+      key: "immondo",
+      name: "Il Signore Immondo",
+      icon: "\u{1F608}",
+      desc: "Patto infernale: fuoco e dannazione.",
+      passive: { res: ["fire"], hpLv: 1 },
+      passiveTxt: "resiste al fuoco \xB7 +1 PF per livello",
+      actions: [
+        { id: "sc_inferno", name: "Fuoco Infernale", icon: "\u{1F525}", kind: "save", dice: "8d6", dmg: "fire", save: "dex", area: true, half: true, min: 5, uses: 1, grow: true },
+        { id: "sc_scagliare", name: "Scagliare all'Inferno", icon: "\u{1F608}", kind: "spell", dice: "10d10", dmg: "psychic", min: 11, uses: 1 }
+      ]
+    },
+    {
+      key: "antico",
+      name: "Il Grande Antico",
+      icon: "\u{1F419}",
+      desc: "Patto con l'ignoto: follia e menti spezzate.",
+      passive: { save: 1, res: ["psychic"], dc: 1 },
+      passiveTxt: "+1 ai TS \xB7 +1 alla CD \xB7 resiste ai danni psichici",
+      actions: [
+        { id: "sc_follia", name: "Sussurri della Follia", icon: "\u{1F441}", kind: "save", dice: "3d6", dmg: "psychic", save: "wis", area: true, half: true, inflict: { key: "confused", turns: 1 }, min: 5, uses: 1, grow: true, info: "tutti i nemici \xB7 chi fallisce \xE8 confuso" },
+        { id: "sc_domina", name: "Mente Dominata", icon: "\u{1F419}", kind: "save", dice: "4d10", dmg: "psychic", save: "wis", half: true, stun: 1, min: 11, uses: 1, info: "chi fallisce resta stordito" }
+      ]
+    }
+  ],
+  druid: [
+    {
+      key: "luna",
+      name: "Circolo della Luna",
+      icon: "\u{1F315}",
+      desc: "Forme selvatiche da combattimento.",
+      passive: { ac: 1, hpLv: 2 },
+      passiveTxt: "+1 CA \xB7 +2 PF per livello",
+      actions: [
+        { id: "sc_artigli", name: "Artigli dell'Orso", icon: "\u{1F43B}", kind: "spell", dice: "2d8", dmg: "slashing", attacks: 2, min: 5, uses: 3, info: "due zampate" },
+        { id: "sc_elementale", name: "Forma Elementale", icon: "\u{1F30B}", kind: "buff", buff: "dmg", value: 6, turns: 3, self: true, min: 11, uses: 1 }
+      ]
+    },
+    {
+      key: "terra",
+      name: "Circolo della Terra",
+      icon: "\u{1F33F}",
+      desc: "La magia del luogo: rovi e ristoro.",
+      passive: { sDmg: 2, heal: 2 },
+      passiveTxt: "+2 danni degli incantesimi \xB7 +2 a ogni cura",
+      actions: [
+        { id: "sc_spine", name: "Crescita di Spine", icon: "\u{1F335}", kind: "save", dice: "4d6", dmg: "piercing", save: "dex", area: true, half: true, inflict: { key: "slow", turns: 1 }, min: 5, uses: 2, grow: true, info: "tutti i nemici \xB7 chi fallisce \xE8 rallentato" },
+        { id: "sc_ristoro", name: "Ristoro della Terra", icon: "\u{1F33F}", kind: "heal_all", dice: "2d8", plusMod: true, min: 11, uses: 1, grow: true }
+      ]
+    }
+  ],
+  cleric: [
+    {
+      key: "vita",
+      name: "Dominio della Vita",
+      icon: "\u{1F496}",
+      desc: "Il guaritore: ogni cura vale di pi\xF9.",
+      passive: { heal: "2+lv/2" },
+      passiveTxt: "+2 + met\xE0 livello a ogni cura",
+      actions: [
+        { id: "sc_preserva", name: "Preservare la Vita", icon: "\u{1F496}", kind: "heal_all", flat: "lv*2", min: 5, uses: 1, info: "cura tutti di 2 \xD7 livello" },
+        { id: "sc_benedetto", name: "Guaritore Benedetto", icon: "\u{1F64F}", kind: "heal", flat: "lv*4", min: 11, uses: 1 }
+      ]
+    },
+    {
+      key: "tempesta",
+      name: "Dominio della Tempesta",
+      icon: "\u26C8",
+      desc: "Tuono e fulmine al servizio del dio.",
+      passive: { thorns: { dice: "2d8", dmg: "lightning", chance: 50 } },
+      passiveTxt: "Ira della Tempesta: chi ti colpisce in mischia, 50% di prendere 2d8 da fulmine",
+      actions: [
+        { id: "sc_fulmine_c", name: "Fulmine Distruttivo", icon: "\u{1F329}", kind: "save", dice: "3d8", dmg: "lightning", save: "dex", area: true, half: true, min: 5, uses: 1, grow: true },
+        { id: "sc_tuono", name: "Ira del Tuono", icon: "\u26C8", kind: "save", dice: "4d10", dmg: "thunder", save: "con", half: true, stun: 1, min: 11, uses: 1, info: "chi fallisce resta stordito" }
+      ]
+    }
+  ],
+  bard: [
+    {
+      key: "sapienza",
+      name: "Collegio della Sapienza",
+      icon: "\u{1F4DC}",
+      desc: "Parole che feriscono e segreti rubati.",
+      passive: { save: 1, dc: 1 },
+      passiveTxt: "+1 ai TS \xB7 +1 alla CD",
+      actions: [
+        { id: "sc_taglienti", name: "Parole Taglienti", icon: "\u{1F5EF}", kind: "debuff", turns: 2, min: 5, uses: 2, info: "un nemico a svantaggio per 2 turni" },
+        { id: "sc_segreti", name: "Segreti Magici", icon: "\u{1F4DC}", kind: "save", dice: "8d6", dmg: "fire", save: "dex", area: true, half: true, min: 11, uses: 1, grow: true, info: "una Palla di Fuoco rubata" }
+      ]
+    },
+    {
+      key: "valore",
+      name: "Collegio del Valore",
+      icon: "\u{1F6E1}",
+      desc: "Il bardo guerriero, in prima linea.",
+      passive: { ac: 1, wHit: 1 },
+      passiveTxt: "+1 CA \xB7 +1 a colpire con le armi",
+      actions: [
+        { id: "sc_ispira_b", name: "Ispirazione in Battaglia", icon: "\u{1F3B6}", kind: "buff", buff: "dmg", value: 4, turns: 2, allParty: true, min: 5, uses: 1, info: "+4 danni a tutto il gruppo" },
+        { id: "sc_colpo_b", useWeapon: true, name: "Attacco del Valoroso", icon: "\u2694", kind: "weapon", dice: "1d8", dmg: "piercing", bonusAttacks: 1, min: 11, uses: 3, info: "un attacco in pi\xF9" }
+      ]
+    }
+  ]
+};
+var subclassesOf = (cls) => SUBCLASSES[cls] || [];
+var subclassOf = (cls, key) => key ? subclassesOf(cls).find((s) => s.key === key) || null : null;
+function heroSubclass(cls, hero) {
+  const key = hero?.subclass;
+  if (!key || !(hero.subclasses || []).includes(key) || heroLevel(hero) < SUBCLASS_LEVEL) return null;
+  return subclassOf(cls, key);
+}
+function subNum(v, lv = 1, mod = 0) {
+  if (typeof v === "number") return v;
+  return String(v || "0").split("+").reduce((t, p) => {
+    p = p.trim();
+    if (p === "mod") return t + mod;
+    if (p === "lv") return t + lv;
+    if (p === "lv/2") return t + Math.floor(lv / 2);
+    return t + (Number(p) || 0);
+  }, 0);
+}
 var DEFEND = { id: "difesa", name: "Difendersi", icon: "\u{1F6E1}", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 var kitOf = (cls) => KITS[cls] || KITS.fighter;
 var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
@@ -451,14 +788,16 @@ var VERSATILE = { spada_lunga: "1d10", bastone: "1d8" };
 var GRIP_CLASSES = /* @__PURE__ */ new Set(["fighter", "barbarian", "paladin", "ranger", "rogue", "monk"]);
 var canTwoHand = (cls, weapon) => GRIP_CLASSES.has(cls) && !!VERSATILE[weapon];
 var GRIP = { id: "grip", kind: "grip", icon: "\u270A", free: true };
-function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null, twoHand = false) {
+function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null, twoHand = false, subclass = null) {
   const k = kitOf(cls);
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
   const withWeapon = (a) => a.useWeapon ? { ...a, ...a.attacks || w.attacks ? { attacks: a.attacks || w.attacks } : {}, ...a.rider === "sneak" ? { info: `un colpo: ${w.dice} +${sneakDiceOf(lv)}d6` } : {}, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
   const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
+  const sub = lv >= SUBCLASS_LEVEL ? subclassOf(cls, subclass) : null;
+  const subActs = sub ? sub.actions.filter((a) => (a.min || 1) <= lv).map((a) => ({ ...a, sub: sub.key })) : [];
   const grip = canTwoHand(cls, w0.key) ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} \xB7 riprendi lo scudo` : `${VERSATILE[w0.key]} \xB7 niente scudo` }] : [];
-  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...grip, DEFEND];
+  return [weaponAction(w, plus, wItem), ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -1182,6 +1521,7 @@ function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey(
 }
 
 // src/data/segreteEngine.js
+var subP = (c) => c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {};
 var LOG_MAX = 80;
 var AFK_MS = 5 * 60 * 1e3;
 var rnd = Math.random;
@@ -1248,8 +1588,13 @@ function makeHero(m) {
   const weaponKey = weaponOf(m.cls, okItem ? wItem.base : hero.weapon).key;
   const weaponPlus = okItem ? wItem.plus || 0 : 0;
   const def = heroDefense(m.cls, st, { armor: hero.armor, shield: hero.shield, weapon: weaponKey || weaponChoices(m.cls)[0]?.key, armorItem: itemOf(hero.armorItem), shieldItem: itemOf(hero.shieldItem) });
+  const subc = heroSubclass(m.cls, hero);
+  const sp = subc?.passive || {};
+  const subHp = (sp.hpLv || 0) * lv;
+  const thorns = def.thorns || sp.thorns || null;
+  const res = [.../* @__PURE__ */ new Set([...def.res || [], ...sp.res || []])];
   const uses = {};
-  heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null).forEach((a) => {
+  heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null, false, subc?.key).forEach((a) => {
     if (a.uses) uses[a.id] = a.uses;
   });
   return {
@@ -1260,11 +1605,12 @@ function makeHero(m) {
     cls: m.cls,
     level: lv,
     img: m.avatar || "",
-    hp: maxHp + def.hpBonus,
-    maxHp: maxHp + def.hpBonus,
-    ac: def.ac,
+    ...subc ? { subclass: subc.key, subName: subc.name } : {},
+    hp: maxHp + def.hpBonus + subHp,
+    maxHp: maxHp + def.hpBonus + subHp,
+    ac: def.ac + (sp.ac || 0),
     init: st.dex || 0,
-    save: Math.floor(profOf(lv) / 2) + def.saveBonus,
+    save: Math.floor(profOf(lv) / 2) + def.saveBonus + (sp.save || 0),
     st,
     ...def.hitBonus ? { armorHit: def.hitBonus } : {},
     ...def.dcBonus ? { armorDc: def.dcBonus } : {},
@@ -1272,8 +1618,8 @@ function makeHero(m) {
     weapon: weaponKey,
     weaponPlus,
     ...okItem ? { wItem: wItem.id } : {},
-    res: def.res,
-    ...def.thorns ? { thorns: def.thorns } : {},
+    res,
+    ...thorns ? { thorns } : {},
     armorCategory: def.cat,
     gear: { armor: def.armorName, shield: def.shieldName },
     // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
@@ -1638,7 +1984,7 @@ function applyDamage(s, target, amount, type, notes) {
     dmg = Math.floor(dmg / 2);
     notes.push("resiste");
     curTags[target.id] = "res";
-  } else if (fxOn(s, target.fx.rage) && PHYS.includes(type)) {
+  } else if (fxOn(s, target.fx.rage) && (PHYS.includes(type) || subP(target).rageAll && type !== "psychic")) {
     dmg = Math.floor(dmg / 2);
     notes.push("in furia");
     curTags[target.id] = "rage";
@@ -1664,7 +2010,7 @@ var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
 function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand, h.subclass || null).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -1685,6 +2031,8 @@ function heroAct(s, h, a, target) {
   const hit = heroHit(h.cls, lv, st) + (h.armorHit || 0);
   const mod = mainMod(h.cls, st);
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
+  const sp = subP(h);
+  const sDmg = subNum(sp.sDmg, lv, mod), sHeal = subNum(sp.heal, lv, mod), sDc = sp.dc || 0;
   const flatOf = (f) => {
     const m = /^lv\*(\d+)$/.exec(String(f || ""));
     return m ? lv * Number(m[1]) : Number(f) || 0;
@@ -1722,7 +2070,7 @@ function heroAct(s, h, a, target) {
       }
     }
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) : hit;
+    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit;
     if (a.selfDis) {
       h.fx.reckless = s.round + 2;
       h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2);
@@ -1738,7 +2086,7 @@ function heroAct(s, h, a, target) {
       const armorMalus = burden > 50 && burden <= 75 ? 1 : 0;
       const actualHit = hitW - armorMalus;
       const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
-      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: wfx?.crit || 20 });
+      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: Math.min(wfx?.crit || 20, sp.critAt || 20) });
       const unarmed = h.cls === "monk" && heroVfx(a)?.fx === "punch";
       const hand = unarmed ? k % 2 ? "R" : "L" : h.weapon === "pugnali" ? k % 2 ? "L" : "R" : "R";
       if (curVfx) curVfx = { ...curVfx, hand, ...unarmed ? { unarmed: true } : {} };
@@ -1749,7 +2097,7 @@ function heroAct(s, h, a, target) {
       }
       let [dn, ds] = diceFor(a, lv);
       if (r.crit) dn *= 2;
-      const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) : 0) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
+      const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) + (sp.wDmg || 0) : sDmg) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
       let dmg = rolled.t + plusDmg;
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
@@ -1773,7 +2121,7 @@ function heroAct(s, h, a, target) {
       }
       if (a.stunSave && alive(target)) {
         const sv = d20() + (target.save || 0);
-        if (sv < heroDc(h.cls, lv, st) + (h.armorDc || 0)) {
+        if (sv < heroDc(h.cls, lv, st) + (h.armorDc || 0) + sDc) {
           target.fx.stun = true;
           extra += ` \xB7 \u{1F4AB} stordito (TS ${sv})`;
         } else extra += ` \xB7 resiste allo stordimento (${sv})`;
@@ -1788,7 +2136,7 @@ function heroAct(s, h, a, target) {
         total += w.dmg;
         extra += w.txt;
       }
-      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st) + (h.armorDc || 0));
+      if (a.inflict && k === 0 && alive(target)) extra += tryInflict(s, h, target, a.inflict, heroDc(h.cls, lv, st) + (h.armorDc || 0) + sDc);
       log(
         s,
         `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: ${r.crit ? "CRITICO! " : ""}${total} danni ${DMG_IT[a.dmg] || ""}${extra ? ` (di cui${extra})` : ""} (\u{1F3B2}${r.nat}+${actualHit}=${r.total})${advTag(r)}${burdenTag}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`,
@@ -1800,16 +2148,16 @@ function heroAct(s, h, a, target) {
   if (a.kind === "missile") {
     const [dn, ds] = diceFor(a, lv);
     const notes = [];
-    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0);
+    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0) + sDmg;
     const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes);
     log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dr: { n: dn, s: ds, r: rolled.r, p: plusDmg }, dmg });
     return ev;
   }
   if (a.kind === "save") {
-    const dc = heroDc(h.cls, lv, st) + (h.armorDc || 0);
+    const dc = heroDc(h.cls, lv, st) + (h.armorDc || 0) + sDc;
     const targets = a.area ? s.foes.filter(alive) : [target];
     const [dn, ds] = diceFor(a, lv);
-    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0), base = rolled.t + plusDmg;
+    const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0) + (Number(a.dice?.split("d")[0]) > 0 ? sDmg : 0), base = rolled.t + plusDmg;
     const parts = [];
     targets.forEach((t) => {
       const sv = d20() + (t.save || 0);
@@ -1836,6 +2184,7 @@ function heroAct(s, h, a, target) {
         const [dn, ds] = diceFor(a, lv);
         amt = roll(dn, ds).t + (a.plusMod ? healMod : 0) + (a.plusLevel ? lv : 0);
       }
+      amt += sHeal;
       const before = t.hp;
       t.hp = Math.min(t.maxHp, t.hp + amt);
       return `${t.name} +${t.hp - before}${before <= 0 && t.hp > 0 ? " (rialzato!)" : ""}`;
@@ -2404,7 +2753,7 @@ function nextFloor(s, bestiary, now) {
     if (h.fled) return;
     h.hp = h.hp <= 0 ? Math.ceil(h.maxHp * 0.25) : Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * 0.3));
     const uses = {};
-    heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null).forEach((a) => {
+    heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, false, h.subclass || null).forEach((a) => {
       if (a.uses) uses[a.id] = a.uses;
     });
     h.uses = uses;
@@ -2568,6 +2917,9 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   SOLO_XP_MULT,
   STAT_KEYS,
   STAT_MAX,
+  SUBCLASSES,
+  SUBCLASS_COST,
+  SUBCLASS_LEVEL,
   WEEKLY_RUNS,
   XP_VERSION,
   act,
@@ -2605,6 +2957,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   romeDay,
   runsOf,
   storyLevelOf,
+  subclassOf,
   timeout,
   useItem,
   validNewHero,

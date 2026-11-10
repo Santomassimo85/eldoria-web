@@ -12,10 +12,11 @@ import { playDiceRoll } from "../components/diceSound";
 import SegreteGear from "./SegreteGear";
 import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
-import { itemOf, heroGear } from "../data/segreteItems";
+import { itemOf, heroGear, coinsOf } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
   STAT_BUDGET, STAT_CAP, STAT_MAX, MAX_STORY_LEVEL, ASI_EVERY, RESPEC_COST,
+  subclassesOf, heroSubclass, SUBCLASS_COST, SUBCLASS_LEVEL,
 } from "../data/segreteKits";
 
 let callable = null;
@@ -37,6 +38,44 @@ const ActChip = ({ a, sub }) => (
     <small>{sub || actionLine(a)}</small>
   </span>
 );
+
+/* SOTTOCLASSI (2026-11-10): due per classe, si comprano dal Lv SUBCLASS_LEVEL con le Monete Antiche;
+   comprate restano, se ne usa una alla volta (cambio gratis fuori dai dungeon). */
+function SubclassBox({ cls, hero, lv, charData, busy, send }) {
+  const [ask, setAsk] = useState(null);
+  const owned = hero.subclasses || [];
+  const active = hero.subclass || null;
+  const coins = coinsOf(charData);
+  const canBuy = lv >= SUBCLASS_LEVEL;
+  return (
+    <div className="sgh-subs">
+      {!canBuy && <p className="sgh-hint">🔒 Le sottoclassi si sbloccano al <b>Lv {SUBCLASS_LEVEL}</b>: ognuna costa {SUBCLASS_COST.toLocaleString("it-IT")} Monete Antiche.</p>}
+      {canBuy && <p className="sgh-hint">Ognuna costa <b>{SUBCLASS_COST.toLocaleString("it-IT")}</b> Monete Antiche (ne hai {coins.toLocaleString("it-IT")}). Comprata resta tua: ne usi una alla volta e la cambi gratis fuori dai dungeon.</p>}
+      {subclassesOf(cls).map((sc) => {
+        const mine = owned.includes(sc.key), on = active === sc.key;
+        return (
+          <div key={sc.key} className={`sgh-sub-card${on ? " is-on" : ""}`}>
+            <p className="sgh-sub-name">{sc.icon} <b>{sc.name}</b>{on ? <em> · attiva</em> : mine ? <em> · tua</em> : null}</p>
+            <small>{sc.desc}</small>
+            <p className="sgh-sub-passive">✦ {sc.passiveTxt}</p>
+            <div className="sgh-acts">{sc.actions.map((a) => <ActChip key={a.id} a={a} sub={`${actionLine(a)} · dal Lv ${a.min}`} />)}</div>
+            <div className="sgh-row">
+              {mine && !on && <button type="button" className="sgr-btn" disabled={busy} onClick={() => send({ op: "heroSubclass", cls, key: sc.key })}>Usa questa</button>}
+              {on && <button type="button" className="sgr-btn" disabled={busy} onClick={() => send({ op: "heroSubclass", cls, key: "" })}>Torna alla classe base</button>}
+              {!mine && ask !== sc.key && <button type="button" className="sgr-btn" disabled={busy || !canBuy || coins < SUBCLASS_COST} onClick={() => setAsk(sc.key)}>🪙 Compra · {SUBCLASS_COST.toLocaleString("it-IT")}</button>}
+              {!mine && ask === sc.key && (
+                <>
+                  <button type="button" className="sgr-cta" disabled={busy} onClick={() => { setAsk(null); send({ op: "heroSubclass", cls, key: sc.key }); }}>Conferma l'acquisto</button>
+                  <button type="button" className="sgr-btn" onClick={() => setAsk(null)}>Annulla</button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function WeaponPicker({ cls, value, onPick, disabled }) {
   return (
@@ -179,7 +218,9 @@ export default function SegreteHero({ cls, charData }) {
   const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
   const equippedWeapon = itemOf(hero.weaponItem);
   const wItem = equippedWeapon && weaponChoices(cls).some((w) => w.key === equippedWeapon.base) ? equippedWeapon : null;
-  const acts = heroActions(cls, lv, hero.picks || [], wItem?.base || hero.weapon, wItem?.plus || 0, wItem).filter((a) => a.kind !== "defend");
+  const subc = heroSubclass(cls, hero);
+  const sp = subc?.passive || {};
+  const acts = heroActions(cls, lv, hero.picks || [], wItem?.base || hero.weapon, wItem?.plus || 0, wItem, false, subc?.key).filter((a) => a.kind !== "defend");
   const gear = heroGear(hero, cls);
   const def = heroDefense(cls, st, gear);
   const options = poolFor(cls, lv).filter((a) => !(hero.picks || []).includes(a.id));
@@ -191,8 +232,8 @@ export default function SegreteHero({ cls, charData }) {
       <div className="sgh-head">
         <SgIcon kind="cls" of={cls} fallback={info?.icon} frame size="lg" color="var(--cls)" className="sgh-ico" />
         <div>
-          <p className="sgh-title">{info?.it} · Livello {lv}</p>
-          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || []) + def.hpBonus} PF · CA {def.ac} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
+          <p className="sgh-title">{info?.it}{subc ? ` · ${subc.icon} ${subc.name}` : ""} · Livello {lv}</p>
+          <small>{heroMaxHp(cls, lv, st, hero.hpRolls || []) + def.hpBonus + (sp.hpLv || 0) * lv} PF · CA {def.ac + (sp.ac || 0)} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
         </div>
       </div>
       <div className="sgh-xp"><i style={{ width: `${pct}%` }} /></div>
@@ -236,6 +277,10 @@ export default function SegreteHero({ cls, charData }) {
       <details className="sgh-fold">
         <summary>⚔ Le tue azioni <small>({acts.length})</small></summary>
         <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
+      </details>
+      <details className="sgh-fold">
+        <summary>🎓 Sottoclasse <small>({subc ? subc.name : lv >= SUBCLASS_LEVEL ? "da scegliere" : `dal Lv ${SUBCLASS_LEVEL}`})</small></summary>
+        <SubclassBox cls={cls} hero={hero} lv={lv} charData={charData} busy={busy} send={send} />
       </details>
       <details className="sgh-fold" open={Number(charData?.storyRespecFree) > 0 || undefined}>
         <summary>♻ Reset dell'eroe <small>({Number(charData?.storyRespecFree) > 0 ? "gratuito" : `${RESPEC_COST} monete`})</small></summary>
