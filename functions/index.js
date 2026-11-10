@@ -32,6 +32,8 @@ const PLAYER_TURN_DURATION_MS = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION_MS = 1 * 60 * 60 * 1000;
 const BOSS_SYSTEM_UID = "BOSS_MSG";
 const { maybeAutoBossTurn } = require("./worldBossAuto");
+const { syncWorldBossNight } = require("./worldBossNight");
+const { worldBossNightPaused } = require("./worldBossSchedule");
 const { sendSessionReminders, sessionStartMs } = require("./sessionReminder");
 
 /**
@@ -66,6 +68,13 @@ exports.autoSwitchBossTurn = onSchedule(
     async () => {
         const dbAdmin = admin.firestore();
         const turnRef = dbAdmin.doc("battle_meta/turn_tracker");
+        const night = await syncWorldBossNight({ dbAdmin, FieldValue, playerDuration: PLAYER_TURN_DURATION_MS });
+        if (night) {
+            const text = night === "paused" ? "Pausa notturna del World Boss: nessuna azione dalle 01:00 alle 05:00 (Europe/Rome)."
+                : "Pausa terminata: nuovo turno degli eroi, con tre ore complete a disposizione.";
+            await dbAdmin.collection("world_boss_chat").add({ text, content: text, senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, category: "Turno", timestamp: FieldValue.serverTimestamp(), isSystem: true });
+        }
+        if (worldBossNightPaused() || night === "resumed") return;
 
         // Pre-check: se non c'è un boss attivo vivo, non switchiamo nulla.
         const bossesSnap = await dbAdmin.collection("bosses").where("isActive", "==", true).get();
@@ -93,7 +102,7 @@ exports.autoSwitchBossTurn = onSchedule(
                 if (!snap.exists) return;
                 const data = snap.data();
 
-                if (data.fightStarted !== true) return;
+                if (data.fightStarted !== true || data.nightPaused || worldBossNightPaused()) return;
                 if (!data.expiryDate) return;
 
                 const nowMs = Date.now();

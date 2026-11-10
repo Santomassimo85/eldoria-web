@@ -9,6 +9,7 @@
 // buff, TS degli eroi contro la CD, scudo prima dei PF, un solo tiro di danni) e stessi
 // effetti a durata di src/pages/worldBossEffects.js (acBuffs, condUntilTurn): tenerli allineati.
 const crypto = require("crypto");
+const { worldBossNightPaused } = require("./worldBossSchedule");
 
 const AUTO_AFTER_MS = 55 * 60 * 1000;
 const AUTO_ACTIONS = 2;
@@ -107,9 +108,10 @@ function hurt(p, dmg) {
 
 // true = ha agito (e il turno è già passato agli eroi).
 async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_TURN_DURATION_MS, BOSS_TURN_DURATION_MS }) {
+  if (worldBossNightPaused()) return false;
   const turnRef = dbAdmin.doc("battle_meta/turn_tracker");
   const pre = (await turnRef.get()).data();
-  if (!pre || pre.fightStarted !== true || pre.phase !== "boss") return false;
+  if (!pre || pre.nightPaused || pre.fightStarted !== true || pre.phase !== "boss") return false;
   const startMs = toMs(pre.expiryDate) - BOSS_TURN_DURATION_MS;
   if (!Number.isFinite(startMs) || Date.now() - startMs < AUTO_AFTER_MS) return false;
   const acts = pre.bossActs?.t === pre.turnNumber ? pre.bossActs : null;
@@ -124,7 +126,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
   let claimed = false;
   await dbAdmin.runTransaction(async (tx) => {
     const d = (await tx.get(turnRef)).data() || {};
-    if (d.phase !== "boss" || d.bossAutoTurn === d.turnNumber) return;
+    if (worldBossNightPaused() || d.nightPaused || d.phase !== "boss" || d.bossAutoTurn === d.turnNumber) return;
     const a = d.bossActs?.t === d.turnNumber ? d.bossActs : null;
     if (a && ((a.boss || 0) > 0 || (a.minion || 0) > 0)) return;
     tx.update(turnRef, { bossAutoTurn: d.turnNumber });
@@ -146,13 +148,14 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
         && !hidden.uids.has(p.id) && !hidden.names.has(first);
     });
   const randomTargets = (heroes) => shuffle(heroes).slice(0, crypto.randomInt(1, Math.min(MAX_TARGETS, heroes.length) + 1));
-  const say = (category, actionName, description, extra = {}) => chat.add({
+  const say = (category, actionName, description, extra = {}) => worldBossNightPaused() ? Promise.resolve() : chat.add({
     uid: BOSS_SYSTEM_UID, senderName: baseBoss.name, type: "action", category,
     actionName: `${actionName} (automatico)`, description, timestamp: FieldValue.serverTimestamp(), ...extra,
   });
 
   const picked = pickActions(actions);
   for (const action of picked) {
+    if (worldBossNightPaused()) return false;
     // boss e eroi riletti a ogni azione: la prima può cambiare vantaggio, PF, scudi
     const boss = { ...baseBoss, ...((await bossRef.get()).data() || {}) };
     const type = action.type || "attack";
@@ -165,6 +168,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
       const healed = rollDice(formula);
       const hp = boss.hp ?? 0, maxHp = boss.maxHp ?? hp;
       const newHp = Math.min(maxHp, hp + healed);
+      if (worldBossNightPaused()) return false;
       await bossRef.update({ hp: newHp });
       await say("Cura Boss", action.name, `Il Boss invoca ${action.name} e si cura di 💖 ${newHp - hp} HP (${formula} = ${healed}). HP: ${newHp}/${maxHp}.`,
         { effect: "heal", effectEl: "radiant", effectTargets: ["boss"] });
@@ -174,6 +178,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
     if (type === "buff_ca") {
       const bump = parseInt(action.acBonus) || 2;
       const buffs = [...activeAcBuffs(boss, turn), { bonus: bump, untilTurn: turn + turns, source: action.name || null }];
+      if (worldBossNightPaused()) return false;
       await bossRef.update({ acBuffs: buffs });
       const ac = (parseInt(boss.ac) || 10) + buffs.reduce((s, b) => s + (parseInt(b.bonus) || 0), 0);
       await say("Buff Boss", action.name, `Il Boss usa ${action.name}: 🛡 CA +${bump} ${turnsTxt} (ora ${ac}).`,
@@ -182,6 +187,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
     }
 
     if (type === "buff_adv") {
+      if (worldBossNightPaused()) return false;
       await bossRef.update({ nextTurnCondition: "advantage", condUntilTurn: turn + turns, debuffSource: action.name || null });
       await say("Buff Boss", action.name, `Il Boss invoca ${action.name}: ⬆ vantaggio sui suoi attacchi ${turnsTxt}.`,
         { effect: "buff", effectEl: el, effectTargets: ["boss"] });
@@ -196,6 +202,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
       const batch = dbAdmin.batch();
       targets.forEach((p) => batch.update(dbAdmin.doc(`characters/${p.id}`),
         { nextTurnCondition: "disadvantage", condUntilTurn: turn + turns, debuffSource: action.name || null }));
+      if (worldBossNightPaused()) return false;
       await batch.commit();
       await say("Debuff Boss", action.name, `Il Boss colpisce con ${action.name}: ⬇ svantaggio ai tiri di ${targets.map(firstName).join(", ")} ${turnsTxt}.`,
         { effect: "debuff", effectEl: "darkness", effectFrom: "boss", effectTargets: targets.map((p) => `player-${p.id}`) });
@@ -229,6 +236,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
           roll: `TS ${SAVE_IT[save] || save} d20(${roll})${mod ? (mod > 0 ? "+" : "") + mod : ""}=${roll + mod} vs CD ${dc}${saved ? " ✅" : " ❌"}`,
         };
       });
+      if (worldBossNightPaused()) return false;
       await batch.commit();
       const line = results.map((r) => `${r.name} −${r.dmg}${r.dmg === 0 ? " (evitato)" : r.dmg < total ? " (metà)" : ""}${r.killed ? " ☠" : ""}`).join(", ");
       await say("Attacco Boss", `${action.name} ${isArea ? "AREA" : "TS"}`,
@@ -251,6 +259,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
       d20 = cond === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
       rollLabel = `${cond === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"}[${r1},${r2}]→${d20}`;
       const used = condConsumePatch(boss);
+      if (worldBossNightPaused()) return false;
       if (used) await bossRef.update(used);
     } else {
       d20 = rnd(20);
@@ -277,7 +286,8 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
         dmg: hit ? dmg : 0,
       };
     });
-    await batch.commit();
+    if (worldBossNightPaused()) return false;
+      await batch.commit();
     const hitNames = results.filter((r) => r.hit).map((r) => r.name).join(", ");
     const missNames = results.filter((r) => !r.hit).map((r) => r.name).join(", ");
     const condTag = cond === "disadvantage" ? " 🌑(svantaggio)" : cond === "advantage" ? " ⬆(vantaggio)" : "";
@@ -295,7 +305,7 @@ async function maybeAutoBossTurn({ dbAdmin, FieldValue, BOSS_SYSTEM_UID, PLAYER_
   let passed = false;
   await dbAdmin.runTransaction(async (tx) => {
     const d = (await tx.get(turnRef)).data() || {};
-    if (d.phase !== "boss") return;
+    if (worldBossNightPaused() || d.nightPaused || d.phase !== "boss") return;
     tx.update(turnRef, {
       phase: "players", expiryDate: new Date(Date.now() + PLAYER_TURN_DURATION_MS),
       actedPlayers: [], turnNumber: (d.turnNumber || 0) + 1, bossActs: null,

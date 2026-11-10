@@ -1,3 +1,4 @@
+import { worldBossNightPaused, worldBossNightWindow } from "../data/worldBossSchedule";
 import React, {
   useState,
   useEffect,
@@ -426,6 +427,12 @@ export default function WorldBoss() {
   // Live clock — ticks every second so the boss deadline (expiryDate) countdown
   // and isTimeExpired recompute even with no Firestore change on the page.
   const [nowTs, setNowTs] = useState(() => Date.now());
+  const nightPaused = worldBossNightPaused(nowTs) || !!turnState.nightPaused;
+  const canFightNow = () => {
+    if (!worldBossNightPaused() && !turnState.nightPaused) return true;
+    window.alert("World Boss in pausa dalle 01:00 alle 05:00 (Europe/Rome). Alla ripresa tocca agli eroi.");
+    return false;
+  };
   useEffect(() => {
     const id = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(id);
@@ -437,16 +444,22 @@ export default function WorldBoss() {
     if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return null;
     const expiry = new Date(activeBosses[0].expiryDate).getTime();
     if (Number.isNaN(expiry)) return null;
+    const window = worldBossNightWindow(nowTs);
+    if (window.paused) {
+      const savedExpiry = activeBosses[0].lastNightPauseStart === window.start ? expiry - (window.end - window.start) : expiry;
+      return savedExpiry - window.start;
+    }
     return expiry - nowTs;
   }, [activeBosses, nowTs]);
 
   const isTimeExpired = useMemo(() => {
+    if (nightPaused) return false;
     if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return false;
     const expiry = new Date(activeBosses[0].expiryDate).getTime();
     if (Number.isNaN(expiry)) return false;
     // scaduto = tempo finito con almeno un nemico (boss o minion) ancora in piedi
     return nowTs >= expiry && livingEnemies.length > 0;
-  }, [activeBosses, nowTs, livingEnemies]);
+  }, [activeBosses, nowTs, livingEnemies, nightPaused]);
 
   const chatEndRef = useRef(null);
   // Solo in sviluppo: `?vista=player` mostra la pagina come la vede un giocatore (controllo grafico).
@@ -465,6 +478,7 @@ export default function WorldBoss() {
   const bossTurnBusyRef = useRef(false);
 
   const handleManualTurnChange = async (newPhase) => {
+    if (!canFightNow()) return;
     if (!isMaster) return;
     const duration = newPhase === "players" ? PLAYER_TURN_DURATION : BOSS_TURN_DURATION;
     const newExpiry = new Date(Date.now() + duration);
@@ -490,6 +504,7 @@ export default function WorldBoss() {
   };
 
   const handleAutoTurnChange = useCallback(async () => {
+    if (worldBossNightPaused()) return;
     if (!turnState?.expiryDate) return;
     try {
       const turnRef = doc(db, "battle_meta", "turn_tracker");
@@ -499,6 +514,7 @@ export default function WorldBoss() {
         const snap = await transaction.get(turnRef);
         if (!snap.exists()) return;
         const data = snap.data();
+        if (data.nightPaused || worldBossNightPaused()) return;
         if (data.lastSwitchedAt) {
           const lastMs = data.lastSwitchedAt.toMillis
             ? data.lastSwitchedAt.toMillis()
@@ -532,7 +548,8 @@ export default function WorldBoss() {
 
   useEffect(() => {
     lastAutoFireRef.current = 0;
-    if (!turnState?.expiryDate || areAllEnemiesDead || !fightStarted) {
+    if (nightPaused || !turnState?.expiryDate || areAllEnemiesDead || !fightStarted) {
+      setIsUrgent(false);
       setTimeLeft(0);
       return;
     }
@@ -561,7 +578,7 @@ export default function WorldBoss() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [turnState?.expiryDate, turnState?.phase, isMaster, areAllEnemiesDead, fightStarted, handleAutoTurnChange]);
+  }, [turnState?.expiryDate, turnState?.phase, isMaster, areAllEnemiesDead, fightStarted, nightPaused, handleAutoTurnChange]);
 
   const formatTime = (ms) => {
     const seconds = Math.floor((ms / 1000) % 60);
@@ -857,6 +874,7 @@ export default function WorldBoss() {
   const myActionsUsed = actionsUsedIn(turnState, myUid);
 
   const claimTurn = async () => {
+    if (!canFightNow()) return false;
     if (isMaster) return true;
     if (turnClaimRef.current) return false;
     turnClaimRef.current = true;
@@ -868,6 +886,7 @@ export default function WorldBoss() {
         const ref = doc(db, "battle_meta", "turn_tracker");
         const snap = await tx.get(ref);
         const d = snap.data() || {};
+        if (d.nightPaused || worldBossNightPaused()) throw new Error("night-pause");
         if ((d.actedPlayers || []).includes(myUid)) throw new Error("already-acted");
         if (d.phase === "boss") throw new Error("boss-phase");
         const used = actionsUsedIn(d, myUid);
@@ -879,7 +898,8 @@ export default function WorldBoss() {
       return true;
     } catch (e) {
       releaseClaim();
-      if (e.message === "already-acted") window.alert("Hai già usato tutte le azioni di questo turno.");
+      if (e.message === "night-pause") window.alert("World Boss in pausa fino alle 05:00 (Europe/Rome).");
+      else if (e.message === "already-acted") window.alert("Hai già usato tutte le azioni di questo turno.");
       else if (e.message === "boss-phase") window.alert("È il turno del boss: aspetta il prossimo turno degli eroi.");
       else console.error("Prenotazione turno:", e);
       return false;
@@ -894,6 +914,7 @@ export default function WorldBoss() {
 
   // "Fine Turno": chiude il turno anche se resta un'azione (o senza agire).
   const endMyTurn = async () => {
+    if (!canFightNow()) return;
     releaseClaim();
     await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(myUid) });
     try { await checkQuorum(); } catch (e) { console.warn("Quorum turno:", e); }
@@ -932,7 +953,7 @@ export default function WorldBoss() {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(turnRef);
       const d = snap.exists() ? snap.data() : null;
-      if (!d || !d.fightStarted || d.phase !== "players") return;
+      if (!d || !d.fightStarted || d.nightPaused || worldBossNightPaused() || d.phase !== "players") return;
       if (d.quorumTurn === d.turnNumber) return;
       const acted = alive.filter((id) => hasActedIn(d, id)).length;
       if (acted < target) return;
@@ -1194,6 +1215,7 @@ export default function WorldBoss() {
 
   // `opts.rider` = abilità che aggiunge dadi al colpo d'arma (Divine Smite…): `action` è l'ARMA.
   const handleActionRoll = async (action, opts = {}) => {
+    if (!canFightNow()) return;
     const boss = currentTarget; // il nemico scelto (boss o minion)
     if (!boss || isUserLocked) return;
     const rider = opts.rider || null;
@@ -1426,6 +1448,7 @@ export default function WorldBoss() {
   // Attacco/abilità di un NEMICO (boss o minion evocato): stessa logica, cambia il doc.
   // `targetIdsArg` = bersagli scelti nel pannello Master (passo 2); senza, i selezionati.
   const performBossAction = async (bossOrMinion, action, targetIdsArg) => {
+    if (!canFightNow()) return;
     const targets = Array.isArray(targetIdsArg) ? targetIdsArg : selectedTargets;
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
     const boss = bossOrMinion.kind ? bossOrMinion : { ...bossOrMinion, kind: "boss", vfxKey: "boss" };
@@ -1641,6 +1664,7 @@ export default function WorldBoss() {
   // al turno dopo. Fuori dal turno del boss il Master agisce come prima, senza conto.
   const bossActsNow = turnState.bossActs?.t === turnState.turnNumber ? turnState.bossActs : { boss: 0, minion: 0 };
   const handleBossRoll = async (bossOrMinion, action, targetIdsArg) => {
+    if (!canFightNow()) return;
     if (bossTurnBusyRef.current) return;
     const counted = fightStarted && turnState.phase === "boss";
     const kind = bossOrMinion.kind === "minion" ? "minion" : "boss";
@@ -1661,7 +1685,7 @@ export default function WorldBoss() {
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(turnRef);
         const d = snap.data() || {};
-        if (d.phase !== "boss") return;
+        if (d.nightPaused || worldBossNightPaused() || d.phase !== "boss") return;
         const cur = d.bossActs?.t === d.turnNumber ? d.bossActs : { t: d.turnNumber, boss: 0, minion: 0 };
         const next = { t: d.turnNumber, boss: cur.boss || 0, minion: cur.minion || 0 };
         next[kind] += 1;
@@ -1696,6 +1720,7 @@ export default function WorldBoss() {
 
   // Cura/ferita manuale di un eroe: mai sotto 0 né sopra i PF massimi.
   const adjustHeroHp = async (p, delta) => {
+    if (!canFightNow()) return;
     const hp = p.stats?.hp ?? 0;
     const maxHp = p.stats?.maxHp ?? Math.max(1, hp);
     const newHp = Math.max(0, Math.min(maxHp, hp + delta));
@@ -1704,12 +1729,14 @@ export default function WorldBoss() {
   };
   // Cura manuale di boss o minion (l'attaccante scelto nel pannello).
   const healEnemyManual = async (e, amount) => {
+    if (!canFightNow()) return;
     if (!e) return;
     await updateDoc(enemyRef(e), { hp: Math.min(e.maxHp ?? e.hp ?? 0, (e.hp || 0) + amount) });
   };
 
   // HP manuali di boss/minion: positivo cura, negativo ferisce (i PF, non lo scudo), fra 0 e il massimo.
   const adjustEnemyHp = async (e, delta) => {
+    if (!canFightNow()) return;
     if (!e || !delta) return;
     const max = e.maxHp ?? e.hp ?? 0;
     const newHp = Math.max(0, Math.min(max, (e.hp || 0) + delta));
@@ -1723,6 +1750,7 @@ export default function WorldBoss() {
   };
   // CA base del nemico (i +CA a tempo restano sopra). Mai sotto 1.
   const adjustEnemyAc = async (e, delta) => {
+    if (!canFightNow()) return;
     if (!e) return;
     const base = parseInt(e.ac) || 10;
     const next = Math.max(1, base + delta);
@@ -1823,6 +1851,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
   };
 
   const handleStartFight = async () => {
+    if (!canFightNow()) return;
     if (!isMaster) return;
     const boss = activeBosses[0];
     if (!boss) return;
@@ -1898,7 +1927,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
   const isPlayerDead = !isMaster && (charData?.stats?.hp ?? 0) <= 0;
 
   const isUserLocked =
-    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(myUid) || isPlayerDead || isFightOver);
+    nightPaused || (!isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(myUid) || isPlayerDead || isFightOver));
 
   if (!currentUser) return <div className="rpg-denied">Loggati per entrare.</div>;
 
@@ -1920,7 +1949,8 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
       {/* ── ACTION BANNER ── */}
       <div className="rpg-action-banner">
         <span className="rpg-banner-text">
-          {(areAllEnemiesDead ? "🏆 VITTORIA DEGLI EROI!" : null)
+          {(nightPaused ? "Pausa notturna / Ripresa alle 05:00 (Europe/Rome)" : null)
+            || (areAllEnemiesDead ? "🏆 VITTORIA DEGLI EROI!" : null)
             || (isBossDefeated && !areAllEnemiesDead && !isTimeExpired ? `⚔ ${boss?.name || "Il Boss"} è caduto! Abbattete i suoi servi!` : null)
             || lastActionText
             || (boss && !fightStarted ? `${boss.name} minaccia Exanthia!` : null)
@@ -2083,7 +2113,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             {isMaster ? (
               <div className="rpg-prefight-box">
                 <p className="rpg-prefight-hint">Scrivi prima in chat, poi avvia</p>
-                <button className="rpg-btn rpg-btn--start" onClick={handleStartFight}>⚔ INIZIA BATTAGLIA</button>
+                <button className="rpg-btn rpg-btn--start" onClick={handleStartFight} disabled={nightPaused}>⚔ INIZIA BATTAGLIA</button>
               </div>
             ) : (
               <p className="rpg-waiting-msg">⏳ In attesa del Master...</p>
@@ -2149,12 +2179,12 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             {fightStarted && !isGameOver && (
               <div className="rpg-hud-turn-row">
                 <span className={`rpg-phase-pill ${turnState.phase}`}>
-                  {turnState.phase === "players" ? "⚔ EROI" : "🔥 BOSS"}
+                  {nightPaused ? "PAUSA NOTTURNA" : turnState.phase === "players" ? "⚔ EROI" : "🔥 BOSS"}
                 </span>
                 <span className={`rpg-hud-timer ${isUrgent ? "urgent" : ""}`}>
-                  T{turnState.turnNumber} · {formatTime(timeLeft)}
+                  {nightPaused ? "Ripresa alle 05:00" : <>T{turnState.turnNumber} · {formatTime(timeLeft)}</>}
                 </span>
-                {turnState.phase === "players" && (
+                {!nightPaused && turnState.phase === "players" && (
                   <span
                     className={`rpg-hud-quorum ${quorumReached ? "reached" : ""}`}
                     title={quorumReached
@@ -2169,7 +2199,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
             {!isGameOver && boss.expiryDate && (
               <div className={`rpg-event-expiry ${bossTimeLeft != null && bossTimeLeft < 60 * 60 * 1000 ? "urgent" : ""}`}>
                 <span className="rpg-event-label">⏳ Tempo del Boss:</span>
-                <TimerDisplay expiryDate={boss.expiryDate} />
+                {nightPaused ? <span>In pausa fino alle 05:00</span> : <TimerDisplay expiryDate={boss.expiryDate} />}
               </div>
             )}
           </div>
@@ -2290,8 +2320,8 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                     </span>
                   </div>
                   <div className="rpg-btn-row rpg-turn-btns">
-                    <button className={`rpg-btn rpg-btn--hero${fightStarted && turnState.phase === "players" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("players")}>⚔ Passa agli Eroi</button>
-                    <button className={`rpg-btn rpg-btn--boss${fightStarted && turnState.phase === "boss" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("boss")}>🔥 Passa al Boss</button>
+                    <button className={`rpg-btn rpg-btn--hero${fightStarted && turnState.phase === "players" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("players")} disabled={nightPaused}>⚔ Passa agli Eroi</button>
+                    <button className={`rpg-btn rpg-btn--boss${fightStarted && turnState.phase === "boss" ? " is-on" : ""}`} onClick={() => handleManualTurnChange("boss")} disabled={nightPaused}>🔥 Passa al Boss</button>
                   </div>
                 </div>
 
@@ -2305,7 +2335,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                         👑 {bossActsNow.boss || 0}/{BOSS_ACTIONS_PER_TURN}{minionInstances.some((m) => (m.hp ?? 0) > 0) ? ` · 🪓 ${bossActsNow.minion || 0}/${MINION_ACTIONS_PER_TURN}` : ""}
                       </span>
                     )}
-                    {fightStarted && turnState.phase === "boss" && !bossActsNow.boss && !bossActsNow.minion && turnState.bossAutoTurn !== turnState.turnNumber && turnState.expiryDate && (() => {
+                    {!nightPaused && fightStarted && turnState.phase === "boss" && !bossActsNow.boss && !bossActsNow.minion && turnState.bossAutoTurn !== turnState.turnNumber && turnState.expiryDate && (() => {
                       const exp = turnState.expiryDate.toDate ? turnState.expiryDate.toDate() : new Date(turnState.expiryDate);
                       const at = new Date(exp.getTime() - BOSS_TURN_DURATION + BOSS_AUTO_AFTER);
                       return (
@@ -2461,7 +2491,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                           <button
                             key={i}
                             className={`rpg-act-btn rpg-act-btn--${meta.kind}`}
-                            disabled={blocked || isFightOver}
+                            disabled={nightPaused || blocked || isFightOver}
                             onClick={() => handleBossRoll(attacker, a, masterTargetIds)}
                             title={blocked ? "Scegli prima un bersaglio (passo 2)" : undefined}
                           >
@@ -2626,7 +2656,7 @@ Via tutti i minion evocati, turni da capo, log svuotato, scudi e buff degli eroi
                           : myActionsMax > 1 ? "Hai 2 azioni in questo turno (livello 5 / Attacco Extra)."
                           : "Hai 1 azione in questo turno."}
                       </p>
-                      <button className={`rpg-btn rpg-btn--endturn ${done ? "done" : ""}`} onClick={endMyTurn} disabled={done}>
+                      <button className={`rpg-btn rpg-btn--endturn ${done ? "done" : ""}`} onClick={endMyTurn} disabled={nightPaused || done}>
                         {done ? "✓ Turno concluso" : myActionsUsed > 0 ? "⏩ Fine Turno (salta l'azione rimasta)" : "⏩ Fine Turno"}
                       </button>
                     </div>

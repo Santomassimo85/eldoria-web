@@ -27,19 +27,41 @@ service cloud.firestore {
       );
     }
 
+    // Finestra preparata dal server: il blocco scatta all'01:00 esatta anche
+    // prima del tick del cron. Nessuna eccezione per il Master.
+    function worldBossCombatOpen() {
+      return !exists(/databases/$(database)/documents/world_boss_system/night_pause)
+        || (!get(/databases/$(database)/documents/world_boss_system/night_pause).data.paused
+          && !(request.time >= get(/databases/$(database)/documents/world_boss_system/night_pause).data.startAt
+            && request.time < get(/databases/$(database)/documents/world_boss_system/night_pause).data.endAt));
+    }
+    function worldBossHeroWriteAllowed() {
+      return !exists(/databases/$(database)/documents/battle_meta/turn_tracker)
+        || !get(/databases/$(database)/documents/battle_meta/turn_tracker).data.get('fightStarted', false)
+        || worldBossCombatOpen()
+        || ((!request.resource.data.diff(resource.data).affectedKeys().hasAny(['stats'])
+            || !request.resource.data.get('stats', {}).diff(resource.data.get('stats', {})).affectedKeys().hasAny(['hp', 'shield']))
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['nextTurnCondition', 'condUntilTurn', 'debuffSource', 'wbSkillUses', 'selfAcBonus']));
+    }
+    function worldBossEnemyWriteAllowed() {
+      return worldBossCombatOpen()
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hp', 'shield', 'nextTurnCondition', 'debuffSource', 'condUntilTurn', 'ac', 'acBuffs']);
+    }
+
     // ── World Boss & turn tracker ────────────────────────────────────────────
     match /battle_meta/turn_tracker {
       allow read: if true; // consultabile (assistente di gioco)
-      allow create, delete: if isMaster();
-      allow update: if isLoggedIn() && (
+      allow create, delete: if isMaster() && worldBossCombatOpen();
+      allow update: if isLoggedIn() && worldBossCombatOpen()
+        && request.resource.data.get('nightPaused', false) == resource.data.get('nightPaused', false) && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts', 'quorumTurn', 'turnActions'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts', 'quorumTurn', 'turnActions', 'bossActs', 'lastSwitchedAt', 'bossAutoTurn'])
       );
     }
 
     match /battle_meta/{docId} {
       allow read: if true; // consultabile (assistente di gioco)
-      allow write: if isLoggedIn();
+      allow write: if docId != 'turn_tracker' && isLoggedIn();
     }
 
     // ── Tactical World Boss (battle_state/current) ───────────────────────────
@@ -54,13 +76,13 @@ service cloud.firestore {
 
     match /world_boss_system/{docId} {
       allow read: if isLoggedIn();
-      allow write: if isMaster();
+      allow write: if docId != 'night_pause' && isMaster();
     }
 
     match /bosses/{bossId} {
       allow read: if true;
       allow create, delete: if isMaster();
-      allow update: if isLoggedIn() && (
+      allow update: if isLoggedIn() && worldBossEnemyWriteAllowed() && (
         isMaster() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource', 'condUntilTurn'])
       );
@@ -80,7 +102,7 @@ service cloud.firestore {
     match /world_boss_minions/{instanceId} {
       allow read: if true;
       allow create, delete: if isMaster();
-      allow update: if isLoggedIn() && (
+      allow update: if isLoggedIn() && worldBossEnemyWriteAllowed() && (
         isMaster() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield', 'nextTurnCondition', 'debuffSource', 'condUntilTurn'])
       );
@@ -95,7 +117,9 @@ service cloud.firestore {
     // ── Chat ─────────────────────────────────────────────────────────────────
     match /world_boss_chat/{msgId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn();
+      allow create: if isLoggedIn() && (worldBossCombatOpen()
+        || (request.resource.data.get('type', '') != 'action'
+          && !request.resource.data.keys().hasAny(['effect', 'damageRoll', 'hitRoll'])));
       allow update, delete: if isMaster();
     }
 
@@ -170,7 +194,7 @@ service cloud.firestore {
     match /characters/{charId} {
       allow read: if true;
       allow create: if !request.resource.data.keys().hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts"]) || isMaster();
-      allow update: if !touchesPets() || isMaster();
+      allow update: if worldBossHeroWriteAllowed() && (!touchesPets() || isMaster());
       allow delete: if true;
     }
 
