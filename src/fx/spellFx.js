@@ -27,6 +27,7 @@ const PAL = {
   frost:     ["#ffffff", "#a8ecff", "#45a8ff", "#1b4fb5", "#9bb4cc"],
   water:     ["#effcff", "#62c9ff", "#1f80e6", "#0c3c8c", "#a6c6da"],
   lightning: ["#ffffff", "#fff47e", "#ffcc1a", "#7d5cff", "#6b6680"],
+  thunder:   ["#ffffff", "#c9e4ef", "#7d9ead", "#394b60", "#829095"],
   earth:     ["#fff0cc", "#dca35e", "#8f5d2c", "#46301a", "#7c6b58"],
   acid:      ["#f8ffd4", "#c2f545", "#6fc412", "#2e6108", "#5f6e45"],
   poison:    ["#f8e4ff", "#c77bff", "#8b2be8", "#3a0c70", "#4f3d63"],
@@ -39,7 +40,7 @@ const PAL = {
 // colori del ramo magico (forma "vine", Frusta di Rovi)
 const VINE = { dark: "#1c2410", bark: "#6b4a26", vein: "#a8e05a", thorn: "#e8dcae", leaf: "#3f9a2a", leafHi: "#b6f06a", aura: "#7dff6a" };
 // nomi che arrivano dai pet (tipi D&D) → elementi del motore
-const ALIAS = { cold: "frost", necrotic: "darkness", neutral: "physical", thunder: "lightning", force: "arcane" };
+const ALIAS = { cold: "frost", necrotic: "darkness", neutral: "physical", force: "arcane" };
 export const fxElement = (el) => (PAL[el] ? el : PAL[ALIAS[el]] ? ALIAS[el] : "arcane");
 
 /* ── canvas ── */
@@ -463,6 +464,29 @@ function impactAt(el, pal, x, y, s, { crit = false, ground = null } = {}) {
       for (let i = 0; i < 8; i++) add({ type: "smoke", c: pal[4], x: x + rr(-1, 1) * s, y: gy - rr(0, 0.6) * s, vx: rr(-40, 40), vy: -rr(5, 25), r: s * 0.7, r1: s * 2, life: rr(0.8, 1.1), a: 0.7, fadeIn: 0.15 });
       break;
     case "acid":
+      // Spruzzi viscosi, colature e bolle: niente nube velenosa o scintille elettriche.
+      for (let i = 0; i < 28 * k; i++) {
+        const a = rr(-Math.PI, Math.PI), sp = rr(35, 125);
+        add({ type: "sq", c: pal[i % 3 ? 1 : 2], x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 25, ay: 210, drag: 0.015, r: rr(0.8, 1.7) * k, r1: 0.4, life: rr(0.45, 0.85) });
+      }
+      actor(50, 800, (t) => {
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.strokeStyle = pal[2]; ctx.lineWidth = 2;
+        for (let i = -2; i <= 2; i++) {
+          const dx = i * s * 0.55, top = y + Math.abs(i) * s * 0.22;
+          ctx.beginPath(); ctx.moveTo(x + dx, top); ctx.lineTo(x + dx, top + s * (0.5 + t * (2.5 - Math.abs(i) * 0.4))); ctx.stroke();
+        }
+        ring(x, gy, s * (1 + t * 2), pal[2], 2, (1 - t) * 0.7, 0.22);
+      });
+      for (let i = 0; i < 12; i++) add({ type: "bubble", c: pal[1], x: x + rr(-1.2, 1.2) * s, y: y + rr(-0.2, 1) * s, vy: -rr(8, 24), r: rr(0.8, 2), r1: 3, life: rr(0.65, 1.1), wait: rr(0.05, 0.3) });
+      for (let i = 0; i < 4; i++) add({ type: "smoke", c: pal[4], x: x + rr(-1, 1) * s, y, vy: -rr(12, 22), r: s * 0.3, r1: s, life: 0.7, a: 0.28 });
+      break;
+    case "thunder":
+      actor(0, 420, (t) => {
+        for (let i = 0; i < 3; i++) ring(x, y, s * (0.8 + i * 0.6 + t * 5), pal[i % 2], Math.max(1, 3 * (1 - t)), (1 - t) * 0.8, 0.85);
+      });
+      for (let i = 0; i < 10; i++) add({ type: "smoke", c: pal[4], x: x + rr(-1, 1) * s, y: gy, vx: rr(-65, 65), vy: -rr(5, 18), r: s * 0.35, r1: s * 1.4, life: 0.5, a: 0.35 });
+      break;
     case "poison":
       for (let i = 0; i < 16 * k; i++) {
         const a = rr(-Math.PI, 0), sp = rr(40, 120);
@@ -542,6 +566,41 @@ export function playSpell(o) {
   const fast = reduced() ? 0.6 : 1;
   let hit = 0;
   switch (o.kind) {
+    case "acidArrow": {
+      const dur = 420 * fast, dx = tx - fx, dy = ty - fy;
+      const ang = Math.atan2(dy, dx), len = ts * 4;
+      actor(delay, dur, (t) => {
+        const x = fx + dx * t, y = fy + dy * t - Math.sin(Math.PI * t) * ts;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 0.95;
+        ctx.fillStyle = pal[3];
+        ctx.beginPath(); ctx.moveTo(len * 0.6, 0); ctx.lineTo(-len * 0.25, -ts); ctx.lineTo(-len, 0); ctx.lineTo(-len * 0.25, ts); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = pal[1];
+        ctx.beginPath(); ctx.moveTo(len * 0.55, 0); ctx.lineTo(-len * 0.2, -ts * 0.65); ctx.lineTo(-len * 0.85, 0); ctx.lineTo(-len * 0.2, ts * 0.65); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = pal[0]; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-len * 0.5, 0); ctx.lineTo(len * 0.4, 0); ctx.stroke();
+        ctx.restore();
+        if (R() < 0.7) add({ type: "sq", c: pal[2], x, y, vx: -Math.cos(ang) * rr(12, 35), vy: rr(-12, 12), ay: 100, r: rr(0.8, 1.6), r1: 0.3, life: 0.4 });
+        if (R() < 0.3) add({ type: "bubble", c: pal[1], x, y, vy: -10, r: 1.3, life: 0.3 });
+      });
+      hit = delay + dur;
+      break;
+    }
+    case "thunderwave": {
+      // Fronte di pressione ampio: tre anelli d'aria, senza saette.
+      const dur = 380 * fast, ang = Math.atan2(ty - fy, tx - fx);
+      for (let i = 0; i < 3; i++) actor(delay + i * 65, dur, (t) => {
+        const x = fx + (tx - fx) * t, y = fy + (ty - fy) * t;
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = (1 - t * 0.65) * (1 - i * 0.15);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+        ctx.strokeStyle = pal[1]; ctx.lineWidth = 3 * (1 - t * 0.5);
+        ctx.beginPath(); ctx.ellipse(0, 0, ts * (0.6 + t), ts * (2 + t * 6), 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+        ctx.strokeStyle = pal[0]; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(ts * 0.3, 0, ts * (0.6 + t), ts * (1.8 + t * 6), 0, -1.5, 1.5); ctx.stroke();
+        ctx.restore();
+      });
+      hit = delay + dur;
+      break;
+    }
     case "arrow": {
       /* FRECCIA VERA (2026-11-07): asta di legno, punta di ferro e piume, niente bagliori né lampo di
          lancio (prima era il proiettile delle magie, più piccolo). Si rimpicciolisce andando lontano

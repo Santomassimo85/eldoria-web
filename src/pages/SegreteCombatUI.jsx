@@ -85,6 +85,7 @@ export function FoeCard({ f, known, kills, round, onClose }) {
           <div><dt>CA</dt><dd>{known ? f.ac : q}</dd></div>
         </dl>
         <p className="sgb-card-h">Resistenze</p>
+        {known && f.metalProtection && <p className="sgb-card-hint">Corpo o armatura di metallo: danni acidi ×1,5.</p>}
         {known ? (
           <ul className="sgb-card-list">
             <li><span>Resiste (½)</span> {list(f.res) || "—"}</li>

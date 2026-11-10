@@ -1267,6 +1267,21 @@ function registerCustomItems(list = []) {
   return customIds.length;
 }
 
+// src/data/segreteMaterials.js
+var ACID_METAL_MULT = 1.5;
+var METAL_ARMORS = /* @__PURE__ */ new Set(["giaco", "scaglie", "mezza", "anelli", "maglia", "stecche", "piastre"]);
+var metalArmor = (key) => METAL_ARMORS.has(key);
+function hasMetalProtection(target) {
+  if (typeof target.metalProtection === "boolean") return target.metalProtection;
+  if (metalArmor(target.armorKey)) return true;
+  const text = [target.name, target.desc, target.look, target.gear?.armor].filter(Boolean).join(". ").toLowerCase();
+  const metal = "(?:ferro|acciaio|rame|bronzo|ottone|argento|oro|metallo|adamantio|mithril|iron|steel|copper|bronze|brass|silver|gold|metal|adamantine)";
+  const body = "(?:golem|automa|automaton|costrutto|construct|colosso|colossus|sentinella|sentinel|corpo|body|pelle|skin)";
+  const armor = "(?:armatura|corazza|carapace|armor|armour|plating)";
+  const join = "(?:\\s+(?:di|del|dello|in|of|made|from|pure|solid|living|puro|massiccio))*\\s+";
+  return /\b(?:chainmail|chain mail|ring mail|plate armor|plate armour|half plate|splint armor|splint armour|giaco di maglia|cotta (?:di maglia|ad anelli)|armatura (?:completa |a )?(?:di )?(?:piastre|stecche)|mezza armatura|corazza di scaglie)\b/.test(text) || new RegExp(`\\b(?:${body}|${armor})${join}${metal}\\b`).test(text) || new RegExp(`\\b${metal}[- ](?:${body}|${armor}|plated|armored|armoured)\\b`).test(text) || /\b(?:corpo|armatura|corazza|carapace) metallic[oa]\b/.test(text);
+}
+
 // src/data/arenaClassSprites.js
 var ARENA_CLASSES = [
   { key: "fighter", it: "Guerriero", icon: "\u2694", look: "a battle-hardened human fighter in plate armour with a longsword and a heater shield" },
@@ -1645,6 +1660,8 @@ function makeHero(m) {
     res,
     ...thorns ? { thorns } : {},
     armorCategory: def.cat,
+    armorKey: def.key,
+    metalProtection: metalArmor(def.key),
     gear: { armor: def.armorName, shield: def.shieldName },
     // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
     ...hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {},
@@ -1705,6 +1722,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     frontImg: src.frontImageUrl || "",
     icon: src.icon || "",
     size: sizeOf(src),
+    metalProtection: hasMetalProtection(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5),
@@ -1812,7 +1830,7 @@ function log(s, txt, extra = {}) {
   s.hpSeen = nextSeen;
   s.log = [...s.log || [], row].slice(-LOG_MAX);
 }
-var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
+var EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "thunder", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
 var elOf = (type) => EL_OF[type] || "physical";
 var RANGED = /* @__PURE__ */ new Set(["arco", "doppio", "lancio"]);
 var WEAPON_FX = { slashing: "slash", bludgeoning: "smash", piercing: "thrust" };
@@ -1831,7 +1849,7 @@ var ACTION_FX = {
   raggio_gelo: "beam",
   mani_w: "breath",
   mani_br: "breath",
-  acida: "arrow",
+  acida: "acidArrow",
   palla_fuoco: "fireball",
   ipnosi: "curse",
   cono_freddo: "breath",
@@ -1845,8 +1863,8 @@ var ACTION_FX = {
   fame: "cloud",
   dito: "curse",
   rovi: ["vine", "earth"],
-  onda: "wave",
-  onda_b: "wave",
+  onda: "thunderwave",
+  onda_b: "thunderwave",
   lama_fiamma: "slash",
   luna: "strike",
   richiamo: "strike",
@@ -1998,6 +2016,8 @@ function startFloor(s, bestiary, now) {
 }
 function applyDamage(s, target, amount, type, notes) {
   let dmg = Math.max(0, Math.round(amount));
+  const corrosion = type === "acid" && hasMetalProtection(target);
+  if (corrosion) dmg *= ACID_METAL_MULT;
   if (target.fx?.petrified && dmg > 0) {
     dmg = Math.floor(dmg / 2);
     notes.push("\xE8 di pietra");
@@ -2028,6 +2048,11 @@ function applyDamage(s, target, amount, type, notes) {
     dmg = Math.floor(dmg / 2);
     notes.push("in furia");
     curTags[target.id] = "rage";
+  }
+  dmg = Math.floor(dmg);
+  if (corrosion && dmg > 0) {
+    notes.push(`corrosione del metallo \xD7${ACID_METAL_MULT}`);
+    if (!curTags[target.id]) curTags[target.id] = "corrode";
   }
   target.hp = Math.max(0, target.hp - dmg);
   curDamage[target.id] = (curDamage[target.id] || 0) + dmg;

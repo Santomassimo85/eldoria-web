@@ -127,7 +127,7 @@ const LEGACY = {
 };
 /* Forme del motore a canvas (2026-11-06): partono da chi agisce · nascono sul bersaglio ·
    non hanno un istante d'impatto proprio (per i numeri se ne dà uno fisso) */
-const FROM_KINDS = new Set(["bolt", "arrow", "beam", "breath", "drain", "wave", "whip", "vine", "sting", "dash", "lob", "missiles", "thrust"]);
+const FROM_KINDS = new Set(["bolt", "arrow", "acidArrow", "thunderwave", "beam", "breath", "drain", "wave", "whip", "vine", "sting", "dash", "lob", "missiles", "thrust"]);
 const ON_KINDS = new Set(["aoe", "slash", "smash", "punch", "strike", "rain", "spikes", "stomp", "burst", "claw", "bite"]);
 const SOFT_KINDS = new Set(["cloud", "curse", "sleep", "roar"]);
 function normalizeEffect(msg) {
@@ -281,6 +281,8 @@ function soundFor(msg, targets) {
 function impactDelay(kind, i, canvas) {
   if (kind === "bolt") return (canvas ? 460 : 400) + i * 110;
   if (kind === "arrow") return (canvas ? 300 : 400) + i * 110;
+  if (kind === "acidArrow") return 420 + i * 110;
+  if (kind === "thunderwave") return 380 + i * 110;
   if (kind === "aoe") return 380 + i * 130;
   if (kind === "slash") return (canvas ? 120 : 140) + i * 90;
   if (kind === "hit") return i * 90;
@@ -329,7 +331,7 @@ function playCanvas(msg, targets) {
     const source = anchorOf(msg.effectFrom);
     strikePose(caster, kind, source ? Math.sign(anchors[0].a.x - source.x) || 1 : 1);
   }
-  if (caster && ["bolt", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball", "vine"].includes(kind)) castPose(caster);
+  if (caster && ["bolt", "acidArrow", "thunderwave", "aoe", "debuff", "heal", "buff", "shield", "beam", "breath", "drain", "wave", "strike", "rain", "cloud", "curse", "sleep", "missiles", "fireball", "vine"].includes(kind)) castPose(caster);
   // Palla di Fuoco: UNA palla verso il centro dei bersagli, poi esplode su ognuno
   let lobAt = 0;
   if (kind === "fireball") {
@@ -358,7 +360,7 @@ function playCanvas(msg, targets) {
     setTimeout(() => {
       const tEl = elOfKey(key);
       recoil(tEl, dir, crit);
-      if (!shook && (crit || o.kill || ["aoe", "smash", "stomp", "fireball", "strike"].includes(kind))) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
+      if (!shook && (crit || o.kill || ["thunderwave", "aoe", "smash", "stomp", "fireball", "strike"].includes(kind))) { shook = true; shake(stageOf(tEl), crit ? 7 : 5, crit ? 380 : 300); }
     }, hit);
   });
   return hits;

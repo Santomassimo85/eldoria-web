@@ -54,6 +54,7 @@ const TOOL = {
       size: { type: "string", enum: SIZES },
       desc: { type: "string", description: "1-2 frasi in italiano: aspetto e come si comporta. La leggono i giocatori." },
       look: { type: "string", description: "IN INGLESE, solo aspetto fisico per il disegno: corpo, colori, armi, vestiti, materiale. 1-2 frasi, niente sfondo." },
+      metalProtection: { type: "boolean", description: "true SOLO se indossa un'armatura metallica o ha corpo/carapace di metallo. Armi e piccoli accessori metallici NON contano. Golem di pietra/argilla/carne false; golem di ferro true. I danni acidi contro il metallo sono ×1,5." },
       level: { type: "integer", minimum: 1, maximum: 20 },
       hp: { type: "integer", minimum: 4, maximum: 600 },
       ac: { type: "integer", minimum: 8, maximum: 22 },
@@ -64,7 +65,7 @@ const TOOL = {
       immunities: { type: "array", items: { type: "string", enum: DMG }, description: "Danni che non lo feriscono" },
       actions: { type: "array", minItems: 1, maxItems: 5, items: ACTION },
     },
-    required: ["name", "icon", "creature", "size", "desc", "look", "level", "hp", "ac", "init", "save", "resistances", "vulnerabilities", "immunities", "actions"],
+    required: ["name", "icon", "creature", "size", "desc", "look", "metalProtection", "level", "hp", "ac", "init", "save", "resistances", "vulnerabilities", "immunities", "actions"],
   },
 };
 

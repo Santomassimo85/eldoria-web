@@ -68,6 +68,10 @@
         {
           "type": "fix",
           "text": "Segrete: rimossa la vecchia vista 2D. L’admin ora gestisce solo la prima persona, con sprite frontali, texture dei dungeon e armi in mano."
+        },
+        {
+          "type": "feature",
+          "text": "Segrete: Onda Tonante ha una vera onda di pressione; Freccia Acida è un dardo liquido con spruzzi e corrosione. L’acido infligge ×1,5 danni contro armature e corpi metallici, mai per le sole armi."
         }
       ]
     },

@@ -20,6 +20,7 @@ import SegreteAdminItems from "./SegreteAdminItems";
 import { useSegreteItems } from "../utils/segreteItemsLive";
 import { frontSpriteUrl } from "../utils/crawlerGen";
 import { DAMAGE_TYPES } from "./worldBossEffects";
+import { hasMetalProtection } from "../data/segreteMaterials";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 import "./SegreteAdmin.css";
@@ -40,6 +41,7 @@ const cleanMonster = (m) => ({
   init: num(m.init, -5, 15, 0), save: num(m.save, -5, 15, 0),
   dungeons: Array.isArray(m.dungeons) ? m.dungeons : [],
   frontImageUrl: m.frontImageUrl || "",
+  ...(typeof m.metalProtection === "boolean" ? { metalProtection: m.metalProtection } : { metalProtection: null }),
   size: sizeOf(m),
   actions: sanitizeActions(m.actions, 1),
   ...defensesOf(m),
@@ -327,6 +329,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
       set({
         name: m.name || form.name, icon: m.icon || form.icon || "", desc: m.desc || form.desc, look: m.look || "",
         size: m.size || form.size, level: m.level ?? form.level, hp: m.hp ?? form.hp, ac: m.ac ?? form.ac,
+        metalProtection: typeof m.metalProtection === "boolean" ? m.metalProtection : null,
         init: m.init ?? form.init, save: m.save ?? form.save,
         ...defensesOf(m),
         actions: sanitizeActions((m.actions || []).map((a) => ({ ...a, range: 1, aoeSize: a.aoeShape && a.aoeShape !== "single" ? 2 : 1 })), 1),
@@ -414,6 +417,15 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
 
         <div className="jw">
           <h3 className="jw-h">Resistenze e debolezze <small>tocca: — · ½ resiste · ×2 debole · 🚫 immune</small></h3>
+          <label className="jw-field"><span>Armatura o corpo di metallo</span>
+            <select className="jw-in" value={typeof form.metalProtection === "boolean" ? String(form.metalProtection) : "auto"}
+              onChange={(e) => set({ metalProtection: e.target.value === "auto" ? null : e.target.value === "true" })}>
+              <option value="auto">Automatico da nome e aspetto</option>
+              <option value="true">Sì: metallo (acido ×1,5)</option>
+              <option value="false">No: senza protezioni metalliche</option>
+            </select>
+          </label>
+          <p className="sga-hint">{hasMetalProtection(form) ? "Corrosione attiva: danni acidi ×1,5." : "Nessun bonus acido da metallo."} Le sole armi non contano.</p>
           <DefensesPicker value={form} onChange={(d) => set(d)} />
         </div>
 

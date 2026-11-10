@@ -83,6 +83,7 @@ export default function SegreteManual() {
           <li><b>😱 Spaventato</b>: svantaggio, e non riesce a curare né ad aiutare gli altri. <b>🌑 Accecato</b>: svantaggio, e chi lo attacca ha vantaggio. <b>🐌 Rallentato</b>: svantaggio.</li>
           <li><b>😵 Confuso</b>: scegli tu l'azione, ma il bersaglio esce a caso, anche un compagno (o te lo cura un nemico!).</li>
           <li>I mostri portano lo stato del loro tipo di danno (fuoco brucia, gelo congela, veleno avvelena, necrotico spaventa, fulmine paralizza, psichico confonde, acido acceca): si evita col tiro salvezza. I boss evitano metà degli stati.</li>
+          <li><b>Corrosione:</b> l’acido infligge ×1,5 danni a chi indossa un’armatura metallica o ha il corpo di metallo. Le sole armi, gli scudi e i piccoli accessori non contano. Il bonus vale anche contro gli eroi e si combina con resistenze e vulnerabilità; l’immunità annulla sempre il danno.</li>
           <li><b>Rimedi</b> in Bottega: 🌿 Tonico (tutto tranne la pietra), 💧 Bomba d'Acqua (tutto il gruppo: bruciatura, rallentamento, paralisi), ✨ Panacea (tutto, anche la pietra).</li>
         </ul>
       </Fold>

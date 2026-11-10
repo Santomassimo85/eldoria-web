@@ -28,6 +28,7 @@ const COL = {
   frost:     ["#f0fdff", "#5fd0ff", "#06213f"],
   water:     ["#d8f6ff", "#3aa4ff", "#041f45"],
   lightning: ["#fffbd2", "#ffd21a", "#3a2600"],
+  thunder:   ["#ffffff", "#a9cbdc", "#263846"],
   earth:     ["#ffe2b0", "#c9823a", "#2c1606"],
   acid:      ["#f4ffc0", "#93e01c", "#132c02"],
   poison:    ["#f3d6ff", "#b25cff", "#22073f"],
@@ -44,8 +45,9 @@ const COL = {
   res:       ["#fff1d6", "#d9a35a", "#2a1806"],
   vul:       ["#fff59a", "#ff5a1f", "#3a0303"],
   rage:      ["#ffe0d0", "#ff6a4a", "#3a0505"],
+  corrode:   ["#f8ffd4", "#c2f545", "#2e6108"],
 };
-export const TAG_TEXT = { imm: "IMMUNE", res: "RESISTE", vul: "VULNERABILE!", rage: "FURIA" };
+export const TAG_TEXT = { imm: "IMMUNE", res: "RESISTE", vul: "VULNERABILE!", rage: "FURIA", corrode: "CORROSIONE ×1,5" };
 /* Scritta sotto il numero del colpo: popTag({x, y, tag, delay}) */
 export function popTag(o) {
   if (!TAG_TEXT[o.tag]) return;

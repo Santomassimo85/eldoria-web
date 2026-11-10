@@ -12,6 +12,7 @@
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
 import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
+import { hasMetalProtection, metalArmor, ACID_METAL_MULT } from "./segreteMaterials";
 import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
 // tratti passivi della sottoclasse di un combattente (vuoto per mostri ed eroi senza)
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
@@ -90,6 +91,7 @@ export function makeHero(m) {
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
     ...(okItem ? { wItem: wItem.id } : {}), res, ...(thorns ? { thorns } : {}),
     armorCategory: def.cat,
+    armorKey: def.key, metalProtection: metalArmor(def.key),
     gear: { armor: def.armorName, shield: def.shieldName },
     // armatura speciale equipaggiata (2026-11-08): in prima persona cambia maniche e guanti
     ...(hero.armorItem && itemOf(hero.armorItem)?.kind === "armor" ? { armorItem: hero.armorItem } : {}),
@@ -153,6 +155,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
     level: Number(src.level) || 1, hp: maxHp, maxHp, ac: cap.ac, init: Number(src.init) || 0, save: cap.save,
     img: src.frontImageUrl || src.imageUrl || "", frontImg: src.frontImageUrl || "", icon: src.icon || "", size: sizeOf(src),
+    metalProtection: hasMetalProtection(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5), res: src.resistances || [], vul: src.vulnerabilities || [], imm: src.immunities || [],
@@ -259,7 +262,7 @@ function log(s, txt, extra = {}) {
   s.hpSeen = nextSeen;
   s.log = [...(s.log || []), row].slice(-LOG_MAX);
 }
-const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "lightning", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
+const EL_OF = { fire: "fire", cold: "frost", lightning: "lightning", thunder: "thunder", poison: "poison", acid: "acid", necrotic: "darkness", radiant: "radiant", force: "arcane", psychic: "psychic" };
 export const elOf = (type) => EL_OF[type] || "physical";
 const RANGED = new Set(["arco", "doppio", "lancio"]);
 /* FORME DEGLI EFFETTI (2026-11-06): ogni arma ha la forma del suo tipo di danno, ogni magia la sua
@@ -268,10 +271,10 @@ const WEAPON_FX = { slashing: "slash", bludgeoning: "smash", piercing: "thrust" 
 const ACTION_FX = {
   turbine: "slash", terremoto: "stomp", pioggia: "rain", trappola: "spikes", fulminante: "strike",
   raffica: "punch", ki: "punch", stordente: "punch", ondata: "wave", palmo: "burst",
-  dardo_inc: "missiles", raggio_gelo: "beam", mani_w: "breath", mani_br: "breath", acida: "arrow",
+  dardo_inc: "missiles", raggio_gelo: "beam", mani_w: "breath", mani_br: "breath", acida: "acidArrow",
   palla_fuoco: "fireball", ipnosi: "curse", cono_freddo: "breath", fiotto: "beam", veleno: "cloud",
   fulmine: "beam", catena: "strike", deflagrazione: "beam", hadar: "spikes", vampiro: "drain",
-  fame: "cloud", dito: "curse", rovi: ["vine", "earth"], onda: "wave", onda_b: "wave", lama_fiamma: "slash",
+  fame: "cloud", dito: "curse", rovi: ["vine", "earth"], onda: "thunderwave", onda_b: "thunderwave", lama_fiamma: "slash",
   luna: "strike", richiamo: "strike", tempesta: "rain", fiamma: "strike", arma_spir: "slash",
   beffa: "curse", sussurri: "curse", risata: "sleep",
 };
@@ -406,6 +409,8 @@ function startFloor(s, bestiary, now) {
 /* ── danni ───────────────────────────────────────────── */
 function applyDamage(s, target, amount, type, notes) {
   let dmg = Math.max(0, Math.round(amount));
+  const corrosion = type === "acid" && hasMetalProtection(target);
+  if (corrosion) dmg *= ACID_METAL_MULT;
   if (target.fx?.petrified && dmg > 0) { dmg = Math.floor(dmg / 2); notes.push("è di pietra"); }
   if (type === "fire" && target.fx?.frozen && amount > 0) { delete target.fx.frozen; notes.push("🧊 il fuoco lo scongela"); }
   if (target.side === "f") {
@@ -414,6 +419,8 @@ function applyDamage(s, target, amount, type, notes) {
     else if (target.vul.includes(type)) { dmg *= 2; notes.push("vulnerabile!"); curTags[target.id] = "vul"; }
   } else if ((target.res || []).includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
   else if (fxOn(s, target.fx.rage) && (PHYS.includes(type) || (subP(target).rageAll && type !== "psychic"))) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
+  dmg = Math.floor(dmg);
+  if (corrosion && dmg > 0) { notes.push(`corrosione del metallo ×${ACID_METAL_MULT}`); if (!curTags[target.id]) curTags[target.id] = "corrode"; }
   target.hp = Math.max(0, target.hp - dmg);
   curDamage[target.id] = (curDamage[target.id] || 0) + dmg;
   return dmg;

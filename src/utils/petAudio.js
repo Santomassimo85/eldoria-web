@@ -287,11 +287,17 @@ const SPELL_IMPACT = { bolt: 0.4, arrow: 0.32, slash: 0.12, aoe: 0.15, hit: 0, d
 // forme del motore a canvas che suonano come una delle forme base (2026-11-06)
 const SOUND_LIKE = { beam: "bolt", breath: "bolt", drain: "bolt", wave: "bolt", lob: "bolt", missiles: "bolt", fireball: "aoe", strike: "aoe", rain: "aoe", spikes: "aoe", stomp: "aoe", burst: "aoe", cloud: "debuff", curse: "debuff", sleep: "debuff", roar: "debuff", smash: "slash", punch: "slash", thrust: "slash", claw: "slash", bite: "slash", whip: "slash", vine: "slash", sting: "slash", dash: "slash" };
 export function spellSound({ kind: kind0, el = "arcane", miss = false, kill = false } = {}) {
-  const kind = SOUND_LIKE[kind0] || kind0;
+  const kind = kind0 === "acidArrow" ? "bolt" : SOUND_LIKE[kind0] || kind0;
   const c = getCtx();
   if (!c) return;
   if (c.state !== "running") c.resume().catch(() => {});
   const t = c.currentTime + 0.02;
+  if (kind0 === "thunderwave") {
+    tone(t, { f: 110, to: 35, type: "sine", vol: 0.28, dur: 0.65 });
+    hiss(t + 0.08, { f: 220, to: 70, kind: "lowpass", vol: 0.3, dur: 0.5, attack: 0.03 });
+    if (!miss) tone(t + 0.38, { f: 75, to: 28, type: "triangle", vol: 0.23, dur: 0.35 });
+    return;
+  }
   const E = SPELL_EL.hit[el] ? el : "arcane";
   const at = t + (SPELL_IMPACT[kind] ?? 0.3);
   switch (kind) {
