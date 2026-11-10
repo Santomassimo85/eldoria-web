@@ -28,14 +28,19 @@ function memberFrom(uid, char, cls, level) {
 
 export async function createRoom(uid, char, { name, type, cls, level, difficulty = "facile" }) {
   const ref = doc(roomsCol());
+  const roomName = (String(name || "").trim() || `Gruppo di ${char?.name || "?"}`).slice(0, 40);
   await runTransaction(db, async (tx) => {
     await requireActiveDungeon(tx, type);
     tx.set(ref, {
-      name: String(name || "").trim().slice(0, 40) || `Gruppo di ${char?.name || "?"}`,
+      name: roomName,
       type, difficulty, hostUid: uid,
       members: [memberFrom(uid, char, cls, level)], memberIds: [uid],
       status: "open", weekKey: currentWeekKey(),
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(), startedAt: null,
+    });
+    tx.set(doc(db, "voice_rooms", ref.id), {
+      name: roomName,
+      by: uid, byName: char?.name || "", dungeonId: ref.id, at: Date.now(),
     });
   });
   return ref.id;

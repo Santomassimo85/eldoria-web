@@ -522,3 +522,9 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - Divine Smite: scelta dello slot nel selettore arma, 2d8 con slot 1 e +1d8 per livello slot fino a 5d8; non cresce automaticamente col livello PG. Danno e consumo di un solo slot in transazione; nessun consumo se manca il colpo. Etichette e log mostrano la formula effettiva.
 - Verificati soglie del Soffio e slot sulla scheda reale di Palar (livello 5); build Vite completata.
 
+
+### Chat vocale indipendente dal dungeon (2026-11-10)
+- AppVoice legge tutti i dungeon_rooms e li unisce a voice_rooms senza filtrare per appartenenza al gruppo. Nessuno scollegamento automatico quando si esce dal gruppo o questo viene cancellato; ripresa dopo reload basata sul canale vocale, non sulla membership.
+- createRoom crea in transazione anche voice_rooms con lo stesso ID: il canale WebRTC resta lo stesso e sopravvive al gruppo. Join conserva anche vecchie stanze. Backfill eseguito sui 3 gruppi esistenti (Soran, Karlberht, Temistocle). Stanze persistenti finche rimosse esplicitamente da proprietario/Master quando vuote.
+- Regole: canali dei dungeon esistenti o registrati aperti ai loggati. Pubblicare firestore:rules insieme al frontend; test elenco pubblico/persistenza/deduplicazione e build.
+

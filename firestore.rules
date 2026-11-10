@@ -284,17 +284,19 @@ service cloud.firestore {
     // Stanze vocali create dai giocatori (2026-11-07): il loro canale ha id vr-*
     match /voice_rooms/{roomId} {
       allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && roomId.matches('vr-.*')
+      allow create: if isLoggedIn() && (roomId.matches('vr-.*')
+          || existsAfter(/databases/$(database)/documents/dungeon_rooms/$(roomId)))
         && request.resource.data.by == request.auth.uid
         && request.resource.data.name is string
-        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40;
       allow update: if isLoggedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['at']);
       allow delete: if isLoggedIn() && (resource.data.by == request.auth.uid || isMaster());
     }
-    // Chat vocale: presenza e segnali WebRTC. Stanze vr-* aperte ai loggati, gruppi delle Segrete solo ai membri
+    // La voce resta aperta ai loggati anche dopo l'uscita o lo scioglimento del gruppo.
     match /dungeon_voice/{roomId}/{doc=**} {
       allow read, write: if isLoggedIn() && (roomId.matches('vr-.*')
-        || request.auth.uid in get(/databases/$(database)/documents/dungeon_rooms/$(roomId)).data.memberIds);
+        || exists(/databases/$(database)/documents/voice_rooms/$(roomId))
+        || exists(/databases/$(database)/documents/dungeon_rooms/$(roomId)));
     }
     match /dungeon_runs/{roomId} {
       allow read: if isLoggedIn();

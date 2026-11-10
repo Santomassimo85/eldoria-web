@@ -1,8 +1,7 @@
 /* Chat vocale di tutta l'app (2026-11-06, prima solo nelle Segrete). Montata una volta in App.jsx,
    quindi resta collegata cambiando pagina. Sta DENTRO la testata (slot #header-voice): non copre
    niente. Nei fight la testata sparisce: cuffie e microfono stanno sotto il ☰ (sempre, anche per entrare).
-   Canali: Sala comune (tutti i loggati), stanze create dai giocatori (`voice_rooms`, id vr-*) e, se
-   sei in un gruppo delle Segrete, il gruppo.
+   Canali: Sala comune (tutti i loggati), stanze create dai giocatori (`voice_rooms`, id vr-*) e tutte le stanze dei gruppi delle Segrete, aperte ai giocatori connessi.
    Microfono: sempre aperto di base, niente da premere; "Tieni premuto" a scelta (localStorage
    `sgr_voice_mode`). Il motore è src/utils/segreteVoice.js. Una ricarica (anche l'aggiornamento
    automatico) ti rimette nel canale: sessionStorage `vc_resume`, solo in quella scheda e solo se il
@@ -11,12 +10,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, updateDoc, runTransaction } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isAdminEmail } from "../utils/roles";
 import { isHiddenUid } from "../data/hiddenPlayers";
 import { VoiceMesh, peersCol, makeFreshness } from "../utils/segreteVoice";
+import { voiceRoomDirectory } from "../utils/voiceChannels";
 import { classInfo, clsStyle } from "../data/segrete";
 import "./AppVoice.css";
 
@@ -27,7 +27,6 @@ const msOf = (x) => (x?.toMillis ? x.toMillis() : Number(x) || 0);
 const MODE_KEY = "sgr_voice_mode";
 const readMode = () => { try { return localStorage.getItem(MODE_KEY) === "ptt" ? "ptt" : "open"; } catch { return "open"; } };
 const isVr = (id) => !!id && id.startsWith("vr-");
-const VR_FRESH_MS = 7 * 24 * 3600 * 1000; // stanze mai usate da una settimana: non si mostrano più
 const RESUME_KEY = "vc_resume";
 const RESUME_MS = 10 * 60000;
 const saveResume = (room) => { try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ room, at: Date.now() })); } catch { /* niente */ } };
@@ -58,9 +57,9 @@ export default function AppVoice({ docked }) {
   const [pick, setPick] = useState(null);
   const [slot, setSlot] = useState(null);
   const [chan, setChan] = useState(null); // il canale in cui sei: resta quello finché non esci tu
-  const picked = pick === SALA || isVr(pick) ? pick : room && (pick === room.id || !pick) ? room.id : SALA;
+  const picked = pick || room?.id || SALA;
   const roomId = chan || picked;
-  const [myRooms, setMyRooms] = useState(null); // tutti i gruppi in cui sei (anche vecchi): null = non letti
+  const [dungeonRooms, setDungeonRooms] = useState(null); // tutti i gruppi: null = non letti
   const [peers, setPeers] = useState([]);
   const [rooms, setRooms] = useState(null); // null = non ancora lette
   const [counts, setCounts] = useState({});
@@ -83,19 +82,19 @@ export default function AppVoice({ docked }) {
   const want = useRef(null); // canale in cui vuoi stare: dopo un'uscita non tua (app in secondo piano, ricarica) si rientra
   const holding = useRef(false);
 
-  const watch = open || joined;
+  const watch = open || joined || !!readResume();
   useLayoutEffect(() => { setSlot(docked ? document.getElementById("header-voice") : null); }, [docked, uid]);
   useEffect(() => {
     setName("");
     if (uid) getDoc(doc(db, "characters", uid)).then((s) => setName(s.data()?.name || currentUser?.displayName || "")).catch(() => {});
   }, [uid]);
   // il gruppo delle Segrete in cui sei (il più recente)
-  useEffect(() => (uid ? onSnapshot(query(collection(db, "dungeon_rooms"), where("memberIds", "array-contains", uid)), (s) => {
+  useEffect(() => (uid ? onSnapshot(collection(db, "dungeon_rooms"), (s) => {
     const all = s.docs.map((d) => ({ id: d.id, ...d.data() }));
-    setMyRooms(new Set(all.map((r) => r.id)));
-    const list = all.filter((r) => Date.now() - msOf(r.updatedAt) < ROOM_FRESH_MS);
+    setDungeonRooms(all);
+    const list = all.filter((r) => (r.memberIds || []).includes(uid) && Date.now() - msOf(r.updatedAt) < ROOM_FRESH_MS);
     setRoom(list.sort((a, b) => msOf(b.updatedAt) - msOf(a.updatedAt))[0] || null);
-  }, () => { setRoom(null); setMyRooms(null); }) : undefined), [uid]);
+  }, () => { setRoom(null); setDungeonRooms(null); }) : undefined), [uid]);
   useEffect(() => {
     if (!uid) return undefined;
     const put = (s) => setPeers(s.docs.map((d) => ({ uid: d.id, ...d.data() })));
@@ -134,11 +133,12 @@ export default function AppVoice({ docked }) {
   }, [location.search, uid]); // eslint-disable-line react-hooks/exhaustive-deps
   // le stanze dei giocatori: si leggono solo a pannello aperto o in voce
   useEffect(() => (uid && watch ? onSnapshot(collection(db, "voice_rooms"), (s) => {
-    setRooms(s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => Date.now() - (Number(r.at) || 0) < VR_FRESH_MS)
+    setRooms(s.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name))));
   }, () => setRooms([])) : undefined), [uid, watch]);
   // quanti sono negli altri canali: solo a pannello aperto
-  const chanIds = [SALA, ...(room ? [room.id] : []), ...(rooms || []).map((r) => r.id)].join("|");
+  const directory = voiceRoomDirectory(dungeonRooms || [], rooms || []);
+  const chanIds = [SALA, ...directory.map((r) => r.id)].join("|");
   useEffect(() => {
     if (!uid || !open) return undefined;
     const offs = chanIds.split("|").map((id) => onSnapshot(peersCol(id), (s) => {
@@ -150,16 +150,12 @@ export default function AppVoice({ docked }) {
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 10000); return () => clearInterval(t); }, []);
   // CONNESSIONE STABILE (2026-11-07): prima si usciva dalla voce appena il canale "calcolato" cambiava
   // (fine di un fight, gruppo che si aggiorna o sparisce per un attimo). Ora il canale in cui sei è
-  // fisso (`chan`): si esce solo col logout, col tasto Esci o se hai davvero lasciato il gruppo.
+  // fisso (`chan`): si esce solo col logout o col tasto Esci dalla voce, mai lasciando il gruppo del dungeon.
   useEffect(() => { if (!uid && (mesh.current || want.current)) leave(); }, [uid]);
   useEffect(() => {
-    const id = mesh.current?.roomId;
-    if (id && id !== SALA && !isVr(id) && myRooms && !myRooms.has(id)) leave();
-  }, [myRooms]);
-  useEffect(() => {
-    if (!pick || pick === SALA || pick === room?.id) return;
-    if (!isVr(pick) || (rooms && !joined && !rooms.some((r) => r.id === pick))) setPick(null);
-  }, [pick, room?.id, rooms, joined]);
+    if (!pick || pick === SALA || joined || rooms === null || dungeonRooms === null) return;
+    if (!directory.some((r) => r.id === pick)) setPick(null);
+  }, [pick, rooms, dungeonRooms, joined]);
   useEffect(() => {
     if (!open) return undefined;
     const away = (e) => { if (!e.target.closest?.(".sgv-panel, .sgv-pill")) { setOpen(false); setInvite(null); } };
@@ -204,7 +200,8 @@ export default function AppVoice({ docked }) {
     if (!uid || !name || resumed.current) return;
     const id = readResume();
     if (!id) { resumed.current = true; return; }
-    if (id !== SALA && !isVr(id) && room?.id !== id) return; // il gruppo si sta ancora leggendo
+    if (id !== SALA && (rooms === null || dungeonRooms === null)) return;
+    if (id !== SALA && !directory.some((r) => r.id === id)) { dropResume(); resumed.current = true; return; }
     resumed.current = true;
     want.current = id;
     // nell'app Android la domanda sul permesso spesso non funziona: si prova lo stesso
@@ -213,9 +210,9 @@ export default function AppVoice({ docked }) {
     navigator.permissions.query({ name: "microphone" })
       .then((p) => { if (p.state === "granted" || (p.state !== "denied" && window.Capacitor?.isNativePlatform?.())) join(id); else want.current = null; })
       .catch(() => join(id));
-  }, [uid, name, room?.id]);
+  }, [uid, name, rooms, dungeonRooms]);
 
-  const chanLabel = (id) => (!id ? "" : id === SALA ? "Sala comune" : isVr(id) ? rooms?.find((r) => r.id === id)?.name || "Stanza" : room?.id === id ? room.name || "Gruppo" : "Gruppo");
+  const chanLabel = (id) => !id ? "" : id === SALA ? "Sala comune" : directory.find((r) => r.id === id)?.name || "Stanza";
   useEffect(() => {
     presVoice.current = { voice: chan || null, voiceName: chan ? chanLabel(chan) : null };
     if (uid && name) setDoc(doc(db, "app_presence", uid), { name, at: Date.now(), hidden: document.visibilityState !== "visible", ...presVoice.current }, { merge: true }).catch(() => {});
@@ -239,6 +236,17 @@ export default function AppVoice({ docked }) {
     setBusy(true); setErr("");
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) throw new Error("Questo browser non supporta la chat vocale.");
+      if (id !== SALA && !isVr(id)) {
+        // Salva anche i canali dei gruppi creati prima di questa modifica.
+        await runTransaction(db, async (tx) => {
+          const voiceRef = doc(db, "voice_rooms", id);
+          const [voice, dungeon] = await Promise.all([tx.get(voiceRef), tx.get(doc(db, "dungeon_rooms", id))]);
+          if (!voice.exists()) {
+            if (!dungeon.exists()) throw new Error("La stanza vocale non esiste più.");
+            tx.set(voiceRef, { name: String(dungeon.data().name || "Gruppo").slice(0, 40), by: uid, byName: name, dungeonId: id, at: Date.now() });
+          }
+        });
+      }
       setPick(id); // resti su questo canale anche se poi entri in un gruppo
       const m = new VoiceMesh({ roomId: id, uid, name, onState: setSt, onTaken: () => {
         leave({ keep: true });
@@ -250,7 +258,7 @@ export default function AppVoice({ docked }) {
       mesh.current = m;
       want.current = id; setChan(id);
       saveResume(id);
-      if (isVr(id)) updateDoc(doc(db, "voice_rooms", id), { at: Date.now() }).catch(() => {});
+      if (id !== SALA) updateDoc(doc(db, "voice_rooms", id), { at: Date.now() }).catch(() => {});
       m.setMicOn(mode === "open");
       setMicOn(mode === "open");
       m.setSpeakersOn(speakers);
@@ -322,16 +330,14 @@ export default function AppVoice({ docked }) {
 
   const speaking = (u) => joined && (st.levels[u] || 0) > SPEAK && (u !== uid || micOn);
   const talkingNow = live.filter((p) => !p.muted && speaking(p.uid));
-  const isSala = roomId === SALA;
-  const isOpenChan = isSala || isVr(roomId);
-  const chanName = isSala ? "Sala comune" : isVr(roomId) ? rooms?.find((r) => r.id === roomId)?.name || "Stanza" : room?.name || "Il mio gruppo";
-  const canRemove = (r) => (r.by === uid || isAdminEmail(currentUser?.email)) && !counts[r.id];
+  const chanName = chanLabel(roomId);
+  const canRemove = (r) => (r.by === uid || isAdminEmail(currentUser?.email)) && !counts[r.id]
+    && chan !== r.id && !(dungeonRooms || []).some((d) => d.id === r.id);
   const channels = [
     { id: SALA, icon: "🍺", name: "Sala comune" },
-    ...(room ? [{ id: room.id, icon: "🗝", name: room.name || "Il mio gruppo" }] : []),
-    ...(rooms || []).map((r) => ({ id: r.id, icon: "🎙", name: r.name, room: r })),
+    ...directory.map((r) => ({ id: r.id, icon: r.dungeonId ? "🗝" : "🎙", name: r.name || "Gruppo", room: r })),
   ];
-  const members = isOpenChan ? live.map((p) => ({ uid: p.uid, name: p.name })) : room?.members || [];
+  const members = live.map((p) => ({ uid: p.uid, name: p.name }));
   const roster = members.map((m) => {
     const p = live.find((x) => x.uid === m.uid);
     const conn = m.uid === uid ? (joined ? "connected" : null) : st.conns[m.uid] || null;
@@ -342,8 +348,7 @@ export default function AppVoice({ docked }) {
   const onlineList = online
     .filter((p) => p.uid !== uid && !p.hidden && now - (Number(p.at) || 0) < ONLINE_MS && !isHiddenUid(p.uid))
     .sort((a, b) => (b.voice ? 1 : 0) - (a.voice ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
-  const groupOnly = !isOpenChan && room?.id === roomId;
-  const canCall = (p) => !(p.voice === roomId) && (!groupOnly || (room?.memberIds || []).includes(p.uid));
+  const canCall = (p) => p.voice !== roomId;
 
   if (!uid) return null;
   const micBtn = !joined ? null : mode === "ptt" ? (
@@ -397,7 +402,7 @@ export default function AppVoice({ docked }) {
             <button type="submit" disabled={busy || !newName.trim()}>＋ Crea</button>
           </form>
           <p className="sgv-title">{chanName}</p>
-          {isOpenChan && !roster.length && <p className="sgv-hint">Non c'è ancora nessuno in voce.</p>}
+          {!roster.length && <p className="sgv-hint">Non c'è ancora nessuno in voce.</p>}
           <ul className="sgv-list">
             {roster.map((m) => (
               <li key={m.uid} style={clsStyle(m.cls)} className={speaking(m.uid) && !m.muted ? "is-talk" : ""}>
@@ -433,7 +438,7 @@ export default function AppVoice({ docked }) {
           {!joined ? (
             <>
               <button type="button" className="sgv-btn sgv-btn--go" disabled={busy} onClick={() => join()}>{busy ? "⏳ Accendo il microfono…" : `🎧 Entra in ${chanName}`}</button>
-              <p className="sgv-hint">{isOpenChan ? "Ti sente chiunque entri in questo canale." : "Vi sentite solo fra voi del gruppo."} {mode === "open" ? "Entri col microfono aperto: parli e basta, niente da premere." : "Per parlare tieni premuto il tasto del microfono."} Resti collegato su ogni pagina. La prima volta il browser chiede il permesso del microfono.</p>
+              <p className="sgv-hint">Ti sente chiunque entri in questo canale. Uscire dal gruppo del dungeon non chiude la voce. {mode === "open" ? "Entri col microfono aperto: parli e basta, niente da premere." : "Per parlare tieni premuto il tasto del microfono."} Resti collegato su ogni pagina. La prima volta il browser chiede il permesso del microfono.</p>
             </>
           ) : (
             <>
