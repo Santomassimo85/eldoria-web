@@ -13,6 +13,28 @@ import { currentWeekKey } from "./arenaWeek";
 import { heroLevel } from "./segreteKits";
 
 export const MAX_PARTY = 4;
+/* COMPAGNIA (2026-11-10): incentivo a giocare in gruppo. Bonus leggeri che crescono col numero di eroi
+   all'inizio del dungeon (aiuti compresi; resta fisso anche se qualcuno fugge o cade): TS, colpire e CD,
+   PF (che NON alzano il danno dei mostri), Monete Antiche e PE (solo a chi i premi li prende), e in 4
+   una possibilità in più di un oggetto nello scrigno. Da soli niente (restano ×1,2 PF e ×0,75 PE). */
+export const COMPANY = {
+  1: { save: 0, hit: 0, hp: 0, coins: 1, xp: 1, chest: 0 },
+  2: { save: 1, hit: 0, hp: 0, coins: 1.1, xp: 1.05, chest: 0 },
+  3: { save: 1, hit: 1, hp: 0, coins: 1.2, xp: 1.1, chest: 0 },
+  4: { save: 1, hit: 1, hp: 0.05, coins: 1.3, xp: 1.15, chest: 0.25 },
+};
+export const companyOf = (n) => COMPANY[Math.max(1, Math.min(MAX_PARTY, Number(n) || 1))];
+const pct = (m) => `+${Math.round((m - 1) * 100)}%`;
+export function companyLines(n) {
+  const c = companyOf(n), out = [];
+  if (c.save) out.push(`+${c.save} ai tiri salvezza`);
+  if (c.hit) out.push(`+${c.hit} a colpire e alla CD`);
+  if (c.hp) out.push(`+${Math.round(c.hp * 100)}% PF`);
+  if (c.coins > 1) out.push(`${pct(c.coins)} Monete Antiche`);
+  if (c.xp > 1) out.push(`${pct(c.xp)} PE`);
+  if (c.chest) out.push(`scrigno: ${Math.round(c.chest * 100)}% di un oggetto in più`);
+  return out;
+}
 // Se qualcuno sparisce durante il dungeon: dopo 5 minuti (era 10 fino al 2026-11-05) il suo turno è difensivo.
 export const AFK_DEFEND_MS = 5 * 60 * 1000;
 // Stanze aperte e ferme da più di tanto si possono sciogliere (il Master o chi entra).

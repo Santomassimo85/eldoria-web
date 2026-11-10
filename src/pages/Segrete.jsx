@@ -11,7 +11,7 @@ import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
-  CRAWLER_PUBLIC, MAX_PARTY, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  CRAWLER_PUBLIC, MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
@@ -463,6 +463,11 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       {me && heroOf(charData, me.cls) && !armorChosen(me.cls, heroOf(charData, me.cls)) && (
         <button type="button" className="sgr-gear-alert" onClick={() => onFix?.(me.cls)}>⚠ Il tuo {classInfo(me.cls)?.it} non ha ancora scelto l'armatura (ora usa quella di base). <b>Sistemala →</b></button>
       )}
+      <p className={`sgr-company${room.members.length > 1 ? " is-on" : ""}`}>
+        {room.members.length > 1
+          ? <>🤝 <b>Compagnia ×{room.members.length}</b>: {companyLines(room.members.length).join(" · ")}.{room.members.length < MAX_PARTY ? ` In ${room.members.length + 1}: ${companyLines(room.members.length + 1).join(" · ")}.` : ""}</>
+          : <>🤝 Da soli niente bonus. <b>In 2</b>: {companyLines(2).join(" · ")} — e cresce fino a {MAX_PARTY}. Invita qualcuno!</>}
+      </p>
       {!dungeonActive && <p className="sgr-err">Questo dungeon è disattivato. Il capo deve sceglierne uno attivo per partire.</p>}
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && (

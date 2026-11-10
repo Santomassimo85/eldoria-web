@@ -15,7 +15,8 @@ import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropI
 import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
 // tratti passivi della sottoclasse di un combattente (vuoto per mostri ed eroi senza)
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
-import { sizeOf, diffOf, MIMIC_MONSTER } from "./segrete";
+import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines } from "./segrete";
+const companyLinesTxt = (n) => companyLines(n).join(", ");
 
 export const LOG_MAX = 80;
 export const AFK_MS = 5 * 60 * 1000; // 5 minuti per agire (2026-11-05, prima 10)
@@ -106,7 +107,7 @@ export const SOLO_XP_MULT = 0.75;
 export function xpGain(level, floors, diff = "facile", party = 2) {
   if (level >= MAX_STORY_LEVEL) return 0;
   // 2026-11-06: PE FISSI, uguali a ogni livello: XP_PER_ROOM a sala (boss compreso) × difficoltà
-  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : 1));
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : companyOf(party).xp));
   // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
   // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
 }
@@ -327,6 +328,15 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
+  // Compagnia (2026-11-10): bonus del gruppo, fissato all'inizio
+  s.party = s.heroes.length;
+  const C = companyOf(s.party);
+  s.heroes.forEach((h) => {
+    if (C.save) h.save += C.save;
+    if (C.hit) h.compHit = C.hit;
+    if (C.hp) { const x = Math.round(h.maxHp * C.hp); h.maxHp += x; h.hp += x; h.compHp = x; }
+  });
+  if (s.party > 1) log(s, `🤝 Compagnia ×${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   const helpers = s.heroes.filter((h) => h.helper);
   if (helpers.length) log(s, `🤝 ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete né bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti già pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
@@ -357,7 +367,7 @@ const heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.ma
 export function balanceFoes(foes, heroes, isBoss) {
   const live = heroes.filter((h) => !h.fled);
   // i +10 PF di base degli eroi sono un vantaggio vero: non alzano il danno dei mostri
-  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE), 0) || 10;
+  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE - (h.compHp || 0)), 0) || 10;
   const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
   const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
   const w = (f) => BUDGET.weight[f.role] || 1;
@@ -445,7 +455,8 @@ function heroAct(s, h, a, target) {
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
   // tratti della sottoclasse
   const sp = subP(h);
-  const sDmg = subNum(sp.sDmg, lv, mod), sHeal = subNum(sp.heal, lv, mod), sDc = sp.dc || 0;
+  // + Compagnia: +1 a colpire e alla CD in 3–4
+  const sDmg = subNum(sp.sDmg, lv, mod), sHeal = subNum(sp.heal, lv, mod), sDc = (sp.dc || 0) + (h.compHit || 0);
   const flatOf = (f) => { const m = /^lv\*(\d+)$/.exec(String(f || "")); return m ? lv * Number(m[1]) : Number(f) || 0; };
   const ev = { actor: h.id, roll: null };
   // "In difesa" dura fino alla prossima azione dell'eroe (prima spariva all'inizio del round: l'icona non si vedeva mai)
@@ -481,7 +492,7 @@ function heroAct(s, h, a, target) {
     }
     // le armi usano la loro caratteristica (FOR, DES o la migliore delle due), gli incantesimi quella della classe
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit;
+    const hitW = (a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit) + (h.compHit || 0);
     // Attacco Irruento (2026-11-06): vantaggio e −2 CA per 2 turni (questo e il prossimo)
     if (a.selfDis) { h.fx.reckless = s.round + 2; h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2); }
     const sneakKey = `${s.floor}:${s.round}`;
@@ -989,7 +1000,7 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const cm = diffOf(s.diff).coins;
+  const cm = diffOf(s.diff).coins * companyOf(s.party || s.heroes.length).coins;
   const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => { const c = Math.round(die(FLOOR_COINS_DIE) * cm); addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` }); return `${h.name} ${c}`; });
   if (got.length) log(s, `🪙 Monete Antiche dalla sala: ${got.join(" · ")}.`, { kind: "loot" });
 }
@@ -1013,7 +1024,7 @@ export function lootDead(s) {
     const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
-      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins);
+      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins * companyOf(s.party || s.heroes.length).coins);
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`🪙 ${c} Monete Antiche`);
     }
@@ -1167,12 +1178,14 @@ export function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
 function awardChest(s, uid, now) {
   const opener = s.heroes.find((h) => h.uid === uid);
   const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
-  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
+  const C = companyOf(s.party || s.heroes.length);
+  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1) * C.coins);
   takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));
   const ids = [];
   // In gruppo lo scrigno è più pieno: +2 oggetti base per ogni eroe oltre il primo (aiuti e fuggiti non contano).
   const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0) + Math.max(0, takers.length - 1) * 2;
-  for (let i = 0; i < n; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
+  const extra = C.chest && rnd() < C.chest ? 1 : 0; // Compagnia in 4
+  for (let i = 0; i < n + extra; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
   if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1)) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
   const items = ids.map((id) => {
     let rolls = takers.map((h) => ({ uid: h.uid, name: h.name, v: die(20) }));

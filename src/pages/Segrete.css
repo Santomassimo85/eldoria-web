@@ -485,3 +485,9 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgh-sub-name em { color: var(--el, #e0a85a); font-style: normal; font-size: .85rem; }
 .sgh-sub-passive { margin: 6px 0; font-size: .88rem; color: #f2c14e; }
 .sgh-sub-card .sgh-row { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* COMPAGNIA (2026-11-10) */
+.sgr-page .sgr-company { margin: 12px 0 0; padding: 9px 12px; border: 1px dashed rgba(242,193,78,.6); border-radius: 3px; background: rgba(242,193,78,.06); color: var(--osso-2, #d8ccb4); font-size: .9rem; }
+.sgr-page .sgr-company.is-on { border-style: solid; background: rgba(242,193,78,.13); color: #f6ead0; }
+.sgr-page .sgr-company b { color: #f2c14e; }
+.sgb-company { color: #f2c14e; }

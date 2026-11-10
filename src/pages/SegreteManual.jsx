@@ -1,7 +1,8 @@
 /* LE SEGRETE · Manuale (2026-11-05): le regole in breve, scheda "📖 Manuale" della lobby.
    I numeri vengono dalle costanti del gioco: non scriverli a mano. */
-import { MAX_PARTY, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
+import { MAX_PARTY, COMPANY, companyLines, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
 import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS, RESPEC_COST, SUBCLASS_COST, SUBCLASS_LEVEL, SUBCLASSES } from "../data/segreteKits";
+import { MIMIC_CHANCE } from "../data/segreteEngine";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -19,14 +20,27 @@ export default function SegreteManual() {
       <h2 className="sgr-h2">📖 Manuale delle Segrete</h2>
       <p className="sgr-hint">Tocca un capitolo per aprirlo.</p>
 
-      <Fold icon="🗝" title="Come si gioca, in 4 passi" open>
+      <Fold icon="🗝" title="Come si gioca, in 5 passi" open>
         <ol>
           <li><b>Personaggi</b>: crea un eroe per la classe che vuoi (uno per classe, resta tuo per sempre) e tira i suoi PF.</li>
           <li><b>Gruppi</b>: crea un gruppo (da 1 a {MAX_PARTY} eroi) scegliendo il dungeon, oppure entra in uno aperto. Puoi invitare altri giocatori: ricevono una notifica.</li>
-          <li>Nel gruppo potete parlarvi con la <b>chat vocale</b> (tasto 🎧 Voce in basso a sinistra, in lotta in alto): microfono a «tieni premuto» o sempre aperto.</li>
+          <li>Nel gruppo potete parlarvi con la <b>chat vocale</b>: tasto 🎧 in alto nella testata (in lotta sotto il ☰). Il microfono è aperto di base; dal pannello puoi passare a «tieni premuto».</li>
           <li>Tutti premono <b>▶ Avvia</b>: quando l'hanno premuto tutti si scende.</li>
+          <li><b>🤝 Più siete, meglio è</b>: in gruppo ognuno ha il bonus <b>Compagnia</b> (vedi sotto).</li>
           <li>Si combatte sala dopo sala fino al boss. Se il gruppo vince, ognuno porta a casa PE, {COIN_NAME} e il bottino. <b>Se il gruppo cade prima dello scrigno, si perde tutto quello trovato.</b></li>
         </ol>
+      </Fold>
+
+      <Fold icon="🤝" title="Compagnia: i bonus del gruppo">
+        <p>Le Segrete sono fatte per il gruppo: si può entrare da soli, ma in compagnia ognuno ha dei piccoli bonus che crescono con il numero di eroi. I mostri sono già tarati su quanti siete, quindi questi bonus sono un vantaggio vero.</p>
+        <ul>
+          {Object.keys(COMPANY).map((n) => (
+            <li key={n}><b>{n === "1" ? "Da soli" : `In ${n}`}</b>: {Number(n) === 1 ? "nessun bonus (in compenso PF ×1,2, ma PE ×0,75)" : companyLines(Number(n)).join(" · ")}.</li>
+          ))}
+          <li>Il numero si fissa all'inizio del dungeon e resta uguale anche se qualcuno cade o fugge.</li>
+          <li>Chi entra <b>come aiuto</b> conta per la Compagnia: chiamare un amico conviene anche quando lui ha finito i suoi dungeon. I bonus su monete e PE vanno solo a chi prende i premi.</li>
+          <li>In più, lo scrigno finale ha 2 oggetti in più per ogni eroe oltre il primo.</li>
+        </ul>
       </Fold>
 
       <Fold icon="🌒" title="Ladro e Bardo">
@@ -54,7 +68,7 @@ export default function SegreteManual() {
           <li>Se il bersaglio scelto è già caduto, il colpo va al nemico in piedi più ferito.</li>
           <li>Chi non agisce per 5 minuti si mette in difesa da solo, così il gruppo non resta fermo.</li>
           <li>Sopra gli sprite: icone verdi = bonus, rosse = malus, col numero dei round che restano. Le scritte IMMUNE / RESISTE / VULNERABILE! dicono come il nemico ha preso il colpo.</li>
-          <li>Fra una sala e l'altra si recupera un po': chi era a terra si rialza al 25% dei PF e gli usi delle abilità tornano.</li>
+          <li>Fra una sala e l'altra si recupera un po': +30% dei PF, chi era a terra si rialza al 25% e gli usi delle abilità tornano.</li>
           <li>«🏃 Abbandona» toglie il tuo eroe dalla spedizione: conta come a terra e non prende premi.</li>
         </ul>
       </Fold>
@@ -77,7 +91,7 @@ export default function SegreteManual() {
         <ul>
           <li><b>♻ Reset dell'eroe</b>: dalla scheda dell'eroe rifai caratteristiche e abilità per {RESPEC_COST} {COIN_NAME}. Livello, PE, PF tirati ed equipaggiamento restano; non si può fare durante un dungeon. Le armi si cambiano sempre gratis.</li>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
-          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Chi entra da solo prende un po' meno PE (×0,75). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Chi entra da solo prende un po' meno PE (×0,75), in gruppo un po' di più (Compagnia: fino a +{Math.round((COMPANY[4].xp - 1) * 100)}% in 4). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
           <li><b>🎓 Sottoclassi</b>: dal Lv {SUBCLASS_LEVEL} ogni classe può comprarne due (dalla scheda dell'eroe, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una). Ognuna dà un tratto sempre attivo e due azioni nuove (al Lv 5 e al Lv 11). Comprate restano tue: ne usi una alla volta e la cambi gratis fuori dai dungeon.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
           <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>
@@ -133,9 +147,9 @@ export default function SegreteManual() {
 
       <Fold icon={COIN_ICON} title={`${COIN_NAME}, bottino e oggetti`}>
         <ul>
-          <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco.</li>
+          <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco. Tutte le monete (sale, mostri, scrigno) salgono con la Compagnia: {[2, 3, 4].map((n) => `+${Math.round((COMPANY[n].coins - 1) * 100)}% in ${n}`).join(", ")}.</li>
           <li>I mostri a volte lasciano monete o un oggetto, che va a un eroe tirato a sorte (2 eroi d4, 3 eroi d6, 4 eroi d8: 1–2 il primo, 3–4 il secondo…): gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
-          <li>Il bottino si consegna se il gruppo <b>vince</b> il dungeon. Lo scrigno finale ha il <b>10%</b> di essere un Mimic: se vi sconfigge conservate bottino precedente e PE, perdendo solo lo scrigno; se lo uccidete ricevete anche il tesoro. Le Segrete assegnano solo Monete Antiche, mai Corone del Mercato Nero.</li>
+          <li>Il bottino si consegna se il gruppo <b>vince</b> il dungeon. Lo scrigno finale ha il <b>{Math.round(MIMIC_CHANCE * 100)}%</b> di essere un Mimic: se vi sconfigge conservate bottino precedente e PE, perdendo solo lo scrigno; se lo uccidete ricevete anche il tesoro. Le Segrete assegnano solo Monete Antiche, mai Corone del Mercato Nero.</li>
           <li><b>🎁 Regali:</b> dallo Zaino puoi regalare un oggetto a un altro giocatore per {GIFT_FEE} {COIN_NAME}, al massimo {GIFT_DAILY} al giorno. Un'arma montata su un eroe va prima rimessa nello zaino (tasto «↩ Nello zaino»), poi la può prendere un altro tuo eroe o la puoi regalare.</li>
           <li>Lo zaino è unico per tutti i tuoi eroi. In lotta usare un oggetto vale come l'azione del round.</li>
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>

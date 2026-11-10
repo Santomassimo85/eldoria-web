@@ -1309,6 +1309,25 @@ function currentWeekKey(now = /* @__PURE__ */ new Date()) {
 }
 
 // src/data/segrete.js
+var MAX_PARTY = 4;
+var COMPANY = {
+  1: { save: 0, hit: 0, hp: 0, coins: 1, xp: 1, chest: 0 },
+  2: { save: 1, hit: 0, hp: 0, coins: 1.1, xp: 1.05, chest: 0 },
+  3: { save: 1, hit: 1, hp: 0, coins: 1.2, xp: 1.1, chest: 0 },
+  4: { save: 1, hit: 1, hp: 0.05, coins: 1.3, xp: 1.15, chest: 0.25 }
+};
+var companyOf = (n) => COMPANY[Math.max(1, Math.min(MAX_PARTY, Number(n) || 1))];
+var pct = (m) => `+${Math.round((m - 1) * 100)}%`;
+function companyLines(n) {
+  const c = companyOf(n), out = [];
+  if (c.save) out.push(`+${c.save} ai tiri salvezza`);
+  if (c.hit) out.push(`+${c.hit} a colpire e alla CD`);
+  if (c.hp) out.push(`+${Math.round(c.hp * 100)}% PF`);
+  if (c.coins > 1) out.push(`${pct(c.coins)} Monete Antiche`);
+  if (c.xp > 1) out.push(`${pct(c.xp)} PE`);
+  if (c.chest) out.push(`scrigno: ${Math.round(c.chest * 100)}% di un oggetto in pi\xF9`);
+  return out;
+}
 var AFK_DEFEND_MS = 5 * 60 * 1e3;
 var ROOM_IDLE_MS = 3 * 60 * 60 * 1e3;
 var DEFAULT_DUNGEONS = [
@@ -1529,6 +1548,7 @@ function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey(
 
 // src/data/segreteEngine.js
 var subP = (c) => c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {};
+var companyLinesTxt = (n) => companyLines(n).join(", ");
 var LOG_MAX = 80;
 var AFK_MS = 5 * 60 * 1e3;
 var rnd = Math.random;
@@ -1642,7 +1662,7 @@ function makeHero(m) {
 var SOLO_XP_MULT = 0.75;
 function xpGain(level, floors, diff = "facile", party = 2) {
   if (level >= MAX_STORY_LEVEL) return 0;
-  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : 1));
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (party <= 1 ? SOLO_XP_MULT : companyOf(party).xp));
 }
 var ADAPT = { hpUp: 0.22, hpDown: 0.16, hpMin: 0.35, dmgPer: 0.55, hitPer: 0.36, bigBase: 0.3, bigPer: 0.55, multUp: 0.04, multDown: 0.12, multMin: 0.5, soloHp: 1.2, minionPer: 0.22 };
 var CAPS = {
@@ -1904,6 +1924,19 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     seq: 0,
     bestiary: bestiary.map((m) => m.id || m.name)
   };
+  s.party = s.heroes.length;
+  const C = companyOf(s.party);
+  s.heroes.forEach((h) => {
+    if (C.save) h.save += C.save;
+    if (C.hit) h.compHit = C.hit;
+    if (C.hp) {
+      const x = Math.round(h.maxHp * C.hp);
+      h.maxHp += x;
+      h.hp += x;
+      h.compHp = x;
+    }
+  });
+  if (s.party > 1) log(s, `\u{1F91D} Compagnia \xD7${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   const helpers = s.heroes.filter((h) => h.helper);
   if (helpers.length) log(s, `\u{1F91D} ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete n\xE9 bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti gi\xE0 pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
@@ -1931,7 +1964,7 @@ var BUDGET = {
 var heroOffense = (lv) => BUDGET.hpPerHero * (1 + BUDGET.hpPerLevel * (Math.max(1, lv) - 1) + (lv >= 5 ? 0.25 : 0));
 function balanceFoes(foes, heroes, isBoss) {
   const live = heroes.filter((h) => !h.fled);
-  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE), 0) || 10;
+  const heroHp = live.reduce((t, h) => t + Math.max(5, (h.maxHp || 10) - HERO_HP_BASE - (h.compHp || 0)), 0) || 10;
   const heroOff = live.reduce((t, h) => t + heroOffense(h.level || 1), 0) || BUDGET.hpPerHero;
   const kind = isBoss ? BUDGET.boss : foes.some((f) => f.role === "elite") ? BUDGET.elite : BUDGET.normal;
   const w = (f) => BUDGET.weight[f.role] || 1;
@@ -2039,7 +2072,7 @@ function heroAct(s, h, a, target) {
   const mod = mainMod(h.cls, st);
   const healMod = st[kitOf(h.cls).healStat] ?? mod;
   const sp = subP(h);
-  const sDmg = subNum(sp.sDmg, lv, mod), sHeal = subNum(sp.heal, lv, mod), sDc = sp.dc || 0;
+  const sDmg = subNum(sp.sDmg, lv, mod), sHeal = subNum(sp.heal, lv, mod), sDc = (sp.dc || 0) + (h.compHit || 0);
   const flatOf = (f) => {
     const m = /^lv\*(\d+)$/.exec(String(f || ""));
     return m ? lv * Number(m[1]) : Number(f) || 0;
@@ -2077,7 +2110,7 @@ function heroAct(s, h, a, target) {
       }
     }
     const wm = a.kind === "weapon" ? weaponMod(h.cls, st, a) : mod;
-    const hitW = a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit;
+    const hitW = (a.kind === "weapon" ? profOf(lv) + wm + (a.plus || 0) + (h.armorHit || 0) + (sp.wHit || 0) : hit) + (h.compHit || 0);
     if (a.selfDis) {
       h.fx.reckless = s.round + 2;
       h.fx.adv = Math.max(Number(h.fx.adv) || 0, s.round + 2);
@@ -2622,7 +2655,7 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 function floorCoins(s) {
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
-  const cm = diffOf(s.diff).coins;
+  const cm = diffOf(s.diff).coins * companyOf(s.party || s.heroes.length).coins;
   const got = s.heroes.filter((h) => !h.fled && !h.helper).map((h) => {
     const c = Math.round(die(FLOOR_COINS_DIE) * cm);
     addSpoil(s, h.uid, { coins: c, src: s.boss ? "boss sconfitto" : `sala ${s.floor} ripulita` });
@@ -2651,7 +2684,7 @@ function lootDead(s) {
     const who = heroes[Math.min(heroes.length - 1, Math.ceil(r / 2) - 1)];
     const parts = [];
     if (die(100) <= ch.coins) {
-      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins);
+      const c = Math.round(roll(ch.coinDice[0], ch.coinDice[1]).t * D.coins * companyOf(s.party || s.heroes.length).coins);
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`\u{1FA99} ${c} Monete Antiche`);
     }
@@ -2816,11 +2849,13 @@ function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
 function awardChest(s, uid, now) {
   const opener = s.heroes.find((h) => h.uid === uid);
   const D = diffOf(s.diff), takers = s.heroes.filter((h) => !h.fled && !h.helper);
-  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1));
+  const C = companyOf(s.party || s.heroes.length);
+  const coins = Math.round((die(10) + die(10) + 6) * (((s.floors || 3) + 1) / 2) * (D.coins || 1) * C.coins);
   takers.forEach((h) => addSpoil(s, h.uid, { coins, src: "scrigno" }));
   const ids = [];
   const n = 1 + (rnd() < 0.6 ? 1 : 0) + (rnd() < 0.25 ? 1 : 0) + Math.max(0, takers.length - 1) * 2;
-  for (let i = 0; i < n; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
+  const extra = C.chest && rnd() < C.chest ? 1 : 0;
+  for (let i = 0; i < n + extra; i++) ids.push(CHEST_BASIC[Math.floor(rnd() * CHEST_BASIC.length)]);
   if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1)) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
   const items = ids.map((id) => {
     let rolls = takers.map((h) => ({ uid: h.uid, name: h.name, v: die(20) }));

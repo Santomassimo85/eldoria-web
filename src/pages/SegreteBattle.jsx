@@ -477,7 +477,7 @@ export function SpoilsBox({ run, uid, spoils, hidden }) {
   const [open, setOpen] = useState(false);
   const gains = (run.gains || {})[uid] || [];
   if ((run.heroes || []).find((h) => h.uid === uid)?.helper) {
-    return <div className="sgb-spoils"><p className="sgb-spoils-head">🤝 Partecipi come aiuto: hai già finito i dungeon con questo eroe, quindi niente PE, monete né bottino. Il gruppo ti ringrazia!</p></div>;
+    return <div className="sgb-spoils"><p className="sgb-spoils-head">🤝 Partecipi come aiuto: hai già finito i dungeon con questo eroe, quindi niente PE, monete né bottino. Il gruppo ti ringrazia (e conti per la Compagnia)!</p></div>;
   }
   if (!spoils && !gains.length) return null;
   const coins = spoils?.coins || 0;
@@ -490,7 +490,8 @@ export function SpoilsBox({ run, uid, spoils, hidden }) {
       <button type="button" className="sgb-spoils-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span>🎒 Il tuo bottino: <b>{COIN_ICON} {coins} Monete Antiche</b>
           {items.map(([id, n]) => itemOf(id) && <span key={id}> · {itemOf(id).icon} {itemOf(id).name}{n > 1 ? ` ×${n}` : ""}</span>)}
-          <small> · {state}</small></span>
+          <small> · {state}</small>
+          {(run.party || 0) > 1 && <small className="sgb-company"> · 🤝 Compagnia ×{run.party}</small>}</span>
         {!!gains.length && <em>{open ? "chiudi ▴" : "sala per sala ▾"}</em>}
       </button>
       {open && (
