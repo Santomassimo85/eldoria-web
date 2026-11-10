@@ -1410,8 +1410,12 @@ export default function WorldBoss() {
         let dieDetail = diePart ? `Dado ${diePart}[${rolls.join("+")}]` : "Danno fisso";
         let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}${riderNote}`;
         if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}${riderNote}) x2`;
-        if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
-          const sneakDice = (charData?.level ?? 1) >= 3 ? 2 : 1;
+        if (/\b(ladro|rogue)\b/i.test(String(charData?.class || ""))) {
+          // Attacco Furtivo D&D 5e: 1d6 al Lv 1, +1d6 ogni 2 livelli (ceil(Lv/2)d6, 10d6 al 19);
+          // col critico si raddoppiano anche i dadi del furtivo.
+          const lvl = Math.min(20, Math.max(1, parseInt(charData?.level) || 1));
+          const baseDice = Math.ceil(lvl / 2);
+          const sneakDice = isCritical ? baseDice * 2 : baseDice;
           const sneakRolls = [];
           let sneakTotal = 0;
           for (let i = 0; i < sneakDice; i++) {
