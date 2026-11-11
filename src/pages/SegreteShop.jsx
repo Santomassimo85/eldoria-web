@@ -1,3 +1,4 @@
+import SegreteIdentity from "../components/SegreteIdentity";
 import { heroIdentity } from "../utils/segreteIdentity";
 /* LE SEGRETE · Bottega e zaino (2026-11-04)
    Monete Antiche (characters.storyCoins) e zaino (characters.storyBag) del giocatore, per
@@ -133,7 +134,7 @@ function EquipBox({ id, charData, busy, onEquip, onClose }) {
             const has = charData.storyChars[c]?.[field] === id;
             return (
               <button key={c} type="button" className="sgr-btn" style={clsStyle(c)} disabled={busy || has} onClick={() => onEquip(c, slot, id)}>
-                <SgIcon kind="cls" of={c} fallback={classInfo(c)?.icon} /> {heroIdentity(c, charData?.storyChars?.[c])}{has ? " ✓" : ""}
+                <SgIcon kind="cls" of={c} fallback={classInfo(c)?.icon} /> <SegreteIdentity cls={c} hero={charData?.storyChars?.[c]} />{has ? " ✓" : ""}
               </button>
             );
           })}
@@ -249,7 +250,7 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
               return (
                 <li key={`${cls}-${slot}`} className="sgs-item sgs-worn" style={clsStyle(cls)}>
                   <SgIcon kind="item" of={it} frame size="md" className={`sgs-ico gi-r-${it.rarity}`} />
-                  <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname"><SgIcon kind="cls" of={cls} fallback={classInfo(cls)?.icon} /> {heroIdentity(cls, charData?.storyChars?.[cls])}</span></small></span>
+                  <span className="sgs-main"><b>{it.name}</b><small>sul tuo <span className="sgr-clsname"><SgIcon kind="cls" of={cls} fallback={classInfo(cls)?.icon} /> <SegreteIdentity cls={cls} hero={charData?.storyChars?.[cls]} /></span></small></span>
                   <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => unequip(cls, slot)}>↩ Nello zaino</button>
                 </li>
               );

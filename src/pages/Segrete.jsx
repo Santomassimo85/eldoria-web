@@ -1,3 +1,4 @@
+import SegreteIdentity from "../components/SegreteIdentity";
 /* LE SEGRETE — story mode della Sala della Gloria (fase 1, 2026-11-04):
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
@@ -235,7 +236,7 @@ export default function Segrete() {
       <div className="sgr-status">
         <button type="button" className="sgr-st sgr-st--hero" style={clsStyle(curCls)} onClick={() => setTab("eroi")}>
           <SgIcon kind="cls" of={curCls} fallback={ci?.icon || "?"} size="md" color="var(--cls)" className="sgr-st-ico" />
-          <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? `${heroIdentity(curCls, curHero)} · Lv ${level(curCls)}` : "da creare"}</b></span>
+          <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? <><SegreteIdentity cls={curCls} hero={curHero} /> · Lv {level(curCls)}</> : "da creare"}</b></span>
         </button>
         <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab("gruppi")}>
           <SgIcon kind="ui" of="gruppi" fallback="⚔" size="md" className="sgr-st-ico" />
@@ -287,13 +288,13 @@ export default function Segrete() {
                         </div>
                         <ul className="sgr-room-members">
                           {r.members.map((m) => (
-                            <li key={m.uid} style={clsStyle(m.cls)}><span className="sgr-clsdot" aria-hidden="true" /><SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} color="var(--cls)" /> {m.name} <small>· <span className="sgr-clsname">{heroIdentity(m.cls, m)}</span> Lv {m.level}{m.uid === r.hostUid ? " · capo" : ""}</small></li>
+                            <li key={m.uid} style={clsStyle(m.cls)}><span className="sgr-clsdot" aria-hidden="true" /><SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} color="var(--cls)" /> {m.name} <small>· <span className="sgr-clsname"><SegreteIdentity cls={m.cls} hero={m} /></span> Lv {m.level}{m.uid === r.hostUid ? " · capo" : ""}</small></li>
                           ))}
                         </ul>
                         <div className="sgr-room-actions">
                           <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
                             onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !heroReady(charData, cls) ? "Tira prima i PF" : `Entra come ${heroIdentity(cls, heroOf(charData, cls))} Lv ${level(cls)}`}
+                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
                           </button>
                           {(master || idle) && (
                             <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
@@ -346,7 +347,7 @@ export default function Segrete() {
                         <b className="sgr-room-name">{r.name}</b>
                         <DungeonBadge d={dungeonOf(r.type)} diff={r.difficulty} />
                       </div>
-                      <p className="sgr-room-line">{r.members.map((m) => `${classInfo(m.cls)?.icon || ""} ${m.name} (${heroIdentity(m.cls, m)})`).join(" · ")}</p>
+                      <p className="sgr-room-line">{r.members.map((m, i) => <span key={m.uid}>{i > 0 && " · "}{m.name} (<SegreteIdentity cls={m.cls} hero={m} />)</span>)}</p>
                       {master && (
                         <div className="sgr-room-actions">
                           <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => reopenRoom(r.id))}>↺ Riporta in stanza</button>
@@ -432,7 +433,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
                 <SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} frame size="md" color="var(--cls)" className="sgr-slot-ico" />
                 <span className="sgr-slot-main">
                   <b>{m.name}{m.uid === room.hostUid && <em className="sgr-tag">capo</em>}</b>
-                  <small><span className="sgr-clsname">{heroIdentity(m.cls, m)}</span> · Lv {m.level}</small>
+                  <small><span className="sgr-clsname"><SegreteIdentity cls={m.cls} hero={m} /></span> · Lv {m.level}</small>
                 </span>
                 <span className={`sgr-slot-state${m.ready ? " is-on" : ""}`}>{m.ready ? "✓ Pronto" : "In attesa"}</span>
                 {(host || master) && m.uid !== uid && (
@@ -456,7 +457,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 
       {me && heroOf(charData, me.cls) && !armorChosen(me.cls, heroOf(charData, me.cls)) && (
-        <button type="button" className="sgr-gear-alert" onClick={() => onFix?.(me.cls)}>⚠ Il tuo {heroIdentity(me.cls, heroOf(charData, me.cls))} non ha ancora scelto l'armatura (ora usa quella di base). <b>Sistemala →</b></button>
+        <button type="button" className="sgr-gear-alert" onClick={() => onFix?.(me.cls)}>⚠ Il tuo <SegreteIdentity cls={me.cls} hero={heroOf(charData, me.cls)} /> non ha ancora scelto l'armatura (ora usa quella di base). <b>Sistemala →</b></button>
       )}
       <p className={`sgr-company${room.members.length > 1 ? " is-on" : ""}`}>
         {room.members.length > 1
@@ -466,7 +467,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       {!dungeonActive && <p className="sgr-err">Questo dungeon è disattivato. Il capo deve sceglierne uno attivo per partire.</p>}
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
       {!canRun && (
-        <p className="sgr-helper">🤝 Con {me ? heroIdentity(me.cls, me) : "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>
+        <p className="sgr-helper">🤝 Con {me ? <SegreteIdentity cls={me.cls} hero={me} /> : "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>
       )}
       <div className="sgr-start">
         <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!dungeonActive || !heroReady(charData, me?.cls)))}

@@ -299,7 +299,7 @@ export default function Arena() {
     return m?.matchId || null;
   }, [arenaMeta, currentUser]);
   // Modalità fight (2026-11-02): col combattimento aperto il sito nasconde testata, d20 e flottanti
-  useFightMode(combatModalOpen && !!myActiveMatchId);
+  useFightMode(combatModalOpen);
   useFitFightField(combatModalOpen && !!myActiveMatchId);
   // Vista Palco: sprite di battaglia dei PG (characters.spriteUrl / deadSpriteUrl), letti una volta
   const spriteIdsKey = useMemo(() => {

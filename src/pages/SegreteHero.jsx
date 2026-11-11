@@ -12,6 +12,7 @@ import { playDiceRoll } from "../components/diceSound";
 import SegreteGear from "./SegreteGear";
 import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
+import SegreteIdentity from "../components/SegreteIdentity";
 import { itemOf, heroGear, coinsOf } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
@@ -55,7 +56,7 @@ function SubclassBox({ cls, hero, lv, charData, busy, send }) {
         const mine = owned.includes(sc.key), on = active === sc.key;
         return (
           <div key={sc.key} className={`sgh-sub-card${on ? " is-on" : ""}`}>
-            <p className="sgh-sub-name">{sc.icon} <b>{sc.name}</b>{on ? <em> · attiva</em> : mine ? <em> · tua</em> : null}</p>
+            <p className="sgh-sub-name">{sc.icon} <b style={{ color: "color-mix(in srgb, var(--cls) 65%, #fff 35%)" }}>{sc.name}</b>{on ? <em> · attiva</em> : mine ? <em> · tua</em> : null}</p>
             <small>{sc.desc}</small>
             <p className="sgh-sub-passive">✦ {sc.passiveTxt}</p>
             <div className="sgh-acts">{sc.actions.map((a) => <ActChip key={a.id} a={a} sub={`${actionLine(a)} · dal Lv ${a.min}`} />)}</div>
@@ -232,7 +233,7 @@ export default function SegreteHero({ cls, charData }) {
       <div className="sgh-head">
         <SgIcon kind="cls" of={cls} fallback={info?.icon} frame size="lg" color="var(--cls)" className="sgh-ico" />
         <div>
-          <p className="sgh-title">{info?.it}{subc ? ` · ${subc.icon} ${subc.name}` : ""} · Livello {lv}</p>
+          <p className="sgh-title"><SegreteIdentity cls={cls} hero={hero} /> · Livello {lv}</p>
           <small>{heroMaxHp(cls, lv, st, hero.hpRolls || []) + def.hpBonus + (sp.hpLv || 0) * lv} PF · CA {def.ac + (sp.ac || 0)} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
         </div>
       </div>

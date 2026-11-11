@@ -24,6 +24,10 @@
         {
           "type": "fix",
           "text": "Segrete: classe e sottoclasse attiva visibili anche in ricerca gruppo, lobby, selezione eroi, zaino e storico. I gruppi aggiornano la sottoclasse quando cambia."
+        },
+        {
+          "type": "fix",
+          "text": "Sottoclassi delle Segrete in una sfumatura del colore della classe. Menu a dado nascosto durante tutti i fight, inclusi Boss e TCG e le viste Arena."
         }
       ]
     },

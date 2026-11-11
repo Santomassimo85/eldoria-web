@@ -1,3 +1,4 @@
+import SegreteIdentity from "../components/SegreteIdentity";
 import { heroIdentity } from "../utils/segreteIdentity";
 /* LE SEGRETE · i tuoi eroi (2026-11-04)
    La lobby divisa in pezzi chiari: qui ci sono gli EROI già creati (uno per classe),
@@ -62,7 +63,7 @@ export function HeroQuickPick({ charData, value, onPick, disabled, onManage, lab
                 title={ready ? `${heroIdentity(c.key, h)} Lv ${lv} · ${run.text}` : "Prima tira i PF nella scheda Personaggi"}
                 className={`sgr-qp-b${on ? " is-on" : ""}${run.cls === "is-done" ? " is-done" : ""}`} style={clsStyle(c.key)} onClick={() => !on && onPick(c.key)}>
                 <SgIcon kind="cls" of={c} frame size="sm" color="var(--cls)" />
-                <b>{heroIdentity(c.key, h)}</b>
+                <b><SegreteIdentity cls={c.key} hero={h} /></b>
                 <small>Lv {lv} · {ready ? run.text.replace(" · può aiutare", " · aiuto") : "tira i PF"}</small>
               </button>
             );
@@ -92,7 +93,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
             <button type="button" className="sgr-acc-h" aria-expanded={isOpen} onClick={() => onOpen(isOpen ? null : c.key)}>
               <SgIcon kind="cls" of={c} frame size="md" color="var(--cls)" className="sgr-acc-ico" />
               <span className="sgr-acc-main">
-                <b>{heroIdentity(c.key, h)} <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
+                <b><SegreteIdentity cls={c.key} hero={h} /> <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
                 <span className="sgr-acc-xp" title={`${pct}% al livello dopo`}><i style={{ width: `${pct}%` }} /></span>
                 <small className="sgr-acc-sub">{heroMaxHp(c.key, lv, st, h.hpRolls || []) + heroDefense(c.key, st, heroGear(h, c.key)).hpBonus} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · <span className={run.cls}>{run.text}</span></small>
               </span>
@@ -138,7 +139,7 @@ export function HeroRoster({ charData, value, onSelect, disabled, playingLabel =
             {on && <span className="sgr-hero-on">▶ {playingLabel}</span>}
             <span className="sgr-hero-top">
               <SgIcon kind="cls" of={c} frame size="lg" color="var(--cls)" className="sgr-hero-ico" />
-              <span className="sgr-hero-name"><b>{heroIdentity(c.key, h)}</b><small>Livello {lv}</small></span>
+              <span className="sgr-hero-name"><b><SegreteIdentity cls={c.key} hero={h} /></b><small>Livello {lv}</small></span>
             </span>
             <span className="sgr-hero-xp" title={lv >= MAX_STORY_LEVEL ? "livello massimo" : `${xp} / ${to} PE`}><i style={{ width: `${pct}%` }} /></span>
             <span className="sgr-hero-stats">{heroMaxHp(c.key, lv, st, h.hpRolls || []) + heroDefense(c.key, st, heroGear(h, c.key)).hpBonus} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · {lv >= MAX_STORY_LEVEL ? "max" : `${pct}% al Lv ${lv + 1}`}</span>
@@ -184,7 +185,7 @@ export function HeroNews({ charData, onSelect }) {
       {!!list.length && <b>⬆ Eroi da sistemare</b>}
       {list.map(({ c, todo }) => (
         <button key={c.key} type="button" className="sgr-news-i" style={clsStyle(c.key)} onClick={() => onSelect(c.key)}>
-          {c.icon} {heroIdentity(c.key, heroOf(charData, c.key))} Lv {heroPending(heroOf(charData, c.key)).level}: {todo.map((t) => `${t.icon} ${t.text}`).join(" · ")} →
+          {c.icon} <SegreteIdentity cls={c.key} hero={heroOf(charData, c.key)} /> Lv {heroPending(heroOf(charData, c.key)).level}: {todo.map((t) => `${t.icon} ${t.text}`).join(" · ")} →
         </button>
       ))}
     </div>

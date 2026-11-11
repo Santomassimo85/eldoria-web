@@ -1,4 +1,4 @@
-import { heroIdentity } from "../utils/segreteIdentity";
+import SegreteIdentity from "../components/SegreteIdentity";
 /* Le Segrete: combattimento in prima persona, sincronizzato con dungeon_runs.
    Il server risolve le azioni; la coda mostra dado, effetto e danno in sequenza. */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -697,7 +697,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
         {!playing && (run.status === "lost" || (run.status === "won" && (!run.chest || chestDone))) && (
           <div className="sgb-end">
             <p className="sgb-result">{run.mimic?.result === "lost" ? "Il Mimic vi ha sconfitti: scrigno perduto, bottino precedente e PE conservati." : run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
-            {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} ({heroIdentity(l.cls, run.heroes.find((h) => h.uid === l.uid) || l)}): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
+            {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} (<SegreteIdentity cls={l.cls} hero={run.heroes.find((h) => h.uid === l.uid) || l} />): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
             {run.loot && (
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}
                 <span>🎁 Nel forziere del boss: <b>{run.loot.name}</b>, va a <b>{run.loot.winner}</b>{run.loot.uid === uid ? " (a te!)" : ""}. Arriverà nella scheda su Foundry.</span></p>

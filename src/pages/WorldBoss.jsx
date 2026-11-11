@@ -1,4 +1,5 @@
 import { worldBossNightPaused, worldBossNightWindow } from "../data/worldBossSchedule";
+import { useFightMode } from "../utils/fightMode";
 import React, {
   useState,
   useEffect,
@@ -388,6 +389,7 @@ export default function WorldBoss() {
   const [targetId, setTargetId] = useState(null); // bersaglio scelto dal giocatore (id boss o minion)
 
   const fightStarted = turnState.fightStarted === true;
+  useFightMode(fightStarted);
 
   // Tutti i nemici in scena: il boss per primo, poi i minion evocati.
   const enemies = useMemo(() => {

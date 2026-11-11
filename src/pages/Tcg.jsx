@@ -9,6 +9,7 @@
    ============================================================ */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { useFightMode } from "../utils/fightMode";
 import { isTcgUnlockedFor } from "../tcg/access.js";
 import { createGame, reshuffleSideForMulligan } from "../tcg/engine.js";
 import { buildClassDeck } from "../tcg/cards.js";
@@ -385,6 +386,10 @@ export default function Tcg() {
     setScreen("tournament");
   };
 
+  const inFight = isTcgUnlockedFor(currentUser?.email) &&
+    (screen === "ai" || screen === "pvp" || screen === "tournament-ai");
+  useFightMode(inFight);
+
   if (!isTcgUnlockedFor(currentUser?.email)) {
     return (
       <div className="tcg-page">
@@ -403,8 +408,6 @@ export default function Tcg() {
   // FORCE landscape ONLY during an actual battle (vs AI, PvP o torneo-IA).
   // Every other screen (menu, deck, collection, shop, manual, lobby) stays
   // in normal vertical orientation with the global navbar on top.
-  const inFight =
-    screen === "ai" || screen === "pvp" || screen === "tournament-ai";
 
   // Durante la partita la UI globale sparisce: navbar, chat globale e
   // contatore giocatori online (regole su body.tcg-infight in Tcg.css).
