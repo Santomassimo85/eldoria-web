@@ -20,6 +20,10 @@
         {
           "type": "fix",
           "text": "Segrete: sottoclasse attiva visibile durante il combattimento, sulla barra del proprio eroe e sulle schede dei compagni, anche su telefono."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: classe e sottoclasse attiva visibili anche in ricerca gruppo, lobby, selezione eroi, zaino e storico. I gruppi aggiornano la sottoclasse quando cambia."
         }
       ]
     },

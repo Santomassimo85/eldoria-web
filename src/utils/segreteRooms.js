@@ -8,6 +8,7 @@ import { collection, doc, runTransaction, serverTimestamp, deleteDoc, addDoc } f
 import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
 import { MAX_PARTY, allReady, mergeDungeons } from "../data/segrete";
+import { heroSubclass } from "../data/segreteKits";
 
 const roomsCol = () => collection(db, "dungeon_rooms");
 
@@ -18,11 +19,12 @@ async function requireActiveDungeon(tx, key) {
 }
 
 function memberFrom(uid, char, cls, level) {
+  const sub = heroSubclass(cls, char?.storyChars?.[cls]);
   return {
     uid,
     name: char?.name || "Avventuriero",
     avatar: char?.spriteUrl || char?.image || char?.avatar || "",
-    cls, level, ready: false,
+    cls, level, subclass: sub?.key || "", subName: sub?.name || "", ready: false,
   };
 }
 
@@ -92,9 +94,10 @@ export const kickMember = (roomId, byUid, uid, isMaster) => editRoom(roomId, (ro
 });
 
 // Cambia classe nella stanza (toglie la propria spunta).
-export const setMemberClass = (roomId, uid, cls, level) => editRoom(roomId, (room) => {
+export const setMemberClass = (roomId, uid, cls, level, char) => editRoom(roomId, (room) => {
   if (room.status !== "open") throw new Error("Il dungeon è già partito.");
-  return { members: room.members.map((m) => (m.uid === uid ? { ...m, cls, level, ready: false } : m)) };
+  const member = memberFrom(uid, char, cls, level);
+  return { members: room.members.map((m) => (m.uid === uid ? { ...m, cls, level, subclass: member.subclass, subName: member.subName, ready: false } : m)) };
 });
 
 // Notifica (campanella + push) a una lista di uid, porta alle Segrete.

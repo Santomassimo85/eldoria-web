@@ -2456,7 +2456,7 @@ exports.segreteDo = onCall(
             const won = run.status === "won" && !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled);
             const entry = {
               at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝", diff: run.diff || "facile",
-              cls: h.cls, result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
+              cls: h.cls, subclass: h.subclass || "", subName: h.subName || "", result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
               coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
               xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,
               corone: 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",

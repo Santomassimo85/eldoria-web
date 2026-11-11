@@ -1,3 +1,4 @@
+import { heroIdentity } from "../utils/segreteIdentity";
 /* LE SEGRETE · Storico dei dungeon (2026-11-05)
    `characters.storyLog` = ultime 40 spedizioni finite, scritte dal server (segreteDo):
    {at, day, dungeon, icon, cls, result won|lost|fled, floor, floors, coins, items, kept, xp, lvTo, corone, loot}.
@@ -23,7 +24,7 @@ function Row({ e }) {
     <li className={`sgl-row is-${e.result}`} style={clsStyle(e.cls)}>
       <span className="sgl-time">{hhmm(e.at)}</span>
       <span className="sgl-main">
-        <b>{e.icon} {e.dungeon} <span className="sgr-clsname">· {c?.icon} {c?.it}</span></b>
+        <b>{e.icon} {e.dungeon} <span className="sgr-clsname">· {c?.icon} {heroIdentity(e.cls, e)}</span></b>
         <small>{RESULT[e.result] || e.result}{e.helper ? " · 🤝 aiuto" : ""} · arrivati a {reached}</small>
         <span className="sgl-gain">
           {e.helper ? (

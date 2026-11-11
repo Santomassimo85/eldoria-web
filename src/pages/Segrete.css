@@ -218,7 +218,9 @@ button.sgr-st:hover { border-color: var(--el, #e0a85a); }
 .sgr-st--hero { border-color: var(--cls); box-shadow: inset 4px 0 0 var(--cls); }
 .sgr-st-ico.gi { box-sizing: border-box; padding: 7px; }
 .sgr-st--hero .sgr-st-ico { background: color-mix(in srgb, var(--cls) 28%, transparent); }
-.sgr-page .sgr-st--hero b { color: var(--cls); }
+.sgr-page .sgr-st--hero b { color: var(--cls); white-space: normal; overflow-wrap: anywhere; }
+.sgr-clsname, .sgr-qp-b b { white-space: normal; overflow-wrap: anywhere; }
+.sgr-qp-b { max-width: min(320px, 85vw); }
 .sgr-st.is-live { border-color: #5fd16b; box-shadow: inset 4px 0 0 #5fd16b; }
 
 .sgr-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 0 0 16px; padding: 4px; border-radius: 3px; background: var(--roccia-1, #17141b); border: 1px solid rgba(var(--osso-rgb, 236,229,214), .14); }
