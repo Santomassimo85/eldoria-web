@@ -28,7 +28,8 @@
 
 /* il tuo eroe, sopra il log */
 .cw-me { flex: none; display: grid; gap: 3px; padding: 5px 8px 6px; border: 0; border-top: 2px solid #000; background: linear-gradient(180deg, #221c23, #17131a); color: #f3ead8; font: 13px var(--sgb-read, system-ui, sans-serif); text-align: left; cursor: default; box-shadow: inset 3px 0 0 var(--cls, #e0a85a); touch-action: manipulation; }
-.cw-me-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cw-me-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.cw-subclass { display: block; color: #f2d58b; font-size: .74rem; font-weight: 600; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
 .cw-me-top b { color: var(--cls, #f3ead8); font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cw-me-top em { font-style: normal; color: #c9bfad; font-size: .74rem; white-space: nowrap; }
 .cw-me-done { font-style: normal; color: #5fd16b; font-size: .74rem; font-weight: 700; white-space: nowrap; }

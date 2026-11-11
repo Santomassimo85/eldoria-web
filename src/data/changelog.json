@@ -16,6 +16,10 @@
         {
           "type": "feature",
           "text": "Segrete: in Bottega puoi vendere gli oggetti dello zaino a un terzo del prezzo, arrotondato per difetto. Il solo bottino ha un valore di riferimento per rarità, personalizzabile dal Master. Nuove sezioni Compra/Vendi e filtri per cure, purificanti, potenziamenti, oggetti da lancio, armi, armature e scudi."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: sottoclasse attiva visibile durante il combattimento, sulla barra del proprio eroe e sulle schede dei compagni, anche su telefono."
         }
       ]
     },

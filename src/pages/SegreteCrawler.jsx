@@ -7,7 +7,7 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo, classColor, clsStyle, diffOf, sizeOf } from "../data/segrete";
-import { WEAPON_CHOICES, TWO_HANDED } from "../data/segreteKits";
+import { WEAPON_CHOICES, TWO_HANDED, subclassOf } from "../data/segreteKits";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
@@ -129,10 +129,11 @@ function FoeAnchor({ f, round, selectable, picked, onPick, onInspect, bind, onHo
 
 function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, round }) {
   const press = usePress(h.id, selectable, onPick, null);
+  const subName = h.subName || subclassOf(h.cls, h.subclass)?.name;
   const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), img = h.img || classSprite, pips = dead ? [] : pipsOf(h, round);
   return (
     <button type="button" className={`cw-pm${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
-      style={clsStyle(h.cls)} aria-disabled={!selectable} aria-label={`${h.name}, ${classInfo(h.cls)?.it}, ${h.hp} su ${h.maxHp} PF`} {...press}>
+      style={clsStyle(h.cls)} aria-disabled={!selectable} aria-label={`${h.name}, ${classInfo(h.cls)?.it}${subName ? `, ${subName}` : ""}, ${h.hp} su ${h.maxHp} PF`} {...press}>
       <span className="cw-face" data-vfx-target={vfxKey(h.id)}>
         {img ? <img src={img} alt="" draggable="false" /> : <SgIcon kind="cls" of={h.cls} fallback={classInfo(h.cls)?.icon} size="sm" />}
         {done && <i className="cw-done" aria-hidden="true">✓</i>}
@@ -140,6 +141,7 @@ function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, rou
       <span className="cw-pm-txt">
         <b className="cw-nm">{h.helper ? "🤝 " : ""}{h.name}</b>
         <em className="cw-pm-cls">{classInfo(h.cls)?.it}{h.level ? ` · Lv ${h.level}` : ""}</em>
+        {subName && <span className="cw-subclass">{subName}</span>}
         <span className="cw-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
         <small>{dead ? (h.fled ? "fuggito" : "a terra") : `${h.hp}/${h.maxHp} · CA ${h.ac}`}</small>
       </span>
@@ -150,17 +152,19 @@ function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, rou
 // il tuo eroe: barra larga sopra il log. È anche il bersaglio quando curi te stesso, e l'ancora dei numeri
 function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
   const press = usePress(h.id, selectable, onPick, null);
+  const subName = h.subName || subclassOf(h.cls, h.subclass)?.name;
   const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), pips = dead ? [] : pipsOf(h, round);
   return (
     <button type="button" className={`cw-me${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
       style={clsStyle(h.cls)} data-vfx-target={vfxKey(h.id)} aria-disabled={!selectable}
-      aria-label={`${h.name}, ${h.hp} su ${h.maxHp} punti ferita, CA ${h.ac}`} {...press}>
+      aria-label={`${h.name}, ${classInfo(h.cls)?.it}${subName ? `, ${subName}` : ""}, ${h.hp} su ${h.maxHp} punti ferita, CA ${h.ac}`} {...press}>
       <span className="cw-me-top">
         <b>{h.helper ? "🤝 " : ""}{h.name}</b>
         <em>{classInfo(h.cls)?.it} · Lv {h.level}</em>
         {done && <i className="cw-me-done">✓ hai agito</i>}
         {!!pips.length && <StatusPips className="cw-pips" max={6} items={pips} />}
       </span>
+      {subName && <span className="cw-subclass">{subName}</span>}
       <span className="cw-me-row">
         <span className="cw-me-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
         <span className="cw-me-hp">{dead ? (h.fled ? "fuggito" : "a terra") : <>{h.hp}<small>/{h.maxHp}</small></>}</span>
