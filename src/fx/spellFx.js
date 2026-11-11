@@ -586,19 +586,33 @@ export function playSpell(o) {
       break;
     }
     case "thunderwave": {
-      // Fronte di pressione ampio: tre anelli d'aria, senza saette.
-      const dur = 380 * fast, ang = Math.atan2(ty - fy, tx - fx);
-      for (let i = 0; i < 3; i++) actor(delay + i * 65, dur, (t) => {
-        const x = fx + (tx - fx) * t, y = fy + (ty - fy) * t;
-        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = (1 - t * 0.65) * (1 - i * 0.15);
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-        ctx.strokeStyle = pal[1]; ctx.lineWidth = 3 * (1 - t * 0.5);
-        ctx.beginPath(); ctx.ellipse(0, 0, ts * (0.6 + t), ts * (2 + t * 6), 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-        ctx.strokeStyle = pal[0]; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(ts * 0.3, 0, ts * (0.6 + t), ts * (1.8 + t * 6), 0, -1.5, 1.5); ctx.stroke();
+      // A single expanding pressure front crosses the whole viewport.
+      const dur = 760 * fast, cx = W * 0.5, cy = H * 0.62;
+      const reach = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.12;
+      actor(delay, dur, (t) => {
+        const travel = Math.min(1, t * 2);
+        const radius = 3 + reach * (1 - Math.pow(1 - travel, 1.6));
+        const fade = (1 - t) * (reduced() ? 0.4 : 0.8);
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = Math.sin(t * Math.PI) * 0.12;
+        ctx.fillStyle = pal[2]; ctx.fillRect(0, 0, W, H);
+        // Dark compression edge, broad blue-white air, fine bright leading rim.
+        for (const [offset, width, color, alpha] of [[-6, 12, pal[3], 0.45], [-2, 6, pal[2], 0.65], [0, 2.5, pal[1], 0.9], [2, 1, pal[0], 1]]) {
+          ctx.globalAlpha = fade * alpha; ctx.strokeStyle = color; ctx.lineWidth = width;
+          ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(1, radius + offset), Math.max(1, (radius + offset) * 0.88), 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        // Radial streaks follow that same front; no separate projectile per enemy.
+        ctx.strokeStyle = pal[1]; ctx.lineWidth = 1; ctx.globalAlpha = fade * 0.6;
+        for (let i = 0; i < 28; i++) {
+          const a = i * Math.PI * 2 / 28;
+          const inner = Math.max(0, radius - (8 + i % 4 * 5));
+          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner * 0.88);
+          ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius * 0.88); ctx.stroke();
+        }
         ctx.restore();
       });
-      hit = delay + dur;
+      hit = delay + 380 * fast;
       break;
     }
     case "arrow": {

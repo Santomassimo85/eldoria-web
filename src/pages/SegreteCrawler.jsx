@@ -545,7 +545,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     setChosen(a);
   };
   const pickTarget = (id) => {
-    if (busy || aiming || !(chosen || chosenItem)) return;
+    if (busy || animating || walking || !myTurn || aiming || !(chosen || chosenItem)) return;
     setAiming({ id, name: [...(run?.heroes || []), ...(run?.foes || [])].find((x) => x.id === id)?.name || "" });
     if (chosenItem) { const it = chosenItem; setChosenItem(null); setBagOpen(false); return send({ op: "item", itemId: it.id, targetId: id }); }
     return chosen && send({ op: "act", actionId: chosen.id, targetId: id });
@@ -564,7 +564,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
   const itk = chosenItem ? itemTarget(chosenItem) : null;
   const tk = chosenItem ? (itk === "downed" ? "ally" : itk) : chosen ? targetKind(chosen) : null;
-  eng?.setPickable(tk === "foe" && !aiming ? run.foes.filter((x) => shown(x).hp > 0).map((x) => x.id) : []);
+  const canTarget = myTurn && !animating && !walking && !busy;
+  eng?.setPickable(canTarget && tk === "foe" && !aiming ? run.foes.filter((x) => shown(x).hp > 0).map((x) => x.id) : []);
   const playing = animating;
   const blocking = walking || animating;
   const rewardRun = run.chest && !chestRevealed ? hideChestRewards(run) : run;
@@ -599,14 +600,14 @@ export default function SegreteCrawler({ room, uid, tools }) {
         )}
         {!walking && run.foes.map((f) => {
           const c = shown(f);
-          return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onHover={hover} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(tk === "foe" && c.hp > 0 && !aiming)} />;
+          return <FoeAnchor key={f.id} f={c} round={run.round} bind={bind} onHover={hover} onInspect={setInspect} onPick={pickTarget} picked={aiming?.id === f.id} selectable={!!(canTarget && tk === "foe" && c.hp > 0 && !aiming)} />;
         })}
       </div>
 
       {me && (() => {
         const h = shown(me);
         return <MeBar h={h} round={run.round} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} picked={aiming?.id === h.id} onPick={pickTarget}
-          selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
+          selectable={canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
       })()}
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>
         <span className="sgb-log-text cw-log-text" key={last?.i} style={{ "--side": sideOf(last, run) || "transparent" }}><CwLogText l={last} run={run} /></span>
@@ -624,58 +625,35 @@ export default function SegreteCrawler({ room, uid, tools }) {
         {!walking && run.status === "fight" && blocking && (
           <p className="sgb-turn sgb-turn--wait">🎬 Si tirano i dadi e partono i colpi… {myTurn ? "poi tocca a te." : ""}</p>
         )}
-        {run.status === "fight" && !blocking && (myTurn ? (
-          chosen || chosenItem ? (
-            <div className="sgb-pickmsg">
-              {aiming
-                ? <span>⏳ {(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b> su <b>{aiming.name}</b>…</span>
-                : <span>{(chosenItem || chosen).icon} <b>{(chosenItem || chosen).name}</b>: tocca {tk === "foe" ? "un nemico nella stanza" : itk === "downed" ? "un alleato a terra" : "te o un alleato nel party"}.</span>}
-              {!aiming && <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>}
-            </div>
-          ) : bagOpen ? (
-            <div className="sgb-bag">
-              <p className="sgb-turn">🎒 Zaino: usare un oggetto è la tua azione del round.</p>
-              {!bagList.length && <p className="sgb-pickmsg">Lo zaino è vuoto. Gli oggetti si comprano alla Bottega delle Segrete (nella lobby) o si trovano sui mostri.</p>}
-              <div className="sgb-acts">
-                {bagList.map((it) => (
-                  <button key={it.id} type="button" className="sgb-act k-item" disabled={busy} onClick={() => pickItem(it)} title={it.desc}>
-                    <SgIcon kind="item" of={it} frame size="md" className={`sgb-act-ico gi-r-${it.rarity}`} />
-                    <span className="sgb-act-name">{it.name}</span>
-                    <span className="sgb-act-info">{it.desc}</span>
-                    <span className="sgb-act-uses">×{it.n}</span>
-                  </button>
-                ))}
-              </div>
-              <button type="button" className="sgb-btn sgb-btn--ghost" onClick={() => setBagOpen(false)}>← Torna alle azioni</button>
-            </div>
-          ) : (
-            <>
-              <p className="sgb-turn">⚔ Tocca al gruppo: scegli la tua azione{afkLeft != null ? ` · ⏳ ${fmtLeft(afkLeft)}` : ""}{pending.length > 1 ? ` · mancano ${pending.length}` : ""}</p>
-              <div className="sgb-acts">
-                <button type="button" className="sgb-act k-item" disabled={busy} onClick={() => setBagOpen(true)}>
-                  <SgIcon kind="ui" of="bag" fallback="🎒" frame size="md" className="sgb-act-ico" color="#e8c48a" />
-                  <span className="sgb-act-name">Zaino</span>
-                  <span className="sgb-act-info">{bagList.length ? `${bagList.reduce((t, x) => t + x.n, 0)} oggetti da usare` : "vuoto"}</span>
-                </button>
-                {acts.map((a) => (
-                  <button key={a.id} type="button" className={`sgb-act k-${a.kind}`} disabled={busy || (a.left != null && a.left <= 0)} onClick={() => pickAction(a)}>
-                    <SgIcon kind="action" of={a} frame size="md" className="sgb-act-ico" color={sgTone(a)} />
-                    <span className="sgb-act-name">{a.name}</span>
-                    <span className="sgb-act-info">{a.info || actInfo(a, me.level)}</span>
-                    {a.left != null && <span className="sgb-act-uses">{a.left}/{a.uses}</span>}
-                  </button>
-                ))}
-              </div>
-            </>
-          )
-        ) : (
-          <p className="sgb-turn sgb-turn--wait">
-            {pending.length
-              ? <>{me && acted[me.id] ? (me.fx?.petrified ? "🗿 Sei di pietra: salti il turno. " : me.fx?.frozen ? "🧊 Sei congelato: salti il turno. " : me.fx?.paralyzed ? "⚡ Sei paralizzato: salti il turno. " : "✓ Hai agito. ") : ""}⏳ Aspettiamo <b>{pending.map((h) => h.name).join(", ")}</b>{afkLeft != null ? ` · ${afkLeft > 0 ? `poi tocca ai mostri (chi manca si difende da solo tra ${fmtLeft(afkLeft)})` : "faccio difendere chi manca…"}` : ""}</>
-              : "👹 I mostri si muovono…"}
-            {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
-          </p>
-        ))}
+        {run.status === "fight" && me && <>
+          {!blocking && <p className={`sgb-turn${myTurn ? "" : " sgb-turn--wait"}`}>
+            {myTurn ? "Scegli la tua azione" : me.hp <= 0 ? "Sei a terra: un alleato può curarti" : acted[me.id] ? "Hai agito: attendi il prossimo round" : "I mostri si muovono"}
+            {afkLeft != null && ` · ${fmtLeft(afkLeft)}`}
+          </p>}
+          {(chosen || chosenItem) && <div className="sgb-pickmsg">
+            <span><b>{(chosenItem || chosen).name}</b>{aiming ? ` su ${aiming.name}…` : `: tocca ${tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"}.`}</span>
+            {!aiming && <button type="button" className="sgb-btn sgb-btn--ghost" disabled={busy} onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>}
+          </div>}
+          {bagOpen && <div className="sgb-bag">
+            <p className="sgb-turn">Zaino: usare un oggetto è la tua azione del round.</p>
+            {!bagList.length && <p className="sgb-pickmsg">Lo zaino è vuoto.</p>}
+            <div className="sgb-acts">{bagList.map((it) => <button key={it.id} type="button" className="sgb-act k-item" disabled={busy || blocking || !myTurn} onClick={() => pickItem(it)} title={it.desc}>
+              <SgIcon kind="item" of={it} frame size="md" className={`sgb-act-ico gi-r-${it.rarity}`} />
+              <span className="sgb-act-name">{it.name}</span><span className="sgb-act-info">{it.desc}</span><span className="sgb-act-uses">×{it.n}</span>
+            </button>)}</div>
+          </div>}
+          <div className={`sgb-acts cw-actions${chosen || chosenItem || bagOpen ? " is-compact" : ""}`}>
+            <button type="button" className={`sgb-act k-item${bagOpen ? " is-selected" : ""}`} disabled={busy || blocking || !myTurn} onClick={() => { setBagOpen((v) => !v); setChosen(null); setChosenItem(null); }}>
+              <SgIcon kind="ui" of="bag" fallback="🎒" frame size="md" className="sgb-act-ico" color="#e8c48a" />
+              <span className="sgb-act-name">Zaino</span><span className="sgb-act-info">{bagList.length ? `${bagList.reduce((t, x) => t + x.n, 0)} oggetti da usare` : "vuoto"}</span>
+            </button>
+            {acts.map((a) => <button key={a.id} type="button" className={`sgb-act k-${a.kind}${chosen?.id === a.id ? " is-selected" : ""}`} aria-pressed={chosen?.id === a.id} disabled={busy || blocking || !myTurn || (a.left != null && a.left <= 0)} onClick={() => { setChosenItem(null); setBagOpen(false); pickAction(a); }}>
+              <SgIcon kind="action" of={a} frame size="md" className="sgb-act-ico" color={sgTone(a)} />
+              <span className="sgb-act-name">{a.name}</span><span className="sgb-act-info">{a.info || actInfo(a, me.level)}</span>
+              {a.left != null && <span className="sgb-act-uses">{a.left}/{a.uses}</span>}
+            </button>)}
+          </div>
+        </>}
         <SpoilsBox run={rewardRun} uid={uid} spoils={spoils} hidden={playing} />
         {playing && run.status !== "fight" && <p className="sgb-turn sgb-turn--wait">⏳ …</p>}
         {!playing && run.status === "cleared" && (
@@ -717,7 +695,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
           const h = shown(h0);
           return <PartySlot key={h.id} h={h} round={run.round} classSprite={sprites[h.cls]} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
             picked={aiming?.id === h.id} onPick={pickTarget}
-            selectable={!aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
+            selectable={canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
         })}
       </div>}
     </div>,

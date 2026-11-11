@@ -282,7 +282,7 @@ function impactDelay(kind, i, canvas) {
   if (kind === "bolt") return (canvas ? 460 : 400) + i * 110;
   if (kind === "arrow") return (canvas ? 300 : 400) + i * 110;
   if (kind === "acidArrow") return 420 + i * 110;
-  if (kind === "thunderwave") return 380 + i * 110;
+  if (kind === "thunderwave") return 380;
   if (kind === "aoe") return 380 + i * 130;
   if (kind === "slash") return (canvas ? 120 : 140) + i * 90;
   if (kind === "hit") return i * 90;
@@ -341,11 +341,15 @@ function playCanvas(msg, targets) {
   }
   let shook = false;
   const hits = {};
+  // One screen-wide pressure front, with every target hit at the same instant.
+  const thunderHit = kind === "thunderwave" ? playSpell({ kind, el, quiet: true,
+    from: pt(sourceOf(msg.effectFrom, anchors[0].a)), to: pt(anchors[0].a) }) : null;
   anchors.forEach(({ key, a }, i) => {
     const o = { el, to: pt(a), miss: missSet.has(key), kill: killSet.has(key) };
     let hit = -1;
     const src = FROM_KINDS.has(kind) ? sourceOf(msg.effectFrom, a) : null;
-    if (src) hit = playSpell({ ...o, kind, from: pt(src), delay: i * 110 });
+    if (thunderHit != null) hit = thunderHit;
+    else if (src) hit = playSpell({ ...o, kind, from: pt(src), delay: i * 110 });
     else if (kind === "fireball") hit = playSpell({ ...o, kind: "burst", delay: lobAt + i * 70, scale: 1.3 });
     else if (SOFT_KINDS.has(kind)) { playSpell({ ...o, kind, from: pt(sourceOf(msg.effectFrom, a)), miss: false, kill: false, delay: i * 60 }); hit = i * 60 + 340; }
     else if (ON_KINDS.has(kind)) hit = playSpell({ ...o, kind, delay: i * (kind === "aoe" ? 130 : 90) });

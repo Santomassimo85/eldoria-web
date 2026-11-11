@@ -24,6 +24,12 @@
 .cw-panel .sgb-act-name { font-size: .82rem; line-height: 1.1; padding-right: 28px; }
 .cw-panel .sgb-act-info { font-size: .7rem; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cw-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.cw-actions .sgb-act:disabled { opacity: .7; }
+.cw-actions .sgb-act.is-selected { box-shadow: inset 0 0 0 2px var(--cls, #e0a85a); }
+.cw-panel .cw-actions.is-compact { grid-template-columns: 1fr; }
+.cw-panel .cw-actions.is-compact .sgb-act { min-height: 38px; grid-template-columns: 28px minmax(0, 1fr); }
+.cw-actions.is-compact .sgb-act-info { display: none; }
+.cw-actions.is-compact .sgb-act-ico { width: 26px; height: 26px; }
 .cw-tools button { min-height: 36px; padding: 4px 10px; border: 1px solid rgba(243,234,216,.35); background: transparent; color: #d8ccb4; font: 600 .78rem var(--sgb-read, system-ui, sans-serif); cursor: pointer; }
 
 /* il tuo eroe, sopra il log */

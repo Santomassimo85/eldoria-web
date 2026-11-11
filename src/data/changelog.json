@@ -28,6 +28,10 @@
         {
           "type": "fix",
           "text": "Sottoclassi delle Segrete in una sfumatura del colore della classe. Menu a dado nascosto durante tutti i fight, inclusi Boss e TCG e le viste Arena."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: azioni sempre visibili durante i colpi degli altri e l'attesa; selezione compatta in pila. Onda Tonante è un unico fronte di pressione a tutto schermo che colpisce tutti insieme."
         }
       ]
     },
