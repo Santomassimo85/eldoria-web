@@ -7,7 +7,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
-import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday, isGear, gearUsers } from "../data/segreteItems";
+import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday, isGear, gearUsers, sellPriceOf, tradeValueOf } from "../data/segreteItems";
 import { WEAPON_CHOICES, fxLine } from "../data/segreteKits";
 import { classInfo, clsStyle } from "../data/segrete";
 import { SgIcon } from "../components/GameIcon";
@@ -36,7 +36,7 @@ function groupByCat(ids) {
   return out.filter((g) => g.ids.length);
 }
 
-function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
+export function ItemRow({ id, n, onBuy, onSell, onGift, onEquip, busy, coins, charData }) {
   const it = itemOf(id);
   const r = RARITY[it.rarity];
   return (
@@ -49,6 +49,12 @@ function ItemRow({ id, n, onBuy, onGift, onEquip, busy, coins, charData }) {
       {n != null && <span className="sgs-n">×{n}</span>}
       {onEquip && isGear(it) && <button type="button" className="sgr-btn sgs-gift" disabled={busy} onClick={() => onEquip(id)}>🛡 Equipaggia</button>}
       {onGift && <button type="button" className="sgr-btn sgr-btn--ghost sgs-gift" disabled={busy} onClick={() => onGift(id)}>🎁 Regala</button>}
+      {onSell && <span className="sgs-buy">
+        <button type="button" className="sgr-btn" disabled={busy || !sellPriceOf(it)} onClick={() => onSell(id)}>
+          Vendi 1 · {COIN_ICON} {sellPriceOf(it)}
+        </button>
+        <small>valore {tradeValueOf(it)} · un terzo</small>
+      </span>}
       {onBuy && (() => {
         const had = boughtToday(charData, id);
         const lim = dailyLimit(id);
@@ -142,6 +148,8 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const tab = view;
+  const [shopMode, setShopMode] = useState("buy");
+  const [category, setCategory] = useState("all");
   const [wFilter, setWFilter] = useState(false);
   const [gift, setGift] = useState(null);
   const [equip, setEquip] = useState(null);
@@ -178,11 +186,23 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
     catch (e) { setMsg(e.message || "Acquisto non riuscito."); }
     finally { setBusy(false); }
   };
+  const sell = async (id) => {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try {
+      const result = await segreteDo({ op: "shopSell", itemId: id, qty: 1 });
+      setMsg(`Venduto: ${result.name}. +${result.earned} ${COIN_NAME}.`);
+    } catch (e) { setMsg(e.message || "Vendita non riuscita."); }
+    finally { setBusy(false); }
+  };
   const myBases = new Set(Object.keys(charData?.storyChars || {}).flatMap((c) => WEAPON_CHOICES[c] || []));
   const shop = SHOP_ITEMS.filter((id) => !isGear(ITEMS[id]));
   const myClasses = Object.keys(charData?.storyChars || {});
   const shopArmors = SHOP_ITEMS.filter((id) => (ITEMS[id].kind === "armor" || ITEMS[id].kind === "shield") && (!wFilter || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c))));
   const shopWeapons = SHOP_ITEMS.filter((id) => ITEMS[id].kind === "weapon" && (!wFilter || myBases.has(ITEMS[id].base)));
+  const availableIds = tab === "zaino" || shopMode === "sell" ? bagIds : [...shop, ...shopWeapons, ...shopArmors];
+  const categories = groupByCat(availableIds);
+  const visibleGroups = (ids) => groupByCat(ids).filter((g) => category === "all" || g.key === category);
   return (
     <section className="sgr-block" id="sgr-bottega">
       <h2 className="sgr-h2">{tab === "zaino" ? "🎒 Il tuo zaino" : "🏪 La Bottega"} <span className="sgr-coins">{COIN_ICON} {coins} {COIN_NAME}</span></h2>
@@ -191,9 +211,21 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
         : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
       <IconLegend />
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
+      {tab !== "zaino" && <div className="sgs-tabs" role="group" aria-label="Operazione in Bottega">
+        <button type="button" className={`sgr-btn${shopMode === "buy" ? " is-on" : ""}`} aria-pressed={shopMode === "buy"} onClick={() => { setShopMode("buy"); setCategory("all"); }}>Compra</button>
+        <button type="button" className={`sgr-btn${shopMode === "sell" ? " is-on" : ""}`} aria-pressed={shopMode === "sell"} onClick={() => { setShopMode("sell"); setCategory("all"); }}>Vendi dallo zaino</button>
+      </div>}
+      <div className="sgs-categories" role="group" aria-label="Categorie oggetti">
+        {[{ key: "all", label: "Tutti" }, ...CATEGORIES, { key: "other", label: "Altro" }].filter((c) => c.key !== "other" || categories.some((g) => g.key === "other")).map((c) => (
+          <button key={c.key} type="button" className={`sgr-btn sgr-btn--ghost${category === c.key ? " is-on" : ""}`} aria-pressed={category === c.key} onClick={() => setCategory(c.key)}>
+            {c.label} ({c.key === "all" ? availableIds.length : categories.find((g) => g.key === c.key)?.ids.length || 0})
+          </button>
+        ))}
+      </div>
+      {!visibleGroups(availableIds).length && <p className="sgr-empty">Nessun oggetto in questa categoria.</p>}
       {tab === "zaino" ? (
         bagIds.length ? (
-          groupByCat(bagIds).map((g) => (
+          visibleGroups(bagIds).map((g) => (
           <div key={g.key} className="sgs-group">
           <p className="sgr-label">{g.label} <small>({g.ids.reduce((t, id) => t + (bag[id] || 0), 0)})</small></p>
           <ul className="sgs-list">{g.ids.map((id) => (
@@ -224,23 +256,28 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
           </ul>
         </>
       )}
-      {tab !== "zaino" && (
+      {tab !== "zaino" && (shopMode === "sell" ? (
         <>
-          {groupByCat(shop).map((g) => (
+          <p className="sgr-hint">Vendi una copia alla volta per un terzo del prezzo, arrotondato per difetto. Per gli oggetti solo bottino si usa il valore di riferimento per rarità. Gli oggetti equipaggiati vanno prima rimessi nello zaino.</p>
+          {visibleGroups(bagIds).map((g) => (
+            <div key={g.key} className="sgs-group">
+              <p className="sgr-label">{g.label}</p>
+              <ul className="sgs-list">{g.ids.map((id) => <ItemRow key={id} id={id} n={bag[id]} onSell={sell} busy={busy} />)}</ul>
+            </div>
+          ))}
+        </>
+      ) : (
+        <>
+          <label className="sgs-filter"><input type="checkbox" checked={wFilter} onChange={(e) => setWFilter(e.target.checked)} /> solo armi e armature che i miei eroi possono usare</label>
+          {visibleGroups([...shop, ...shopWeapons, ...shopArmors]).map((g) => (
             <div key={g.key} className="sgs-group">
               <p className="sgr-label">{g.label}</p>
               <ul className="sgs-list">{g.ids.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
             </div>
           ))}
-          <label className="sgs-filter"><input type="checkbox" checked={wFilter} onChange={(e) => setWFilter(e.target.checked)} /> solo armi e armature che i miei eroi possono usare</label>
-          {groupByCat([...shopWeapons, ...shopArmors]).map((g) => (
-            <div key={g.key} className="sgs-group">
-              <p className="sgr-label">{g.label} <small>{g.key === "weapon" ? "(si equipaggiano dalla scheda dell'eroe; le +2 si trovano solo nei dungeon)" : g.key === "armor" ? "(si indossano dalla scheda dell'eroe, se la classe sa portarle; quelle magiche si trovano solo nei dungeon)" : "(gli scudi speciali si trovano solo nei dungeon)"}</small></p>
-              <ul className="sgs-list">{g.ids.map((id) => <ItemRow key={id} id={id} n={bag[id] || null} onBuy={buy} busy={busy} coins={coins} charData={charData} />)}</ul>
-            </div>
-          ))}
         </>
-      )}
+      ))}
+
     </section>
   );
 }

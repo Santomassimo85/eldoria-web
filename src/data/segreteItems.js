@@ -162,6 +162,29 @@ export function itemTarget(it) {
   return "ally";
 }
 export const coinsOf = (charData) => Math.max(0, Number(charData?.storyCoins) || 0);
+// Il prezzo 0 significa "solo bottino", non un oggetto privo di valore.
+export const LOOT_TRADE_VALUE = { common: 30, uncommon: 90, rare: 300, veryRare: 900 };
+export function tradeValueOf(it) {
+  if (!it) return 0;
+  const value = Number(it.price) > 0 ? Number(it.price)
+    : Number(it.tradeValue) > 0 ? Number(it.tradeValue) : LOOT_TRADE_VALUE[it.rarity] || 0;
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+export const sellPriceOf = (it) => Math.floor(tradeValueOf(it) / 3);
+export function sellBagItem(charData, itemId, quantity = 1) {
+  if (!Object.hasOwn(ITEMS, itemId)) throw new Error("Oggetto sconosciuto.");
+  const item = itemOf(itemId), qty = Number(quantity), unitPrice = sellPriceOf(item);
+  if (!Number.isSafeInteger(qty) || qty < 1 || qty > 999) throw new Error("Quantità di vendita non valida.");
+  if (!(unitPrice > 0)) throw new Error("Questo oggetto non ha un valore di vendita.");
+  const bag = { ...(charData?.storyBag || {}) };
+  const owned = Object.hasOwn(bag, itemId) ? Number(bag[itemId]) : 0;
+  if (!Number.isSafeInteger(owned) || owned < qty) throw new Error("Non hai abbastanza copie nello zaino. Gli oggetti equipaggiati vanno prima rimossi dall'eroe.");
+  if (owned === qty) delete bag[itemId];
+  else bag[itemId] = owned - qty;
+  const earned = unitPrice * qty, coins = coinsOf(charData) + earned;
+  if (!Number.isSafeInteger(coins)) throw new Error("Saldo non valido.");
+  return { patch: { storyBag: bag, storyCoins: coins }, earned, qty, unitPrice, name: item.name };
+}
 export const bagOf = (charData) => {
   const b = charData?.storyBag || {};
   const out = {};
@@ -272,7 +295,7 @@ export function normalizeCustomItem(d = {}) {
   const it = {
     name: str(d.name, 60) || "Oggetto senza nome", icon: str(d.icon, 8) || ITEM_KINDS[kind].icon, kind, custom: true,
     rarity: RARITY[d.rarity] ? d.rarity : "uncommon", desc: str(d.desc, 300),
-    price: num(d.price, 0, 100000, 0), daily: num(d.daily, 1, 10, 1),
+    price: num(d.price, 0, 100000, 0), tradeValue: num(d.tradeValue, 0, 100000, 0), daily: num(d.daily, 1, 10, 1),
     ...(Array.isArray(d.dungeons) && d.dungeons.length ? { dungeons: d.dungeons.map((x) => str(x, 40)).filter(Boolean) } : {}),
     ...(DIFF_RANK[d.minDiff] ? { minDiff: d.minDiff } : {}),
     ...(str(d.look, 600) ? { look: str(d.look, 600) } : {}),

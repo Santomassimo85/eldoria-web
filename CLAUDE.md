@@ -549,3 +549,10 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - Scrigno: server assegna direttamente se un solo avente diritto (rolls vuoti, solo true); in gruppo client mostra tutti i dadi e gli spareggi prima di nome/premio/vincitore. Righe chestReveal e gains/spoils dello scrigno mascherati fino alla rivelazione completa, senza alterare dati reali.
 - Test scripts/test-segrete-presentation.cjs + profili/Mimic/combat-ui; browser mobile con snapshot, dadi e scena controllati: niente PF/morti/cambio sala prima del dado, nessun premio nel log aperto prima del sorteggio, nessun dado in solitaria. Build Vite OK. Rigenerare build:segrete e pubblicare segreteDo.
 
+
+### Segrete - vendita e categorie Bottega (2026-11-11)
+- shopSell in segreteDo: transazione sul character autenticato, prezzo dal catalogo server, qty intera 1..999 e copie nello storyBag controllate. Aggiorna zaino e storyCoins insieme; nessuna vendita automatica degli equipaggiati, nessuna modifica a limiti di acquisto o valute esterne.
+- sellPriceOf = floor(tradeValueOf / 3) per copia. Prezzo positivo precede tutto; solo bottino usa tradeValue custom oppure riferimento per rarita 30/90/300/900. price 0 resta solo bottino e non entra nel catalogo acquistabile. Admin oggetti permette tradeValue; normalizzazione condivisa col server.
+- SegreteShop: Compra/Vendi dallo zaino, pulsante Vendi 1 con ricavo e valore, filtri categoria con conteggio; stessi filtri nello zaino. Categoria vuota gestita, CSS mobile scorrevole.
+- Verifiche test-segrete-shop.cjs, regressione profili e browser mobile con chiamata simulata: filtri, vendita, ultima copia, equipaggiati preservati, no overflow. Build OK; rigenerare build:segrete e deploy segreteDo.
+

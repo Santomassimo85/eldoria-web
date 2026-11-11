@@ -262,12 +262,13 @@ export default function SegreteAdminItems({ dungeons }) {
           <div className="sga-row">
             <NumF label={`Prezzo in bottega ${COIN_ICON}`} v={form.price} max={100000} w="s" on={(v) => set({ price: v })} />
             {Number(form.price) > 0 && <NumF label="Massimo al giorno" v={form.daily} min={1} max={10} on={(v) => set({ daily: v })} />}
+            {!(Number(form.price) > 0) && <NumF label="Valore per la rivendita (0 = rarità)" v={form.tradeValue || 0} max={100000} w="s" on={(v) => set({ tradeValue: v })} />}
             <label className="sga-field sga-field--s"><span>Esce da difficoltà</span>
               <select className="admin-field-input" value={form.minDiff || ""} onChange={(e) => set({ minDiff: e.target.value })}>
                 <option value="">Tutte</option>{DIFFICULTIES.filter((d) => d.rank > 0).map((d) => <option key={d.key} value={d.key}>{d.icon} {d.name} in su</option>)}
               </select></label>
           </div>
-          <p className="sga-hint">{Number(form.price) > 0 ? "Si compra in Bottega e si può anche trovare." : "Prezzo 0 = non si compra: si trova solo addosso ai mostri."} Dungeon: nessuno scelto = in tutti.</p>
+          <p className="sga-hint">{Number(form.price) > 0 ? "Si compra in Bottega e si può anche trovare." : "Prezzo 0 = solo bottino; valore automatico: comune 30, non comune 90, raro 300, molto raro 900 (o imposta un valore)."} La vendita rende un terzo del prezzo o valore, arrotondato per difetto. Dungeon: nessuno scelto = in tutti.</p>
           <div className="jw-menu">
             {dungeons.filter((d) => !d.hidden).map((d) => { const on = (form.dungeons || []).includes(d.key); return <button key={d.key} type="button" aria-pressed={on} className={on ? "is-on" : ""} onClick={() => set({ dungeons: on ? form.dungeons.filter((x) => x !== d.key) : [...(form.dungeons || []), d.key] })}>{d.icon} {d.name}</button>; })}
           </div>

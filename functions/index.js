@@ -2017,6 +2017,23 @@ exports.segreteDo = onCall(
         throw new HttpsError("failed-precondition", e?.message || "Acquisto non riuscito.");
       }
     }
+    // Vendita: prezzo calcolato sul catalogo server, zaino e monete nella stessa transazione.
+    if (op === "shopSell") {
+      const itemId = String(request.data?.itemId || "");
+      const qty = request.data?.qty ?? 1;
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          const sale = segreteBundle.sellBagItem(cs.data(), itemId, qty);
+          tx.update(ref, sale.patch);
+          return { ok: true, earned: sale.earned, qty: sale.qty, unitPrice: sale.unitPrice, name: sale.name };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Vendita non riuscita.");
+      }
+    }
     // ── Regalo di un oggetto dello zaino a un altro giocatore (2026-11-05): costa GIFT_FEE Monete,
     //    massimo GIFT_DAILY al giorno; al destinatario arriva una notifica ──
     if (op === "giftItem") {
