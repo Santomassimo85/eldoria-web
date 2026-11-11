@@ -17,6 +17,7 @@ import {
   createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
 import SegreteDungeonInfo from "./SegreteDungeonInfo";
+import { dungeonProfile } from "../data/segreteProfiles";
 const SegreteCrawler = lazy(() => import("./SegreteCrawler"));
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
@@ -308,7 +309,10 @@ export default function Segrete() {
                   </button>
                 ))}
               </div>
-              {(() => { const d = dungeonOf(type); return d.desc ? <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p> : null; })()}
+              {(() => { const d = dungeonOf(type), p = dungeonProfile(d); return <>
+                {d.desc && <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p>}
+                <p className="sgr-dpick-desc"><b>{p.name}</b> · PE ×{p.xp} · Monete Antiche ×{p.coins}. {p.desc}</p>
+              </>; })()}
               <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: classInfo(cls)?.it || "Il tuo eroe", level: level(cls) }] : []} />
               <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>

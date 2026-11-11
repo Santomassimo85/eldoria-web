@@ -19,6 +19,7 @@ import CrawlerArtTab from "./SegreteAdminCrawler";
 import SegreteAdminItems from "./SegreteAdminItems";
 import { useSegreteItems } from "../utils/segreteItemsLive";
 import { frontSpriteUrl } from "../utils/crawlerGen";
+import { DUNGEON_PROFILES, NEUTRAL_DUNGEON, dungeonProfile } from "../data/segreteProfiles";
 import { DAMAGE_TYPES } from "./worldBossEffects";
 import { hasMetalProtection } from "../data/segreteMaterials";
 import "./admin.css";
@@ -142,7 +143,7 @@ function DungeonsTab({ dungeons, monsters }) {
   const [draft, setDraft] = useState(null);
   const [busy, setBusy] = useState("");
 
-  const open = (d) => { setEditKey(d?.key || "__new"); setDraft(d ? { floors: DEFAULT_FLOORS, ...d } : { key: "", name: "", icon: "🗝", desc: "", floors: DEFAULT_FLOORS, hidden: false }); };
+  const open = (d) => { setEditKey(d?.key || "__new"); setDraft(d ? { floors: DEFAULT_FLOORS, ...d, challengeProfile: dungeonProfile(d).key } : { key: "", name: "", icon: "🗝", desc: "", floors: DEFAULT_FLOORS, hidden: false, challengeProfile: "neutro" }); };
   const close = () => { setEditKey(null); setDraft(null); };
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -156,6 +157,7 @@ function DungeonsTab({ dungeons, monsters }) {
         name: draft.name.trim().slice(0, 40), icon: (draft.icon || "🗝").slice(0, 4), desc: String(draft.desc || "").slice(0, 300),
         floors: num(draft.floors, 1, 10, DEFAULT_FLOORS), hidden: !!draft.hidden, active: draft.active !== false,
         lootChance: num(draft.lootChance, 0, 100, 35),
+        challengeProfile: dungeonProfile(draft).key,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       close();
@@ -183,6 +185,12 @@ function DungeonsTab({ dungeons, monsters }) {
           <label className="sga-field sga-field--s" title="Probabilità che il gruppo trovi un oggetto del forziere (lo prende un eroe a caso)"><span>Probabilità oggetto %</span>
             <input className="admin-field-input" type="number" min="0" max="100" value={draft.lootChance ?? 35} onChange={(e) => set({ lootChance: e.target.value })} /></label>
         </div>
+        <label className="sga-field"><span>Profilo di sfida e premi</span>
+          <select className="admin-field-input" value={draft.challengeProfile} onChange={(e) => set({ challengeProfile: e.target.value })}>
+            {[NEUTRAL_DUNGEON, ...DUNGEON_PROFILES].map((p) => <option key={p.key} value={p.key}>{p.name} · PE ×{p.xp} · Monete ×{p.coins}</option>)}
+          </select>
+        </label>
+        <p className="sga-hint">{dungeonProfile(draft).desc} Cambia incontri, resistenze e bottino solo nelle nuove spedizioni. Si somma alla difficoltà scelta dal gruppo.</p>
         <label className="sga-field"><span>Descrizione (la leggono i giocatori nella lobby)</span>
           <textarea className="admin-field-input" rows={2} value={draft.desc || ""} onChange={(e) => set({ desc: e.target.value })} /></label>
         {editKey !== "__new" && <p className="sga-hint">Chiave: <code>{editKey}</code> · mostri di questo dungeon nel bestiario: {monsters.filter((m) => (m.dungeons || []).includes(editKey)).length}</p>}
@@ -223,7 +231,8 @@ function DungeonsTab({ dungeons, monsters }) {
               <div className="sga-dcard-bg"><span aria-hidden="true">{d.icon}</span></div>
               <b>{d.icon} {d.name}{d.hidden || d.active === false ? " · disattivato" : ""}</b>
               <small>{d.floors || DEFAULT_FLOORS} sale + boss · {n.length} mostri{bosses ? "" : " · ⚠ nessun boss"}</small>
-              <small>🎁 {d.lootChance ?? 35}% oggetto · 10% Mimic nello scrigno finale</small>
+              <small>🎁 {Math.min(100, Math.round((d.lootChance ?? 35) * dungeonProfile(d).chest))}% oggetto in Facile · 10% Mimic nello scrigno finale</small>
+              <small>{dungeonProfile(d).name} · PE ×{dungeonProfile(d).xp} · Monete ×{dungeonProfile(d).coins}</small>
             </button>
           );
         })}

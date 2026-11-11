@@ -535,3 +535,10 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - src/data/arenaShopping.js condiviso con functions/arenaShopping.js (npm run build:arena-shopping): promozione unica client/server, orologio server, timer iniziativa dei bot ricreato alla promozione, readyCheck umano conservato. Reset nuova iscrizione pulisce la fase iniziale. Deploy mirato arenaAutoAdvance + pushOnArenaUpdate.
 - Verifiche scripts/test-arena-shopping.cjs: 2/3/5/6 iscritti, bye, finale diretta, sottoclasse senza fight, limite 30 minuti, pause 1 ora, nessun doppione, parita client/server. Build Vite OK.
 
+
+### Segrete - identita dei dungeon e ricompense (2026-11-11)
+- src/data/segreteProfiles.js: nove profili con budget PF/danni, folla, scorte ed elite; resistenze e debolezze elementali senza conflitti, Forgia con protezione metallica (acido x1.5). Profili da Prigione base ad Abisso (XP x1.5, monete x1.45); modificatori cumulativi con difficolta e Compagnia.
+- Nuove partite salvano dungeonRules immutabile; quelle vecchie senza snapshot restano neutre. XP di vittoria server, monete delle sale/mostri/scrigno, drop e rarita usano lo snapshot; nessuna Corona aggiunta. Oggetti caratteristici pesano x3 nei drop e uno extra nello scrigno, condiviso al d20 e perso con sconfitta dal Mimic.
+- Lobby: anteprima profilo e probabilita effettive; admin: challengeProfile selezionabile anche per dungeon personalizzati. Le modifiche valgono solo per nuove partenze; attivazione e numero sale esistenti conservati.
+- Rigenerare build:segrete e deploy functions:segreteDo. Verificati scripts/test-segrete-profiles.cjs e regressioni Mimic/acido/equipaggiamento; build frontend OK.
+

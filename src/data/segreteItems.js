@@ -204,7 +204,7 @@ export function dropWeights(ctx = {}, role = "minion") {
   const ga = pool.filter((id) => ITEMS[id].group === "armor").length || 1;
   return pool.map((id) => {
     const it = ITEMS[id];
-    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1);
+    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1) * ((ctx.favored || []).includes(id) ? 3 : 1);
     return [id, it.group === "weapon" ? (w * 2) / gw : it.group === "armor" ? (w * 1.5) / ga : w];
   });
 }

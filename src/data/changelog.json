@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "92",
+      "date": "2026-11-11",
+      "title": "Le Segrete · dungeon e premi differenziati",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Segrete: ogni dungeon ha sfide e premi propri. Più branchi nella Caverna, difese elementali in Magma e Ghiacciaio, custodi del Tempio, non morti della Cripta, corpi metallici nella Forgia e scontri più duri nell'Abisso. PE, Monete Antiche e bottino crescono con il rischio; ogni scrigno aggiunge un premio caratteristico. Profili visibili nella lobby e selezionabili dall'admin."
+        }
+      ]
+    },
+    {
       "version": "91",
       "date": "2026-11-10",
       "title": "Le Segrete · sottoclassi, Compagnia e tante novità",

@@ -2392,7 +2392,7 @@ exports.segreteDo = onCall(
             // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
             const lootPool = lootQ.docs.filter((d) => { const ds = d.data().dungeons || []; return !ds.length || ds.includes(run.type); });
             const D = segreteBundle.diffOf(run.diff);
-            const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35) * D.chest));
+            const chance = Math.max(0, Math.min(100, Number(run.lootChance ?? 35) * D.chest * (run.dungeonRules?.chest || 1)));
             if (run.mimic?.result !== "lost" && lootPool.length && winners.length && crypto.randomInt(0, 100) < chance) {
               const item = lootPool[crypto.randomInt(0, lootPool.length)];
               const w = winners[crypto.randomInt(0, winners.length)];
@@ -2420,7 +2420,7 @@ exports.segreteDo = onCall(
               if (hero) {
                 // PE fissi per dungeon (2026-11-06); gli eroi vecchi passano alla scala nuova (xpv 2)
                 const from = segreteBundle.heroLevel(hero);
-                const gain = segreteBundle.xpGain(from, run.floors, run.diff, (run.heroes || []).length);
+                const gain = segreteBundle.xpGain(from, run.floors, run.diff, (run.heroes || []).length, run.dungeonRules);
                 const xp = segreteBundle.heroXp(hero) + gain;
                 patch[`storyChars.${h.cls}.xp`] = xp;
                 patch[`storyChars.${h.cls}.xpv`] = segreteBundle.XP_VERSION;

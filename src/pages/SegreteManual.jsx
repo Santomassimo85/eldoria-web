@@ -3,6 +3,7 @@
 import { MAX_PARTY, COMPANY, companyLines, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_CLASSES, DIFFICULTIES, clsStyle } from "../data/segrete";
 import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS, RESPEC_COST, SUBCLASS_COST, SUBCLASS_LEVEL, SUBCLASSES } from "../data/segreteKits";
 import { MIMIC_CHANCE } from "../data/segreteEngine";
+import { DUNGEON_PROFILES } from "../data/segreteProfiles";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -52,6 +53,12 @@ export default function SegreteManual() {
         </ul>
       </Fold>
 
+      <Fold icon="🗺" title="Dungeon: sfide e premi diversi">
+        <p>Ogni luogo ha un profilo che si somma a Facile, Medio o Leggenda. Più rischio porta più PE, Monete Antiche e possibilità di bottino. Nello scrigno c'è anche un oggetto caratteristico in più per il gruppo; se il Mimic vi sconfigge, perdete anche quello.</p>
+        <ul>{DUNGEON_PROFILES.map((p) => <li key={p.key}><b>{p.name}</b> · PE ×{p.xp}, monete ×{p.coins}. {p.desc}</li>)}</ul>
+        <p>Controlla «Cosa c'è qui» prima di partire: mostra il profilo attivo, i premi e le probabilità effettive. Il Master può cambiare il profilo dall'admin. Le spedizioni già partite conservano le regole iniziali.</p>
+      </Fold>
+
       <Fold icon="🎓" title="Le sottoclassi">
         <p>Dal Lv {SUBCLASS_LEVEL}, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una. Tratto passivo e azioni (Lv 5 · Lv 11):</p>
         <ul>
@@ -92,7 +99,7 @@ export default function SegreteManual() {
         <ul>
           <li><b>♻ Reset dell'eroe</b>: dalla scheda dell'eroe rifai caratteristiche e abilità per {RESPEC_COST} {COIN_NAME}. Livello, PE, PF tirati ed equipaggiamento restano; non si può fare durante un dungeon. Le armi si cambiano sempre gratis.</li>
           <li>Alla creazione hai {STAT_BUDGET} punti caratteristica da distribuire e una prima abilità da scegliere. I PF si tirano col dado vita della classe, più {HERO_HP_BASE} PF fissi.</li>
-          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6). Chi entra da solo prende un po' meno PE (×0,75), in gruppo un po' di più (Compagnia: fino a +{Math.round((COMPANY[4].xp - 1) * 100)}% in 4). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
+          <li>Si sale di livello con i PE delle vittorie: ogni dungeon vinto dà gli stessi PE a tutti ({XP_PER_ROOM} a sala, boss compreso: 100 con 3 sale; Medio ×1,3, Leggenda ×1,6, poi il moltiplicatore del profilo dungeon). Chi entra da solo prende un po' meno PE (×0,75), in gruppo un po' di più (Compagnia: fino a +{Math.round((COMPANY[4].xp - 1) * 100)}% in 4). Il Lv 2 arriva in circa 3 vittorie, poi ogni livello ne chiede un po' di più (circa 6 al Lv 10, 9 per arrivare al {MAX_STORY_LEVEL}). A ogni livello si tirano i PF nuovi; ogni {ASI_EVERY} livelli arriva +1 a una caratteristica e un'abilità in più.</li>
           <li><b>🎓 Sottoclassi</b>: dal Lv {SUBCLASS_LEVEL} ogni classe può comprarne due (dalla scheda dell'eroe, {SUBCLASS_COST.toLocaleString("it-IT")} {COIN_NAME} l'una). Ognuna dà un tratto sempre attivo e due azioni nuove (al Lv 5 e al Lv 11). Comprate restano tue: ne usi una alla volta e la cambi gratis fuori dai dungeon.</li>
           <li>Gli eroi con qualcosa da sistemare hanno l'etichetta gialla (❤ PF, ⭐ caratteristica, ✨ abilità) nella scheda Personaggi.</li>
           <li>I livelli <b>non si azzerano</b> mai, e la domenica non si cancella niente: i gruppi restano finché non li sciogliete.</li>

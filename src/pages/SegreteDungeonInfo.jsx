@@ -13,6 +13,7 @@ import { FALLBACK_MONSTERS } from "../data/segreteEngine";
 import { DROP_CHANCE, FLOOR_COINS_DIE, COIN_ICON, COIN_NAME, RARITY, DIFF_RANK, ITEMS, itemOf, dropOdds, gearUsers } from "../data/segreteItems";
 import { classInfo } from "../data/segrete";
 import { fxLine, XP_PER_ROOM } from "../data/segreteKits";
+import { dungeonProfile, dungeonDropContext } from "../data/segreteProfiles";
 
 // dati letti una volta per sessione (bestiario, mostri conosciuti, forziere del Master)
 let cache = null;
@@ -30,7 +31,7 @@ function loadAll() {
 const ROLE_IT = { minion: "Gregari", elite: "Élite", boss: "Boss" };
 const ROLE_ONE = { minion: "gregario", elite: "élite", boss: "boss" };
 const pctTxt = (p) => (p >= 10 ? `${Math.round(p)}%` : p >= 1 ? `${p.toFixed(1).replace(".", ",")}%` : `${p.toFixed(2).replace(".", ",")}%`);
-const num = (x) => String(Math.round(x * 10) / 10).replace(".", ",");
+const num = (x) => String(Math.round(x * 100) / 100).replace(".", ",");
 
 export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
   const [data, setData] = useState(null);
@@ -40,6 +41,8 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
   useEffect(() => { let on = true; loadAll().then((d) => on && setData(d)); return () => { on = false; }; }, []);
   const D = diffOf(tab);
   const key = dungeon?.key;
+  const P = dungeonProfile(dungeon);
+  const coinMult = D.coins * P.coins, itemMult = D.item * P.item;
   const floors = Number(dungeon?.floors) || DEFAULT_FLOORS;
 
   const foes = useMemo(() => {
@@ -49,7 +52,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
   }, [data, key]);
 
   const odds = useMemo(() => {
-    const list = dropOdds({ dungeon: key, rank: DIFF_RANK[D.key] || 0, boost: D.boost }, role);
+    const list = dropOdds({ dungeon: key, rank: DIFF_RANK[D.key] || 0, ...dungeonDropContext(P, D.boost) }, role);
     // armi +1/+2 e armature generiche: una riga sola ciascuna (sono tante)
     const rows = [];
     let wg = 0; let ag = 0;
@@ -62,13 +65,13 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
     if (wg) rows.push({ id: "__weapons", pct: wg });
     if (ag) rows.push({ id: "__armors", pct: ag });
     return rows.sort((a, b) => b.pct - a.pct);
-  }, [key, D, role]);
+  }, [key, D, role, P]);
 
   if (!dungeon) return null;
   const ch = DROP_CHANCE[role];
-  const chest = Math.min(100, (Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35) * D.chest);
+  const chest = Math.min(100, (Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35) * D.chest * P.chest);
   const chestItems = (data?.chest || []).filter((l) => !(l.dungeons || []).length || l.dungeons.includes(key));
-  const xpWin = Math.round(XP_PER_ROOM * (floors + 1) * D.xp);
+  const xpWin = Math.round(XP_PER_ROOM * (floors + 1) * D.xp * P.xp);
   const hasBoss = (foes || []).some((m) => m.role === "boss");
 
   return (
@@ -84,6 +87,8 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
         </div>
 
         <p className="sgi-line"><b><SgIcon kind="diff" of={D} color={DIFF_TONE[D.key]} /> {D.name}</b> · {D.minLevel > 1 ? `serve Lv ${D.minLevel}+ per ogni eroe` : "per tutti i livelli"} · {floors} sale + il boss</p>
+        <p className="sgi-line"><b>{P.name}</b> · {P.desc}</p>
+        <p className="sgi-line">Profilo dungeon: PF nemici ×{num(P.hp)} · danni ×{num(P.dmg)} · PE ×{num(P.xp)} · Monete Antiche ×{num(P.coins)}. Si somma a {D.name}.</p>
         <p className="sgi-line sgi-danger">
           <span className="sgi-meter" aria-label={`Pericolo ${D.rank + 1} su 3`}>{[0, 1, 2].map((i) => <i key={i} className={i <= D.rank ? "on" : ""} />)}</span>
           {D.rank === 0 ? "Mostri tarati sul vostro gruppo." : `Mostri: PF ×${num(D.hp)} · danni ×${num(D.dmg)}${D.plus ? ` · +${D.plus} a colpire, CA, CD e TS` : ""} · élite più spesso (${Math.round(D.elite * 100)}%).`}
@@ -118,12 +123,13 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
 
         <h4 className="sgi-h">🏆 Premi se il gruppo vince</h4>
         <ul className="sgi-prizes">
-          <li>⭐ PE: <b>{xpWin}</b> a eroe, uguali per tutti i livelli</li>
+          <li>⭐ PE base: <b>{xpWin}</b> a eroe, uguali per tutti i livelli; poi bonus Compagnia (o ×0,75 in solitaria).</li>
+          {P.treasure.length > 0 && <li>Premio caratteristico: <b>un oggetto in più nello scrigno</b>, sorteggiato al gruppo fra {P.treasure.map((id) => itemOf(id)?.name || id).join(" / ")}. Questi oggetti cadono anche più spesso dai mostri.</li>}
           <li>Scrigno finale: <b>10% Mimic</b>. Se vi sconfigge perdete solo lo scrigno; il bottino precedente e i PE sono salvi.</li>
-          <li>{COIN_ICON} {COIN_NAME}: <b>1d{FLOOR_COINS_DIE}{D.coins !== 1 ? ` ×${num(D.coins)}` : ""}</b> a sala ripulita (in media ~{Math.round(10.5 * D.coins * (floors + 1))} a dungeon) + quelle dei mostri</li>
+          <li>{COIN_ICON} {COIN_NAME}: <b>1d{FLOOR_COINS_DIE}{coinMult !== 1 ? ` ×${num(coinMult)}` : ""}</b> a sala ripulita (in media ~{Math.round(10.5 * coinMult * (floors + 1))} a dungeon) + quelle dei mostri</li>
           {["minion", "elite", "boss"].map((r) => {
             const c = DROP_CHANCE[r];
-            return <li key={r}>💀 Un {ROLE_ONE[r]} che cade: <b>{c.coins}%</b> monete ({c.coinDice[0]}d{c.coinDice[1]}{D.coins !== 1 ? ` ×${num(D.coins)}` : ""}) · <b>{pctTxt(Math.min(95, c.item * D.item))}</b> un oggetto</li>;
+            return <li key={r}>💀 Un {ROLE_ONE[r]} che cade: <b>{c.coins}%</b> monete ({c.coinDice[0]}d{c.coinDice[1]}{coinMult !== 1 ? ` ×${num(coinMult)}` : ""}) · <b>{pctTxt(Math.min(95, c.item * itemMult))}</b> un oggetto</li>;
           })}
           <li>🎁 Forziere del Master: <b>{Math.round(chest)}%</b> alla vittoria{chestItems.length ? ` · in palio: ${chestItems.map((l) => l.name).join(", ")}` : " · per ora è vuoto"}</li>
         </ul>
@@ -134,7 +140,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
             <button key={r} type="button" aria-pressed={role === r} className={`sgi-tab${role === r ? " is-on" : ""}`} onClick={() => setRole(r)}>da un {ROLE_ONE[r]}</button>
           ))}
         </div>
-        <p className="sgi-line"><small>Quando un {ROLE_ONE[role]} lascia un oggetto ({pctTxt(Math.min(95, ch.item * D.item))} delle volte), ecco cosa può essere. Armi e armature escono solo se qualcuno del gruppo le sa usare.</small></p>
+        <p className="sgi-line"><small>Quando un {ROLE_ONE[role]} lascia un oggetto ({pctTxt(Math.min(95, ch.item * itemMult))} delle volte), ecco cosa può essere. Armi e armature escono solo se qualcuno del gruppo le sa usare.</small></p>
         <ul className="sgi-items">
           {odds.map((o) => {
             if (o.id === "__weapons") return <li key={o.id}><SgIcon kind="weapon" of="spada_lunga" frame size="sm" /><span className="sgi-it"><b>Arma +1 o +2</b><small>del tipo usato da qualcuno del gruppo</small></span><em>{pctTxt(o.pct)}</em></li>;
