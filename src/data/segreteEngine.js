@@ -344,6 +344,7 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     if (C.save) h.save += C.save;
     if (C.hit) h.compHit = C.hit;
     if (C.hp) { const x = Math.round(h.maxHp * C.hp); h.maxHp += x; h.hp += x; h.compHp = x; }
+    if (h.cls === "paladin") { h.healingPoolMax = h.maxHp + h.level; h.healingPool = h.healingPoolMax; }
   });
   if (s.party > 1) log(s, `🤝 Compagnia ×${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   if (s.dungeonRules.key !== "neutro") log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE ×${s.dungeonRules.xp}, Monete Antiche ×${s.dungeonRules.coins}.`, { kind: "info" });
@@ -450,8 +451,14 @@ const dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.f
 const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : ` 💀 ${t.name} è a terra!`) : "");
 
 /* ── azioni degli eroi ───────────────────────────────── */
+export function healingPoolOf(h) {
+  const max = Math.max(0, Math.floor(h.healingPoolMax ?? (h.maxHp + h.level)));
+  return { max, left: Math.max(0, Math.min(max, Math.floor(h.healingPool ?? max))) };
+}
 export function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand, h.subclass || null).map((a) => ({ ...a, left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand, h.subclass || null).map((a) => a.healPool
+    ? { ...a, left: healingPoolOf(h).left, poolMax: healingPoolOf(h).max }
+    : { ...a, ...(a.riderDmg === "radiant" ? { info: `${a.dice}+mod +${diceFor({ ...a, dice: a.rider, grow: a.riderGrow ?? a.grow }, h.level).join("d")} radiosi` } : {}), left: a.uses ? (h.uses?.[a.id] ?? a.uses) : null });
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -468,7 +475,7 @@ export function targetKind(a) {
   return null;
 }
 
-function heroAct(s, h, a, target) {
+function heroAct(s, h, a, target, amount) {
   const lv = h.level;
   const st = h.st || {};
   const hit = heroHit(h.cls, lv, st) + (h.armorHit || 0);
@@ -542,9 +549,9 @@ function heroAct(s, h, a, target) {
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
       let extra = "";
-      if (a.rider && k === 0 && alive(target)) {
+      if (a.rider && k === 0 && (alive(target) || a.riderDmg === "radiant")) {
         let rn, rs;
-        if (a.rider === "sneak") { rn = sneakDiceOf(lv); rs = 6; } else { [rn, rs] = diceFor({ ...a, dice: a.rider }, lv); }
+        if (a.rider === "sneak") { rn = sneakDiceOf(lv); rs = 6; } else { [rn, rs] = diceFor({ ...a, dice: a.rider, grow: a.riderGrow ?? a.grow }, lv); }
         if (r.crit) rn *= 2;
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
         total += rd; extra = ` +${rd} ${DMG_IT[a.riderDmg] || ""}`;
@@ -603,6 +610,18 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "heal" || a.kind === "heal_all") {
+    if (a.healPool) {
+      const t = a.self ? h : target;
+      const pool = healingPoolOf(h);
+      const recovered = Math.min(Number(amount), Math.max(0, t.maxHp - t.hp));
+      if (!(recovered > 0)) throw new Error("Il bersaglio ha già tutti i PF.");
+      const before = t.hp;
+      h.healingPoolMax = pool.max;
+      h.healingPool = pool.left - recovered;
+      t.hp += recovered;
+      log(s, `${a.icon} ${h.name} → ${a.name}: ${t.name} +${recovered} PF${before <= 0 ? " (rialzato!)" : ""}. Riserva ${h.healingPool}/${pool.max} PF.`, { kind: "heal", actor: h.id, targets: [t.id] });
+      return ev;
+    }
     const tg = a.kind === "heal_all" ? s.heroes.filter((x) => !x.fled) : [a.self ? h : target];
     const parts = tg.map((t) => {
       let amt;
@@ -944,7 +963,7 @@ function afterHeroAction(s, now) {
 }
 
 /* ── operazioni (le chiama il server) ────────────────── */
-export function act(s, uid, { actionId, targetId }, now) {
+export function act(s, uid, { actionId, targetId, amount }, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   s.acted = s.acted || {};
   const h = s.heroes.find((x) => x.uid === uid);
@@ -972,6 +991,12 @@ export function act(s, uid, { actionId, targetId }, now) {
     const heal = a.kind === "heal";
     if (!target || target.side !== "h" || target.fled || (!heal && !alive(target))) throw new Error("Scegli un alleato.");
   }
+  if (a.healPool) {
+    const points = Number(amount), pool = healingPoolOf(h);
+    if (!Number.isSafeInteger(points) || points <= 0) throw new Error("Scegli un numero intero di PF da curare.");
+    if (points > pool.left) throw new Error(`Nella riserva restano ${pool.left} PF.`);
+    if (target.hp >= target.maxHp) throw new Error("Il bersaglio ha già tutti i PF.");
+  }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
   // confuso (2026-11-06): l'azione è quella scelta, il bersaglio esce a caso (anche un compagno)
   if (tk && fxOn(s, h.fx.confused)) {
@@ -981,7 +1006,7 @@ export function act(s, uid, { actionId, targetId }, now) {
   curVfx = heroVfx(a) ? { ...heroVfx(a), from: h.id } : null;
   if (h.cls === "monk" && curVfx?.fx === "punch") curVfx = { ...curVfx, hand: "L", unarmed: true, w: 1 };
   let ev;
-  try { ev = heroAct(s, h, a, target); } finally { curVfx = null; }
+  try { ev = heroAct(s, h, a, target, amount); } finally { curVfx = null; }
   if (target && target.side === "f") target.lastHitBy = h.id;
   s.acted = { ...s.acted, [h.id]: true };
   lootDead(s);

@@ -28,6 +28,7 @@ export function statusIcons(c, round) {
 }
 
 export function actInfo(a, lv) {
+  if (a.healPool) return "riserva PF massimi + livello · scegli quanto curare";
   if ((a.cantrip || a.kind === "taunt" || a.id === "cura_c") && a.info) return a.info;
   if (a.kind === "defend") return "+4 CA fino al tuo turno";
   if (a.kind === "grip") return `${a.info} · gratis`;

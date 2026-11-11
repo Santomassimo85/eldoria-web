@@ -556,3 +556,10 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - SegreteShop: Compra/Vendi dallo zaino, pulsante Vendi 1 con ricavo e valore, filtri categoria con conteggio; stessi filtri nello zaino. Categoria vuota gestita, CSS mobile scorrevole.
 - Verifiche test-segrete-shop.cjs, regressione profili e browser mobile con chiamata simulata: filtri, vendita, ultima copia, equipaggiati preservati, no overflow. Build OK; rigenerare build:segrete e deploy segreteDo.
 
+
+### Segrete - Paladino: riserva cura e Punizione (2026-11-11)
+- Imposizione delle Mani e Cura Ferite condividono healingPool/healingPoolMax: PF massimi effettivi + livello, inizializzati dopo bonus solitaria/Compagnia. Quantita scelta dal client (amount), verificata dal server: intero positivo <= residuo, destinatario alleato valido, spesi solo i PF recuperati. Anche alleati a terra; una normale azione. Nessuna ricarica al cambio sala; nuovo dungeon resetta. Compatibilita lazy con run precedenti.
+- UI: scegli azione e destinatario, input numerico e conferma cura; contatore PF residui sulle azioni. Validazione e stato bersaglio/quantita resettati fra azioni. Manuale aggiornato.
+- Punizione Divina mantiene arma e bonus fisici + rider radioso distinto. riderGrow scala solo i dadi radiosi, non il dado normale dell'arma. Rider radioso conteggiato anche se l'arma da sola uccide. HeroActionList mostra i dadi del rider; VFX radioso gia presente.
+- Verifiche scripts/test-segrete-paladin.cjs + gear/hands: livelli/gruppi, HP massimi, riserva condivisa, niente ricarica, nessun consumo su errore, cura alleati a terra, danni fisici/radiosi e immunita separati, colpi mortali. Browser mobile: selezione se stessi/amico, amount trasmesso e rifiuto frazioni. Build OK; rigenerare bundle e pubblicare segreteDo.
+

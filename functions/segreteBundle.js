@@ -290,11 +290,11 @@ var KITS = {
     rec: ["str", "cha"],
     extraAttacks: true,
     healStat: "cha",
-    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", flat: "lv*5", uses: 1 }],
+    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", healPool: true, info: "riserva PF massimi + livello \xB7 scegli quanto curare \xB7 te o un alleato" }],
     pool: [
-      { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, grow: true },
+      { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
-      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", dice: "1d8", plusMod: true, min: 3, uses: 2, grow: true },
+      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", healPool: true, min: 3, info: "scegli quanto curare \xB7 stessa riserva di Imposizione delle Mani" },
       { id: "aura", name: "Aura di Protezione", icon: "\u{1F31F}", kind: "buff", buff: "ac", value: 2, turns: 3, allParty: true, min: 6, uses: 1 },
       { id: "accecante", useWeapon: true, name: "Punizione Accecante", icon: "\u2600", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
       { id: "sacra", name: "Arma Sacra", icon: "\u{1F5E1}", kind: "buff", buff: "dmg", value: 5, turns: 3, self: true, min: 12, uses: 1 }
@@ -2028,6 +2028,10 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
       h.hp += x;
       h.compHp = x;
     }
+    if (h.cls === "paladin") {
+      h.healingPoolMax = h.maxHp + h.level;
+      h.healingPool = h.healingPoolMax;
+    }
   });
   if (s.party > 1) log(s, `\u{1F91D} Compagnia \xD7${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   if (s.dungeonRules.key !== "neutro") log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE \xD7${s.dungeonRules.xp}, Monete Antiche \xD7${s.dungeonRules.coins}.`, { kind: "info" });
@@ -2157,8 +2161,12 @@ function attackRoll(s, att, def, bonus, { adv = false, dis = false, critAt = 20 
 var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
+function healingPoolOf(h) {
+  const max = Math.max(0, Math.floor(h.healingPoolMax ?? h.maxHp + h.level));
+  return { max, left: Math.max(0, Math.min(max, Math.floor(h.healingPool ?? max))) };
+}
 function heroActionList(h) {
-  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand, h.subclass || null).map((a) => ({ ...a, left: a.uses ? h.uses?.[a.id] ?? a.uses : null }));
+  return heroActions(h.cls, h.level, h.picks || [], h.weapon, h.weaponPlus || 0, h.wItem ? itemOf(h.wItem) : null, !!h.twoHand, h.subclass || null).map((a) => a.healPool ? { ...a, left: healingPoolOf(h).left, poolMax: healingPoolOf(h).max } : { ...a, ...a.riderDmg === "radiant" ? { info: `${a.dice}+mod +${diceFor({ ...a, dice: a.rider, grow: a.riderGrow ?? a.grow }, h.level).join("d")} radiosi` } : {}, left: a.uses ? h.uses?.[a.id] ?? a.uses : null });
 }
 function diceFor(a, lv) {
   let [n, sides] = parseDice(a.dice);
@@ -2173,7 +2181,7 @@ function targetKind(a) {
   if (a.kind === "buff" && !a.self && !a.allParty) return "ally";
   return null;
 }
-function heroAct(s, h, a, target) {
+function heroAct(s, h, a, target, amount) {
   const lv = h.level;
   const st = h.st || {};
   const hit = heroHit(h.cls, lv, st) + (h.armorHit || 0);
@@ -2251,13 +2259,13 @@ function heroAct(s, h, a, target) {
       const notes = [];
       let total = applyDamage(s, target, dmg, a.dmg, notes);
       let extra = "";
-      if (a.rider && k === 0 && alive(target)) {
+      if (a.rider && k === 0 && (alive(target) || a.riderDmg === "radiant")) {
         let rn, rs;
         if (a.rider === "sneak") {
           rn = sneakDiceOf(lv);
           rs = 6;
         } else {
-          [rn, rs] = diceFor({ ...a, dice: a.rider }, lv);
+          [rn, rs] = diceFor({ ...a, dice: a.rider, grow: a.riderGrow ?? a.grow }, lv);
         }
         if (r.crit) rn *= 2;
         const rd = applyDamage(s, target, roll(rn, rs).t, a.riderDmg || a.dmg, notes);
@@ -2320,9 +2328,9 @@ function heroAct(s, h, a, target) {
       const sv = d20() + (t.save || 0);
       const ok = sv >= dc;
       const notes = [];
-      const amount = ok ? a.half ? Math.floor(base / 2) : 0 : base;
+      const amount2 = ok ? a.half ? Math.floor(base / 2) : 0 : base;
       const types = a.damageTypes || [a.dmg];
-      const total = Math.max(0, amount);
+      const total = Math.max(0, amount2);
       const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes), 0);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
       const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
@@ -2333,6 +2341,18 @@ function heroAct(s, h, a, target) {
     return ev;
   }
   if (a.kind === "heal" || a.kind === "heal_all") {
+    if (a.healPool) {
+      const t = a.self ? h : target;
+      const pool = healingPoolOf(h);
+      const recovered = Math.min(Number(amount), Math.max(0, t.maxHp - t.hp));
+      if (!(recovered > 0)) throw new Error("Il bersaglio ha gi\xE0 tutti i PF.");
+      const before = t.hp;
+      h.healingPoolMax = pool.max;
+      h.healingPool = pool.left - recovered;
+      t.hp += recovered;
+      log(s, `${a.icon} ${h.name} \u2192 ${a.name}: ${t.name} +${recovered} PF${before <= 0 ? " (rialzato!)" : ""}. Riserva ${h.healingPool}/${pool.max} PF.`, { kind: "heal", actor: h.id, targets: [t.id] });
+      return ev;
+    }
     const tg = a.kind === "heal_all" ? s.heroes.filter((x) => !x.fled) : [a.self ? h : target];
     const parts = tg.map((t) => {
       let amt;
@@ -2691,7 +2711,7 @@ function afterHeroAction(s, now) {
   if (pendingHeroes(s).length) return;
   monsterPhase(s, now);
 }
-function act(s, uid, { actionId, targetId }, now) {
+function act(s, uid, { actionId, targetId, amount }, now) {
   if (s.status !== "fight") throw new Error("Non si combatte adesso.");
   s.acted = s.acted || {};
   const h = s.heroes.find((x) => x.uid === uid);
@@ -2718,6 +2738,12 @@ function act(s, uid, { actionId, targetId }, now) {
     const heal = a.kind === "heal";
     if (!target || target.side !== "h" || target.fled || !heal && !alive(target)) throw new Error("Scegli un alleato.");
   }
+  if (a.healPool) {
+    const points = Number(amount), pool = healingPoolOf(h);
+    if (!Number.isSafeInteger(points) || points <= 0) throw new Error("Scegli un numero intero di PF da curare.");
+    if (points > pool.left) throw new Error(`Nella riserva restano ${pool.left} PF.`);
+    if (target.hp >= target.maxHp) throw new Error("Il bersaglio ha gi\xE0 tutti i PF.");
+  }
   if (a.uses) h.uses = { ...h.uses, [a.id]: (h.uses?.[a.id] ?? a.uses) - 1 };
   if (tk && fxOn(s, h.fx.confused)) {
     const c = confusedPick(s, h);
@@ -2730,7 +2756,7 @@ function act(s, uid, { actionId, targetId }, now) {
   if (h.cls === "monk" && curVfx?.fx === "punch") curVfx = { ...curVfx, hand: "L", unarmed: true, w: 1 };
   let ev;
   try {
-    ev = heroAct(s, h, a, target);
+    ev = heroAct(s, h, a, target, amount);
   } finally {
     curVfx = null;
   }

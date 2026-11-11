@@ -2344,7 +2344,7 @@ exports.segreteDo = onCall(
           ev = segreteBundle.withRng(segreteRng, () => segreteBundle.useItem(run, uid, { itemId, targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
           bagPatch = { ref: myRef, patch: { [`storyBag.${itemId}`]: admin.firestore.FieldValue.increment(-1) } };
         } else if (op === "act") {
-          ev = segreteBundle.withRng(segreteRng, () => segreteBundle.act(run, uid, { actionId: String(request.data?.actionId || ""), targetId: request.data?.targetId ? String(request.data.targetId) : null }, now));
+          ev = segreteBundle.withRng(segreteRng, () => segreteBundle.act(run, uid, { actionId: String(request.data?.actionId || ""), targetId: request.data?.targetId ? String(request.data.targetId) : null, amount: request.data?.amount }, now));
         } else if (op === "timeout") {
           segreteBundle.withRng(segreteRng, () => segreteBundle.timeout(run, now, mimicSource));
         } else if (op === "next") {

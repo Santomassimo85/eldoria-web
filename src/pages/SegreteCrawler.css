@@ -131,3 +131,8 @@
 @keyframes cw-blink { 50% { opacity: .35; } }
 .cw .cw-reveal-ok { justify-self: center; font-family: "Pixelify Sans", monospace; }
 @media (prefers-reduced-motion: reduce) { .cw-reveal-head span, .cw-reveal-coins i, .cw .cw-reveal-items li, .cw .cw-reveal-win.is-me, .cw .cw-reveal-items li.is-rare em { animation: none; } }
+
+/* Quantita di cura: riserva del Paladino, accessibile anche da telefono. */
+.cw-heal-picker { display: grid; gap: 8px; width: 100%; min-width: 0; }
+.cw-heal-picker label { display: grid; gap: 6px; }
+.cw-heal-picker input { box-sizing: border-box; width: 100%; max-width: 160px; min-height: 44px; padding: 8px; border: 1px solid var(--line-2, #8a7759); border-radius: 6px; background: var(--roccia-1, #17141b); color: #fff7e6; font: inherit; font-size: 16px; }

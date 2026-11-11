@@ -254,6 +254,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const [aiming, setAiming] = useState(null);
   const [err, setErr] = useState("");
   const [chosen, setChosen] = useState(null);
+  const [healing, setHealing] = useState(null);
+  const [healAmount, setHealAmount] = useState("");
   const [logOpen, setLogOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [sprites, setSprites] = useState({});
@@ -528,7 +530,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     segreteDo({ op: "timeout", roomId: room.id }).catch(() => {});
   }, [afkLeft, pending.length, run?.floor, run?.round, room.id]);
 
-  useEffect(() => { if (!myTurn) { setChosen(null); setChosenItem(null); setBagOpen(false); } }, [myTurn]);
+  useEffect(() => { if (!myTurn) { setChosen(null); setChosenItem(null); setBagOpen(false); setHealing(null); setAiming(null); } }, [myTurn]);
 
   const send = async (data) => {
     if (busy) return;
@@ -538,19 +540,30 @@ export default function SegreteCrawler({ room, uid, tools }) {
       sendP.current = p.then(() => {});
       await p;
     } catch (e) { setErr(e.message || "Azione non riuscita."); }
-    finally { setBusy(false); setChosen(null); setAiming(null); }
+    finally { setBusy(false); setChosen(null); setAiming(null); setHealing(null); }
   };
   const pickAction = (a) => {
+    setHealing(null); setAiming(null); setErr("");
     if (!targetKind(a)) return send({ op: "act", actionId: a.id });
     setChosen(a);
   };
   const pickTarget = (id) => {
     if (busy || animating || walking || !myTurn || aiming || !(chosen || chosenItem)) return;
+    if (chosen?.healPool && !chosenItem) {
+      const target = run.heroes.find((h) => h.id === id && !h.fled);
+      if (!target) return;
+      const max = Math.min(chosen.left, Math.max(0, target.maxHp - target.hp));
+      if (max <= 0) { setErr("Nessun PF da curare o riserva esaurita."); return; }
+      setHealing({ id, name: target.name }); setHealAmount(String(max));
+      setAiming({ id, name: target.name });
+      return;
+    }
     setAiming({ id, name: [...(run?.heroes || []), ...(run?.foes || [])].find((x) => x.id === id)?.name || "" });
     if (chosenItem) { const it = chosenItem; setChosenItem(null); setBagOpen(false); return send({ op: "item", itemId: it.id, targetId: id }); }
     return chosen && send({ op: "act", actionId: chosen.id, targetId: id });
   };
   const pickItem = (it) => {
+    setHealing(null); setAiming(null);
     if (!itemTarget(it)) { setBagOpen(false); return send({ op: "item", itemId: it.id }); }
     setChosen(null); setChosenItem(it);
   };
@@ -575,6 +588,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const bag = bagOf(myChar);
   const bagList = Object.entries(bag).map(([id, n]) => ({ ...battleItem(id), n })).filter((x) => x.id);
   const spoils = (rewardRun.spoils || {})[uid];
+  const healTarget = healing ? run.heroes.find((h) => h.id === healing.id) : null;
+  const healLimit = healTarget ? Math.min(chosen?.left || 0, Math.max(0, healTarget.maxHp - healTarget.hp)) : 0;
 
   return createPortal(
     <div className="sgb cw">
@@ -632,7 +647,14 @@ export default function SegreteCrawler({ room, uid, tools }) {
           </p>}
           {(chosen || chosenItem) && <div className="sgb-pickmsg">
             <span><b>{(chosenItem || chosen).name}</b>{aiming ? ` su ${aiming.name}…` : `: tocca ${tk === "foe" ? "un nemico" : itk === "downed" ? "un alleato a terra" : "te o un alleato"}.`}</span>
-            {!aiming && <button type="button" className="sgb-btn sgb-btn--ghost" disabled={busy} onClick={() => { setChosen(null); setChosenItem(null); }}>Annulla</button>}
+            {(!aiming || healing) && <button type="button" className="sgb-btn sgb-btn--ghost" disabled={busy} onClick={() => { setChosen(null); setChosenItem(null); setHealing(null); setAiming(null); }}>Annulla</button>}
+            {healing && chosen?.healPool && <form className="cw-heal-picker" onSubmit={(e) => { e.preventDefault(); if (Number.isInteger(Number(healAmount)) && Number(healAmount) > 0 && Number(healAmount) <= healLimit) send({ op: "act", actionId: chosen.id, targetId: healing.id, amount: Number(healAmount) }); }}>
+              <label>PF da curare a {healing.name}
+                <input type="number" inputMode="numeric" min="1" max={healLimit} step="1" required value={healAmount} onChange={(e) => setHealAmount(e.target.value)} />
+              </label>
+              <small>Riserva: {chosen.left}/{chosen.poolMax} PF · puoi curarne fino a {healLimit}.</small>
+              <button type="submit" className="sgb-btn" disabled={busy || blocking || !myTurn || !Number.isInteger(Number(healAmount)) || Number(healAmount) < 1 || Number(healAmount) > healLimit}>Cura {healAmount || 0} PF</button>
+            </form>}
           </div>}
           {bagOpen && <div className="sgb-bag">
             <p className="sgb-turn">Zaino: usare un oggetto è la tua azione del round.</p>
@@ -650,7 +672,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
             {acts.map((a) => <button key={a.id} type="button" className={`sgb-act k-${a.kind}${chosen?.id === a.id ? " is-selected" : ""}`} aria-pressed={chosen?.id === a.id} disabled={busy || blocking || !myTurn || (a.left != null && a.left <= 0)} onClick={() => { setChosenItem(null); setBagOpen(false); pickAction(a); }}>
               <SgIcon kind="action" of={a} frame size="md" className="sgb-act-ico" color={sgTone(a)} />
               <span className="sgb-act-name">{a.name}</span><span className="sgb-act-info">{a.info || actInfo(a, me.level)}</span>
-              {a.left != null && <span className="sgb-act-uses">{a.left}/{a.uses}</span>}
+              {a.left != null && <span className="sgb-act-uses">{a.left}/{a.healPool ? `${a.poolMax} PF` : a.uses}</span>}
             </button>)}
           </div>
         </>}

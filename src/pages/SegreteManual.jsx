@@ -44,6 +44,15 @@ export default function SegreteManual() {
         </ul>
       </Fold>
 
+      <Fold icon="🙌" title="Paladino: Punizione e riserva di cura">
+        <ul>
+          <li><b>Punizione Divina</b>: danno normale dell'arma, con i suoi bonus, più danno <b>radioso</b>. Le difese del bersaglio si applicano separatamente alle due parti, anche sul colpo mortale.</li>
+          <li><b>Imposizione delle Mani</b>: all'inizio del dungeon la riserva contiene <b>PF massimi + livello</b>. Scegli te stesso o un alleato, poi quanti PF curare. Puoi anche rialzare un alleato a terra.</li>
+          <li>Consuma solo i PF effettivamente recuperati, senza superare quelli mancanti al bersaglio. Non ci sono cariche: la usi finché restano punti nella riserva, spendendo la normale azione del round. Anche Cura Ferite usa la stessa riserva.</li>
+          <li>La riserva non si ricarica passando di sala; torna piena nella prossima spedizione e aumenta con PF massimi e livello.</li>
+        </ul>
+      </Fold>
+
       <Fold icon="🌒" title="Ladro e Bardo">
         <ul>
           <li><b>Attacco Furtivo</b>: scatta da solo una volta per round, sul primo colpo d'arma a segno, se hai vantaggio o se nel gruppo c'è un altro eroe in piedi. Danno: +1d6 ogni 2 livelli (Lv 1: 1d6, Lv 5: 3d6, Lv 19: 10d6), doppio col critico.</li>

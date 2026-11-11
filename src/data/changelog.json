@@ -32,6 +32,10 @@
         {
           "type": "fix",
           "text": "Segrete: azioni sempre visibili durante i colpi degli altri e l'attesa; selezione compatta in pila. Onda Tonante è un unico fronte di pressione a tutto schermo che colpisce tutti insieme."
+        },
+        {
+          "type": "feature",
+          "text": "Segrete: il Paladino cura da una riserva condivisa di PF massimi + livello, scegliendo destinatario e quantità su sé stesso o un alleato. Si spendono solo i PF recuperati, senza ricarica tra sale. Punizione Divina infligge il danno normale dell'arma più danno radioso, conteggiato anche sui colpi mortali."
         }
       ]
     },
