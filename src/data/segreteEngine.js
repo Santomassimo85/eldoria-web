@@ -110,7 +110,7 @@ export const SOLO_XP_MULT = 0.75;
 export function xpGain(level, floors, diff = "facile", party = 2, profile = {}) {
   if (level >= MAX_STORY_LEVEL) return 0;
   // 2026-11-06: PE FISSI, uguali a ogni livello: XP_PER_ROOM a sala (boss compreso) × difficoltà
-  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (profile.xp || 1) * (party <= 1 ? SOLO_XP_MULT : companyOf(party).xp));
+  return Math.round(XP_PER_ROOM * ((floors || 3) + 1) * diffOf(diff).xp * (Math.min(1.25, profile.xp || 1)) * (party <= 1 ? SOLO_XP_MULT : companyOf(party).xp));
   // 2026-11-06: con 3 dungeon al giorno per classe i PE sono scesi di circa un terzo
   // (3 sale: 23% del salto invece del 36% → ~4–5 vittorie a livello invece di ~3)
 }
@@ -1212,6 +1212,11 @@ function awardChest(s, uid, now) {
   if (P.treasure.length && takers.length) ids.push(pick(P.treasure));
   if (rnd() < CHEST_RARE_CHANCE * (D.chest || 1) * P.chest) ids.push(CHEST_RARE[Math.floor(rnd() * CHEST_RARE.length)]);
   const items = ids.map((id) => {
+    if (takers.length <= 1) {
+      const winner = takers[0];
+      if (winner) addSpoil(s, winner.uid, { item: id, src: "scrigno" });
+      return { id, rare: CHEST_RARE.includes(id), solo: true, rolls: [], winner: winner?.uid || null, winnerName: winner?.name || "" };
+    }
     let rolls = takers.map((h) => ({ uid: h.uid, name: h.name, v: die(20) }));
     const all = [rolls];
     for (let k = 0; k < 6 && rolls.length > 1; k++) { // pareggio in cima: tirano di nuovo solo quelli pari
@@ -1226,9 +1231,9 @@ function awardChest(s, uid, now) {
   });
   s.chest = { by: opener.name, byUid: opener.uid, coins, items, at: now };
   const what = items.map((it) => `${itemOf(it.id)?.icon || "🎁"} ${itemOf(it.id)?.name || it.id} → ${it.winnerName || "nessuno"}`).join(", ");
-  log(s, `💰 ${opener.name} apre lo scrigno: ${coins} Monete Antiche a testa${what ? ` · ${what}` : ""}.`, { kind: "loot" });
+  log(s, `💰 ${opener.name} apre lo scrigno: ${coins} Monete Antiche a testa${what ? ` · ${what}` : ""}.`, { kind: "loot", chestReveal: true });
   s.status = "won";
-  log(s, `🏆 Avete conquistato ${s.dungeonName}.`, { kind: "end" });
+  log(s, `🏆 Avete conquistato ${s.dungeonName}.`, { kind: "end", chestReveal: true });
 }
 
 // Un giocatore abbandona: il suo eroe fugge (conta come a terra).

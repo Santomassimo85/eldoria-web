@@ -8,6 +8,10 @@
         {
           "type": "feature",
           "text": "Segrete: ogni dungeon ha sfide e premi propri. Più branchi nella Caverna, difese elementali in Magma e Ghiacciaio, custodi del Tempio, non morti della Cripta, corpi metallici nella Forgia e scontri più duri nell'Abisso. PE, Monete Antiche e bottino crescono con il rischio; ogni scrigno aggiunge un premio caratteristico. Profili visibili nella lobby e selezionabili dall'admin."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: bonus dei dungeon ridotti, con massimo +25%. Danni, morti e avanzamento attendono il risultato del dado e la fine dell'animazione. Lo scrigno assegna direttamente i premi in solitaria; in gruppo mostra prima i dadi e gli spareggi, poi il premio, senza anticipazioni nel log o nel bottino."
         }
       ]
     },

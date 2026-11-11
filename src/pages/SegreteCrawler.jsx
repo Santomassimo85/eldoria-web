@@ -25,12 +25,13 @@ import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
 import { leaveRoom, backToRoom } from "../utils/segreteRooms";
 import { FloorGains, SpoilsBox, FoeCard } from "./SegreteCombatUI";
+import { presentCombatRow, hideChestRewards, chestRollBatches } from "../utils/segretePresentation";
 import { statusIcons, actInfo } from "../utils/segreteCombat";
 import "./SegreteCombat.css";
 import "./SegreteCrawler.css";
 
-const ROW_GAP_MS = 900;
-const DICE_GAP_MS = 250;
+const ROW_GAP_MS = 1100;
+const DICE_GAP_MS = 400;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const vfxKey = (id) => `seg-${id}`;
 const BOW_KEY = "seg-my-bow"; // da dove parte la freccia in prima persona: l'arco, in basso al centro
@@ -182,7 +183,7 @@ function CountUp({ to, ms = 900 }) {
   }, [to, ms]);
   return v;
 }
-function ChestReveal({ chest, uid, onDone }) {
+export function ChestReveal({ chest, uid, onDone, onRevealed }) {
   const [stage, setStage] = useState(0); // 0 si apre · 1 monete · 2+i oggetto i (2+n = fine)
   const [showRolls, setShowRolls] = useState(-1);
   useEffect(() => {
@@ -194,14 +195,20 @@ function ChestReveal({ chest, uid, onDone }) {
       for (let i = 0; i < chest.items.length; i++) {
         if (!alive) return;
         setStage(2 + i); setShowRolls(-1);
-        const it = chest.items[i], mine = it.rolls.find((r) => r.uid === uid);
+        const it = chest.items[i];
         await sleep(450);
-        if (mine) { await whenDiceIdle(); await showD20Roll(mine.v, { label: `Scrigno: ${itemOf(it.id)?.name || it.id}` }).catch(() => {}); }
+        for (const batch of chestRollBatches(it)) {
+          await whenDiceIdle();
+          if (!alive) return;
+          await showD20Roll(null, { label: `Scrigno: premio ${i + 1}`, dice: batch.map((r) => ({ value: r.v, name: r.uid === uid ? "Tu" : r.name })) }).catch(() => {});
+          await whenDiceIdle();
+          await sleep(400);
+        }
         if (!alive) return;
         setShowRolls(i);
         await sleep(1400);
       }
-      if (alive) setStage(2 + chest.items.length);
+      if (alive) { setStage(2 + chest.items.length); onRevealed?.(); }
     })();
     return () => { alive = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,14 +224,14 @@ function ChestReveal({ chest, uid, onDone }) {
           const item = itemOf(it.id), shown = showRolls >= i || stage > 2 + i, rolls = it.rerolls ? it.rerolls[it.rerolls.length - 1] : it.rolls;
           return (
             <li key={i} className={it.rare ? "is-rare" : ""}>
-              <span className="cw-reveal-it"><span className="cw-reveal-ico">{item?.icon || "🎁"}</span><b>{item?.name || it.id}</b>{it.rare ? <em>RARO!</em> : null}</span>
+              <span className="cw-reveal-it"><span className="cw-reveal-ico">{shown ? item?.icon || "🎁" : "…"}</span><b>{shown ? item?.name || it.id : "Lo scrigno rivela un premio…"}</b>{shown && it.rare ? <em>RARO!</em> : null}</span>
               {shown ? (
                 <span className="cw-reveal-rolls">
-                  {it.rolls.map((r) => <span key={r.uid} className={r.uid === it.winner && !it.rerolls ? "win" : ""}>🎲 {r.uid === uid ? "Tu" : r.name} {r.v}</span>)}
+                  {!chestRollBatches(it).length ? <span>Assegnazione diretta, senza sorteggio</span> : it.rolls.map((r) => <span key={r.uid} className={r.uid === it.winner && !it.rerolls ? "win" : ""}>🎲 {r.uid === uid ? "Tu" : r.name} {r.v}</span>)}
                   {it.rerolls && <span className="tie">pareggio, si ritira: {rolls.map((r) => `${r.uid === uid ? "Tu" : r.name} ${r.v}`).join(" · ")}</span>}
                   <b className={`cw-reveal-win${it.winner === uid ? " is-me" : ""}`}>▶ {it.winner === uid ? "È TUO!" : it.winnerName || "nessuno"}</b>
                 </span>
-              ) : <span className="cw-reveal-rolls">🎲 si tira…</span>}
+              ) : <span className="cw-reveal-rolls">{chestRollBatches(it).length ? "🎲 si tira…" : "Apertura…"}</span>}
             </li>
           );
         })}
@@ -236,6 +243,7 @@ function ChestReveal({ chest, uid, onDone }) {
 
 export default function SegreteCrawler({ room, uid, tools }) {
   useFightMode(true);
+  const [latestRun, setLatestRun] = useState(null);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiming, setAiming] = useState(null);
@@ -267,7 +275,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
   useEffect(() => onSnapshot(doc(db, "dungeon_meta", "known"), (snap) => setKnown(snap.exists() ? snap.data().sources || {} : {}), () => {}), []);
   useEffect(() => { preloadDice3D(); }, []);
   useEffect(() => (uid ? onSnapshot(doc(db, "characters", uid), (snap) => setMyChar(snap.exists() ? snap.data() : null), () => {}) : undefined), [uid]);
-  useEffect(() => onSnapshot(doc(db, "dungeon_runs", room.id), (s) => setRun(s.exists() ? s.data() : null), (e) => setErr(e.message)), [room.id]);
+  useEffect(() => onSnapshot(doc(db, "dungeon_runs", room.id), (s) => setLatestRun(s.exists() ? s.data() : null), (e) => setErr(e.message)), [room.id]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
     getDocs(collection(db, "dungeon_monsters")).then((s) => {
@@ -331,13 +339,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
     });
   }, [eng, weaponKey, specialKey, armorKey, offKey, glove]);
 
-  // i PF sugli sprite scendono quando ARRIVA il colpo, non quando risponde il server
-  const lag = useMemo(() => {
-    const out = {};
-    if (shownSeq != null) (run?.log || []).filter((l) => l.i > shownSeq).forEach((l) => Object.entries(l.nums || {}).forEach(([id, v]) => { out[id] = (out[id] || 0) + v; }));
-    return out;
-  }, [run?.log, shownSeq]);
-  const shown = (c) => (lag[c.id] ? { ...c, hp: Math.max(0, Math.min(c.maxHp, c.hp - lag[c.id])) } : c);
+  // Solo la coda applica i risultati alla scena, mai lo snapshot in arrivo.
+  const shown = (c) => c;
 
   const foeList = (run?.foes || []).map((f0) => {
     const f = shown(f0);
@@ -359,11 +362,12 @@ export default function SegreteCrawler({ room, uid, tools }) {
   useEffect(() => { eng?.setAim(aiming?.id); }, [eng, aiming]);
   // lo scrigno: c'è nella sala del tesoro; a partita già vinta (ricarica) resta aperto e non si rianima
   const [chestDone, setChestDone] = useState(false);
+  const [chestRevealed, setChestRevealed] = useState(false);
   const chestSeen = useRef(null);
   const chestOpened = useRef(null);
   useEffect(() => {
     if (!eng || !run || run.startKey !== startKey) return;
-    if (chestSeen.current !== startKey) { chestSeen.current = startKey; setChestDone(run.status === "won"); }
+    if (chestSeen.current !== startKey) { chestSeen.current = startKey; setChestDone(run.status === "won"); setChestRevealed(run.status === "won"); }
     if (run.status === "treasure") eng.setChest("closed");
     else if (run.status === "won" && run.chest) { eng.setChest(chestDone ? "open" : "closed"); if (!chestDone && chestOpened.current !== startKey) { chestOpened.current = startKey; eng.openChest(); } }
     else eng.setChest(null);
@@ -385,32 +389,64 @@ export default function SegreteCrawler({ room, uid, tools }) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; timers.current.forEach(clearTimeout); }; }, []);
   const queue = useRef(Promise.resolve());
   const queued = useRef(0);
-  const [, setAnimating] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const commitPresentation = async (snapshot) => {
+    const e = engRef.current;
+    if (e && floorSeen.current != null && floorKey.current === startKey && floorSeen.current !== snapshot.floor) {
+      floorSeen.current = snapshot.floor;
+      setWalking(true);
+      try {
+        await e.walk(snapshot.foes.map((f) => ({ id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role,
+          icon: f.icon, img: fronts[f.src] || f.img || "", scale: crawlerScale(f), state: stateOf(f) })));
+      } finally { if (mounted.current && seenKey.current === startKey) setWalking(false); }
+    }
+    if (!mounted.current || seenKey.current !== startKey) return;
+    setRun(snapshot);
+    setShownSeq(snapshot.log[snapshot.log.length - 1].i);
+  };
   useEffect(() => {
-    if (!run?.log?.length || run.startKey !== startKey) return;
-    const last = run.log[run.log.length - 1].i;
-    if (seenKey.current !== startKey) { seenKey.current = startKey; seenSeq.current = last; setShownSeq(last); return; }
-    const fresh = run.log.filter((l) => l.i > seenSeq.current);
-    if (!fresh.length) return;
+    if (!latestRun) {
+      seenKey.current = null; seenSeq.current = 0; queued.current = 0; queue.current = Promise.resolve();
+      floorSeen.current = null; floorKey.current = null; chestSeen.current = null; chestOpened.current = null;
+      setAnimating(false); setRun(null); setShownSeq(null);
+      return;
+    }
+    if (!latestRun?.log?.length || latestRun.startKey !== startKey) return;
+    const snapshot = latestRun;
+    const last = snapshot.log[snapshot.log.length - 1].i;
+    if (seenKey.current !== startKey) {
+      seenKey.current = startKey; seenSeq.current = last; queued.current = 0; queue.current = Promise.resolve();
+      setAnimating(false); setRun(snapshot); setShownSeq(last); return;
+    }
+    const fresh = snapshot.log.filter((l) => l.i > seenSeq.current);
+    if (!fresh.length) {
+      queue.current = queue.current.then(() => commitPresentation(snapshot));
+      return;
+    }
     seenSeq.current = last;
-    const all = [...(run.heroes || []), ...(run.foes || [])];
+    const all = [...(snapshot.heroes || []), ...(snapshot.foes || []), ...(run?.heroes || []), ...(run?.foes || [])];
     const nameOf = (id) => all.find((c) => c.id === id)?.name || "";
     const myId = `h_${uid}`;
     const focusHand = !!meRef.current; // 2026-11-07: gli incantesimi di TUTTE le classi partono dalla mano sinistra
-    timers.current.push(setTimeout(() => setShownSeq((v) => Math.max(v || 0, last)), 15000 + fresh.length * 5000));
     queued.current += fresh.length;
     setAnimating(true);
     queue.current = queue.current.catch(() => {}).then(async () => {
       await sendP.current.catch(() => {});
       for (const l of fresh) {
-        if (!mounted.current) return;
+        // Il testo del tesoro viene svelato da ChestReveal, non dalla risposta server.
+        if (snapshot.chest && (l.chestReveal || l.kind === "end" || (l.kind === "loot" && /apre lo scrigno/.test(l.txt || "")))) {
+          queued.current = Math.max(0, queued.current - 1);
+          continue;
+        }
+        if (!mounted.current || seenKey.current !== startKey) return;
         if (l.roll?.nat && l.actor === myId) {
           const dice = (l.roll.dice || []).length > 1 ? l.roll.dice.map((v) => ({ value: v, dim: v !== l.roll.nat })) : undefined;
           await whenDiceIdle();
           await showD20Roll(l.roll.nat, { label: nameOf(l.actor), dice }).catch(() => {});
+          await whenDiceIdle();
           await sleep(DICE_GAP_MS);
         }
-        if (!mounted.current) return;
+        if (!mounted.current || seenKey.current !== startKey) return;
         const targets = l.targets || [];
         const tags = l.tags || {};
         const nums = l.nums ? Object.entries(l.nums).map(([id, v]) => ({ t: vfxKey(id), v, crit: l.kind === "crit", tag: tags[id] }))
@@ -419,6 +455,8 @@ export default function SegreteCrawler({ room, uid, tools }) {
         const e = engRef.current;
         const who = l.from || l.actor;
         const land = () => {
+          if (!mounted.current || seenKey.current !== startKey) return;
+          setRun((v) => presentCombatRow(v, l));
           setShownSeq((v) => Math.max(v || 0, l.i));
           if (l.kind === "miss") return;
           targets.forEach((id) => { if ((l.nums?.[id] ?? -1) < 0) { e?.flash(id); if (id === myId) e?.hurt(); } });
@@ -455,13 +493,21 @@ export default function SegreteCrawler({ room, uid, tools }) {
         }
         if (handAnimation) await handAnimation;
         await sleep(l.fx ? ROW_GAP_MS : l.roll ? 500 : 250);
+        if (!mounted.current || seenKey.current !== startKey) return;
         queued.current = Math.max(0, queued.current - 1);
       }
+      await whenDiceIdle();
+      await sleep(350);
+      if (!mounted.current || seenKey.current !== startKey) return;
+      await commitPresentation(snapshot);
       if (!queued.current) setAnimating(false);
-    }).catch(() => { queued.current = 0; setAnimating(false); });
-    timers.current.push(setTimeout(() => { if (queued.current) { queued.current = 0; setAnimating(false); } }, 20000 + fresh.length * 5000));
+    }).catch(async () => {
+      await whenDiceIdle();
+      if (!mounted.current || seenKey.current !== startKey) return;
+      setRun(snapshot); setShownSeq(last); queued.current = 0; setAnimating(false);
+    });
     return undefined;
-  }, [run?.log, room.id, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [latestRun, room.id, startKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fighting = run?.status === "fight";
   const acted = run?.acted || {};
@@ -503,7 +549,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
     if (!itemTarget(it)) { setBagOpen(false); return send({ op: "item", itemId: it.id }); }
     setChosen(null); setChosenItem(it);
   };
-  const openChest = () => { if (!busy) send({ op: "chest" }); };
+  const openChest = () => { if (!busy && !animating && !walking) send({ op: "chest" }); };
   const flee = () => window.confirm("Abbandonare il dungeon? Il tuo eroe fugge e non prenderà premi.") && send({ op: "flee" });
   const bind = (id, el) => engRef.current?.bindAnchor(id, el);
 
@@ -514,16 +560,15 @@ export default function SegreteCrawler({ room, uid, tools }) {
   const itk = chosenItem ? itemTarget(chosenItem) : null;
   const tk = chosenItem ? (itk === "downed" ? "ally" : itk) : chosen ? targetKind(chosen) : null;
   eng?.setPickable(tk === "foe" && !aiming ? run.foes.filter((x) => shown(x).hp > 0).map((x) => x.id) : []);
-  const pendingRows = shownSeq == null ? [] : run.log.filter((l) => l.i > shownSeq);
-  const playing = pendingRows.length > 0;
-  const heroIdSet = new Set((run.heroes || []).map((h) => h.id));
-  const blocking = walking || pendingRows.some((l) => !(l.actor && heroIdSet.has(l.actor)) && l.kind !== "info" && l.kind !== "loot");
-  const shownLog = run.log.filter((l) => shownSeq == null || l.i <= shownSeq);
-  const last = shownLog[shownLog.length - 1] || run.log[run.log.length - 1];
+  const playing = animating;
+  const blocking = walking || animating;
+  const rewardRun = run.chest && !chestRevealed ? hideChestRewards(run) : run;
+  const shownLog = rewardRun.log.filter((l) => shownSeq == null || l.i <= shownSeq);
+  const last = shownLog[shownLog.length - 1];
   const acts = me ? heroActionList(me) : [];
   const bag = bagOf(myChar);
   const bagList = Object.entries(bag).map(([id, n]) => ({ ...battleItem(id), n })).filter((x) => x.id);
-  const spoils = (run.spoils || {})[uid];
+  const spoils = (rewardRun.spoils || {})[uid];
 
   return createPortal(
     <div className="sgb cw">
@@ -626,7 +671,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
             {me && me.hp <= 0 && " · sei a terra: un alleato può curarti"}
           </p>
         ))}
-        <SpoilsBox run={run} uid={uid} spoils={spoils} hidden={playing} />
+        <SpoilsBox run={rewardRun} uid={uid} spoils={spoils} hidden={playing} />
         {playing && run.status !== "fight" && <p className="sgb-turn sgb-turn--wait">⏳ …</p>}
         {!playing && run.status === "cleared" && (
           <div className="sgb-end">
@@ -642,7 +687,7 @@ export default function SegreteCrawler({ room, uid, tools }) {
           </div>
         )}
         {run.status === "won" && run.chest && !chestDone && (
-          <ChestReveal chest={run.chest} uid={uid} onDone={() => setChestDone(true)} />
+          <ChestReveal chest={run.chest} uid={uid} onRevealed={() => setChestRevealed(true)} onDone={() => setChestDone(true)} />
         )}
         {!playing && (run.status === "lost" || (run.status === "won" && (!run.chest || chestDone))) && (
           <div className="sgb-end">

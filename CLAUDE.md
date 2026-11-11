@@ -542,3 +542,10 @@ Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sinte
 - Lobby: anteprima profilo e probabilita effettive; admin: challengeProfile selezionabile anche per dungeon personalizzati. Le modifiche valgono solo per nuove partenze; attivazione e numero sale esistenti conservati.
 - Rigenerare build:segrete e deploy functions:segreteDo. Verificati scripts/test-segrete-profiles.cjs e regressioni Mimic/acido/equipaggiamento; build frontend OK.
 
+
+### Segrete - bonus max 25 e sequenza senza anticipazioni (2026-11-11)
+- Bonus dungeon PE: base 0%, Caverna 3%, Palude 6%, Ghiaccio 8%, Magma 10%, Tempio 12%, Cripta 16%, Forgia 20%, Abisso 25%. Monete/drop/rarita ridotti e tetto 1.25 sulle ricompense, anche per snapshot precedenti; difficolta e Compagnia restano separati.
+- SegreteCrawler separa latestRun server dal run mostrato: ogni riga applica PF/log all'impatto, poi attende animazione e pausa. Commit finale e camminata serializzati in coda: il server puo gia aver rimosso il boss, ma il client lo conserva fino al colpo. Rimossi watchdog che anticipavano il risultato; barriera whenDiceIdle anche dopo showD20Roll.
+- Scrigno: server assegna direttamente se un solo avente diritto (rolls vuoti, solo true); in gruppo client mostra tutti i dadi e gli spareggi prima di nome/premio/vincitore. Righe chestReveal e gains/spoils dello scrigno mascherati fino alla rivelazione completa, senza alterare dati reali.
+- Test scripts/test-segrete-presentation.cjs + profili/Mimic/combat-ui; browser mobile con snapshot, dadi e scena controllati: niente PF/morti/cambio sala prima del dado, nessun premio nel log aperto prima del sorteggio, nessun dado in solitaria. Build Vite OK. Rigenerare build:segrete e pubblicare segreteDo.
+

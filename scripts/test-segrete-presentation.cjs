@@ -1,0 +1,30 @@
+const assert = require('node:assert/strict');
+const E = require('../functions/segreteBundle.js');
+(async () => {
+  const { presentCombatRow, hideChestRewards, chestRollBatches } = await import('../src/utils/segretePresentation.js');
+  const { DUNGEON_PROFILES, runProfile } = await import('../src/data/segreteProfiles.js');
+  for (const p of DUNGEON_PROFILES) for (const k of ['xp', 'coins', 'item', 'chest', 'rareBoost']) assert.ok(p[k] <= 1.25, `${p.key}/${k}`);
+  assert.equal(runProfile({ dungeonRules: { xp: 1.5, coins: 1.45 } }).xp, 1.25);
+  assert.equal(E.xpGain(1, 3, 'facile', 2, { xp: 1.5 }), E.xpGain(1, 3, 'facile', 2, { xp: 1.25 }));
+  const before = { floor: 4, status: 'fight', heroes: [{ id: 'h_one', hp: 20, maxHp: 20 }], foes: [{ id: 'f0', hp: 7, maxHp: 7 }], log: [] };
+  const hit = { i: 1, nums: { f0: -20 }, txt: 'hit' };
+  const landed = presentCombatRow(before, hit);
+  assert.equal(before.foes[0].hp, 7, 'Nessuna modifica anticipata al frame precedente');
+  assert.equal(landed.foes[0].hp, 0);
+  assert.equal(landed.floor, 4, 'Il colpo non cambia sala');
+  assert.equal(landed.status, 'fight', 'La vittoria attende la fine della coda');
+  const won = { ...landed, chest: {}, status: 'won', log: [{ i: 1, txt: 'combattimento' }, { i: 2, kind: 'loot', chestReveal: true, txt: 'premio segreto' }, { i: 3, kind: 'end', txt: 'vittoria' }],
+    gains: { one: [{ fl: 1, c: 12, src: 'sala' }, { fl: 5, c: 80, src: 'scrigno' }, { fl: 5, it: 'panacea', c: 0, src: 'scrigno' }] }, spoils: { one: { coins: 92, items: { panacea: 1, pozione: 2 } } } };
+  const hidden = hideChestRewards(won);
+  assert.equal(hidden.spoils.one.coins, 12);
+  assert.deepEqual(hidden.spoils.one.items, { pozione: 2 });
+  assert.equal(hidden.log.length, 1);
+  assert.equal(won.spoils.one.coins, 92, 'Il mascheramento non modifica i premi reali');
+  assert.deepEqual(chestRollBatches({ rolls: [{ uid: 'one', v: 20 }] }), [], 'Niente dadi nemmeno per i vecchi scrigni solitari');
+  const run = E.withRng(() => 0.5, () => E.newRun({ room: { type: 'segrete' }, heroes: [{ uid: 'one', name: 'Solo', cls: 'fighter', hero: {} }], bestiary: [], dungeon: { name: 'Test', floors: 1 }, now: 1 }));
+  run.status = 'treasure'; run.foes = [];
+  E.withRng(() => 0.5, () => E.openChest(run, 'one', 2));
+  assert.ok(run.chest.items.every(it => it.solo && !it.rolls.length && it.winner === 'one'));
+  assert.ok(run.log.filter(l => l.txt.includes('apre lo scrigno')).every(l => l.chestReveal));
+  console.log('OK: tetto bonus 25%, impatto prima della transizione, premi e log nascosti senza modificare dati, assegnazione solitaria senza dadi.');
+})().catch(e => { console.error(e); process.exitCode = 1; });

@@ -54,7 +54,7 @@ export default function SegreteManual() {
       </Fold>
 
       <Fold icon="🗺" title="Dungeon: sfide e premi diversi">
-        <p>Ogni luogo ha un profilo che si somma a Facile, Medio o Leggenda. Più rischio porta più PE, Monete Antiche e possibilità di bottino. Nello scrigno c'è anche un oggetto caratteristico in più per il gruppo; se il Mimic vi sconfigge, perdete anche quello.</p>
+        <p>Ogni luogo ha un profilo che si somma a Facile, Medio o Leggenda. I bonus di ricompensa del dungeon arrivano al massimo a +25%. Nello scrigno c'è anche un oggetto caratteristico in più per il gruppo; se il Mimic vi sconfigge, perdete anche quello.</p>
         <ul>{DUNGEON_PROFILES.map((p) => <li key={p.key}><b>{p.name}</b> · PE ×{p.xp}, monete ×{p.coins}. {p.desc}</li>)}</ul>
         <p>Controlla «Cosa c'è qui» prima di partire: mostra il profilo attivo, i premi e le probabilità effettive. Il Master può cambiare il profilo dall'admin. Le spedizioni già partite conservano le regole iniziali.</p>
       </Fold>
@@ -157,7 +157,7 @@ export default function SegreteManual() {
         <ul>
           <li>Ogni sala vinta: 1d{FLOOR_COINS_DIE} {COIN_NAME} a ogni eroe ancora in gioco. Tutte le monete (sale, mostri, scrigno) salgono con la Compagnia: {[2, 3, 4].map((n) => `+${Math.round((COMPANY[n].coins - 1) * 100)}% in ${n}`).join(", ")}.</li>
           <li>I mostri a volte lasciano monete o un oggetto, che va a un eroe tirato a sorte (2 eroi d4, 3 eroi d6, 4 eroi d8: 1–2 il primo, 3–4 il secondo…): gregari {DROP_CHANCE.minion.coins}% monete / {DROP_CHANCE.minion.item}% oggetto, élite {DROP_CHANCE.elite.coins}% / {DROP_CHANCE.elite.item}%, boss {DROP_CHANCE.boss.coins}% / {DROP_CHANCE.boss.item}%.</li>
-          <li>Il bottino si consegna se il gruppo <b>vince</b> il dungeon. Lo scrigno finale ha il <b>{Math.round(MIMIC_CHANCE * 100)}%</b> di essere un Mimic: se vi sconfigge conservate bottino precedente e PE, perdendo solo lo scrigno; se lo uccidete ricevete anche il tesoro. Le Segrete assegnano solo Monete Antiche, mai Corone del Mercato Nero.</li>
+          <li>Il bottino si consegna se il gruppo <b>vince</b> il dungeon. Da soli gli oggetti dello scrigno si assegnano direttamente, senza dadi; in gruppo il premio si rivela dopo il sorteggio e gli eventuali spareggi. Lo scrigno finale ha il <b>{Math.round(MIMIC_CHANCE * 100)}%</b> di essere un Mimic: se vi sconfigge conservate bottino precedente e PE, perdendo solo lo scrigno; se lo uccidete ricevete anche il tesoro. Le Segrete assegnano solo Monete Antiche, mai Corone del Mercato Nero.</li>
           <li><b>🎁 Regali:</b> dallo Zaino puoi regalare un oggetto a un altro giocatore per {GIFT_FEE} {COIN_NAME}, al massimo {GIFT_DAILY} al giorno. Un'arma montata su un eroe va prima rimessa nello zaino (tasto «↩ Nello zaino»), poi la può prendere un altro tuo eroe o la puoi regalare.</li>
           <li>Lo zaino è unico per tutti i tuoi eroi. In lotta usare un oggetto vale come l'azione del round.</li>
           <li>In Bottega ogni oggetto ha un limite di acquisti al giorno. Le armi +1 si comprano, le +2 si trovano solo nei dungeon; si equipaggiano dalla scheda dell'eroe, mai durante un dungeon.</li>
