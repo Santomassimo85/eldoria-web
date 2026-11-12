@@ -24,7 +24,7 @@ export const SG_ICONS = {
   item: {
     pozione: "health-potion", pozione_magg: "standing-potion", pozione_sup: "round-potion",
     tonico: "herbs-bundle", bomba_acqua: "water-splash", panacea: "magic-potion",
-    pelle_pietra: "stone-block", eroismo: "muscle-up", fuoco_alch: "fire-bomb", acido: "bubbling-flask",
+    pelle_pietra: "stone-block", eroismo: "muscle-up", pozione_exp_5: "standing-potion", pozione_exp_10: "round-potion", pozione_exp_20: "magic-potion", fuoco_alch: "fire-bomb", acido: "bubbling-flask",
     acqua_santa: "holy-water", pietra_tuono: "sparky-bomb", piuma_fenice: "feathered-wing",
     lingua_salamandra: "flame-claws", maglio_fabbro: "anvil-impact", zanna_vyrskaal: "ice-spear",
     lancia_pescatore: "harpoon-trident", spina_palude: "thorny-vine", falce_ragno: "spider-alt",
@@ -119,7 +119,7 @@ export const DMG_TONE = {
   necrotic: "#b48cff", radiant: "#fff1a8", force: "#ff7ad9", psychic: "#ff9fe0",
   slashing: "#e8dcc4", piercing: "#e8dcc4", bludgeoning: "#e8dcc4",
 };
-const KIND_TONE = { heal: "#6fe39a", heal_all: "#6fe39a", buff: "#ffcf5a", defend: "#b9c7d6", debuff: "#c58bff" };
+const KIND_TONE = { heal: "#6fe39a", heal_all: "#6fe39a", buff: "#ffcf5a", xp_boost: "#ffd76a", defend: "#b9c7d6", debuff: "#c58bff" };
 export function sgTone(a) {
   if (!a) return undefined;
   return DMG_TONE[a.dmg] || KIND_TONE[a.kind] || undefined;

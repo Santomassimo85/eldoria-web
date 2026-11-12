@@ -53,6 +53,7 @@ __export(segreteServer_exports, {
   currentWeekKey: () => currentWeekKey,
   dailyLimit: () => dailyLimit,
   diffOf: () => diffOf,
+  drinkXpPotion: () => drinkXpPotion,
   flee: () => flee,
   giftsToday: () => giftsToday,
   hasRace: () => hasRace,
@@ -330,7 +331,7 @@ var KITS = {
     pool: [
       { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
-      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", healPool: true, min: 3, info: "Cura a scelta \xB7 riserva condivisa" },
+      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", dice: "1d8", plusMod: 2, min: 3, uses: 2, info: "Cura 1d8 + 2\xD7CAR" },
       { id: "aura", name: "Aura di Protezione", icon: "\u{1F31F}", kind: "buff", buff: "ac", value: 2, turns: 3, allParty: true, min: 6, uses: 1 },
       { id: "accecante", useWeapon: true, name: "Punizione Accecante", icon: "\u2600", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
       { id: "sacra", name: "Arma Sacra", icon: "\u{1F5E1}", kind: "buff", buff: "dmg", value: 5, turns: 3, self: true, min: 12, uses: 1 }
@@ -944,6 +945,9 @@ var BASE_ITEMS = {
   panacea: { name: "Panacea", icon: "\u2728", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "Te o un alleato: toglie tutti gli stati, anche \u{1F5FF}" },
   pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "\u{1FAA8}", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "\u{1F6E1} +2 CA \xB7 3 round \xB7 te o un alleato" },
   eroismo: { name: "Pozione dell'Eroismo", icon: "\u{1F9B8}", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "\u{1F3AF} vantaggio \xB7 2 round \xB7 te o un alleato" },
+  pozione_exp_5: { name: "Pozione della Saggezza (+5% PE)", icon: "\u{1F4D8}", kind: "xp_boost", xpPct: 5, xpRuns: 2, price: 60, daily: 2, rarity: "common", desc: "\u2B50 +5% PE per 2 dungeon vinti" },
+  pozione_exp_10: { name: "Pozione dell'Esperienza (+10% PE)", icon: "\u{1F4D7}", kind: "xp_boost", xpPct: 10, xpRuns: 2, price: 130, daily: 1, rarity: "uncommon", desc: "\u2B50 +10% PE per 2 dungeon vinti" },
+  pozione_exp_20: { name: "Elisir del Sapere (+20% PE)", icon: "\u{1F4D9}", kind: "xp_boost", xpPct: 20, xpRuns: 2, price: 250, daily: 1, rarity: "rare", desc: "\u2B50 +20% PE per 2 dungeon vinti" },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "\u{1F525} 2d6 fuoco \xB7 colpisce sempre" },
   acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "\u{1F9EA} 2d6 acido \xB7 colpisce sempre" },
   acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "\u2728 2d8 radiosi \xB7 colpisce sempre" },
@@ -1168,6 +1172,22 @@ function sellBagItem(charData, itemId, quantity = 1) {
   if (!Number.isSafeInteger(coins)) throw new Error("Saldo non valido.");
   return { patch: { storyBag: bag, storyCoins: coins }, earned, qty, unitPrice, name: item.name };
 }
+function drinkXpPotion(charData, itemId) {
+  if (!Object.hasOwn(ITEMS, itemId)) throw new Error("Oggetto sconosciuto.");
+  const item = itemOf(itemId);
+  if (item?.kind !== "xp_boost") throw new Error("Questo oggetto non \xE8 una pozione di esperienza.");
+  const bag = { ...charData?.storyBag || {} };
+  const owned = Object.hasOwn(bag, itemId) ? Number(bag[itemId]) : 0;
+  if (!Number.isSafeInteger(owned) || owned < 1) throw new Error("Non hai questa pozione nello zaino.");
+  if (owned === 1) delete bag[itemId];
+  else bag[itemId] = owned - 1;
+  const pct2 = Math.max(1, Number(item.xpPct) || 5);
+  const runs = Math.max(1, Number(item.xpRuns) || 2);
+  const prev = charData?.storyXpBoost;
+  const nextRuns = prev?.runs > 0 && Number(prev.pct) === pct2 ? Number(prev.runs) + runs : runs;
+  const boost = { pct: pct2, runs: nextRuns, name: item.name, icon: item.icon || "\u2B50", itemId };
+  return { patch: { storyBag: bag, storyXpBoost: boost }, boost, name: item.name };
+}
 var bagOf = (charData) => {
   const b = charData?.storyBag || {};
   const out = {};
@@ -1239,6 +1259,7 @@ var ITEM_KINDS = {
   cleanse_party: { it: "Purifica il gruppo", icon: "\u{1F4A7}" },
   panacea: { it: "Panacea (tutti gli stati)", icon: "\u2728" },
   buff: { it: "Potenziamento", icon: "\u{1F9B8}" },
+  xp_boost: { it: "Bonus PE", icon: "\u2B50" },
   throw: { it: "Da lancio (un nemico)", icon: "\u{1F525}" },
   throw_area: { it: "Da lancio (tutti i nemici)", icon: "\u{1F4A5}" }
 };
@@ -1304,6 +1325,9 @@ function normalizeCustomItem(d = {}) {
     it.buff = d.buff === "adv" ? "adv" : "ac";
     if (it.buff === "ac") it.value = num(d.value, 1, 5, 2);
     it.turns = num(d.turns, 1, 5, 2);
+  } else if (kind === "xp_boost") {
+    it.xpPct = num(d.xpPct, 1, 100, 10);
+    it.xpRuns = num(d.xpRuns, 1, 10, 2);
   } else if (kind === "throw") {
     it.dice = dice(d.dice, "2d6");
     it.dmg = dmgK(d.dmg);
@@ -2081,7 +2105,7 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
       h.compHp = x;
     }
     if (h.cls === "paladin") {
-      h.healingPoolMax = h.maxHp + h.level;
+      h.healingPoolMax = h.maxHp + h.level * 2;
       h.healingPool = h.healingPoolMax;
     }
   });
@@ -2215,7 +2239,7 @@ var advTag = (r) => r.adv ? " (vantaggio)" : r.dis ? " (svantaggio)" : "";
 var dmgBonusOf = (s, c) => (fxOn(s, c.fx.dmg) ? c.fx.dmg.v : 0) + (fxOn(s, c.fx.rage) ? c.fx.rage.v : 0);
 var downTxt = (t) => t.hp <= 0 ? t.side === "f" ? ` \u{1F480} ${t.name} cade!` : ` \u{1F480} ${t.name} \xE8 a terra!` : "";
 function healingPoolOf(h) {
-  const max = Math.max(0, Math.floor(h.healingPoolMax ?? h.maxHp + h.level));
+  const max = Math.max(0, Math.floor(h.healingPoolMax ?? h.maxHp + h.level * 2));
   return { max, left: Math.max(0, Math.min(max, Math.floor(h.healingPool ?? max))) };
 }
 function heroActionList(h) {
@@ -2417,7 +2441,7 @@ function heroAct(s, h, a, target, amount) {
       if (a.flat) amt = flatOf(a.flat);
       else {
         const [dn, ds] = diceFor(a, lv);
-        amt = roll(dn, ds).t + (a.plusMod ? healMod : 0) + (a.plusLevel ? lv : 0);
+        amt = roll(dn, ds).t + (a.plusMod ? healMod * (typeof a.plusMod === "number" ? a.plusMod : 1) : 0) + (a.plusLevel ? lv : 0);
       }
       amt += sHeal;
       const before = t.hp;
@@ -2961,6 +2985,15 @@ function useItem(s, uid, { itemId, targetId }, now) {
     if (it.buff === "ac") target.fx.ac = [...(target.fx.ac || []).filter((e) => fxOn(s, e)), { v: it.value, until }];
     if (it.buff === "adv") target.fx.adv = until;
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "xp_boost") {
+    curVfx = { fx: "buff", el: "radiant", from: h.id };
+    const tUid = target?.uid || uid;
+    const pct2 = Math.max(1, Number(it.xpPct) || 5);
+    const addRuns = Math.max(1, Number(it.xpRuns) || 2);
+    const prev = s.xpBoosts?.[tUid];
+    const runs = (prev?.pct === pct2 ? Number(prev.runs) || 0 : 0) + addRuns;
+    s.xpBoosts = { ...s.xpBoosts || {}, [tUid]: { pct: pct2, runs, name: it.name, icon: it.icon || "\u2B50", itemId } };
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: \u2B50 +${pct2}% PE per ${runs} dungeon vinti!`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "throw") {
     curVfx = { fx: "lob", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
@@ -3023,8 +3056,8 @@ function nextFloor(s, bestiary, now) {
 }
 var MIMIC_CHANCE = 0.1;
 var CHEST_AUTO_MS = 90 * 1e3;
-var CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
-var CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
+var CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra", "pozione_exp_5", "pozione_exp_10"];
+var CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo", "pozione_exp_20"];
 var CHEST_RARE_CHANCE = 0.04;
 function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
   if (s.status !== "treasure") throw new Error("Qui non c'\xE8 nessuno scrigno da aprire.");
@@ -3204,6 +3237,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   currentWeekKey,
   dailyLimit,
   diffOf,
+  drinkXpPotion,
   flee,
   giftsToday,
   hasRace,

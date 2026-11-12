@@ -2034,6 +2034,22 @@ exports.segreteDo = onCall(
         throw new HttpsError("failed-precondition", e?.message || "Vendita non riuscita.");
       }
     }
+    // Pozioni di esperienza: bevute dallo zaino attivano un bonus % PE per i prossimi N dungeon vinti.
+    if (op === "useXpPotion") {
+      const itemId = String(request.data?.itemId || "");
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) throw new Error("Scheda del personaggio non trovata.");
+          const used = segreteBundle.drinkXpPotion(cs.data(), itemId);
+          tx.update(ref, used.patch);
+          return { ok: true, boost: used.boost, name: used.name };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Impossibile usare la pozione.");
+      }
+    }
     // ── Regalo di un oggetto dello zaino a un altro giocatore (2026-11-05): costa GIFT_FEE Monete,
     //    massimo GIFT_DAILY al giorno; al destinatario arriva una notifica ──
     if (op === "giftItem") {
@@ -2448,11 +2464,24 @@ exports.segreteDo = onCall(
               if (hero) {
                 // PE fissi per dungeon (2026-11-06); gli eroi vecchi passano alla scala nuova (xpv 2)
                 const from = segreteBundle.heroLevel(hero);
-                const gain = segreteBundle.xpGain(from, run.floors, run.diff, (run.heroes || []).length, run.dungeonRules);
+                const baseGain = segreteBundle.xpGain(from, run.floors, run.diff, (run.heroes || []).length, run.dungeonRules);
+                const charBoost = cs.data()?.storyXpBoost;
+                const runBoost = run.xpBoosts?.[h.uid];
+                const activeBoost = runBoost?.runs > 0
+                  ? (charBoost?.runs > 0 && Number(charBoost.pct) === Number(runBoost.pct)
+                    ? { ...runBoost, runs: Number(charBoost.runs) + Number(runBoost.runs) }
+                    : runBoost)
+                  : (charBoost?.runs > 0 ? charBoost : null);
+                const boostPct = activeBoost ? Math.max(0, Number(activeBoost.pct) || 0) : 0;
+                const gain = boostPct > 0 ? Math.round(baseGain * (1 + boostPct / 100)) : baseGain;
                 const xp = segreteBundle.heroXp(hero) + gain;
                 patch[`storyChars.${h.cls}.xp`] = xp;
                 patch[`storyChars.${h.cls}.xpv`] = segreteBundle.XP_VERSION;
-                run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, from, to: segreteBundle.levelOfXp(xp) });
+                if (activeBoost) {
+                  const left = Math.max(0, (Number(activeBoost.runs) || 1) - 1);
+                  patch.storyXpBoost = left > 0 ? { ...activeBoost, runs: left } : admin.firestore.FieldValue.delete();
+                }
+                run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, ...(boostPct > 0 ? { xpBoostPct: boostPct } : {}), from, to: segreteBundle.levelOfXp(xp) });
               }
               if (Object.keys(patch).length) tx.update(cs.ref, patch);
             }

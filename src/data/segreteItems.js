@@ -38,6 +38,9 @@ const BASE_ITEMS = {
   panacea: { name: "Panacea", icon: "✨", kind: "panacea", price: 150, daily: 1, rarity: "rare", desc: "Te o un alleato: toglie tutti gli stati, anche 🗿" },
   pelle_pietra: { name: "Pozione di Pelle di Pietra", icon: "🪨", kind: "buff", buff: "ac", value: 2, turns: 3, price: 90, daily: 1, rarity: "uncommon", desc: "🛡 +2 CA · 3 round · te o un alleato" },
   eroismo: { name: "Pozione dell'Eroismo", icon: "🦸", kind: "buff", buff: "adv", turns: 2, price: 100, daily: 1, rarity: "uncommon", desc: "🎯 vantaggio · 2 round · te o un alleato" },
+  pozione_exp_5: { name: "Pozione della Saggezza (+5% PE)", icon: "📘", kind: "xp_boost", xpPct: 5, xpRuns: 2, price: 60, daily: 2, rarity: "common", desc: "⭐ +5% PE per 2 dungeon vinti" },
+  pozione_exp_10: { name: "Pozione dell'Esperienza (+10% PE)", icon: "📗", kind: "xp_boost", xpPct: 10, xpRuns: 2, price: 130, daily: 1, rarity: "uncommon", desc: "⭐ +10% PE per 2 dungeon vinti" },
+  pozione_exp_20: { name: "Elisir del Sapere (+20% PE)", icon: "📙", kind: "xp_boost", xpPct: 20, xpRuns: 2, price: 250, daily: 1, rarity: "rare", desc: "⭐ +20% PE per 2 dungeon vinti" },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "🔥", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "🔥 2d6 fuoco · colpisce sempre" },
   acido: { name: "Fiala d'Acido", icon: "🫙", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "🧪 2d6 acido · colpisce sempre" },
   acqua_santa: { name: "Acqua Santa", icon: "💧", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "✨ 2d8 radiosi · colpisce sempre" },
@@ -185,6 +188,22 @@ export function sellBagItem(charData, itemId, quantity = 1) {
   if (!Number.isSafeInteger(coins)) throw new Error("Saldo non valido.");
   return { patch: { storyBag: bag, storyCoins: coins }, earned, qty, unitPrice, name: item.name };
 }
+export function drinkXpPotion(charData, itemId) {
+  if (!Object.hasOwn(ITEMS, itemId)) throw new Error("Oggetto sconosciuto.");
+  const item = itemOf(itemId);
+  if (item?.kind !== "xp_boost") throw new Error("Questo oggetto non è una pozione di esperienza.");
+  const bag = { ...(charData?.storyBag || {}) };
+  const owned = Object.hasOwn(bag, itemId) ? Number(bag[itemId]) : 0;
+  if (!Number.isSafeInteger(owned) || owned < 1) throw new Error("Non hai questa pozione nello zaino.");
+  if (owned === 1) delete bag[itemId];
+  else bag[itemId] = owned - 1;
+  const pct = Math.max(1, Number(item.xpPct) || 5);
+  const runs = Math.max(1, Number(item.xpRuns) || 2);
+  const prev = charData?.storyXpBoost;
+  const nextRuns = prev?.runs > 0 && Number(prev.pct) === pct ? Number(prev.runs) + runs : runs;
+  const boost = { pct, runs: nextRuns, name: item.name, icon: item.icon || "⭐", itemId };
+  return { patch: { storyBag: bag, storyXpBoost: boost }, boost, name: item.name };
+}
 export const bagOf = (charData) => {
   const b = charData?.storyBag || {};
   const out = {};
@@ -281,6 +300,7 @@ export const ITEM_KINDS = {
   cleanse_party: { it: "Purifica il gruppo", icon: "💧" },
   panacea: { it: "Panacea (tutti gli stati)", icon: "✨" },
   buff: { it: "Potenziamento", icon: "🦸" },
+  xp_boost: { it: "Bonus PE", icon: "⭐" },
   throw: { it: "Da lancio (un nemico)", icon: "🔥" },
   throw_area: { it: "Da lancio (tutti i nemici)", icon: "💥" },
 };
@@ -323,6 +343,7 @@ export function normalizeCustomItem(d = {}) {
   } else if (kind === "heal") { it.dice = dice(d.dice, "2d4"); it.flat = num(d.flat, 0, 50, 0); }
   else if (kind === "revive") it.pct = num(d.pct, 10, 100, 50);
   else if (kind === "buff") { it.buff = d.buff === "adv" ? "adv" : "ac"; if (it.buff === "ac") it.value = num(d.value, 1, 5, 2); it.turns = num(d.turns, 1, 5, 2); }
+  else if (kind === "xp_boost") { it.xpPct = num(d.xpPct, 1, 100, 10); it.xpRuns = num(d.xpRuns, 1, 10, 2); }
   else if (kind === "throw") { it.dice = dice(d.dice, "2d6"); it.dmg = dmgK(d.dmg); }
   else if (kind === "throw_area") { it.dice = dice(d.dice, "2d6"); it.dmg = dmgK(d.dmg); it.save = ["str", "dex", "con", "int", "wis", "cha"].includes(d.save) ? d.save : "dex"; it.dc = num(d.dc, 8, 22, 13); }
   return it;

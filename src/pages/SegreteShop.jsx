@@ -25,6 +25,7 @@ const CATEGORIES = [
   { key: "cure", label: "❤ Cure e rianimazione", kinds: ["heal", "revive"] },
   { key: "purif", label: "🌿 Purificanti", kinds: ["cleanse", "cleanse_party", "panacea"] },
   { key: "buff", label: "🛡 Potenziamenti", kinds: ["buff"] },
+  { key: "xp", label: "⭐ Esperienza", kinds: ["xp_boost"] },
   { key: "throw", label: "🔥 Da lancio", kinds: ["throw", "throw_area"] },
   { key: "weapon", label: "⚔ Armi", kinds: ["weapon"] },
   { key: "armor", label: "🧥 Armature", kinds: ["armor"] },
@@ -38,7 +39,7 @@ function groupByCat(ids) {
   return out.filter((g) => g.ids.length);
 }
 
-export function ItemRow({ id, n, onBuy, onSell, onGift, onEquip, busy, coins, charData }) {
+export function ItemRow({ id, n, onBuy, onSell, onGift, onEquip, onUseXp, busy, coins, charData }) {
   const it = itemOf(id);
   const r = RARITY[it.rarity];
   return (
@@ -49,6 +50,7 @@ export function ItemRow({ id, n, onBuy, onSell, onGift, onEquip, busy, coins, ch
         <small>{it.fx ? `${fxLine(it.fx)} · ` : ""}{it.desc}{isGear(it) ? ` · ${usersOf(it)}` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}
+      {onUseXp && it.kind === "xp_boost" && <button type="button" className="sgr-btn sgs-gift" disabled={busy} onClick={() => onUseXp(id)}>🧪 Bevi (+{it.xpPct}% PE)</button>}
       {onEquip && isGear(it) && <button type="button" className="sgr-btn sgs-gift" disabled={busy} onClick={() => onEquip(id)}>🛡 Equipaggia</button>}
       {onGift && <button type="button" className="sgr-btn sgr-btn--ghost sgs-gift" disabled={busy} onClick={() => onGift(id)}>🎁 Regala</button>}
       {onSell && <span className="sgs-buy">
@@ -197,6 +199,15 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
     } catch (e) { setMsg(e.message || "Vendita non riuscita."); }
     finally { setBusy(false); }
   };
+  const useXp = async (id) => {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try {
+      const result = await segreteDo({ op: "useXpPotion", itemId: id });
+      setMsg(`⭐ Bevuta ${result.name}: +${result.boost.pct}% PE per ${result.boost.runs} dungeon vinti!`);
+    } catch (e) { setMsg(e.message || "Uso non riuscito."); }
+    finally { setBusy(false); }
+  };
   const myBases = new Set(Object.keys(charData?.storyChars || {}).flatMap((c) => WEAPON_CHOICES[c] || []));
   const shop = SHOP_ITEMS.filter((id) => !isGear(ITEMS[id]));
   const myClasses = Object.keys(charData?.storyChars || {});
@@ -212,6 +223,11 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
         ? "Lo zaino è unico per tutti i tuoi eroi."
         : `Si paga in ${COIN_NAME}: 1d${FLOOR_COINS_DIE} a ogni eroe per sala vinta, più quelle che lasciano i mostri (si portano a casa solo se il gruppo vince). Ogni oggetto ha un limite di acquisti al giorno.`}</p>
       <IconLegend />
+      {charData?.storyXpBoost?.runs > 0 && (
+        <p className="sgr-hint" style={{ color: "#ffd76a", fontWeight: 700 }}>
+          {charData.storyXpBoost.icon || "⭐"} Bonus PE attivo: +{charData.storyXpBoost.pct}% PE per {charData.storyXpBoost.runs === 1 ? "il prossimo dungeon vinto" : `i prossimi ${charData.storyXpBoost.runs} dungeon vinti`} ({charData.storyXpBoost.name}).
+        </p>
+      )}
       {msg && <p className="sgr-hint" role="status">{msg}</p>}
       {tab !== "zaino" && <div className="sgs-tabs" role="group" aria-label="Operazione in Bottega">
         <button type="button" className={`sgr-btn${shopMode === "buy" ? " is-on" : ""}`} aria-pressed={shopMode === "buy"} onClick={() => { setShopMode("buy"); setCategory("all"); }}>Compra</button>
@@ -232,7 +248,7 @@ export default function SegreteShop({ charData, view = "zaino", uid }) {
           <p className="sgr-label">{g.label} <small>({g.ids.reduce((t, id) => t + (bag[id] || 0), 0)})</small></p>
           <ul className="sgs-list">{g.ids.map((id) => (
             <li key={id} className="sgs-wrap">
-              <ul className="sgs-list sgs-list--one"><ItemRow id={id} n={bag[id]} onGift={(x) => { setEquip(null); setGift(gift === x ? null : x); }} onEquip={(x) => { setGift(null); setEquip(equip === x ? null : x); }} busy={busy} /></ul>
+              <ul className="sgs-list sgs-list--one"><ItemRow id={id} n={bag[id]} onUseXp={useXp} onGift={(x) => { setEquip(null); setGift(gift === x ? null : x); }} onEquip={(x) => { setGift(null); setEquip(equip === x ? null : x); }} busy={busy} /></ul>
               {equip === id && <EquipBox id={id} charData={charData} busy={busy} onEquip={doEquip} onClose={() => setEquip(null)} />}
               {gift === id && <GiftBox id={id} uid={uid} charData={charData} busy={busy} onSend={sendGift} onClose={() => setGift(null)} />}
             </li>

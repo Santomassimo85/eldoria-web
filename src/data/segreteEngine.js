@@ -353,7 +353,7 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     if (C.save) h.save += C.save;
     if (C.hit) h.compHit = C.hit;
     if (C.hp) { const x = Math.round(h.maxHp * C.hp); h.maxHp += x; h.hp += x; h.compHp = x; }
-    if (h.cls === "paladin") { h.healingPoolMax = h.maxHp + h.level; h.healingPool = h.healingPoolMax; }
+    if (h.cls === "paladin") { h.healingPoolMax = h.maxHp + h.level * 2; h.healingPool = h.healingPoolMax; }
   });
   if (s.party > 1) log(s, `🤝 Compagnia ×${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   if (s.dungeonRules.key !== "neutro") log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE ×${s.dungeonRules.xp}, Monete Antiche ×${s.dungeonRules.coins}.`, { kind: "info" });
@@ -462,7 +462,7 @@ const downTxt = (t) => (t.hp <= 0 ? (t.side === "f" ? ` 💀 ${t.name} cade!` : 
 
 /* ── azioni degli eroi ───────────────────────────────── */
 export function healingPoolOf(h) {
-  const max = Math.max(0, Math.floor(h.healingPoolMax ?? (h.maxHp + h.level)));
+  const max = Math.max(0, Math.floor(h.healingPoolMax ?? (h.maxHp + h.level * 2)));
   return { max, left: Math.max(0, Math.min(max, Math.floor(h.healingPool ?? max))) };
 }
 export function heroActionList(h) {
@@ -638,7 +638,7 @@ function heroAct(s, h, a, target, amount) {
     const parts = tg.map((t) => {
       let amt;
       if (a.flat) amt = flatOf(a.flat);
-      else { const [dn, ds] = diceFor(a, lv); amt = roll(dn, ds).t + (a.plusMod ? healMod : 0) + (a.plusLevel ? lv : 0); }
+      else { const [dn, ds] = diceFor(a, lv); amt = roll(dn, ds).t + (a.plusMod ? healMod * (typeof a.plusMod === "number" ? a.plusMod : 1) : 0) + (a.plusLevel ? lv : 0); }
       amt += sHeal;
       const before = t.hp;
       t.hp = Math.min(t.maxHp, t.hp + amt);
@@ -1159,6 +1159,15 @@ export function useItem(s, uid, { itemId, targetId }, now) {
     if (it.buff === "ac") target.fx.ac = [...(target.fx.ac || []).filter((e) => fxOn(s, e)), { v: it.value, until }];
     if (it.buff === "adv") target.fx.adv = until;
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${it.buff === "ac" ? `+${it.value} CA` : "vantaggio agli attacchi"} per ${it.turns} round.`, { kind: "buff", actor: h.id, targets: [target.id] });
+  } else if (it.kind === "xp_boost") {
+    curVfx = { fx: "buff", el: "radiant", from: h.id };
+    const tUid = target?.uid || uid;
+    const pct = Math.max(1, Number(it.xpPct) || 5);
+    const addRuns = Math.max(1, Number(it.xpRuns) || 2);
+    const prev = s.xpBoosts?.[tUid];
+    const runs = (prev?.pct === pct ? (Number(prev.runs) || 0) : 0) + addRuns;
+    s.xpBoosts = { ...(s.xpBoosts || {}), [tUid]: { pct, runs, name: it.name, icon: it.icon || "⭐", itemId } };
+    log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ⭐ +${pct}% PE per ${runs} dungeon vinti!`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "throw") {
     curVfx = { fx: "lob", el: elOf(it.dmg), from: h.id };
     const [n, sd] = parseDice(it.dice);
@@ -1222,8 +1231,8 @@ export function nextFloor(s, bestiary, now) {
    Va tutto nel bottino (spoils), che il server consegna alla vittoria come il resto. */
 export const MIMIC_CHANCE = 0.10;
 export const CHEST_AUTO_MS = 90 * 1000;
-export const CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra"];
-export const CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo"];
+export const CHEST_BASIC = ["pozione", "pozione", "pozione", "pozione_magg", "tonico", "fuoco_alch", "acido", "acqua_santa", "bomba_acqua", "pelle_pietra", "pozione_exp_5", "pozione_exp_10"];
+export const CHEST_RARE = ["pozione_sup", "piuma_fenice", "panacea", "eroismo", "pozione_exp_20"];
 export const CHEST_RARE_CHANCE = 0.04; // per la difficoltà si moltiplica per il "chest" (Leggenda 6%)
 export function openChest(s, uid, now, mimicSource = MIMIC_MONSTER) {
   if (s.status !== "treasure") throw new Error("Qui non c'è nessuno scrigno da aprire.");

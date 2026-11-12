@@ -23,4 +23,18 @@ E.registerCustomItems([{ id: 'x_sale_test', name: 'Test', kind: 'heal', rarity: 
 assert.equal(E.sellBagItem({ storyBag: { x_sale_test: 1 } }, 'x_sale_test').earned, 50);
 E.registerCustomItems([{ id: 'x_sale_test', name: 'Test', kind: 'heal', rarity: 'rare', price: 30, tradeValue: 900, dice: '1d4' }]);
 assert.equal(E.sellBagItem({ storyBag: { x_sale_test: 1 } }, 'x_sale_test').earned, 10, 'Il prezzo reale precede il valore di rarità');
-console.log('OK: vendita a 1/3, arrotondamenti, quantità, zaino vuoto/equipaggiati, copie esaurite, oggetti sconosciuti, dati preservati e valori custom server.');
+for (const [id, pct] of [['pozione_exp_5', 5], ['pozione_exp_10', 10], ['pozione_exp_20', 20]]) {
+  const it = E.itemOf(id);
+  assert.equal(it?.kind, 'xp_boost');
+  assert.equal(it?.xpPct, pct);
+  assert.equal(it?.xpRuns, 2);
+  assert.ok(E.SHOP_ITEMS.includes(id), `${id} in bottega`);
+}
+const drunk1 = E.drinkXpPotion({ storyBag: { pozione_exp_20: 2 } }, 'pozione_exp_20');
+assert.equal(drunk1.boost.pct, 20);
+assert.equal(drunk1.boost.runs, 2);
+assert.deepEqual(drunk1.patch.storyBag, { pozione_exp_20: 1 });
+const drunk2 = E.drinkXpPotion({ storyBag: drunk1.patch.storyBag, storyXpBoost: drunk1.boost }, 'pozione_exp_20');
+assert.equal(drunk2.boost.runs, 4, 'Bere la stessa pozione somma i dungeon rimasti');
+assert.equal(drunk2.patch.storyBag.pozione_exp_20, undefined);
+console.log('OK: vendita a 1/3, arrotondamenti, quantità, zaino vuoto/equipaggiati, copie esaurite, oggetti sconosciuti, dati preservati, pozioni PE e valori custom server.');
