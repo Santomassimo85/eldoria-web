@@ -12,8 +12,13 @@ import { heroSubclass, subclassesOf, kitOf } from "../data/segreteKits";
 import { RACES, hasRace } from "../data/segreteRaces";
 
 const FAKE_NPC_NAMES = [
-  "Kaelen", "Lyra", "Thrain", "Vesper", "Bram", "Seraphina",
-  "Garrick", "Nyx", "Torvin", "Elowen", "Draven", "Sylas",
+  "Kaelen", "Thrain", "Bram", "Garrick", "Torvin", "Draven",
+  "Sylas", "Aldric", "Varian", "Cedric", "Dorian", "Roderick",
+];
+// Classi con sprite maschile nei fogli /assets/segrete/party/*.webp (esclude paladin, rogue, sorcerer, druid che nell'atlas attuale sono donne)
+const MALE_SPRITE_CLASSES = [
+  "fighter", "barbarian", "ranger", "monk",
+  "wizard", "warlock", "cleric", "bard",
 ];
 
 const roomsCol = () => collection(db, "dungeon_rooms");
@@ -94,7 +99,7 @@ export const addFakeNpc = (roomId, byUid, isMaster = false) => editRoom(roomId, 
   const freeNames = FAKE_NPC_NAMES.filter((n) => !usedNames.has(n));
   const name = (freeNames.length ? freeNames : FAKE_NPC_NAMES)[Math.floor(Math.random() * (freeNames.length || FAKE_NPC_NAMES.length))];
 
-  const allClasses = STORY_CLASSES.map((c) => c.key);
+  const allClasses = MALE_SPRITE_CLASSES.filter((k) => STORY_CLASSES.some((c) => c.key === k));
   const freeClasses = allClasses.filter((k) => !usedClasses.has(k));
   const cls = (freeClasses.length ? freeClasses : allClasses)[Math.floor(Math.random() * (freeClasses.length || allClasses.length))];
 
