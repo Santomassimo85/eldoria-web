@@ -8,6 +8,10 @@
         {
           "type": "feature",
           "text": "Segrete: texture continue e meno ripetitive, barra PE sempre visibile, Benedizione e Abiurazione automatiche al livello 3, Scacciare non Morti dal livello 1 e piccolo bonus drop in gruppo."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete: descrizioni delle magie concise, TS senza formule e categoria Trucchetto visibile nelle schede e in battaglia."
         }
       ]
     },

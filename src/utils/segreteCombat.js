@@ -1,4 +1,5 @@
 /* Informazioni delle azioni e stati della lotta delle Segrete. */
+import { cantripMult, STAT_LABEL } from "../data/segreteKits";
 export function statusIcons(c, round) {
   const fx = c.fx || {};
   const untilOf = (u) => (typeof u === "number" ? u : u?.until || 0);
@@ -27,17 +28,18 @@ export function statusIcons(c, round) {
   return out;
 }
 
-export function actInfo(a, lv) {
-  if (a.healPool) return "riserva PF massimi + livello · scegli quanto curare";
-  if ((a.cantrip || a.kind === "taunt" || a.id === "cura_c") && a.info) return a.info;
+export function actInfo(a, lv = 1) {
+  const dice = a.scale ? a.dice.replace(/^(\d+)d/, (_, n) => `${Number(n) * cantripMult(lv)}d`) : a.dice;
+  if (a.info) return a.scale && a.info.startsWith(a.dice) ? a.info.replace(a.dice, dice) : a.info;
+  if (a.healPool) return "Cura a scelta · te o un alleato";
   if (a.kind === "defend") return "+4 CA fino al tuo turno";
   if (a.kind === "grip") return `${a.info} · gratis`;
-  if (a.kind === "heal") return a.flat ? `cura ${lv * 5}` : `cura ${a.dice}${a.plusMod ? "+mod" : ""}`;
+  if (a.kind === "heal") return a.flat ? "Cura in base al livello" : `cura ${dice}${a.plusMod ? "+mod" : ""}`;
   if (a.kind === "heal_all") return `cura tutti ${a.dice}+mod`;
   if (a.kind === "debuff") return a.info || `${a.inflict?.key === "frightened" ? "paura" : "svantaggio"} · ${a.turns}t`;
   if (a.kind === "buff") return a.buff === "ac" ? `+${a.value} CA · ${a.turns}t` : a.buff === "adv" ? `vantaggio${a.allParty ? " a tutto il party" : ""} · ${a.turns}t` : `+${a.value} danni · ${a.turns}t`;
-  if (a.kind === "save") return `${a.dice} · TS ${a.save.toUpperCase()}${a.area ? " · tutti" : ""}`;
+  if (a.kind === "save") return `${dice} · TS ${STAT_LABEL[a.save] || a.save.toUpperCase()}${a.area ? " · tutti" : ""}`;
   if (a.kind === "missile") return `${a.dice}+${a.flat || 0} · colpisce sempre`;
-  return `${a.dice}${a.kind === "weapon" ? "+mod" : ""}`;
+  return `${dice || ""}${a.kind === "weapon" ? "+mod" : ""}`;
 }
 

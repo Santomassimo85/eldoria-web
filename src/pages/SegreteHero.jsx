@@ -14,6 +14,7 @@ import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
+import { actInfo } from "../utils/segreteCombat";
 import { itemOf, heroGear, coinsOf } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
@@ -25,19 +26,10 @@ let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
 const STAT_HINT = { str: "colpi in mischia", dex: "CA leggera, iniziativa, archi", con: "punti ferita", int: "magia del Mago", wis: "magia di Druido e Chierico", cha: "magia di Stregone, Warlock, Bardo, Paladino" };
 
-function actionLine(a) {
-  if (a.info) return a.info;
-  if (a.kind === "heal") return a.flat ? "cura in base al livello" : `cura ${a.dice}`;
-  if (a.kind === "heal_all") return `cura tutti ${a.dice}`;
-  if (a.kind === "buff") return a.buff === "ac" ? `+${a.value} CA per ${a.turns}t` : a.buff === "adv" ? `vantaggio per ${a.turns}t` : `+${a.value} danni per ${a.turns}t`;
-  if (a.kind === "debuff") return `svantaggio per ${a.turns}t`;
-  if (a.kind === "save") return `${a.dice} · TS ${a.save.toUpperCase()}${a.area ? " · tutti i nemici" : ""}`;
-  return a.dice || "";
-}
-const ActChip = ({ a, sub }) => (
-  <span className="sgh-act" title={actionLine(a)}>
-    <SgIcon kind="action" of={a} frame size="sm" color={sgTone(a)} /> <b>{a.name}</b>{a.uses ? <em> · {a.uses}/sala</em> : null}
-    <small>{sub || actionLine(a)}</small>
+const ActChip = ({ a, sub, lv = 1 }) => (
+  <span className="sgh-act" title={actInfo(a, lv)}>
+    <SgIcon kind="action" of={a} frame size="sm" color={sgTone(a)} /> <b>{a.name}</b>{a.cantrip ? <em> · Trucchetto</em> : a.uses ? <em> · {a.uses}/sala</em> : null}
+    <small>{sub || actInfo(a, lv)}</small>
   </span>
 );
 
@@ -60,7 +52,7 @@ function SubclassBox({ cls, hero, lv, charData, busy, send }) {
             <p className="sgh-sub-name">{sc.icon} <b style={{ color: "color-mix(in srgb, var(--cls) 65%, #fff 35%)" }}>{sc.name}</b>{on ? <em> · attiva</em> : mine ? <em> · tua</em> : null}</p>
             <small>{sc.desc}</small>
             <p className="sgh-sub-passive">✦ {sc.passiveTxt}</p>
-            <div className="sgh-acts">{sc.actions.map((a) => <ActChip key={a.id} a={a} sub={`${actionLine(a)} · dal Lv ${a.min}`} />)}</div>
+            <div className="sgh-acts">{sc.actions.map((a) => <ActChip key={a.id} a={a} lv={lv} sub={`${actInfo(a, lv)} · dal Lv ${a.min}`} />)}</div>
             <div className="sgh-row">
               {mine && !on && <button type="button" className="sgr-btn" disabled={busy} onClick={() => send({ op: "heroSubclass", cls, key: sc.key })}>Usa questa</button>}
               {on && <button type="button" className="sgr-btn" disabled={busy} onClick={() => send({ op: "heroSubclass", cls, key: "" })}>Torna alla classe base</button>}
@@ -194,12 +186,12 @@ export default function SegreteHero({ cls, charData }) {
         <p className="sgh-sub">🛡 Scegli l'armatura (quelle che la classe sa portare; le migliori si trovano o si comprano):</p>
         <ArmorPicker cls={cls} st={stats} weapon={weapon || weaponChoices(cls)[0].key} value={armor || armorProf(cls).def} shield={shield}
           onPick={(a, sh) => { setArmor(a); setShield(sh); }} />
-        <p className="sgh-sub">Hai già: {kit.base.filter((a) => (a.min || 1) <= 1).map((a, i) => <span key={a.id}>{i ? " · " : ""}<SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name}</span>)}</p>
+        <p className="sgh-sub">Hai già: {kit.base.filter((a) => (a.min || 1) <= 1).map((a, i) => <span key={a.id}>{i ? " · " : ""}<SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name}{a.cantrip && <em> · Trucchetto</em>}</span>)}</p>
         <p className="sgh-sub">Scegli la prima abilità o il primo incantesimo:</p>
         <div className="sgh-picks">
           {starters.map((a) => (
             <button key={a.id} type="button" aria-pressed={pick === a.id} className={`sgh-pick${pick === a.id ? " is-on" : ""}`} onClick={() => setPick(a.id)}>
-              <ActChip a={a} />
+              <ActChip a={a} lv={1} />
             </button>
           ))}
         </div>
@@ -266,7 +258,7 @@ export default function SegreteHero({ cls, charData }) {
           <div className="sgh-picks">
             {options.map((a) => (
               <button key={a.id} type="button" className="sgh-pick" disabled={busy} onClick={() => send({ op: "heroPick", cls, pick: a.id })}>
-                <ActChip a={a} />
+                <ActChip a={a} lv={lv} />
               </button>
             ))}
             {!options.length && <small>Hai già tutto quello che c'è al tuo livello: torna più avanti.</small>}
@@ -277,7 +269,7 @@ export default function SegreteHero({ cls, charData }) {
 
       <details className="sgh-fold">
         <summary>⚔ Le tue azioni <small>({acts.length})</small></summary>
-        <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} />)}</div>
+        <div className="sgh-acts">{acts.map((a) => <ActChip key={a.id} a={a} lv={lv} />)}</div>
       </details>
       <details className="sgh-fold">
         <summary>🎓 Sottoclasse <small>({subc ? subc.name : lv >= SUBCLASS_LEVEL ? "da scegliere" : `dal Lv ${SUBCLASS_LEVEL}`})</small></summary>

@@ -675,7 +675,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
             </button>
             {acts.map((a) => <button key={a.id} type="button" className={`sgb-act k-${a.kind}${chosen?.id === a.id ? " is-selected" : ""}`} aria-pressed={chosen?.id === a.id} disabled={busy || blocking || !myTurn || (a.left != null && a.left <= 0)} onClick={() => { setChosenItem(null); setBagOpen(false); pickAction(a); }}>
               <SgIcon kind="action" of={a} frame size="md" className="sgb-act-ico" color={sgTone(a)} />
-              <span className="sgb-act-name">{a.name}</span><span className="sgb-act-info">{a.info || actInfo(a, me.level)}</span>
+              <span className="sgb-act-name">{a.name}{a.cantrip && <small className="cw-act-type">Trucchetto</small>}</span><span className="sgb-act-info">{actInfo(a, me.level)}</span>
               {a.left != null && <span className="sgb-act-uses">{a.left}/{a.healPool ? `${a.poolMax} PF` : a.uses}</span>}
             </button>)}
           </div>

@@ -1,10 +1,18 @@
 const assert = require('node:assert/strict');
 const { buildSync } = require('esbuild');
 const Module = require('node:module');
-const compiled = buildSync({ stdin: { contents: 'import * as E from "./src/data/segreteEngine"; import * as K from "./src/data/segreteKits"; import * as I from "./src/data/segreteItems"; import * as A from "./src/fx/crawlerArt"; export { E, K, I, A };', resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
+const compiled = buildSync({ stdin: { contents: 'import * as E from "./src/data/segreteEngine"; import * as K from "./src/data/segreteKits"; import * as I from "./src/data/segreteItems"; import * as A from "./src/fx/crawlerArt"; import * as C from "./src/utils/segreteCombat"; export { E, K, I, A, C };', resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
 const mod = new Module('party-skills');
 mod._compile(compiled, 'party-skills');
-const { E, K, I, A } = mod.exports;
+const { E, K, I, A, C } = mod.exports;
+
+for (const kit of Object.values(K.KITS)) for (const a of [...kit.base, ...kit.pool]) {
+  if (a.scale) { assert.equal(a.cantrip, true); assert.ok(!a.uses); }
+  assert.doesNotMatch(C.actInfo(a, 5), /infinito|competenza|\b8 \+/i);
+}
+assert.match(C.actInfo(K.KITS.wizard.base.find(a => a.id === 'dardo_fuoco'), 5), /^2d10/);
+assert.match(C.actInfo(K.KITS.paladin.base.find(a => a.id === 'abiurazione')), /TS SAG$/);
+assert.match(C.actInfo(K.KITS.cleric.pool.find(a => a.id === 'fiamma')), /TS DES$/);
 
 function run(cls, level) {
   return E.withRng(() => .5, () => E.newRun({ room: { type: 'segrete' }, heroes: [

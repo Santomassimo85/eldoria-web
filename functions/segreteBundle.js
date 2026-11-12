@@ -254,7 +254,7 @@ var KITS = {
     stat: "str",
     rec: ["str", "con"],
     extraAttacks: true,
-    base: [{ id: "respiro", name: "Secondo Respiro", icon: "\u2764", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }, { id: "taunt", name: "Provocazione", icon: "\u{1F4E3}", kind: "taunt", save: "wis", turns: 2, uses: 2, info: "tutti i nemici: TS SAG (8 + competenza + FOR) o attaccano solo te per 2 turni" }],
+    base: [{ id: "respiro", name: "Secondo Respiro", icon: "\u2764", kind: "heal", dice: "1d10", plusLevel: true, self: true, uses: 1 }, { id: "taunt", name: "Provocazione", icon: "\u{1F4E3}", kind: "taunt", save: "wis", turns: 2, uses: 2, info: "Provoca tutti \xB7 2 turni \xB7 TS SAG" }],
     pool: [
       { id: "poderoso", useWeapon: true, name: "Attacco Poderoso", icon: "\u{1F4A5}", kind: "weapon", dice: "1d8", dmg: "slashing", bonusDmg: "lv/2", min: 1, uses: 2, info: "+met\xE0 livello ai danni" },
       { id: "parata", name: "Muro di Scudi", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 3, turns: 2, self: true, min: 1, uses: 1 },
@@ -291,14 +291,14 @@ var KITS = {
     extraAttacks: true,
     healStat: "cha",
     base: [
-      { id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", healPool: true, info: "riserva PF massimi + livello \xB7 scegli quanto curare \xB7 te o un alleato" },
+      { id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", healPool: true, info: "Cura a scelta \xB7 te o un alleato" },
       { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 3, uses: 1, info: "vantaggio a tutto il party per 2 turni" },
-      { id: "abiurazione", name: "Abiurazione", icon: "\u2600", kind: "debuff", area: true, save: "wis", dcStat: "cha", turns: 3, inflict: { key: "frightened" }, min: 3, uses: 1, info: "tutti i nemici \xB7 TS SAG contro 8 + competenza + CAR \xB7 paura per 3 turni" }
+      { id: "abiurazione", name: "Abiurazione", icon: "\u2600", kind: "debuff", area: true, save: "wis", dcStat: "cha", turns: 3, inflict: { key: "frightened" }, min: 3, uses: 1, info: "Paura a tutti \xB7 3 turni \xB7 TS SAG" }
     ],
     pool: [
       { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
-      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", healPool: true, min: 3, info: "scegli quanto curare \xB7 stessa riserva di Imposizione delle Mani" },
+      { id: "cura_p", name: "Cura Ferite", icon: "\u{1F49A}", kind: "heal", healPool: true, min: 3, info: "Cura a scelta \xB7 riserva condivisa" },
       { id: "aura", name: "Aura di Protezione", icon: "\u{1F31F}", kind: "buff", buff: "ac", value: 2, turns: 3, allParty: true, min: 6, uses: 1 },
       { id: "accecante", useWeapon: true, name: "Punizione Accecante", icon: "\u2600", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
       { id: "sacra", name: "Arma Sacra", icon: "\u{1F5E1}", kind: "buff", buff: "dmg", value: 5, turns: 3, self: true, min: 12, uses: 1 }
@@ -354,7 +354,7 @@ var KITS = {
       { id: "veleno_r", name: "Lama Avvelenata", icon: "\u2620", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, min: 1, uses: 2 },
       { id: "basso", useWeapon: true, name: "Colpo Basso", icon: "\u{1F9B5}", kind: "weapon", dice: "1d8", dmg: "piercing", riderDis: 2, min: 3, uses: 2, info: "il nemico a svantaggio" },
       { id: "prodigiosa", name: "Schivata Prodigiosa", icon: "\u{1F938}", kind: "buff", buff: "ac", value: 4, turns: 1, self: true, min: 3, uses: 2 },
-      { id: "fumogena", name: "Bomba Fumogena", icon: "\u{1F4A8}", kind: "debuff", area: true, turns: 2, inflict: { key: "blinded" }, min: 6, uses: 1, info: "tutti i nemici accecati (svantaggio, e li colpisci con vantaggio)" },
+      { id: "fumogena", name: "Bomba Fumogena", icon: "\u{1F4A8}", kind: "debuff", area: true, turns: 2, inflict: { key: "blinded" }, min: 6, uses: 1, info: "Acceca tutti \xB7 2 turni" },
       { id: "assassinare", useWeapon: true, name: "Assassinare", icon: "\u{1F5E1}", kind: "weapon", dice: "1d8", dmg: "piercing", adv: true, rider: "4d6", riderDmg: "piercing", min: 9, uses: 1, grow: true }
     ]
   },
@@ -364,14 +364,14 @@ var KITS = {
     armor: "light",
     stat: "int",
     rec: ["int", "dex"],
-    base: [{ id: "dardo_fuoco", name: "Dardo di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, inflict: { key: "burn", chance: 15 }, info: "e a volte brucia" }, { id: "dardo_inc", name: "Dardo Incantato", icon: "\u2728", kind: "missile", dice: "3d4", flat: 3, dmg: "force", uses: 3, grow: true }],
+    base: [{ id: "dardo_fuoco", name: "Dardo di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, cantrip: true, inflict: { key: "burn", chance: 15 }, info: "1d10 fuoco \xB7 pu\xF2 bruciare" }, { id: "dardo_inc", name: "Dardo Incantato", icon: "\u2728", kind: "missile", dice: "3d4", flat: 3, dmg: "force", uses: 3, grow: true }],
     pool: [
-      { id: "raggio_gelo", name: "Raggio di Gelo", icon: "\u2744", kind: "spell", dice: "1d8", dmg: "cold", scale: true, min: 1, inflict: { key: "slow", chance: 50, turns: 1 }, info: "e a volte rallenta" },
+      { id: "raggio_gelo", name: "Raggio di Gelo", icon: "\u2744", kind: "spell", dice: "1d8", dmg: "cold", scale: true, cantrip: true, min: 1, inflict: { key: "slow", chance: 50, turns: 1 }, info: "1d8 freddo \xB7 pu\xF2 rallentare" },
       { id: "scudo", name: "Scudo", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 5, turns: 1, self: true, min: 1, uses: 2 },
       { id: "mani_w", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "acida", name: "Freccia Acida", icon: "\u{1F9EA}", kind: "spell", dice: "4d4", dmg: "acid", min: 3, uses: 2, grow: true },
       { id: "palla_fuoco", name: "Palla di Fuoco", icon: "\u2604", kind: "save", dice: "8d6", dmg: "fire", save: "dex", area: true, half: true, min: 6, uses: 1, grow: true },
-      { id: "ipnosi", name: "Trama Ipnotica", icon: "\u{1F300}", kind: "save", dice: "0d1", dmg: "psychic", save: "wis", area: true, inflict: { key: "paralyzed" }, min: 6, uses: 1, info: "chi fallisce resta paralizzato (TS a ogni turno)" },
+      { id: "ipnosi", name: "Trama Ipnotica", icon: "\u{1F300}", kind: "save", dice: "0d1", dmg: "psychic", save: "wis", area: true, inflict: { key: "paralyzed" }, min: 6, uses: 1, info: "Paralisi \xB7 TS SAG" },
       { id: "cono_freddo", name: "Cono di Freddo", icon: "\u{1F9CA}", kind: "save", dice: "8d8", dmg: "cold", save: "con", area: true, half: true, min: 9, uses: 1, grow: true }
     ]
   },
@@ -381,9 +381,9 @@ var KITS = {
     armor: "light",
     stat: "cha",
     rec: ["cha", "con"],
-    base: [{ id: "fiotto", name: "Fiotto di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, inflict: { key: "burn", chance: 15 }, info: "e a volte brucia" }, { id: "mani_br", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, uses: 2, grow: true }],
+    base: [{ id: "fiotto", name: "Fiotto di Fuoco", icon: "\u{1F525}", kind: "spell", dice: "1d10", dmg: "fire", scale: true, cantrip: true, inflict: { key: "burn", chance: 15 }, info: "1d10 fuoco \xB7 pu\xF2 bruciare" }, { id: "mani_br", name: "Mani Brucianti", icon: "\u{1F590}", kind: "save", dice: "3d6", dmg: "fire", save: "dex", area: true, half: true, uses: 2, grow: true }],
     pool: [
-      { id: "veleno", name: "Spruzzo Velenoso", icon: "\u2620", kind: "save", dice: "1d12", dmg: "poison", save: "con", scale: true, min: 1, inflict: { key: "poison" }, info: "chi fallisce resta avvelenato" },
+      { id: "veleno", name: "Spruzzo Velenoso", icon: "\u2620", kind: "save", dice: "1d12", dmg: "poison", save: "con", scale: true, cantrip: true, min: 1, inflict: { key: "poison" }, info: "1d12 veleno \xB7 avvelena \xB7 TS COS" },
       { id: "scudo_s", name: "Scudo", icon: "\u{1F6E1}", kind: "buff", buff: "ac", value: 5, turns: 1, self: true, min: 1, uses: 2 },
       { id: "gemello", name: "Dardo Gemello", icon: "\u26A1", kind: "spell", dice: "1d10", dmg: "lightning", attacks: 2, min: 3, uses: 2, info: "due raggi" },
       { id: "fulmine", name: "Fulmine", icon: "\u{1F329}", kind: "save", dice: "8d6", dmg: "lightning", save: "dex", area: true, half: true, min: 6, uses: 1, grow: true },
@@ -396,12 +396,12 @@ var KITS = {
     armor: "light",
     stat: "cha",
     rec: ["cha", "con"],
-    base: [{ id: "deflagrazione", name: "Deflagrazione Occulta", icon: "\u{1F441}", kind: "spell", dice: "1d10", dmg: "force", scale: true }, { id: "maleficio", name: "Maleficio", icon: "\u{1FA78}", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, uses: 2 }],
+    base: [{ id: "deflagrazione", name: "Deflagrazione Occulta", icon: "\u{1F441}", kind: "spell", dice: "1d10", dmg: "force", scale: true, cantrip: true }, { id: "maleficio", name: "Maleficio", icon: "\u{1FA78}", kind: "buff", buff: "dmg", value: 3, turns: 3, self: true, uses: 2 }],
     pool: [
       { id: "agathys", name: "Armatura di Agathys", icon: "\u{1F9CA}", kind: "buff", buff: "ac", value: 3, turns: 3, self: true, min: 1, uses: 1 },
       { id: "hadar", name: "Braccia di Hadar", icon: "\u{1F419}", kind: "save", dice: "2d6", dmg: "necrotic", save: "str", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "vampiro", name: "Tocco Vampirico", icon: "\u{1F987}", kind: "spell", dice: "3d6", dmg: "necrotic", drain: true, min: 3, uses: 2, grow: true, info: "ti cura di met\xE0 del danno" },
-      { id: "paura", name: "Paura", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, inflict: { key: "frightened" }, min: 6, uses: 1, info: "tutti i nemici spaventati (svantaggio)" },
+      { id: "paura", name: "Paura", icon: "\u{1F631}", kind: "debuff", area: true, turns: 2, inflict: { key: "frightened" }, min: 6, uses: 1, info: "Paura a tutti \xB7 2 turni" },
       { id: "fame", name: "Fame di Hadar", icon: "\u{1F311}", kind: "save", dice: "4d6", dmg: "cold", save: "con", area: true, half: true, min: 9, uses: 1, grow: true },
       { id: "dito", name: "Dito della Morte", icon: "\u2620", kind: "save", dice: "7d8", flat: 20, dmg: "necrotic", save: "con", half: true, min: 15, uses: 1 }
     ]
@@ -412,7 +412,7 @@ var KITS = {
     armor: "light",
     stat: "wis",
     rec: ["wis", "con"],
-    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "\u{1F33F}", kind: "spell", dice: "1d6", dmg: "piercing", scale: true }, { id: "cura_d", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" }],
+    base: [{ id: "rovi", name: "Frusta di Rovi", icon: "\u{1F33F}", kind: "spell", dice: "1d6", dmg: "piercing", scale: true, cantrip: true }, { id: "cura_d", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "Cura tutti \xB7 1d8 + SAG" }],
     pool: [
       { id: "onda", name: "Onda Tonante", icon: "\u{1F30A}", kind: "save", dice: "2d8", dmg: "thunder", save: "con", area: true, half: true, min: 1, uses: 2, grow: true },
       { id: "pelle", name: "Pelle di Corteccia", icon: "\u{1F333}", kind: "buff", buff: "ac", value: 3, turns: 3, min: 1, uses: 1 },
@@ -429,11 +429,11 @@ var KITS = {
     stat: "wis",
     rec: ["wis", "con"],
     base: [
-      { id: "cura_c", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" },
-      { id: "scaccia_non_morti", name: "Scacciare non Morti", icon: "\u2600", kind: "debuff", area: true, undeadOnly: true, save: "wis", dcStat: "wis", turns: 3, inflict: { key: "frightened" }, min: 1, uses: 1, info: "solo non morti \xB7 TS SAG contro 8 + competenza + SAG \xB7 paura per 3 turni" }
+      { id: "cura_c", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "Cura tutti \xB7 1d8 + SAG" },
+      { id: "scaccia_non_morti", name: "Scacciare non Morti", icon: "\u2600", kind: "debuff", area: true, undeadOnly: true, save: "wis", dcStat: "wis", turns: 3, inflict: { key: "frightened" }, min: 1, uses: 1, info: "Paura ai non morti \xB7 3 turni \xB7 TS SAG" }
     ],
     pool: [
-      { id: "fiamma", name: "Fiamma Sacra", icon: "\u{1F56F}", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "Trucchetto infinito: 1d8 + SAG, met\xE0 radioso e met\xE0 fuoco \xB7 TS DES nega" },
+      { id: "fiamma", name: "Fiamma Sacra", icon: "\u{1F56F}", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "1d8 + SAG radioso/fuoco \xB7 TS DES" },
       { id: "benedire_c", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
       { id: "arma_spir", name: "Arma Spirituale", icon: "\u{1F5E1}", kind: "missile", dice: "1d8", dmg: "force", plusMod: true, min: 3, uses: 3, grow: true },
       { id: "parola", name: "Parola Guaritrice di Massa", icon: "\u{1F64F}", kind: "heal_all", dice: "1d4", plusMod: true, min: 3, uses: 2, grow: true },
@@ -448,8 +448,8 @@ var KITS = {
     stat: "cha",
     rec: ["cha", "dex"],
     base: [
-      { id: "beffa", name: "Beffa Crudele", icon: "\u{1F3AD}", kind: "save", dice: "1d6", dmg: "psychic", save: "wis", scale: true, dis: 1, info: "e svantaggio al bersaglio" },
-      { id: "ispirazione", name: "Ispirazione Bardica", icon: "\u{1F3B6}", kind: "buff", buff: "inspire", value: 3, turns: 2, uses: 3, info: "un alleato: vantaggio e +3 danni per 2 turni" }
+      { id: "beffa", name: "Beffa Crudele", icon: "\u{1F3AD}", kind: "save", dice: "1d6", dmg: "psychic", save: "wis", scale: true, cantrip: true, dis: 1, info: "1d6 psichico \xB7 svantaggio \xB7 TS SAG" },
+      { id: "ispirazione", name: "Ispirazione Bardica", icon: "\u{1F3B6}", kind: "buff", buff: "inspire", value: 3, turns: 2, uses: 3, info: "Vantaggio e +3 danni \xB7 un alleato \xB7 2 turni" }
     ],
     pool: [
       { id: "parola_b", name: "Parola Guaritrice", icon: "\u{1F3B5}", kind: "heal", dice: "1d4", plusMod: true, min: 1, uses: 3, grow: true },

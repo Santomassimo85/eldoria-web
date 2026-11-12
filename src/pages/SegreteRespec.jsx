@@ -62,7 +62,7 @@ export default function SegreteRespec({ cls, hero, charData, busy, send }) {
           const on = picks.includes(a.id);
           return (
             <button key={a.id} type="button" aria-pressed={on} disabled={busy || (!on && picks.length >= maxPicks)} className={`sgh-pick${on ? " is-on" : ""}`} onClick={() => togglePick(a.id)}>
-              <span className="sgh-act"><SgIcon kind="action" of={a} frame size="sm" color={sgTone(a)} /> <b>{a.name}</b></span>
+              <span className="sgh-act"><SgIcon kind="action" of={a} frame size="sm" color={sgTone(a)} /> <b>{a.name}</b>{a.cantrip && <em> · Trucchetto</em>}</span>
             </button>
           );
         })}
