@@ -13,6 +13,7 @@ import SegreteGear from "./SegreteGear";
 import SegreteRespec from "./SegreteRespec";
 import { classInfo, heroOf } from "../data/segrete";
 import SegreteIdentity from "../components/SegreteIdentity";
+import SegreteXp from "../components/SegreteXp";
 import { itemOf, heroGear, coinsOf } from "../data/segreteItems";
 import {
   kitOf, poolFor, heroActions, weaponChoices, DMG_SHORT, WSTAT_LABEL, heroStats, heroPending, hpPending, heroMaxHp, HERO_HP_BASE, heroDefense, armorChoices, armorProf, ARMORS, ARMOR_CAT_IT, HEAVY_ARMOR_TEXT, TWO_HANDED, DMG_ALL, xpForLevel, heroXp, XP_PER_ROOM, STAT_KEYS, STAT_LABEL,
@@ -193,7 +194,7 @@ export default function SegreteHero({ cls, charData }) {
         <p className="sgh-sub">🛡 Scegli l'armatura (quelle che la classe sa portare; le migliori si trovano o si comprano):</p>
         <ArmorPicker cls={cls} st={stats} weapon={weapon || weaponChoices(cls)[0].key} value={armor || armorProf(cls).def} shield={shield}
           onPick={(a, sh) => { setArmor(a); setShield(sh); }} />
-        <p className="sgh-sub">Hai già: {kit.base.map((a, i) => <span key={a.id}>{i ? " · " : ""}<SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name}</span>)}</p>
+        <p className="sgh-sub">Hai già: {kit.base.filter((a) => (a.min || 1) <= 1).map((a, i) => <span key={a.id}>{i ? " · " : ""}<SgIcon kind="action" of={a} color={sgTone(a)} /> {a.name}</span>)}</p>
         <p className="sgh-sub">Scegli la prima abilità o il primo incantesimo:</p>
         <div className="sgh-picks">
           {starters.map((a) => (
@@ -216,7 +217,6 @@ export default function SegreteHero({ cls, charData }) {
   const curXp = heroXp(hero);
   const from = xpForLevel(lv);
   const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
-  const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (curXp - from)) / Math.max(1, to - from));
   const equippedWeapon = itemOf(hero.weaponItem);
   const wItem = equippedWeapon && weaponChoices(cls).some((w) => w.key === equippedWeapon.base) ? equippedWeapon : null;
   const subc = heroSubclass(cls, hero);
@@ -225,7 +225,7 @@ export default function SegreteHero({ cls, charData }) {
   const gear = heroGear(hero, cls);
   const def = heroDefense(cls, st, gear);
   const options = poolFor(cls, lv).filter((a) => !(hero.picks || []).includes(a.id));
-  const locked = kit.pool.filter((a) => (a.min || 1) > lv);
+  const locked = [...kit.base, ...kit.pool].filter((a) => (a.min || 1) > lv);
   const nextMilestone = Math.min(MAX_STORY_LEVEL, (Math.floor(lv / ASI_EVERY) + 1) * ASI_EVERY);
 
   return (
@@ -237,7 +237,7 @@ export default function SegreteHero({ cls, charData }) {
           <small>{heroMaxHp(cls, lv, st, hero.hpRolls || []) + def.hpBonus + (sp.hpLv || 0) * lv} PF · CA {def.ac + (sp.ac || 0)} · {lv >= MAX_STORY_LEVEL ? "livello massimo" : `${curXp.toLocaleString("it-IT")} / ${to.toLocaleString("it-IT")} PE · ~${Math.max(1, Math.ceil((to - curXp) / (XP_PER_ROOM * 4)))} vittorie al Lv ${lv + 1}`}</small>
         </div>
       </div>
-      <div className="sgh-xp"><i style={{ width: `${pct}%` }} /></div>
+      <SegreteXp hero={hero} />
       <div className="sgh-statline">
         {STAT_KEYS.map((k) => <span key={k} className={kit.rec.includes(k) ? "is-rec" : ""}><b>{STAT_LABEL[k]}</b> {st[k] >= 0 ? "+" : ""}{st[k]}</span>)}
       </div>

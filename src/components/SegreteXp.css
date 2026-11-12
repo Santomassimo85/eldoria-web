@@ -1,0 +1,6 @@
+.sg-xp { display: flex; flex-direction: column; gap: 3px; width: 100%; min-width: 0; text-align: left; }
+.sg-xp-label { color: #e0d2ff; font: 600 11px/1.3 system-ui, sans-serif; white-space: normal; }
+.sg-xp-track { display: block; height: 8px; overflow: hidden; border: 1px solid #a886dc; border-radius: 3px; background: #191020; }
+.sg-xp-track i { display: block; height: 100%; background: linear-gradient(90deg, #8b5dd1, #d7b5ff); transition: width .4s ease; }
+.cw-me .sg-xp { margin-top: 3px; }
+.sgr-qp-b > .sg-xp { grid-column: 1 / -1; grid-row: auto; margin-top: 5px; font-size: 11px; }

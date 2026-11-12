@@ -7,7 +7,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 const source = fs.readFileSync('src/pages/SegreteCrawler.jsx', 'utf8');
 const start = source.indexOf('        {run.status === "fight" && me && <>');
 const panel = source.slice(start, source.indexOf('        <SpoilsBox', start));
-const compiled = esbuild.buildSync({ stdin: { contents: `const SgIcon = () => null, sgTone = () => '', actInfo = () => ''; export function Panel({run, me, blocking, myTurn, acted = {}, afkLeft = null, chosen = null, chosenItem = null, aiming = null, bagOpen = false, bagList = [], acts, busy = false, tk = 'foe', itk = null}) { return <>${panel}</>; }`, loader: 'jsx' }, bundle: true, jsx: 'automatic', external: ['react/jsx-runtime'], platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
+const compiled = esbuild.buildSync({ stdin: { contents: `const SgIcon = () => null, sgTone = () => '', actInfo = () => ''; export function Panel({run, me, blocking, myTurn, acted = {}, afkLeft = null, chosen = null, chosenItem = null, aiming = null, healing = null, bagOpen = false, bagList = [], acts, busy = false, tk = 'foe', itk = null}) { return <>${panel}</>; }`, loader: 'jsx' }, bundle: true, jsx: 'automatic', external: ['react/jsx-runtime'], platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
 const mod = new Module(__filename, module); mod.paths = module.paths; mod._compile(compiled, __filename);
 const action = { id: 'sword', name: 'Spada lunga', kind: 'weapon', left: 2, uses: 3 };
 const props = { run: { status: 'fight' }, me: { id: 'hero', hp: 10, level: 5 }, acts: [action] };

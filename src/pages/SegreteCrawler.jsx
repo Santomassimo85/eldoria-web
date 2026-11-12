@@ -1,4 +1,5 @@
 import SegreteIdentity from "../components/SegreteIdentity";
+import SegreteXp from "../components/SegreteXp";
 /* Le Segrete: combattimento in prima persona, sincronizzato con dungeon_runs.
    Il server risolve le azioni; la coda mostra dado, effetto e danno in sequenza. */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo, classColor, clsStyle, diffOf, sizeOf } from "../data/segrete";
-import { WEAPON_CHOICES, TWO_HANDED, subclassOf } from "../data/segreteKits";
+import { WEAPON_CHOICES, TWO_HANDED, subclassOf, xpForLevel, XP_VERSION } from "../data/segreteKits";
 import { classSpriteDocId } from "../data/arenaClassSprites";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
@@ -151,7 +152,7 @@ function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, rou
   );
 }
 // il tuo eroe: barra larga sopra il log. È anche il bersaglio quando curi te stesso, e l'ancora dei numeri
-function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
+function MeBar({ h, xpHero, turn, done, selectable, picked, onPick, round }) {
   const press = usePress(h.id, selectable, onPick, null);
   const subName = h.subName || subclassOf(h.cls, h.subclass)?.name;
   const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), pips = dead ? [] : pipsOf(h, round);
@@ -171,6 +172,7 @@ function MeBar({ h, turn, done, selectable, picked, onPick, round }) {
         <span className="cw-me-hp">{dead ? (h.fled ? "fuggito" : "a terra") : <>{h.hp}<small>/{h.maxHp}</small></>}</span>
         <span className="cw-me-ca">CA {h.ac}</span>
       </span>
+      <SegreteXp hero={xpHero} />
     </button>
   );
 }
@@ -246,7 +248,7 @@ export function ChestReveal({ chest, uid, onDone, onRevealed }) {
   );
 }
 
-export default function SegreteCrawler({ room, uid, tools }) {
+export default function SegreteCrawler({ room, uid, tools, charData }) {
   useFightMode(true);
   const [latestRun, setLatestRun] = useState(null);
   const [run, setRun] = useState(null);
@@ -621,7 +623,9 @@ export default function SegreteCrawler({ room, uid, tools }) {
 
       {me && (() => {
         const h = shown(me);
-        return <MeBar h={h} round={run.round} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} picked={aiming?.id === h.id} onPick={pickTarget}
+        const gain = (run.levelUps || []).find((l) => l.uid === h.uid && l.cls === h.cls)?.xp || 0;
+        const xpHero = h.xp != null ? { ...h, xp: h.xp + gain } : charData?.storyChars?.[h.cls] || { xp: xpForLevel(h.level), xpv: XP_VERSION };
+        return <MeBar h={h} xpHero={xpHero} round={run.round} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]} picked={aiming?.id === h.id} onPick={pickTarget}
           selectable={canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
       })()}
       <button type="button" className="sgb-log" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen}>

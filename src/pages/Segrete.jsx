@@ -1,4 +1,5 @@
 import SegreteIdentity from "../components/SegreteIdentity";
+import SegreteXp from "../components/SegreteXp";
 /* LE SEGRETE — story mode della Sala della Gloria (fase 1, 2026-11-04):
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
@@ -236,7 +237,7 @@ export default function Segrete() {
       <div className="sgr-status">
         <button type="button" className="sgr-st sgr-st--hero" style={clsStyle(curCls)} onClick={() => setTab("eroi")}>
           <SgIcon kind="cls" of={curCls} fallback={ci?.icon || "?"} size="md" color="var(--cls)" className="sgr-st-ico" />
-          <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? <><SegreteIdentity cls={curCls} hero={curHero} /> · Lv {level(curCls)}</> : "da creare"}</b></span>
+          <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? <><SegreteIdentity cls={curCls} hero={curHero} /> · Lv {level(curCls)}</> : "da creare"}</b>{curHero && <SegreteXp hero={curHero} />}</span>
         </button>
         <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab("gruppi")}>
           <SgIcon kind="ui" of="gruppi" fallback="⚔" size="md" className="sgr-st-ico" />
@@ -395,10 +396,10 @@ function DungeonSwitch({ room, uid, master, busy, run, dungeons }) {
 }
 
 // La lotta usa sempre la vista in prima persona.
-function BattleView({ room, uid, master, onReopen, busy }) {
+function BattleView({ room, uid, master, onReopen, busy, charData }) {
   return (
     <Suspense fallback={<div className="sgb-loading"><p>🗝 Le porte delle Segrete si aprono…</p></div>}>
-      <SegreteCrawler room={room} uid={uid} tools={master ? <div className="cw-tools">
+      <SegreteCrawler room={room} uid={uid} charData={charData} tools={master ? <div className="cw-tools">
         <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={onReopen}>↺ Riporta in stanza (Master)</button>
       </div> : null} />
     </Suspense>
@@ -414,7 +415,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
 
   if (room.status === "running" || room.status === "done") {
     return (
-      <BattleView room={room} uid={uid} master={master} busy={busy} onReopen={() => run(() => reopenRoom(room.id))} />
+      <BattleView room={room} uid={uid} charData={charData} master={master} busy={busy} onReopen={() => run(() => reopenRoom(room.id))} />
     );
   }
 
@@ -452,7 +453,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       <DifficultyPicker value={room.difficulty} readOnly={!host && !master} disabled={busy}
         levels={master ? room.members.filter((m) => m.uid !== uid) : room.members}
         onPick={(k) => run(() => chooseDifficulty(room.id, uid, k, master))} />
-      <SegreteDungeonInfo dungeon={dungeon} diff={room.difficulty || "facile"} />
+      <SegreteDungeonInfo dungeon={dungeon} diff={room.difficulty || "facile"} partySize={room.members.length} />
 
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 

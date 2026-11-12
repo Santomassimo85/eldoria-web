@@ -1,4 +1,5 @@
 import SegreteIdentity from "../components/SegreteIdentity";
+import SegreteXp from "../components/SegreteXp";
 import { heroIdentity } from "../utils/segreteIdentity";
 /* LE SEGRETE · i tuoi eroi (2026-11-04)
    La lobby divisa in pezzi chiari: qui ci sono gli EROI già creati (uno per classe),
@@ -8,7 +9,7 @@ import { heroIdentity } from "../utils/segreteIdentity";
 import { SgIcon } from "../components/GameIcon";
 import { STORY_CLASSES, heroOf, runsOf, DAILY_RUNS, clsStyle } from "../data/segrete";
 import { heroGear } from "../data/segreteItems";
-import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, heroDefense, xpForLevel, heroXp, armorChosen, MAX_STORY_LEVEL } from "../data/segreteKits";
+import { heroPending, hpPending, heroStats, heroMaxHp, heroAc, heroDefense, armorChosen } from "../data/segreteKits";
 
 /* Cosa ha da sistemare un eroe: [{k, icon, text}] */
 export function heroTodo(hero, cls) {
@@ -35,11 +36,7 @@ function runState(charData, cls) {
 const heroLine = (charData, key) => {
   const h = heroOf(charData, key);
   const lv = heroPending(h).level;
-  const xp = heroXp(h);
-  const from = xpForLevel(lv);
-  const to = lv >= MAX_STORY_LEVEL ? from : xpForLevel(lv + 1);
-  const pct = lv >= MAX_STORY_LEVEL ? 100 : Math.round((100 * (xp - from)) / Math.max(1, to - from));
-  return { h, lv, pct, st: heroStats(h) };
+  return { h, lv, st: heroStats(h) };
 };
 
 /* Scelta rapida dell'eroe (2026-11-06): una fila di chip, senza aprire la scheda
@@ -65,6 +62,7 @@ export function HeroQuickPick({ charData, value, onPick, disabled, onManage, lab
                 <SgIcon kind="cls" of={c} frame size="sm" color="var(--cls)" />
                 <b><SegreteIdentity cls={c.key} hero={h} /></b>
                 <small>Lv {lv} · {ready ? run.text.replace(" · può aiutare", " · aiuto") : "tira i PF"}</small>
+                <SegreteXp hero={h} />
               </button>
             );
           })}
@@ -83,7 +81,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
   return (
     <ul className="sgr-acc">
       {list.map((c) => {
-        const { h, lv, pct, st } = heroLine(charData, c.key);
+        const { h, lv, st } = heroLine(charData, c.key);
         const todo = heroTodo(h, c.key);
         const run = runState(charData, c.key);
         const isOpen = open === c.key;
@@ -94,7 +92,7 @@ export function HeroAccordion({ charData, value, open, onOpen, onUse, disabled, 
               <SgIcon kind="cls" of={c} frame size="md" color="var(--cls)" className="sgr-acc-ico" />
               <span className="sgr-acc-main">
                 <b><SegreteIdentity cls={c.key} hero={h} /> <small>Lv {lv}</small>{inUse && <em className="sgr-acc-use">{inRoom ? "nel gruppo" : "in uso"}</em>}</b>
-                <span className="sgr-acc-xp" title={`${pct}% al livello dopo`}><i style={{ width: `${pct}%` }} /></span>
+                <SegreteXp hero={h} />
                 <small className="sgr-acc-sub">{heroMaxHp(c.key, lv, st, h.hpRolls || []) + heroDefense(c.key, st, heroGear(h, c.key)).hpBonus} PF · CA {heroAc(c.key, st, heroGear(h, c.key))} · <span className={run.cls}>{run.text}</span></small>
               </span>
               {!!todo.length && <span className="sgr-acc-todo" title={todo.map((t) => t.text).join(", ")}>{todo.map((t) => t.icon).join("")}</span>}

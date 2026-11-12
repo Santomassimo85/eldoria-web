@@ -222,7 +222,9 @@ export const KITS = {
       { id: "terremoto", name: "Pestone Sismico", icon: "🌋", kind: "save", dice: "3d8", dmg: "bludgeoning", save: "str", area: true, half: true, min: 12, uses: 1, grow: true },
     ] },
   paladin: { hitDie: 10, ac: 18, armor: "heavy", stat: "str", rec: ["str", "cha"], extraAttacks: true, healStat: "cha",
-    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "🙌", kind: "heal", healPool: true, info: "riserva PF massimi + livello · scegli quanto curare · te o un alleato" }],
+    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "🙌", kind: "heal", healPool: true, info: "riserva PF massimi + livello · scegli quanto curare · te o un alleato" },
+      { id: "benedizione", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 3, uses: 1, info: "vantaggio a tutto il party per 2 turni" },
+      { id: "abiurazione", name: "Abiurazione", icon: "☀", kind: "debuff", area: true, save: "wis", dcStat: "cha", turns: 3, inflict: { key: "frightened" }, min: 3, uses: 1, info: "tutti i nemici · TS SAG contro 8 + competenza + CAR · paura per 3 turni" }],
     pool: [
       { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
@@ -304,7 +306,8 @@ export const KITS = {
       { id: "tempesta", name: "Tempesta di Ghiaccio", icon: "🌨", kind: "save", dice: "4d6", dmg: "cold", save: "dex", area: true, half: true, min: 9, uses: 1, grow: true, inflict: { key: "frozen", left: 1 }, info: "chi fallisce resta congelato 1 turno" },
     ] },
   cleric: { hitDie: 8, ac: 18, armor: "heavy", stat: "wis", rec: ["wis", "con"],
-    base: [{ id: "cura_c", name: "Cura Ferite di Gruppo", icon: "💚", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG · 3 usi per sala" }],
+    base: [{ id: "cura_c", name: "Cura Ferite di Gruppo", icon: "💚", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG · 3 usi per sala" },
+      { id: "scaccia_non_morti", name: "Scacciare non Morti", icon: "☀", kind: "debuff", area: true, undeadOnly: true, save: "wis", dcStat: "wis", turns: 3, inflict: { key: "frightened" }, min: 1, uses: 1, info: "solo non morti · TS SAG contro 8 + competenza + SAG · paura per 3 turni" }],
     pool: [
       { id: "fiamma", name: "Fiamma Sacra", icon: "🕯", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "Trucchetto infinito: 1d8 + SAG, metà radioso e metà fuoco · TS DES nega" },
       { id: "benedire_c", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
@@ -528,7 +531,7 @@ export function subNum(v, lv = 1, mod = 0) {
 export const DEFEND = { id: "difesa", name: "Difendersi", icon: "🛡", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 
 export const kitOf = (cls) => KITS[cls] || KITS.fighter;
-export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
+export const poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv && !kitOf(cls).base.some((b) => b.id === a.id && (b.min || 1) <= lv));
 /* PRESA A DUE MANI (2026-11-07): spada lunga e bastone sono "versatili" come in D&D. Chi non è un
    incantatore può impugnarli a due mani: dado più grosso, ma lo scudo va via (e la sua CA). Cambiare
    presa è un'azione GRATUITA prima di agire nel round (dopo aver agito no: niente scudo rimesso apposta
@@ -542,14 +545,15 @@ export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem 
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
   const withWeapon = (a) => (a.useWeapon ? { ...a, ...((a.attacks || w.attacks) ? { attacks: a.attacks || w.attacks } : {}), ...(a.rider === "sneak" ? { info: `un colpo: ${w.dice} +${sneakDiceOf(lv)}d6` } : {}), dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...(wItem?.fx ? { wfx: wItem.fx } : {}) } : a);
-  const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
+  const base = k.base.filter((a) => (a.min || 1) <= lv);
+  const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv && !base.some((b) => b.id === a.id));
   const sub = lv >= SUBCLASS_LEVEL ? subclassOf(cls, subclass) : null;
   const subActs = sub ? sub.actions.filter((a) => (a.min || 1) <= lv).map((a) => ({ ...a, sub: sub.key })) : [];
   const grip = canTwoHand(cls, w0.key)
     ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} · riprendi lo scudo` : `${VERSATILE[w0.key]} · niente scudo` }] : [];
   const wa = weaponAction(w, plus, wItem);
   if (cls === "rogue") wa.info += ` · Furtivo +${sneakDiceOf(lv)}d6 (1 per round, con vantaggio o un alleato)`;
-  return [wa, ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
+  return [wa, ...base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */
@@ -637,8 +641,9 @@ export function validRespec(cls, hero, stats, picks) {
 // abilità ancora nelle liste da scegliere (2026-11-10: l'Ispirazione del Bardo è passata fra le base
 // e non deve più contare come scelta fatta)
 const POOL_IDS = new Set(Object.values(KITS).flatMap((k) => k.pool.map((a) => a.id)));
+const AUTO_PICK_LEVEL = new Map(Object.values(KITS).flatMap((k) => k.base.map((a) => [a.id, a.min || 1])));
 export function heroPending(hero) {
   const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
-  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id)).length) };
+  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id) && !(AUTO_PICK_LEVEL.has(id) && AUTO_PICK_LEVEL.get(id) <= lv)).length) };
 }

@@ -436,7 +436,7 @@ export class CrawlerEngine {
       const q = band(dist) * (floor ? 1 : 0.68);
       for (let x = 0; x < W; x++) {
         const wx = cam.x + dist * (((2 * x) / W - 1) * PL), wy = cam.y + dist;
-        this.put(y * W + x, tex, (wx * s) | 0, (wy * s) | 0, q);
+        this.put(y * W + x, tex, Math.floor(wx * s / (full.span || 1)), Math.floor(wy * s / (full.span || 1)), q);
       }
     }
     for (let x = 0; x < W; x++) { // pareti: un raggio per colonna
@@ -450,11 +450,11 @@ export class CrawlerEngine {
       }
       const dist = side === 0 ? tX - dX : tY - 1;
       zbuf[x] = dist;
-      const u = side === 0 ? cam.y + dist : cam.x + dist * rx, tex = dist > 4.5 ? mipOf(T.W) : T.W, ws = tex.size, tx = ((u - Math.floor(u)) * ws) | 0;
+      const u = side === 0 ? cam.y + dist : cam.x + dist * rx, tex = dist > 4.5 ? mipOf(T.W) : T.W, ws = tex.size, tx = Math.floor(u * ws / (T.W.span || 1));
       const top = Math.max(0, Math.ceil(hz + ((ch - WALLH) * SC) / dist)), bot = Math.min(H - 1, Math.floor(hz + (ch * SC) / dist));
       const q = band(dist) * (side === 0 ? 0.74 : 1); // i muri di lato un tono più scuri, come una volta
       for (let y = top; y <= bot; y++) {
-        const hgt = ch - ((y - hz) * dist) / SC, ty = ((hgt - Math.floor(hgt)) * ws) | 0;
+        const hgt = ch - ((y - hz) * dist) / SC, ty = Math.floor(hgt * ws / (T.W.span || 1));
         this.put(y * W + x, tex, tx, ws - 1 - ty, q);
       }
     }

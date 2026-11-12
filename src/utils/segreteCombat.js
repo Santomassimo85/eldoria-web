@@ -34,7 +34,8 @@ export function actInfo(a, lv) {
   if (a.kind === "grip") return `${a.info} · gratis`;
   if (a.kind === "heal") return a.flat ? `cura ${lv * 5}` : `cura ${a.dice}${a.plusMod ? "+mod" : ""}`;
   if (a.kind === "heal_all") return `cura tutti ${a.dice}+mod`;
-  if (a.kind === "buff") return a.buff === "ac" ? `+${a.value} CA · ${a.turns}t` : a.buff === "adv" ? `vantaggio · ${a.turns}t` : `+${a.value} danni · ${a.turns}t`;
+  if (a.kind === "debuff") return a.info || `${a.inflict?.key === "frightened" ? "paura" : "svantaggio"} · ${a.turns}t`;
+  if (a.kind === "buff") return a.buff === "ac" ? `+${a.value} CA · ${a.turns}t` : a.buff === "adv" ? `vantaggio${a.allParty ? " a tutto il party" : ""} · ${a.turns}t` : `+${a.value} danni · ${a.turns}t`;
   if (a.kind === "save") return `${a.dice} · TS ${a.save.toUpperCase()}${a.area ? " · tutti" : ""}`;
   if (a.kind === "missile") return `${a.dice}+${a.flat || 0} · colpisce sempre`;
   return `${a.dice}${a.kind === "weapon" ? "+mod" : ""}`;

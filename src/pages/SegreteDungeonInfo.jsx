@@ -10,7 +10,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { db } from "../firebase";
 import { DIFFICULTIES, diffOf, mergeMonsters, DEFAULT_FLOORS, MONSTER_SIZES, sizeOf } from "../data/segrete";
 import { FALLBACK_MONSTERS } from "../data/segreteEngine";
-import { DROP_CHANCE, FLOOR_COINS_DIE, COIN_ICON, COIN_NAME, RARITY, DIFF_RANK, ITEMS, itemOf, dropOdds, gearUsers } from "../data/segreteItems";
+import { DROP_CHANCE, partyDropMultiplier, FLOOR_COINS_DIE, COIN_ICON, COIN_NAME, RARITY, DIFF_RANK, ITEMS, itemOf, dropOdds, gearUsers } from "../data/segreteItems";
 import { classInfo } from "../data/segrete";
 import { fxLine, XP_PER_ROOM } from "../data/segreteKits";
 import { dungeonProfile, dungeonDropContext } from "../data/segreteProfiles";
@@ -33,7 +33,7 @@ const ROLE_ONE = { minion: "gregario", elite: "élite", boss: "boss" };
 const pctTxt = (p) => (p >= 10 ? `${Math.round(p)}%` : p >= 1 ? `${p.toFixed(1).replace(".", ",")}%` : `${p.toFixed(2).replace(".", ",")}%`);
 const num = (x) => String(Math.round(x * 100) / 100).replace(".", ",");
 
-export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
+export default function SegreteDungeonInfo({ dungeon, diff = "facile", partySize = 1 }) {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState(diff);
   const [role, setRole] = useState("boss");
@@ -42,7 +42,7 @@ export default function SegreteDungeonInfo({ dungeon, diff = "facile" }) {
   const D = diffOf(tab);
   const key = dungeon?.key;
   const P = dungeonProfile(dungeon);
-  const coinMult = D.coins * P.coins, itemMult = D.item * P.item;
+  const coinMult = D.coins * P.coins, itemMult = D.item * P.item * partyDropMultiplier(partySize);
   const floors = Number(dungeon?.floors) || DEFAULT_FLOORS;
 
   const foes = useMemo(() => {

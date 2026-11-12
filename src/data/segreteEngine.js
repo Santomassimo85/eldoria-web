@@ -11,9 +11,9 @@
      (eroi) uid, cls, img; (mostri) actions WB, res/vul/imm, role, img… }
    Gli effetti a turni valgono finché `round < until`.
    ============================================================ */
-import { battleItem, itemOf, itemTarget, DROP_CHANCE, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
+import { battleItem, itemOf, itemTarget, DROP_CHANCE, partyDropMultiplier, FLOOR_COINS_DIE, rollDropItem, DIFF_RANK } from "./segreteItems";
 import { hasMetalProtection, metalArmor, ACID_METAL_MULT } from "./segreteMaterials";
-import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
+import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, heroXp, XP_VERSION, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
 // tratti passivi della sottoclasse di un combattente (vuoto per mostri ed eroi senza)
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
 import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines } from "./segrete";
@@ -86,7 +86,7 @@ export function makeHero(m) {
   const uses = {};
   heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null, false, subc?.key).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
-    id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, img: m.avatar || "",
+    id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, xp: heroXp(hero), xpv: XP_VERSION, img: m.avatar || "",
     ...(subc ? { subclass: subc.key, subName: subc.name } : {}),
     hp: maxHp + def.hpBonus + subHp, maxHp: maxHp + def.hpBonus + subHp, ac: def.ac + (sp.ac || 0), init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus + (sp.save || 0), st,
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
@@ -146,6 +146,13 @@ export function capsFor(role, partyLv, partySize) {
 }
 const avgDice = (n, sides) => (n * (sides + 1)) / 2;
 
+export function isUndead(src) {
+  const creature = String(src.creature || "").toLowerCase();
+  if (creature) return /non[ -]?mort|undead/.test(creature);
+  // Compatibilità con il bestiario precedente al campo creature.
+  return /\b(scheletr\w*|skeleton\w*|zombi\w*|zombie\w*|spettr\w*|wraith\w*|lich|vampir\w*|mummi\w*|ghoul|revenant|non[ -]?mort\w*)\b/i.test(`${src.name || ""} ${src.desc || ""}`);
+}
+
 function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const diff = partyLv - (Number(src.level) || 1);
   const lvScale = diff >= 0 ? 1 + ADAPT.hpUp * diff : Math.max(ADAPT.hpMin, 1 + ADAPT.hpDown * diff);
@@ -156,7 +163,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     id: `f${idx}`, side: "f", name: suffix ? `${src.name} ${suffix}` : src.name, src: src.id, role: src.role || "minion",
     level: Number(src.level) || 1, hp: maxHp, maxHp, ac: cap.ac, init: Number(src.init) || 0, save: cap.save,
     img: src.frontImageUrl || src.imageUrl || "", frontImg: src.frontImageUrl || "", icon: src.icon || "", size: sizeOf(src),
-    metalProtection: hasMetalProtection(src),
+    metalProtection: hasMetalProtection(src), undead: isUndead(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5), res: src.resistances || [], vul: src.vulnerabilities || [], imm: src.immunities || [],
@@ -292,7 +299,7 @@ function heroVfx(a) {
   if (a.kind === "save") return { fx: pick[0] || (a.area ? "aoe" : "bolt"), el: pick[1] || elOf(a.dmg) };
   if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
   if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
-  if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
+  if (a.kind === "debuff") return { fx: "debuff", el: a.dcStat ? "radiant" : "darkness" };
   return null;
 }
 function foeVfx(a, type) {
@@ -636,7 +643,20 @@ function heroAct(s, h, a, target, amount) {
     return ev;
   }
   if (a.kind === "debuff") {
-    const tg = a.area ? s.foes.filter(alive) : [target];
+    const tg = (a.area ? s.foes.filter(alive) : [target]).filter((t) => !a.undeadOnly || (t.undead ?? isUndead(t)));
+    if (a.save) {
+      const dc = 8 + profOf(lv) + (st[a.dcStat] || 0) + (h.armorDc || 0) + sDc;
+      const parts = tg.map((t) => {
+        const sv = d20() + (t.saves?.[a.save] ?? t.save ?? 0);
+        if (sv >= dc) return `${t.name} resiste (TS SAG ${sv})`;
+        const status = applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id });
+        // La fase nemica corrente conta come il primo dei tre turni.
+        if (t.fx[a.inflict.key]) t.fx[a.inflict.key].until = s.round + a.turns;
+        return `${t.name}${status} per ${a.turns} turni (TS SAG ${sv})`;
+      });
+      log(s, `${a.icon} ${h.name} → ${a.name} (CD ${dc}): ${parts.join(" · ") || "nessun non morto presente"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
+      return ev;
+    }
     tg.forEach((t) => { if (a.inflict) applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id }); else t.fx.dis = s.round + (a.turns || 1) + 1; });
     log(s, `${a.icon} ${h.name} → ${a.name}: ${tg.map((t) => t.name).join(", ")} a svantaggio per ${a.turns} ${a.turns === 1 ? "turno" : "turni"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
     return ev;
@@ -1075,7 +1095,7 @@ export function lootDead(s) {
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`🪙 ${c} Monete Antiche`);
     }
-    if (die(100) <= Math.min(95, ch.item * D.item * P.item)) {
+    if (rnd() * 100 < Math.min(95, ch.item * D.item * P.item * partyDropMultiplier(s.party || s.heroes.length))) {
       const id = rollDropItem(rnd, ctx, f.role);
       const it = itemOf(id);
       if (it) { addSpoil(s, who.uid, { item: id, src: f.name }); parts.push(`${it.icon} ${it.name}`); }

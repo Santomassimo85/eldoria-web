@@ -25,7 +25,7 @@ function tile(fn) {
     rgb[i * 3] = clamp(r[0], 0, 255); rgb[i * 3 + 1] = clamp(r[1], 0, 255); rgb[i * 3 + 2] = clamp(r[2], 0, 255);
     em[i] = r[3] ? 1 : 0;
   }
-  return { size, mask: size - 1, rgb, em };
+  return { size, mask: size - 1, rgb, em, span: 2 };
 }
 function bricks(p, bw, bh, extra) {
   const [a, b, c] = p.map(hex);
@@ -70,12 +70,31 @@ export const TILE_THEMES = {
   abisso: { wall: () => rock([0x071c29, 0x164951, 0x4e8b83], 12, moss), floor: () => bricks([0x071c26, 0x1e4c55, 0x517f86], 32, 32), ceil: () => rock([0x06101f, 0x163147, 0x365c71], 10), amb: 0.38, tint: [0.72, 1.06, 1.2], flame: 0x63e5dc },
 };
 // un'immagine già quadrata e leggibile → tessera per il motore
-export function tileFromImage(img, size = 128) {
+export function blendTileEdges(data, size, blend = Math.round(size / 8)) {
+  const src = data.slice();
+  const edge = (i, j, weight) => {
+    for (let k = 0; k < 3; k++) data[i * 4 + k] = src[i * 4 + k] * (1 - weight) + src[j * 4 + k] * weight;
+  };
+  for (let y = 0; y < size; y++) for (let e = 0; e < blend; e++) {
+    const t = 1 - e / blend, weight = t * t * (3 - 2 * t) / 2;
+    edge(y * size + e, y * size + size - 1 - e, weight);
+    edge(y * size + size - 1 - e, y * size + e, weight);
+  }
+  src.set(data);
+  for (let x = 0; x < size; x++) for (let e = 0; e < blend; e++) {
+    const t = 1 - e / blend, weight = t * t * (3 - 2 * t) / 2;
+    edge(e * size + x, (size - 1 - e) * size + x, weight);
+    edge((size - 1 - e) * size + x, e * size + x, weight);
+  }
+  return data;
+}
+
+export function tileFromImage(img, size = 256) {
   const c = document.createElement("canvas"); c.width = size; c.height = size;
   const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0, size, size);
-  const d = g.getImageData(0, 0, size, size).data, rgb = new Uint8Array(size * size * 3);
+  const d = blendTileEdges(g.getImageData(0, 0, size, size).data, size), rgb = new Uint8Array(size * size * 3);
   for (let i = 0; i < size * size; i++) { rgb[i * 3] = d[i * 4]; rgb[i * 3 + 1] = d[i * 4 + 1]; rgb[i * 3 + 2] = d[i * 4 + 2]; }
-  return { size, mask: size - 1, rgb, em: null };
+  return { size, mask: size - 1, rgb, em: null, span: 3 };
 }
 
 /* ── armi di riserva, disegnate a pixel ── */
@@ -290,6 +309,7 @@ MATERIAL (the most important part: this dungeon must NOT look like a generic gre
 Color palette: ${m.colors}.` : ""}${idea ? `
 Extra details from the Game Master (follow them): ${idea}.` : ""}
 The texture MUST tile perfectly: left edge matches right edge, top edge matches bottom edge. Completely flat and orthographic: NO perspective, NO vanishing point, NO horizon, no lighting direction, no vignette, even brightness across the whole image.
+Show a broad 4-by-4 metre continuous material sample with many differently sized details. Use irregular staggered masonry, varied cracks and subtle distributed weathering appropriate to this material. Avoid a square grid, a single centered slab, repeated identical blocks, thick borders, or distinctive central motifs. Continue the material naturally across all edges. Keep large-scale brightness uniform so repeated patches never form a checkerboard.
 Style: crisp 16-bit pixel art like a classic 1990s dungeon RPG, chunky visible pixels, limited palette, NO anti-aliasing, NO blur. Only the surface itself (details that belong to the surface are fine): no characters, no furniture, no text, no frame.`;
 };
 
@@ -360,18 +380,15 @@ Do NOT add anything else: no arrow, no motion lines, no effects, no text.
 ${STYLE}
 ${BG}`;
 
-// tessera dall'IA → 128×128 che si ripete senza righe: i bordi si fondono col lato opposto
-export function bakeTile(dataUrl, size = 128, blend = 10) {
+// Tessera dall'IA a 256×256, con raccordo morbido dei bordi opposti.
+export function bakeTile(dataUrl, size = 256, blend = Math.round(size / 8)) {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement("canvas"); c.width = size; c.height = size;
       const g = c.getContext("2d", { willReadFrequently: true }); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, size, size);
-      const id = g.getImageData(0, 0, size, size), d = id.data, src = d.slice();
-      const mixEdge = (i, j, k) => { for (let n = 0; n < 3; n++) d[i * 4 + n] = src[i * 4 + n] * (1 - k) + src[j * 4 + n] * k; };
-      for (let y = 0; y < size; y++) for (let e = 0; e < blend; e++) { const k = (1 - e / blend) * 0.5; mixEdge(y * size + e, y * size + size - 1 - e, k); mixEdge(y * size + size - 1 - e, y * size + e, k); }
-      src.set(d);
-      for (let x = 0; x < size; x++) for (let e = 0; e < blend; e++) { const k = (1 - e / blend) * 0.5; mixEdge(e * size + x, (size - 1 - e) * size + x, k); mixEdge((size - 1 - e) * size + x, e * size + x, k); }
+      const id = g.getImageData(0, 0, size, size);
+      blendTileEdges(id.data, size, blend);
       g.putImageData(id, 0, 0);
       res(c.toDataURL("image/png"));
     };

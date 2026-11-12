@@ -36,6 +36,7 @@ const num = (v, lo, hi, d) => { const n = parseInt(v, 10); return Number.isFinit
 const cleanMonster = (m) => ({
   name: String(m.name || "").trim().slice(0, 60),
   desc: String(m.desc || "").trim().slice(0, 600),
+  creature: String(m.creature || "").trim().slice(0, 60),
   look: String(m.look || "").trim().slice(0, 600),
   role: MONSTER_ROLES.some((r) => r.key === m.role) ? m.role : "minion",
   level: num(m.level, 1, 20, 1), hp: num(m.hp, 1, 2000, 10), ac: num(m.ac, 5, 30, 12),
@@ -395,6 +396,7 @@ function BestiaryTab({ dungeons, monsters, wbMinions, wbBosses }) {
               {!defs.immunities.length && !defs.resistances.length && !defs.vulnerabilities.length && <span className="is-warn">⚠ nessuna resistenza o debolezza</span>}
             </p>
           </div>
+          <label className="sga-field"><span>Tipo di creatura</span><input value={form.creature || ""} placeholder="non morto, bestia, costrutto…" onChange={(e) => set({ creature: e.target.value })} /></label>
           <textarea className="jw-desc" rows={2} value={form.desc} placeholder="Descrizione per i giocatori…" onChange={(e) => set({ desc: e.target.value })} />
         </div>
 

@@ -199,6 +199,8 @@ export const DROP_CHANCE = {
   elite: { coins: 40, coinDice: [2, 6], item: 12 },
   boss: { coins: 75, coinDice: [4, 6], item: 30 },
 };
+// Piccolo incremento relativo: +3% in coppia, +5% in tre, +8% in quattro.
+export const partyDropMultiplier = (size = 1) => [1, 1, 1.03, 1.05, 1.08][Math.max(1, Math.min(4, Math.floor(size) || 1))];
 /* Oggetto pescato a peso di rarità (2026-11-06, rifatto con dungeon e difficoltà).
    ctx = { dungeon, rank (0 Facile · 1 Medio · 2 Leggenda), boost (rarità della difficoltà),
    bases (armi del gruppo; null = tutte), classes (classi del gruppo; null = tutte) }.

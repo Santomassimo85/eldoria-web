@@ -290,7 +290,11 @@ var KITS = {
     rec: ["str", "cha"],
     extraAttacks: true,
     healStat: "cha",
-    base: [{ id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", healPool: true, info: "riserva PF massimi + livello \xB7 scegli quanto curare \xB7 te o un alleato" }],
+    base: [
+      { id: "mani", name: "Imposizione delle Mani", icon: "\u{1F64C}", kind: "heal", healPool: true, info: "riserva PF massimi + livello \xB7 scegli quanto curare \xB7 te o un alleato" },
+      { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 3, uses: 1, info: "vantaggio a tutto il party per 2 turni" },
+      { id: "abiurazione", name: "Abiurazione", icon: "\u2600", kind: "debuff", area: true, save: "wis", dcStat: "cha", turns: 3, inflict: { key: "frightened" }, min: 3, uses: 1, info: "tutti i nemici \xB7 TS SAG contro 8 + competenza + CAR \xB7 paura per 3 turni" }
+    ],
     pool: [
       { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "\u26A1", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
@@ -424,7 +428,10 @@ var KITS = {
     armor: "heavy",
     stat: "wis",
     rec: ["wis", "con"],
-    base: [{ id: "cura_c", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" }],
+    base: [
+      { id: "cura_c", name: "Cura Ferite di Gruppo", icon: "\u{1F49A}", kind: "heal_all", dice: "1d8", plusMod: true, uses: 3, info: "cura tutti gli alleati: 1d8 + SAG \xB7 3 usi per sala" },
+      { id: "scaccia_non_morti", name: "Scacciare non Morti", icon: "\u2600", kind: "debuff", area: true, undeadOnly: true, save: "wis", dcStat: "wis", turns: 3, inflict: { key: "frightened" }, min: 1, uses: 1, info: "solo non morti \xB7 TS SAG contro 8 + competenza + SAG \xB7 paura per 3 turni" }
+    ],
     pool: [
       { id: "fiamma", name: "Fiamma Sacra", icon: "\u{1F56F}", kind: "save", dice: "1d8", plusMod: true, dmg: "radiant", damageTypes: ["radiant", "fire"], save: "dex", cantrip: true, min: 1, info: "Trucchetto infinito: 1d8 + SAG, met\xE0 radioso e met\xE0 fuoco \xB7 TS DES nega" },
       { id: "benedire_c", name: "Benedizione", icon: "\u2728", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
@@ -788,7 +795,7 @@ function subNum(v, lv = 1, mod = 0) {
 }
 var DEFEND = { id: "difesa", name: "Difendersi", icon: "\u{1F6E1}", kind: "defend", info: "+4 CA fino al tuo prossimo turno" };
 var kitOf = (cls) => KITS[cls] || KITS.fighter;
-var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv);
+var poolFor = (cls, lv) => kitOf(cls).pool.filter((a) => (a.min || 1) <= lv && !kitOf(cls).base.some((b) => b.id === a.id && (b.min || 1) <= lv));
 var VERSATILE = { spada_lunga: "1d10", bastone: "1d8" };
 var GRIP_CLASSES = /* @__PURE__ */ new Set(["fighter", "barbarian", "paladin", "ranger", "rogue", "monk"]);
 var canTwoHand = (cls, weapon) => GRIP_CLASSES.has(cls) && !!VERSATILE[weapon];
@@ -798,13 +805,14 @@ function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null,
   const w0 = weaponOf(cls, weapon), two = twoHand && canTwoHand(cls, w0.key);
   const w = two ? { ...w0, dice: VERSATILE[w0.key] } : w0;
   const withWeapon = (a) => a.useWeapon ? { ...a, ...a.attacks || w.attacks ? { attacks: a.attacks || w.attacks } : {}, ...a.rider === "sneak" ? { info: `un colpo: ${w.dice} +${sneakDiceOf(lv)}d6` } : {}, dice: w.dice, dmg: w.dmg, wstat: w.wstat, ranged: !!w.ranged, plus: plus || 0, ...wItem?.fx ? { wfx: wItem.fx } : {} } : a;
-  const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv);
+  const base = k.base.filter((a) => (a.min || 1) <= lv);
+  const chosen = k.pool.filter((a) => picks.includes(a.id) && (a.min || 1) <= lv && !base.some((b) => b.id === a.id));
   const sub = lv >= SUBCLASS_LEVEL ? subclassOf(cls, subclass) : null;
   const subActs = sub ? sub.actions.filter((a) => (a.min || 1) <= lv).map((a) => ({ ...a, sub: sub.key })) : [];
   const grip = canTwoHand(cls, w0.key) ? [{ ...GRIP, name: two ? "Torna a una mano" : "Impugna a due mani", info: two ? `${w0.dice} \xB7 riprendi lo scudo` : `${VERSATILE[w0.key]} \xB7 niente scudo` }] : [];
   const wa = weaponAction(w, plus, wItem);
   if (cls === "rogue") wa.info += ` \xB7 Furtivo +${sneakDiceOf(lv)}d6 (1 per round, con vantaggio o un alleato)`;
-  return [wa, ...k.base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
+  return [wa, ...base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
 function heroStats(hero) {
   const out = {};
@@ -879,10 +887,11 @@ function validRespec(cls, hero, stats, picks) {
   return { stats: base, asi, picks: list };
 }
 var POOL_IDS = new Set(Object.values(KITS).flatMap((k) => k.pool.map((a) => a.id)));
+var AUTO_PICK_LEVEL = new Map(Object.values(KITS).flatMap((k) => k.base.map((a) => [a.id, a.min || 1])));
 function heroPending(hero) {
   const lv = heroLevel(hero);
   const asiSpent = STAT_KEYS.reduce((t, k) => t + (Number(hero?.asi?.[k]) || 0), 0);
-  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id)).length) };
+  return { level: lv, asi: Math.max(0, asiEarned(lv) - asiSpent), picks: Math.max(0, picksAllowed(lv) - (hero?.picks || []).filter((id) => POOL_IDS.has(id) && !(AUTO_PICK_LEVEL.has(id) && AUTO_PICK_LEVEL.get(id) <= lv)).length) };
 }
 
 // src/data/segreteItems.js
@@ -1139,6 +1148,7 @@ var DROP_CHANCE = {
   elite: { coins: 40, coinDice: [2, 6], item: 12 },
   boss: { coins: 75, coinDice: [4, 6], item: 30 }
 };
+var partyDropMultiplier = (size = 1) => [1, 1, 1.03, 1.05, 1.08][Math.max(1, Math.min(4, Math.floor(size) || 1))];
 var DIFF_RANK = { facile: 0, medio: 1, leggenda: 2 };
 function dropPool(ctx = {}) {
   const { dungeon = null, rank = 0, bases = null, classes = null } = ctx;
@@ -1523,9 +1533,9 @@ var BASE_MONSTERS = [
       { type: "debuff_dis", name: "Tormenta Accecante", durationTurns: 2 }
     ]
   },
-  { id: "base-custode-ossa", name: "Custode d'Ossa", icon: "\u{1F480}", role: "minion", level: 2, hp: 16, ac: 13, init: 1, save: 1, dungeons: ["cripta"], desc: "Scheletro in armatura spezzata armato di una lancia d'osso.", resistances: [], vulnerabilities: ["bludgeoning", "radiant"], immunities: ["poison"], actions: [BA("Lancia d'Osso", 1, "d8", 4)] },
-  { id: "base-spettro-eco", name: "Spettro degli Echi", icon: "\u{1F47B}", role: "elite", level: 4, hp: 38, ac: 14, init: 3, save: 3, dungeons: ["cripta"], desc: "Spirito incatenato che assorbe la luce delle torce.", resistances: ["necrotic", "cold"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Tocco Sepolcrale", 2, "d6", 5, { dmgType: "oscurit\xE0" }), { type: "debuff_dis", name: "Sussurri dei Morti", durationTurns: 2 }] },
-  { id: "base-cantore-sepolto", name: "Il Cantore Sepolto", icon: "\u{1F451}", role: "boss", size: "large", level: 6, hp: 95, ac: 16, init: 2, save: 4, dungeons: ["cripta"], desc: "Re scheletrico con una corona d'ossa e una campana funebre al posto dello scettro.", resistances: ["necrotic"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Scettro d'Ossa", 2, "d8", 6), BA("Rintocco Funebre", 4, "d8", 0, { dmgType: "oscurit\xE0", hitMode: "save", aoeShape: "sphere", saveAbility: "wis", saveDC: 14, halfOnSave: true }), { type: "buff_ca", name: "Corteo delle Ossa", acBonus: 2, durationTurns: 2 }] },
+  { id: "base-custode-ossa", creature: "non morto", name: "Custode d'Ossa", icon: "\u{1F480}", role: "minion", level: 2, hp: 16, ac: 13, init: 1, save: 1, dungeons: ["cripta"], desc: "Scheletro in armatura spezzata armato di una lancia d'osso.", resistances: [], vulnerabilities: ["bludgeoning", "radiant"], immunities: ["poison"], actions: [BA("Lancia d'Osso", 1, "d8", 4)] },
+  { id: "base-spettro-eco", creature: "non morto", name: "Spettro degli Echi", icon: "\u{1F47B}", role: "elite", level: 4, hp: 38, ac: 14, init: 3, save: 3, dungeons: ["cripta"], desc: "Spirito incatenato che assorbe la luce delle torce.", resistances: ["necrotic", "cold"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Tocco Sepolcrale", 2, "d6", 5, { dmgType: "oscurit\xE0" }), { type: "debuff_dis", name: "Sussurri dei Morti", durationTurns: 2 }] },
+  { id: "base-cantore-sepolto", creature: "non morto", name: "Il Cantore Sepolto", icon: "\u{1F451}", role: "boss", size: "large", level: 6, hp: 95, ac: 16, init: 2, save: 4, dungeons: ["cripta"], desc: "Re scheletrico con una corona d'ossa e una campana funebre al posto dello scettro.", resistances: ["necrotic"], vulnerabilities: ["radiant"], immunities: ["poison"], actions: [BA("Scettro d'Ossa", 2, "d8", 6), BA("Rintocco Funebre", 4, "d8", 0, { dmgType: "oscurit\xE0", hitMode: "save", aoeShape: "sphere", saveAbility: "wis", saveDC: 14, halfOnSave: true }), { type: "buff_ca", name: "Corteo delle Ossa", acBonus: 2, durationTurns: 2 }] },
   { id: "base-sentinella-rame", name: "Sentinella di Rame", icon: "\u{1F916}", role: "minion", level: 2, hp: 18, ac: 14, init: 0, save: 1, dungeons: ["forgia"], desc: "Automa di rame con una piccola bobina elettrica sul dorso.", resistances: ["lightning"], vulnerabilities: ["acid"], immunities: ["poison"], actions: [BA("Pugno di Rame", 1, "d8", 4), BA("Scintilla", 1, "d6", 4, { dmgType: "fulmine" })] },
   { id: "base-fabbro-runico", name: "Fabbro Runico", icon: "\u{1F528}", role: "elite", level: 4, hp: 44, ac: 15, init: 0, save: 3, dungeons: ["forgia"], desc: "Gigante corazzato con un martello attraversato da scariche blu.", resistances: ["fire"], vulnerabilities: ["cold"], immunities: [], actions: [BA("Martello della Forgia", 2, "d8", 5, { dmgType: "fulmine" }), { type: "buff_ca", name: "Piastre Runiche", acBonus: 2, durationTurns: 2 }] },
   { id: "base-colosso-tempesta", name: "Colosso della Tempesta", icon: "\u26A1", role: "boss", size: "huge", level: 6, hp: 100, ac: 16, init: 1, save: 4, dungeons: ["forgia"], desc: "Colosso di ferro e rame con un nucleo di fulmini imprigionati nel petto.", resistances: ["lightning", "fire"], vulnerabilities: ["acid"], immunities: ["poison"], actions: [BA("Maglio del Tuono", 2, "d10", 6), BA("Onda Elettrica", 4, "d8", 0, { dmgType: "fulmine", hitMode: "save", aoeShape: "sphere", saveAbility: "dex", saveDC: 14, halfOnSave: true }), { type: "buff_adv", name: "Sovraccarico", durationTurns: 2 }] },
@@ -1716,6 +1726,8 @@ function makeHero(m) {
     name: m.name,
     cls: m.cls,
     level: lv,
+    xp: heroXp(hero),
+    xpv: XP_VERSION,
     img: m.avatar || "",
     ...subc ? { subclass: subc.key, subName: subc.name } : {},
     hp: maxHp + def.hpBonus + subHp,
@@ -1773,6 +1785,11 @@ function capsFor(role, partyLv, partySize) {
   };
 }
 var avgDice = (n, sides) => n * (sides + 1) / 2;
+function isUndead(src) {
+  const creature = String(src.creature || "").toLowerCase();
+  if (creature) return /non[ -]?mort|undead/.test(creature);
+  return /\b(scheletr\w*|skeleton\w*|zombi\w*|zombie\w*|spettr\w*|wraith\w*|lich|vampir\w*|mummi\w*|ghoul|revenant|non[ -]?mort\w*)\b/i.test(`${src.name || ""} ${src.desc || ""}`);
+}
 function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   const diff = partyLv - (Number(src.level) || 1);
   const lvScale = diff >= 0 ? 1 + ADAPT.hpUp * diff : Math.max(ADAPT.hpMin, 1 + ADAPT.hpDown * diff);
@@ -1796,6 +1813,7 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
     icon: src.icon || "",
     size: sizeOf(src),
     metalProtection: hasMetalProtection(src),
+    undead: isUndead(src),
     cap: { hit: cap.hit, dc: cap.dc, dmg: cap.dmg },
     adapt: { mult: diff >= 0 ? 1 + ADAPT.multUp * diff : Math.max(ADAPT.multMin, 1 + ADAPT.multDown * diff), dmg: Math.round(diff * ADAPT.dmgPer), hit: Math.round(diff * ADAPT.hitPer), ac: diff > 0 ? Math.floor(diff / 3) : Math.ceil(diff / 3) },
     actions: (src.actions || []).slice(0, 5),
@@ -1961,7 +1979,7 @@ function heroVfx(a) {
   if (a.kind === "save") return { fx: pick2[0] || (a.area ? "aoe" : "bolt"), el: pick2[1] || elOf(a.dmg) };
   if (a.kind === "heal" || a.kind === "heal_all") return { fx: "heal", el: "radiant" };
   if (a.kind === "buff") return { fx: a.buff === "ac" ? "shield" : "buff", el: a.buff === "rage" ? "fire" : "radiant" };
-  if (a.kind === "debuff") return { fx: "debuff", el: "darkness" };
+  if (a.kind === "debuff") return { fx: "debuff", el: a.dcStat ? "radiant" : "darkness" };
   return null;
 }
 function foeVfx(a, type) {
@@ -2370,7 +2388,19 @@ function heroAct(s, h, a, target, amount) {
     return ev;
   }
   if (a.kind === "debuff") {
-    const tg = a.area ? s.foes.filter(alive) : [target];
+    const tg = (a.area ? s.foes.filter(alive) : [target]).filter((t) => !a.undeadOnly || (t.undead ?? isUndead(t)));
+    if (a.save) {
+      const dc = 8 + profOf(lv) + (st[a.dcStat] || 0) + (h.armorDc || 0) + sDc;
+      const parts = tg.map((t) => {
+        const sv = d20() + (t.saves?.[a.save] ?? t.save ?? 0);
+        if (sv >= dc) return `${t.name} resiste (TS SAG ${sv})`;
+        const status = applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id });
+        if (t.fx[a.inflict.key]) t.fx[a.inflict.key].until = s.round + a.turns;
+        return `${t.name}${status} per ${a.turns} turni (TS SAG ${sv})`;
+      });
+      log(s, `${a.icon} ${h.name} \u2192 ${a.name} (CD ${dc}): ${parts.join(" \xB7 ") || "nessun non morto presente"}.`, { kind: "debuff", actor: h.id, targets: tg.map((t) => t.id) });
+      return ev;
+    }
     tg.forEach((t) => {
       if (a.inflict) applyStatus(s, t, a.inflict.key, { turns: a.turns, by: h.id });
       else t.fx.dis = s.round + (a.turns || 1) + 1;
@@ -2823,7 +2853,7 @@ function lootDead(s) {
       addSpoil(s, who.uid, { coins: c, src: f.name });
       parts.push(`\u{1FA99} ${c} Monete Antiche`);
     }
-    if (die(100) <= Math.min(95, ch.item * D.item * P.item)) {
+    if (rnd() * 100 < Math.min(95, ch.item * D.item * P.item * partyDropMultiplier(s.party || s.heroes.length))) {
       const id = rollDropItem(rnd, ctx, f.role);
       const it = itemOf(id);
       if (it) {
