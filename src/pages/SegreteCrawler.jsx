@@ -710,6 +710,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
             : `${run.dungeonIcon} ${run.dungeonName}${run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · ${run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round ${run.round}`}
         </span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
+        {tools}
       </div>
 
       <div className="cw-stage">
@@ -847,7 +848,6 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
             <p className="sgb-endnote">Il gruppo e la chat vocale restano: tornati al gruppo potete scegliere il prossimo dungeon.</p>
           </div>
         )}
-        {tools}
       </div>
 
       {partyHeroes.some((h) => h.uid !== uid) && <div className="cw-party" role="group" aria-label="Il tuo gruppo" style={{ "--cw-n": partyHeroes.filter((h) => h.uid !== uid).length }}>

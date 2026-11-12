@@ -40,6 +40,10 @@
         {
           "type": "fix",
           "text": "Torre multiplayer: incontri e forza dei nemici tarati su quattro eroi del rango del piano, senza riduzioni per gruppi piccoli né bonus PF da solitario."
+        },
+        {
+          "type": "fix",
+          "text": "Segrete e Torre: pulsante Master Riporta in stanza spostato nella barra superiore del combattimento."
         }
       ]
     },
