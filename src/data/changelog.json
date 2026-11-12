@@ -28,6 +28,10 @@
         {
           "type": "fix",
           "text": "Torre: rimossa la Bottega. Torre e Segrete: collegamenti di ritorno visibili sotto il banner su mobile e desktop."
+        },
+        {
+          "type": "fix",
+          "text": "Torre: totale dei Sigilli in evidenza, con gratuiti settimanali e Sigilli nello zaino separati."
         }
       ]
     },

@@ -423,6 +423,18 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
         </p>
       </header>
 
+      {isTowerPage && (
+        <div className="sgr-seals" role="status" aria-label="Sigilli disponibili">
+          <SgIcon kind="ui" of="key" fallback="🗝" size="md" />
+          <div className="sgr-seals-total"><span>Sigilli disponibili</span><strong>{tsStatus.totalSeals}</strong></div>
+          <div className="sgr-seals-detail">
+            <span>Gratuiti questa settimana <b>{tsStatus.freeLeft}/{TOWER_WEEKLY_FREE}</b></span>
+            <span>Nello zaino <b>{tsStatus.bagKeys}</b></span>
+            {master && <span>Ingressi Master illimitati</span>}
+          </div>
+        </div>
+      )}
+
       {otherSectionRoom && (
         <div className="sgh-pending" role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span>
@@ -457,7 +469,7 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
         {isTowerPage ? (
           <button type="button" className="sgr-st" onClick={() => setTab("premi")}>
             <SgIcon kind="ui" of="torre" fallback="🗼" size="md" className="sgr-st-ico" />
-            <span className="sgr-st-txt"><small>Piano & Sigilli</small><b>{tsStatus.floor > 0 ? `Piano ${tsStatus.floor}/100` : "0/100"} · 🗝 {master ? "∞" : `${tsStatus.freeLeft}/${TOWER_WEEKLY_FREE}`}{tsStatus.bagKeys ? `+${tsStatus.bagKeys}` : ""}</b></span>
+            <span className="sgr-st-txt"><small>Piano della Torre</small><b>{tsStatus.floor}/100</b></span>
           </button>
         ) : (
           <div className="sgr-st">
