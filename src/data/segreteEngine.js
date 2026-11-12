@@ -341,15 +341,15 @@ function rollInitiative(s) {
 export const TOWER_THEMES = DEFAULT_DUNGEONS.filter((d) => !d.isTower).map((d) => ({ key: d.key, name: d.name, icon: d.icon || "🗝" }));
 export function towerEffectiveLevel(floor) {
   const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
-  return Math.min(20, 1 + Math.floor((f - 1) / 4));
+  return f <= 30 ? 2 + Math.floor((f - 1) * 6 / 29) : Math.min(20, 1 + Math.floor((f - 1) / 4));
 }
 export function towerScale(floor) {
   const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
   const step = (f - 1) % 4;
   const endgame = Math.max(0, f - 76);
   return {
-    hp: 1 + step * 0.06 + endgame * 0.045,
-    dmg: 1 + step * 0.04 + endgame * 0.035,
+    hp: 1 + step * 0.06 + Math.min(0.18, (f - 1) * 0.004) + endgame * 0.045,
+    dmg: 1 + step * 0.04 + Math.min(0.1, (f - 1) * 0.002) + endgame * 0.035,
     plus: Math.floor(Math.max(0, f - 20) / 16),
     elite: Math.min(0.85, 0.25 + (f / TOWER_MAX_FLOORS) * 0.55),
   };

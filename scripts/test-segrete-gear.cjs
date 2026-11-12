@@ -8,6 +8,15 @@ function load(file) {
 const K = load('src/data/segreteKits.js');
 const A = load('src/fx/crawlerArt.js');
 const E = require('../functions/segreteBundle.js');
+for (const [cls, base] of Object.entries(E.TOWER_ARMOR_BY_CLASS)) {
+  const armor = E.itemOf(`vethrik_${base}_100`);
+  const stats = { dex: 2, con: 2, wis: 2 };
+  const normal = K.heroDefense(cls, stats, { armorItem: { ...armor, plus: 0, res: [], saveBonus: 0 }, shield: false });
+  const rewarded = K.heroDefense(cls, stats, { armorItem: armor, shield: false });
+  assert.equal(rewarded.ac, normal.ac + armor.plus, cls);
+  assert.deepEqual(rewarded.res, armor.res);
+  assert.equal(rewarded.saveBonus, normal.saveBonus + armor.saveBonus);
+}
 for (const cls of ['fighter', 'paladin']) {
   assert.ok(K.armorChoices(cls).includes('piastre'));
   assert.ok(K.armorChoices(cls).includes('scaglie'));

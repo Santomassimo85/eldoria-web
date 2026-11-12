@@ -30,7 +30,7 @@ import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
 import SegreteTowerManual from "./SegreteTowerManual";
 import SegreteLog, { coinsToday } from "./SegreteLog";
-import { COIN_ICON, COIN_NAME, coinsOf, TOWER_REWARD_TIERS, TOWER_GEAR_IDS, itemOf } from "../data/segreteItems";
+import { COIN_ICON, COIN_NAME, coinsOf, TOWER_REWARD_TIERS, TOWER_RANDOM_GEAR_IDS, TOWER_ARMOR_MILESTONES, TOWER_ARMOR_BY_CLASS, itemOf } from "../data/segreteItems";
 import { hpPending, armorChosen } from "../data/segreteKits";
 import { heroIdentity, subclassName } from "../utils/segreteIdentity";
 import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
@@ -137,7 +137,7 @@ function TowerInfoBox({ charData, isHost = true, master = false }) {
           ))}
         </ul>
         <p style={{ margin: "4px 0 0", opacity: 0.88 }}>
-          🗡 <b>Reliquie Uniche di Vethrik (+2, mai in Bottega né nei dungeon normali):</b> {TOWER_GEAR_IDS.map((id) => itemOf(id)?.name).filter(Boolean).join(" · ")}.
+          🗡 <b>Reliquie Uniche di Vethrik (+2, mai in Bottega né nei dungeon normali):</b> {TOWER_RANDOM_GEAR_IDS.map((id) => itemOf(id)?.name).filter(Boolean).join(" · ")}.
         </p>
       </details>
     </div>
@@ -197,6 +197,8 @@ const readTab = (isTowerMode, initialTab) => {
 };
 
 function TowerRewardsPanel({ charData }) {
+  const rewardClass = charData?.storyTower?.cls || Object.keys(charData?.storyChars || {})[0] || "fighter";
+  const armorBase = TOWER_ARMOR_BY_CLASS[rewardClass] || "piastre";
   const ts = towerStatusOf(charData);
   const curTier = ts.floor > 0 ? TOWER_REWARD_TIERS.find((t) => ts.floor >= t.min && ts.floor <= t.max) : null;
   return (
@@ -239,12 +241,26 @@ function TowerRewardsPanel({ charData }) {
       </section>
 
       <section className="sgr-block">
+        <h2 className="sgr-h2">🛡 Armature delle cinque soglie</h2>
+        <p className="sgr-hint">Ai piani 20, 40, 60, 80 e 100 sblocchi un’armatura esclusiva. Domenica ricevi tutte le soglie raggiunte, oltre ai premi della fascia. La variante segue la classe della scalata registrata. Le resistenze dimezzano i danni.</p>
+        <ul className="sgr-rooms">
+          {TOWER_ARMOR_MILESTONES.map((milestone) => {
+            const armor = itemOf(`vethrik_${armorBase}_${milestone.floor}`);
+            return <li key={milestone.floor} className="sgr-room">
+              <div className="sgr-room-top"><b className="sgr-room-name">Piano {milestone.floor} · {armor.name}</b><span className="sgr-tag">{ts.floor >= milestone.floor ? "Sbloccata" : "Da raggiungere"}</span></div>
+              <p className="sgr-hint">{armor.desc}</p>
+            </li>;
+          })}
+        </ul>
+      </section>
+
+      <section className="sgr-block">
         <h2 className="sgr-h2">🗡 Reliquie Uniche di Vethrik (+2)</h2>
         <p className="sgr-hint">
-          Questi equipaggiamenti leggendari ed essenze arcane si ottengono <b>esclusivamente</b> dai premi domenicali della Torre di Vethrik (dal Piano 25 in su) e non compaiono mai in Bottega né nei dungeon normali. Si equipaggiano sui tuoi eroi delle Segrete!
+          Questi equipaggiamenti leggendari ed essenze arcane si ottengono <b>esclusivamente</b> dai premi domenicali della Torre di Vethrik (equipaggiamenti dal Piano 20 in su) e non compaiono mai in Bottega né nei dungeon normali. Si equipaggiano sui tuoi eroi delle Segrete!
         </p>
         <ul className="sgr-rooms" style={{ marginTop: 10 }}>
-          {["essenza_vethrik", "lacrima_vethrik", ...TOWER_GEAR_IDS].map((id) => {
+          {["essenza_vethrik", "lacrima_vethrik", ...TOWER_RANDOM_GEAR_IDS].map((id) => {
             const it = itemOf(id);
             if (!it) return null;
             return (

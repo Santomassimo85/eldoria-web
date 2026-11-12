@@ -162,6 +162,34 @@ const ARMOR_ITEMS = {
   piastre_vethrik: { name: "Corazza Eterna di Vethrik", icon: "🏰", kind: "armor", base: "piastre", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 2100, saveBonus: 1, res: ["fire", "necrotic"], desc: "🗼 Premio Unico Torre · Armatura di piastre +2 (CA 20) · +1 ai TS · 🔥 💀 resistenza a fuoco e necrotico." },
   scudo_vethrik: { name: "Egida degli Specchi di Vethrik", icon: "🛡", kind: "shield", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, thorns: { chance: 35, dice: "1d8", dmg: "force" }, desc: "🗼 Premio Unico Torre · Scudo +2 (+4 CA) · +1 ai TS · 35%: riflette 1d8 danni da forza." },
 };
+// Armature garantite delle cinque soglie, nelle varianti compatibili con ogni classe.
+export const TOWER_ARMOR_MILESTONES = [
+  { floor: 20, name: "della Soglia", plus: 1, saveBonus: 0, res: ["necrotic"], resistance: "necrotico" },
+  { floor: 40, name: "del Pendolo", plus: 2, saveBonus: 1, res: ["necrotic", "cold"], resistance: "necrotico e freddo" },
+  { floor: 60, name: "dei Veli", plus: 2, saveBonus: 1, res: ["necrotic", "cold", "fire"], resistance: "necrotico, freddo e fuoco" },
+  { floor: 80, name: "delle Guglie", plus: 3, saveBonus: 2, res: ["necrotic", "cold", "fire", "psychic"], resistance: "necrotico, freddo, fuoco e psichico" },
+  { floor: 100, name: "della Cima Eterna", plus: 3, saveBonus: 2, res: ["necrotic", "cold", "fire", "psychic", "force"], resistance: "necrotico, freddo, fuoco, psichico e forza" },
+];
+export const TOWER_ARMOR_BY_CLASS = {
+  fighter: "piastre", paladin: "piastre", cleric: "mezza", ranger: "mezza",
+  druid: "pelle", barbarian: "senza", monk: "senza", rogue: "borchiato",
+  bard: "borchiato", warlock: "borchiato", wizard: "magica", sorcerer: "magica",
+};
+const TOWER_ARMOR_VARIANTS = {
+  piastre: "Piastre", mezza: "Mezza Armatura", pelle: "Pelle Runica",
+  senza: "Vesti del Custode", borchiato: "Cuoio Borchiato", magica: "Veste Arcana",
+};
+for (const milestone of TOWER_ARMOR_MILESTONES) {
+  for (const [base, name] of Object.entries(TOWER_ARMOR_VARIANTS)) {
+    ARMOR_ITEMS[`vethrik_${base}_${milestone.floor}`] = {
+      name: `${name} ${milestone.name}`, icon: ARMORS[base].icon, kind: "armor", base,
+      plus: milestone.plus, saveBonus: milestone.saveBonus, res: [...milestone.res],
+      rarity: "veryRare", towerOnly: true, towerMilestone: milestone.floor, tradeValue: milestone.floor * 40,
+      desc: `Torre · Piano ${milestone.floor} · +${milestone.plus} CA${milestone.saveBonus ? ` · +${milestone.saveBonus} ai TS` : ""} · Danni da ${milestone.resistance} dimezzati.`,
+    };
+  }
+}
+
 Object.values(SPECIAL_WEAPONS).forEach((w) => { w.kind = "weapon"; w.price = 0; w.special = true; });
 Object.values(ARMOR_ITEMS).forEach((a) => { if (a.price == null) a.price = 0; });
 
@@ -400,6 +428,7 @@ export function registerCustomItems(list = []) {
    In base al piano registrato nella settimana (1..100), il server assegna Monete Antiche e
    oggetti esclusivi (towerOnly: true) che non stanno nella Bottega e non droppano nelle Segrete. */
 export const TOWER_GEAR_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].towerOnly && isGear(ITEMS[id]));
+export const TOWER_RANDOM_GEAR_IDS = TOWER_GEAR_IDS.filter((id) => !ITEMS[id].towerMilestone);
 export const TOWER_REWARD_TIERS = [
   { min: 1, max: 4, name: "Iniziato della Torre", label: "Piani 1–4", coins: "25 × piano", coinsBase: 0, coinsPerFloor: 25, desc: "1× Pozione dell'Esperienza (+10% PE)", summary: "1× Pozione dell'Esperienza (+10% PE)" },
   { min: 5, max: 9, name: "Esploratore del Pendolo", label: "Piani 5–9", coins: "150", coinsBase: 150, coinsPerFloor: 0, desc: "1× Essenza del Pendolo di Vethrik (+35% PE × 3)", summary: "1× Essenza del Pendolo di Vethrik (+35% PE × 3)" },
@@ -413,11 +442,12 @@ export const TOWER_REWARD_TIERS = [
 export function towerRewardForFloor(floor, charData = {}, rndFn = Math.random) {
   const fl = Math.max(0, Math.min(100, Math.floor(Number(floor) || 0)));
   if (fl <= 0) return { coins: 0, items: {}, itemNames: [], tierName: "", tier: null };
-  const myClasses = Object.keys(charData?.storyChars || {});
+  const recordedClass = charData?.storyTower?.cls;
+  const myClasses = TOWER_ARMOR_BY_CLASS[recordedClass] ? [recordedClass] : Object.keys(charData?.storyChars || {});
   const bag = charData?.storyBag || {};
   const wornIds = new Set(Object.values(charData?.storyChars || {}).flatMap((h) => [h?.weaponItem, h?.armorItem, h?.shieldItem]).filter(Boolean));
-  const usableGear = TOWER_GEAR_IDS.filter((id) => !myClasses.length || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c)));
-  const poolBase = usableGear.length ? usableGear : TOWER_GEAR_IDS;
+  const usableGear = TOWER_RANDOM_GEAR_IDS.filter((id) => !myClasses.length || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c)));
+  const poolBase = usableGear.length ? usableGear : TOWER_RANDOM_GEAR_IDS;
   const unowned = poolBase.filter((id) => !(bag[id] > 0) && !wornIds.has(id));
   const pickGear = (count) => {
     const picked = [];
@@ -459,6 +489,10 @@ export function towerRewardForFloor(floor, charData = {}, rndFn = Math.random) {
     add("essenza_vethrik", 2);
     add("lacrima_vethrik", 2);
     pickGear(3).forEach((id) => add(id, 1));
+  }
+  const rewardClass = myClasses.find((cls) => TOWER_ARMOR_BY_CLASS[cls]) || "fighter";
+  for (const milestone of TOWER_ARMOR_MILESTONES) {
+    if (fl >= milestone.floor) add(`vethrik_${TOWER_ARMOR_BY_CLASS[rewardClass]}_${milestone.floor}`);
   }
   const tier = TOWER_REWARD_TIERS.find((t) => fl >= t.min && fl <= t.max) || TOWER_REWARD_TIERS[0];
   const itemNames = Object.entries(items).map(([id, n]) => `${ITEMS[id]?.icon || ""} ${ITEMS[id]?.name || id}${n > 1 ? ` ×${n}` : ""}`);

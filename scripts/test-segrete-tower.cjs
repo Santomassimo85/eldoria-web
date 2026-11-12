@@ -122,12 +122,30 @@ assert.equal(r7.items.essenza_vethrik, 1);
 const r20 = segrete.towerRewardForFloor(20, {});
 assert.equal(r20.tierName, "Spezzasigilli");
 const gear20 = Object.keys(r20.items).filter((id) => segrete.TOWER_GEAR_IDS.includes(id));
-assert.equal(gear20.length, 1, "Al Piano 20 si ottiene 1 reliquia unica +2 di Vethrik");
+assert.equal(gear20.length, 2, "Al Piano 20 si ottiene 1 reliquia unica +2 di Vethrik");
 
 const r100 = segrete.towerRewardForFloor(100, {});
 assert.equal(r100.tierName, "Conquistatore di Vethrik");
 assert.equal(r100.coins, 2000);
 const gear100 = Object.entries(r100.items).filter(([id]) => segrete.TOWER_GEAR_IDS.includes(id)).reduce((t, [, n]) => t + n, 0);
-assert.equal(gear100, 3, "Al Piano 100 si ricevono 3 reliquie uniche +2 di Vethrik");
+assert.equal(gear100, 8, "Al Piano 100 si ricevono 3 reliquie uniche +2 di Vethrik");
 
+// Soglie cumulative, classe registrata, varianti equipaggiabili e nessuna vendita in Bottega.
+for (const [cls, base] of Object.entries(segrete.TOWER_ARMOR_BY_CLASS)) {
+  for (const floor of [19, 20, 39, 40, 59, 60, 79, 80, 99, 100]) {
+    const reward = segrete.towerRewardForFloor(floor, { storyChars: { fighter: {}, wizard: {}, [cls]: {} }, storyTower: { cls } }, () => 0);
+    const armorIds = Object.keys(reward.items).filter(id => segrete.itemOf(id).towerMilestone);
+    assert.equal(armorIds.length, Math.floor(floor / 20), `${cls} al piano ${floor}`);
+    for (const id of armorIds) {
+      const armor = segrete.itemOf(id);
+      assert.equal(armor.base, base);
+      assert.ok(segrete.canWear(cls, armor.base));
+      assert.ok(armor.res.length > 0);
+      assert.equal(segrete.SHOP_ITEMS.includes(id), false);
+    }
+  }
+}
+assert.equal(segrete.towerEffectiveLevel(1), 2);
+assert.equal(segrete.towerEffectiveLevel(30), 8);
+for (let floor = 2; floor <= 100; floor++) assert.ok(segrete.towerEffectiveLevel(floor) >= segrete.towerEffectiveLevel(floor - 1));
 console.log("test-segrete-tower: OK");

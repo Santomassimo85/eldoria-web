@@ -176,7 +176,7 @@ export function heroDefense(cls, st, g = {}) {
   if (!ai && !(canWear(cls, key) && ARMORS[key].start)) key = armorProf(cls).def;
   const ar = ARMORS[key];
   let ac;
-  if (ar.cat === "unarmored") ac = 10 + dex + (st[kitOf(cls).unarmored] || 0);
+  if (ar.cat === "unarmored") ac = 10 + dex + (st[kitOf(cls).unarmored] || 0) + (ai?.plus || 0);
   else ac = ar.base + (ar.dex === 0 ? 0 : Math.min(dex, ar.dex)) + (ai?.plus || 0);
   const si = g.shieldItem && g.shieldItem.kind === "shield" ? g.shieldItem : null;
   const canShield = shieldOk(cls, g.weapon);

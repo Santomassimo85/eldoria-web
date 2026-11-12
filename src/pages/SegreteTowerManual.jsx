@@ -9,7 +9,7 @@ export default function SegreteTowerManual() {
       <li><b>La sfida.</b> {TOWER_MAX_FLOORS} piani con ambienti e nemici variabili, difficoltà crescente e un Guardiano ogni {TOWER_BOSS_EVERY} piani.</li>
       <li><b>Esperienza.</b> I piani superati danno PE, che conservi anche se il gruppo viene sconfitto.</li>
       <li><b>Attenzione ai nuovi tentativi.</b> Ogni scalata riparte dal piano 1. L’ultimo risultato sostituisce quello precedente per i premi settimanali, anche se è più basso.</li>
-      <li><b>Premi e reset.</b> Domenica alle <b>23:00, ora italiana</b>, ricevi il premio del piano registrato. Apri <b>Premi &amp; Reliquie</b> per vedere fasce e ricompense.</li>
+      <li><b>Premi e reset.</b> Domenica alle <b>23:00, ora italiana</b>, ricevi il premio del piano registrato e un’armatura per la tua classe a ogni soglia di 20 piani raggiunta. Apri <b>Premi &amp; Reliquie</b> per vedere fasce e ricompense.</li>
     </ul>
   </section>;
 }
