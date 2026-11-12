@@ -27,7 +27,7 @@ import { sgTone } from "../data/segreteIcons";
 import StatusPips from "../components/StatusPips";
 import { useFightMode } from "../utils/fightMode";
 import { VfxLayer } from "./WorldBossVfx";
-import { leaveRoom, backToRoom } from "../utils/segreteRooms";
+import { leaveRoom, backToRoom, reopenRoom } from "../utils/segreteRooms";
 import { FloorGains, SpoilsBox, FoeCard } from "./SegreteCombatUI";
 import { presentCombatRow, hideChestRewards, chestRollBatches } from "../utils/segretePresentation";
 import { statusIcons, actInfo } from "../utils/segreteCombat";
@@ -586,7 +586,25 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   const bind = (id, el) => engRef.current?.bindAnchor(id, el);
 
   if (!run || run.startKey !== startKey) {
-    return <div className="sgb-loading">{err ? <p className="sgb-err">{err}</p> : <p>🗝 Le porte delle Segrete si aprono…</p>}</div>;
+    return (
+      <div className="sgb-loading">
+        {err ? (
+          <>
+            <p className="sgb-err">{err}</p>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: "10px", flexWrap: "wrap" }}>
+              <button type="button" className="sgr-btn" onClick={() => { setErr(""); initAsked.current = ""; segreteDo({ op: "init", roomId: room.id }).catch((e) => setErr(e.message)); }}>
+                ↻ Riprova avvio
+              </button>
+              <button type="button" className="sgr-btn sgr-btn--ghost" onClick={() => reopenRoom(room.id).catch((e) => setErr(e.message))}>
+                ↺ Torna al gruppo
+              </button>
+            </div>
+          </>
+        ) : (
+          <p>🗝 Le porte delle Segrete si aprono…</p>
+        )}
+      </div>
+    );
   }
 
   const itk = chosenItem ? itemTarget(chosenItem) : null;

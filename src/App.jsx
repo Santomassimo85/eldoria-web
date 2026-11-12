@@ -320,6 +320,9 @@ const NESSO_GROUPS = {
   ]},
   battaglia: { rune: "ᚦ", label: "Battaglia", links: [
     { to: "/sala-della-gloria", label: "Sala della Gloria" },
+    { to: "/arena", label: "Arena" },
+    { to: "/segrete", label: "Le Segrete" },
+    { to: "/torre-di-vethrik", label: "La Torre di Vethrik" },
     { to: "/world-boss-fight", label: "World Boss" },
   ]},
 };
@@ -329,7 +332,7 @@ const NESSO_GROUP_OF = (p) =>
   : ["/scriba", "/riassunti", "/diario", "/almanacco", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
   : ["/party", "/scheda-pg", "/my-pg"].some((x) => p.startsWith(x)) ? "eroi"
   : ["/officina", "/crafting", "/mercato", "/ratti-lore", "/bacheca", "/ruota", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
-  : ["/arena", "/arena-bottega", "/sala-della-gloria", "/segrete", "/world-boss", "/tcg", "/pet"].some((x) => p.startsWith(x)) ? "battaglia"
+  : ["/arena", "/arena-bottega", "/sala-della-gloria", "/segrete", "/torre-di-vethrik", "/world-boss", "/tcg", "/pet"].some((x) => p.startsWith(x)) ? "battaglia"
   : null;
 
 function NessoNav({ openMenu }) {
@@ -504,7 +507,7 @@ export default function App() {
     const p = location.pathname;
     const isDarkGamePage =
       p.startsWith("/arena") ||
-      p === "/sala-della-gloria" || p === "/segrete" ||
+      p === "/sala-della-gloria" || p === "/segrete" || p === "/torre-di-vethrik" ||
       p === "/tcg" ||
       p.startsWith("/world-boss") ||
       p.startsWith("/pet");
@@ -513,7 +516,7 @@ export default function App() {
     document.body.classList.toggle("covo-admin", isAdminPage);
     // L'Arena resta theme-dark (CSS autonomo) ma veste il Covo: squame e respiro attivi
     // Il World Boss (scena testo + sprite) veste il Covo come l'Arena: squame e respiro accesi
-    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega" || p === "/arena-lab" || p === "/world-boss-fight" || p === "/sala-della-gloria" || p === "/segrete");
+    document.body.classList.toggle("covo-arena", p === "/arena" || p === "/arena-bottega" || p === "/arena-lab" || p === "/world-boss-fight" || p === "/sala-della-gloria" || p === "/segrete" || p === "/torre-di-vethrik");
     document.documentElement.dataset.theme = soffio === "bianco" ? "light" : "dark";
     document.documentElement.dataset.soffio = soffio;
     return () => { document.body.classList.remove("theme-dark", "covo-admin", "covo-arena"); };
@@ -662,6 +665,7 @@ export default function App() {
           <Route path="/arena" element={<Arena />} />
           <Route path="/sala-della-gloria" element={<SalaGloria />} />
           <Route path="/segrete" element={<Segrete />} />
+          <Route path="/torre-di-vethrik" element={<Segrete initialTab="torre" />} />
           <Route path="/arena-lab" element={<ArenaLab />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
           <Route path="/pet" element={<PetDen />} />

@@ -6,7 +6,7 @@ import { RACES, hasRace } from "../data/segreteRaces";
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
    Il combattimento (motore sul server + IA dei nemici) arriva nella fase 3. */
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebase";
@@ -16,7 +16,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
   MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
-  TOWER_WEEKLY_FREE, isTowerDungeon, towerStatusOf,
+  TOWER_KEY, TOWER_WEEKLY_FREE, isTowerDungeon, towerStatusOf,
 } from "../data/segrete";
 import { currentWeekKey } from "../data/arenaWeek";
 import {
@@ -168,6 +168,7 @@ function DifficultyPicker({ value, onPick, disabled, levels = [], readOnly }) {
 
 const TABS = [
   { key: "gruppi", icon: "⚔", label: "Gruppi" },
+  { key: "torre", icon: "🗼", label: "Torre di Vethrik" },
   { key: "eroi", icon: "🧝", label: "Personaggi" },
   { key: "bottega", icon: "🏪", label: "Bottega" },
   { key: "zaino", icon: "🎒", label: "Zaino" },
@@ -175,9 +176,13 @@ const TABS = [
   { key: "manuale", icon: "📖", label: "Manuale" },
 ];
 const TAB_KEY = "sgr_tab";
-const readTab = () => { try { const t = localStorage.getItem(TAB_KEY); return TABS.some((x) => x.key === t) ? t : "gruppi"; } catch { return "gruppi"; } };
+const readTab = (initialTab) => {
+  if (initialTab && TABS.some((x) => x.key === initialTab)) return initialTab;
+  try { const t = localStorage.getItem(TAB_KEY); return TABS.some((x) => x.key === t) ? t : "gruppi"; } catch { return "gruppi"; }
+};
 
-export default function Segrete() {
+export default function Segrete({ initialTab = null }) {
+  const location = useLocation();
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
   const master = isMainMaster(currentUser?.email);
@@ -192,12 +197,19 @@ export default function Segrete() {
   const [type, setType] = useState("segrete");
   const [diff, setDiff] = useState("facile");
   const [name, setName] = useState("");
-  const [tab, setTabState] = useState(readTab);
+  const [tab, setTabState] = useState(() => readTab(initialTab || (location.pathname === "/torre-di-vethrik" ? "torre" : null)));
   const [focus, setFocus] = useState(null);
   const setTab = (t) => {
     setTabState(t);
     try { localStorage.setItem(TAB_KEY, t); } catch { /* niente */ }
   };
+
+  useEffect(() => {
+    if (location.pathname === "/torre-di-vethrik") setTabState("torre");
+    else if (location.pathname === "/segrete" && initialTab !== "torre") {
+      setTabState((prev) => (prev === "torre" ? "gruppi" : prev));
+    }
+  }, [location.pathname, initialTab]);
 
   useEffect(() => {
     if (!uid) return undefined;
@@ -227,9 +239,10 @@ export default function Segrete() {
   }, [charData, cls]);
 
   const dungeons = useMemo(() => mergeDungeons(custom), [custom]);
+  const normalDungeons = useMemo(() => dungeons.filter((d) => !isTowerDungeon(d.key)), [dungeons]);
   useEffect(() => {
-    if (!dungeons.some((d) => d.key === type)) setType(dungeons[0]?.key || "");
-  }, [dungeons, type]);
+    if (!normalDungeons.some((d) => d.key === type)) setType(normalDungeons[0]?.key || "");
+  }, [normalDungeons, type]);
   const dungeonOf = (key) => dungeons.find((d) => d.key === key) || { key, name: key, icon: "🗝" };
   const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
   const meInRoom = myRoom ? roomMember(myRoom, uid) : null;
@@ -252,8 +265,14 @@ export default function Segrete() {
   const openRooms = rooms
     .filter((r) => r.status === "open" && dungeons.some((d) => d.key === r.type) && r.id !== myRoom?.id && (fresh(r, 2 * 864e5) || invitedTo(r) || master))
     .sort((a, b) => Number(invitedTo(b)) - Number(invitedTo(a)) || tsMs(b.updatedAt) - tsMs(a.updatedAt));
+  const openNormalRooms = openRooms.filter((r) => !isTowerDungeon(r.type));
+  const openTowerRooms = openRooms.filter((r) => isTowerDungeon(r.type));
   const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id && (fresh(r, 6 * 36e5) || master));
+  const runningNormalRooms = running.filter((r) => !isTowerDungeon(r.type));
+  const runningTowerRooms = running.filter((r) => isTowerDungeon(r.type));
   const invites = openRooms.filter(invitedTo).length;
+  const normalInvites = openNormalRooms.filter(invitedTo).length;
+  const towerInvites = openTowerRooms.filter(invitedTo).length;
   const todoN = heroClasses(charData).filter((c) => heroTodo(heroOf(charData, c.key), c.key).length).length;
 
   const run = async (fn) => {
@@ -294,14 +313,24 @@ export default function Segrete() {
   const ci = classInfo(curCls);
   const curHero = heroOf(charData, curCls);
   const readyN = myRoom ? myRoom.members.filter((m) => m.ready).length : 0;
-  const badge = { gruppi: invites || (myRoom ? "●" : 0), eroi: todoN };
+  const myRoomIsTower = !!myRoom && isTowerDungeon(myRoom.type);
+  const badge = {
+    gruppi: normalInvites || (myRoom && !myRoomIsTower ? "●" : 0),
+    torre: towerInvites || (myRoomIsTower ? "●" : 0),
+    eroi: todoN,
+  };
+  const tsStatus = towerStatusOf(charData);
 
   return (
     <section className="sgr-page">
       <Link to="/sala-della-gloria" className="sgr-back">← Sala della Gloria</Link>
       <header className="sgr-head">
-        <h1 className="sgr-title">Le Segrete</h1>
-        <p className="sgr-lead">Dungeon a gruppi da 1 a {MAX_PARTY}. Il tuo eroe cresce vincendo; se il gruppo cade, si perde il bottino.</p>
+        <h1 className="sgr-title">{tab === "torre" ? "🗼 La Torre di Vethrik" : "Le Segrete"}</h1>
+        <p className="sgr-lead">
+          {tab === "torre"
+            ? `100 piani mutevoli per gruppi da 1 a ${MAX_PARTY}, collegati ai tuoi eroi e al tuo zaino delle Segrete. Ogni piano dà PE subito e la domenica alle 23:00 assegna i Premi Unici.`
+            : `Dungeon a gruppi da 1 a ${MAX_PARTY}. Il tuo eroe cresce vincendo; se il gruppo cade, si perde il bottino.`}
+        </p>
       </header>
 
       {curHero && !hasRace(curHero) && <div className="sgh-pending" role="alert">Scegli la razza del tuo eroe prima di giocare. <button type="button" className="sgr-btn" onClick={() => pickHero(curCls)}>Scegli razza</button></div>}
@@ -311,14 +340,21 @@ export default function Segrete() {
           <SgIcon kind="cls" of={curCls} fallback={ci?.icon || "?"} size="md" color="var(--cls)" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? <><SegreteIdentity cls={curCls} hero={curHero} /> · Lv {level(curCls)}</> : "da creare"}</b>{curHero && <SegreteXp hero={curHero} />}</span>
         </button>
-        <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab("gruppi")}>
-          <SgIcon kind="ui" of="gruppi" fallback="⚔" size="md" className="sgr-st-ico" />
+        <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab(myRoomIsTower ? "torre" : "gruppi")}>
+          <SgIcon kind="ui" of={myRoomIsTower ? "torre" : "gruppi"} fallback={myRoomIsTower ? "🗼" : "⚔"} size="md" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Gruppo</small><b>{myRoom ? `${myRoom.name} · ${readyN}/${myRoom.members.length} pronti` : invites ? `📨 ${invites} invit${invites === 1 ? "o" : "i"}` : "nessuno"}</b></span>
         </button>
-        <div className="sgr-st">
-          <SgIcon kind="ui" of="key" fallback="🗝" size="md" className="sgr-st-ico" />
-          <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS}`}</b></span>
-        </div>
+        {tab === "torre" || myRoomIsTower ? (
+          <button type="button" className="sgr-st" onClick={() => setTab("torre")}>
+            <SgIcon kind="ui" of="torre" fallback="🗼" size="md" className="sgr-st-ico" />
+            <span className="sgr-st-txt"><small>Torre di Vethrik</small><b>{tsStatus.floor > 0 ? `Piano ${tsStatus.floor}/100` : "0/100"} · 🗝 {master ? "∞" : `${tsStatus.freeLeft}/${TOWER_WEEKLY_FREE}`}{tsStatus.bagKeys ? `+${tsStatus.bagKeys}` : ""}</b></span>
+          </button>
+        ) : (
+          <div className="sgr-st">
+            <SgIcon kind="ui" of="key" fallback="🗝" size="md" className="sgr-st-ico" />
+            <span className="sgr-st-txt"><small>Dungeon oggi</small><b>{master ? "∞ (Master)" : `${ci?.it || "classe"} ${runs.dayCount}/${DAILY_RUNS}`}</b></span>
+          </div>
+        )}
         <button type="button" className="sgr-st" onClick={() => setTab("zaino")}>
           <SgIcon kind="ui" of="coin" fallback={COIN_ICON} size="md" color="#f2c14e" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>{COIN_NAME}</small><b>{coinsOf(charData)}{coinsToday(charData) ? <span className="sgr-st-plus"> · +{coinsToday(charData)} oggi</span> : null}</b></span>
@@ -340,16 +376,16 @@ export default function Segrete() {
       {tab === "gruppi" && (
         myRoom ? (
           <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-            dungeon={dungeonOf(myRoom.type)} dungeons={dungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
+            dungeon={dungeonOf(myRoom.type)} dungeons={normalDungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
         ) : (
           <>
             <HeroNews charData={charData} onSelect={pickHero} />
-            {!!openRooms.length && (
+            {!!openNormalRooms.length && (
               <section className="sgr-block">
-                <h2 className="sgr-h2">Entra in un gruppo <span className="sgr-count">{openRooms.length}</span></h2>
+                <h2 className="sgr-h2">Entra in un gruppo <span className="sgr-count">{openNormalRooms.length}</span></h2>
                 <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
                 <ul className="sgr-rooms">
-                  {openRooms.map((r) => {
+                  {openNormalRooms.map((r) => {
                     const idle = now - tsMs(r.updatedAt) > ROOM_IDLE_MS;
                     return (
                       <li key={r.id} className={`sgr-room${invitedTo(r) ? " is-invited" : ""}`}>
@@ -381,46 +417,139 @@ export default function Segrete() {
               </section>
             )}
 
-            <details className="sgr-block sgr-fold" open={!openRooms.length}>
+            <details className="sgr-block sgr-fold" open={!openNormalRooms.length}>
               <summary className="sgr-h2">✚ Crea un gruppo</summary>
               <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
               <p className="sgr-label">Dove scendete</p>
-              {!dungeons.length && <p className="sgr-hint">Nessun dungeon attivo. Il Master può attivarli dall’admin delle Segrete.</p>}
+              {!normalDungeons.length && <p className="sgr-hint">Nessun dungeon attivo. Il Master può attivarli dall’admin delle Segrete.</p>}
               <div className="sgr-dpick" role="radiogroup" aria-label="Dungeon">
-                {dungeons.map((d) => (
+                {normalDungeons.map((d) => (
                   <button key={d.key} type="button" role="radio" aria-checked={type === d.key}
                     className={`sgr-dpick-b${type === d.key ? " is-on" : ""}`} onClick={() => setType(d.key)}>
                     <SgIcon kind="dungeon" of={d} /> {d.name}
                   </button>
                 ))}
               </div>
-              {isTowerDungeon(type) ? (
-                <TowerInfoBox charData={charData} isHost master={master} />
-              ) : (
-                <>
-                  {(() => { const d = dungeonOf(type), p = dungeonProfile(d); return <>
-                    {d.desc && <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p>}
-                    <p className="sgr-dpick-desc"><b>{p.name}</b> · PE ×{p.xp} · Monete Antiche ×{p.coins}. {p.desc}</p>
-                  </>; })()}
-                  <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: heroIdentity(cls, heroOf(charData, cls)), level: level(cls) }] : []} />
-                  <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
-                </>
-              )}
+              {(() => { const d = dungeonOf(type), p = dungeonProfile(d); return <>
+                {d.desc && <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p>}
+                <p className="sgr-dpick-desc"><b>{p.name}</b> · PE ×{p.xp} · Monete Antiche ×{p.coins}. {p.desc}</p>
+              </>; })()}
+              <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: heroIdentity(cls, heroOf(charData, cls)), level: level(cls) }] : []} />
+              <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
               <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
-              <button type="button" className="sgr-cta" disabled={busy || !type || !dungeons.length || !cls || !heroReady(charData, cls)}
+              <button type="button" className="sgr-cta" disabled={busy || !type || !normalDungeons.length || !cls || !heroReady(charData, cls)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
                 onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls), difficulty: diff }))}>
                 Crea il gruppo
               </button>
             </details>
 
-            {!!running.length && (
+            {!!runningNormalRooms.length && (
               <details className="sgr-block sgr-fold">
-                <summary className="sgr-h2">Nelle Segrete adesso <span className="sgr-count">{running.length}</span></summary>
+                <summary className="sgr-h2">Nelle Segrete adesso <span className="sgr-count">{runningNormalRooms.length}</span></summary>
                 <ul className="sgr-rooms">
-                  {running.map((r) => (
+                  {runningNormalRooms.map((r) => (
+                    <li key={r.id} className="sgr-room is-running">
+                      <div className="sgr-room-top">
+                        <b className="sgr-room-name">{r.name}</b>
+                        <DungeonBadge d={dungeonOf(r.type)} diff={r.difficulty} />
+                      </div>
+                      <p className="sgr-room-line">{r.members.map((m, i) => <span key={m.uid}>{i > 0 && " · "}{m.name} (<SegreteIdentity cls={m.cls} hero={m} />)</span>)}</p>
+                      {master && (
+                        <div className="sgr-room-actions">
+                          <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => reopenRoom(r.id))}>↺ Riporta in stanza</button>
+                          <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => deleteRoom(r.id))}>🗑 Sciogli</button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </>
+        )
+      )}
+
+      {tab === "torre" && (
+        myRoom ? (
+          <>
+            {!myRoomIsTower && (
+              <section className="sgr-block">
+                <TowerInfoBox charData={charData} isHost={myRoom.hostUid === uid} master={master} />
+                {(myRoom.hostUid === uid || master) && (
+                  <button type="button" className="sgr-btn" disabled={busy} onClick={() => run(() => chooseDungeon(myRoom.id, uid, TOWER_KEY, master))}>
+                    🗼 Sposta questo gruppo nella Torre di Vethrik
+                  </button>
+                )}
+              </section>
+            )}
+            <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
+              dungeon={dungeonOf(myRoom.type)} dungeons={myRoomIsTower ? [] : normalDungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
+          </>
+        ) : (
+          <>
+            <HeroNews charData={charData} onSelect={pickHero} />
+            <section className="sgr-block">
+              <TowerInfoBox charData={charData} isHost master={master} />
+            </section>
+
+            {!!openTowerRooms.length && (
+              <section className="sgr-block">
+                <h2 className="sgr-h2">🗼 Entra in una scalata della Torre <span className="sgr-count">{openTowerRooms.length}</span></h2>
+                <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
+                <ul className="sgr-rooms">
+                  {openTowerRooms.map((r) => {
+                    const idle = now - tsMs(r.updatedAt) > ROOM_IDLE_MS;
+                    return (
+                      <li key={r.id} className={`sgr-room${invitedTo(r) ? " is-invited" : ""}`}>
+                        {invitedTo(r) && <p className="sgr-invited">📨 {invitedTo(r).by || "Il gruppo"} ti ha invitato nella Torre!</p>}
+                        <div className="sgr-room-top">
+                          <b className="sgr-room-name">{r.name}</b>
+                          <DungeonBadge d={dungeonOf(r.type)} diff={r.difficulty} />
+                          <span className="sgr-room-n">{r.members.length}/{MAX_PARTY}</span>
+                        </div>
+                        <ul className="sgr-room-members">
+                          {r.members.map((m) => (
+                            <li key={m.uid} style={clsStyle(m.cls)}><span className="sgr-clsdot" aria-hidden="true" /><SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} color="var(--cls)" /> {m.name} <small>· <span className="sgr-clsname"><SegreteIdentity cls={m.cls} hero={m} /></span> Lv {m.level}{m.uid === r.hostUid ? " · capo" : ""}</small></li>
+                          ))}
+                        </ul>
+                        <div className="sgr-room-actions">
+                          <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
+                            onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
+                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
+                          </button>
+                          {(master || idle) && (
+                            <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
+                              onClick={() => run(() => deleteRoom(r.id))}>{master ? "🗑 Sciogli" : "🗑 Sciogli (fermo da ore)"}</button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+
+            <details className="sgr-block sgr-fold" open={!openTowerRooms.length}>
+              <summary className="sgr-h2">🗼 Crea un gruppo per la Torre di Vethrik</summary>
+              <HeroQuickPick charData={charData} value={cls} onPick={setCls} disabled={busy} onManage={() => setTab("eroi")} />
+              <label className="sgr-label" htmlFor="sgr-tower-name">Nome della spedizione <small>(facoltativo)</small></label>
+              <input id="sgr-tower-name" className="sgr-input" value={name} maxLength={40}
+                placeholder={`Scalata di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
+              <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls) || (!master && !tsStatus.canOpen)}
+                title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
+                onClick={() => run(() => createRoom(uid, charData, { name: name || `Scalata di ${charData?.name || "…"}`, type: TOWER_KEY, cls, level: level(cls), difficulty: "facile" }))}>
+                🗼 Crea gruppo per la Torre di Vethrik
+              </button>
+            </details>
+
+            {!!runningTowerRooms.length && (
+              <details className="sgr-block sgr-fold">
+                <summary className="sgr-h2">Nella Torre di Vethrik adesso <span className="sgr-count">{runningTowerRooms.length}</span></summary>
+                <ul className="sgr-rooms">
+                  {runningTowerRooms.map((r) => (
                     <li key={r.id} className="sgr-room is-running">
                       <div className="sgr-room-top">
                         <b className="sgr-room-name">{r.name}</b>
@@ -491,7 +620,7 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
   const allMembers = [...room.members, ...fakeMembers];
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => allMembers[i] || null);
   const readyN = allMembers.filter((m) => m.ready).length;
-  const dungeonActive = dungeons.some((d) => d.key === room.type);
+  const dungeonActive = isTowerDungeon(room.type) || dungeons.some((d) => d.key === room.type);
 
   if (room.status === "running" || room.status === "done") {
     return (

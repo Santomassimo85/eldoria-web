@@ -143,7 +143,7 @@ export function storyLevelOf(charData, classKey) {
 export function mergeDungeons(custom = []) {
   const map = new Map(DEFAULT_DUNGEONS.map((d) => [d.key, d]));
   custom.forEach((d) => { if (d?.key) map.set(d.key, { ...(map.get(d.key) || {}), ...d }); });
-  return [...map.values()].filter((d) => !d.hidden && d.active !== false);
+  return [...map.values()].filter((d) => d.key === "torre_vethrik" || (!d.hidden && d.active !== false));
 }
 
 export const roomMember = (room, uid) => (room?.members || []).find((m) => m.uid === uid) || null;

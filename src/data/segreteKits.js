@@ -230,7 +230,7 @@ export const KITS = {
     pool: [
       { id: "punizione", useWeapon: true, name: "Punizione Divina", icon: "⚡", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "2d8", riderDmg: "radiant", min: 1, uses: 2, riderGrow: true, info: "danno normale dell'arma + danno radioso" },
       { id: "benedizione", name: "Benedizione", icon: "✨", kind: "buff", buff: "adv", turns: 2, allParty: true, min: 1, uses: 1 },
-      { id: "cura_p", name: "Cura Ferite", icon: "💚", kind: "heal", healPool: true, min: 3, info: "Cura a scelta · riserva condivisa" },
+      { id: "cura_p", name: "Cura Ferite", icon: "💚", kind: "heal", dice: "1d8", plusMod: 2, min: 3, uses: 2, info: "Cura 1d8 + 2×CAR" },
       { id: "aura", name: "Aura di Protezione", icon: "🌟", kind: "buff", buff: "ac", value: 2, turns: 3, allParty: true, min: 6, uses: 1 },
       { id: "accecante", useWeapon: true, name: "Punizione Accecante", icon: "☀", kind: "weapon", dice: "1d8", dmg: "slashing", rider: "3d8", riderDmg: "radiant", riderDis: 2, min: 9, uses: 1, info: "e il nemico a svantaggio" },
       { id: "sacra", name: "Arma Sacra", icon: "🗡", kind: "buff", buff: "dmg", value: 5, turns: 3, self: true, min: 12, uses: 1 },

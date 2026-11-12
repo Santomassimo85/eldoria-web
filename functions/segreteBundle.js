@@ -1791,7 +1791,7 @@ function mergeDungeons(custom = []) {
   custom.forEach((d) => {
     if (d?.key) map.set(d.key, { ...map.get(d.key) || {}, ...d });
   });
-  return [...map.values()].filter((d) => !d.hidden && d.active !== false);
+  return [...map.values()].filter((d) => d.key === "torre_vethrik" || !d.hidden && d.active !== false);
 }
 var DEFAULT_FLOORS = 3;
 var MONSTER_SIZES = [

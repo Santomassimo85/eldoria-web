@@ -89,7 +89,7 @@ export const SG_ICONS = {
   ui: {
     coin: "two-coins", bag: "knapsack", shop: "shop", manual: "spell-book", key: "key",
     boss: "crowned-skull", gift: "present",
-    gruppi: "crossed-swords", eroi: "cowled", bottega: "shop", zaino: "knapsack", storico: "scroll-unfurled", manuale: "spell-book",
+    gruppi: "crossed-swords", torre: "crowned-skull", eroi: "cowled", bottega: "shop", zaino: "knapsack", storico: "scroll-unfurled", manuale: "spell-book",
   },
 };
 

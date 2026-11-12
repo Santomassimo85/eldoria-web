@@ -53,9 +53,10 @@ export default function SegreteManual() {
       <Fold icon="🙌" title="Paladino: Punizione e riserva di cura">
         <ul>
           <li><b>Punizione Divina</b>: danno normale dell'arma, con i suoi bonus, più danno <b>radioso</b>. Le difese del bersaglio si applicano separatamente alle due parti, anche sul colpo mortale.</li>
-          <li><b>Imposizione delle Mani</b>: all'inizio del dungeon la riserva contiene <b>PF massimi + livello</b>. Scegli te stesso o un alleato, poi quanti PF curare. Puoi anche rialzare un alleato a terra.</li>
-          <li>Consuma solo i PF effettivamente recuperati, senza superare quelli mancanti al bersaglio. Non ci sono cariche: la usi finché restano punti nella riserva, spendendo la normale azione del round. Anche Cura Ferite usa la stessa riserva.</li>
+          <li><b>Imposizione delle Mani</b>: all'inizio del dungeon la riserva contiene <b>PF massimi + 2 × livello</b>. Scegli te stesso o un alleato, poi quanti PF curare. Puoi anche rialzare un alleato a terra.</li>
+          <li>Consuma solo i PF effettivamente recuperati, senza superare quelli mancanti al bersaglio. Non ci sono cariche: la usi finché restano punti nella riserva, spendendo la normale azione del round.</li>
           <li>La riserva non si ricarica passando di sala; torna piena nella prossima spedizione e aumenta con PF massimi e livello.</li>
+          <li><b>Cura Ferite</b> (dal Lv 3, 2 usi per sala): incantesimo separato dalla riserva, cura <b>1d8 + 2 × CAR</b> a te o a un alleato.</li>
         </ul>
       </Fold>
 
