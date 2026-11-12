@@ -1,6 +1,6 @@
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
-import { hasRace } from "../data/segreteRaces";
+import { RACES, hasRace } from "../data/segreteRaces";
 /* LE SEGRETE — story mode della Sala della Gloria (fase 1, 2026-11-04):
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
@@ -17,7 +17,7 @@ import {
   MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
 } from "../data/segrete";
 import {
-  createRoom, joinRoom, leaveRoom, kickMember, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
+  createRoom, joinRoom, leaveRoom, kickMember, addFakeNpc, removeFakeNpc, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
 import SegreteDungeonInfo from "./SegreteDungeonInfo";
 import { dungeonProfile } from "../data/segreteProfiles";
@@ -411,8 +411,10 @@ function BattleView({ room, uid, master, onReopen, busy, charData }) {
 function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = [], canRun, onHeroes, onPick, onFix }) {
   const me = roomMember(room, uid);
   const host = room.hostUid === uid;
-  const slots = Array.from({ length: MAX_PARTY }, (_, i) => room.members[i] || null);
-  const readyN = room.members.filter((m) => m.ready).length;
+  const fakeMembers = room.fakeMembers || [];
+  const allMembers = [...room.members, ...fakeMembers];
+  const slots = Array.from({ length: MAX_PARTY }, (_, i) => allMembers[i] || null);
+  const readyN = allMembers.filter((m) => m.ready).length;
   const dungeonActive = dungeons.some((d) => d.key === room.type);
 
   if (room.status === "running" || room.status === "done") {
@@ -435,17 +437,24 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
               <>
                 <SgIcon kind="cls" of={m.cls} fallback={classInfo(m.cls)?.icon} frame size="md" color="var(--cls)" className="sgr-slot-ico" />
                 <span className="sgr-slot-main">
-                  <b>{m.name}{m.uid === room.hostUid && <em className="sgr-tag">capo</em>}</b>
-                  <small><span className="sgr-clsname"><SegreteIdentity cls={m.cls} hero={m} /></span> · Lv {m.level}</small>
+                  <b>{m.name}{m.uid === room.hostUid && <em className="sgr-tag">capo</em>}{m.fake && <em className="sgr-tag">NPC</em>}</b>
+                  <small><span className="sgr-clsname"><SegreteIdentity cls={m.cls} hero={m} /></span>{m.race && RACES[m.race]?.name ? ` · ${RACES[m.race].name}` : ""} · Lv {m.level}</small>
                 </span>
                 <span className={`sgr-slot-state${m.ready ? " is-on" : ""}`}>{m.ready ? "✓ Pronto" : "In attesa"}</span>
                 {(host || master) && m.uid !== uid && (
                   <button type="button" className="sgr-x" disabled={busy} aria-label={`Togli ${m.name}`} title="Togli dal gruppo"
-                    onClick={() => run(() => kickMember(room.id, uid, m.uid, master))}>✕</button>
+                    onClick={() => run(() => (m.fake ? removeFakeNpc(room.id, uid, m.uid, master) : kickMember(room.id, uid, m.uid, master)))}>✕</button>
                 )}
               </>
             ) : (
-              <span className="sgr-slot-free">Posto libero</span>
+              (host || master) ? (
+                <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
+                  onClick={() => run(() => addFakeNpc(room.id, uid, master))}>
+                  + 🤖 Aggiungi NPC casuale
+                </button>
+              ) : (
+                <span className="sgr-slot-free">Posto libero</span>
+              )
             )}
           </li>
         ))}

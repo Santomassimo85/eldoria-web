@@ -272,6 +272,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   const [logOpen, setLogOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [companion, setCompanion] = useState(null);
+  const [fakeDoneRound, setFakeDoneRound] = useState("");
   const [vfxMsgs, setVfxMsgs] = useState([]);
   const [inspect, setInspect] = useState(null);
   const [shownSeq, setShownSeq] = useState(null);
@@ -304,6 +305,13 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   }, []);
 
   const startKey = room.startedAt?.toMillis ? room.startedAt.toMillis() : 0;
+  const roundKey = run?.status === "fight" ? `${run.floor}:${run.round}` : "";
+  const hasFakeMembers = (room.fakeMembers || []).length > 0;
+  useEffect(() => {
+    if (!roundKey || !hasFakeMembers) return undefined;
+    const t = setTimeout(() => setFakeDoneRound(roundKey), 1000);
+    return () => clearTimeout(t);
+  }, [roundKey, hasFakeMembers]);
   useEffect(() => {
     if (room.status !== "running") return;
     if (run && run.startKey === startKey) return;
@@ -596,13 +604,32 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   const spoils = (rewardRun.spoils || {})[uid];
   const healTarget = healing ? run.heroes.find((h) => h.id === healing.id) : null;
   const healLimit = healTarget ? Math.min(chosen?.left || 0, Math.max(0, healTarget.maxHp - healTarget.hp)) : 0;
+  const fakeHeroes = (room.fakeMembers || []).map((m) => ({
+    id: `h_${m.uid}`,
+    side: "h",
+    uid: m.uid,
+    name: m.name,
+    cls: m.cls,
+    race: m.race || "human",
+    size: m.size || RACES[m.race]?.size || "medium",
+    level: m.level || 1,
+    subclass: m.subclass || "",
+    subName: m.subName || "",
+    hp: m.maxHp || 24,
+    maxHp: m.maxHp || 24,
+    ac: m.ac || 15,
+    fx: {},
+    fake: true,
+  }));
+  const partyHeroes = [...run.heroes, ...fakeHeroes];
+  const fakeActed = !!roundKey && fakeDoneRound === roundKey;
 
   return createPortal(
     <div className="sgb cw">
       <VfxLayer messages={vfxMsgs} selfUid={uid} canvas />
       {companion && (() => {
-        const hero = run.heroes.find((h) => h.id === companion);
-        return hero ? <SegreteCompanionCard hero={hero} round={run.round} acted={!!acted[hero.id]} onClose={() => setCompanion(null)} /> : null;
+        const hero = partyHeroes.find((h) => h.id === companion);
+        return hero ? <SegreteCompanionCard hero={hero} round={run.round} acted={hero.fake ? fakeActed : !!acted[hero.id]} onClose={() => setCompanion(null)} /> : null;
       })()}
       {inspect && (() => {
         const f = run.foes.find((x) => x.id === inspect);
@@ -724,12 +751,13 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
         {tools}
       </div>
 
-      {run.heroes.some((h) => h.uid !== uid) && <div className="cw-party" role="group" aria-label="Il tuo gruppo" style={{ "--cw-n": run.heroes.filter((h) => h.uid !== uid).length }}>
-        {run.heroes.filter((h) => h.uid !== uid).map((h0) => {
-          const h = shown(h0);
-          return <PartySlot key={h.id} h={h} round={run.round} onInspect={setCompanion} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
+      {partyHeroes.some((h) => h.uid !== uid) && <div className="cw-party" role="group" aria-label="Il tuo gruppo" style={{ "--cw-n": partyHeroes.filter((h) => h.uid !== uid).length }}>
+        {partyHeroes.filter((h) => h.uid !== uid).map((h0) => {
+          const h = h0.fake ? h0 : shown(h0);
+          const isDone = h.fake ? fakeActed : !!acted[h.id];
+          return <PartySlot key={h.id} h={h} round={run.round} onInspect={setCompanion} turn={fighting && h.hp > 0 && !isDone} done={fighting && isDone}
             picked={aiming?.id === h.id} onPick={pickTarget}
-            selectable={canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
+            selectable={!h.fake && canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
         })}
       </div>}
     </div>,

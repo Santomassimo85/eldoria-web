@@ -7,9 +7,14 @@
 import { collection, doc, runTransaction, serverTimestamp, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
-import { MAX_PARTY, allReady, mergeDungeons } from "../data/segrete";
-import { heroSubclass } from "../data/segreteKits";
-import { hasRace } from "../data/segreteRaces";
+import { MAX_PARTY, STORY_CLASSES, allReady, mergeDungeons } from "../data/segrete";
+import { heroSubclass, subclassesOf, kitOf } from "../data/segreteKits";
+import { RACES, hasRace } from "../data/segreteRaces";
+
+const FAKE_NPC_NAMES = [
+  "Kaelen", "Lyra", "Thrain", "Vesper", "Bram", "Seraphina",
+  "Garrick", "Nyx", "Torvin", "Elowen", "Draven", "Sylas",
+];
 
 const roomsCol = () => collection(db, "dungeon_rooms");
 
@@ -70,7 +75,63 @@ export const joinRoom = (roomId, uid, char, cls, level) => editRoom(roomId, asyn
   if (room.members.length >= MAX_PARTY) throw new Error(`Il gruppo è pieno (${MAX_PARTY} su ${MAX_PARTY}).`);
   // chi entra toglie le spunte: il gruppo è cambiato, tutti riconfermano
   const members = room.members.map((m) => ({ ...m, ready: false })).concat(memberFrom(uid, char, cls, level));
-  return { members, memberIds: members.map((m) => m.uid), invited: (room.invited || []).filter((i) => i.uid !== uid) };
+  const fakeMembers = (room.fakeMembers || []).slice(0, Math.max(0, MAX_PARTY - members.length));
+  return { members, memberIds: members.map((m) => m.uid), fakeMembers, invited: (room.invited || []).filter((i) => i.uid !== uid) };
+});
+
+// Aggiunge un compagno NPC casuale (solo di prova per la visualizzazione in gruppo: in lotta passa il turno dopo 1s).
+export const addFakeNpc = (roomId, byUid, isMaster = false) => editRoom(roomId, (room) => {
+  if (room.hostUid !== byUid && !isMaster) throw new Error("Solo il capo del gruppo può aggiungere NPC.");
+  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
+  const fakes = room.fakeMembers || [];
+  const all = [...(room.members || []), ...fakes];
+  if (all.length >= MAX_PARTY) throw new Error(`Il gruppo è già pieno (${MAX_PARTY} su ${MAX_PARTY}).`);
+
+  const usedNames = new Set(all.map((m) => m.name));
+  const usedClasses = new Set(all.map((m) => m.cls));
+  const usedRaces = new Set(all.map((m) => m.race).filter(Boolean));
+
+  const freeNames = FAKE_NPC_NAMES.filter((n) => !usedNames.has(n));
+  const name = (freeNames.length ? freeNames : FAKE_NPC_NAMES)[Math.floor(Math.random() * (freeNames.length || FAKE_NPC_NAMES.length))];
+
+  const allClasses = STORY_CLASSES.map((c) => c.key);
+  const freeClasses = allClasses.filter((k) => !usedClasses.has(k));
+  const cls = (freeClasses.length ? freeClasses : allClasses)[Math.floor(Math.random() * (freeClasses.length || allClasses.length))];
+
+  const allRaces = Object.keys(RACES);
+  const freeRaces = allRaces.filter((r) => !usedRaces.has(r));
+  const race = (freeRaces.length ? freeRaces : allRaces)[Math.floor(Math.random() * (freeRaces.length || allRaces.length))];
+
+  const hostLv = Math.max(1, Number(room.members?.[0]?.level) || 1);
+  const subs = subclassesOf(cls);
+  const sub = hostLv >= 3 && subs.length ? subs[Math.floor(Math.random() * subs.length)] : null;
+  const hitDie = kitOf(cls)?.hitDie || 8;
+  const maxHp = 10 + hitDie + Math.max(0, hostLv - 1) * (Math.floor(hitDie / 2) + 2) + 2 * hostLv;
+  const ac = (kitOf(cls)?.ac || 14) + (hostLv >= 5 ? 1 : 0);
+
+  const npc = {
+    uid: `npc_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    name,
+    cls,
+    race,
+    size: RACES[race]?.size || "medium",
+    level: hostLv,
+    subclass: sub?.key || "",
+    subName: sub?.name || "",
+    hp: maxHp,
+    maxHp,
+    ac,
+    ready: true,
+    fake: true,
+  };
+  return { fakeMembers: [...fakes, npc] };
+});
+
+export const removeFakeNpc = (roomId, byUid, npcUid, isMaster = false) => editRoom(roomId, (room) => {
+  if (room.hostUid !== byUid && !isMaster) throw new Error("Solo il capo del gruppo può rimuovere NPC.");
+  if (room.status !== "open") throw new Error("Il dungeon è già partito.");
+  const fakeMembers = (room.fakeMembers || []).filter((m) => m.uid !== npcUid);
+  return { fakeMembers };
 });
 
 export const leaveRoom = (roomId, uid) => editRoom(roomId, (room) => {
