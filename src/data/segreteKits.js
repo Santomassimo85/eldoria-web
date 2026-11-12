@@ -10,6 +10,8 @@
    save (TS; area = tutti i nemici), heal, heal_all, buff (ac/adv/dmg/rage, self o
    alleato o allParty), debuff (svantaggio a un nemico o a tutti). */
 
+import { raceBonuses } from "./segreteRaces";
+
 export const MAX_STORY_LEVEL = 20;
 export const HERO_HP_MULT = 1.1;
 // +10 PF fissi a ogni eroe (richiesta 2026-11-04), fuori dal moltiplicatore e dal budget dei mostri
@@ -557,9 +559,10 @@ export function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem 
 }
 
 /* Statistiche dell'eroe dalla scheda (stats + asi) */
-export function heroStats(hero) {
+export function heroStats(hero, includeRace = true) {
   const out = {};
-  STAT_KEYS.forEach((k) => { out[k] = Math.min(STAT_MAX, (Number(hero?.stats?.[k]) || 0) + (Number(hero?.asi?.[k]) || 0)); });
+  const racial = includeRace ? raceBonuses(hero) : {};
+  STAT_KEYS.forEach((k) => { out[k] = Math.min(STAT_MAX, (Number(hero?.stats?.[k]) || 0) + (Number(hero?.asi?.[k]) || 0)) + (racial[k] || 0); });
   return out;
 }
 export const mainMod = (cls, st) => st[kitOf(cls).stat] || 0;

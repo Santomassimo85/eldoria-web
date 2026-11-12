@@ -7,7 +7,7 @@
    Mappa: stanza larga 9 caselle e profonda 7, corridoio di 3, stanza… (si ripete ogni P caselle).
    Gli sprite veri stanno su Storage e possono non permettere la lettura dei pixel: per questo i mostri
    si disegnano con drawImage (mai getImageData sul canvas) e le varianti si fanno con il compositing. */
-import { TILE_THEMES, proceduralHands, tileFromImage } from "./crawlerArt";
+import { TILE_THEMES, proceduralHands, tileFromImage, raceHandImage } from "./crawlerArt";
 
 export const CW_W = 264, CW_H = 255, CW_FG = 3;
 const W = CW_W, H = CW_H, FS = CW_FG, HZ = Math.round(H * 0.4), PL = 0.78, SC = W / 2 / PL, WALLH = 1.9, CAM = 0.56, P = 10, BANDS = 7;
@@ -304,10 +304,10 @@ export class CrawlerEngine {
   async setHands(key, spec) {
     if (this.handKey === key) return;
     this.handKey = key;
-    const out = proceduralHands(spec.main, spec.off);
-    const fists = proceduralHands("pugni", "mirror");
+    const out = proceduralHands(spec.main, spec.off, spec.race);
+    const fists = proceduralHands("pugni", "mirror", spec.race);
     const up = async (url) => { const l = url ? await loadImage(url) : null; return l ? l.img : null; };
-    const [m, o, p, pe, fp] = await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl), up(spec.punchPairUrl)]);
+    const [m, o, p, pe, fp] = (await Promise.all([up(spec.mainUrl), up(spec.offUrl), up(spec.pairUrl), up(spec.pairEmptyUrl), up(spec.punchPairUrl)])).map((img) => spec.race === "elf" ? raceHandImage(img, "elf") : img);
     if (this.handKey !== key || this.dead) return;
     this.fists = fp ? { pair: fp, cutR: topRow(fp), split: splitOf(fp) } : fists;
     this.mainWeapon = spec.main;

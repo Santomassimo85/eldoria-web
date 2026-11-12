@@ -12,6 +12,10 @@
         {
           "type": "fix",
           "text": "Segrete: descrizioni delle magie concise, TS senza formule e categoria Trucchetto visibile nelle schede e in battaglia."
+        },
+        {
+          "type": "feature",
+          "text": "Segrete: cinque razze con bonus alle caratteristiche e tratti in combattimento. Scelta obbligatoria gratuita per ogni eroe, cambi a 1000 Monete Antiche e mani razziali nell'admin."
         }
       ]
     },

@@ -14,7 +14,7 @@ export default function SegreteRespec({ cls, hero, charData, busy, send }) {
   const budget = STAT_BUDGET + earned;
   const maxPicks = picksAllowed(lv);
   const pool = poolFor(cls, lv);
-  const [stats, setStats] = useState(() => heroStats(hero));
+  const [stats, setStats] = useState(() => heroStats(hero, false));
   const [picks, setPicks] = useState(() => (hero.picks || []).filter((p) => pool.some((a) => a.id === p)));
   const [sure, setSure] = useState(false);
   const [done, setDone] = useState("");

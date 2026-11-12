@@ -156,7 +156,7 @@ function offHand(kind) {
   return s.done();
 }
 const cacheR = {};
-export function proceduralHands(main, off) {
+function baseHands(main, off) {
   const key = DRAW[main] ? main : "spada_lunga";
   if (!cacheR[key]) { const s = Spr(130, 122); DRAW[key](s); cacheR[key] = s.done(); }
   const R = cacheR[key];
@@ -171,6 +171,31 @@ export function proceduralHands(main, off) {
   return { R, R0, L: cacheR[k], mirrorL: off !== "shield" };
 }
 
+export function raceHandImage(img, race) {
+  if (!img || !["elf", "orc", "dragonborn"].includes(race)) return img;
+  const c = document.createElement("canvas"); c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  if (race === "elf") { g.filter = "brightness(1.12) saturate(.85)"; g.drawImage(img, 0, 0); return c; }
+  g.drawImage(img, 0, 0);
+  const pixels = g.getImageData(0, 0, c.width, c.height);
+  const tones = [SKIN, 0xc89a78].flatMap((color) => [.66, 1, 1.28].map((shade) => hex(color).map((v) => Math.min(255, Math.floor(v * shade)))));
+  const color = race === "orc" ? [111, 145, 79] : [177, 112, 53];
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const p = pixels.data;
+    if (!p[i + 3] || !tones.some((t) => t.every((v, n) => Math.abs(p[i + n] - v) <= 1))) continue;
+    const light = p[i] / 216;
+    const scale = race === "dragonborn" && ((i / 4) % c.width + 2 * Math.floor(i / 4 / c.width)) % 9 === 0 ? .75 : 1;
+    color.forEach((v, n) => { p[i + n] = Math.min(255, v * light * scale); });
+  }
+  g.putImageData(pixels, 0, 0);
+  return c;
+}
+
+export function proceduralHands(main, off, race = "") {
+  const hands = baseHands(main, off);
+  return { ...hands, R: raceHandImage(hands.R, race), R0: raceHandImage(hands.R0, race), L: raceHandImage(hands.L, race) };
+}
+
 /* GUANTI PER CLASSE (2026-11-07, richiesta dell'utente): stesse mani per tutte le armi di una classe.
    Le mani di una classe si generano partendo dalla sua mano sinistra semiaperta (immagine di
    riferimento), così guanto, misura e tratto restano uguali. Chiave: hand_{voce}__{guanto}. */
@@ -183,6 +208,16 @@ export const GLOVES = {
   pact: { name: "Mani del patto", icon: "💀", desc: "a pale bare hand with the cuff of a black and deep purple robe sleeve at the wrist, a dark iron ring", classes: ["warlock"],
     focus: "a warlock's focus: a small human skull with faint violet light in the eye sockets, or a large dark violet gem, held in the open palm" },
 };
+export const RACE_HANDS = {
+  orc: { name: "Orco", desc: "orc hands with thick olive-green skin, broad muscular fingers and heavy knuckles; exposed skin is green" },
+  dragonborn: { name: "Dragonide", desc: "dragonborn reptilian hands with bronze scales, articulated scaled fingers and short dark claws; exposed wrists are scaled" },
+};
+export const racialGlove = (glove, race) => RACE_HANDS[race] ? `${glove}~${race}` : glove;
+Object.entries(GLOVES).forEach(([base, glove]) => {
+  Object.entries(RACE_HANDS).forEach(([race, r]) => {
+    GLOVES[racialGlove(base, race)] = { ...glove, name: `${r.name} · ${glove.name}`, race, baseGlove: base, desc: `${glove.desc}; ${r.desc}` };
+  });
+});
 export const gloveOf = (cls) => Object.keys(GLOVES).find((g) => GLOVES[g].classes.includes(cls)) || "leather";
 export const handDoc = (key, glove) => `hand_${key}__${glove}`;
 // UNO sprite per arma con TUTTE E DUE le mani (2026-11-07, idea dell'utente): off = hand (sinistra libera) · shield · none (due mani)
@@ -193,7 +228,7 @@ export const pairKey = (weapon, off) => `${weapon}~${off}`;
 const TWO_FOR = { monk: ["bastone"] };
 export const twoHandedFor = (cls, weaponKey, twoHanded) => !!twoHanded || (TWO_FOR[cls] || []).includes(weaponKey);
 export function handSpec(hero, weaponKey, twoHandedWeapon) {
-  const glove = gloveOf(hero?.cls), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
+  const glove = racialGlove(gloveOf(hero?.cls), hero?.race), twoHanded = twoHandedFor(hero?.cls, weaponKey, twoHandedWeapon);
   if ((weaponKey === "pugnali" || weaponKey === "pugni")) return { main: weaponKey, off: "mirror", glove };
   if (twoHanded || hero?.twoHand) return { main: weaponKey, off: "none", glove };
   if (hero?.gear?.shield) return { main: weaponKey, off: "shield", glove };
@@ -229,7 +264,7 @@ export function handEntries({ WEAPONS, WEAPON_CHOICES, TWO_HANDED, ITEMS, armorP
    un'armatura con `look` (aspetto di maniche e guanti, in inglese) ha le sue mani: per ogni arma delle
    classi che la possono portare, lo stesso sprite con il guanto «a-<idArmatura>». La lotta le cerca
    prima di quelle del guanto di classe (armorGlove). */
-export const armorGlove = (itemId) => `a-${itemId}`;
+export const armorGlove = (itemId, race) => racialGlove(`a-${itemId}`, race);
 export function armorHandEntries(itemId, it, { WEAPONS, WEAPON_CHOICES, TWO_HANDED, gearUsers, armorProf, canTwoHand = () => false }) {
   if (!it || it.kind !== "armor" || !it.look) return [];
   const glove = armorGlove(itemId), out = [], seen = new Set();
@@ -243,7 +278,10 @@ export function armorHandEntries(itemId, it, { WEAPONS, WEAPON_CHOICES, TWO_HAND
       if (!two && canTwoHand(cls, k)) push("none", true);
     });
   });
-  return out;
+  return out.flatMap((entry) => [entry, ...Object.entries(RACE_HANDS).map(([race, r]) => ({ ...entry,
+    glove: armorGlove(itemId, race), baseGlove: racialGlove(entry.baseGlove, race),
+    gloveDesc: `${entry.gloveDesc}; ${r.desc}`, name: `${r.name} · ${entry.name}`, race,
+  }))]);
 }
 
 const DMG_IT = { fire: "fuoco", cold: "gelo", poison: "veleno", radiant: "luce sacra", necrotic: "necrotico", lightning: "fulmine", acid: "acido", psychic: "psichico", thunder: "tuono", bludgeoning: "contundente", piercing: "perforante", slashing: "tagliente" };

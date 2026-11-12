@@ -4,6 +4,7 @@ import { MAX_PARTY, COMPANY, companyLines, DAILY_RUNS, RUN_COUNTS_AFTER, STORY_C
 import { STAT_BUDGET, ASI_EVERY, HERO_HP_BASE, MAX_STORY_LEVEL, XP_PER_ROOM, weaponChoices, DMG_SHORT, armorProf, ARMOR_CAT_IT, ARMORS, RESPEC_COST, SUBCLASS_COST, SUBCLASS_LEVEL, SUBCLASSES } from "../data/segreteKits";
 import { MIMIC_CHANCE } from "../data/segreteEngine";
 import { DUNGEON_PROFILES } from "../data/segreteProfiles";
+import { RACES, RACE_CHANGE_COST } from "../data/segreteRaces";
 import { COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, DROP_CHANCE, GIFT_FEE, GIFT_DAILY } from "../data/segreteItems";
 
 function Fold({ icon, title, children, open = false }) {
@@ -23,7 +24,7 @@ export default function SegreteManual() {
 
       <Fold icon="🗝" title="Come si gioca, in 5 passi" open>
         <ol>
-          <li><b>Personaggi</b>: crea un eroe per la classe che vuoi (uno per classe, resta tuo per sempre) e tira i suoi PF.</li>
+          <li><b>Personaggi</b>: crea un eroe, scegli la sua razza e tira i suoi PF.</li>
           <li><b>Gruppi</b>: crea un gruppo (da 1 a {MAX_PARTY} eroi) scegliendo il dungeon, oppure entra in uno aperto. Puoi invitare altri giocatori: ricevono una notifica.</li>
           <li>Nel gruppo potete parlarvi con la <b>chat vocale</b>: tasto 🎧 in alto nella testata (in lotta sotto il ☰). Il microfono è aperto di base; dal pannello puoi passare a «tieni premuto».</li>
           <li>Tutti premono <b>▶ Avvia</b>: quando l'hanno premuto tutti si scende.</li>
@@ -32,6 +33,11 @@ export default function SegreteManual() {
         </ol>
       </Fold>
 
+      <Fold icon="🧬" title="Razze">
+        <p>Ogni eroe sceglie una razza prima di partire. La prima scelta è gratuita. Ogni modifica successiva, anche dei bonus scelti, costa {RACE_CHANGE_COST} Monete Antiche e si fa fuori dal dungeon.</p>
+        <ul>{Object.entries(RACES).map(([key, r]) => <li key={key}><b>{r.icon} {r.name}</b> · {r.desc}</li>)}</ul>
+        <p>I bonus si aggiungono ai punti base e ai punti dei livelli. Le resistenze dimezzano il danno e non si sommano ad altre resistenze dello stesso tipo.</p>
+      </Fold>
       <Fold icon="🤝" title="Compagnia: i bonus del gruppo">
         <p>Le Segrete sono fatte per il gruppo: si può entrare da soli, ma in compagnia ognuno ha dei piccoli bonus che crescono con il numero di eroi. I mostri sono già tarati su quanti siete, quindi questi bonus sono un vantaggio vero.</p>
         <ul>

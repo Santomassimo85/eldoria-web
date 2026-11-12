@@ -10,6 +10,7 @@ import { dataUrlToTransparentDataUrl } from "../utils/aiSprite";
 import { askImage, frontSpriteUrl, refOnMagenta, touchesTop } from "../utils/crawlerGen";
 import { CrawlerEngine, CW_H, CW_W } from "../fx/crawlerEngine";
 import { GLOVES, bakeTile, gloveOf, handDoc, handEntries, handPrompt, handSpec, armorHandEntries, isRangedHand, materialOf, pairKey, releasedPrompt, tilePrompt, twoHandedFor, weaponEffectsText } from "../fx/crawlerArt";
+import { RACES } from "../data/segreteRaces";
 import { STORY_CLASSES } from "../data/segrete";
 
 const SLOTS = [["wall", "Pareti"], ["floor", "Pavimento"], ["ceil", "Soffitto"]];
@@ -28,6 +29,7 @@ function Preview({ dungeons, monsters, tiles }) {
   const eng = useRef(null);
   const [key, setKey] = useState("segrete");
   const [cls, setCls] = useState("fighter");
+  const [race, setRace] = useState("human");
   const [weapon, setWeapon] = useState("spada_lunga");
   const [shield, setShield] = useState(true);
   useEffect(() => {
@@ -47,13 +49,14 @@ function Preview({ dungeons, monsters, tiles }) {
   const choices = WEAPON_CHOICES[cls] || [];
   const wk = choices.includes(weapon) ? weapon : choices[0];
   const canShield = armorProf(cls).shield && !twoHandedFor(cls, wk, TWO_HANDED.has(wk));
-  const { off, glove } = handSpec({ cls, gear: { shield: canShield && shield } }, wk, TWO_HANDED.has(wk));
+  const { off, glove } = handSpec({ cls, race, gear: { shield: canShield && shield } }, wk, TWO_HANDED.has(wk));
   const hp = tiles[handDoc(pairKey(wk, off), glove)]?.image || "", he = tiles[handDoc(pairKey(wk, off), glove)]?.empty || "";
-  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${hp.length}:${he.length}`, { main: wk, off, pairUrl: hp, pairEmptyUrl: he }); }, [cv, fg, wk, off, glove, hp, he]);
+  useEffect(() => { eng.current?.setHands(`${wk}:${off}:${glove}:${race}:${hp.length}:${he.length}`, { main: wk, off, race, pairUrl: hp, pairEmptyUrl: he }); }, [cv, fg, wk, off, glove, race, hp, he]);
   return (
     <div className="sga-card">
       <h3 className="sga-h3">Anteprima <small>come la vede il giocatore, con l'art salvata</small></h3>
       <div className="sga-row">
+        <label className="sga-field sga-field--s"><span>Razza</span><select className="admin-field-input" value={race} onChange={(e) => setRace(e.target.value)}>{Object.entries(RACES).map(([key, r]) => <option key={key} value={key}>{r.name}</option>)}</select></label>
         <label className="sga-field sga-field--s"><span>Dungeon</span>
           <select className="admin-field-input" value={key} onChange={(e) => setKey(e.target.value)}>{dungeons.map((d) => <option key={d.key} value={d.key}>{d.name}</option>)}</select></label>
         <label className="sga-field sga-field--s"><span>Classe</span>

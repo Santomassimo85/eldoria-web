@@ -28,6 +28,8 @@ __export(segreteServer_exports, {
   GIFT_FEE: () => GIFT_FEE,
   KITS: () => KITS,
   MAX_STORY_LEVEL: () => MAX_STORY_LEVEL,
+  RACES: () => RACES,
+  RACE_CHANGE_COST: () => RACE_CHANGE_COST,
   RESPEC_COST: () => RESPEC_COST,
   RUN_COUNTS_AFTER: () => RUN_COUNTS_AFTER,
   SHOP_ITEMS: () => SHOP_ITEMS,
@@ -46,12 +48,14 @@ __export(segreteServer_exports, {
   battleItem: () => battleItem,
   boughtToday: () => boughtToday,
   canWear: () => canWear,
+  chooseHeroRace: () => chooseHeroRace,
   coinsOf: () => coinsOf,
   currentWeekKey: () => currentWeekKey,
   dailyLimit: () => dailyLimit,
   diffOf: () => diffOf,
   flee: () => flee,
   giftsToday: () => giftsToday,
+  hasRace: () => hasRace,
   heroActions: () => heroActions,
   heroLevel: () => heroLevel,
   heroOf: () => heroOf,
@@ -86,6 +90,34 @@ __export(segreteServer_exports, {
   xpGain: () => xpGain
 });
 module.exports = __toCommonJS(segreteServer_exports);
+
+// src/data/segreteRaces.js
+var RACE_CHANGE_COST = 1e3;
+var RACES = {
+  human: { name: "Umano", icon: "\u{1F9D1}", count: 2, stats: ["str", "dex", "con", "int", "wis", "cha"], desc: "+1 a due caratteristiche diverse." },
+  elf: { name: "Elfo", icon: "\u{1F9DD}", count: 1, stats: ["wis", "int"], chance: 0.03, desc: "+1 SAG o INT \xB7 3% di dimezzare un attacco magico." },
+  halfling: { name: "Halfling", icon: "\u{1F340}", count: 1, stats: ["dex", "cha"], chance: 0.05, size: "small", desc: "+1 DES o CAR \xB7 taglia piccola \xB7 5% di vantaggio con le armi." },
+  dragonborn: { name: "Dragonide", icon: "\u{1F432}", count: 1, stats: ["con", "str"], chance: 0.05, desc: "+1 COS o FOR \xB7 5% di dimezzare i danni fisici." },
+  orc: { name: "Orco", icon: "\u{1F479}", count: 1, stats: ["str", "con"], chance: 0.2, desc: "+1 FOR o COS \xB7 sotto il 30% PF, 20% di infliggere +5 danni con le armi." }
+};
+function hasRace(hero) {
+  const race = RACES[hero?.race], stats = hero?.raceStats;
+  return !!race && Array.isArray(stats) && stats.length === race.count && new Set(stats).size === stats.length && stats.every((s) => race.stats.includes(s));
+}
+function raceBonuses(hero) {
+  return hasRace(hero) ? Object.fromEntries(hero.raceStats.map((s) => [s, 1])) : {};
+}
+function chooseHeroRace(data, cls, race, stats) {
+  const hero = data?.storyChars?.[cls];
+  if (!hero) throw new Error("Crea prima l'eroe.");
+  const choice = { race, raceStats: stats };
+  if (!hasRace(choice)) throw new Error("Scegli la razza e le caratteristiche indicate, senza duplicati.");
+  const same = hasRace(hero) && hero.race === race && stats.every((s) => hero.raceStats.includes(s));
+  const cost = !hasRace(hero) || same ? 0 : RACE_CHANGE_COST;
+  const coins = Math.max(0, Math.floor(Number(data.storyCoins) || 0));
+  if (coins < cost) throw new Error(`Servono ${RACE_CHANGE_COST} Monete Antiche.`);
+  return { race, raceStats: [...stats].sort(), cost, coins: coins - cost };
+}
 
 // src/data/segreteKits.js
 var MAX_STORY_LEVEL = 20;
@@ -814,10 +846,11 @@ function heroActions(cls, lv, picks = [], weapon = null, plus = 0, wItem = null,
   if (cls === "rogue") wa.info += ` \xB7 Furtivo +${sneakDiceOf(lv)}d6 (1 per round, con vantaggio o un alleato)`;
   return [wa, ...base.map(withWeapon), ...chosen.map(withWeapon), ...subActs.map(withWeapon), ...grip, DEFEND];
 }
-function heroStats(hero) {
+function heroStats(hero, includeRace = true) {
   const out = {};
+  const racial = includeRace ? raceBonuses(hero) : {};
   STAT_KEYS.forEach((k) => {
-    out[k] = Math.min(STAT_MAX, (Number(hero?.stats?.[k]) || 0) + (Number(hero?.asi?.[k]) || 0));
+    out[k] = Math.min(STAT_MAX, (Number(hero?.stats?.[k]) || 0) + (Number(hero?.asi?.[k]) || 0)) + (racial[k] || 0);
   });
   return out;
 }
@@ -1729,6 +1762,7 @@ function makeHero(m) {
     xp: heroXp(hero),
     xpv: XP_VERSION,
     img: m.avatar || "",
+    ...hasRace(hero) ? { race: hero.race, raceStats: hero.raceStats, size: RACES[hero.race].size || "medium" } : {},
     ...subc ? { subclass: subc.key, subName: subc.name } : {},
     hp: maxHp + def.hpBonus + subHp,
     maxHp: maxHp + def.hpBonus + subHp,
@@ -2118,7 +2152,7 @@ function startFloor(s, bestiary, now) {
   log(s, s.boss ? `\u{1F451} Sala del boss! Davanti a voi: ${s.foes.map((f) => f.name).join(", ")}.` : `\u{1F6AA} Sala ${s.floor} di ${s.floors}: ${s.foes.map((f) => f.name).join(", ")}.`, { kind: "room" });
   startHeroPhase(s, now);
 }
-function applyDamage(s, target, amount, type, notes) {
+function applyDamage(s, target, amount, type, notes, magical = false) {
   let dmg = Math.max(0, Math.round(amount));
   const corrosion = type === "acid" && hasMetalProtection(target);
   if (corrosion) dmg *= ACID_METAL_MULT;
@@ -2130,6 +2164,7 @@ function applyDamage(s, target, amount, type, notes) {
     delete target.fx.frozen;
     notes.push("\u{1F9CA} il fuoco lo scongela");
   }
+  const racialResist = target.side === "h" && dmg > 0 && (target.race === "elf" && magical && rnd() < RACES.elf.chance || target.race === "dragonborn" && PHYS.includes(type) && rnd() < RACES.dragonborn.chance);
   if (target.side === "f") {
     if (target.imm.includes(type)) {
       dmg = 0;
@@ -2144,9 +2179,9 @@ function applyDamage(s, target, amount, type, notes) {
       notes.push("vulnerabile!");
       curTags[target.id] = "vul";
     }
-  } else if ((target.res || []).includes(type)) {
+  } else if ((target.res || []).includes(type) || racialResist) {
     dmg = Math.floor(dmg / 2);
-    notes.push("resiste");
+    notes.push(racialResist ? `resistenza ${RACES[target.race].name}` : "resiste");
     curTags[target.id] = "res";
   } else if (fxOn(s, target.fx.rage) && (PHYS.includes(type) || subP(target).rageAll && type !== "psychic")) {
     dmg = Math.floor(dmg / 2);
@@ -2261,7 +2296,8 @@ function heroAct(s, h, a, target, amount) {
       const armorMalus = burden > 50 && burden <= 75 ? 1 : 0;
       const actualHit = hitW - armorMalus;
       const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
-      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: Math.min(wfx?.crit || 20, sp.critAt || 20) });
+      const lucky = a.kind === "weapon" && h.race === "halfling" && rnd() < RACES.halfling.chance;
+      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv || lucky, dis: burden > 75, critAt: Math.min(wfx?.crit || 20, sp.critAt || 20) });
       const unarmed = h.cls === "monk" && heroVfx(a)?.fx === "punch";
       const hand = unarmed ? k % 2 ? "R" : "L" : h.weapon === "pugnali" ? k % 2 ? "L" : "R" : "R";
       if (curVfx) curVfx = { ...curVfx, hand, ...unarmed ? { unarmed: true } : {} };
@@ -2275,7 +2311,11 @@ function heroAct(s, h, a, target, amount) {
       const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) + (sp.wDmg || 0) : sDmg) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
       let dmg = rolled.t + plusDmg;
       const notes = [];
-      let total = applyDamage(s, target, dmg, a.dmg, notes);
+      if (a.kind === "weapon" && !unarmed && h.weapon !== "pugni" && h.race === "orc" && h.hp < h.maxHp * 0.3 && rnd() < RACES.orc.chance) {
+        dmg += 5;
+        notes.push("furia orchesca +5");
+      }
+      let total = applyDamage(s, target, dmg, a.dmg, notes, a.kind === "spell");
       let extra = "";
       if (a.rider && k === 0 && (alive(target) || a.riderDmg === "radiant")) {
         let rn, rs;
@@ -2332,7 +2372,7 @@ function heroAct(s, h, a, target, amount) {
     const [dn, ds] = diceFor(a, lv);
     const notes = [];
     const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0) + sDmg;
-    const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes);
+    const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes, true);
     log(s, `${a.icon} ${h.name} \u2192 ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` \xB7 ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dr: { n: dn, s: ds, r: rolled.r, p: plusDmg }, dmg });
     return ev;
   }
@@ -2349,7 +2389,7 @@ function heroAct(s, h, a, target, amount) {
       const amount2 = ok ? a.half ? Math.floor(base / 2) : 0 : base;
       const types = a.damageTypes || [a.dmg];
       const total = Math.max(0, amount2);
-      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes), 0);
+      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes, true), 0);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
       const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
@@ -2514,7 +2554,7 @@ function foeAct(s, f) {
       const sv = d20() + (t.save || 0) + (t.st?.[a.saveAbility || "dex"] || 0);
       const ok = sv >= dc;
       const evade = tg.length > 1 && t.cls === "rogue" && t.level >= 7;
-      const dmg2 = evade ? ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, []) : ok ? a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0 : applyDamage(s, t, base, type, []);
+      const dmg2 = evade ? ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, [], !PHYS.includes(type) || a.magical === true) : ok ? a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, [], !PHYS.includes(type) || a.magical === true) : 0 : applyDamage(s, t, base, type, [], !PHYS.includes(type) || a.magical === true);
       const inf = !ok ? foeInflict(a, type) : null;
       const stTxt2 = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
       return `${t.name} ${ok ? "resiste" : "fallisce"} (${sv})${evade ? " \u{1F938} elude" : ""} \u2212${dmg2}${stTxt2}${t.hp <= 0 ? " \u{1F480}" : ""}`;
@@ -2529,7 +2569,7 @@ function foeAct(s, f) {
     return;
   }
   const rolled = roll(r.crit ? n * 2 : n, sides), mult = (f.adapt?.mult || 1) * capMult(n, sides, 1);
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((rolled.t + lvlBonus) * mult)), type, []);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((rolled.t + lvlBonus) * mult)), type, [], !PHYS.includes(type) || a.magical === true);
   const stTxt = tryInflict(s, f, tgt, foeInflict(a, type), f.cap?.dc ?? 12);
   log(s, `${confusedTxt}\u2694 ${f.name} \u2192 ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (\u{1F3B2}${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice }, dr: { n: r.crit ? n * 2 : n, s: sides, r: rolled.r, p: lvlBonus, x: Math.round(mult * 100) / 100 } });
   if (tgt.thorns && curVfx?.fx === "slash" && alive(f) && die(100) <= (tgt.thorns.chance || 0)) {
@@ -3139,6 +3179,8 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   GIFT_FEE,
   KITS,
   MAX_STORY_LEVEL,
+  RACES,
+  RACE_CHANGE_COST,
   RESPEC_COST,
   RUN_COUNTS_AFTER,
   SHOP_ITEMS,
@@ -3157,12 +3199,14 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   battleItem,
   boughtToday,
   canWear,
+  chooseHeroRace,
   coinsOf,
   currentWeekKey,
   dailyLimit,
   diffOf,
   flee,
   giftsToday,
+  hasRace,
   heroActions,
   heroLevel,
   heroOf,

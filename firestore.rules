@@ -191,10 +191,13 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts"]);
     }
+    function touchesSegreteHero() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(["storyChars", "storyCoins"]);
+    }
     match /characters/{charId} {
       allow read: if true;
-      allow create: if !request.resource.data.keys().hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts"]) || isMaster();
-      allow update: if worldBossHeroWriteAllowed() && (!touchesPets() || isMaster());
+      allow create: if !request.resource.data.keys().hasAny(["petDen", "petPoints", "petPointsLedger", "petPointsDaily", "petPointsSeen", "petGifts", "storyChars", "storyCoins"]) || isMaster();
+      allow update: if worldBossHeroWriteAllowed() && (!touchesPets() || isMaster()) && (!touchesSegreteHero() || isMaster());
       allow delete: if true;
     }
 

@@ -2126,7 +2126,7 @@ exports.segreteDo = onCall(
     }
 
     // ── Eroe di classe (permanente): crea, punto caratteristica, nuova abilità/incantesimo ──
-    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor" || op === "heroRespec" || op === "heroSubclass") {
+    if (op === "heroCreate" || op === "heroAsi" || op === "heroPick" || op === "heroHp" || op === "heroWeapon" || op === "heroArmor" || op === "heroRespec" || op === "heroSubclass" || op === "heroRace") {
       const cls = String(request.data?.cls || "");
       if (!segreteBundle.KITS[cls]) throw new HttpsError("invalid-argument", "Classe sconosciuta.");
       const ref = db.collection("characters").doc(uid);
@@ -2148,9 +2148,14 @@ exports.segreteDo = onCall(
             return { ok: true };
           }
           if (!hero) throw new Error("Prima crea l'eroe di questa classe.");
-          if (op === "heroArmor" || op === "heroWeapon" || op === "heroRespec" || op === "heroSubclass") {
+          if (op === "heroArmor" || op === "heroWeapon" || op === "heroRespec" || op === "heroSubclass" || op === "heroRace") {
             const rooms = await tx.get(db.collection("dungeon_rooms").where("memberIds", "array-contains", uid));
             if (rooms.docs.some((d) => d.data().status === "running")) throw new Error("Sei in un dungeon: cambia equipaggiamento quando hai finito.");
+          }
+          if (op === "heroRace") {
+            const choice = segreteBundle.chooseHeroRace(cs.data(), cls, String(request.data?.race || ""), request.data?.stats);
+            tx.update(ref, { [`storyChars.${cls}.race`]: choice.race, [`storyChars.${cls}.raceStats`]: choice.raceStats, storyCoins: choice.coins });
+            return { ok: true, cost: choice.cost };
           }
           if (op === "heroSubclass") {
             // sottoclassi (2026-11-10): comprarne una (Monete Antiche, eroe al livello minimo) o
@@ -2237,7 +2242,7 @@ exports.segreteDo = onCall(
             const stat = String(request.data?.stat || "");
             if (!segreteBundle.STAT_KEYS.includes(stat)) throw new Error("Caratteristica sconosciuta.");
             if (pend.asi <= 0) throw new Error("Non hai punti caratteristica da spendere.");
-            if (segreteBundle.heroStats(hero)[stat] >= segreteBundle.STAT_MAX) throw new Error(`Massimo +${segreteBundle.STAT_MAX}.`);
+            if (segreteBundle.heroStats(hero, false)[stat] >= segreteBundle.STAT_MAX) throw new Error(`Massimo +${segreteBundle.STAT_MAX}.`);
             tx.update(ref, { [`storyChars.${cls}.asi.${stat}`]: (Number(hero.asi?.[stat]) || 0) + 1 });
             return { ok: true };
           }
@@ -2301,6 +2306,12 @@ exports.segreteDo = onCall(
           const low = heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.heroLevel(h.hero) < diff.minLevel);
           if (low.length) {
             const msg = `per ${diff.name} serve almeno il livello ${diff.minLevel}: ${low.map((h) => `${h.name} è Lv ${segreteBundle.heroLevel(h.hero)}`).join(", ")}`;
+            tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
+            return { ok: false, blocked: msg };
+          }
+          const noRace = heroes.filter((h) => h.hero && !segreteBundle.hasRace(h.hero));
+          if (noRace.length) {
+            const msg = `${noRace.map((h) => h.name).join(", ")}: scegli la razza prima di partire`;
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
             return { ok: false, blocked: msg };
           }

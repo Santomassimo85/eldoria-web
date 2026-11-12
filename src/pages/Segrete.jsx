@@ -1,5 +1,6 @@
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
+import { hasRace } from "../data/segreteRaces";
 /* LE SEGRETE — story mode della Sala della Gloria (fase 1, 2026-11-04):
    lobby delle stanze. Si crea o si entra in un gruppo (1–4), ognuno sceglie
    l'eroe (permanente, per classe; la domenica non si azzera niente) e preme Avvia:
@@ -30,7 +31,7 @@ import { hpPending, armorChosen } from "../data/segreteKits";
 import { heroIdentity, subclassName } from "../utils/segreteIdentity";
 import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
 // eroe pronto a giocare: creato e con i PF tirati
-const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hpPending(h) === 0; };
+const heroReady = (charData, cls) => { const h = heroOf(charData, cls); return !!h && hasRace(h) && hpPending(h) === 0; };
 import { SgIcon } from "../components/GameIcon";
 import { DIFF_TONE } from "../data/segreteIcons";
 import { useSegreteItems } from "../utils/segreteItemsLive";
@@ -233,6 +234,7 @@ export default function Segrete() {
         <p className="sgr-lead">Dungeon a gruppi da 1 a {MAX_PARTY}. Il tuo eroe cresce vincendo; se il gruppo cade, si perde il bottino.</p>
       </header>
 
+      {curHero && !hasRace(curHero) && <div className="sgh-pending" role="alert">Scegli la razza del tuo eroe prima di giocare. <button type="button" className="sgr-btn" onClick={() => pickHero(curCls)}>Scegli razza</button></div>}
       {/* Dove sei e con chi: sempre visibile */}
       <div className="sgr-status">
         <button type="button" className="sgr-st sgr-st--hero" style={clsStyle(curCls)} onClick={() => setTab("eroi")}>
@@ -295,7 +297,7 @@ export default function Segrete() {
                         <div className="sgr-room-actions">
                           <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
                             onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
+                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
                           </button>
                           {(master || idle) && (
                             <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}

@@ -11,6 +11,7 @@ import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import SegreteGear from "./SegreteGear";
 import SegreteRespec from "./SegreteRespec";
+import SegreteRace from "./SegreteRace";
 import { classInfo, heroOf } from "../data/segrete";
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
@@ -230,6 +231,7 @@ export default function SegreteHero({ cls, charData }) {
         </div>
       </div>
       <SegreteXp hero={hero} />
+      <SegreteRace key={`${cls}:${hero.race}:${hero.raceStats?.join()}`} cls={cls} hero={hero} coins={coinsOf(charData)} busy={busy} send={send} />
       <div className="sgh-statline">
         {STAT_KEYS.map((k) => <span key={k} className={kit.rec.includes(k) ? "is-rec" : ""}><b>{STAT_LABEL[k]}</b> {st[k] >= 0 ? "+" : ""}{st[k]}</span>)}
       </div>
@@ -247,7 +249,7 @@ export default function SegreteHero({ cls, charData }) {
           <p>⭐ Hai <b>{pend.asi}</b> {pend.asi === 1 ? "punto caratteristica" : "punti caratteristica"} da spendere (massimo +{STAT_MAX}):</p>
           <div className="sgh-row">
             {STAT_KEYS.map((k) => (
-              <button key={k} type="button" className="sgr-btn" disabled={busy || st[k] >= STAT_MAX} onClick={() => send({ op: "heroAsi", cls, stat: k })}>+1 {STAT_LABEL[k]}</button>
+              <button key={k} type="button" className="sgr-btn" disabled={busy || heroStats(hero, false)[k] >= STAT_MAX} onClick={() => send({ op: "heroAsi", cls, stat: k })}>+1 {STAT_LABEL[k]}</button>
             ))}
           </div>
         </div>

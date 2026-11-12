@@ -1,5 +1,6 @@
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
+import { hasRace } from "../data/segreteRaces";
 import { heroIdentity } from "../utils/segreteIdentity";
 /* LE SEGRETE · i tuoi eroi (2026-11-04)
    La lobby divisa in pezzi chiari: qui ci sono gli EROI già creati (uno per classe),
@@ -17,6 +18,7 @@ export function heroTodo(hero, cls) {
   const p = heroPending(hero);
   const hp = hpPending(hero);
   const out = [];
+  if (!hasRace(hero)) out.push({ k: "race", icon: "🧬", text: "scegli la razza" });
   if (!hero.weapon) out.push({ k: "weapon", icon: "🗡", text: "scegli l'arma" });
   if (cls && !armorChosen(cls, hero)) out.push({ k: "armor", icon: "🛡", text: hero.armor ? "armatura non adatta: cambiala" : "scegli l'armatura" });
   if (hp > 0) out.push({ k: "hp", icon: "❤", text: hp === 1 ? "tira i PF" : `tira i PF (${hp})` });

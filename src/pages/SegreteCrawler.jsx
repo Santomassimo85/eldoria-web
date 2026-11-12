@@ -1,5 +1,6 @@
 import SegreteIdentity from "../components/SegreteIdentity";
 import SegreteXp from "../components/SegreteXp";
+import { RACES } from "../data/segreteRaces";
 /* Le Segrete: combattimento in prima persona, sincronizzato con dungeon_runs.
    Il server risolve le azioni; la coda mostra dado, effetto e danno in sequenza. */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -162,7 +163,7 @@ function MeBar({ h, xpHero, turn, done, selectable, picked, onPick, round }) {
       aria-label={`${h.name}, ${classInfo(h.cls)?.it}${subName ? `, ${subName}` : ""}, ${h.hp} su ${h.maxHp} punti ferita, CA ${h.ac}`} {...press}>
       <span className="cw-me-top">
         <b>{h.helper ? "🤝 " : ""}{h.name}</b>
-        <em>{classInfo(h.cls)?.it} · Lv {h.level}</em>
+        <em>{classInfo(h.cls)?.it} · Lv {h.level}{h.race && ` · ${RACES[h.race]?.name || ""}${h.size === "small" ? " · piccolo" : ""}`}</em>
         {done && <i className="cw-me-done">✓ hai agito</i>}
         {!!pips.length && <StatusPips className="cw-pips" max={6} items={pips} />}
       </span>
@@ -330,6 +331,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   const weaponKey = me ? me.weapon || WEAPON_CHOICES[me.cls]?.[0] || "spada_lunga" : "";
   const spec = me ? handSpec(me, weaponKey, TWO_HANDED.has(weaponKey)) : null;
   const offKey = spec?.off || "", glove = spec?.glove || "";
+  const race = me?.race || "", monk = me?.cls === "monk";
   const specialKey = me?.wItem && !/_[12]$/.test(me.wItem) ? me.wItem : ""; // arma speciale: ha il suo sprite
   // armatura speciale con il suo aspetto (2026-11-08): maniche e guanti suoi
   const armorKey = me?.armorItem && itemOf(me.armorItem)?.look ? me.armorItem : "";
@@ -339,14 +341,14 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
     const read = (k, gl = glove) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, gl))).then((s) => s.data() || {}).catch(() => ({})) : Promise.resolve({}));
     Promise.all([
       specialKey ? read(pairKey(specialKey, offKey)) : {},
-      armorKey ? read(pairKey(weaponKey, offKey), armorGlove(armorKey)) : {},
+      armorKey ? read(pairKey(weaponKey, offKey), armorGlove(armorKey, race)) : {},
       read(pairKey(weaponKey, offKey)),
-      glove === "wraps" ? read(pairKey("pugni", "mirror")) : {},
+      monk ? read(pairKey("pugni", "mirror")) : {},
     ]).then(([special, armor, base, fists]) => {
       const use = special.image ? special : armor.image ? armor : base;
-      eng.setHands(`${weaponKey}:${specialKey}:${armorKey}:${offKey}:${glove}`, { main: weaponKey, off: offKey, pairUrl: use.image || "", pairEmptyUrl: use.empty || "", punchPairUrl: fists.image || "" });
+      eng.setHands(`${weaponKey}:${specialKey}:${armorKey}:${offKey}:${glove}:${race}`, { main: weaponKey, off: offKey, race, pairUrl: use.image || "", pairEmptyUrl: use.empty || "", punchPairUrl: fists.image || "" });
     });
-  }, [eng, weaponKey, specialKey, armorKey, offKey, glove]);
+  }, [eng, weaponKey, specialKey, armorKey, offKey, glove, race, monk]);
 
   // Solo la coda applica i risultati alla scena, mai lo snapshot in arrivo.
   const shown = (c) => c;

@@ -18,6 +18,7 @@ import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weapo
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
 import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines } from "./segrete";
 import { dungeonProfile, runProfile, dungeonDropContext, applyDungeonDefenses } from "./segreteProfiles";
+import { RACES, hasRace } from "./segreteRaces";
 const companyLinesTxt = (n) => companyLines(n).join(", ");
 
 export const LOG_MAX = 80;
@@ -87,6 +88,7 @@ export function makeHero(m) {
   heroActions(m.cls, lv, picks, weaponKey, weaponPlus, okItem ? wItem : null, false, subc?.key).forEach((a) => { if (a.uses) uses[a.id] = a.uses; });
   return {
     id: `h_${m.uid}`, side: "h", uid: m.uid, name: m.name, cls: m.cls, level: lv, xp: heroXp(hero), xpv: XP_VERSION, img: m.avatar || "",
+    ...(hasRace(hero) ? { race: hero.race, raceStats: hero.raceStats, size: RACES[hero.race].size || "medium" } : {}),
     ...(subc ? { subclass: subc.key, subName: subc.name } : {}),
     hp: maxHp + def.hpBonus + subHp, maxHp: maxHp + def.hpBonus + subHp, ac: def.ac + (sp.ac || 0), init: st.dex || 0, save: Math.floor(profOf(lv) / 2) + def.saveBonus + (sp.save || 0), st,
     ...(def.hitBonus ? { armorHit: def.hitBonus } : {}), ...(def.dcBonus ? { armorDc: def.dcBonus } : {}), picks, weapon: weaponKey, weaponPlus,
@@ -425,17 +427,18 @@ function startFloor(s, bestiary, now) {
 }
 
 /* ── danni ───────────────────────────────────────────── */
-function applyDamage(s, target, amount, type, notes) {
+function applyDamage(s, target, amount, type, notes, magical = false) {
   let dmg = Math.max(0, Math.round(amount));
   const corrosion = type === "acid" && hasMetalProtection(target);
   if (corrosion) dmg *= ACID_METAL_MULT;
   if (target.fx?.petrified && dmg > 0) { dmg = Math.floor(dmg / 2); notes.push("è di pietra"); }
   if (type === "fire" && target.fx?.frozen && amount > 0) { delete target.fx.frozen; notes.push("🧊 il fuoco lo scongela"); }
+  const racialResist = target.side === "h" && dmg > 0 && ((target.race === "elf" && magical && rnd() < RACES.elf.chance) || (target.race === "dragonborn" && PHYS.includes(type) && rnd() < RACES.dragonborn.chance));
   if (target.side === "f") {
     if (target.imm.includes(type)) { dmg = 0; notes.push("immune"); curTags[target.id] = "imm"; }
     else if (target.res.includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
     else if (target.vul.includes(type)) { dmg *= 2; notes.push("vulnerabile!"); curTags[target.id] = "vul"; }
-  } else if ((target.res || []).includes(type)) { dmg = Math.floor(dmg / 2); notes.push("resiste"); curTags[target.id] = "res"; }
+  } else if ((target.res || []).includes(type) || racialResist) { dmg = Math.floor(dmg / 2); notes.push(racialResist ? `resistenza ${RACES[target.race].name}` : "resiste"); curTags[target.id] = "res"; }
   else if (fxOn(s, target.fx.rage) && (PHYS.includes(type) || (subP(target).rageAll && type !== "psychic"))) { dmg = Math.floor(dmg / 2); notes.push("in furia"); curTags[target.id] = "rage"; }
   dmg = Math.floor(dmg);
   if (corrosion && dmg > 0) { notes.push(`corrosione del metallo ×${ACID_METAL_MULT}`); if (!curTags[target.id]) curTags[target.id] = "corrode"; }
@@ -543,7 +546,8 @@ function heroAct(s, h, a, target, amount) {
       const armorMalus = burden > 50 && burden <= 75 ? 1 : 0;
       const actualHit = hitW - armorMalus;
       const burdenTag = armorMalus ? " - ingombro: -1 a colpire" : burden > 75 ? " - ingombro: svantaggio" : "";
-      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv, dis: burden > 75, critAt: Math.min(wfx?.crit || 20, sp.critAt || 20) });
+      const lucky = a.kind === "weapon" && h.race === "halfling" && rnd() < RACES.halfling.chance;
+      const r = attackRoll(s, h, target, actualHit, { adv: !!a.adv || lucky, dis: burden > 75, critAt: Math.min(wfx?.crit || 20, sp.critAt || 20) });
       const unarmed = h.cls === "monk" && heroVfx(a)?.fx === "punch";
       const hand = unarmed ? (k % 2 ? "R" : "L") : h.weapon === "pugnali" ? (k % 2 ? "L" : "R") : "R";
       if (curVfx) curVfx = { ...curVfx, hand, ...(unarmed ? { unarmed: true } : {}) };
@@ -554,7 +558,8 @@ function heroAct(s, h, a, target, amount) {
       const rolled = roll(dn, ds), plusDmg = (a.kind === "weapon" ? wm + (a.plus || 0) + dmgBonusOf(s, h) + (sp.wDmg || 0) : sDmg) + (a.bonusDmg === "lv/2" ? Math.floor(lv / 2) : 0);
       let dmg = rolled.t + plusDmg;
       const notes = [];
-      let total = applyDamage(s, target, dmg, a.dmg, notes);
+      if (a.kind === "weapon" && !unarmed && h.weapon !== "pugni" && h.race === "orc" && h.hp < h.maxHp * .30 && rnd() < RACES.orc.chance) { dmg += 5; notes.push("furia orchesca +5"); }
+      let total = applyDamage(s, target, dmg, a.dmg, notes, a.kind === "spell");
       let extra = "";
       if (a.rider && k === 0 && (alive(target) || a.riderDmg === "radiant")) {
         let rn, rs;
@@ -590,7 +595,7 @@ function heroAct(s, h, a, target, amount) {
     const [dn, ds] = diceFor(a, lv);
     const notes = [];
     const rolled = roll(dn, ds), plusDmg = flatOf(a.flat) + (a.plusMod ? mod : 0) + sDmg;
-    const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes);
+    const dmg = applyDamage(s, target, rolled.t + plusDmg, a.dmg, notes, true);
     log(s, `${a.icon} ${h.name} → ${a.name} su ${target.name}: colpisce sempre, ${dmg} danni ${DMG_IT[a.dmg]}${notes.length ? ` · ${notes.join(", ")}` : ""}.${downTxt(target)}`, { kind: "hit", actor: h.id, targets: [target.id], dr: { n: dn, s: ds, r: rolled.r, p: plusDmg }, dmg });
     return ev;
   }
@@ -607,7 +612,7 @@ function heroAct(s, h, a, target, amount) {
       const amount = ok ? (a.half ? Math.floor(base / 2) : 0) : base;
       const types = a.damageTypes || [a.dmg];
       const total = Math.max(0, amount);
-      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes), 0);
+      const dmg = types.reduce((sum, type, i) => sum + applyDamage(s, t, Math.floor(total / types.length) + (i < total % types.length ? 1 : 0), type, notes, true), 0);
       if (!ok && a.stun && alive(t)) t.fx.stun = true;
       const inf = !ok && a.inflict && alive(t) ? applyStatus(s, t, a.inflict.key, { ...a.inflict, dc, stat: a.save, by: h.id }) : "";
       if (!ok && a.dis && alive(t)) t.fx.dis = s.round + 1 + a.dis;
@@ -760,8 +765,8 @@ function foeAct(s, f) {
       const ok = sv >= dc;
       // Elusione del ladro (Lv 7, come in D&D): sulle aree dei mostri niente danni se supera il TS, metà se fallisce
       const evade = tg.length > 1 && t.cls === "rogue" && t.level >= 7;
-      const dmg = evade ? (ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, []))
-        : ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, []) : 0) : applyDamage(s, t, base, type, []);
+      const dmg = evade ? (ok ? 0 : applyDamage(s, t, Math.floor(base / 2), type, [], !PHYS.includes(type) || a.magical === true))
+        : ok ? (a.halfOnSave !== false ? applyDamage(s, t, Math.floor(base / 2), type, [], !PHYS.includes(type) || a.magical === true) : 0) : applyDamage(s, t, base, type, [], !PHYS.includes(type) || a.magical === true);
       // chi fallisce il TS può prendersi anche lo stato (senza un secondo tiro salvezza)
       const inf = !ok ? foeInflict(a, type) : null;
       const stTxt = inf ? tryInflict(s, f, t, { ...inf, chance: Math.min(100, (inf.chance ?? 100) * 1.5), save: null }, dc) : "";
@@ -774,7 +779,7 @@ function foeAct(s, f) {
   const r = attackRoll(s, f, tgt, bonus);
   if (!r.hit) { log(s, `${confusedTxt}⚔ ${f.name} → ${nm} su ${tgt.name}: manca (🎲${r.nat}+${bonus}=${r.total} vs CA ${r.ac})${advTag(r)}.`, { kind: "miss", actor: f.id, targets: [tgt.id], roll: { nat: r.nat, dice: r.dice } }); return; }
   const rolled = roll(r.crit ? n * 2 : n, sides), mult = (f.adapt?.mult || 1) * capMult(n, sides, 1);
-  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((rolled.t + lvlBonus) * mult)), type, []);
+  const dmg = applyDamage(s, tgt, Math.max(1, Math.round((rolled.t + lvlBonus) * mult)), type, [], !PHYS.includes(type) || a.magical === true);
   const stTxt = tryInflict(s, f, tgt, foeInflict(a, type), f.cap?.dc ?? 12);
   log(s, `${confusedTxt}⚔ ${f.name} → ${nm} su ${tgt.name}: ${r.crit ? "CRITICO! " : ""}${dmg} danni ${DMG_IT[type] || ""}${stTxt} (🎲${r.nat}+${bonus}=${r.total})${advTag(r)}.${downTxt(tgt)}`, { kind: r.crit ? "crit" : "hit", actor: f.id, targets: [tgt.id], dmg, roll: { nat: r.nat, dice: r.dice }, dr: { n: r.crit ? n * 2 : n, s: sides, r: rolled.r, p: lvlBonus, x: Math.round(mult * 100) / 100 } });
   // scudo/armatura con le "spine" (2026-11-06): chi colpisce in mischia a volte si fa male

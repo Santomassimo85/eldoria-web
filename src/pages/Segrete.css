@@ -499,3 +499,9 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgs-categories .sgr-btn { flex: 0 0 auto; min-height: 40px; white-space: nowrap; }
 .sgs-tabs .sgr-btn { min-height: 40px; }
 .sgs-tabs .is-on, .sgs-categories .is-on { border-color: var(--el, #e0a85a); background: rgba(224,168,90,.2); color: #fff7e6; }
+.sgh-race-form { display: grid; gap: 12px; min-width: 0; padding-block: 10px; }
+.sgh-races { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 8px; }
+.sgh-race { display: grid; gap: 5px; padding: 12px; text-align: left; color: var(--osso, #ece5d6); background: #19151e; border: 1px solid #65546f; border-radius: 5px; font: inherit; cursor: pointer; }
+.sgh-race small { line-height: 1.4; }
+.sgh-race.is-on { border-color: #e8be68; box-shadow: inset 0 0 0 1px #e8be68; }
+.sgh-race-stat { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding-inline: 8px; }

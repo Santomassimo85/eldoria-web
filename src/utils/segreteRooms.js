@@ -9,6 +9,7 @@ import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
 import { MAX_PARTY, allReady, mergeDungeons } from "../data/segrete";
 import { heroSubclass } from "../data/segreteKits";
+import { hasRace } from "../data/segreteRaces";
 
 const roomsCol = () => collection(db, "dungeon_rooms");
 
@@ -113,9 +114,14 @@ const nameOf = (room, uid) => room.members.find((m) => m.uid === uid)?.name || "
    "premi Avvia"; quando la spedizione parte la ricevono tutti gli altri del gruppo. */
 export async function setReady(roomId, uid, ready) {
   let room = null;
-  const patch = await editRoom(roomId, (r) => {
+  const patch = await editRoom(roomId, async (r, tx) => {
     room = r;
     if (r.status !== "open") return null;
+    if (ready) {
+      const member = r.members.find((m) => m.uid === uid);
+      const character = await tx.get(doc(db, "characters", uid));
+      if (!hasRace(character.data()?.storyChars?.[member?.cls])) throw new Error("Scegli la razza del tuo eroe prima di partire.");
+    }
     const members = r.members.map((m) => (m.uid === uid ? { ...m, ready: !!ready } : m));
     const next = { ...r, members };
     return allReady(next) ? { members, status: "running", startedAt: serverTimestamp(), blocked: null } : { members, blocked: null };

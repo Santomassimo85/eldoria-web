@@ -8,3 +8,4 @@ export { currentWeekKey } from "./arenaWeek";
 export { wonItemInboxDoc } from "../utils/foundryMap";
 export { registerCustomItems, itemOf, isGear, battleItem, SHOP_ITEMS, bagOf, coinsOf, boughtToday, dailyLimit, romeDay, GIFT_FEE, GIFT_DAILY, giftsToday } from "./segreteItems";
 export { sellBagItem } from "./segreteItems";
+export { RACES, RACE_CHANGE_COST, hasRace, chooseHeroRace } from "./segreteRaces";
