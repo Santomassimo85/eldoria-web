@@ -96,7 +96,7 @@ function TowerInfoBox({ charData, isHost = true, master = false }) {
         🗼 <b>La Torre di Vethrik</b> · 100 Piani Mutevoli <small>(Guardiano ogni 5 piani)</small>
       </p>
       <p className="sgr-hint" style={{ margin: "4px 0" }}>
-        Ogni piano si auto-genera con stanze, regole ambientali e nemici sempre diversi, diventando sempre più impegnativo dal Piano 1 al Piano 100. Ogni piano superato conferisce subito <b>PE</b> al tuo eroe; i <b>premi unici di Vethrik</b> vengono consegnati ogni <b>domenica alle 23:00</b> in base al piano registrato!
+        La sfida è tarata per 4 eroi: numero e forza dei nemici dipendono dal piano. In solitaria serve un livello superiore; anche in quattro, una squadra sotto livello incontra presto il proprio limite. Ogni piano superato conferisce subito <b>PE</b> al tuo eroe; i <b>premi unici di Vethrik</b> vengono consegnati ogni <b>domenica alle 23:00</b> in base al piano registrato!
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", fontSize: ".88rem", margin: "8px 0", padding: "6px 10px", background: "rgba(0,0,0,.28)", borderRadius: 8 }}>
         <span>📍 <b>Piano registrato (questa settimana):</b> <b style={{ color: ts.floor > 0 ? "#ffd56a" : "#aaa" }}>{ts.floor > 0 ? `Piano ${ts.floor}/100` : "Nessuno (0/100)"}</b></span>
@@ -434,7 +434,7 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
         <h1 className="sgr-title">{isTowerPage ? "🗼 La Torre di Vethrik" : "Le Segrete"}</h1>
         <p className="sgr-lead">
           {isTowerPage
-            ? `100 piani mutevoli per gruppi da 1 a ${MAX_PARTY}, collegati ai tuoi eroi e al tuo zaino delle Segrete. Ogni piano dà PE subito e la domenica alle 23:00 assegna i Premi Unici.`
+            ? `100 piani tarati per ${MAX_PARTY} eroi. In solitaria serve un livello superiore; per salire occorrono livelli ed equipaggiamento adeguati. Ogni piano dà PE subito e la domenica alle 23:00 assegna i Premi Unici.`
             : `Dungeon a gruppi da 1 a ${MAX_PARTY}. Il tuo eroe cresce vincendo; se il gruppo cade, si perde il bottino.`}
         </p>
       </header>

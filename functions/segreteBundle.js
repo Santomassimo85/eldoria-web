@@ -2354,11 +2354,9 @@ function towerFloorXp(floor, partySize = 2) {
   const compMult = partySize <= 1 ? SOLO_XP_MULT : companyOf(partySize).xp;
   return Math.max(15, Math.round(XP_PER_ROOM * floorMult * bossBonus * compMult));
 }
-function towerVirtualHeroes(heroes, effLv) {
-  const live = heroes.filter((h) => !h.fled);
-  const count = Math.max(1, live.length);
+function towerVirtualHeroes(effLv) {
   const refMaxHp = HERO_HP_BASE + 10 + Math.max(0, effLv - 1) * 7;
-  return Array.from({ length: count }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
+  return Array.from({ length: MAX_PARTY }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
 }
 function newRun({ room, heroes, bestiary, dungeon, now }) {
   const isTower = isTowerDungeon(room.type) || Boolean(dungeon?.isTower);
@@ -2380,7 +2378,7 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     order: [],
     turn: 0,
     turnAt: now,
-    heroes: heroes.map(makeHero).map((h, _i, arr) => arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h),
+    heroes: heroes.map(makeHero).map((h, _i, arr) => !isTower && arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h),
     foes: [],
     log: [],
     seq: 0,
@@ -2404,7 +2402,7 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
   });
   if (s.party > 1) log(s, `\u{1F91D} Compagnia \xD7${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   if (isTower) {
-    log(s, "\u{1F5FC} La Torre di Vethrik si spalanca: 100 piani mutevoli, guardiano ogni 5 piani. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
+    log(s, "\u{1F5FC} La Torre di Vethrik si spalanca: 100 piani tarati per 4 eroi, guardiano ogni 5 piani. Il rango cresce col piano; un gruppo sotto livello far\xE0 fatica a proseguire. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
   } else if (s.dungeonRules.key !== "neutro") {
     log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE \xD7${s.dungeonRules.xp}, Monete Antiche \xD7${s.dungeonRules.coins}.`, { kind: "info" });
   }
@@ -2464,14 +2462,14 @@ function startFloor(s, bestiary, now) {
     const P2 = runProfile(s);
     const effLv = towerEffectiveLevel(s.floor);
     const tScale = towerScale(s.floor);
-    const vHeroes = towerVirtualHeroes(s.heroes, effLv);
+    const vHeroes = towerVirtualHeroes(effLv);
     s.foes = balanceFoes(
       buildEncounter(bestiary, {
         floor: s.floor,
         floors: s.floors,
         isBoss: s.boss,
         partyLevel: effLv,
-        partySize: s.heroes.filter((h) => !h.fled).length,
+        partySize: MAX_PARTY,
         eliteChance: Math.min(0.88, tScale.elite + P2.eliteBonus),
         crowdChance: P2.crowdChance,
         extraMinions: P2.extraMinions

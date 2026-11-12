@@ -36,6 +36,10 @@
         {
           "type": "fix",
           "text": "Torre: difficoltà iniziale più graduale e armature esclusive cumulative ai piani 20/40/60/80/100, adatte alla classe della scalata registrata e aggiunte ai premi domenicali."
+        },
+        {
+          "type": "fix",
+          "text": "Torre multiplayer: incontri e forza dei nemici tarati su quattro eroi del rango del piano, senza riduzioni per gruppi piccoli né bonus PF da solitario."
         }
       ]
     },

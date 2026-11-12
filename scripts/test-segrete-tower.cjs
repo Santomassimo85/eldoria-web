@@ -148,4 +148,22 @@ for (const [cls, base] of Object.entries(segrete.TOWER_ARMOR_BY_CLASS)) {
 assert.equal(segrete.towerEffectiveLevel(1), 2);
 assert.equal(segrete.towerEffectiveLevel(30), 8);
 for (let floor = 2; floor <= 100; floor++) assert.ok(segrete.towerEffectiveLevel(floor) >= segrete.towerEffectiveLevel(floor - 1));
+// Stesso piano e stessi dadi: identica sfida per 1/2/4 eroi, anche sotto livello.
+function encounterAt(floor, count, level) {
+  const state = JSON.parse(JSON.stringify(run));
+  state.heroes = Array.from({ length: count }, (_, i) => ({ ...state.heroes[0], id: `h${i}`, uid: `u${i}`, level, fled: false, maxHp: 20 + level * 7, hp: 20 + level * 7 }));
+  state.party = count;
+  state.floor = floor - 1;
+  state.status = "cleared";
+  let seed = 7349;
+  segrete.withRng(() => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }, () => segrete.nextFloor(state, bestiary, 12000));
+  return state.foes.map(f => ({ name: f.name, role: f.role, maxHp: f.maxHp, ac: f.ac, save: f.save, cap: f.cap }));
+}
+for (const floor of [1, 10, 20, 30, 60, 100]) {
+  const reference = encounterAt(floor, 4, 8);
+  for (const count of [1, 2, 4]) {
+    for (const level of [1, 8, 20]) assert.deepEqual(encounterAt(floor, count, level), reference, `Piano ${floor}, ${count} eroi Lv ${level}`);
+  }
+  assert.ok(reference.length >= (floor % 5 === 0 ? 3 : 4));
+}
 console.log("test-segrete-tower: OK");

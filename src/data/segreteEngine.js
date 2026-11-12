@@ -16,7 +16,7 @@ import { hasMetalProtection, metalArmor, ACID_METAL_MULT } from "./segreteMateri
 import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, heroXp, XP_VERSION, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
 // tratti passivi della sottoclasse di un combattente (vuoto per mostri ed eroi senza)
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
-import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines, DEFAULT_DUNGEONS, TOWER_KEY, TOWER_MAX_FLOORS, TOWER_BOSS_EVERY, isTowerDungeon } from "./segrete";
+import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines, MAX_PARTY, DEFAULT_DUNGEONS, TOWER_KEY, TOWER_MAX_FLOORS, TOWER_BOSS_EVERY, isTowerDungeon } from "./segrete";
 import { dungeonProfile, runProfile, dungeonDropContext, applyDungeonDefenses, DUNGEON_PROFILES } from "./segreteProfiles";
 import { RACES, hasRace } from "./segreteRaces";
 const companyLinesTxt = (n) => companyLines(n).join(", ");
@@ -361,11 +361,10 @@ export function towerFloorXp(floor, partySize = 2) {
   const compMult = partySize <= 1 ? SOLO_XP_MULT : companyOf(partySize).xp;
   return Math.max(15, Math.round(XP_PER_ROOM * floorMult * bossBonus * compMult));
 }
-function towerVirtualHeroes(heroes, effLv) {
-  const live = heroes.filter((h) => !h.fled);
-  const count = Math.max(1, live.length);
+// Il piano ha un budget fisso per quattro eroi del suo rango, anche entrando da soli.
+function towerVirtualHeroes(effLv) {
   const refMaxHp = HERO_HP_BASE + 10 + Math.max(0, effLv - 1) * 7;
-  return Array.from({ length: count }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
+  return Array.from({ length: MAX_PARTY }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
 }
 
 export function newRun({ room, heroes, bestiary, dungeon, now }) {
@@ -377,7 +376,7 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     floors: isTower ? TOWER_MAX_FLOORS : (dungeon.floors || 3), floor: 1, status: "fight",
     ...(isTower ? { isTower: true, towerCleared: 0, towerXp: 0 } : {}),
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
-    heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
+    heroes: heroes.map(makeHero).map((h, _i, arr) => (!isTower && arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
   // Compagnia (2026-11-10): bonus del gruppo, fissato all'inizio
   s.party = s.heroes.length;
@@ -390,7 +389,7 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
   });
   if (s.party > 1) log(s, `🤝 Compagnia ×${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
   if (isTower) {
-    log(s, "🗼 La Torre di Vethrik si spalanca: 100 piani mutevoli, guardiano ogni 5 piani. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
+    log(s, "🗼 La Torre di Vethrik si spalanca: 100 piani tarati per 4 eroi, guardiano ogni 5 piani. Il rango cresce col piano; un gruppo sotto livello farà fatica a proseguire. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
   } else if (s.dungeonRules.key !== "neutro") {
     log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE ×${s.dungeonRules.xp}, Monete Antiche ×${s.dungeonRules.coins}.`, { kind: "info" });
   }
@@ -453,14 +452,14 @@ function startFloor(s, bestiary, now) {
     const P = runProfile(s);
     const effLv = towerEffectiveLevel(s.floor);
     const tScale = towerScale(s.floor);
-    const vHeroes = towerVirtualHeroes(s.heroes, effLv);
+    const vHeroes = towerVirtualHeroes(effLv);
     s.foes = balanceFoes(
       buildEncounter(bestiary, {
         floor: s.floor,
         floors: s.floors,
         isBoss: s.boss,
         partyLevel: effLv,
-        partySize: s.heroes.filter((h) => !h.fled).length,
+        partySize: MAX_PARTY,
         eliteChance: Math.min(0.88, tScale.elite + P.eliteBonus),
         crowdChance: P.crowdChance,
         extraMinions: P.extraMinions,
