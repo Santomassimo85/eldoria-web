@@ -28,6 +28,7 @@ const SegreteCrawler = lazy(() => import("./SegreteCrawler"));
 import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
+import SegreteTowerManual from "./SegreteTowerManual";
 import SegreteLog, { coinsToday } from "./SegreteLog";
 import { COIN_ICON, COIN_NAME, coinsOf, TOWER_REWARD_TIERS, TOWER_GEAR_IDS, itemOf } from "../data/segreteItems";
 import { hpPending, armorChosen } from "../data/segreteKits";
@@ -181,6 +182,7 @@ const TORRE_TABS = [
   { key: "zaino", icon: "🎒", label: "Zaino" },
   { key: "bottega", icon: "🏪", label: "Bottega" },
   { key: "storico", icon: "📜", label: "Storico Torre" },
+  { key: "manuale", icon: "📖", label: "Manuale" },
 ];
 const readTab = (isTowerMode, initialTab) => {
   const tabs = isTowerMode ? TORRE_TABS : SEGRETE_TABS;
@@ -679,7 +681,7 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
       {tab === "zaino" && <SegreteShop charData={charData} view="zaino" uid={uid} />}
       {tab === "storico" && <SegreteLog charData={charData} mode={isTowerPage ? "torre" : "segrete"} />}
-      {!isTowerPage && tab === "manuale" && <SegreteManual />}
+      {tab === "manuale" && (isTowerPage ? <SegreteTowerManual /> : <SegreteManual />)}
     </section>
   );
 }

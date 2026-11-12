@@ -320,9 +320,6 @@ const NESSO_GROUPS = {
   ]},
   battaglia: { rune: "ᚦ", label: "Battaglia", links: [
     { to: "/sala-della-gloria", label: "Sala della Gloria" },
-    { to: "/arena", label: "Arena" },
-    { to: "/segrete", label: "Le Segrete" },
-    { to: "/torre-di-vethrik", label: "La Torre di Vethrik" },
     { to: "/world-boss-fight", label: "World Boss" },
   ]},
 };
@@ -385,7 +382,7 @@ function NessoNav({ openMenu }) {
     { key: "biblioteca", g: "ᛒ", label: "Libri", onClick: () => openGroup("biblioteca") },
     { key: "eroi", g: "ᛖ", label: "Eroi", onClick: () => openGroup("eroi") },
     { key: "gilda", g: "ᚷ", label: "Gilda", onClick: () => openGroup("gilda") },
-    { key: "battaglia", g: "ᚦ", label: "Arena", onClick: () => openGroup("battaglia") },
+    { key: "battaglia", g: "ᚦ", label: "Battaglia", onClick: () => openGroup("battaglia") },
     { key: "altro", g: "☰", label: "Altro", onClick: openDrawer },
   ];
 

@@ -20,6 +20,10 @@
         {
           "type": "feature",
           "text": "Segrete: party con 60 sprite classe/razza, figure intere animate, schede dei compagni al tocco e fascia responsive compatta per lasciare spazio alle azioni."
+        },
+        {
+          "type": "feature",
+          "text": "Menu Battaglia: Arena, Segrete e Torre si aprono dalla Sala della Gloria. Aggiunto il manuale breve dedicato alla Torre di Vethrik."
         }
       ]
     },

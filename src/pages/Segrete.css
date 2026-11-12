@@ -505,3 +505,5 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgh-race small { line-height: 1.4; }
 .sgh-race.is-on { border-color: #e8be68; box-shadow: inset 0 0 0 1px #e8be68; }
 .sgh-race-stat { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding-inline: 8px; }
+.sgr-page .sgm-list { margin: 0; padding-left: 1.25rem; line-height: 1.55; }
+.sgr-page .sgm-list li { margin-block: 10px; }
