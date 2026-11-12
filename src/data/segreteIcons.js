@@ -24,7 +24,12 @@ export const SG_ICONS = {
   item: {
     pozione: "health-potion", pozione_magg: "standing-potion", pozione_sup: "round-potion",
     tonico: "herbs-bundle", bomba_acqua: "water-splash", panacea: "magic-potion",
-    pelle_pietra: "stone-block", eroismo: "muscle-up", pozione_exp_5: "standing-potion", pozione_exp_10: "round-potion", pozione_exp_20: "magic-potion", fuoco_alch: "fire-bomb", acido: "bubbling-flask",
+    pelle_pietra: "stone-block", eroismo: "muscle-up", pozione_exp_5: "standing-potion", pozione_exp_10: "round-potion", pozione_exp_20: "magic-potion",
+    sigillo_vethrik: "key", essenza_vethrik: "magic-potion", lacrima_vethrik: "frozen-orb",
+    lama_vethrik: "broadsword", ascia_vethrik: "battle-axe", arco_vethrik: "bow-arrow", pugnali_vethrik: "crossed-swords",
+    bastone_vethrik: "wizard-staff", maglio_vethrik: "thor-hammer", stocco_vethrik: "fencer", mazza_vethrik: "flanged-mace",
+    manto_vethrik: "leather-vest", corazza_vethrik: "breastplate", piastre_vethrik: "black-knight-helm", scudo_vethrik: "magic-shield",
+    fuoco_alch: "fire-bomb", acido: "bubbling-flask",
     acqua_santa: "holy-water", pietra_tuono: "sparky-bomb", piuma_fenice: "feathered-wing",
     lingua_salamandra: "flame-claws", maglio_fabbro: "anvil-impact", zanna_vyrskaal: "ice-spear",
     lancia_pescatore: "harpoon-trident", spina_palude: "thorny-vine", falce_ragno: "spider-alt",
@@ -74,6 +79,7 @@ export const SG_ICONS = {
   dungeon: {
     segrete: "dungeon-gate", caverna: "cave-entrance", magma: "volcano", ghiaccio: "ice-iris",
     palude: "swamp", tempio: "greek-temple", cripta: "death-skull", forgia: "lightning-storm", abisso: "swamp",
+    torre_vethrik: "crowned-skull",
   },
   diff: { facile: "broken-skull", medio: "death-skull", leggenda: "crowned-skull" },
   monster: {

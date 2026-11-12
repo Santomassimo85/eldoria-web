@@ -40,6 +40,7 @@ export const AFK_DEFEND_MS = 5 * 60 * 1000;
 export const ROOM_IDLE_MS = 3 * 60 * 60 * 1000;
 
 export const DEFAULT_DUNGEONS = [
+  { key: "torre_vethrik", name: "La Torre di Vethrik", icon: "🗼", isTower: true, floors: 100, desc: "100 piani sempre diversi: stanze, biomi e mostri si rigenerano ad ogni piano con difficoltà crescente. Solo il Capo spende 1 Sigillo. Dà PE ad ogni piano; ogni domenica alle 23:00 si resetta e assegna i Premi Unici del piano raggiunto." },
   { key: "segrete", name: "Le Segrete", icon: "⛓", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
   { key: "caverna", name: "La Caverna", icon: "🕳", desc: "Gallerie strette nel buio: bestie, goblin e ragni giganti." },
   { key: "magma", name: "Caverna di Magma", icon: "🌋", desc: "Fiumi di lava e aria che brucia: elementali del fuoco e salamandre." },
@@ -209,4 +210,41 @@ export function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey(
 export function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);
   return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
+}
+
+/* ── LA TORRE DI VETHRIK (100 piani procedurali, reset Domenica ore 23:00) ──
+   - 3 Sigilli settimanali gratuiti per giocatore + Sigilli extra dallo zaino (`sigillo_vethrik`).
+   - Solo il Capo del gruppo spende 1 Sigillo per aprire il portale a tutto il party (1–4 giocatori).
+   - Se un giocatore rientra nella Torre, la nuova scalata SOSTITUISCE il suo piano settimanale precedente (effetto rischio). */
+export const TOWER_KEY = "torre_vethrik";
+export const TOWER_MAX_FLOORS = 100;
+export const TOWER_WEEKLY_FREE = 3;
+export const TOWER_BOSS_EVERY = 5;
+export const isTowerDungeon = (key) => key === TOWER_KEY;
+
+export function towerStatusOf(charData, week = currentWeekKey()) {
+  const t = charData?.storyTower || {};
+  const sameWeek = t.weekKey === week;
+  const floor = sameWeek ? Math.max(0, Number(t.floor) || 0) : 0;
+  const bestWeekFloor = sameWeek ? Math.max(floor, Number(t.bestWeekFloor) || 0) : 0;
+  const allTimeBest = Math.max(bestWeekFloor, Number(t.allTimeBest) || 0);
+  const usedFree = sameWeek ? Math.max(0, Number(t.usedFree) || 0) : 0;
+  const freeLeft = Math.max(0, TOWER_WEEKLY_FREE - usedFree);
+  const bagSeals = Math.max(0, Number(charData?.storyBag?.sigillo_vethrik) || 0);
+  const totalSeals = freeLeft + bagSeals;
+  return {
+    weekKey: week,
+    floor,
+    bestWeekFloor,
+    allTimeBest,
+    usedFree,
+    freeLeft,
+    bagSeals,
+    bagKeys: bagSeals,
+    totalSeals,
+    canOpen: totalSeals > 0,
+    lastCls: sameWeek ? t.cls || "" : "",
+    lastResult: t.lastReward || null,
+    lastReward: t.lastReward || null,
+  };
 }

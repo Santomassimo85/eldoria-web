@@ -41,6 +41,9 @@ const BASE_ITEMS = {
   pozione_exp_5: { name: "Pozione della Saggezza (+5% PE)", icon: "📘", kind: "xp_boost", xpPct: 5, xpRuns: 2, price: 60, daily: 2, rarity: "common", desc: "⭐ +5% PE per 2 dungeon vinti" },
   pozione_exp_10: { name: "Pozione dell'Esperienza (+10% PE)", icon: "📗", kind: "xp_boost", xpPct: 10, xpRuns: 2, price: 130, daily: 1, rarity: "uncommon", desc: "⭐ +10% PE per 2 dungeon vinti" },
   pozione_exp_20: { name: "Elisir del Sapere (+20% PE)", icon: "📙", kind: "xp_boost", xpPct: 20, xpRuns: 2, price: 250, daily: 1, rarity: "rare", desc: "⭐ +20% PE per 2 dungeon vinti" },
+  sigillo_vethrik: { name: "Sigillo della Torre di Vethrik", icon: "🗝", kind: "tower_key", price: 900, daily: 1, rarity: "veryRare", minDiff: "medio", dropMult: 0.35, desc: "🗼 Chiave planare: apre 1 ingresso extra nella Torre di Vethrik (oltre ai 3 settimanali)" },
+  essenza_vethrik: { name: "Essenza del Pendolo di Vethrik (+35% PE)", icon: "🔮", kind: "xp_boost", xpPct: 35, xpRuns: 3, price: 0, tradeValue: 600, rarity: "veryRare", towerOnly: true, desc: "🗼 Premio Unico Torre · ⭐ +35% PE per 3 dungeon vinti" },
+  lacrima_vethrik: { name: "Lacrima Astrale di Vethrik", icon: "💎", kind: "cleanse_party", healPct: 50, price: 0, tradeValue: 750, rarity: "veryRare", towerOnly: true, desc: "🗼 Premio Unico Torre · Tutto il gruppo: +50% PF agli eroi in piedi e toglie 🔥 🐌 ⚡" },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "🔥", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "🔥 2d6 fuoco · colpisce sempre" },
   acido: { name: "Fiala d'Acido", icon: "🫙", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "🧪 2d6 acido · colpisce sempre" },
   acqua_santa: { name: "Acqua Santa", icon: "💧", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "✨ 2d8 radiosi · colpisce sempre" },
@@ -100,6 +103,31 @@ const SPECIAL_WEAPONS = {
   mestolo_nonna: { name: "Mestolo della Nonna", icon: "🥄", base: "bastone", plus: 0, rarity: "uncommon",
     fx: { extra: ["1d4", "bludgeoning"], stun: { chance: 10 } },
     desc: "Bastone: un mestolo enorme. Tutti ne hanno paura." },
+  // ── ARMI UNICHE DELLA TORRE DI VETHRIK (solo premio domenicale della Torre) ──
+  lama_vethrik: { name: "Lama del Pendolo di Vethrik", icon: "⚔", base: "spada_lunga", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "necrotic"], drain: 50 },
+    desc: "🗼 Premio Unico Torre · Spada lunga +2 che fende il velo tra i piani." },
+  ascia_vethrik: { name: "Scure Spezzaveli di Vethrik", icon: "🪓", base: "ascia_bip", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d8", "force"], crit: 19 },
+    desc: "🗼 Premio Unico Torre · Ascia bipenne +2 incisa di rune planari." },
+  arco_vethrik: { name: "Arco dei Veli Spezzati", icon: "🏹", base: "arco_lungo", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "force"], multi: { double: 30, none: 0 } },
+    desc: "🗼 Premio Unico Torre · Arco lungo +2 le cui frecce attraversano il vuoto." },
+  pugnali_vethrik: { name: "Zanne dell'Ombra di Vethrik", icon: "🗡", base: "pugnali", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "poison"], crit: 18 },
+    desc: "🗼 Premio Unico Torre · Pugnali +2 forgiati nel silenzio di Vethrik." },
+  bastone_vethrik: { name: "Bastone dell'Ago Planare", icon: "🪄", base: "bastone", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "psychic"], stun: { chance: 20 } },
+    desc: "🗼 Premio Unico Torre · Bastone +2 che vibra in risonanza col Pendolo." },
+  maglio_vethrik: { name: "Maglio del Guardiano Silente", icon: "🔨", base: "maglio", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d8", "thunder"], stun: { chance: 20 } },
+    desc: "🗼 Premio Unico Torre · Maglio +2 dei custodi eterni della Torre." },
+  stocco_vethrik: { name: "Ago d'Argento di Vethrik", icon: "🤺", base: "stocco", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "radiant"], crit: 18 },
+    desc: "🗼 Premio Unico Torre · Stocco +2 sottile come un raggio astrale." },
+  mazza_vethrik: { name: "Scettro del Ciclo di Vethrik", icon: "✨", base: "mazza", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800,
+    fx: { extra: ["1d6", "radiant"], drain: 50 },
+    desc: "🗼 Premio Unico Torre · Mazza +2 che converte il dolore in luce." },
 };
 
 /* ARMATURE E SCUDI (2026-11-06): `base` = armatura di ARMORS (segreteKits.js). Si equipaggiano
@@ -128,6 +156,11 @@ const ARMOR_ITEMS = {
   scudo_padella: { name: "Scudo-Padella", icon: "🍳", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "+2 CA · 25%: chi ti colpisce prende 1d4." },
   scudo_brina: { name: "Scudo di Brina", icon: "❄", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA · 🧊 resistenza al freddo." },
   scudo_magma: { name: "Scudo di Ossidiana", icon: "🌋", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA · 25%: chi ti colpisce prende 🔥 1d6." },
+  // ── ARMATURE E SCUDI UNICI DELLA TORRE DI VETHRIK (solo premio domenicale della Torre) ──
+  manto_vethrik: { name: "Veste del Tessitore di Vethrik", icon: "🧥", kind: "armor", base: "borchiato", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, res: ["necrotic", "psychic"], desc: "🗼 Premio Unico Torre · Cuoio borchiato +2 · +1 ai TS · 💀 🧠 resistenza a necrotico e psichico." },
+  corazza_vethrik: { name: "Mezza Armatura Astrale di Vethrik", icon: "🛡", kind: "armor", base: "mezza", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, res: ["force", "cold"], desc: "🗼 Premio Unico Torre · Mezza armatura +2 · +1 ai TS · 🧊 resistenza a forza e freddo." },
+  piastre_vethrik: { name: "Corazza Eterna di Vethrik", icon: "🏰", kind: "armor", base: "piastre", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 2100, saveBonus: 1, res: ["fire", "necrotic"], desc: "🗼 Premio Unico Torre · Armatura di piastre +2 (CA 20) · +1 ai TS · 🔥 💀 resistenza a fuoco e necrotico." },
+  scudo_vethrik: { name: "Egida degli Specchi di Vethrik", icon: "🛡", kind: "shield", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, thorns: { chance: 35, dice: "1d8", dmg: "force" }, desc: "🗼 Premio Unico Torre · Scudo +2 (+4 CA) · +1 ai TS · 35%: riflette 1d8 danni da forza." },
 };
 Object.values(SPECIAL_WEAPONS).forEach((w) => { w.kind = "weapon"; w.price = 0; w.special = true; });
 Object.values(ARMOR_ITEMS).forEach((a) => { if (a.price == null) a.price = 0; });
@@ -138,9 +171,9 @@ export const itemOf = (id) => {
   if (!it) return null;
   return { id, ...it, ...(it.kind === "armor" && ARMORS[it.base]?.cat === "heavy" ? { desc: `${it.desc || ""} / ${HEAVY_ARMOR_TEXT}.` } : {}) };
 };
-export const SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
+export const SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0 && !ITEMS[id].towerOnly);
 export const isGear = (it) => !!it && (it.kind === "weapon" || it.kind === "armor" || it.kind === "shield");
-export const battleItem = (id) => { const it = itemOf(id); return it && !isGear(it) ? it : null; };
+export const battleItem = (id) => { const it = itemOf(id); return it && !isGear(it) && it.kind !== "tower_key" ? it : null; };
 // equipaggiamento dell'eroe con gli oggetti risolti (per heroDefense / heroAc di segreteKits)
 export function heroGear(hero = {}, cls) {
   const wi = itemOf(hero?.weaponItem);
@@ -231,6 +264,7 @@ export function dropPool(ctx = {}) {
   const { dungeon = null, rank = 0, bases = null, classes = null } = ctx;
   return Object.keys(ITEMS).filter((id) => {
     const it = ITEMS[id];
+    if (it.towerOnly) return false;
     if (it.dungeons && !it.dungeons.includes(dungeon)) return false;
     if (it.minDiff && (DIFF_RANK[it.minDiff] || 0) > rank) return false;
     if (it.kind === "weapon") return !bases || bases.includes(it.base);
@@ -248,7 +282,7 @@ export function dropWeights(ctx = {}, role = "minion") {
   const ga = pool.filter((id) => ITEMS[id].group === "armor").length || 1;
   return pool.map((id) => {
     const it = ITEMS[id];
-    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1) * ((ctx.favored || []).includes(id) ? 3 : 1);
+    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1) * ((ctx.favored || []).includes(id) ? 3 : 1) * (Number(it.dropMult) > 0 ? Number(it.dropMult) : 1);
     return [id, it.group === "weapon" ? (w * 2) / gw : it.group === "armor" ? (w * 1.5) / ga : w];
   });
 }
@@ -358,6 +392,75 @@ export function registerCustomItems(list = []) {
     const it = normalizeCustomItem(d);
     if (it) { ITEMS[d.id] = it; customIds.push(d.id); }
   });
-  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0));
+  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0 && !ITEMS[id].towerOnly));
   return customIds.length;
+}
+
+/* ═══ PREMI SETTIMANALI DELLA TORRE DI VETHRIK (Domenica ore 23:00) ═══
+   In base al piano registrato nella settimana (1..100), il server assegna Monete Antiche e
+   oggetti esclusivi (towerOnly: true) che non stanno nella Bottega e non droppano nelle Segrete. */
+export const TOWER_GEAR_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].towerOnly && isGear(ITEMS[id]));
+export const TOWER_REWARD_TIERS = [
+  { min: 1, max: 4, name: "Iniziato della Torre", label: "Piani 1–4", coins: "25 × piano", coinsBase: 0, coinsPerFloor: 25, desc: "1× Pozione dell'Esperienza (+10% PE)", summary: "1× Pozione dell'Esperienza (+10% PE)" },
+  { min: 5, max: 9, name: "Esploratore del Pendolo", label: "Piani 5–9", coins: "150", coinsBase: 150, coinsPerFloor: 0, desc: "1× Essenza del Pendolo di Vethrik (+35% PE × 3)", summary: "1× Essenza del Pendolo di Vethrik (+35% PE × 3)" },
+  { min: 10, max: 19, name: "Custode delle Soglie", label: "Piani 10–19", coins: "300", coinsBase: 300, coinsPerFloor: 0, desc: "1× Essenza di Vethrik + 1× Lacrima Astrale di Vethrik", summary: "1× Essenza di Vethrik + 1× Lacrima Astrale di Vethrik" },
+  { min: 20, max: 34, name: "Spezzasigilli", label: "Piani 20–34", coins: "500", coinsBase: 500, coinsPerFloor: 0, desc: "1× Equipaggiamento Unico +2 di Vethrik + 1× Essenza di Vethrik", summary: "1× Equipaggiamento Unico +2 di Vethrik + 1× Essenza di Vethrik" },
+  { min: 35, max: 59, name: "Campione Astrale", label: "Piani 35–59", coins: "800", coinsBase: 800, coinsPerFloor: 0, desc: "1× Equipaggiamento Unico +2 di Vethrik + 1× Lacrima Astrale + 1× Essenza di Vethrik", summary: "1× Equipaggiamento Unico +2 di Vethrik + 1× Lacrima Astrale + 1× Essenza di Vethrik" },
+  { min: 60, max: 99, name: "Signore delle Guglie", label: "Piani 60–99", coins: "1.200", coinsBase: 1200, coinsPerFloor: 0, desc: "2× Equipaggiamenti Unici +2 di Vethrik + 2× Essenza di Vethrik", summary: "2× Equipaggiamenti Unici +2 di Vethrik + 2× Essenza di Vethrik" },
+  { min: 100, max: 100, name: "Conquistatore di Vethrik", label: "Piano 100 (Cima)", coins: "2.000", coinsBase: 2000, coinsPerFloor: 0, desc: "3× Equipaggiamenti Unici +2 di Vethrik + 2× Lacrima Astrale + 2× Essenza di Vethrik", summary: "3× Equipaggiamenti Unici +2 di Vethrik + 2× Lacrima Astrale + 2× Essenza di Vethrik" },
+];
+
+export function towerRewardForFloor(floor, charData = {}, rndFn = Math.random) {
+  const fl = Math.max(0, Math.min(100, Math.floor(Number(floor) || 0)));
+  if (fl <= 0) return { coins: 0, items: {}, itemNames: [], tierName: "", tier: null };
+  const myClasses = Object.keys(charData?.storyChars || {});
+  const bag = charData?.storyBag || {};
+  const wornIds = new Set(Object.values(charData?.storyChars || {}).flatMap((h) => [h?.weaponItem, h?.armorItem, h?.shieldItem]).filter(Boolean));
+  const usableGear = TOWER_GEAR_IDS.filter((id) => !myClasses.length || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c)));
+  const poolBase = usableGear.length ? usableGear : TOWER_GEAR_IDS;
+  const unowned = poolBase.filter((id) => !(bag[id] > 0) && !wornIds.has(id));
+  const pickGear = (count) => {
+    const picked = [];
+    const candidates = [...(unowned.length >= count ? unowned : poolBase)];
+    for (let i = 0; i < count && candidates.length; i++) {
+      const idx = Math.min(candidates.length - 1, Math.floor(rndFn() * candidates.length));
+      picked.push(candidates.splice(idx, 1)[0]);
+    }
+    return picked;
+  };
+  const items = {};
+  const add = (id, n = 1) => { if (ITEMS[id]) items[id] = (items[id] || 0) + n; };
+  let coins = 0;
+  if (fl <= 4) {
+    coins = fl * 25;
+    add("pozione_exp_10", 1);
+  } else if (fl <= 9) {
+    coins = 150;
+    add("essenza_vethrik", 1);
+  } else if (fl <= 19) {
+    coins = 300;
+    add("essenza_vethrik", 1);
+    add("lacrima_vethrik", 1);
+  } else if (fl <= 34) {
+    coins = 500;
+    add("essenza_vethrik", 1);
+    pickGear(1).forEach((id) => add(id, 1));
+  } else if (fl <= 59) {
+    coins = 800;
+    add("essenza_vethrik", 1);
+    add("lacrima_vethrik", 1);
+    pickGear(1).forEach((id) => add(id, 1));
+  } else if (fl <= 99) {
+    coins = 1200;
+    add("essenza_vethrik", 2);
+    pickGear(2).forEach((id) => add(id, 1));
+  } else {
+    coins = 2000;
+    add("essenza_vethrik", 2);
+    add("lacrima_vethrik", 2);
+    pickGear(3).forEach((id) => add(id, 1));
+  }
+  const tier = TOWER_REWARD_TIERS.find((t) => fl >= t.min && fl <= t.max) || TOWER_REWARD_TIERS[0];
+  const itemNames = Object.entries(items).map(([id, n]) => `${ITEMS[id]?.icon || ""} ${ITEMS[id]?.name || id}${n > 1 ? ` ×${n}` : ""}`);
+  return { coins, items, itemNames, tierName: tier.name, tier };
 }

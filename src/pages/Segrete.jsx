@@ -8,14 +8,17 @@ import { RACES, hasRace } from "../data/segreteRaces";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../firebase";
 import { useAuth } from "../AuthContext";
 import { isMainMaster } from "../utils/roles";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { arenaClassKey } from "../data/arenaClassSprites";
 import {
   MAX_PARTY, companyLines, ROOM_IDLE_MS, DAILY_RUNS, DIFFICULTIES, diffOf, runsOf, clsStyle, STORY_CLASSES, classInfo, storyLevelOf, heroOf, mergeDungeons, roomMember, roomFull, allReady,
+  TOWER_WEEKLY_FREE, isTowerDungeon, towerStatusOf,
 } from "../data/segrete";
+import { currentWeekKey } from "../data/arenaWeek";
 import {
   createRoom, joinRoom, leaveRoom, kickMember, addFakeNpc, removeFakeNpc, setMemberClass, setReady, forceStart, reopenRoom, deleteRoom, invitePlayers, chooseDungeon, chooseDifficulty,
 } from "../utils/segreteRooms";
@@ -26,7 +29,7 @@ import SegreteHero from "./SegreteHero";
 import SegreteShop from "./SegreteShop";
 import SegreteManual from "./SegreteManual";
 import SegreteLog, { coinsToday } from "./SegreteLog";
-import { COIN_ICON, COIN_NAME, coinsOf } from "../data/segreteItems";
+import { COIN_ICON, COIN_NAME, coinsOf, TOWER_REWARD_TIERS, TOWER_GEAR_IDS, itemOf } from "../data/segreteItems";
 import { hpPending, armorChosen } from "../data/segreteKits";
 import { heroIdentity, subclassName } from "../utils/segreteIdentity";
 import { HeroAccordion, HeroQuickPick, NewClassPicker, HeroNews, heroClasses, heroTodo } from "./SegreteRoster";
@@ -76,8 +79,68 @@ function HeroSections({ charData, cls, onUse, disabled, inRoom, focus }) {
 
 function DungeonBadge({ d, diff }) {
   if (!d) return null;
+  if (d.isTower || isTowerDungeon(d.key)) {
+    return <span className="sgr-dbadge"><SgIcon kind="dungeon" of={d} /> {d.name} <em className="sgr-diffbadge sgr-diffbadge--leggenda">100 Piani</em></span>;
+  }
   const D = diff ? diffOf(diff) : null;
   return <span className="sgr-dbadge"><SgIcon kind="dungeon" of={d} /> {d.name}{D && D.rank > 0 ? <em className={`sgr-diffbadge sgr-diffbadge--${D.key}`}><SgIcon kind="diff" of={D} color={DIFF_TONE[D.key]} /> {D.name}</em> : null}</span>;
+}
+
+function TowerInfoBox({ charData, isHost = true, master = false }) {
+  const ts = towerStatusOf(charData);
+  const curTier = ts.floor > 0 ? TOWER_REWARD_TIERS.find((t) => ts.floor >= t.min && ts.floor <= t.max) : null;
+  return (
+    <div className="sgr-diff" style={{ border: "1px solid rgba(196, 132, 252, .35)", background: "rgba(38, 22, 58, .35)", borderRadius: 10, padding: "10px 12px", margin: "8px 0" }}>
+      <p className="sgr-label" style={{ color: "#e9d5ff", marginBottom: 4 }}>
+        🗼 <b>La Torre di Vethrik</b> · 100 Piani Mutevoli <small>(Guardiano ogni 5 piani)</small>
+      </p>
+      <p className="sgr-hint" style={{ margin: "4px 0" }}>
+        Ogni piano si auto-genera con stanze, regole ambientali e nemici sempre diversi, diventando sempre più impegnativo dal Piano 1 al Piano 100. Ogni piano superato conferisce subito <b>PE</b> al tuo eroe; i <b>premi unici di Vethrik</b> vengono consegnati ogni <b>domenica alle 23:00</b> in base al piano registrato!
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", fontSize: ".88rem", margin: "8px 0", padding: "6px 10px", background: "rgba(0,0,0,.28)", borderRadius: 8 }}>
+        <span>📍 <b>Piano registrato (questa settimana):</b> <b style={{ color: ts.floor > 0 ? "#ffd56a" : "#aaa" }}>{ts.floor > 0 ? `Piano ${ts.floor}/100` : "Nessuno (0/100)"}</b></span>
+        <span>🏆 <b>Record assoluto:</b> Piano {ts.allTimeBest}/100</span>
+        <span>🗝 <b>Sigilli settimanali gratuiti:</b> {master ? "∞" : `${ts.freeLeft}/${TOWER_WEEKLY_FREE}`}</span>
+        <span>🎒 <b>Sigilli nello zaino:</b> {ts.bagKeys}</span>
+      </div>
+      {curTier && (
+        <p className="sgr-hint" style={{ color: "#ffd56a", margin: "4px 0" }}>
+          🎁 <b>Premio garantito domenica ore 23:00 ({curTier.name}, Piano {ts.floor}):</b> {COIN_ICON} {curTier.coinsBase + ts.floor * curTier.coinsPerFloor} {COIN_NAME} · {curTier.desc}
+        </p>
+      )}
+      {ts.floor > 0 && (
+        <p className="sgr-err" style={{ background: "rgba(245, 158, 11, .14)", borderColor: "rgba(245, 158, 11, .45)", color: "#fde68a", margin: "6px 0" }}>
+          ⚠ <b>Attenzione (Regola del Rischio):</b> hai già registrato il <b>Piano {ts.floor}/100</b> questa settimana! Se avvii una nuova scalata ripartirai dal Piano 1 e <b>il nuovo risultato sostituirà il Piano {ts.floor}</b> (anche se dovessi fermarti a un piano più basso). Se vuoi conservare il Piano {ts.floor} per i premi di domenica alle 23:00, non avviare una nuova scalata!
+        </p>
+      )}
+      {isHost && !master && !ts.canOpen && (
+        <p className="sgr-err" style={{ margin: "6px 0" }}>
+          ⛔ Hai terminato i 3 Sigilli gratuiti della settimana e non hai <b>Sigilli della Torre di Vethrik</b> nello zaino (acquistabili in Bottega o droppabili nei dungeon a Medio e Leggenda).
+        </p>
+      )}
+      <p className="sgr-hint" style={{ fontSize: ".8rem", margin: "4px 0" }}>
+        💡 <b>In gruppo (1–4 eroi):</b> solo il <b>Capo del gruppo</b> consuma 1 Sigillo della Torre per aprire il portale a tutta la compagnia.
+      </p>
+      {ts.lastReward?.floor > 0 && (
+        <p className="sgr-hint" style={{ color: "#a7f3d0", fontSize: ".82rem", margin: "4px 0" }}>
+          ✨ <b>Ultimo premio domenicale ricevuto (Piano {ts.lastReward.floor} · {ts.lastReward.tierName}):</b> +{ts.lastReward.coins} {COIN_NAME}{ts.lastReward.itemNames?.length ? ` · ${ts.lastReward.itemNames.join(", ")}` : ""}
+        </p>
+      )}
+      <details style={{ marginTop: 6, fontSize: ".83rem" }}>
+        <summary style={{ cursor: "pointer", color: "#d8b4fe", fontWeight: 600 }}>📜 Tabella Premi Unici della Torre (Domenica ore 23:00)</summary>
+        <ul style={{ margin: "6px 0 4px", paddingLeft: 18, lineHeight: 1.5 }}>
+          {TOWER_REWARD_TIERS.map((t) => (
+            <li key={t.min} style={{ color: ts.floor >= t.min && ts.floor <= t.max ? "#ffd56a" : undefined }}>
+              <b>Piani {t.min === t.max ? t.min : `${t.min}–${t.max}`} ({t.name}):</b> {COIN_ICON} {t.coinsBase + t.min * t.coinsPerFloor}–{t.coinsBase + t.max * t.coinsPerFloor} {COIN_NAME} + {t.desc}
+            </li>
+          ))}
+        </ul>
+        <p style={{ margin: "4px 0 0", opacity: 0.88 }}>
+          🗡 <b>Reliquie Uniche di Vethrik (+2, mai in Bottega né nei dungeon normali):</b> {TOWER_GEAR_IDS.map((id) => itemOf(id)?.name).filter(Boolean).join(" · ")}.
+        </p>
+      </details>
+    </div>
+  );
 }
 
 /* Difficoltà (2026-11-06): Facile (di sempre) · Medio (Lv 8+) · Leggenda (Lv 12+). `levels` =
@@ -140,6 +203,13 @@ export default function Segrete() {
     if (!uid) return undefined;
     return onSnapshot(doc(db, "characters", uid), (s) => setCharData(s.exists() ? s.data() : null), () => {});
   }, [uid]);
+  // Se la settimana precedente della Torre di Vethrik ha un piano registrato non ancora riscattato, riscattalo automaticamente.
+  useEffect(() => {
+    const st = charData?.storyTower;
+    const wk = currentWeekKey();
+    if (!uid || !st || !st.weekKey || st.weekKey === wk || st.rewardedWeek === st.weekKey || !(Number(st.floor) > 0)) return;
+    httpsCallable(functions, "segreteDo")({ op: "towerClaimWeekly" }).catch(() => {});
+  }, [uid, charData?.storyTower?.weekKey, charData?.storyTower?.floor, charData?.storyTower?.rewardedWeek]);
   useEffect(() => onSnapshot(collection(db, "dungeon_types"), (s) => setCustom(s.docs.map((d) => ({ key: d.id, ...d.data() }))), () => setCustom([])), []);
   useEffect(() => {
     if (!uid) return undefined;
@@ -324,12 +394,18 @@ export default function Segrete() {
                   </button>
                 ))}
               </div>
-              {(() => { const d = dungeonOf(type), p = dungeonProfile(d); return <>
-                {d.desc && <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p>}
-                <p className="sgr-dpick-desc"><b>{p.name}</b> · PE ×{p.xp} · Monete Antiche ×{p.coins}. {p.desc}</p>
-              </>; })()}
-              <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: heroIdentity(cls, heroOf(charData, cls)), level: level(cls) }] : []} />
-              <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
+              {isTowerDungeon(type) ? (
+                <TowerInfoBox charData={charData} isHost master={master} />
+              ) : (
+                <>
+                  {(() => { const d = dungeonOf(type), p = dungeonProfile(d); return <>
+                    {d.desc && <p className="sgr-dpick-desc">{d.icon} <b>{d.name}</b> · {d.desc}</p>}
+                    <p className="sgr-dpick-desc"><b>{p.name}</b> · PE ×{p.xp} · Monete Antiche ×{p.coins}. {p.desc}</p>
+                  </>; })()}
+                  <DifficultyPicker value={diff} onPick={setDiff} disabled={busy} levels={cls && heroOf(charData, cls) ? [{ name: heroIdentity(cls, heroOf(charData, cls)), level: level(cls) }] : []} />
+                  <SegreteDungeonInfo dungeon={dungeonOf(type)} diff={diff} />
+                </>
+              )}
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
               <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
@@ -461,10 +537,16 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       </ol>
 
       {!!dungeons.length && <DungeonSwitch room={room} uid={uid} master={master} busy={busy} run={run} dungeons={dungeons} />}
-      <DifficultyPicker value={room.difficulty} readOnly={!host && !master} disabled={busy}
-        levels={master ? room.members.filter((m) => m.uid !== uid) : room.members}
-        onPick={(k) => run(() => chooseDifficulty(room.id, uid, k, master))} />
-      <SegreteDungeonInfo dungeon={dungeon} diff={room.difficulty || "facile"} partySize={room.members.length} />
+      {isTowerDungeon(room.type) ? (
+        <TowerInfoBox charData={charData} isHost={host} master={master} />
+      ) : (
+        <>
+          <DifficultyPicker value={room.difficulty} readOnly={!host && !master} disabled={busy}
+            levels={master ? room.members.filter((m) => m.uid !== uid) : room.members}
+            onPick={(k) => run(() => chooseDifficulty(room.id, uid, k, master))} />
+          <SegreteDungeonInfo dungeon={dungeon} diff={room.difficulty || "facile"} partySize={room.members.length} />
+        </>
+      )}
 
       <HeroQuickPick charData={charData} value={me?.cls} onPick={onPick} disabled={busy} onManage={onHeroes} label="Il tuo eroe nel gruppo" />
 
@@ -478,13 +560,21 @@ function MyRoom({ room, uid, master, charData, busy, run, dungeon, dungeons = []
       </p>
       {!dungeonActive && <p className="sgr-err">Questo dungeon è disattivato. Il capo deve sceglierne uno attivo per partire.</p>}
       {room.blocked && <p className="sgr-err" role="alert">⛔ Non si può partire: {room.blocked}.</p>}
-      {!canRun && (
+      {!canRun && !isTowerDungeon(room.type) && (
         <p className="sgr-helper">🤝 Con {me ? <SegreteIdentity cls={me.cls} hero={me} /> : "questa classe"} hai già fatto i {DAILY_RUNS} dungeon di oggi: puoi entrare lo stesso <b>come aiuto</b> (giochi per il gruppo, ma niente PE, monete né bottino per te; con un altro eroe invece prendi i premi).</p>
       )}
       <div className="sgr-start">
-        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!dungeonActive || !heroReady(charData, me?.cls)))}
-          onClick={() => run(() => setReady(room.id, uid, !me?.ready))}>
-          {me?.ready ? "✓ Pronto — annulla" : canRun ? "▶ Avvia" : "▶ Avvia come aiuto"}
+        <button type="button" className={`sgr-cta${me?.ready ? " is-ready" : ""}`} disabled={busy || (!me?.ready && (!dungeonActive || !heroReady(charData, me?.cls) || (isTowerDungeon(room.type) && host && !master && !towerStatusOf(charData).canOpen)))}
+          onClick={() => {
+            if (!me?.ready && isTowerDungeon(room.type)) {
+              const ts = towerStatusOf(charData);
+              if (ts.floor > 0 && !window.confirm(`Hai già registrato il Piano ${ts.floor}/100 questa settimana!\n\nSe entri di nuovo nella Torre ripartirai dal Piano 1 e il nuovo risultato SOSTITUIRÀ il Piano ${ts.floor} (anche se più basso) per i premi di domenica alle 23:00.\n\nVuoi davvero procedere?`)) {
+                return;
+              }
+            }
+            run(() => setReady(room.id, uid, !me?.ready));
+          }}>
+          {me?.ready ? "✓ Pronto — annulla" : isTowerDungeon(room.type) ? "🗼 Avvia Scalata" : canRun ? "▶ Avvia" : "▶ Avvia come aiuto"}
         </button>
         <span className="sgr-start-n">{readyN}/{room.members.length} pronti{allReady(room) ? "" : room.members.length > 1 ? " · si parte quando premono tutti" : ""}</span>
       </div>

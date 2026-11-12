@@ -285,25 +285,84 @@ exports.arenaWeeklyReset = onSchedule(
         }
         // 2b) Le Segrete: dal 2026-11-06 la domenica NON si azzera niente (gruppi, partite,
         //     eroi e conteggi restano; il limite è solo di 3 dungeon al giorno per classe).
-        // 3) Monete e acquisti di ogni personaggio.
+        // 3) Monete Arena, acquisti settimanali e Premi + Reset della Torre di Vethrik (domenica 23:00).
         try {
+            await loadSegreteItems(dbAdmin).catch(() => {});
             const snap = await dbAdmin.collection("characters").get();
             if (snap.empty) { console.log("⏸ arenaWeeklyReset: nessun personaggio."); return; }
             const newWeek = arenaWeekKey();
-            // Batch da 500 (limite Firestore).
+            const nowMs = Date.now();
+            // Batch da 450 (limite Firestore 500, lasciamo margine per le notifiche della Torre).
             let batch = dbAdmin.batch();
-            let n = 0, total = 0;
+            let n = 0, total = 0, towerRewarded = 0;
+            const commitIfFull = async () => {
+                if (n >= 440) { await batch.commit(); batch = dbAdmin.batch(); n = 0; }
+            };
             for (const d of snap.docs) {
+                const cData = d.data() || {};
                 // Gli acquisti già della settimana NUOVA (fatti dopo le 23:00) restano.
-                const keepWeekly = d.data().arenaWeekly?.weekKey === newWeek;
-                batch.update(d.ref, keepWeekly ? { arenaCoins: ARENA_WEEKLY_COINS } : { arenaCoins: ARENA_WEEKLY_COINS, arenaWeekly: FieldValue.delete() });
+                const keepWeekly = cData.arenaWeekly?.weekKey === newWeek;
+                const patch = keepWeekly
+                    ? { arenaCoins: ARENA_WEEKLY_COINS }
+                    : { arenaCoins: ARENA_WEEKLY_COINS, arenaWeekly: FieldValue.delete() };
+                // 2c) La Torre di Vethrik: consegna premi unici in base al piano registrato e reset settimanale.
+                const st = cData.storyTower;
+                if (st && st.weekKey !== newWeek) {
+                    const fl = Math.max(0, Math.floor(Number(st.floor) || 0));
+                    const allTimeBest = Math.max(Number(st.allTimeBest) || 0, Number(st.bestWeekFloor) || 0, fl);
+                    if (fl > 0 && st.rewardedWeek !== st.weekKey) {
+                        const rw = segreteBundle.towerRewardForFloor(fl, cData, segreteRng);
+                        if (rw.coins > 0) patch.storyCoins = FieldValue.increment(rw.coins);
+                        Object.entries(rw.items || {}).forEach(([itemId, qty]) => {
+                            if (qty > 0) patch[`storyBag.${itemId}`] = FieldValue.increment(qty);
+                        });
+                        patch.storyTower = {
+                            weekKey: newWeek,
+                            floor: 0,
+                            bestWeekFloor: 0,
+                            allTimeBest,
+                            usedFree: 0,
+                            rewardedWeek: st.weekKey || "",
+                            lastReward: {
+                                weekKey: st.weekKey || "",
+                                floor: fl,
+                                tierName: rw.tierName || "",
+                                coins: rw.coins || 0,
+                                items: rw.items || {},
+                                itemNames: rw.itemNames || [],
+                                at: nowMs,
+                            },
+                        };
+                        const notifRef = dbAdmin.collection("notifications").doc();
+                        batch.set(notifRef, {
+                            userId: d.id,
+                            title: "🗼 Premi della Torre di Vethrik!",
+                            message: `Hai concluso la settimana al Piano ${fl}/100 (${rw.tierName})! Ricevi ${rw.coins} Monete Antiche${rw.itemNames?.length ? ` e: ${rw.itemNames.join(", ")}` : ""} nello zaino delle Segrete.`,
+                            link: "/segrete",
+                            read: false,
+                            timestamp: FieldValue.serverTimestamp(),
+                        });
+                        n++;
+                        towerRewarded++;
+                    } else {
+                        patch.storyTower = {
+                            ...st,
+                            weekKey: newWeek,
+                            floor: 0,
+                            bestWeekFloor: 0,
+                            allTimeBest,
+                            usedFree: 0,
+                        };
+                    }
+                }
+                batch.update(d.ref, patch);
                 n++; total++;
-                if (n === 500) { await batch.commit(); batch = dbAdmin.batch(); n = 0; }
+                await commitIfFull();
             }
             if (n > 0) await batch.commit();
-            console.log(`🪙 arenaWeeklyReset: ${total} personaggi a ${ARENA_WEEKLY_COINS} Monete Arena, acquisti della Bottega cancellati.`);
+            console.log(`🪙 arenaWeeklyReset: ${total} personaggi aggiornati (${towerRewarded} premiati per la Torre di Vethrik).`);
         } catch (err) {
-            console.error("❌ arenaWeeklyReset (monete/acquisti) fallita:", err);
+            console.error("❌ arenaWeeklyReset (monete/acquisti/torre) fallita:", err);
         }
     },
 );
@@ -2050,6 +2109,62 @@ exports.segreteDo = onCall(
         throw new HttpsError("failed-precondition", e?.message || "Impossibile usare la pozione.");
       }
     }
+    // ── Torre di Vethrik: riscossione automatica se il premio settimanale della settimana conclusa non era ancora stato consegnato ──
+    if (op === "towerClaimWeekly") {
+      const ref = db.collection("characters").doc(uid);
+      try {
+        return await db.runTransaction(async (tx) => {
+          const cs = await tx.get(ref);
+          if (!cs.exists) return { ok: false };
+          const cData = cs.data() || {};
+          const st = cData.storyTower;
+          const week = segreteBundle.currentWeekKey();
+          if (!st || !st.weekKey || st.weekKey === week) return { ok: false, reason: "current-week" };
+          const fl = Math.max(0, Math.floor(Number(st.floor) || 0));
+          const allTimeBest = Math.max(Number(st.allTimeBest) || 0, Number(st.bestWeekFloor) || 0, fl);
+          if (fl <= 0 || st.rewardedWeek === st.weekKey) {
+            tx.update(ref, { storyTower: { ...st, weekKey: week, floor: 0, bestWeekFloor: 0, allTimeBest, usedFree: 0 } });
+            return { ok: true, rewarded: false };
+          }
+          const rw = segreteBundle.towerRewardForFloor(fl, cData, segreteRng);
+          const patch = {
+            storyTower: {
+              weekKey: week,
+              floor: 0,
+              bestWeekFloor: 0,
+              allTimeBest,
+              usedFree: 0,
+              rewardedWeek: st.weekKey,
+              lastReward: {
+                weekKey: st.weekKey,
+                floor: fl,
+                tierName: rw.tierName || "",
+                coins: rw.coins || 0,
+                items: rw.items || {},
+                itemNames: rw.itemNames || [],
+                at: Date.now(),
+              },
+            },
+          };
+          if (rw.coins > 0) patch.storyCoins = admin.firestore.FieldValue.increment(rw.coins);
+          Object.entries(rw.items || {}).forEach(([id, qty]) => {
+            if (qty > 0) patch[`storyBag.${id}`] = admin.firestore.FieldValue.increment(qty);
+          });
+          tx.update(ref, patch);
+          tx.set(db.collection("notifications").doc(), {
+            userId: uid,
+            title: "🗼 Premi della Torre di Vethrik!",
+            message: `Hai concluso la settimana al Piano ${fl}/100 (${rw.tierName})! Ricevi ${rw.coins} Monete Antiche${rw.itemNames?.length ? ` e: ${rw.itemNames.join(", ")}` : ""} nello zaino delle Segrete.`,
+            link: "/segrete",
+            read: false,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { ok: true, rewarded: true, reward: patch.storyTower.lastReward };
+        });
+      } catch (e) {
+        throw new HttpsError("failed-precondition", e?.message || "Errore nel riscatto dei premi della Torre.");
+      }
+    }
     // ── Regalo di un oggetto dello zaino a un altro giocatore (2026-11-05): costa GIFT_FEE Monete,
     //    massimo GIFT_DAILY al giorno; al destinatario arriva una notifica ──
     if (op === "giftItem") {
@@ -2294,6 +2409,9 @@ exports.segreteDo = onCall(
         const loadBestiary = async () => {
           // + mostri di base del codice (2026-11-06), sovrascrivibili/nascondibili dal Master
           const all = segreteBundle.mergeMonsters((await tx.get(db.collection("dungeon_monsters"))).docs.map((d) => ({ id: d.id, ...d.data() })));
+          if (segreteBundle.isTowerDungeon(room.type)) {
+            return all.filter((m) => m.id !== "mimic");
+          }
           const own = all.filter((m) => m.id !== "mimic" && (m.dungeons || []).includes(room.type));
           if (own.some((m) => m.role === "boss")) return own;
           // il dungeon non ha un boss suo: si pesca fra i boss degli altri dungeon (2026-11-05)
@@ -2310,6 +2428,7 @@ exports.segreteDo = onCall(
           const bestiary = await loadBestiary();
           const week = segreteBundle.currentWeekKey();
           const day = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+          const isTower = segreteBundle.isTowerDungeon(room.type) || Boolean(dungeon?.isTower);
           const heroes = [];
           const charSnaps = [];
           for (const m of room.members || []) {
@@ -2317,9 +2436,9 @@ exports.segreteDo = onCall(
             charSnaps.push([m, cs]);
             heroes.push({ uid: m.uid, name: m.name, cls: m.cls, avatar: m.avatar || "", hero: segreteBundle.heroOf(cs.exists ? cs.data() : {}, m.cls) });
           }
-          // DIFFICOLTÀ (2026-11-06): a Medio e Leggenda ogni eroe deve avere il livello minimo (il Master no)
+          // DIFFICOLTÀ (2026-11-06): a Medio e Leggenda ogni eroe deve avere il livello minimo (il Master no; nella Torre si parte sempre dal Piano 1)
           const diff = segreteBundle.diffOf(room.difficulty);
-          const low = heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.heroLevel(h.hero) < diff.minLevel);
+          const low = isTower ? [] : heroes.filter((h) => h.hero && h.uid !== masterUid && segreteBundle.heroLevel(h.hero) < diff.minLevel);
           if (low.length) {
             const msg = `per ${diff.name} serve almeno il livello ${diff.minLevel}: ${low.map((h) => `${h.name} è Lv ${segreteBundle.heroLevel(h.hero)}`).join(", ")}`;
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
@@ -2337,15 +2456,48 @@ exports.segreteDo = onCall(
             tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
             return { ok: false, blocked: msg };
           }
-          // limiti PER CLASSE (1 al giorno, 3 a settimana) e 3 dungeon al giorno in tutto (il Master no).
-          // Dal 2026-11-05 chi li ha già pieni NON blocca più il gruppo: entra come AIUTO
-          // (gioca, ma niente PE, monete, oggetti, Corone, e il dungeon non gli si conta).
-          const helperUids = new Set(charSnaps
-            .filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day).canRun)
-            .map(([m]) => m.uid));
-          heroes.forEach((h) => { if (helperUids.has(h.uid)) h.helper = true; });
+          if (isTower) {
+            // LA TORRE DI VETHRIK: solo il Capo del gruppo spende 1 Sigillo (3 gratuiti a settimana, poi 1 sigillo_vethrik dallo zaino).
+            const hostPair = charSnaps.find(([m]) => m.uid === room.hostUid) || charSnaps[0];
+            const hostData = hostPair?.[1]?.exists ? hostPair[1].data() : {};
+            const hostTower = segreteBundle.towerStatusOf(hostData, week);
+            if (room.hostUid !== masterUid && !hostTower.canOpen) {
+              const msg = "Il capo del gruppo non ha più Sigilli della Torre di Vethrik (3 gratuiti a settimana, oppure acquistabili in Bottega / droppabili a Medio e Leggenda)";
+              tx.update(roomRef, { status: "open", startedAt: null, blocked: msg, members: (room.members || []).map((m) => ({ ...m, ready: false })) });
+              return { ok: false, blocked: msg };
+            }
+            for (const [m, cs] of charSnaps) {
+              if (!cs.exists) continue;
+              const st = segreteBundle.towerStatusOf(cs.data(), week);
+              const isHost = m.uid === room.hostUid && m.uid !== masterUid;
+              const useFree = isHost && st.freeLeft > 0;
+              const useKey = isHost && st.freeLeft <= 0;
+              const nextTower = {
+                ...(cs.data().storyTower || {}),
+                weekKey: week,
+                floor: 0,
+                prevFloor: st.floor,
+                bestWeekFloor: st.bestWeekFloor,
+                allTimeBest: st.allTimeBest,
+                usedFree: st.usedFree + (useFree ? 1 : 0),
+                cls: m.cls,
+                startedAt: now,
+              };
+              const patch = { storyTower: nextTower };
+              if (useKey) patch["storyBag.sigillo_vethrik"] = admin.firestore.FieldValue.increment(-1);
+              tx.update(cs.ref, patch);
+            }
+          } else {
+            // limiti PER CLASSE (1 al giorno, 3 a settimana) e 3 dungeon al giorno in tutto (il Master no).
+            // Dal 2026-11-05 chi li ha già pieni NON blocca più il gruppo: entra come AIUTO
+            // (gioca, ma niente PE, monete, oggetti, Corone, e il dungeon non gli si conta).
+            const helperUids = new Set(charSnaps
+              .filter(([m, cs]) => m.uid !== masterUid && !segreteBundle.runsOf(cs.exists ? cs.data() : {}, m.cls, week, day).canRun)
+              .map(([m]) => m.uid));
+            heroes.forEach((h) => { if (helperUids.has(h.uid)) h.helper = true; });
+          }
           const fresh = segreteBundle.withRng(segreteRng, () => segreteBundle.newRun({
-            room: { ...room, startKey }, heroes, bestiary, dungeon: { ...dungeon, floors: dungeon.floors || segreteBundle.DEFAULT_FLOORS }, now,
+            room: { ...room, startKey }, heroes, bestiary, dungeon: { ...dungeon, floors: isTower ? segreteBundle.TOWER_MAX_FLOORS : (dungeon.floors || segreteBundle.DEFAULT_FLOORS) }, now,
           }));
           tx.set(runRef, { ...fresh, members: room.memberIds, updatedAt: now });
           return { ok: true };
@@ -2397,14 +2549,35 @@ exports.segreteDo = onCall(
         });
         // Il dungeon CONTA per i limiti dopo RUN_COUNTS_AFTER sale ripulite (o alla vittoria):
         // chi cade prima può riprovare. Letture tutte prima delle scritture.
-        const needCount = !run.counted && (run.status === "won" || run.floor > segreteBundle.RUN_COUNTS_AFTER
+        // Nella Torre di Vethrik i limiti normali di classe non si consumano (usa i Sigilli della Torre),
+        // ma ogni piano superato aggiorna subito il piano settimanale registrato dei giocatori.
+        const needCount = !run.isTower && !run.counted && (run.status === "won" || run.floor > segreteBundle.RUN_COUNTS_AFTER
           || (run.status === "cleared" && run.floor >= segreteBundle.RUN_COUNTS_AFTER));
+        const needTowerSave = Boolean(run.isTower && (Number(run.towerCleared) || 0) > (Number(run.towerSavedFloor) || 0));
         const needEnd = (run.status === "won" || run.status === "lost") && !run.closed;
         const charMap = {};
-        if (needCount || needEnd) {
+        if (needCount || needEnd || needTowerSave) {
           for (const h of run.heroes) charMap[h.uid] = await tx.get(db.collection("characters").doc(h.uid));
         }
-        const lootQ = needEnd && run.status === "won" ? await tx.get(db.collection("segrete_loot").where("status", "==", "pool")) : null;
+        const lootQ = !run.isTower && needEnd && run.status === "won" ? await tx.get(db.collection("segrete_loot").where("status", "==", "pool")) : null;
+        if (needTowerSave && !needEnd) {
+          const cl = Math.max(0, Number(run.towerCleared) || 0);
+          run.towerSavedFloor = cl;
+          const week = segreteBundle.currentWeekKey();
+          run.heroes.forEach((h) => {
+            const cs = charMap[h.uid];
+            if (h.helper || h.fled || !cs?.exists) return;
+            const st = segreteBundle.towerStatusOf(cs.data(), week);
+            tx.update(cs.ref, {
+              "storyTower.weekKey": week,
+              "storyTower.floor": cl,
+              "storyTower.bestWeekFloor": Math.max(st.bestWeekFloor, cl),
+              "storyTower.allTimeBest": Math.max(st.allTimeBest, cl),
+              "storyTower.cls": h.cls,
+              "storyTower.updatedAt": now,
+            });
+          });
+        }
         if (needCount) {
           run.counted = true;
           const week = segreteBundle.currentWeekKey();
@@ -2422,7 +2595,7 @@ exports.segreteDo = onCall(
         if (needEnd) {
           run.closed = true;
           // tetto giornaliero per giocatore: conta i dungeon FINITI (dopo la 2ª sala)
-          if (run.counted) {
+          if (run.counted && !run.isTower) {
             const endDay = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
             run.heroes.forEach((h) => {
               const cs = charMap[h.uid];
@@ -2430,7 +2603,53 @@ exports.segreteDo = onCall(
               tx.update(cs.ref, { storyDaily: segreteBundle.nextDailyPatch(cs.data(), endDay) });
             });
           }
-          if (run.status === "won") {
+          if (run.isTower) {
+            // LA TORRE DI VETHRIK: i PE maturati nei piani superati vengono assegnati subito (anche se si cade al piano N dopo aver superato N-1 piani);
+            // il piano raggiunto diventa il nuovo piano registrato della settimana per i premi di domenica alle 23:00!
+            const cleared = run.status === "won" ? segreteBundle.TOWER_MAX_FLOORS : Math.max(0, Number(run.towerCleared) || 0);
+            run.towerCleared = cleared;
+            run.towerSavedFloor = cleared;
+            const baseGain = Math.max(0, Math.floor(Number(run.towerXp) || 0));
+            const week = segreteBundle.currentWeekKey();
+            run.corone = 0;
+            run.levelUps = [];
+            for (const h of run.heroes) {
+              const cs = charMap[h.uid];
+              if (!cs?.exists || h.helper) continue;
+              const cData = cs.data();
+              const st = segreteBundle.towerStatusOf(cData, week);
+              const hero = segreteBundle.heroOf(cData, h.cls);
+              const patch = {
+                "storyTower.weekKey": week,
+                "storyTower.floor": cleared,
+                "storyTower.bestWeekFloor": Math.max(st.bestWeekFloor, cleared),
+                "storyTower.allTimeBest": Math.max(st.allTimeBest, cleared),
+                "storyTower.cls": h.cls,
+                "storyTower.updatedAt": now,
+              };
+              if (hero && !h.fled && cleared > 0 && baseGain > 0) {
+                const from = segreteBundle.heroLevel(hero);
+                const charBoost = cData?.storyXpBoost;
+                const runBoost = run.xpBoosts?.[h.uid];
+                const activeBoost = runBoost?.runs > 0
+                  ? (charBoost?.runs > 0 && Number(charBoost.pct) === Number(runBoost.pct)
+                    ? { ...runBoost, runs: Number(charBoost.runs) + Number(runBoost.runs) }
+                    : runBoost)
+                  : (charBoost?.runs > 0 ? charBoost : null);
+                const boostPct = activeBoost ? Math.max(0, Number(activeBoost.pct) || 0) : 0;
+                const gain = from >= segreteBundle.MAX_STORY_LEVEL ? 0 : (boostPct > 0 ? Math.round(baseGain * (1 + boostPct / 100)) : baseGain);
+                const xp = segreteBundle.heroXp(hero) + gain;
+                patch[`storyChars.${h.cls}.xp`] = xp;
+                patch[`storyChars.${h.cls}.xpv`] = segreteBundle.XP_VERSION;
+                if (activeBoost) {
+                  const left = Math.max(0, (Number(activeBoost.runs) || 1) - 1);
+                  patch.storyXpBoost = left > 0 ? { ...activeBoost, runs: left } : admin.firestore.FieldValue.delete();
+                }
+                run.levelUps.push({ uid: h.uid, name: h.name, cls: h.cls, xp: gain, ...(boostPct > 0 ? { xpBoostPct: boostPct } : {}), from, to: segreteBundle.levelOfXp(xp) });
+              }
+              tx.update(cs.ref, patch);
+            }
+          } else if (run.status === "won") {
             const winners = run.heroes.filter((h) => !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled));
             const snaps = winners.map((h) => [h, charMap[h.uid]]);
             // forziere: oggetti della Forgia con destinazione "Le Segrete" ancora in palio per questo dungeon
@@ -2493,10 +2712,16 @@ exports.segreteDo = onCall(
             if (!cs?.exists) return;
             const sp = (run.spoils || {})[h.uid] || {};
             const lu = (run.levelUps || []).find((l) => l.uid === h.uid);
-            const won = run.status === "won" && !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled);
+            const isTower = Boolean(run.isTower);
+            const towerCleared = Number(run.towerCleared) || 0;
+            const won = isTower
+              ? (!h.helper && !h.fled && towerCleared > 0)
+              : (run.status === "won" && !h.helper && (run.mimic?.result === "lost" ? run.mimic.eligible.includes(h.uid) : !h.fled));
             const entry = {
-              at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝", diff: run.diff || "facile",
-              cls: h.cls, subclass: h.subclass || "", subName: h.subName || "", result: h.fled ? "fled" : run.status, ...(h.helper ? { helper: true } : {}), floor: run.floor, floors: run.floors,
+              at: now, day: endDayKey, dungeon: run.dungeonName || run.type || "", icon: run.dungeonIcon || "🗝", diff: isTower ? `piano_${towerCleared}` : (run.diff || "facile"),
+              cls: h.cls, subclass: h.subclass || "", subName: h.subName || "", result: h.fled ? "fled" : (isTower && towerCleared > 0 ? "won" : run.status), ...(h.helper ? { helper: true } : {}),
+              floor: isTower ? towerCleared : run.floor, floors: run.floors,
+              ...(isTower ? { isTower: true, reachedFloor: run.floor } : {}),
               coins: Math.max(0, Math.floor(Number(sp.coins) || 0)), items: sp.items || {}, kept: won,
               xp: won ? (lu?.xp || 0) : 0, lvTo: won && lu && lu.to > lu.from ? lu.to : 0,
               corone: 0, loot: run.loot && run.loot.uid === h.uid ? run.loot.name : "",

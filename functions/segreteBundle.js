@@ -39,6 +39,12 @@ __export(segreteServer_exports, {
   SUBCLASSES: () => SUBCLASSES,
   SUBCLASS_COST: () => SUBCLASS_COST,
   SUBCLASS_LEVEL: () => SUBCLASS_LEVEL,
+  TOWER_BOSS_EVERY: () => TOWER_BOSS_EVERY,
+  TOWER_GEAR_IDS: () => TOWER_GEAR_IDS,
+  TOWER_KEY: () => TOWER_KEY,
+  TOWER_MAX_FLOORS: () => TOWER_MAX_FLOORS,
+  TOWER_REWARD_TIERS: () => TOWER_REWARD_TIERS,
+  TOWER_WEEKLY_FREE: () => TOWER_WEEKLY_FREE,
   WEEKLY_RUNS: () => WEEKLY_RUNS,
   XP_VERSION: () => XP_VERSION,
   act: () => act,
@@ -65,6 +71,7 @@ __export(segreteServer_exports, {
   heroXp: () => heroXp,
   hpPending: () => hpPending,
   isGear: () => isGear,
+  isTowerDungeon: () => isTowerDungeon,
   itemOf: () => itemOf,
   levelOfXp: () => levelOfXp,
   mergeDungeons: () => mergeDungeons,
@@ -82,6 +89,10 @@ __export(segreteServer_exports, {
   storyLevelOf: () => storyLevelOf,
   subclassOf: () => subclassOf,
   timeout: () => timeout,
+  towerEffectiveLevel: () => towerEffectiveLevel,
+  towerFloorXp: () => towerFloorXp,
+  towerRewardForFloor: () => towerRewardForFloor,
+  towerStatusOf: () => towerStatusOf,
   useItem: () => useItem,
   validNewHero: () => validNewHero,
   validRespec: () => validRespec,
@@ -948,6 +959,9 @@ var BASE_ITEMS = {
   pozione_exp_5: { name: "Pozione della Saggezza (+5% PE)", icon: "\u{1F4D8}", kind: "xp_boost", xpPct: 5, xpRuns: 2, price: 60, daily: 2, rarity: "common", desc: "\u2B50 +5% PE per 2 dungeon vinti" },
   pozione_exp_10: { name: "Pozione dell'Esperienza (+10% PE)", icon: "\u{1F4D7}", kind: "xp_boost", xpPct: 10, xpRuns: 2, price: 130, daily: 1, rarity: "uncommon", desc: "\u2B50 +10% PE per 2 dungeon vinti" },
   pozione_exp_20: { name: "Elisir del Sapere (+20% PE)", icon: "\u{1F4D9}", kind: "xp_boost", xpPct: 20, xpRuns: 2, price: 250, daily: 1, rarity: "rare", desc: "\u2B50 +20% PE per 2 dungeon vinti" },
+  sigillo_vethrik: { name: "Sigillo della Torre di Vethrik", icon: "\u{1F5DD}", kind: "tower_key", price: 900, daily: 1, rarity: "veryRare", minDiff: "medio", dropMult: 0.35, desc: "\u{1F5FC} Chiave planare: apre 1 ingresso extra nella Torre di Vethrik (oltre ai 3 settimanali)" },
+  essenza_vethrik: { name: "Essenza del Pendolo di Vethrik (+35% PE)", icon: "\u{1F52E}", kind: "xp_boost", xpPct: 35, xpRuns: 3, price: 0, tradeValue: 600, rarity: "veryRare", towerOnly: true, desc: "\u{1F5FC} Premio Unico Torre \xB7 \u2B50 +35% PE per 3 dungeon vinti" },
+  lacrima_vethrik: { name: "Lacrima Astrale di Vethrik", icon: "\u{1F48E}", kind: "cleanse_party", healPct: 50, price: 0, tradeValue: 750, rarity: "veryRare", towerOnly: true, desc: "\u{1F5FC} Premio Unico Torre \xB7 Tutto il gruppo: +50% PF agli eroi in piedi e toglie \u{1F525} \u{1F40C} \u26A1" },
   fuoco_alch: { name: "Fuoco dell'Alchimista", icon: "\u{1F525}", kind: "throw", dice: "2d6", dmg: "fire", price: 50, daily: 2, rarity: "common", desc: "\u{1F525} 2d6 fuoco \xB7 colpisce sempre" },
   acido: { name: "Fiala d'Acido", icon: "\u{1FAD9}", kind: "throw", dice: "2d6", dmg: "acid", price: 50, daily: 2, rarity: "common", desc: "\u{1F9EA} 2d6 acido \xB7 colpisce sempre" },
   acqua_santa: { name: "Acqua Santa", icon: "\u{1F4A7}", kind: "throw", dice: "2d8", dmg: "radiant", price: 80, daily: 1, rarity: "uncommon", desc: "\u2728 2d8 radiosi \xB7 colpisce sempre" },
@@ -1089,6 +1103,95 @@ var SPECIAL_WEAPONS = {
     rarity: "uncommon",
     fx: { extra: ["1d4", "bludgeoning"], stun: { chance: 10 } },
     desc: "Bastone: un mestolo enorme. Tutti ne hanno paura."
+  },
+  // ── ARMI UNICHE DELLA TORRE DI VETHRIK (solo premio domenicale della Torre) ──
+  lama_vethrik: {
+    name: "Lama del Pendolo di Vethrik",
+    icon: "\u2694",
+    base: "spada_lunga",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "necrotic"], drain: 50 },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Spada lunga +2 che fende il velo tra i piani."
+  },
+  ascia_vethrik: {
+    name: "Scure Spezzaveli di Vethrik",
+    icon: "\u{1FA93}",
+    base: "ascia_bip",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d8", "force"], crit: 19 },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Ascia bipenne +2 incisa di rune planari."
+  },
+  arco_vethrik: {
+    name: "Arco dei Veli Spezzati",
+    icon: "\u{1F3F9}",
+    base: "arco_lungo",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "force"], multi: { double: 30, none: 0 } },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Arco lungo +2 le cui frecce attraversano il vuoto."
+  },
+  pugnali_vethrik: {
+    name: "Zanne dell'Ombra di Vethrik",
+    icon: "\u{1F5E1}",
+    base: "pugnali",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "poison"], crit: 18 },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Pugnali +2 forgiati nel silenzio di Vethrik."
+  },
+  bastone_vethrik: {
+    name: "Bastone dell'Ago Planare",
+    icon: "\u{1FA84}",
+    base: "bastone",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "psychic"], stun: { chance: 20 } },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Bastone +2 che vibra in risonanza col Pendolo."
+  },
+  maglio_vethrik: {
+    name: "Maglio del Guardiano Silente",
+    icon: "\u{1F528}",
+    base: "maglio",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d8", "thunder"], stun: { chance: 20 } },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Maglio +2 dei custodi eterni della Torre."
+  },
+  stocco_vethrik: {
+    name: "Ago d'Argento di Vethrik",
+    icon: "\u{1F93A}",
+    base: "stocco",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "radiant"], crit: 18 },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Stocco +2 sottile come un raggio astrale."
+  },
+  mazza_vethrik: {
+    name: "Scettro del Ciclo di Vethrik",
+    icon: "\u2728",
+    base: "mazza",
+    plus: 2,
+    rarity: "veryRare",
+    towerOnly: true,
+    tradeValue: 1800,
+    fx: { extra: ["1d6", "radiant"], drain: 50 },
+    desc: "\u{1F5FC} Premio Unico Torre \xB7 Mazza +2 che converte il dolore in luce."
   }
 };
 var ARMOR_ITEMS = {
@@ -1113,7 +1216,12 @@ var ARMOR_ITEMS = {
   scudo_1: { name: "Scudo +1", icon: "\u{1F6E1}", kind: "shield", plus: 1, price: 0, rarity: "rare", group: "armor", desc: "+3 CA invece di +2." },
   scudo_padella: { name: "Scudo-Padella", icon: "\u{1F373}", kind: "shield", plus: 0, rarity: "uncommon", thorns: { chance: 25, dice: "1d4", dmg: "bludgeoning" }, desc: "+2 CA \xB7 25%: chi ti colpisce prende 1d4." },
   scudo_brina: { name: "Scudo di Brina", icon: "\u2744", kind: "shield", plus: 0, rarity: "uncommon", dungeons: ["ghiaccio"], res: ["cold"], desc: "+2 CA \xB7 \u{1F9CA} resistenza al freddo." },
-  scudo_magma: { name: "Scudo di Ossidiana", icon: "\u{1F30B}", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA \xB7 25%: chi ti colpisce prende \u{1F525} 1d6." }
+  scudo_magma: { name: "Scudo di Ossidiana", icon: "\u{1F30B}", kind: "shield", plus: 1, rarity: "rare", dungeons: ["magma"], minDiff: "medio", thorns: { chance: 25, dice: "1d6", dmg: "fire" }, desc: "+3 CA \xB7 25%: chi ti colpisce prende \u{1F525} 1d6." },
+  // ── ARMATURE E SCUDI UNICI DELLA TORRE DI VETHRIK (solo premio domenicale della Torre) ──
+  manto_vethrik: { name: "Veste del Tessitore di Vethrik", icon: "\u{1F9E5}", kind: "armor", base: "borchiato", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, res: ["necrotic", "psychic"], desc: "\u{1F5FC} Premio Unico Torre \xB7 Cuoio borchiato +2 \xB7 +1 ai TS \xB7 \u{1F480} \u{1F9E0} resistenza a necrotico e psichico." },
+  corazza_vethrik: { name: "Mezza Armatura Astrale di Vethrik", icon: "\u{1F6E1}", kind: "armor", base: "mezza", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, res: ["force", "cold"], desc: "\u{1F5FC} Premio Unico Torre \xB7 Mezza armatura +2 \xB7 +1 ai TS \xB7 \u{1F9CA} resistenza a forza e freddo." },
+  piastre_vethrik: { name: "Corazza Eterna di Vethrik", icon: "\u{1F3F0}", kind: "armor", base: "piastre", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 2100, saveBonus: 1, res: ["fire", "necrotic"], desc: "\u{1F5FC} Premio Unico Torre \xB7 Armatura di piastre +2 (CA 20) \xB7 +1 ai TS \xB7 \u{1F525} \u{1F480} resistenza a fuoco e necrotico." },
+  scudo_vethrik: { name: "Egida degli Specchi di Vethrik", icon: "\u{1F6E1}", kind: "shield", plus: 2, rarity: "veryRare", towerOnly: true, tradeValue: 1800, saveBonus: 1, thorns: { chance: 35, dice: "1d8", dmg: "force" }, desc: "\u{1F5FC} Premio Unico Torre \xB7 Scudo +2 (+4 CA) \xB7 +1 ai TS \xB7 35%: riflette 1d8 danni da forza." }
 };
 Object.values(SPECIAL_WEAPONS).forEach((w) => {
   w.kind = "weapon";
@@ -1129,11 +1237,11 @@ var itemOf = (id) => {
   if (!it) return null;
   return { id, ...it, ...it.kind === "armor" && ARMORS[it.base]?.cat === "heavy" ? { desc: `${it.desc || ""} / ${HEAVY_ARMOR_TEXT}.` } : {} };
 };
-var SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0);
+var SHOP_ITEMS = Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0 && !ITEMS[id].towerOnly);
 var isGear = (it) => !!it && (it.kind === "weapon" || it.kind === "armor" || it.kind === "shield");
 var battleItem = (id) => {
   const it = itemOf(id);
-  return it && !isGear(it) ? it : null;
+  return it && !isGear(it) && it.kind !== "tower_key" ? it : null;
 };
 function gearUsers(it) {
   if (!it) return [];
@@ -1207,6 +1315,7 @@ function dropPool(ctx = {}) {
   const { dungeon = null, rank = 0, bases = null, classes = null } = ctx;
   return Object.keys(ITEMS).filter((id) => {
     const it = ITEMS[id];
+    if (it.towerOnly) return false;
     if (it.dungeons && !it.dungeons.includes(dungeon)) return false;
     if (it.minDiff && (DIFF_RANK[it.minDiff] || 0) > rank) return false;
     if (it.kind === "weapon") return !bases || bases.includes(it.base);
@@ -1224,7 +1333,7 @@ function dropWeights(ctx = {}, role = "minion") {
   const ga = pool.filter((id) => ITEMS[id].group === "armor").length || 1;
   return pool.map((id) => {
     const it = ITEMS[id];
-    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1) * ((ctx.favored || []).includes(id) ? 3 : 1);
+    const w = RARITY[it.rarity].w * (boost[it.rarity] || 1) * ((ctx.favored || []).includes(id) ? 3 : 1) * (Number(it.dropMult) > 0 ? Number(it.dropMult) : 1);
     return [id, it.group === "weapon" ? w * 2 / gw : it.group === "armor" ? w * 1.5 / ga : w];
   });
 }
@@ -1353,8 +1462,74 @@ function registerCustomItems(list = []) {
       customIds.push(d.id);
     }
   });
-  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0));
+  SHOP_ITEMS.splice(0, SHOP_ITEMS.length, ...Object.keys(ITEMS).filter((id) => ITEMS[id].price > 0 && !ITEMS[id].towerOnly));
   return customIds.length;
+}
+var TOWER_GEAR_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].towerOnly && isGear(ITEMS[id]));
+var TOWER_REWARD_TIERS = [
+  { min: 1, max: 4, name: "Iniziato della Torre", label: "Piani 1\u20134", coins: "25 \xD7 piano", coinsBase: 0, coinsPerFloor: 25, desc: "1\xD7 Pozione dell'Esperienza (+10% PE)", summary: "1\xD7 Pozione dell'Esperienza (+10% PE)" },
+  { min: 5, max: 9, name: "Esploratore del Pendolo", label: "Piani 5\u20139", coins: "150", coinsBase: 150, coinsPerFloor: 0, desc: "1\xD7 Essenza del Pendolo di Vethrik (+35% PE \xD7 3)", summary: "1\xD7 Essenza del Pendolo di Vethrik (+35% PE \xD7 3)" },
+  { min: 10, max: 19, name: "Custode delle Soglie", label: "Piani 10\u201319", coins: "300", coinsBase: 300, coinsPerFloor: 0, desc: "1\xD7 Essenza di Vethrik + 1\xD7 Lacrima Astrale di Vethrik", summary: "1\xD7 Essenza di Vethrik + 1\xD7 Lacrima Astrale di Vethrik" },
+  { min: 20, max: 34, name: "Spezzasigilli", label: "Piani 20\u201334", coins: "500", coinsBase: 500, coinsPerFloor: 0, desc: "1\xD7 Equipaggiamento Unico +2 di Vethrik + 1\xD7 Essenza di Vethrik", summary: "1\xD7 Equipaggiamento Unico +2 di Vethrik + 1\xD7 Essenza di Vethrik" },
+  { min: 35, max: 59, name: "Campione Astrale", label: "Piani 35\u201359", coins: "800", coinsBase: 800, coinsPerFloor: 0, desc: "1\xD7 Equipaggiamento Unico +2 di Vethrik + 1\xD7 Lacrima Astrale + 1\xD7 Essenza di Vethrik", summary: "1\xD7 Equipaggiamento Unico +2 di Vethrik + 1\xD7 Lacrima Astrale + 1\xD7 Essenza di Vethrik" },
+  { min: 60, max: 99, name: "Signore delle Guglie", label: "Piani 60\u201399", coins: "1.200", coinsBase: 1200, coinsPerFloor: 0, desc: "2\xD7 Equipaggiamenti Unici +2 di Vethrik + 2\xD7 Essenza di Vethrik", summary: "2\xD7 Equipaggiamenti Unici +2 di Vethrik + 2\xD7 Essenza di Vethrik" },
+  { min: 100, max: 100, name: "Conquistatore di Vethrik", label: "Piano 100 (Cima)", coins: "2.000", coinsBase: 2e3, coinsPerFloor: 0, desc: "3\xD7 Equipaggiamenti Unici +2 di Vethrik + 2\xD7 Lacrima Astrale + 2\xD7 Essenza di Vethrik", summary: "3\xD7 Equipaggiamenti Unici +2 di Vethrik + 2\xD7 Lacrima Astrale + 2\xD7 Essenza di Vethrik" }
+];
+function towerRewardForFloor(floor, charData = {}, rndFn = Math.random) {
+  const fl = Math.max(0, Math.min(100, Math.floor(Number(floor) || 0)));
+  if (fl <= 0) return { coins: 0, items: {}, itemNames: [], tierName: "", tier: null };
+  const myClasses = Object.keys(charData?.storyChars || {});
+  const bag = charData?.storyBag || {};
+  const wornIds = new Set(Object.values(charData?.storyChars || {}).flatMap((h) => [h?.weaponItem, h?.armorItem, h?.shieldItem]).filter(Boolean));
+  const usableGear = TOWER_GEAR_IDS.filter((id) => !myClasses.length || gearUsers(ITEMS[id]).some((c) => myClasses.includes(c)));
+  const poolBase = usableGear.length ? usableGear : TOWER_GEAR_IDS;
+  const unowned = poolBase.filter((id) => !(bag[id] > 0) && !wornIds.has(id));
+  const pickGear = (count) => {
+    const picked = [];
+    const candidates = [...unowned.length >= count ? unowned : poolBase];
+    for (let i = 0; i < count && candidates.length; i++) {
+      const idx = Math.min(candidates.length - 1, Math.floor(rndFn() * candidates.length));
+      picked.push(candidates.splice(idx, 1)[0]);
+    }
+    return picked;
+  };
+  const items = {};
+  const add = (id, n = 1) => {
+    if (ITEMS[id]) items[id] = (items[id] || 0) + n;
+  };
+  let coins = 0;
+  if (fl <= 4) {
+    coins = fl * 25;
+    add("pozione_exp_10", 1);
+  } else if (fl <= 9) {
+    coins = 150;
+    add("essenza_vethrik", 1);
+  } else if (fl <= 19) {
+    coins = 300;
+    add("essenza_vethrik", 1);
+    add("lacrima_vethrik", 1);
+  } else if (fl <= 34) {
+    coins = 500;
+    add("essenza_vethrik", 1);
+    pickGear(1).forEach((id) => add(id, 1));
+  } else if (fl <= 59) {
+    coins = 800;
+    add("essenza_vethrik", 1);
+    add("lacrima_vethrik", 1);
+    pickGear(1).forEach((id) => add(id, 1));
+  } else if (fl <= 99) {
+    coins = 1200;
+    add("essenza_vethrik", 2);
+    pickGear(2).forEach((id) => add(id, 1));
+  } else {
+    coins = 2e3;
+    add("essenza_vethrik", 2);
+    add("lacrima_vethrik", 2);
+    pickGear(3).forEach((id) => add(id, 1));
+  }
+  const tier = TOWER_REWARD_TIERS.find((t) => fl >= t.min && fl <= t.max) || TOWER_REWARD_TIERS[0];
+  const itemNames = Object.entries(items).map(([id, n]) => `${ITEMS[id]?.icon || ""} ${ITEMS[id]?.name || id}${n > 1 ? ` \xD7${n}` : ""}`);
+  return { coins, items, itemNames, tierName: tier.name, tier };
 }
 
 // src/data/segreteMaterials.js
@@ -1436,6 +1611,7 @@ function companyLines(n) {
 var AFK_DEFEND_MS = 5 * 60 * 1e3;
 var ROOM_IDLE_MS = 3 * 60 * 60 * 1e3;
 var DEFAULT_DUNGEONS = [
+  { key: "torre_vethrik", name: "La Torre di Vethrik", icon: "\u{1F5FC}", isTower: true, floors: 100, desc: "100 piani sempre diversi: stanze, biomi e mostri si rigenerano ad ogni piano con difficolt\xE0 crescente. Solo il Capo spende 1 Sigillo. D\xE0 PE ad ogni piano; ogni domenica alle 23:00 si resetta e assegna i Premi Unici del piano raggiunto." },
   { key: "segrete", name: "Le Segrete", icon: "\u26D3", desc: "Celle umide, catene e guardie che non dormono mai. Non morti e banditi." },
   { key: "caverna", name: "La Caverna", icon: "\u{1F573}", desc: "Gallerie strette nel buio: bestie, goblin e ragni giganti." },
   { key: "magma", name: "Caverna di Magma", icon: "\u{1F30B}", desc: "Fiumi di lava e aria che brucia: elementali del fuoco e salamandre." },
@@ -1646,6 +1822,37 @@ function runsOf(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
 function nextRunsPatch(charData, cls, week = currentWeekKey(), day = romeDayKey()) {
   const { weekCount, dayCount } = runsOf(charData, cls, week, day);
   return { weekKey: week, count: weekCount + 1, day, dayCount: dayCount + 1 };
+}
+var TOWER_KEY = "torre_vethrik";
+var TOWER_MAX_FLOORS = 100;
+var TOWER_WEEKLY_FREE = 3;
+var TOWER_BOSS_EVERY = 5;
+var isTowerDungeon = (key) => key === TOWER_KEY;
+function towerStatusOf(charData, week = currentWeekKey()) {
+  const t = charData?.storyTower || {};
+  const sameWeek = t.weekKey === week;
+  const floor = sameWeek ? Math.max(0, Number(t.floor) || 0) : 0;
+  const bestWeekFloor = sameWeek ? Math.max(floor, Number(t.bestWeekFloor) || 0) : 0;
+  const allTimeBest = Math.max(bestWeekFloor, Number(t.allTimeBest) || 0);
+  const usedFree = sameWeek ? Math.max(0, Number(t.usedFree) || 0) : 0;
+  const freeLeft = Math.max(0, TOWER_WEEKLY_FREE - usedFree);
+  const bagSeals = Math.max(0, Number(charData?.storyBag?.sigillo_vethrik) || 0);
+  const totalSeals = freeLeft + bagSeals;
+  return {
+    weekKey: week,
+    floor,
+    bestWeekFloor,
+    allTimeBest,
+    usedFree,
+    freeLeft,
+    bagSeals,
+    bagKeys: bagSeals,
+    totalSeals,
+    canOpen: totalSeals > 0,
+    lastCls: sameWeek ? t.cls || "" : "",
+    lastResult: t.lastReward || null,
+    lastReward: t.lastReward || null
+  };
 }
 
 // src/data/segreteProfiles.js
@@ -1883,8 +2090,8 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
   };
 }
 var CROWD_CHANCE = 0.42;
-function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize, eliteChance = 0.4, crowdChance = CROWD_CHANCE, extraMinions = 0 }) {
-  const boss = floor > floors;
+function buildEncounter(bestiary, { floor, floors, partyLevel: partyLevel2, partySize, eliteChance = 0.4, crowdChance = CROWD_CHANCE, extraMinions = 0, isBoss = null }) {
+  const boss = isBoss != null ? Boolean(isBoss) : floor > floors;
   const own = bestiary.filter((m) => !m._anyBoss && m.id !== "mimic");
   const all = own.length ? own : FALLBACK_MONSTERS;
   const fit = (role, max, list = all) => {
@@ -2069,19 +2276,50 @@ function rollInitiative(s) {
   s.turn = 0;
   s.round = 1;
 }
+var TOWER_THEMES = DEFAULT_DUNGEONS.filter((d) => !d.isTower).map((d) => ({ key: d.key, name: d.name, icon: d.icon || "\u{1F5DD}" }));
+function towerEffectiveLevel(floor) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  return Math.min(20, 1 + Math.floor((f - 1) / 4));
+}
+function towerScale(floor) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  const step = (f - 1) % 4;
+  const endgame = Math.max(0, f - 76);
+  return {
+    hp: 1 + step * 0.06 + endgame * 0.045,
+    dmg: 1 + step * 0.04 + endgame * 0.035,
+    plus: Math.floor(Math.max(0, f - 20) / 16),
+    elite: Math.min(0.85, 0.25 + f / TOWER_MAX_FLOORS * 0.55)
+  };
+}
+function towerFloorXp(floor, partySize = 2) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  const bossBonus = f % TOWER_BOSS_EVERY === 0 ? 1.5 : 1;
+  const floorMult = 0.65 + (f - 1) * 0.022;
+  const compMult = partySize <= 1 ? SOLO_XP_MULT : companyOf(partySize).xp;
+  return Math.max(15, Math.round(XP_PER_ROOM * floorMult * bossBonus * compMult));
+}
+function towerVirtualHeroes(heroes, effLv) {
+  const live = heroes.filter((h) => !h.fled);
+  const count = Math.max(1, live.length);
+  const refMaxHp = HERO_HP_BASE + 10 + Math.max(0, effLv - 1) * 7;
+  return Array.from({ length: count }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
+}
 function newRun({ room, heroes, bestiary, dungeon, now }) {
+  const isTower = isTowerDungeon(room.type) || Boolean(dungeon?.isTower);
   const s = {
     roomId: room.id,
     type: room.type,
     week: room.weekKey || "",
     startKey: room.startKey,
-    diff: diffOf(room.difficulty).key,
+    diff: isTower ? "medio" : diffOf(room.difficulty).key,
     dungeonName: dungeon.name,
     dungeonIcon: dungeon.icon || "\u{1F5DD}",
     dungeonRules: JSON.parse(JSON.stringify(dungeonProfile(dungeon))),
-    floors: dungeon.floors || 3,
+    floors: isTower ? TOWER_MAX_FLOORS : dungeon.floors || 3,
     floor: 1,
     status: "fight",
+    ...isTower ? { isTower: true, towerCleared: 0, towerXp: 0 } : {},
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35,
     round: 1,
     order: [],
@@ -2110,7 +2348,11 @@ function newRun({ room, heroes, bestiary, dungeon, now }) {
     }
   });
   if (s.party > 1) log(s, `\u{1F91D} Compagnia \xD7${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
-  if (s.dungeonRules.key !== "neutro") log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE \xD7${s.dungeonRules.xp}, Monete Antiche \xD7${s.dungeonRules.coins}.`, { kind: "info" });
+  if (isTower) {
+    log(s, "\u{1F5FC} La Torre di Vethrik si spalanca: 100 piani mutevoli, guardiano ogni 5 piani. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
+  } else if (s.dungeonRules.key !== "neutro") {
+    log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE \xD7${s.dungeonRules.xp}, Monete Antiche \xD7${s.dungeonRules.coins}.`, { kind: "info" });
+  }
   const helpers = s.heroes.filter((h) => h.helper);
   if (helpers.length) log(s, `\u{1F91D} ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete n\xE9 bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti gi\xE0 pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
@@ -2153,6 +2395,56 @@ function balanceFoes(foes, heroes, isBoss) {
   return foes;
 }
 function startFloor(s, bestiary, now) {
+  if (s.isTower || isTowerDungeon(s.type)) {
+    s.isTower = true;
+    s.floors = TOWER_MAX_FLOORS;
+    s.boss = s.floor % TOWER_BOSS_EVERY === 0;
+    const themePool = TOWER_THEMES.filter((t) => t.key !== s.floorTheme);
+    const theme = pick(themePool.length ? themePool : TOWER_THEMES) || { key: "segrete", name: "Le Segrete", icon: "\u{1F5DD}" };
+    s.floorTheme = theme.key;
+    s.floorThemeName = theme.name;
+    s.floorThemeIcon = theme.icon;
+    const prof = pick(DUNGEON_PROFILES) || DUNGEON_PROFILES[0];
+    s.dungeonRules = JSON.parse(JSON.stringify(prof));
+    const P2 = runProfile(s);
+    const effLv = towerEffectiveLevel(s.floor);
+    const tScale = towerScale(s.floor);
+    const vHeroes = towerVirtualHeroes(s.heroes, effLv);
+    s.foes = balanceFoes(
+      buildEncounter(bestiary, {
+        floor: s.floor,
+        floors: s.floors,
+        isBoss: s.boss,
+        partyLevel: effLv,
+        partySize: s.heroes.filter((h) => !h.fled).length,
+        eliteChance: Math.min(0.88, tScale.elite + P2.eliteBonus),
+        crowdChance: P2.crowdChance,
+        extraMinions: P2.extraMinions
+      }),
+      vHeroes,
+      s.boss
+    );
+    s.foes.forEach((f) => {
+      f.maxHp = f.hp = Math.max(4, Math.round(f.maxHp * tScale.hp * P2.hp));
+      f.cap = {
+        ...f.cap,
+        dmg: (f.cap?.dmg || 4) * tScale.dmg * P2.dmg,
+        hit: (f.cap?.hit ?? 3) + tScale.plus,
+        dc: (f.cap?.dc ?? 11) + tScale.plus
+      };
+      f.ac += tScale.plus;
+      f.save += tScale.plus;
+      applyDungeonDefenses(f, P2);
+    });
+    s.heroes.forEach((h) => {
+      h.fx = {};
+    });
+    s.status = "fight";
+    rollInitiative(s);
+    log(s, s.boss ? `\u{1F5FC} Piano ${s.floor}/${s.floors} \xB7 \u{1F451} GUARDIANO DEL PIANO (${theme.icon} ${theme.name} \xB7 ${P2.name} \xB7 Rango Lv ${effLv}): ${s.foes.map((f) => f.name).join(", ")}.` : `\u{1F5FC} Piano ${s.floor}/${s.floors} (${theme.icon} ${theme.name} \xB7 ${P2.name} \xB7 Rango Lv ${effLv}): ${s.foes.map((f) => f.name).join(", ")}.`, { kind: "room" });
+    startHeroPhase(s, now);
+    return;
+  }
   s.boss = s.floor > s.floors;
   const D = diffOf(s.diff);
   const P = runProfile(s);
@@ -2749,10 +3041,28 @@ function checkEnd(s) {
   }
   if (!s.heroes.some(alive)) {
     s.status = "lost";
+    if (s.isTower) {
+      const cl = Number(s.towerCleared) || 0;
+      log(s, cl > 0 ? `\u{1F5FC} Il gruppo cade al Piano ${s.floor}! Scalata conclusa con ${cl} ${cl === 1 ? "piano superato" : "piani superati"} (+${s.towerXp || 0} PE). Il Piano ${cl} \xE8 registrato per i premi di domenica alle 23:00!` : "\u2620 Il gruppo cade al Piano 1 della Torre di Vethrik.", { kind: "end" });
+      return true;
+    }
     log(s, "\u2620 Il gruppo \xE8 caduto. Le Segrete si richiudono su di voi: tutto \xE8 perduto.", { kind: "end" });
     return true;
   }
   if (!s.foes.some(alive)) {
+    if (s.isTower) {
+      s.towerCleared = s.floor;
+      const addXp = towerFloorXp(s.floor, s.party || s.heroes.length);
+      s.towerXp = (s.towerXp || 0) + addXp;
+      if (s.floor >= (s.floors || TOWER_MAX_FLOORS)) {
+        s.status = "won";
+        log(s, `\u{1F3C6} IMPRESA LEGGENDARIA! Avete conquistato il Piano ${s.floor} della Torre di Vethrik! (+${addXp} PE \xB7 Totale: +${s.towerXp} PE). Domenica alle 23:00 riceverete il premio massimo di Vethrik!`, { kind: "end" });
+      } else {
+        s.status = "cleared";
+        log(s, `\u2705 Piano ${s.floor}/${s.floors} superato! (+${addXp} PE \xB7 Totale scalata: +${s.towerXp} PE). Il Piano ${s.floor} \xE8 ora registrato per i premi di domenica alle 23:00!`, { kind: "end" });
+      }
+      return true;
+    }
     floorCoins(s);
     if (s.boss) {
       s.status = "treasure";
@@ -2881,6 +3191,7 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
   s.spoils = sp;
 }
 function floorCoins(s) {
+  if (s.isTower) return;
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
   const cm = diffOf(s.diff).coins * runProfile(s).coins * companyOf(s.party || s.heroes.length).coins;
@@ -2892,7 +3203,7 @@ function floorCoins(s) {
   if (got.length) log(s, `\u{1FA99} Monete Antiche dalla sala: ${got.join(" \xB7 ")}.`, { kind: "loot" });
 }
 function lootDead(s) {
-  if (s.mimic) return;
+  if (s.mimic || s.isTower) return;
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
   const D = diffOf(s.diff);
@@ -2969,16 +3280,28 @@ function useItem(s, uid, { itemId, targetId }, now) {
     const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "cleanse_party") {
-    curVfx = { fx: "aoe", el: "water", from: h.id };
+    curVfx = { fx: it.healPct ? "heal" : "aoe", el: it.healPct ? "radiant" : "water", from: h.id };
     const tg = s.heroes.filter((x) => alive(x) && !x.fled);
+    const cleanseKeys = it.healPct ? ["burn", "poison", "frozen", "paralyzed", "frightened", "blinded", "slow", "confused"] : ["burn", "slow", "paralyzed"];
     const parts = tg.map((x) => {
-      const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]);
+      const before = x.hp;
+      if (it.healPct) x.hp = Math.min(x.maxHp, x.hp + Math.ceil(x.maxHp * it.healPct / 100));
+      const healed = x.hp - before;
+      const was = cleanseKeys.filter((k) => x.fx[k]);
       was.forEach((k) => {
         delete x.fx[k];
       });
-      return was.length ? `${x.name} (${was.map((k) => STATUS[k].ico).join("")})` : null;
+      if (it.healPct) {
+        x.fx.dis = 0;
+        x.fx.stun = false;
+      }
+      const chunks = [
+        ...healed > 0 ? [`+${healed} PF`] : [],
+        ...was.length ? [was.map((k) => STATUS[k].ico).join("")] : []
+      ];
+      return chunks.length ? `${x.name} (${chunks.join(" ")})` : null;
     }).filter(Boolean);
-    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? `liberati ${parts.join(", ")}` : "tutti fradici, ma nessuno aveva bisogno"}.`, { kind: "buff", actor: h.id, targets: tg.map((x) => x.id) });
+    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? parts.join(", ") : "nessuno aveva bisogno"}.`, { kind: it.healPct ? "heal" : "buff", actor: h.id, targets: tg.map((x) => x.id) });
   } else if (it.kind === "buff") {
     curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
     const until = s.round + (it.turns || 1) + 1;
@@ -3223,6 +3546,12 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   SUBCLASSES,
   SUBCLASS_COST,
   SUBCLASS_LEVEL,
+  TOWER_BOSS_EVERY,
+  TOWER_GEAR_IDS,
+  TOWER_KEY,
+  TOWER_MAX_FLOORS,
+  TOWER_REWARD_TIERS,
+  TOWER_WEEKLY_FREE,
   WEEKLY_RUNS,
   XP_VERSION,
   act,
@@ -3249,6 +3578,7 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   heroXp,
   hpPending,
   isGear,
+  isTowerDungeon,
   itemOf,
   levelOfXp,
   mergeDungeons,
@@ -3266,6 +3596,10 @@ Set \xAB${set.name}\xBB (${set.size || "?"} pezzi)${bonus ? ` \u2014 ${bonus}` :
   storyLevelOf,
   subclassOf,
   timeout,
+  towerEffectiveLevel,
+  towerFloorXp,
+  towerRewardForFloor,
+  towerStatusOf,
   useItem,
   validNewHero,
   validRespec,

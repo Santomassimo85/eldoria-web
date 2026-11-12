@@ -22,6 +22,7 @@ const usersOf = (it) => gearUsers(it).map((c) => classInfo(c)?.it).filter(Boolea
 
 // tipologie degli oggetti, nell'ordine in cui si mostrano (bottega e zaino)
 const CATEGORIES = [
+  { key: "tower", label: "🗼 Torre di Vethrik", kinds: ["tower_key"] },
   { key: "cure", label: "❤ Cure e rianimazione", kinds: ["heal", "revive"] },
   { key: "purif", label: "🌿 Purificanti", kinds: ["cleanse", "cleanse_party", "panacea"] },
   { key: "buff", label: "🛡 Potenziamenti", kinds: ["buff"] },
@@ -46,7 +47,7 @@ export function ItemRow({ id, n, onBuy, onSell, onGift, onEquip, onUseXp, busy, 
     <li className="sgs-item">
       <SgIcon kind="item" of={it} frame size="md" className={`sgs-ico gi-r-${it.rarity}`} />
       <span className="sgs-main">
-        <b>{it.name}</b> <em style={{ color: r.color }}>{r.it}</em>
+        <b>{it.name}</b> <em style={{ color: r.color }}>{r.it}</em>{it.towerOnly && <em style={{ marginLeft: 6, color: "#ffd56a", fontWeight: 700 }}>🗼 Unico Torre</em>}
         <small>{it.fx ? `${fxLine(it.fx)} · ` : ""}{it.desc}{isGear(it) ? ` · ${usersOf(it)}` : ""}</small>
       </span>
       {n != null && <span className="sgs-n">×{n}</span>}

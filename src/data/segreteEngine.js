@@ -16,8 +16,8 @@ import { hasMetalProtection, metalArmor, ACID_METAL_MULT } from "./segreteMateri
 import { sneakDiceOf, canTwoHand, weaponOf, kitOf, heroActions, weaponMod, weaponChoices, heroMaxHp, HERO_HP_BASE, heroDc, heroHit, heroDefense, heroStats, mainMod, profOf, cantripMult, attacksOf, heroLevel, heroXp, XP_VERSION, XP_PER_ROOM, MAX_STORY_LEVEL, DEFEND, heroSubclass, subclassOf, subNum } from "./segreteKits";
 // tratti passivi della sottoclasse di un combattente (vuoto per mostri ed eroi senza)
 const subP = (c) => (c?.side === "h" && c.subclass ? subclassOf(c.cls, c.subclass)?.passive || {} : {});
-import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines } from "./segrete";
-import { dungeonProfile, runProfile, dungeonDropContext, applyDungeonDefenses } from "./segreteProfiles";
+import { sizeOf, diffOf, MIMIC_MONSTER, companyOf, companyLines, DEFAULT_DUNGEONS, TOWER_KEY, TOWER_MAX_FLOORS, TOWER_BOSS_EVERY, isTowerDungeon } from "./segrete";
+import { dungeonProfile, runProfile, dungeonDropContext, applyDungeonDefenses, DUNGEON_PROFILES } from "./segreteProfiles";
 import { RACES, hasRace } from "./segreteRaces";
 const companyLinesTxt = (n) => companyLines(n).join(", ");
 
@@ -175,8 +175,8 @@ function makeFoe(src, idx, partySize, suffix, partyLv = 1) {
 
 /* Sala n (1-based): normale = gregari (e a volte un'élite), ultima = boss. */
 export const CROWD_CHANCE = 0.42;
-export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize, eliteChance = 0.4, crowdChance = CROWD_CHANCE, extraMinions = 0 }) {
-  const boss = floor > floors;
+export function buildEncounter(bestiary, { floor, floors, partyLevel, partySize, eliteChance = 0.4, crowdChance = CROWD_CHANCE, extraMinions = 0, isBoss = null }) {
+  const boss = isBoss != null ? Boolean(isBoss) : floor > floors;
   // `_anyBoss` = boss di altri dungeon (li passa il server): si usano solo se questo dungeon non ha un boss suo
   const own = bestiary.filter((m) => !m._anyBoss && m.id !== "mimic");
   const all = own.length ? own : FALLBACK_MONSTERS;
@@ -337,12 +337,45 @@ function rollInitiative(s) {
   s.round = 1;
 }
 
+/* ── LA TORRE DI VETHRIK (100 piani auto-generati, difficoltà crescente col piano) ── */
+export const TOWER_THEMES = DEFAULT_DUNGEONS.filter((d) => !d.isTower).map((d) => ({ key: d.key, name: d.name, icon: d.icon || "🗝" }));
+export function towerEffectiveLevel(floor) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  return Math.min(20, 1 + Math.floor((f - 1) / 4));
+}
+export function towerScale(floor) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  const step = (f - 1) % 4;
+  const endgame = Math.max(0, f - 76);
+  return {
+    hp: 1 + step * 0.06 + endgame * 0.045,
+    dmg: 1 + step * 0.04 + endgame * 0.035,
+    plus: Math.floor(Math.max(0, f - 20) / 16),
+    elite: Math.min(0.85, 0.25 + (f / TOWER_MAX_FLOORS) * 0.55),
+  };
+}
+export function towerFloorXp(floor, partySize = 2) {
+  const f = Math.max(1, Math.min(TOWER_MAX_FLOORS, Number(floor) || 1));
+  const bossBonus = f % TOWER_BOSS_EVERY === 0 ? 1.5 : 1;
+  const floorMult = 0.65 + (f - 1) * 0.022;
+  const compMult = partySize <= 1 ? SOLO_XP_MULT : companyOf(partySize).xp;
+  return Math.max(15, Math.round(XP_PER_ROOM * floorMult * bossBonus * compMult));
+}
+function towerVirtualHeroes(heroes, effLv) {
+  const live = heroes.filter((h) => !h.fled);
+  const count = Math.max(1, live.length);
+  const refMaxHp = HERO_HP_BASE + 10 + Math.max(0, effLv - 1) * 7;
+  return Array.from({ length: count }, (_, i) => ({ id: `vh_${i}`, level: effLv, maxHp: refMaxHp, hp: refMaxHp, compHp: 0 }));
+}
+
 export function newRun({ room, heroes, bestiary, dungeon, now }) {
+  const isTower = isTowerDungeon(room.type) || Boolean(dungeon?.isTower);
   const s = {
-    roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey, diff: diffOf(room.difficulty).key,
+    roomId: room.id, type: room.type, week: room.weekKey || "", startKey: room.startKey, diff: isTower ? "medio" : diffOf(room.difficulty).key,
     dungeonName: dungeon.name, dungeonIcon: dungeon.icon || "🗝",
     dungeonRules: JSON.parse(JSON.stringify(dungeonProfile(dungeon))),
-    floors: dungeon.floors || 3, floor: 1, status: "fight",
+    floors: isTower ? TOWER_MAX_FLOORS : (dungeon.floors || 3), floor: 1, status: "fight",
+    ...(isTower ? { isTower: true, towerCleared: 0, towerXp: 0 } : {}),
     lootChance: Number.isFinite(Number(dungeon.lootChance)) ? Number(dungeon.lootChance) : 35, round: 1, order: [], turn: 0, turnAt: now,
     heroes: heroes.map(makeHero).map((h, _i, arr) => (arr.length === 1 ? { ...h, hp: Math.round(h.maxHp * ADAPT.soloHp), maxHp: Math.round(h.maxHp * ADAPT.soloHp) } : h)), foes: [], log: [], seq: 0, bestiary: bestiary.map((m) => m.id || m.name),
   };
@@ -356,7 +389,11 @@ export function newRun({ room, heroes, bestiary, dungeon, now }) {
     if (h.cls === "paladin") { h.healingPoolMax = h.maxHp + h.level * 2; h.healingPool = h.healingPoolMax; }
   });
   if (s.party > 1) log(s, `🤝 Compagnia ×${s.party}: ${companyLinesTxt(s.party)}.`, { kind: "info" });
-  if (s.dungeonRules.key !== "neutro") log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE ×${s.dungeonRules.xp}, Monete Antiche ×${s.dungeonRules.coins}.`, { kind: "info" });
+  if (isTower) {
+    log(s, "🗼 La Torre di Vethrik si spalanca: 100 piani mutevoli, guardiano ogni 5 piani. Ogni piano superato conferisce PE e aggiorna il vostro record settimanale per i premi unici di domenica alle 23:00!", { kind: "info" });
+  } else if (s.dungeonRules.key !== "neutro") {
+    log(s, `${s.dungeonRules.name}: ${s.dungeonRules.desc} Premi: PE ×${s.dungeonRules.xp}, Monete Antiche ×${s.dungeonRules.coins}.`, { kind: "info" });
+  }
   const helpers = s.heroes.filter((h) => h.helper);
   if (helpers.length) log(s, `🤝 ${helpers.map((h) => h.name).join(", ")} ${helpers.length === 1 ? "partecipa" : "partecipano"} come aiuto: niente PE, monete né bottino per ${helpers.length === 1 ? "lui" : "loro"} (limiti già pieni).`, { kind: "info" });
   startFloor(s, bestiary, now);
@@ -402,6 +439,56 @@ export function balanceFoes(foes, heroes, isBoss) {
   return foes;
 }
 function startFloor(s, bestiary, now) {
+  if (s.isTower || isTowerDungeon(s.type)) {
+    s.isTower = true;
+    s.floors = TOWER_MAX_FLOORS;
+    s.boss = s.floor % TOWER_BOSS_EVERY === 0;
+    const themePool = TOWER_THEMES.filter((t) => t.key !== s.floorTheme);
+    const theme = pick(themePool.length ? themePool : TOWER_THEMES) || { key: "segrete", name: "Le Segrete", icon: "🗝" };
+    s.floorTheme = theme.key;
+    s.floorThemeName = theme.name;
+    s.floorThemeIcon = theme.icon;
+    const prof = pick(DUNGEON_PROFILES) || DUNGEON_PROFILES[0];
+    s.dungeonRules = JSON.parse(JSON.stringify(prof));
+    const P = runProfile(s);
+    const effLv = towerEffectiveLevel(s.floor);
+    const tScale = towerScale(s.floor);
+    const vHeroes = towerVirtualHeroes(s.heroes, effLv);
+    s.foes = balanceFoes(
+      buildEncounter(bestiary, {
+        floor: s.floor,
+        floors: s.floors,
+        isBoss: s.boss,
+        partyLevel: effLv,
+        partySize: s.heroes.filter((h) => !h.fled).length,
+        eliteChance: Math.min(0.88, tScale.elite + P.eliteBonus),
+        crowdChance: P.crowdChance,
+        extraMinions: P.extraMinions,
+      }),
+      vHeroes,
+      s.boss
+    );
+    s.foes.forEach((f) => {
+      f.maxHp = f.hp = Math.max(4, Math.round(f.maxHp * tScale.hp * P.hp));
+      f.cap = {
+        ...f.cap,
+        dmg: (f.cap?.dmg || 4) * tScale.dmg * P.dmg,
+        hit: (f.cap?.hit ?? 3) + tScale.plus,
+        dc: (f.cap?.dc ?? 11) + tScale.plus,
+      };
+      f.ac += tScale.plus;
+      f.save += tScale.plus;
+      applyDungeonDefenses(f, P);
+    });
+    s.heroes.forEach((h) => { h.fx = {}; });
+    s.status = "fight";
+    rollInitiative(s);
+    log(s, s.boss
+      ? `🗼 Piano ${s.floor}/${s.floors} · 👑 GUARDIANO DEL PIANO (${theme.icon} ${theme.name} · ${P.name} · Rango Lv ${effLv}): ${s.foes.map((f) => f.name).join(", ")}.`
+      : `🗼 Piano ${s.floor}/${s.floors} (${theme.icon} ${theme.name} · ${P.name} · Rango Lv ${effLv}): ${s.foes.map((f) => f.name).join(", ")}.`, { kind: "room" });
+    startHeroPhase(s, now);
+    return;
+  }
   s.boss = s.floor > s.floors;
   const D = diffOf(s.diff);
   const P = runProfile(s);
@@ -936,8 +1023,32 @@ function checkEnd(s) {
     }
     return false;
   }
-  if (!s.heroes.some(alive)) { s.status = "lost"; log(s, "☠ Il gruppo è caduto. Le Segrete si richiudono su di voi: tutto è perduto.", { kind: "end" }); return true; }
+  if (!s.heroes.some(alive)) {
+    s.status = "lost";
+    if (s.isTower) {
+      const cl = Number(s.towerCleared) || 0;
+      log(s, cl > 0
+        ? `🗼 Il gruppo cade al Piano ${s.floor}! Scalata conclusa con ${cl} ${cl === 1 ? "piano superato" : "piani superati"} (+${s.towerXp || 0} PE). Il Piano ${cl} è registrato per i premi di domenica alle 23:00!`
+        : "☠ Il gruppo cade al Piano 1 della Torre di Vethrik.", { kind: "end" });
+      return true;
+    }
+    log(s, "☠ Il gruppo è caduto. Le Segrete si richiudono su di voi: tutto è perduto.", { kind: "end" });
+    return true;
+  }
   if (!s.foes.some(alive)) {
+    if (s.isTower) {
+      s.towerCleared = s.floor;
+      const addXp = towerFloorXp(s.floor, s.party || s.heroes.length);
+      s.towerXp = (s.towerXp || 0) + addXp;
+      if (s.floor >= (s.floors || TOWER_MAX_FLOORS)) {
+        s.status = "won";
+        log(s, `🏆 IMPRESA LEGGENDARIA! Avete conquistato il Piano ${s.floor} della Torre di Vethrik! (+${addXp} PE · Totale: +${s.towerXp} PE). Domenica alle 23:00 riceverete il premio massimo di Vethrik!`, { kind: "end" });
+      } else {
+        s.status = "cleared";
+        log(s, `✅ Piano ${s.floor}/${s.floors} superato! (+${addXp} PE · Totale scalata: +${s.towerXp} PE). Il Piano ${s.floor} è ora registrato per i premi di domenica alle 23:00!`, { kind: "end" });
+      }
+      return true;
+    }
     floorCoins(s);
     if (s.boss) {
       // SALA DEL TESORO (2026-11-07): dopo il boss c'è lo scrigno; la vittoria arriva quando qualcuno lo apre
@@ -1069,6 +1180,7 @@ function addSpoil(s, uid, { coins = 0, item = null, src = "" } = {}) {
 }
 // Ogni sala vinta (e il boss): 1d20 Monete Antiche a ogni eroe rimasto (anche a terra, non a chi è fuggito).
 function floorCoins(s) {
+  if (s.isTower) return;
   if (s.coinsFloor === s.floor) return;
   s.coinsFloor = s.floor;
   const cm = diffOf(s.diff).coins * runProfile(s).coins * companyOf(s.party || s.heroes.length).coins;
@@ -1077,7 +1189,7 @@ function floorCoins(s) {
 }
 // Mostri appena caduti: a volte lasciano Monete o un oggetto (a chi li ha abbattuti, sennò a caso).
 export function lootDead(s) {
-  if (s.mimic) return; // Il Mimic custodisce solo il premio dello scrigno.
+  if (s.mimic || s.isTower) return; // Il Mimic custodisce solo il premio dello scrigno; nella Torre il premio è unico domenicale.
   // chi aiuta (limiti pieni) non entra nel tiro del bottino; se aiutano tutti, i mostri non lasciano niente
   const heroes = s.heroes.filter((h) => !h.fled && !h.helper);
   if (!heroes.length) return;
@@ -1149,10 +1261,25 @@ export function useItem(s, uid, { itemId, targetId }, now) {
     const stone = it.kind === "cleanse" && target.fx.petrified ? " (la pietra resta: serve la Panacea)" : "";
     log(s, `${it.icon} ${h.name} usa ${it.name}${on}: ${was.length ? `via ${was.map((k) => `${STATUS[k].ico} ${STATUS[k].name}`).join(", ")}` : "via svantaggio e stordimento"}${stone}.`, { kind: "buff", actor: h.id, targets: [target.id] });
   } else if (it.kind === "cleanse_party") {
-    curVfx = { fx: "aoe", el: "water", from: h.id };
+    curVfx = { fx: it.healPct ? "heal" : "aoe", el: it.healPct ? "radiant" : "water", from: h.id };
     const tg = s.heroes.filter((x) => alive(x) && !x.fled);
-    const parts = tg.map((x) => { const was = ["burn", "slow", "paralyzed"].filter((k) => x.fx[k]); was.forEach((k) => { delete x.fx[k]; }); return was.length ? `${x.name} (${was.map((k) => STATUS[k].ico).join("")})` : null; }).filter(Boolean);
-    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? `liberati ${parts.join(", ")}` : "tutti fradici, ma nessuno aveva bisogno"}.`, { kind: "buff", actor: h.id, targets: tg.map((x) => x.id) });
+    const cleanseKeys = it.healPct
+      ? ["burn", "poison", "frozen", "paralyzed", "frightened", "blinded", "slow", "confused"]
+      : ["burn", "slow", "paralyzed"];
+    const parts = tg.map((x) => {
+      const before = x.hp;
+      if (it.healPct) x.hp = Math.min(x.maxHp, x.hp + Math.ceil((x.maxHp * it.healPct) / 100));
+      const healed = x.hp - before;
+      const was = cleanseKeys.filter((k) => x.fx[k]);
+      was.forEach((k) => { delete x.fx[k]; });
+      if (it.healPct) { x.fx.dis = 0; x.fx.stun = false; }
+      const chunks = [
+        ...(healed > 0 ? [`+${healed} PF`] : []),
+        ...(was.length ? [was.map((k) => STATUS[k].ico).join("")] : []),
+      ];
+      return chunks.length ? `${x.name} (${chunks.join(" ")})` : null;
+    }).filter(Boolean);
+    log(s, `${it.icon} ${h.name} lancia ${it.name} sul gruppo: ${parts.length ? parts.join(", ") : "nessuno aveva bisogno"}.`, { kind: it.healPct ? "heal" : "buff", actor: h.id, targets: tg.map((x) => x.id) });
   } else if (it.kind === "buff") {
     curVfx = { fx: it.buff === "ac" ? "shield" : "buff", el: "arcane", from: h.id };
     const until = s.round + (it.turns || 1) + 1;

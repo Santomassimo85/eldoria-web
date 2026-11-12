@@ -21,7 +21,7 @@ import { armorGlove, handSpec, handDoc, pairKey } from "../fx/crawlerArt";
 // fisica (balestra). Freccia Acida e gli altri incantesimi hanno un elemento: partono dal focus.
 const MELEE_FX = new Set(["slash", "smash", "thrust", "punch"]);
 const isWeaponRow = (l) => (l.w != null ? !!l.w : MELEE_FX.has(l.fx) || (l.fx === "arrow" && (l.el || "physical") === "physical"));
-import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON } from "../data/segreteItems";
+import { bagOf, battleItem, itemTarget, itemOf, COIN_ICON, TOWER_REWARD_TIERS } from "../data/segreteItems";
 import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
 import StatusPips from "../components/StatusPips";
@@ -328,7 +328,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
     engRef.current = e; setEng(e);
     return () => { e.destroy(); engRef.current = null; setEng(null); };
   }, [cv, fg]);
-  const dungeonType = run?.type || "";
+  const dungeonType = run?.floorTheme || run?.type || "";
   useEffect(() => {
     if (!eng || !dungeonType) return;
     eng.setTheme(dungeonType);
@@ -636,7 +636,11 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
         return f ? <FoeCard f={{ ...f, frontImg: fronts[f.src] || f.frontImg }} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
       })()}
       <div className="sgb-top cw-top">
-        <span className="sgb-where">{run.dungeonIcon} {run.dungeonName}{run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · {run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round {run.round}</span>
+        <span className="sgb-where">
+          {run.isTower
+            ? `${run.dungeonIcon} ${run.dungeonName} · Piano ${run.floor}/${run.floors}${run.floorThemeName ? ` (${run.floorThemeIcon || ""} ${run.floorThemeName})` : ""}${run.boss ? " · 👑 Guardiano" : ""} · ⭐ +${(run.towerXp || 0).toLocaleString("it-IT")} PE · round ${run.round}`
+            : `${run.dungeonIcon} ${run.dungeonName}${run.diff && run.diff !== "facile" ? ` · ${diffOf(run.diff).icon} ${diffOf(run.diff).name}` : ""} · ${run.treasure ? "💰 Sala del tesoro" : run.boss ? "👑 Sala del boss" : `Sala ${run.floor}/${run.floors}`} · round ${run.round}`}
+        </span>
         {run.status === "fight" && me && me.hp > 0 && <button type="button" className="sgb-flee" onClick={flee}>🏃 Abbandona</button>}
       </div>
 
@@ -719,9 +723,17 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
         {playing && run.status !== "fight" && <p className="sgb-turn sgb-turn--wait">⏳ …</p>}
         {!playing && run.status === "cleared" && (
           <div className="sgb-end">
-            <p>✅ Sala ripulita! Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati.</p>
-            <FloorGains run={run} uid={uid} />
-            <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>{run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala"}</button>
+            <p>
+              {run.isTower
+                ? `✅ Piano ${run.floor}/${run.floors} superato! (+${(run.towerXp || 0).toLocaleString("it-IT")} PE accumulati · Piano ${run.floor} registrato per domenica alle 23:00). Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati.`
+                : "✅ Sala ripulita! Breve riposo: +30% PF, chi è a terra si rialza, incantesimi ricaricati."}
+            </p>
+            {!run.isTower && <FloorGains run={run} uid={uid} />}
+            <button type="button" className="sgb-btn" disabled={busy} onClick={() => send({ op: "next" })}>
+              {run.isTower
+                ? ((run.floor + 1) % 5 === 0 ? `👑 Sali al Piano ${run.floor + 1} (Guardiano!)` : `🗼 Sali al Piano ${run.floor + 1}/${run.floors}`)
+                : (run.floor >= run.floors ? "👑 Affronta il boss" : "🚪 Prosegui alla prossima sala")}
+            </button>
           </div>
         )}
         {run.status === "treasure" && (
@@ -735,7 +747,26 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
         )}
         {!playing && (run.status === "lost" || (run.status === "won" && (!run.chest || chestDone))) && (
           <div className="sgb-end">
-            <p className="sgb-result">{run.mimic?.result === "lost" ? "Il Mimic vi ha sconfitti: scrigno perduto, bottino precedente e PE conservati." : run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
+            {run.isTower ? (() => {
+              const cl = run.status === "won" ? (run.floors || 100) : (Number(run.towerCleared) || 0);
+              const tier = TOWER_REWARD_TIERS.find((t) => cl >= t.min && cl <= t.max);
+              return <>
+                <p className="sgb-result">
+                  {run.status === "won"
+                    ? "🏆 IMPRESA LEGGENDARIA! Avete conquistato il Piano 100 della Torre di Vethrik!"
+                    : cl > 0
+                      ? `🗼 Scalata conclusa al Piano ${run.floor}! Avete superato ${cl} ${cl === 1 ? "piano" : "piani"}: il Piano ${cl} è registrato per i premi unici di domenica alle 23:00.`
+                      : "☠ Sconfitti al Piano 1 della Torre di Vethrik."}
+                </p>
+                {tier && (
+                  <p style={{ color: "#ffd56a", fontSize: ".9rem", margin: "4px 0 8px" }}>
+                    🎁 <b>Premio Domenica ore 23:00 ({tier.name}, Piano {cl}):</b> 🪙 {tier.coinsBase + cl * tier.coinsPerFloor} Monete Antiche · {tier.desc}
+                  </p>
+                )}
+              </>;
+            })() : (
+              <p className="sgb-result">{run.mimic?.result === "lost" ? "Il Mimic vi ha sconfitti: scrigno perduto, bottino precedente e PE conservati." : run.status === "won" ? `🏆 Vittoria! ${run.dungeonName} è vostro.` : "☠ Sconfitta. Le Segrete vi hanno inghiottito: tutto è perduto."}</p>
+            )}
             {(run.levelUps || []).map((l) => <p key={l.uid}>⭐ {l.name} (<SegreteIdentity cls={l.cls} hero={run.heroes.find((h) => h.uid === l.uid) || l} />): +{(l.xp || 0).toLocaleString("it-IT")} PE{l.to > l.from ? <> · <b>sale al livello {l.to}!</b> Passa dalla lobby per i punti e le scelte nuove.</> : ""}</p>)}
             {run.loot && (
               <p className="sgb-loot">{run.loot.img && <img src={run.loot.img} alt="" />}

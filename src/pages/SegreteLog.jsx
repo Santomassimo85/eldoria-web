@@ -19,16 +19,24 @@ const dayLabel = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString("it-IT", {
 function Row({ e }) {
   const c = classInfo(e.cls);
   const items = Object.entries(e.items || {}).filter(([id]) => itemOf(id));
-  const reached = e.floor > e.floors ? "boss" : `sala ${e.floor}/${e.floors}`;
+  const isTower = Boolean(e.isTower);
+  const reached = isTower
+    ? `Piano ${e.floor || 0}/${e.floors || 100} superato`
+    : (e.floor > e.floors ? "boss" : `sala ${e.floor}/${e.floors}`);
   return (
     <li className={`sgl-row is-${e.result}`} style={clsStyle(e.cls)}>
       <span className="sgl-time">{hhmm(e.at)}</span>
       <span className="sgl-main">
         <b>{e.icon} {e.dungeon} <span className="sgr-clsname">· {c?.icon} <SegreteIdentity cls={e.cls} hero={e} /></span></b>
-        <small>{RESULT[e.result] || e.result}{e.helper ? " · 🤝 aiuto" : ""} · arrivati a {reached}</small>
+        <small>{isTower ? (e.floor > 0 ? "🗼 Scalata registrata" : "☠ Caduto al Piano 1") : (RESULT[e.result] || e.result)}{e.helper ? " · 🤝 aiuto" : ""} · {reached}</small>
         <span className="sgl-gain">
           {e.helper ? (
             <em>🤝 come aiuto: nessun premio</em>
+          ) : isTower ? (
+            <>
+              {!!e.xp && <em>⭐ +{e.xp} PE{e.lvTo ? ` · Lv ${e.lvTo}!` : ""}</em>}
+              {e.floor > 0 ? <em>🎁 Piano {e.floor} registrato per i premi unici di domenica alle 23:00</em> : <em className="sgl-lost">nessun piano superato</em>}
+            </>
           ) : e.kept ? (
             <>
               <em className="sgl-coins">{COIN_ICON} +{e.coins}</em>
