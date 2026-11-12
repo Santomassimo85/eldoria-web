@@ -166,23 +166,107 @@ function DifficultyPicker({ value, onPick, disabled, levels = [], readOnly }) {
   );
 }
 
-const TABS = [
+const SEGRETE_TABS = [
   { key: "gruppi", icon: "⚔", label: "Gruppi" },
-  { key: "torre", icon: "🗼", label: "Torre di Vethrik" },
   { key: "eroi", icon: "🧝", label: "Personaggi" },
   { key: "bottega", icon: "🏪", label: "Bottega" },
   { key: "zaino", icon: "🎒", label: "Zaino" },
   { key: "storico", icon: "📜", label: "Storico" },
   { key: "manuale", icon: "📖", label: "Manuale" },
 ];
-const TAB_KEY = "sgr_tab";
-const readTab = (initialTab) => {
-  if (initialTab && TABS.some((x) => x.key === initialTab)) return initialTab;
-  try { const t = localStorage.getItem(TAB_KEY); return TABS.some((x) => x.key === t) ? t : "gruppi"; } catch { return "gruppi"; }
+const TORRE_TABS = [
+  { key: "torre", icon: "🗼", label: "Scalata" },
+  { key: "premi", icon: "🎁", label: "Premi & Reliquie" },
+  { key: "eroi", icon: "🧝", label: "Personaggi" },
+  { key: "zaino", icon: "🎒", label: "Zaino" },
+  { key: "bottega", icon: "🏪", label: "Bottega" },
+  { key: "storico", icon: "📜", label: "Storico Torre" },
+];
+const readTab = (isTowerMode, initialTab) => {
+  const tabs = isTowerMode ? TORRE_TABS : SEGRETE_TABS;
+  const def = isTowerMode ? "torre" : "gruppi";
+  const storageKey = isTowerMode ? "torre_vethrik_tab" : "sgr_tab";
+  if (initialTab && tabs.some((x) => x.key === initialTab)) return initialTab;
+  try {
+    const t = localStorage.getItem(storageKey);
+    return tabs.some((x) => x.key === t) ? t : def;
+  } catch {
+    return def;
+  }
 };
 
-export default function Segrete({ initialTab = null }) {
+function TowerRewardsPanel({ charData }) {
+  const ts = towerStatusOf(charData);
+  const curTier = ts.floor > 0 ? TOWER_REWARD_TIERS.find((t) => ts.floor >= t.min && ts.floor <= t.max) : null;
+  return (
+    <>
+      <section className="sgr-block">
+        <h2 className="sgr-h2">🎁 Premi Settimanali della Torre (Domenica ore 23:00)</h2>
+        <p className="sgr-hint">
+          Ogni domenica alle <b>23:00</b> la Torre di Vethrik si resetta al Piano 0, rigenera i 3 Sigilli settimanali gratuiti e consegna automaticamente nello zaino delle Segrete i premi del <b>piano registrato</b> durante la settimana.
+        </p>
+        {curTier ? (
+          <div style={{ margin: "10px 0", padding: "10px 14px", borderRadius: 10, background: "rgba(255, 213, 106, .1)", border: "1px solid rgba(255, 213, 106, .35)" }}>
+            <b style={{ color: "#ffd56a" }}>📍 Il tuo premio garantito attuale (Piano {ts.floor}/100 · {curTier.name}):</b>
+            <p className="sgr-hint" style={{ margin: "4px 0 0", color: "#fff3c4" }}>
+              {COIN_ICON} <b>{curTier.coinsBase + ts.floor * curTier.coinsPerFloor} {COIN_NAME}</b> + {curTier.desc}
+            </p>
+          </div>
+        ) : (
+          <p className="sgr-hint" style={{ color: "#cbd5e1" }}>
+            Non hai ancora registrato un piano questa settimana (0/100). Supera almeno il Piano 1 per assicurarti i premi di domenica alle 23:00!
+          </p>
+        )}
+        <ul className="sgr-rooms" style={{ marginTop: 10 }}>
+          {TOWER_REWARD_TIERS.map((t) => {
+            const active = ts.floor >= t.min && ts.floor <= t.max;
+            return (
+              <li key={t.min} className="sgr-room" style={active ? { borderColor: "rgba(255, 213, 106, .6)", background: "rgba(255, 213, 106, .08)" } : undefined}>
+                <div className="sgr-room-top">
+                  <b className="sgr-room-name" style={active ? { color: "#ffd56a" } : undefined}>
+                    🗼 Piani {t.min === t.max ? t.min : `${t.min}–${t.max}`} · {t.name}
+                  </b>
+                  {active && <span className="sgr-tag">Il tuo grado attuale</span>}
+                </div>
+                <p className="sgr-hint" style={{ margin: "4px 0 0" }}>
+                  {COIN_ICON} <b>{t.coinsBase + t.min * t.coinsPerFloor}–{t.coinsBase + t.max * t.coinsPerFloor} {COIN_NAME}</b> · {t.desc}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <section className="sgr-block">
+        <h2 className="sgr-h2">🗡 Reliquie Uniche di Vethrik (+2)</h2>
+        <p className="sgr-hint">
+          Questi equipaggiamenti leggendari ed essenze arcane si ottengono <b>esclusivamente</b> dai premi domenicali della Torre di Vethrik (dal Piano 25 in su) e non compaiono mai in Bottega né nei dungeon normali. Si equipaggiano sui tuoi eroi delle Segrete!
+        </p>
+        <ul className="sgr-rooms" style={{ marginTop: 10 }}>
+          {["essenza_vethrik", "lacrima_vethrik", ...TOWER_GEAR_IDS].map((id) => {
+            const it = itemOf(id);
+            if (!it) return null;
+            return (
+              <li key={id} className="sgr-room">
+                <div className="sgr-room-top">
+                  <b className="sgr-room-name"><SgIcon kind="item" of={it} fallback={it.icon} /> {it.name}</b>
+                  <span className="sgr-room-n">{it.kind === "weapon" ? "Arma +2" : it.kind === "armor" ? "Armatura +2" : it.kind === "shield" ? "Scudo +2" : "Consumabile Unico"}</span>
+                </div>
+                <p className="sgr-hint" style={{ margin: "4px 0 0" }}>{it.desc}</p>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </>
+  );
+}
+
+export default function Segrete({ mode = "segrete", initialTab = null }) {
   const location = useLocation();
+  const isTowerPage = mode === "torre" || location.pathname === "/torre-di-vethrik";
+  const activeTabs = isTowerPage ? TORRE_TABS : SEGRETE_TABS;
+  const storageKey = isTowerPage ? "torre_vethrik_tab" : "sgr_tab";
   const { currentUser } = useAuth();
   const uid = currentUser?.uid;
   const master = isMainMaster(currentUser?.email);
@@ -197,19 +281,18 @@ export default function Segrete({ initialTab = null }) {
   const [type, setType] = useState("segrete");
   const [diff, setDiff] = useState("facile");
   const [name, setName] = useState("");
-  const [tab, setTabState] = useState(() => readTab(initialTab || (location.pathname === "/torre-di-vethrik" ? "torre" : null)));
+  const [tab, setTabState] = useState(() => readTab(isTowerPage, initialTab));
   const [focus, setFocus] = useState(null);
   const setTab = (t) => {
     setTabState(t);
-    try { localStorage.setItem(TAB_KEY, t); } catch { /* niente */ }
+    try { localStorage.setItem(storageKey, t); } catch { /* niente */ }
   };
 
   useEffect(() => {
-    if (location.pathname === "/torre-di-vethrik") setTabState("torre");
-    else if (location.pathname === "/segrete" && initialTab !== "torre") {
-      setTabState((prev) => (prev === "torre" ? "gruppi" : prev));
+    if (!activeTabs.some((x) => x.key === tab)) {
+      setTabState(isTowerPage ? "torre" : "gruppi");
     }
-  }, [location.pathname, initialTab]);
+  }, [isTowerPage, activeTabs, tab]);
 
   useEffect(() => {
     if (!uid) return undefined;
@@ -244,7 +327,9 @@ export default function Segrete({ initialTab = null }) {
     if (!normalDungeons.some((d) => d.key === type)) setType(normalDungeons[0]?.key || "");
   }, [normalDungeons, type]);
   const dungeonOf = (key) => dungeons.find((d) => d.key === key) || { key, name: key, icon: "🗝" };
-  const myRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
+  const allMyRoom = rooms.find((r) => (r.memberIds || []).includes(uid)) || null;
+  const myRoom = allMyRoom && (isTowerPage ? isTowerDungeon(allMyRoom.type) : !isTowerDungeon(allMyRoom.type)) ? allMyRoom : null;
+  const otherSectionRoom = allMyRoom && !myRoom ? allMyRoom : null;
   const meInRoom = myRoom ? roomMember(myRoom, uid) : null;
   // Refresh existing groups when a hero gains levels or changes active subclass.
   useEffect(() => {
@@ -270,9 +355,9 @@ export default function Segrete({ initialTab = null }) {
   const running = rooms.filter((r) => r.status === "running" && r.id !== myRoom?.id && (fresh(r, 6 * 36e5) || master));
   const runningNormalRooms = running.filter((r) => !isTowerDungeon(r.type));
   const runningTowerRooms = running.filter((r) => isTowerDungeon(r.type));
-  const invites = openRooms.filter(invitedTo).length;
   const normalInvites = openNormalRooms.filter(invitedTo).length;
   const towerInvites = openTowerRooms.filter(invitedTo).length;
+  const sectionInvites = isTowerPage ? towerInvites : normalInvites;
   const todoN = heroClasses(charData).filter((c) => heroTodo(heroOf(charData, c.key), c.key).length).length;
 
   const run = async (fn) => {
@@ -294,8 +379,8 @@ export default function Segrete({ initialTab = null }) {
   if (!uid) {
     return (
       <section className="sgr-page">
-        <header className="sgr-head"><h1 className="sgr-title">Le Segrete</h1></header>
-        <p className="sgr-empty">Accedi per formare un gruppo e scendere nei dungeon.</p>
+        <header className="sgr-head"><h1 className="sgr-title">{isTowerPage ? "🗼 La Torre di Vethrik" : "Le Segrete"}</h1></header>
+        <p className="sgr-empty">Accedi per formare un gruppo e affrontare {isTowerPage ? "la Torre di Vethrik" : "i dungeon"}.</p>
       </section>
     );
   }
@@ -313,25 +398,49 @@ export default function Segrete({ initialTab = null }) {
   const ci = classInfo(curCls);
   const curHero = heroOf(charData, curCls);
   const readyN = myRoom ? myRoom.members.filter((m) => m.ready).length : 0;
-  const myRoomIsTower = !!myRoom && isTowerDungeon(myRoom.type);
   const badge = {
-    gruppi: normalInvites || (myRoom && !myRoomIsTower ? "●" : 0),
-    torre: towerInvites || (myRoomIsTower ? "●" : 0),
+    gruppi: normalInvites || (myRoom ? "●" : 0),
+    torre: towerInvites || (myRoom ? "●" : 0),
     eroi: todoN,
   };
   const tsStatus = towerStatusOf(charData);
 
   return (
     <section className="sgr-page">
-      <Link to="/sala-della-gloria" className="sgr-back">← Sala della Gloria</Link>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <Link to="/sala-della-gloria" className="sgr-back">← Sala della Gloria</Link>
+        <Link to={isTowerPage ? "/segrete" : "/torre-di-vethrik"} className="sgr-back">
+          {isTowerPage ? "🗝 Vai alle Segrete →" : "🗼 Vai alla Torre di Vethrik →"}
+        </Link>
+      </div>
       <header className="sgr-head">
-        <h1 className="sgr-title">{tab === "torre" ? "🗼 La Torre di Vethrik" : "Le Segrete"}</h1>
+        <h1 className="sgr-title">{isTowerPage ? "🗼 La Torre di Vethrik" : "Le Segrete"}</h1>
         <p className="sgr-lead">
-          {tab === "torre"
+          {isTowerPage
             ? `100 piani mutevoli per gruppi da 1 a ${MAX_PARTY}, collegati ai tuoi eroi e al tuo zaino delle Segrete. Ogni piano dà PE subito e la domenica alle 23:00 assegna i Premi Unici.`
             : `Dungeon a gruppi da 1 a ${MAX_PARTY}. Il tuo eroe cresce vincendo; se il gruppo cade, si perde il bottino.`}
         </p>
       </header>
+
+      {otherSectionRoom && (
+        <div className="sgh-pending" role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <span>
+            {isTowerPage
+              ? <>Sei attualmente nel gruppo <b>«{otherSectionRoom.name}»</b> nelle Segrete.</>
+              : <>Sei attualmente nella scalata <b>«{otherSectionRoom.name}»</b> nella Torre di Vethrik.</>}
+          </span>
+          <span style={{ display: "flex", gap: 8 }}>
+            <Link to={isTowerPage ? "/segrete" : "/torre-di-vethrik"} className="sgr-btn">
+              {isTowerPage ? "🗝 Apri nelle Segrete" : "🗼 Apri nella Torre"}
+            </Link>
+            {otherSectionRoom.status === "open" && (
+              <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy} onClick={() => run(() => leaveRoom(otherSectionRoom.id, uid))}>
+                Esci da quel gruppo
+              </button>
+            )}
+          </span>
+        </div>
+      )}
 
       {curHero && !hasRace(curHero) && <div className="sgh-pending" role="alert">Scegli la razza del tuo eroe prima di giocare. <button type="button" className="sgr-btn" onClick={() => pickHero(curCls)}>Scegli razza</button></div>}
       {/* Dove sei e con chi: sempre visibile */}
@@ -340,14 +449,14 @@ export default function Segrete({ initialTab = null }) {
           <SgIcon kind="cls" of={curCls} fallback={ci?.icon || "?"} size="md" color="var(--cls)" className="sgr-st-ico" />
           <span className="sgr-st-txt"><small>Il tuo eroe</small><b>{ci && curHero ? <><SegreteIdentity cls={curCls} hero={curHero} /> · Lv {level(curCls)}</> : "da creare"}</b>{curHero && <SegreteXp hero={curHero} />}</span>
         </button>
-        <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab(myRoomIsTower ? "torre" : "gruppi")}>
-          <SgIcon kind="ui" of={myRoomIsTower ? "torre" : "gruppi"} fallback={myRoomIsTower ? "🗼" : "⚔"} size="md" className="sgr-st-ico" />
-          <span className="sgr-st-txt"><small>Gruppo</small><b>{myRoom ? `${myRoom.name} · ${readyN}/${myRoom.members.length} pronti` : invites ? `📨 ${invites} invit${invites === 1 ? "o" : "i"}` : "nessuno"}</b></span>
+        <button type="button" className={`sgr-st${myRoom ? " is-live" : ""}`} onClick={() => setTab(isTowerPage ? "torre" : "gruppi")}>
+          <SgIcon kind="ui" of={isTowerPage ? "torre" : "gruppi"} fallback={isTowerPage ? "🗼" : "⚔"} size="md" className="sgr-st-ico" />
+          <span className="sgr-st-txt"><small>{isTowerPage ? "Scalata" : "Gruppo"}</small><b>{myRoom ? `${myRoom.name} · ${readyN}/${myRoom.members.length} pronti` : sectionInvites ? `📨 ${sectionInvites} invit${sectionInvites === 1 ? "o" : "i"}` : "nessuno"}</b></span>
         </button>
-        {tab === "torre" || myRoomIsTower ? (
-          <button type="button" className="sgr-st" onClick={() => setTab("torre")}>
+        {isTowerPage ? (
+          <button type="button" className="sgr-st" onClick={() => setTab("premi")}>
             <SgIcon kind="ui" of="torre" fallback="🗼" size="md" className="sgr-st-ico" />
-            <span className="sgr-st-txt"><small>Torre di Vethrik</small><b>{tsStatus.floor > 0 ? `Piano ${tsStatus.floor}/100` : "0/100"} · 🗝 {master ? "∞" : `${tsStatus.freeLeft}/${TOWER_WEEKLY_FREE}`}{tsStatus.bagKeys ? `+${tsStatus.bagKeys}` : ""}</b></span>
+            <span className="sgr-st-txt"><small>Piano & Sigilli</small><b>{tsStatus.floor > 0 ? `Piano ${tsStatus.floor}/100` : "0/100"} · 🗝 {master ? "∞" : `${tsStatus.freeLeft}/${TOWER_WEEKLY_FREE}`}{tsStatus.bagKeys ? `+${tsStatus.bagKeys}` : ""}</b></span>
           </button>
         ) : (
           <div className="sgr-st">
@@ -361,8 +470,8 @@ export default function Segrete({ initialTab = null }) {
         </button>
       </div>
 
-      <div className="sgr-tabs" id="sgr-tabs" role="navigation" aria-label="Sezioni delle Segrete">
-        {TABS.map((t) => (
+      <div className="sgr-tabs" id="sgr-tabs" role="navigation" aria-label={isTowerPage ? "Sezioni della Torre di Vethrik" : "Sezioni delle Segrete"}>
+        {activeTabs.map((t) => (
           <button key={t.key} type="button" className={`sgr-tab${tab === t.key ? " is-on" : ""}`} aria-current={tab === t.key ? "page" : undefined} onClick={() => setTab(t.key)}>
             <SgIcon kind="ui" of={t.key} fallback={t.icon} className="sgr-tab-ico" />
             <span className="sgr-tab-lbl">{t.label}</span>
@@ -373,7 +482,7 @@ export default function Segrete({ initialTab = null }) {
 
       {err && <p className="sgr-err" role="alert">{err}</p>}
 
-      {tab === "gruppi" && (
+      {!isTowerPage && tab === "gruppi" && (
         myRoom ? (
           <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
             dungeon={dungeonOf(myRoom.type)} dungeons={normalDungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
@@ -401,9 +510,9 @@ export default function Segrete({ initialTab = null }) {
                           ))}
                         </ul>
                         <div className="sgr-room-actions">
-                          <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
+                          <button type="button" className="sgr-btn" disabled={busy || !!otherSectionRoom || roomFull(r) || !cls || !heroReady(charData, cls)}
                             onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
+                            {otherSectionRoom ? "Esci prima dal gruppo della Torre" : roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
                           </button>
                           {(master || idle) && (
                             <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
@@ -439,10 +548,10 @@ export default function Segrete({ initialTab = null }) {
               <label className="sgr-label" htmlFor="sgr-name">Nome del gruppo <small>(facoltativo)</small></label>
               <input id="sgr-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Gruppo di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
-              <button type="button" className="sgr-cta" disabled={busy || !type || !normalDungeons.length || !cls || !heroReady(charData, cls)}
+              <button type="button" className="sgr-cta" disabled={busy || !!otherSectionRoom || !type || !normalDungeons.length || !cls || !heroReady(charData, cls)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
                 onClick={() => run(() => createRoom(uid, charData, { name, type, cls, level: level(cls), difficulty: diff }))}>
-                Crea il gruppo
+                {otherSectionRoom ? "Esci prima dal gruppo della Torre" : "Crea il gruppo"}
               </button>
             </details>
 
@@ -472,22 +581,10 @@ export default function Segrete({ initialTab = null }) {
         )
       )}
 
-      {tab === "torre" && (
+      {isTowerPage && tab === "torre" && (
         myRoom ? (
-          <>
-            {!myRoomIsTower && (
-              <section className="sgr-block">
-                <TowerInfoBox charData={charData} isHost={myRoom.hostUid === uid} master={master} />
-                {(myRoom.hostUid === uid || master) && (
-                  <button type="button" className="sgr-btn" disabled={busy} onClick={() => run(() => chooseDungeon(myRoom.id, uid, TOWER_KEY, master))}>
-                    🗼 Sposta questo gruppo nella Torre di Vethrik
-                  </button>
-                )}
-              </section>
-            )}
-            <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
-              dungeon={dungeonOf(myRoom.type)} dungeons={myRoomIsTower ? [] : normalDungeons} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
-          </>
+          <MyRoom room={myRoom} uid={uid} master={master} charData={charData} busy={busy} run={run}
+            dungeon={dungeonOf(myRoom.type)} dungeons={[]} canRun={master || runs.canRun} onHeroes={() => setTab("eroi")} onPick={chooseHero} onFix={pickHero} />
         ) : (
           <>
             <HeroNews charData={charData} onSelect={pickHero} />
@@ -516,9 +613,9 @@ export default function Segrete({ initialTab = null }) {
                           ))}
                         </ul>
                         <div className="sgr-room-actions">
-                          <button type="button" className="sgr-btn" disabled={busy || roomFull(r) || !cls || !heroReady(charData, cls)}
+                          <button type="button" className="sgr-btn" disabled={busy || !!otherSectionRoom || roomFull(r) || !cls || !heroReady(charData, cls)}
                             onClick={() => run(() => joinRoom(r.id, uid, charData, cls, level(cls)))}>
-                            {roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
+                            {otherSectionRoom ? "Esci prima dal gruppo delle Segrete" : roomFull(r) ? "Pieno" : !heroOf(charData, cls) ? "Crea prima l'eroe" : !hasRace(heroOf(charData, cls)) ? "Scegli prima la razza" : !heroReady(charData, cls) ? "Tira prima i PF" : <>Entra come <SegreteIdentity cls={cls} hero={heroOf(charData, cls)} /> Lv {level(cls)}</>}
                           </button>
                           {(master || idle) && (
                             <button type="button" className="sgr-btn sgr-btn--ghost" disabled={busy}
@@ -538,10 +635,10 @@ export default function Segrete({ initialTab = null }) {
               <label className="sgr-label" htmlFor="sgr-tower-name">Nome della spedizione <small>(facoltativo)</small></label>
               <input id="sgr-tower-name" className="sgr-input" value={name} maxLength={40}
                 placeholder={`Scalata di ${charData?.name || "…"}`} onChange={(e) => setName(e.target.value)} />
-              <button type="button" className="sgr-cta" disabled={busy || !cls || !heroReady(charData, cls) || (!master && !tsStatus.canOpen)}
+              <button type="button" className="sgr-cta" disabled={busy || !!otherSectionRoom || !cls || !heroReady(charData, cls) || (!master && !tsStatus.canOpen)}
                 title={heroReady(charData, cls) ? "" : "Crea l'eroe e tira i PF prima"}
                 onClick={() => run(() => createRoom(uid, charData, { name: name || `Scalata di ${charData?.name || "…"}`, type: TOWER_KEY, cls, level: level(cls), difficulty: "facile" }))}>
-                🗼 Crea gruppo per la Torre di Vethrik
+                {otherSectionRoom ? "Esci prima dal gruppo delle Segrete" : "🗼 Crea gruppo per la Torre di Vethrik"}
               </button>
             </details>
 
@@ -571,6 +668,8 @@ export default function Segrete({ initialTab = null }) {
         )
       )}
 
+      {isTowerPage && tab === "premi" && <TowerRewardsPanel charData={charData} />}
+
       {tab === "eroi" && (
         <>
           <HeroNews charData={charData} onSelect={pickHero} />
@@ -579,8 +678,8 @@ export default function Segrete({ initialTab = null }) {
       )}
       {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
       {tab === "zaino" && <SegreteShop charData={charData} view="zaino" uid={uid} />}
-      {tab === "storico" && <SegreteLog charData={charData} />}
-      {tab === "manuale" && <SegreteManual />}
+      {tab === "storico" && <SegreteLog charData={charData} mode={isTowerPage ? "torre" : "segrete"} />}
+      {!isTowerPage && tab === "manuale" && <SegreteManual />}
     </section>
   );
 }

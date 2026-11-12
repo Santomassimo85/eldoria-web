@@ -54,19 +54,26 @@ function Row({ e }) {
   );
 }
 
-export default function SegreteLog({ charData }) {
+export default function SegreteLog({ charData, mode = "segrete" }) {
   const [all, setAll] = useState(false);
   const today = romeDayKey();
-  const log = storyLogOf(charData).slice().reverse();
+  const isTowerMode = mode === "torre";
+  const log = storyLogOf(charData)
+    .filter((e) => (isTowerMode ? Boolean(e.isTower) : !e.isTower))
+    .slice()
+    .reverse();
   const todayList = log.filter((e) => e.day === today);
   const older = log.filter((e) => e.day !== today);
   const days = [...new Set(older.map((e) => e.day))];
   return (
     <section className="sgr-block sgl">
-      <h2 className="sgr-h2">📜 Storico di oggi <span className="sgr-coins">{COIN_ICON} +{coinsToday(charData, today)} oggi</span></h2>
+      <h2 className="sgr-h2">
+        {isTowerMode ? "📜 Storico Scalate della Torre" : "📜 Storico di oggi"}
+        {!isTowerMode && <span className="sgr-coins">{COIN_ICON} +{coinsToday(charData, today)} oggi</span>}
+      </h2>
       {todayList.length
         ? <ul className="sgl-list">{todayList.map((e) => <Row key={e.at} e={e} />)}</ul>
-        : <p className="sgr-empty">Oggi non hai ancora finito un dungeon. Qui trovi, per ogni spedizione, cosa hai portato a casa: {COIN_NAME}, oggetti e PE.</p>}
+        : <p className="sgr-empty">{isTowerMode ? "Oggi non hai ancora concluso una scalata nella Torre di Vethrik." : `Oggi non hai ancora finito un dungeon. Qui trovi, per ogni spedizione, cosa hai portato a casa: ${COIN_NAME}, oggetti e PE.`}</p>}
       {!!older.length && (
         <button type="button" className="sgr-btn sgr-btn--ghost sgl-more" aria-expanded={all} onClick={() => setAll((a) => !a)}>
           {all ? "Nascondi i giorni prima ▴" : `Giorni prima (${older.length}) ▾`}

@@ -7,7 +7,7 @@
 import { collection, doc, runTransaction, serverTimestamp, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { currentWeekKey } from "../data/arenaWeek";
-import { MAX_PARTY, STORY_CLASSES, allReady, mergeDungeons } from "../data/segrete";
+import { MAX_PARTY, STORY_CLASSES, allReady, mergeDungeons, isTowerDungeon } from "../data/segrete";
 import { heroSubclass, subclassesOf, kitOf } from "../data/segreteKits";
 import { RACES, hasRace } from "../data/segreteRaces";
 
@@ -162,10 +162,10 @@ export const setMemberClass = (roomId, uid, cls, level, char) => editRoom(roomId
   return { members: room.members.map((m) => (m.uid === uid ? { ...m, cls, level, subclass: member.subclass, subName: member.subName, ready: false } : m)) };
 });
 
-// Notifica (campanella + push) a una lista di uid, porta alle Segrete.
-function notifyMembers(uids, title, message) {
+// Notifica (campanella + push) a una lista di uid, porta alle Segrete o alla Torre di Vethrik.
+function notifyMembers(uids, title, message, link = "/segrete") {
   return Promise.all([...new Set(uids)].filter(Boolean).map((userId) => addDoc(collection(db, "notifications"), {
-    userId, title, message, link: "/segrete", read: false, timestamp: serverTimestamp(),
+    userId, title, message, link, read: false, timestamp: serverTimestamp(),
   }))).catch(() => {});
 }
 const nameOf = (room, uid) => room.members.find((m) => m.uid === uid)?.name || "Il capo";
@@ -189,12 +189,14 @@ export async function setReady(roomId, uid, ready) {
   });
   if (!patch || !room) return;
   const others = room.members.filter((m) => m.uid !== uid);
+  const tower = isTowerDungeon(room.type);
+  const link = tower ? "/torre-di-vethrik" : "/segrete";
   if (patch.status === "running") {
-    await notifyMembers(others.map((m) => m.uid), "⚔ La spedizione è partita!",
-      `Il gruppo «${room.name}» è sceso nelle Segrete: entra e combatti, tocca al gruppo.`);
+    await notifyMembers(others.map((m) => m.uid), tower ? "🗼 La scalata è iniziata!" : "⚔ La spedizione è partita!",
+      `Il gruppo «${room.name}» è entrato ${tower ? "nella Torre di Vethrik" : "nelle Segrete"}: entra e combatti, tocca al gruppo.`, link);
   } else if (ready && room.hostUid === uid) {
-    await notifyMembers(others.filter((m) => !m.ready).map((m) => m.uid), "🗝 Il capo è pronto",
-      `${nameOf(room, uid)} ha premuto Avvia nel gruppo «${room.name}». Premi Avvia anche tu: si parte quando sono pronti tutti.`);
+    await notifyMembers(others.filter((m) => !m.ready).map((m) => m.uid), tower ? "🗼 Il capo è pronto" : "🗝 Il capo è pronto",
+      `${nameOf(room, uid)} ha premuto Avvia nel gruppo «${room.name}». Premi Avvia anche tu: si parte quando sono pronti tutti.`, link);
   }
 }
 
@@ -203,8 +205,10 @@ export async function forceStart(roomId) {
   let room = null;
   const patch = await editRoom(roomId, (r) => { room = r; return r.status === "open" ? { status: "running", startedAt: serverTimestamp() } : null; });
   if (patch && room) {
-    await notifyMembers(room.members.map((m) => m.uid), "⚔ La spedizione è partita!",
-      `Il gruppo «${room.name}» è sceso nelle Segrete: entra e combatti, tocca al gruppo.`);
+    const tower = isTowerDungeon(room.type);
+    await notifyMembers(room.members.map((m) => m.uid), tower ? "🗼 La scalata è iniziata!" : "⚔ La spedizione è partita!",
+      `Il gruppo «${room.name}» è entrato ${tower ? "nella Torre di Vethrik" : "nelle Segrete"}: entra e combatti, tocca al gruppo.`,
+      tower ? "/torre-di-vethrik" : "/segrete");
   }
 }
 
@@ -245,18 +249,21 @@ export async function invitePlayers(roomId, byUid, byName, targets) {
   const list = (targets || []).filter((t) => t?.uid && t.uid !== byUid);
   if (!list.length) return 0;
   let roomName = "";
+  let roomType = "";
   await editRoom(roomId, (room) => {
     if (room.status !== "open") throw new Error("Il gruppo è già partito.");
     if (!(room.memberIds || []).includes(byUid)) throw new Error("Puoi invitare solo dal tuo gruppo.");
     roomName = room.name;
+    roomType = room.type;
     const prev = (room.invited || []).filter((i) => !list.some((t) => t.uid === i.uid));
     return { invited: [...prev, ...list.map((t) => ({ uid: t.uid, name: t.name || "", by: byName || "" }))].slice(-40) };
   });
+  const tower = isTowerDungeon(roomType);
   await Promise.all(list.map((t) => addDoc(collection(db, "notifications"), {
     userId: t.uid,
-    title: "🗝 Invito nelle Segrete",
-    message: `${byName || "Un compagno"} ti invita nel gruppo «${roomName}». Entra da Sala della Gloria → Le Segrete (serve l'eroe della classe con cui vuoi entrare).`,
-    link: "/segrete",
+    title: tower ? "🗼 Invito nella Torre di Vethrik" : "🗝 Invito nelle Segrete",
+    message: `${byName || "Un compagno"} ti invita nel gruppo «${roomName}». Entra da Sala della Gloria → ${tower ? "La Torre di Vethrik" : "Le Segrete"} (serve l'eroe della classe con cui vuoi entrare).`,
+    link: tower ? "/torre-di-vethrik" : "/segrete",
     read: false, timestamp: serverTimestamp(),
   })));
   return list.length;

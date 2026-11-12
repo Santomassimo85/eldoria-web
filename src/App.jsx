@@ -664,8 +664,8 @@ export default function App() {
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/sala-della-gloria" element={<SalaGloria />} />
-          <Route path="/segrete" element={<Segrete />} />
-          <Route path="/torre-di-vethrik" element={<Segrete initialTab="torre" />} />
+          <Route path="/segrete" element={<Segrete key="segrete" mode="segrete" />} />
+          <Route path="/torre-di-vethrik" element={<Segrete key="torre" mode="torre" />} />
           <Route path="/arena-lab" element={<ArenaLab />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
           <Route path="/pet" element={<PetDen />} />
