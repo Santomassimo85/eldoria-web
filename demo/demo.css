@@ -1,0 +1,23 @@
+html, body { margin: 0; background: #0d0a0a; min-height: 100%; }
+body { color: #ece5d6; font-family: Alegreya, Georgia, serif; }
+.demo-page { padding-bottom: 60px; }
+.demo-head { text-align: center; padding: 18px 0 8px; }
+.demo-head h1 { font: 400 clamp(2.4rem, 8vw, 3.6rem)/1 "Grenze Gotisch", Georgia, serif; margin: 6px 0 10px; color: #e0a85a; }
+.demo-tag { display: inline-block; margin: 0; padding: 3px 10px; border: 1px solid #e0a85a; border-radius: 3px; font: 700 .72rem/1.4 Cinzel, serif; letter-spacing: .14em; color: #e0a85a; }
+.demo-card { margin: 16px 0; padding: 18px 16px; border: 1px solid rgba(236, 229, 214, .14); border-top: 2px solid var(--cls, #e0a85a); border-radius: 3px; background: #1a1515; }
+.demo-card h2 { margin: 4px 0 12px; font: 400 1.5rem "Grenze Gotisch", Georgia, serif; color: #ece5d6; }
+.demo-steps { margin: 0 0 12px; padding-left: 22px; line-height: 1.55; }
+.demo-steps li { margin: 4px 0; }
+.demo-note { color: #c9bfad; font-size: .95rem; }
+.demo-input { width: 100%; max-width: 360px; box-sizing: border-box; min-height: 44px; padding: 8px 12px; margin-bottom: 18px; border: 1px solid rgba(236, 229, 214, .25); border-radius: 3px; background: #0d0a0a; color: #ece5d6; font: 1.05rem Alegreya, serif; }
+.demo-classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(130px, 100%), 1fr)); gap: 8px; }
+.demo-class { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 78px; padding: 10px 6px; border: 1px solid rgba(236, 229, 214, .16); border-bottom: 3px solid var(--cls); border-radius: 3px; background: #231d1d; color: #ece5d6; font: 600 .95rem Alegreya, serif; cursor: pointer; }
+.demo-class.is-on { background: color-mix(in srgb, var(--cls) 22%, #231d1d); border-color: var(--cls); }
+.demo-class small { color: #5fd16b; font-size: .75rem; }
+.demo-class-ico { font-size: 1.6rem; line-height: 1; }
+.demo-go { display: block; width: 100%; }
+.demo-tools { margin-top: 10px; text-align: center; }
+.demo-foot { margin-top: 30px; text-align: center; font-size: .8rem; color: #8a8072; }
+/* fine partita: niente frasi del gioco online (gruppo, chat vocale, Foundry) */
+.sgb-endnote, .sgb-loot { display: none !important; }
+.sgb-endbtns::before { content: "Fine della demo: grazie per aver giocato! Torna al menu per provare un'altra classe."; display: block; width: 100%; margin-bottom: 8px; color: #e0a85a; font-weight: 700; }
