@@ -24,6 +24,10 @@
         {
           "type": "feature",
           "text": "Menu Battaglia: Arena, Segrete e Torre si aprono dalla Sala della Gloria. Aggiunto il manuale breve dedicato alla Torre di Vethrik."
+        },
+        {
+          "type": "fix",
+          "text": "Torre: rimossa la Bottega. Torre e Segrete: collegamenti di ritorno visibili sotto il banner su mobile e desktop."
         }
       ]
     },

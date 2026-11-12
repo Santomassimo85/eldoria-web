@@ -15,6 +15,8 @@ for (const route of ['/arena', '/segrete', '/torre-di-vethrik']) assert.ok(sala.
 const segrete = fs.readFileSync('src/pages/Segrete.jsx', 'utf8');
 const towerTabs = segrete.slice(segrete.indexOf('const TORRE_TABS'), segrete.indexOf('const readTab'));
 assert.match(towerTabs, /key: "manuale"/);
+assert.doesNotMatch(towerTabs, /key: "bottega"/);
+assert.match(segrete.slice(segrete.indexOf('const SEGRETE_TABS'), segrete.indexOf('const TORRE_TABS')), /key: "bottega"/);
 assert.match(segrete, /isTowerPage \? <SegreteTowerManual \/> : <SegreteManual \/>/);
 const code = buildSync({ entryPoints: ['src/pages/SegreteTowerManual.jsx'], bundle: true, format: 'cjs', platform: 'node', jsx: 'automatic', external: ['react', 'react/jsx-runtime'], write: false }).outputFiles[0].text;
 const component = new Module(__filename, module); component.paths = module.paths; component._compile(code, __filename);

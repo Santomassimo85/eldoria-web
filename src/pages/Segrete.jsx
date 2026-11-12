@@ -180,7 +180,6 @@ const TORRE_TABS = [
   { key: "premi", icon: "🎁", label: "Premi & Reliquie" },
   { key: "eroi", icon: "🧝", label: "Personaggi" },
   { key: "zaino", icon: "🎒", label: "Zaino" },
-  { key: "bottega", icon: "🏪", label: "Bottega" },
   { key: "storico", icon: "📜", label: "Storico Torre" },
   { key: "manuale", icon: "📖", label: "Manuale" },
 ];
@@ -678,7 +677,7 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
           <HeroSections charData={charData} cls={curCls} onUse={chooseHero} disabled={busy} inRoom={!!myRoom} focus={focus} />
         </>
       )}
-      {tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
+      {!isTowerPage && tab === "bottega" && <SegreteShop charData={charData} view="bottega" />}
       {tab === "zaino" && <SegreteShop charData={charData} view="zaino" uid={uid} />}
       {tab === "storico" && <SegreteLog charData={charData} mode={isTowerPage ? "torre" : "segrete"} />}
       {tab === "manuale" && (isTowerPage ? <SegreteTowerManual /> : <SegreteManual />)}

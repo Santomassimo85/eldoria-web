@@ -1,4 +1,5 @@
 /* Le Segrete — lobby (token del Covo, pagina scura di gioco) */
+body main:has(> .sgr-page) { padding-top: calc(var(--navbar-h, 66px) + 16px); }
 .sgr-page { max-width: 980px; margin: 0 auto; padding: 20px 16px 120px; color: var(--osso, #ece5d6); font-family: var(--font-text, serif); }
 .sgr-back { display: inline-block; margin-bottom: 10px; color: var(--osso-2, #d8ccb4); text-decoration: none; font: 600 .9rem var(--font-ui, serif); }
 .sgr-back:hover { color: var(--el, #e0a85a); }
