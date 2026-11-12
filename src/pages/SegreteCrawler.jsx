@@ -3,7 +3,7 @@ import SegreteXp from "../components/SegreteXp";
 import { RACES } from "../data/segreteRaces";
 /* Le Segrete: combattimento in prima persona, sincronizzato con dungeon_runs.
    Il server risolve le azioni; la coda mostra dado, effetto e danno in sequenza. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -11,7 +11,8 @@ import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo, classColor, clsStyle, diffOf, sizeOf } from "../data/segrete";
 import { WEAPON_CHOICES, TWO_HANDED, subclassOf, xpForLevel, XP_VERSION } from "../data/segreteKits";
-import { classSpriteDocId } from "../data/arenaClassSprites";
+import SegretePartySprite from "../components/SegretePartySprite";
+import SegreteCompanionCard from "../components/SegreteCompanionCard";
 import { showD20Roll, preloadDice3D, whenDiceIdle } from "../components/DiceRoll";
 import { popAt, popTag } from "../fx/hitNumbers";
 import { CrawlerEngine, CW_W, CW_H } from "../fx/crawlerEngine";
@@ -130,21 +131,30 @@ function FoeAnchor({ f, round, selectable, picked, onPick, onInspect, bind, onHo
   );
 }
 
-function PartySlot({ h, turn, done, selectable, picked, onPick, classSprite, round }) {
-  const press = usePress(h.id, selectable, onPick, null);
+function PartySlot({ h, turn, done, selectable, picked, onPick, onInspect, round }) {
+  const press = usePress(h.id, true, (id) => selectable ? onPick(id) : onInspect(id), onInspect);
   const subName = h.subName || subclassOf(h.cls, h.subclass)?.name;
-  const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), img = h.img || classSprite, pips = dead ? [] : pipsOf(h, round);
+  const dead = h.hp <= 0, pct = Math.max(0, Math.round((100 * h.hp) / Math.max(1, h.maxHp))), pips = dead ? [] : pipsOf(h, round);
+  const previousHp = useRef(h.hp);
+  const [reaction, setReaction] = useState("");
+  useEffect(() => {
+    if (h.hp === previousHp.current) return;
+    setReaction(h.hp < previousHp.current ? " is-hurt" : " is-healed");
+    previousHp.current = h.hp;
+    const timer = setTimeout(() => setReaction(""), 500);
+    return () => clearTimeout(timer);
+  }, [h.hp]);
   return (
-    <button type="button" className={`cw-pm${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
-      style={clsStyle(h.cls)} aria-disabled={!selectable} aria-label={`${h.name}, ${classInfo(h.cls)?.it}${subName ? `, ${subName}` : ""}, ${h.hp} su ${h.maxHp} PF`} {...press}>
+    <button type="button" className={`cw-pm${reaction}${turn ? " is-turn" : ""}${dead ? " is-dead" : ""}${selectable ? " is-pick" : ""}${picked ? " is-picked" : ""}`}
+      style={clsStyle(h.cls)} title={`${h.name} · ${classInfo(h.cls)?.it} · ${RACES[h.race]?.name || "Umano"}${subName ? ` · ${subName}` : ""}`}
+      aria-label={`${h.name}, ${classInfo(h.cls)?.it}, ${RACES[h.race]?.name || "Umano"}${subName ? `, ${subName}` : ""}, ${h.hp} su ${h.maxHp} PF${selectable ? ", scegli bersaglio" : ", apri scheda"}`} {...press}>
       <span className="cw-face" data-vfx-target={vfxKey(h.id)}>
-        {img ? <img src={img} alt="" draggable="false" /> : <SgIcon kind="cls" of={h.cls} fallback={classInfo(h.cls)?.icon} size="sm" />}
+        <SegretePartySprite hero={h} />
         {done && <i className="cw-done" aria-hidden="true">✓</i>}
       </span>
       <span className="cw-pm-txt">
         <b className="cw-nm">{h.helper ? "🤝 " : ""}{h.name}</b>
-        <em className="cw-pm-cls">{classInfo(h.cls)?.it}{h.level ? ` · Lv ${h.level}` : ""}</em>
-        {subName && <span className="cw-subclass">{subName}</span>}
+        <em className="cw-pm-cls"><span>{classInfo(h.cls)?.it}</span><span>{RACES[h.race]?.name || "Umano"}</span></em>
         <span className="cw-bar"><i className={pct < 30 ? "low" : ""} style={{ width: `${pct}%` }} /></span>
         <small>{dead ? (h.fled ? "fuggito" : "a terra") : `${h.hp}/${h.maxHp} · CA ${h.ac}`}</small>
       </span>
@@ -261,7 +271,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   const [healAmount, setHealAmount] = useState("");
   const [logOpen, setLogOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const [sprites, setSprites] = useState({});
+  const [companion, setCompanion] = useState(null);
   const [vfxMsgs, setVfxMsgs] = useState([]);
   const [inspect, setInspect] = useState(null);
   const [shownSeq, setShownSeq] = useState(null);
@@ -302,14 +312,6 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
     initAsked.current = k;
     segreteDo({ op: "init", roomId: room.id }).catch((e) => setErr(e.message));
   }, [room.id, room.status, run, startKey]);
-
-  const clsList = useMemo(() => [...new Set((run?.heroes || []).map((h) => h.cls))].join(","), [run?.heroes]);
-  useEffect(() => {
-    clsList.split(",").filter(Boolean).forEach((cls) => {
-      if (sprites[cls] !== undefined) return;
-      getDoc(doc(db, "arena_meta", classSpriteDocId(cls))).then((s) => setSprites((m) => ({ ...m, [cls]: s.exists() ? s.data().image || "" : "" }))).catch(() => {});
-    });
-  }, [clsList]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── il motore grafico ── */
   useEffect(() => {
@@ -598,6 +600,10 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   return createPortal(
     <div className="sgb cw">
       <VfxLayer messages={vfxMsgs} selfUid={uid} canvas />
+      {companion && (() => {
+        const hero = run.heroes.find((h) => h.id === companion);
+        return hero ? <SegreteCompanionCard hero={hero} round={run.round} acted={!!acted[hero.id]} onClose={() => setCompanion(null)} /> : null;
+      })()}
       {inspect && (() => {
         const f = run.foes.find((x) => x.id === inspect);
         return f ? <FoeCard f={{ ...f, frontImg: fronts[f.src] || f.frontImg }} known={!!known[f.src]} kills={known[f.src]?.count || 0} round={run.round} onClose={() => setInspect(null)} /> : null;
@@ -718,10 +724,10 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
         {tools}
       </div>
 
-      {run.heroes.some((h) => h.uid !== uid) && <div className="cw-party" style={{ "--cw-n": run.heroes.filter((h) => h.uid !== uid).length }}>
+      {run.heroes.some((h) => h.uid !== uid) && <div className="cw-party" role="group" aria-label="Il tuo gruppo" style={{ "--cw-n": run.heroes.filter((h) => h.uid !== uid).length }}>
         {run.heroes.filter((h) => h.uid !== uid).map((h0) => {
           const h = shown(h0);
-          return <PartySlot key={h.id} h={h} round={run.round} classSprite={sprites[h.cls]} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
+          return <PartySlot key={h.id} h={h} round={run.round} onInspect={setCompanion} turn={fighting && h.hp > 0 && !acted[h.id]} done={fighting && !!acted[h.id]}
             picked={aiming?.id === h.id} onPick={pickTarget}
             selectable={canTarget && !aiming && !!(tk === "ally" && !h.fled && (itk === "downed" ? h.hp <= 0 : itk === "ally" ? h.hp > 0 : (h.hp > 0 || chosen?.kind === "heal")))} />;
         })}
