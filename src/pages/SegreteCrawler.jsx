@@ -88,6 +88,15 @@ function crawlerScale(f) {
   return CW_SIZE[size] || 1;
 }
 const stateOf = (c) => (c.fx?.petrified ? "stone" : c.fx?.frozen ? "ice" : "");
+const THEME_DOOR_OFFSET = { torre_vethrik: 0, cripta: 0, tempio: 2, segrete: 1, caverna: 1, palude: 1, forgia: 2, ghiaccio: 2, abisso: 0, magma: 3 };
+function doorKindFor(r) {
+  if (!r) return 0;
+  const nextIsBoss = r.isTower ? (Number(r.floor) + 1) % 5 === 0 : Number(r.floor) >= Number(r.floors || 3);
+  if (nextIsBoss) return 3; // Sigillo Draconico del Guardiano / Boss
+  const theme = r.floorTheme || r.type || "segrete";
+  const off = THEME_DOOR_OFFSET[theme] ?? 0;
+  return (Math.max(1, Number(r.floor) || 1) + off) % 4;
+}
 
 // tocco = bersaglio (al rilascio: il click sui telefoni a volte si perde), 450 ms premuto = scheda
 function usePress(id, selectable, onPick, onInspect) {
@@ -322,6 +331,18 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   }, [room.id, room.status, run, startKey]);
 
   /* ── il motore grafico ── */
+  const tileCache = useRef({});
+  const loadThemeTiles = async (key) => {
+    if (!key) return null;
+    if (key in tileCache.current) return tileCache.current[key];
+    try {
+      const s = await getDoc(doc(db, "dungeon_tiles", key));
+      tileCache.current[key] = s.exists() ? s.data() : null;
+    } catch {
+      tileCache.current[key] = null;
+    }
+    return tileCache.current[key];
+  };
   useEffect(() => {
     if (!cv || !fg) return undefined;
     const e = new CrawlerEngine(cv, fg);
@@ -330,10 +351,12 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   }, [cv, fg]);
   const dungeonType = run?.floorTheme || run?.type || "";
   useEffect(() => {
-    if (!eng || !dungeonType) return;
-    eng.setTheme(dungeonType);
-    getDoc(doc(db, "dungeon_tiles", dungeonType)).then((s) => { if (s.exists()) eng.setTheme(dungeonType, s.data()); }).catch(() => {});
-  }, [eng, dungeonType]);
+    if (!eng || !dungeonType || walking) return;
+    eng.setPartySize((run?.heroes || []).length || 1);
+    eng.setDoorKind(doorKindFor(run));
+    if (eng.themeKey !== dungeonType) eng.setTheme(dungeonType);
+    loadThemeTiles(dungeonType).then((d) => { if (d && !walking) eng.setTheme(dungeonType, d); });
+  }, [eng, dungeonType, walking, run?.floor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const me = run?.heroes.find((h) => h.uid === uid) || null;
   const meRef = useRef(null);
@@ -371,11 +394,26 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   useEffect(() => {
     if (!eng || !run) return;
     if (run.startKey !== startKey) return;
-    if (floorSeen.current == null || floorKey.current !== startKey) { floorKey.current = startKey; floorSeen.current = run.floor; eng.setFoes(foeList); return; }
+    eng.setPartySize((run.heroes || []).length || 1);
+    if (floorSeen.current == null || floorKey.current !== startKey) {
+      floorKey.current = startKey;
+      floorSeen.current = run.floor;
+      eng.setDoorKind(doorKindFor(run));
+      eng.setFoes(foeList);
+      return;
+    }
     if (run.floor !== floorSeen.current) {
       floorSeen.current = run.floor;
+      const nextTheme = run.floorTheme || run.type || "";
       setWalking(true);
-      eng.walk(foeList).then(() => setWalking(false));
+      loadThemeTiles(nextTheme).then((customTiles) =>
+        eng.walk(foeList, {
+          themeKey: nextTheme,
+          customTiles,
+          nextDoorKind: doorKindFor(run),
+          partySize: (run.heroes || []).length || 1,
+        })
+      ).finally(() => setWalking(false));
       return;
     }
     eng.setFoes(foeList);
@@ -415,10 +453,22 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
     const e = engRef.current;
     if (e && floorSeen.current != null && floorKey.current === startKey && floorSeen.current !== snapshot.floor) {
       floorSeen.current = snapshot.floor;
+      const nextTheme = snapshot.floorTheme || snapshot.type || "";
       setWalking(true);
       try {
-        await e.walk(snapshot.foes.map((f) => ({ id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role,
-          icon: f.icon, img: fronts[f.src] || f.img || "", scale: crawlerScale(f), state: stateOf(f) })));
+        const customTiles = await loadThemeTiles(nextTheme);
+        await e.walk(
+          snapshot.foes.map((f) => ({
+            id: f.id, name: f.name, hp: f.hp, maxHp: f.maxHp, role: f.role,
+            icon: f.icon, img: fronts[f.src] || f.img || "", scale: crawlerScale(f), state: stateOf(f),
+          })),
+          {
+            themeKey: nextTheme,
+            customTiles,
+            nextDoorKind: doorKindFor(snapshot),
+            partySize: (snapshot.heroes || []).length || 1,
+          }
+        );
       } finally { if (mounted.current && seenKey.current === startKey) setWalking(false); }
     }
     if (!mounted.current || seenKey.current !== startKey) return;
@@ -697,7 +747,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
 
       <div className="sgb-panel cw-panel">
         {err && <p className="sgb-err" role="alert">{err}</p>}
-        {walking && <p className="sgb-turn sgb-turn--wait">🚶 Il gruppo avanza verso la sala dopo…</p>}
+        {walking && <p className="sgb-turn sgb-turn--wait">🚪 Il gruppo avanza, apre il portale e varca la nuova sala…</p>}
         {!walking && run.status === "fight" && blocking && (
           <p className="sgb-turn sgb-turn--wait">🎬 Si tirano i dadi e partono i colpi… {myTurn ? "poi tocca a te." : ""}</p>
         )}

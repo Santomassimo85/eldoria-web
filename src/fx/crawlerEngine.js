@@ -8,10 +8,11 @@
    Gli sprite veri stanno su Storage e possono non permettere la lettura dei pixel: per questo i mostri
    si disegnano con drawImage (mai getImageData sul canvas) e le varianti si fanno con il compositing. */
 import { TILE_THEMES, proceduralHands, tileFromImage, raceHandImage } from "./crawlerArt";
+import { playFootstep, playDoorOpen } from "./crawlerAudio";
 
 export const CW_W = 264, CW_H = 255, CW_FG = 3;
 const W = CW_W, H = CW_H, FS = CW_FG, HZ = Math.round(H * 0.4), PL = 0.78, SC = W / 2 / PL, WALLH = 1.9, CAM = 0.56, P = 10, BANDS = 7;
-const STEP_MS = 215;
+const STEP_MS = 195;
 /* COLPI IN PRIMA PERSONA (2026-11-07): la mano destra con l'arma si stacca dalla sinistra (lo sprite ha
    il centro vuoto) e fa il suo movimento; la sinistra dà un piccolo contraccolpo. Nessun disegno nuovo. */
 const MOVES = {
@@ -262,6 +263,255 @@ function chestSprite(frame) {
   return cv;
 }
 
+/* 4 PORTE ELABORATE A FINE PIANO (56×84 pixel, cornice ad arco + 2 battenti animati):
+   0 = Runica Arcana (ossidiana violacea, circolo runico ciano/viola e occhio di Vethrik sulla chiave di volta)
+   1 = Ferro & Teschi delle Segrete (quercia scura, fasce chiodate, grata superiore e teschio di bronzo)
+   2 = Portale Aureo degli Antichi (marmo, mogano cremisi, filigrana d'oro, gemme incastonate e medaglione solare)
+   3 = Sigillo Draconico del Guardiano (basalto vulcanico, vene di magma, teschio di drago cornuto e rune di fuoco) */
+const DOOR_W = 56, DOOR_H = 84, DOOR_IX = 10, DOOR_IY = 14, DOOR_IW = 36, DOOR_IH = 70;
+const doorCache = {};
+const DOOR_PALETTES = [
+  // 0: Runica Arcana
+  {
+    f0: "#110b1c", f1: "#211636", f2: "#362557", f3: "#533b82",
+    d0: "#160f26", d1: "#23193b", d2: "#332454", d3: "#483475",
+    m0: "#334155", m1: "#64748b", m2: "#94a3b8",
+    glow: "#38bdf8", glow2: "#c084fc", core: "#e0f2fe", gem: "#67e8f9",
+  },
+  // 1: Cancello Corazzato delle Segrete
+  {
+    f0: "#171412", f1: "#2b2623", f2: "#443c37", f3: "#61564f",
+    d0: "#24140b", d1: "#3b2213", d2: "#54311c", d3: "#6e4226",
+    m0: "#18181b", m1: "#3f3f46", m2: "#71717a",
+    glow: "#f59e0b", glow2: "#fbbf24", core: "#fef3c7", gem: "#d6d3d1",
+  },
+  // 2: Portale Aureo Reale
+  {
+    f0: "#1c1610", f1: "#36291c", f2: "#57412a", f3: "#7c5d3b",
+    d0: "#2b0f13", d1: "#47181e", d2: "#69232b", d3: "#872f39",
+    m0: "#854d0e", m1: "#ca8a04", m2: "#facc15",
+    glow: "#fde047", glow2: "#38bdf8", core: "#fef9c3", gem: "#f43f5e",
+  },
+  // 3: Sigillo Draconico / Guardiano
+  {
+    f0: "#12090a", f1: "#261214", f2: "#3f1d21", f3: "#5c2b30",
+    d0: "#170e12", d1: "#29181f", d2: "#3d242e", d3: "#543240",
+    m0: "#27171a", m1: "#522b29", m2: "#7f3d36",
+    glow: "#f97316", glow2: "#ef4444", core: "#fef08a", gem: "#fb923c",
+  },
+];
+
+function doorParts(kind = 0) {
+  const k = ((kind % 4) + 4) % 4;
+  if (doorCache[k]) return doorCache[k];
+  const pal = DOOR_PALETTES[k];
+
+  // 1. CORNICE ESTERNA AD ARCO (56×84, interno trasparente 10..46 × 14..84)
+  const frame = document.createElement("canvas");
+  frame.width = DOOR_W; frame.height = DOOR_H;
+  const fg = frame.getContext("2d");
+  const P = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+
+  // Pilastri laterali (x = 0..9 e x = 46..55)
+  P(fg, 0, 8, 10, DOOR_H - 8, pal.f0);
+  P(fg, 46, 8, 10, DOOR_H - 8, pal.f0);
+  P(fg, 1, 9, 8, DOOR_H - 10, pal.f1);
+  P(fg, 47, 9, 8, DOOR_H - 10, pal.f1);
+  P(fg, 2, 10, 6, DOOR_H - 12, pal.f2);
+  P(fg, 48, 10, 6, DOOR_H - 12, pal.f2);
+  // Bordi illuminati dei pilastri
+  P(fg, 8, 12, 1, DOOR_H - 13, pal.f3);
+  P(fg, 47, 12, 1, DOOR_H - 13, pal.f3);
+  // Conci di pietra / capitelli lungo i pilastri
+  for (let y = 16; y < DOOR_H - 4; y += 10) {
+    P(fg, 1, y, 8, 1, pal.f0);
+    P(fg, 47, y, 8, 1, pal.f0);
+    P(fg, 2, y + 1, 6, 1, pal.f3);
+    P(fg, 48, y + 1, 6, 1, pal.f3);
+    // Rune o borchie scolpite nei pilastri
+    if (k === 0 || k === 3) {
+      P(fg, 4, y + 4, 2, 3, pal.glow);
+      P(fg, 50, y + 4, 2, 3, pal.glow);
+      P(fg, 4, y + 5, 1, 1, pal.core);
+      P(fg, 50, y + 5, 1, 1, pal.core);
+    } else if (k === 2) {
+      P(fg, 3, y + 3, 4, 4, pal.m1);
+      P(fg, 49, y + 3, 4, 4, pal.m1);
+      P(fg, 4, y + 4, 2, 2, pal.glow2);
+      P(fg, 50, y + 4, 2, 2, pal.glow2);
+    } else {
+      P(fg, 3, y + 4, 3, 3, pal.m2);
+      P(fg, 50, y + 4, 3, 3, pal.m2);
+    }
+  }
+  // Basi dei pilastri
+  P(fg, 0, DOOR_H - 5, 11, 5, pal.f0);
+  P(fg, 45, DOOR_H - 5, 11, 5, pal.f0);
+  P(fg, 1, DOOR_H - 4, 9, 3, pal.f2);
+  P(fg, 46, DOOR_H - 4, 9, 3, pal.f2);
+
+  // Architrave ad arco superiore (y = 0..15)
+  P(fg, 4, 4, 48, 11, pal.f0);
+  P(fg, 8, 1, 40, 14, pal.f0);
+  P(fg, 5, 5, 46, 9, pal.f1);
+  P(fg, 9, 2, 38, 12, pal.f1);
+  P(fg, 7, 6, 42, 7, pal.f2);
+  P(fg, 11, 3, 34, 10, pal.f2);
+  P(fg, 9, 13, 38, 1, pal.m1);
+  // Conci radiali sull'arco
+  for (const ax of [12, 18, 24, 31, 37, 43]) {
+    P(fg, ax, 3, 1, 10, pal.f0);
+    P(fg, ax + 1, 4, 1, 9, pal.f3);
+  }
+  // Gemme o rune sull'architrave
+  for (const gx of [15, 21, 34, 40]) {
+    P(fg, gx, 7, 2, 2, k === 2 ? pal.gem : pal.glow);
+    P(fg, gx, 7, 1, 1, pal.core);
+  }
+  // Chiave di volta centrale (x = 24..31, y = 0..14)
+  P(fg, 23, 0, 10, 15, pal.f0);
+  P(fg, 24, 1, 8, 13, pal.m0);
+  P(fg, 25, 2, 6, 11, pal.m1);
+  if (k === 0) {
+    // Occhio runico di Vethrik
+    P(fg, 26, 4, 4, 6, pal.glow2);
+    P(fg, 27, 5, 2, 4, pal.glow);
+    P(fg, 27, 6, 2, 2, pal.core);
+  } else if (k === 1) {
+    // Teschio scolpito
+    P(fg, 26, 3, 4, 5, "#d6d3d1");
+    P(fg, 26, 5, 1, 1, pal.f0);
+    P(fg, 29, 5, 1, 1, pal.f0);
+    P(fg, 27, 8, 2, 3, "#a8a29e");
+  } else if (k === 2) {
+    // Corona e rubino reale
+    P(fg, 25, 3, 6, 8, pal.m2);
+    P(fg, 26, 5, 4, 4, pal.gem);
+    P(fg, 27, 5, 1, 2, "#fff");
+  } else {
+    // Teschio di drago cornuto con occhi di brace
+    P(fg, 22, 1, 3, 3, pal.m2);
+    P(fg, 31, 1, 3, 3, pal.m2);
+    P(fg, 25, 3, 6, 8, pal.f3);
+    P(fg, 26, 6, 1, 2, pal.core);
+    P(fg, 29, 6, 1, 2, pal.core);
+    P(fg, 27, 9, 2, 3, pal.glow);
+  }
+
+  // 2. BATTENTI COMPLETI (36×70), poi divisi in sinistro (18×70) e destro (18×70)
+  const full = document.createElement("canvas");
+  full.width = DOOR_IW; full.height = DOOR_IH;
+  const dg = full.getContext("2d");
+
+  // Fondo e tavole verticali
+  P(dg, 0, 0, DOOR_IW, DOOR_IH, pal.d0);
+  P(dg, 1, 1, DOOR_IW - 2, DOOR_IH - 2, pal.d1);
+  for (let x = 3; x < DOOR_IW - 2; x += 4) {
+    P(dg, x, 2, 2, DOOR_IH - 4, pal.d2);
+    P(dg, x + 2, 2, 1, DOOR_IH - 4, pal.d0);
+  }
+  // Cornice metallica perimetrale di ciascun battente
+  P(dg, 0, 0, DOOR_IW, 2, pal.m0);
+  P(dg, 0, DOOR_IH - 2, DOOR_IW, 2, pal.m0);
+  P(dg, 0, 0, 2, DOOR_IH, pal.m0);
+  P(dg, DOOR_IW - 2, 0, 2, DOOR_IH, pal.m0);
+  P(dg, 17, 0, 2, DOOR_IH, pal.f0); // fessura centrale
+
+  if (k === 0) {
+    // PORTA RUNICA: doppi anelli arcani concentrici + rune luminose
+    for (const y of [10, 56]) {
+      P(dg, 2, y, DOOR_IW - 4, 3, pal.m0);
+      P(dg, 2, y + 1, DOOR_IW - 4, 1, pal.m2);
+    }
+    // Anello runico al centro (18, 34)
+    const cx = 18, cy = 34;
+    for (let py = cy - 13; py <= cy + 13; py++) {
+      for (let px = cx - 13; px <= cx + 13; px++) {
+        const dist = Math.hypot(px - cx, py - cy);
+        if (Math.abs(dist - 12) < 1.1 || Math.abs(dist - 7.5) < 0.9) {
+          P(dg, px, py, 1, 1, dist > 9 ? pal.glow2 : pal.glow);
+        } else if (dist < 4.2) {
+          P(dg, px, py, 1, 1, dist < 2.2 ? pal.core : pal.glow);
+        }
+      }
+    }
+    // Glifi runici negli angoli dei pannelli
+    for (const [rx, ry] of [[5, 4], [28, 4], [5, 16], [28, 16], [5, 49], [28, 49], [5, 61], [28, 61]]) {
+      P(dg, rx, ry, 3, 4, pal.glow);
+      P(dg, rx + 1, ry + 1, 1, 2, pal.core);
+    }
+    // Fessura energetica centrale
+    P(dg, 17, 4, 2, DOOR_IH - 8, pal.glow);
+    P(dg, 17, 18, 2, 32, pal.core);
+  } else if (k === 1) {
+    // CANCELLO CORAZZATO: fasce di ferro chiodate, grata superiore e teschio centrale
+    for (const y of [6, 22, 44, 60]) {
+      P(dg, 1, y, DOOR_IW - 2, 4, pal.m0);
+      P(dg, 1, y + 1, DOOR_IW - 2, 2, pal.m1);
+      for (let rx = 3; rx < DOOR_IW - 2; rx += 5) P(dg, rx, y + 1, 2, 2, pal.m2);
+    }
+    // Finestrella con sbarre nella parte alta di ciascun battente
+    for (const bx of [4, 22]) {
+      P(dg, bx, 11, 10, 9, "#090807");
+      for (let sx = bx + 2; sx < bx + 9; sx += 3) P(dg, sx, 11, 1, 9, pal.m2);
+      P(dg, bx, 15, 10, 1, pal.m1);
+    }
+    // Piastra centrale con anelli di ferro
+    P(dg, 12, 28, 12, 12, pal.m0);
+    P(dg, 13, 29, 10, 10, pal.m1);
+    P(dg, 15, 31, 6, 6, pal.glow);
+    P(dg, 16, 32, 4, 4, pal.core);
+    // Anelli battente
+    P(dg, 8, 34, 3, 4, pal.m2);
+    P(dg, 25, 34, 3, 4, pal.m2);
+  } else if (k === 2) {
+    // PORTALE AUREO REALE: riquadri intarsiati d'oro, gemme e medaglione solare
+    for (const [bx, by, bw, bh] of [[3, 4, 12, 20], [21, 4, 12, 20], [3, 44, 12, 20], [21, 44, 12, 20]]) {
+      P(dg, bx, by, bw, bh, pal.m0);
+      P(dg, bx + 1, by + 1, bw - 2, bh - 2, pal.m2);
+      P(dg, bx + 2, by + 2, bw - 4, bh - 4, pal.d2);
+      P(dg, bx + bw / 2 - 1, by + bh / 2 - 1, 2, 2, pal.glow2);
+    }
+    // Medaglione reale al centro (18, 34)
+    const cx = 18, cy = 34;
+    for (let py = cy - 9; py <= cy + 9; py++) {
+      for (let px = cx - 9; px <= cx + 9; px++) {
+        const dist = Math.hypot(px - cx, py - cy);
+        if (dist <= 9) {
+          P(dg, px, py, 1, 1, dist < 3.2 ? pal.gem : dist < 6 ? pal.core : pal.m2);
+        }
+      }
+    }
+    P(dg, 17, 2, 2, DOOR_IH - 4, pal.m1);
+  } else {
+    // SIGILLO DRACONICO: piastre d'adamantio, rune infuocate e sigillo del Guardiano
+    for (const y of [8, 20, 48, 60]) {
+      P(dg, 2, y, DOOR_IW - 4, 3, pal.m1);
+      for (let rx = 4; rx < DOOR_IW - 3; rx += 6) P(dg, rx, y, 2, 2, pal.glow);
+    }
+    const cx = 18, cy = 34;
+    for (let py = cy - 12; py <= cy + 12; py++) {
+      for (let px = cx - 12; px <= cx + 12; px++) {
+        const d = Math.abs(px - cx) + Math.abs(py - cy);
+        if (d === 12 || d === 11 || d === 7) P(dg, px, py, 1, 1, pal.glow2);
+        else if (d < 5) P(dg, px, py, 1, 1, d < 2 ? pal.core : pal.glow);
+      }
+    }
+    P(dg, 17, 3, 2, DOOR_IH - 6, pal.glow);
+  }
+
+  const left = document.createElement("canvas");
+  left.width = DOOR_IW / 2; left.height = DOOR_IH;
+  left.getContext("2d").drawImage(full, 0, 0, DOOR_IW / 2, DOOR_IH, 0, 0, DOOR_IW / 2, DOOR_IH);
+
+  const right = document.createElement("canvas");
+  right.width = DOOR_IW / 2; right.height = DOOR_IH;
+  right.getContext("2d").drawImage(full, DOOR_IW / 2, 0, DOOR_IW / 2, DOOR_IH, 0, 0, DOOR_IW / 2, DOOR_IH);
+
+  doorCache[k] = { frame, left, right, pal };
+  return doorCache[k];
+}
+
 export class CrawlerEngine {
   constructor(canvas, fg) {
     this.cv = canvas; canvas.width = W; canvas.height = H;
@@ -277,11 +527,16 @@ export class CrawlerEngine {
     this.hands = { R: null, L: null }; this.handKey = "";
     this.act = null; this.ranged = false; this.offKind = "hand";
     this.anims = []; this.walking = null; this.calm = reduced();
+    this.doorKind = 0; this.nextDoorKind = 1; this.doorOpen = 0; this.partySize = 1;
+    this.prevT = null; this.prevThemeKey = ""; this.doorY = 7;
     this.setTheme("segrete");
     this.loop = this.loop.bind(this);
     this.raf = requestAnimationFrame(this.loop);
   }
   destroy() { cancelAnimationFrame(this.raf); this.dead = true; clearTimeout(this.walkTimer); this.walking = null; }
+
+  setPartySize(n) { this.partySize = Math.max(1, Math.min(4, Number(n) || 1)); }
+  setDoorKind(k) { this.doorKind = ((Number(k) || 0) % 4 + 4) % 4; this.dirty = true; }
 
   /* ── aspetto ── */
   setTheme(key, custom) {
@@ -403,16 +658,39 @@ export class CrawlerEngine {
     await this.anim(190, (k) => { f.lunge = k; });
     await this.anim(170, (k) => { f.lunge = 1 - k; });
   }
-  // cammina fino alla sala dopo; i nemici nuovi aspettano già là in fondo
-  walk(list) {
+  // cammina fino alla sala dopo; si avvicina alla porta a fine piano, la apre in automatico e rivela il nuovo piano
+  walk(list, opts = {}) {
     const to = this.base + P;
     this.nextBase = to;
+    this.doorY = this.base + 7;
+    this.prevT = this.T;
+    this.prevThemeKey = this.themeKey;
+    if (opts.themeKey) this.setTheme(opts.themeKey, opts.customTiles);
+    if (opts.partySize != null) this.setPartySize(opts.partySize);
+    this.nextDoorKind = opts.nextDoorKind != null ? ((Number(opts.nextDoorKind) % 4) + 4) % 4 : (this.doorKind + 1) % 4;
+    this.doorOpen = 0;
     this.setFoes(list);
-    const steps = P, from = this.cam.y;
+    const steps = P, steps1 = 4.6, from = this.cam.y;
+    const ms = this.calm ? 35 : STEP_MS;
+    const doorMs = this.calm ? 80 : 680;
+    const totalMs = steps * ms + doorMs;
     return new Promise((res) => {
-      const done = () => { if (!this.walking) return; this.walking = null; this.cam.y = from + steps; this.cam.bob = 0; this.base = to; this.nextBase = null; this.dirty = true; clearTimeout(this.walkTimer); res(); };
-      this.walking = { t0: performance.now(), from, steps, res: done, ms: this.calm ? 40 : STEP_MS };
-      this.walkTimer = setTimeout(done, steps * STEP_MS + 1500); // scheda in pausa: non resta a metà
+      const done = () => {
+        if (!this.walking) return;
+        this.walking = null;
+        this.cam.y = from + steps;
+        this.cam.bob = 0;
+        this.base = to;
+        this.nextBase = null;
+        this.prevT = null;
+        this.doorOpen = 0;
+        this.doorKind = this.nextDoorKind;
+        this.dirty = true;
+        clearTimeout(this.walkTimer);
+        res();
+      };
+      this.walking = { t0: performance.now(), from, steps, steps1, ms, doorMs, lastStep: -1, doorSoundPlayed: false, res: done };
+      this.walkTimer = setTimeout(done, totalMs + 1500); // scheda in pausa: non resta a metà
     });
   }
 
@@ -422,21 +700,22 @@ export class CrawlerEngine {
     for (const q of [b, b + P]) out.push([2.15, q + 1.5], [10.85, q + 1.5], [2.15, q + 4.5], [10.85, q + 4.5], [5.4, q + 6.85], [7.6, q + 6.85]);
     return out;
   }
-  put(i, tex, tx, ty, q) {
+  put(i, tex, tx, ty, q, tint = this.T.tint) {
     const ti = (ty & tex.mask) * tex.size + (tx & tex.mask), r = tex.rgb, o = ti * 3;
     if (tex.em && tex.em[ti]) { this.px[i] = 0xff000000 | (r[o + 2] << 16) | (r[o + 1] << 8) | r[o]; return; }
-    const t = this.T.tint;
-    this.px[i] = 0xff000000 | (Math.min(255, r[o + 2] * q * t[2]) << 16) | (Math.min(255, r[o + 1] * q * t[1]) << 8) | Math.min(255, r[o] * q * t[0]);
+    this.px[i] = 0xff000000 | (Math.min(255, r[o + 2] * q * tint[2]) << 16) | (Math.min(255, r[o + 1] * q * tint[1]) << 8) | Math.min(255, r[o] * q * tint[0]);
   }
   render() {
-    const { cam, T, zbuf } = this, hz = HZ + Math.round(cam.bob * 0.5), ch = CAM + cam.bob * 0.006;
+    const { cam, T, prevT, doorY, zbuf } = this, hz = HZ + Math.round(cam.bob * 0.5), ch = CAM + cam.bob * 0.006;
     for (let y = 0; y < H; y++) { // pavimento e soffitto: una fascia di luce per riga
       if (y === hz) { for (let x = 0; x < W; x++) this.px[y * W + x] = 0xff000000; continue; }
-      const floor = y > hz, dist = ((floor ? ch : WALLH - ch) * SC) / Math.abs(y - hz), full = floor ? T.F : T.C, tex = dist > 4.5 ? mipOf(full) : full, s = tex.size;
+      const floor = y > hz, dist = ((floor ? ch : WALLH - ch) * SC) / Math.abs(y - hz), wy = cam.y + dist;
+      const roomT = prevT && wy < doorY ? prevT : T;
+      const full = floor ? roomT.F : roomT.C, tex = dist > 4.5 ? mipOf(full) : full, s = tex.size;
       const q = band(dist) * (floor ? 1 : 0.68);
       for (let x = 0; x < W; x++) {
-        const wx = cam.x + dist * (((2 * x) / W - 1) * PL), wy = cam.y + dist;
-        this.put(y * W + x, tex, Math.floor(wx * s / (full.span || 1)), Math.floor(wy * s / (full.span || 1)), q);
+        const wx = cam.x + dist * (((2 * x) / W - 1) * PL);
+        this.put(y * W + x, tex, Math.floor(wx * s / (full.span || 1)), Math.floor(wy * s / (full.span || 1)), q, roomT.tint);
       }
     }
     for (let x = 0; x < W; x++) { // pareti: un raggio per colonna
@@ -450,12 +729,14 @@ export class CrawlerEngine {
       }
       const dist = side === 0 ? tX - dX : tY - 1;
       zbuf[x] = dist;
-      const u = side === 0 ? cam.y + dist : cam.x + dist * rx, tex = dist > 4.5 ? mipOf(T.W) : T.W, ws = tex.size, tx = Math.floor(u * ws / (T.W.span || 1));
+      const wyHit = side === 0 ? cam.y + dist : my;
+      const roomT = prevT && wyHit < doorY ? prevT : T;
+      const u = side === 0 ? cam.y + dist : cam.x + dist * rx, tex = dist > 4.5 ? mipOf(roomT.W) : roomT.W, ws = tex.size, tx = Math.floor(u * ws / (roomT.W.span || 1));
       const top = Math.max(0, Math.ceil(hz + ((ch - WALLH) * SC) / dist)), bot = Math.min(H - 1, Math.floor(hz + (ch * SC) / dist));
       const q = band(dist) * (side === 0 ? 0.74 : 1); // i muri di lato un tono più scuri, come una volta
       for (let y = top; y <= bot; y++) {
-        const hgt = ch - ((y - hz) * dist) / SC, ty = Math.floor(hgt * ws / (T.W.span || 1));
-        this.put(y * W + x, tex, tx, ws - 1 - ty, q);
+        const hgt = ch - ((y - hz) * dist) / SC, ty = Math.floor(hgt * ws / (roomT.W.span || 1));
+        this.put(y * W + x, tex, tx, ws - 1 - ty, q, roomT.tint);
       }
     }
     this.bg.putImageData(this.imgData, 0, 0);
@@ -687,6 +968,90 @@ export class CrawlerEngine {
       ctx.globalAlpha = 1;
     }
   }
+  drawSingleDoor(doorY, kind, open, t) {
+    const dz = doorY - this.cam.y;
+    if (dz < 0.26 || dz > 14.5) return;
+    const { ctx, cam, zbuf } = this;
+    const hz = HZ + Math.round(cam.bob * 0.5), ch = CAM + cam.bob * 0.006;
+    const sc = SC / dz, cx = W / 2;
+    const bot = hz + ch * sc, wallTop = hz + (ch - WALLH) * sc;
+    const ih = bot - wallTop, py = ih / DOOR_IH, h = DOOR_H * py, y0 = wallTop - DOOR_IY * py;
+    const iw = 1.06 * sc, px = iw / DOOR_IW, w = DOOR_W * px, x0 = cx - w / 2;
+
+    // Costruisce una clip mask per le colonne non coperte da pilastri più vicini (zbuf[x] >= dz - 0.25)
+    const sx0 = Math.max(0, Math.floor(x0)), sx1 = Math.min(W, Math.ceil(x0 + w));
+    if (sx1 <= sx0) return;
+    ctx.save();
+    ctx.beginPath();
+    let spanStart = -1;
+    for (let x = sx0; x <= sx1; x++) {
+      const vis = x < sx1 && zbuf[x] >= dz - 0.25;
+      if (vis && spanStart < 0) spanStart = x;
+      if (!vis && spanStart >= 0) {
+        ctx.rect(spanStart, 0, x - spanStart, H);
+        spanStart = -1;
+      }
+    }
+    ctx.clip();
+    ctx.imageSmoothingEnabled = false;
+
+    const parts = doorParts(kind);
+    const ix0 = cx - iw / 2, ix1 = cx + iw / 2, leafW = iw / 2;
+
+    // 1. Battenti sinistro e destro (si aprono automaticamente scorrendo/ruotando verso gli stipiti)
+    if (open < 0.99) {
+      const closedFrac = clamp(1 - open, 0.04, 1);
+      const curLeafW = leafW * closedFrac;
+      ctx.drawImage(parts.left, 0, 0, parts.left.width, parts.left.height, ix0, wallTop, curLeafW, ih);
+      ctx.drawImage(parts.right, 0, 0, parts.right.width, parts.right.height, ix1 - curLeafW, wallTop, curLeafW, ih);
+
+      // Bagliore lungo la fessura centrale e sul sigillo mentre si sblocca e si apre
+      const pulse = this.calm ? 0.65 : 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t / 290));
+      const seamAlpha = open > 0 ? Math.min(1, 0.55 + (1 - open) * 0.45) : pulse * 0.55;
+      ctx.globalAlpha = seamAlpha;
+      ctx.fillStyle = parts.pal.glow;
+      const seamW = Math.max(1, px * 1.4);
+      if (open <= 0.02) {
+        ctx.fillRect(cx - seamW / 2, wallTop + py * 3, seamW, ih - py * 6);
+      } else {
+        ctx.fillRect(ix0 + curLeafW - seamW, wallTop + py * 2, seamW, ih - py * 4);
+        ctx.fillRect(ix1 - curLeafW, wallTop + py * 2, seamW, ih - py * 4);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // 2. Cornice monumentale ad arco sopra i bordi dei battenti
+    ctx.drawImage(parts.frame, x0, y0, w, h);
+
+    // 3. Ombreggiatura di profondità in base alla distanza
+    const shade = clamp(1 - band(dz) * 1.08, 0, 0.68);
+    if (shade > 0.04) {
+      ctx.globalAlpha = shade;
+      ctx.fillStyle = "#08060c";
+      ctx.fillRect(x0, y0, w, h);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+  doorBurst() {
+    const dz = this.doorY - this.cam.y;
+    if (dz < 0.4) return;
+    const sc = SC / dz, cx = W / 2, hz = HZ + Math.round(this.cam.bob * 0.5);
+    const wallTop = hz + (CAM - WALLH) * sc, bot = hz + CAM * sc, cy = (wallTop + bot) * 0.5;
+    this.parts = this.parts || [];
+    for (let i = 0; i < (this.calm ? 8 : 32); i++) {
+      this.parts.push({
+        x: cx + (Math.random() - 0.5) * sc * 0.35,
+        y: cy + (Math.random() - 0.5) * (bot - wallTop) * 0.6,
+        vx: (Math.random() - 0.5) * 95,
+        vy: -35 - Math.random() * 80,
+        life: 0.65 + Math.random() * 0.55,
+        t: 0,
+        s: 1.4 + Math.random() * 1.3,
+        ph: Math.random() * 6,
+      });
+    }
+  }
   coinBurst() {
     const b = this.chestBox; if (!b) return;
     this.parts = this.parts || [];
@@ -723,9 +1088,46 @@ export class CrawlerEngine {
     const dt = Math.min(100, t - this.last); this.last = t;
     this.anims = this.anims.filter((a) => { const k = clamp((performance.now() - a.t0) / a.ms, 0, 1); a.fn(k); if (k >= 1) a.res(); return k < 1; });
     if (this.walking) {
-      const w = this.walking, p = (performance.now() - w.t0) / w.ms;
-      if (p >= w.steps) w.res();
-      else { const i = Math.floor(p), k = p - i; this.cam.y = w.from + i + k; this.cam.bob = Math.sin(k * Math.PI) * -3; this.dirty = true; }
+      const w = this.walking, elapsed = performance.now() - w.t0;
+      const t1 = w.steps1 * w.ms, tDoor = w.doorMs, t2 = (w.steps - w.steps1) * w.ms;
+      if (elapsed < t1) {
+        // Fase 1: il gruppo cammina verso la porta chiusa
+        const p = elapsed / w.ms, i = Math.floor(p), k = p - i;
+        if (i > w.lastStep) {
+          w.lastStep = i;
+          playFootstep(i, this.prevThemeKey || this.themeKey, this.partySize);
+        }
+        this.cam.y = w.from + p;
+        this.cam.bob = Math.sin(k * Math.PI) * -3;
+        this.doorOpen = 0;
+        this.dirty = true;
+      } else if (elapsed < t1 + tDoor) {
+        // Fase 2: il gruppo si ferma davanti alla porta che si apre in automatico, rivelando il nuovo piano
+        if (!w.doorSoundPlayed) {
+          w.doorSoundPlayed = true;
+          playDoorOpen(this.doorKind);
+          this.doorBurst();
+        }
+        const kd = clamp((elapsed - t1) / Math.max(1, tDoor), 0, 1);
+        const s = kd < 0.14 ? 0 : (kd - 0.14) / 0.86;
+        this.doorOpen = s * s * (3 - 2 * s);
+        this.cam.y = w.from + w.steps1;
+        this.cam.bob = 0;
+        this.dirty = true;
+      } else if (elapsed < t1 + tDoor + t2) {
+        // Fase 3: il gruppo varca la porta aperta ed entra nel nuovo piano
+        this.doorOpen = 1;
+        const p2 = (elapsed - t1 - tDoor) / w.ms, p = w.steps1 + p2, i = Math.floor(p), k = p - i;
+        if (i > w.lastStep) {
+          w.lastStep = i;
+          playFootstep(i, this.themeKey, this.partySize);
+        }
+        this.cam.y = w.from + p;
+        this.cam.bob = Math.sin(k * Math.PI) * -3;
+        this.dirty = true;
+      } else {
+        w.res();
+      }
     }
     for (const f of this.foes) { if (f.flash > 0) f.flash -= dt; if (f.hp <= 0 && f.die < 1) f.die = Math.min(1, f.die + dt / 520); else if (f.hp > 0) f.die = 0; }
     if (this.dirty) this.render();
@@ -733,7 +1135,20 @@ export class CrawlerEngine {
     ctx.setTransform(FS, 0, 0, FS, 0, 0);
     ctx.clearRect(0, 0, W, H);
     this.layoutFoes(t);
-    this.drawTorches(); this.drawChest(t); this.drawFoes(t); this.drawBars(); this.drawAim(t); this.drawParts(dt); this.drawHands();
+    this.drawTorches();
+    if (this.walking) {
+      // In cammino: i nemici sono nella nuova stanza dietro la porta che si apre
+      if (this.nextBase != null) this.drawSingleDoor(this.nextBase + 7, this.nextDoorKind, 0, t);
+      this.drawChest(t);
+      this.drawFoes(t);
+      this.drawSingleDoor(this.base + 7, this.doorKind, this.doorOpen, t);
+    } else {
+      // In stanza: la porta chiusa sta in fondo dietro i mostri della sala attuale
+      this.drawSingleDoor(this.base + 7, this.doorKind, 0, t);
+      this.drawChest(t);
+      this.drawFoes(t);
+    }
+    this.drawBars(); this.drawAim(t); this.drawParts(dt); this.drawHands();
     if (this.red > 0) { ctx.fillStyle = `rgba(190,20,20,${this.red.toFixed(2)})`; ctx.fillRect(0, 0, W, H); this.red = Math.max(0, this.red - dt * 0.0016); }
     this.syncAnchors();
   }
