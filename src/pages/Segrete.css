@@ -500,8 +500,8 @@ details.sgr-block:not([open]) > summary { margin-bottom: 4px; }
 .sgr-page .sgr-company b { color: #f2c14e; }
 .sgb-company { color: #f2c14e; }
 
-/* Bottega: compra/vendi e categorie scorrevoli anche su schermi stretti. */
-.sgs-categories { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 10px; margin-bottom: 8px; }
+/* Bottega: compra/vendi e categorie su più righe anche su schermi stretti. */
+.sgs-categories { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 10px; margin-bottom: 8px; }
 .sgs-categories .sgr-btn { flex: 0 0 auto; min-height: 40px; white-space: nowrap; }
 .sgs-tabs .sgr-btn { min-height: 40px; }
 .sgs-tabs .is-on, .sgs-categories .is-on { border-color: var(--el, #e0a85a); background: rgba(224,168,90,.2); color: #fff7e6; }

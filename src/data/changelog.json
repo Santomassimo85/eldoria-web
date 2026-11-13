@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "94",
+      "date": "2026-11-13",
+      "title": "",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Bottega: filtri visibili su più righe. Makenna e Lael usano sprite femminili del party in Segrete e Torre, per tutte le classi e razze."
+        }
+      ]
+    },
+    {
       "version": "93",
       "date": "2026-11-12",
       "title": "",

@@ -27,6 +27,14 @@ for (const race of Object.keys(RACES)) for (const [index, cls] of ARENA_CLASSES.
   assert.ok(html.includes(sprite.src));
 }
 assert.equal(combinations.size, 60);
+for (const name of ['Makenna', 'Lael', '  MAKENNA  ', 'lael']) {
+  for (const race of Object.keys(RACES)) for (const cls of ARENA_CLASSES) {
+    const sprite = partySpriteOf({ name, race, cls: cls.key });
+    assert.equal(sprite.src, `/assets/segrete/party/${race}-female.webp`);
+    assert.ok(fs.statSync(`public${sprite.src}`).size > 1000);
+  }
+}
+assert.equal(partySpriteOf({ name: 'Palar', race: 'elf', cls: 'wizard' }).src, '/assets/segrete/party/elf.webp');
 assert.deepEqual(partySpriteOf({ cls: 'unknown', race: 'unknown' }), { src: '/assets/segrete/party/human.webp', column: 0, row: 0 });
 const hero = { id: 'ally', side: 'h', name: 'Compagno', cls: 'paladin', race: 'dragonborn', level: 5, hp: 12, maxHp: 40, ac: 18, fx: {} };
 const html = renderToStaticMarkup(React.createElement(Card, { hero, round: 1, acted: true, onClose() {} }));
