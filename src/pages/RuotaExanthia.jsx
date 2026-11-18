@@ -202,10 +202,11 @@ export function RuotaGioco({ popup = false, onClose }) {
       const r = decorate(data);
       spinTo(r.idx, () => setShown(isMaster ? { ...r, prova: true } : r));
     } catch (e) {
+      console.warn("[ruotaSpin]", e);
       const m = String(e?.message || "");
       setErr(m === "used" || e?.code === "functions/already-exists" ? "Hai già girato la ruota oggi. Riprova domani."
         : m === "nochar" ? "Ti serve un personaggio per girare la ruota."
-        : "La ruota si è inceppata (connessione?). Riprova tra poco.");
+        : `La ruota si è inceppata (${e?.code || m || "connessione?"}). Riprova tra poco.`);
     } finally {
       busyRef.current = false;
     }

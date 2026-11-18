@@ -21,7 +21,8 @@ import { READ_SCROLL_NEED } from "../data/petReads";
 const IDLE_MS = 30000;
 const TICK_MS = 500;
 
-const storeKey = (uid) => `pet_reads_done_${uid}`;
+const romeDay = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+const storeKey = (uid) => `pet_reads_done_${uid}_${romeDay()}`;
 function doneSet(uid) {
   try { return new Set(JSON.parse(localStorage.getItem(storeKey(uid)) || "[]")); } catch { return new Set(); }
 }

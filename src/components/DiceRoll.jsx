@@ -128,18 +128,18 @@ export default function DiceRollHost() {
   }, []);
 
   // Animation timing
-  const TUMBLE_MS = 520;   // chaotic spin
-  const SETTLE_MS = 300;   // settle / reveal
-  const HOLD_MS   = 400;   // pause showing the result
-  const FADE_MS   = 180;   // fade out
+  const TUMBLE_MS = 380;   // chaotic spin
+  const SETTLE_MS = 220;   // settle / reveal
+  const HOLD_MS   = 280;   // pause showing the result
+  const FADE_MS   = 150;   // fade out
   // Lancio 3D: dalla mano al dado fermo. Con "riduci animazioni" (su molti Android
   // si accende anche col risparmio energetico) il dado resta 3D ma rotola meno.
   // 2026-11-04: più rapido (richiesta dell'utente) e la promessa si risolve quando il dado
   // è SPARITO, così gli effetti del colpo partono a schermo libero.
-  const ROLL3D_MS = reducedMotion() ? 600 : 800;
-  const HOLD3D_MS = 420;   // fermo quanto basta per leggere la faccia
+  const ROLL3D_MS = reducedMotion() ? 450 : 620;
+  const HOLD3D_MS = 280;   // fermo quanto basta per leggere la faccia
   // con più dadi (e i nomi sotto) ci vuole più tempo per leggerli tutti
-  const holdFor = (r) => (r?.dice?.length > 1 ? 900 + 90 * Math.min(r.dice.length, 8) : HOLD3D_MS);
+  const holdFor = (r) => (r?.dice?.length > 1 ? 700 + 70 * Math.min(r.dice.length, 8) : HOLD3D_MS);
 
   // Lancio 3D: si decide se usarlo PRIMA di montare l'overlay (mode "3d" | "css").
   const host3d = useRef(null);
@@ -152,7 +152,7 @@ export default function DiceRollHost() {
     if (roll.hidden) { setModeFor({ id: roll.id, mode: "css" }); return; }
     if (ready3D) { setModeFor({ id: roll.id, mode: "3d" }); return; }
     let alive = true;
-    const t = setTimeout(() => { if (alive) { alive = false; setModeFor({ id: roll.id, mode: "css" }); } }, 700);
+    const t = setTimeout(() => { if (alive) { alive = false; setModeFor({ id: roll.id, mode: "css" }); } }, 350);
     load3D().then((m) => { if (alive) { alive = false; clearTimeout(t); setModeFor({ id: roll.id, mode: m ? "3d" : "css" }); } });
     return () => { alive = false; clearTimeout(t); };
   }, [roll]);

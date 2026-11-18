@@ -113,7 +113,8 @@ export default function Resoconto() {
     }).catch(() => setCatalog({ summary: [], npc: [], geo: [], page: READ_PAGES.map((p) => ({ id: p.key, label: p.label, to: p.path })) }));
   }, [petsVisible]);
 
-  const done = useMemo(() => new Set(reads.map((r) => `${r.kind}:${r.id}`)), [reads]);
+  const todayRome = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+  const done = useMemo(() => new Set(reads.filter((r) => r.day === todayRome).map((r) => `${r.kind}:${r.id}`)), [reads, todayRome]);
   const month = romeMonthKey();
   const lr = char?.loginRewards || {};
   const login = loginState(lr, month);

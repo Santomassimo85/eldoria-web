@@ -34,6 +34,7 @@ import { serverClockOffset, serverNow } from "../data/serverClock";
 import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftSaleValue, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
+import { generateRandomBasicItem, randomQualityForRoll } from "../data/craftingRandom";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentDie, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, roundMo, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
 import { affordFromSnapshot, availableCoins, availableGp, canAfford, coinsOf, fmtCoins, goldPending, hasPurse, pendingAfterClose, sheetGp } from "../data/craftingPurse";
@@ -60,6 +61,7 @@ const saleOf = (e) => ({
 const FAIL_MINUTES = 2;
 // 20 naturale: metà dei materiali basta, quindi si paga la metà.
 const NAT20_COST_MULT = 0.5;
+const RANDOM_BASIC_PICK = -2;
 
 // Caratteristiche del PG in formato Foundry ({score, mod, save}) o vecchio (numero).
 function statMod(charData, key) {
@@ -244,10 +246,11 @@ export default function CraftingOfficina() {
   // raggiunto restano col lucchetto. Comune/Non comune/Raro: l'oggetto si
   // sceglie sempre; Molto raro/Leggendario: una ricetta o il d12 a sorpresa.
   const recipes = prof ? recipesFor(prof, target, prog.level.grado).sort((a, b) => Number(a.locked) - Number(b.locked)) : [];
+  const isRandomBasic = pickIdx === RANDOM_BASIC_PICK;
   const pickLineRaw = pickIdx >= 0 ? catalogo[pickIdx] || null : null;
-  const pickLine = pickLineRaw && lineHas(pickLineRaw, target) && (pickLineRaw.grado || 1) <= prog.level.grado ? pickLineRaw : null;
+  const pickLine = !isRandomBasic && pickLineRaw && lineHas(pickLineRaw, target) && (pickLineRaw.grado || 1) <= prog.level.grado ? pickLineRaw : null;
   const pickItem = pickLine ? lineItem(pickLine, target) : null;
-  const needsPick = targetMeta.pick && !pickLine; // rarità a scelta: serve l'oggetto
+  const needsPick = targetMeta.pick && !pickLine && !isRandomBasic; // rarità a scelta: serve l'oggetto o il craft casuale
   const work = useMemo(() => craftMinutes({ tier: target, tools: toolsOn, components: comps, pace, ritmoBottega: prog.level.lv >= 6, manoFerma: prog.manoFerma }), [target, toolsOn, comps, pace, prog.level.lv, prog.manoFerma]);
   // Costo dei materiali con l'investimento scelto e PE attesi se il tiro conferma la rarità.
   const baseMo = tierMo(target);
@@ -271,9 +274,11 @@ export default function CraftingOfficina() {
       const tier = merged ? "common" : TIER_ORDER[i];
       if (merged && rows.some((r) => r.tier === "common")) { rows[rows.length - 1].range = `${low}–${String(rows[rows.length - 1].range).split(/[–-]/).pop()}`; continue; }
       const tm = tierMeta(tier);
-      const name = pickLine
-        ? (lineItem(pickLine, tier)?.[0] || `un oggetto a caso della tabella ${tm.label} (d12)`)
-        : tm.pick ? "— scegli l'oggetto qui sopra —" : `un oggetto a caso della tabella ${tm.label} (d12)`;
+      const name = isRandomBasic
+        ? `Oggetto basilare casuale · ${randomQualityForRoll(tier, low).label}`
+        : pickLine
+          ? (lineItem(pickLine, tier)?.[0] || `un oggetto a caso della tabella ${tm.label} (d12)`)
+          : tm.pick ? "— scegli l'oggetto qui sopra —" : `un oggetto a caso della tabella ${tm.label} (d12)`;
       const dist = Math.max(0, idxT - TIER_ORDER.indexOf(tier));
       // Valore su Foundry: per la fascia mirata va dal minimo (di misura) al massimo (4+ sopra).
       const sale = { targetTier: target, tier, costMo };
@@ -410,11 +415,24 @@ export default function CraftingOfficina() {
       }
       // Opera Definitiva (livello 9, una volta per campagna): mai sotto la mirata.
       if (operaOn && !failed) tier = target;
-      // L'oggetto: la linea scelta nel catalogo (alla rarità uscita) oppure il d12 sulla tabella.
+      // L'oggetto: oggetto basilare casuale (AI), ricetta scelta nel catalogo, oppure d12 sulla tabella.
       const picked = pickLine ? lineItem(pickLine, tier) : null;
-      const d12 = picked ? 0 : rnd(12);
+      const d12 = picked || isRandomBasic ? 0 : rnd(12);
       const failDesc = `La fretta ha rovinato tutto: i materiali e le ${fmtMo(costMo)} spese sono perduti e non è uscito nulla.`;
-      const [name, desc] = failed ? ["Fallimento critico", failDesc] : picked || prof.creazioni[tier][d12 - 1];
+      let randomRes = null;
+      if (isRandomBasic && !failed) {
+        randomRes = await generateRandomBasicItem({
+          professionKey: prof.key,
+          professionName: prof.name,
+          tier,
+          total,
+        });
+      }
+      const [name, desc] = failed
+        ? ["Fallimento critico", failDesc]
+        : randomRes
+          ? [randomRes.name, randomRes.desc]
+          : picked || prof.creazioni[tier][d12 - 1];
       // La maledizione dell'1 naturale: su misura per l'oggetto e per l'impegno
       // messo nel lavoro. La inventa Gemini; se non risponde c'è la tabella
       // locale, così il tiro non resta mai appeso alla rete.
@@ -444,7 +462,8 @@ export default function CraftingOfficina() {
         dayKey: "", weekKey: "",
         profession: prof.key, targetTier: target, tier, d20, d20b: advMode ? b : 0, adv: advMode,
         bonus: rollBonus, bonusParts: { abil, tools: toolB, grade: gradeB, extra, comps: compBonus, perks: perkB }, compRolls, total, d12, name, desc,
-        pick: pickLine ? pickLine.key : "", pickName: pickItem ? pickItem[0] : "",
+        pick: isRandomBasic ? "random_basic" : pickLine ? pickLine.key : "",
+        pickName: isRandomBasic ? `Oggetto casuale (${randomRes?.quality?.label || "base"})` : pickItem ? pickItem[0] : "",
         perks: { raddoppio: raddoppioOn, firma: firmaOn, opera: operaOn },
         // Con l'1 naturale i materiali di pregio vanno sprecati: niente ✦.
         invest: investOpt.key, upgraded: !failed && !fumble && investOpt.upgrade, costMo: paidMo, listCostMo: costMo, halfCost: nat20 && !failed, pace: paceOpt.key, components: work.components,
@@ -776,6 +795,29 @@ export default function CraftingOfficina() {
       {/* ── IL BANCO: si prepara il lavoro (se non ce n'è uno in corso) ── */}
       {prof && !pendingEntry && (
         <div className="nx-pannello off-box off-prova">
+          <div className="off-top-live" style={{ "--q": targetMeta.color }} aria-live="polite">
+            <div className="off-top-live-main">
+              <span className="off-top-live-tier">{targetMeta.icon} {targetMeta.label}</span>
+              <strong className="off-top-live-item">
+                {isRandomBasic
+                  ? "🎲 Oggetto casuale (base · Bassa/Media/Alta)"
+                  : pickItem
+                    ? pickItem[0].split(" / ").join(" · ")
+                    : targetMeta.pick
+                      ? "Scegli un oggetto o Oggetto casuale"
+                      : "🎲 A sorpresa · d12"}
+              </strong>
+            </div>
+            <div className="off-top-live-stats">
+              <span title={`Da ${fmtMinutes(timeRange.min)} a ${fmtMinutes(timeRange.max)} · pronto ${whenLabel(nowMs + work.minutes * 60000, now)}`}>
+                ⏱ <b>{fmtMinutes(work.minutes)}</b> <small>({fmtMinutes(timeRange.min)}–{fmtMinutes(timeRange.max)})</small>
+              </span>
+              <span>💰 <b>{purse.master ? "Gratis" : fmtMo(costMo)}</b></span>
+              <span>🎲 <b>d20 {sign(bonus)}</b>{comps.length > 0 ? ` +${comps.length}c` : ""}{advMode ? ` (${advMode === "adv" ? "vant." : "svant."})` : ""}</span>
+              <span>✨ <b>+{xpGain} PE</b></span>
+            </div>
+          </div>
+
           <div className="off-bank">
             <div className="off-bank-col">
               <h3 className="off-h"><span className="orb" aria-hidden="true">1</span> La rarità <small>materiali e tempo</small></h3>
@@ -783,10 +825,12 @@ export default function CraftingOfficina() {
                 {PREGIATURE.filter((p) => p.key !== "scarso").map((p) => {
                   const locked = tierMinGrade(p.key) > prog.level.grado;
                   const gradeName = p.key === "legendary" ? "Leggenda" : "Maestro";
+                  const tierWork = craftMinutes({ tier: p.key, tools: toolsOn, components: comps, pace, ritmoBottega: prog.level.lv >= 6, manoFerma: prog.manoFerma });
+                  const tierCostMo = investCostMo(tierMo(p.key), investOpt);
                   return (
-                    <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => { setTarget(p.key); setPickIdx(-1); }} title={locked ? `Solo dal grado ${gradeName}` : p.desc}>
+                    <button key={p.key} type="button" className={`off-tier${target === p.key ? " on" : ""}`} style={{ "--q": p.color }} disabled={locked} onClick={() => { setTarget(p.key); if (!isRandomBasic) setPickIdx(-1); }} title={locked ? `Solo dal grado ${gradeName}` : p.desc}>
                       <span className="off-tier-top"><span aria-hidden="true">{p.icon}</span> {p.label} <small>{p.range}</small></span>
-                      <span className="off-tier-time">{locked ? `🔒 ${gradeName}` : `⏱ ${fmtMinutes(CRAFT_BASE_MINUTES[p.key])} · ${fmtMo(tierMo(p.key))}`}</span>
+                      <span className="off-tier-time">{locked ? `🔒 ${gradeName}` : `⏱ ${fmtMinutes(tierWork.minutes)} · ${fmtMo(tierCostMo)}`}</span>
                     </button>
                   );
                 })}
@@ -795,8 +839,15 @@ export default function CraftingOfficina() {
 
               <h3 className="off-h"><span className="orb" aria-hidden="true">2</span> L'oggetto <small>{targetMeta.pick ? `le ricette ${targetMeta.label} del ${prof.name}` : "una ricetta o il d12 a sorpresa"}</small></h3>
               <div className="off-items">
+                <button type="button" className={`off-item off-item--d12${isRandomBasic ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(RANDOM_BASIC_PICK)}>
+                  <span className="off-item-ic" aria-hidden="true">🎲</span>
+                  <span className="off-item-main">
+                    <b>Oggetto casuale (base) · {prof.name}</b>
+                    <small>Crea un oggetto basilare casuale della tua arte: qualità Bassa (1–5), Media (6–15) o Alta (16+) in base al tiro.</small>
+                  </span>
+                </button>
                 {!targetMeta.pick && (
-                  <button type="button" className={`off-item off-item--d12${!pickLine ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(-1)}>
+                  <button type="button" className={`off-item off-item--d12${pickIdx === -1 ? " on" : ""}`} style={{ "--q": targetMeta.color }} onClick={() => setPickIdx(-1)}>
                     <span className="off-item-ic" aria-hidden="true">🎲</span>
                     <span className="off-item-main">
                       <b>A sorpresa · d12</b>
@@ -983,7 +1034,7 @@ export default function CraftingOfficina() {
                 </button>
                 {!allow.can && <span className="nx-nota off-why">{allow.reason}</span>}
                 {allow.can && !purse.ok && <span className="nx-nota off-why is-short">I materiali si pagano prima di iniziare: servono {fmtMo(purse.cost)} e in borsa hai {fmtMo(purse.have)}. Vendi qualcosa, fatti pagare una taglia, o punta a una rarità più bassa.</span>}
-                {allow.can && pickItem && <span className="nx-nota off-why">{targetMeta.icon} {pickItem[0].split(" / ").join(" · ")} · {fmtMo(costMo)}</span>}
+                {allow.can && (pickItem || isRandomBasic) && <span className="nx-nota off-why">{targetMeta.icon} {isRandomBasic ? "Oggetto casuale (base)" : pickItem[0].split(" / ").join(" · ")} · {fmtMo(costMo)}</span>}
               </div>
             </div>
           </div>

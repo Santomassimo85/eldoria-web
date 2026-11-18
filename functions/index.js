@@ -1080,7 +1080,7 @@ async function proposeEditionToMaster(dbAdmin, { edition, built, createdBy = "au
  * approvazione (come l'automatismo). Non invia ai giocatori finché non approvi.
  */
 exports.scribaPreview = onCall(
-  { region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
+  { region: "europe-west4", timeoutSeconds: 540, memory: "1GiB" },
   async (request) => {
     const email = request.auth?.token?.email;
     if (!email || !SCRIBA_MASTERS.includes(email)) {
@@ -1117,7 +1117,7 @@ exports.scribaPreview = onCall(
  * l'archivio mostra subito la versione corretta. Le immagini restano invariate.
  */
 exports.scribaEdit = onCall(
-  { region: "us-central1", timeoutSeconds: 120, memory: "512MiB" },
+  { region: "europe-west4", timeoutSeconds: 120, memory: "512MiB" },
   async (request) => {
     const email = request.auth?.token?.email;
     if (!email || !SCRIBA_MASTERS.includes(email)) {
@@ -1171,7 +1171,7 @@ exports.scribaEdit = onCall(
 
 /** scribaSendNow — invia subito un numero ai giocatori (pulsante "Invia ora" del pannello). */
 exports.scribaSendNow = onCall(
-  { region: "us-central1", timeoutSeconds: 300, memory: "512MiB" },
+  { region: "europe-west4", timeoutSeconds: 300, memory: "512MiB" },
   async (request) => {
     const email = request.auth?.token?.email;
     if (!email || !SCRIBA_MASTERS.includes(email)) {
@@ -1204,7 +1204,7 @@ exports.scribaSendNow = onCall(
  * pannello per scegliere un destinatario singolo a cui mandare uno o più numeri.
  */
 exports.scribaListRegistered = onCall(
-  { region: "us-central1", timeoutSeconds: 60, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 60, memory: "256MiB" },
   async (request) => {
     const email = request.auth?.token?.email;
     if (!email || !SCRIBA_MASTERS.includes(email)) {
@@ -1251,7 +1251,7 @@ exports.scribaListRegistered = onCall(
  * né la numerazione. Ritorna l'esito per ciascun numero.
  */
 exports.scribaSendCustom = onCall(
-  { region: "us-central1", timeoutSeconds: 300, memory: "512MiB" },
+  { region: "europe-west4", timeoutSeconds: 300, memory: "512MiB" },
   async (request) => {
     const masterEmail = request.auth?.token?.email;
     if (!masterEmail || !SCRIBA_MASTERS.includes(masterEmail)) {
@@ -1566,7 +1566,7 @@ exports.scribaKickoff = onRequest(
 // `{giorno}_{uid}` creato in transazione), solo il Master principale senza limiti.
 const ruota = require("./ruota");
 exports.ruotaSpin = onCall(
-  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 30, memory: "256MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi per girare la ruota.");
@@ -1629,7 +1629,7 @@ exports.ruotaSpin = onCall(
 // contato restituisce { already: true } senza pagare niente.
 const loginRewards = require("./loginRewards");
 exports.loginDaily = onCall(
-  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 30, memory: "256MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
@@ -1678,19 +1678,14 @@ exports.loginDaily = onCall(
   },
 );
 
-// ── Punti pet delle letture e visite (2026-10-31) ───────────────────────────
-// Ogni riassunto, NPC, luogo o pagina paga UNA volta sola per personaggio, per
-// sempre. Il registro è pet_reads/{uid}__{kind}__{id} (regole: write false):
-// esiste già → niente punti. Le letture dei riassunti pagate col vecchio
-// sistema (characters.petPointsSeen.summary_read) contano come già fatte.
+// ── Punti pet delle letture e visite (2026-11-17: giornaliero) ────────────────
+// Ogni riassunto, NPC, luogo o pagina paga UNA volta al giorno (fuso Europe/Rome)
+// per personaggio. Il registro è pet_reads/{uid}__{today}__{kind}__{id}.
 // In DUE TEMPI: action "start" segna l'inizio con l'ora del SERVER in
-// pet_read_sessions/{uid}.{kind} (una lettura per tipo alla volta), action
-// "finish" paga solo se da allora è passato il tempo minimo (readNeedMs, che
-// per le cronache dipende dalla lunghezza). Chi chiama la funzione a mano deve
-// comunque aspettare il tempo vero, cronaca per cronaca.
+// pet_read_sessions/{uid}.{kind}, action "finish" paga solo se è passato il tempo minimo.
 const petReads = require("./petReads");
 exports.petReadReward = onCall(
-  { region: "us-central1", timeoutSeconds: 20, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 20, memory: "256MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
@@ -1713,43 +1708,40 @@ exports.petReadReward = onCall(
     }
     const need = petReads.readNeedMs(kind, words);
     const points = petReads.READ_POINTS[kind];
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
     const charRef = db.collection("characters").doc(uid);
-    const readRef = db.collection("pet_reads").doc(`${uid}__${kind}__${id}`);
+    const readRef = db.collection("pet_reads").doc(`${uid}__${today}__${kind}__${id}`);
     const sessRef = db.collection("pet_read_sessions").doc(uid);
 
     if (action === "start") {
       const rs = await readRef.get();
-      if (rs.exists) return { already: true, kind, id };
+      if (rs.exists) return { already: true, kind, id, day: today };
       await sessRef.set({ [kind]: { id, startedAt: Date.now(), need } }, { merge: true });
-      return { already: false, kind, id, need, points };
+      return { already: false, kind, id, need, points, day: today };
     }
 
     return db.runTransaction(async (tx) => {
       const [cs, rs, ss] = await Promise.all([tx.get(charRef), tx.get(readRef), tx.get(sessRef)]);
-      if (rs.exists) return { already: true, kind, id };
+      if (rs.exists) return { already: true, kind, id, day: today };
       if (!cs.exists) throw new HttpsError("failed-precondition", "nochar");
       const c = cs.data();
-      const legacy = kind === "summary" && (c.petPointsSeen?.summary_read || []).includes(id);
-      if (!legacy) {
-        const sess = ss.exists ? ss.data()?.[kind] : null;
-        // 1,5 s di margine per la rete; il tempo attivo del sito è sempre ≤ di quello vero.
-        if (!sess || sess.id !== id || Date.now() - Number(sess.startedAt || 0) < need - 1500) {
-          return { already: false, notYet: true, kind, id, need };
-        }
+      const sess = ss.exists ? ss.data()?.[kind] : null;
+      // 1,5 s di margine per la rete; il tempo attivo del sito è sempre ≤ di quello vero.
+      if (!sess || sess.id !== id || Date.now() - Number(sess.startedAt || 0) < need - 1500) {
+        return { already: false, notYet: true, kind, id, need, day: today };
       }
       tx.set(readRef, {
-        uid, kind, id, title, name: c.name || "",
-        points: legacy ? 0 : points, legacy,
+        uid, day: today, kind, id, title, name: c.name || "",
+        points,
         at: FieldValue.serverTimestamp(),
       });
       tx.set(sessRef, { [kind]: FieldValue.delete() }, { merge: true });
-      if (legacy) return { already: true, legacy: true, kind, id };
       const ledger = [
-        { source: `read_${kind}`, label: `${petReads.KIND_LABEL[kind]}: ${title}`, amount: points, ts: new Date().toISOString(), resourceKey: id },
+        { source: `read_${kind}`, label: `${petReads.KIND_LABEL[kind]}: ${title}`, amount: points, ts: new Date().toISOString(), resourceKey: `${today}:${id}` },
         ...((c.petPointsLedger || []).slice(0, 29)),
       ];
       tx.update(charRef, { petPoints: FieldValue.increment(points), petPointsLedger: ledger });
-      return { already: false, kind, id, points, title };
+      return { already: false, kind, id, points, title, day: today };
     }).catch((e) => {
       if (e instanceof HttpsError) throw e;
       console.error("[petRead]", e);
@@ -1864,7 +1856,7 @@ const PET_MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 const isPetMaster = (request) => PET_MASTER_EMAILS.includes(String(request.auth?.token?.email || "").toLowerCase());
 
 exports.petDo = onCall(
-  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 30, memory: "512MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
@@ -1920,7 +1912,7 @@ const PET_POINT_SOURCES = {
   arena_tournament: { label: "Vincitore del torneo", amount: 25, dailyCap: 1, oncePerKey: true },
   arena_libera: { label: "Sfida Libera conclusa", amount: 1, dailyCap: 5, oncePerKey: true },
   market_bid: { label: "Offerta al Mercato Nero", amount: 1, dailyCap: 5, oncePerKey: true },
-  daily_login: { label: "Login del giorno", amount: 2, dailyCap: 1 },
+  daily_login: { label: "Login del giorno", amount: 10, dailyCap: 1 },
   boss_win: { label: "Vittoria sul World Boss", amount: 20, dailyCap: 2, oncePerKey: true },
 };
 async function petAwardAllowed(db, request, target, source, key) {
@@ -1948,7 +1940,7 @@ async function petAwardAllowed(db, request, target, source, key) {
   return false;
 }
 exports.petAward = onCall(
-  { region: "us-central1", timeoutSeconds: 20, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 20, memory: "256MiB" },
   async (request) => {
     if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Accedi.");
     const target = String(request.data?.uid || "");
@@ -1969,19 +1961,33 @@ exports.petAward = onCall(
       const seen = data.petPointsSeen || {};
       if (def.oncePerKey && key && (seen[source] || []).includes(key)) return { awarded: 0, reason: "already-seen" };
       if ((todayMap[source] || 0) >= def.dailyCap) return { awarded: 0, reason: "daily-cap" };
-      const ledger = [
-        { source, label: def.label, amount: def.amount, ts: new Date().toISOString(), resourceKey: key },
-        ...((data.petPointsLedger || []).slice(0, 29)),
-      ];
+      let amount = def.amount;
+      let label = def.label;
+      let streakOut = null;
       const patch = {
-        petPoints: (Number(data.petPoints) || 0) + def.amount,
-        petPointsLedger: ledger,
         [`petPointsDaily.${today}.${source}`]: (todayMap[source] || 0) + 1,
       };
+      if (source === "daily_login") {
+        const yDate = new Date(`${today}T12:00:00Z`);
+        yDate.setUTCDate(yDate.getUTCDate() - 1);
+        const yesterday = yDate.toISOString().slice(0, 10);
+        const prevStreak = data.petLoginStreak || {};
+        const nextStreak = prevStreak.lastDay === yesterday ? (Number(prevStreak.streak) || 1) + 1 : 1;
+        amount = Math.min(30, 10 + (nextStreak - 1) * 2);
+        label = `Login del giorno (${nextStreak}° giorno)`;
+        streakOut = nextStreak;
+        patch.petLoginStreak = { lastDay: today, streak: nextStreak };
+      }
+      const ledger = [
+        { source, label, amount, ts: new Date().toISOString(), resourceKey: key },
+        ...((data.petPointsLedger || []).slice(0, 29)),
+      ];
+      patch.petPoints = (Number(data.petPoints) || 0) + amount;
+      patch.petPointsLedger = ledger;
       Object.keys(daily).sort().filter((k) => k !== today).slice(0, -6).forEach((d) => { patch[`petPointsDaily.${d}`] = FieldValue.delete(); });
       if (def.oncePerKey && key) patch[`petPointsSeen.${source}`] = [...(seen[source] || []), key].slice(-500);
       tx.update(ref, patch);
-      return { awarded: def.amount };
+      return streakOut != null ? { awarded: amount, streak: streakOut } : { awarded: amount };
     });
   },
 );
@@ -1999,7 +2005,7 @@ const segreteBundle = require("./segreteBundle");
 // oggetti creati dal Master nell'admin delle Segrete (2026-11-08): si uniscono a ITEMS del motore
 let segreteItemsAt = 0;
 async function loadSegreteItems(db) {
-  if (Date.now() - segreteItemsAt < 30000) return;
+  if (Date.now() - segreteItemsAt < 300000) return;
   const snap = await db.collection("segrete_items").get();
   segreteBundle.registerCustomItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   segreteItemsAt = Date.now();
@@ -2014,7 +2020,7 @@ async function getSegreteMasterUid() {
 }
 
 exports.segreteDo = onCall(
-  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  { region: "europe-west4", timeoutSeconds: 30, memory: "512MiB" },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
@@ -2740,6 +2746,75 @@ exports.segreteDo = onCall(
     } catch (e) {
       if (e instanceof HttpsError) throw e;
       throw new HttpsError("failed-precondition", e?.message || "Operazione non riuscita.");
+    }
+  },
+);
+
+// ── Oggetto basilare casuale con Gemini (2026-11-17) ─────────────────────────
+// Usato dall'Officina quando il giocatore sceglie "Oggetto casuale (base)":
+// crea un oggetto semplice coerente con la professione e la qualità uscita
+// dal tiro (bassa, media o alta). Se Gemini non risponde, il client usa la
+// tabella locale di scorta.
+exports.craftingRandomItem = onCall(
+  { region: "europe-west4", timeoutSeconds: 20, memory: "256MiB" },
+  async (request) => {
+    if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Accedi.");
+    const profName = String(request.data?.professionName || "Artigiano").slice(0, 60);
+    const qualityKey = ["bassa", "media", "alta"].includes(request.data?.qualityKey) ? request.data.qualityKey : "media";
+    const total = Number(request.data?.total || 10);
+    const apiKey = String(geminiKeyParam.value() || "").trim();
+    if (!apiKey) return { ok: false, reason: "no-key" };
+
+    const qualityGuide = {
+      bassa: "Qualità BASSA (tiro basso): oggetto basilare economico, grezzo o leggermente imperfetto (ha un piccolo limite pratico, es. dura meno, è scomodo o rende la metà), ma comunque usabile.",
+      media: "Qualità MEDIA (tiro medio): oggetto basilare standard, ben fatto, pratico e affidabile in viaggio o in combattimento (stile equipaggiamento base o piccolo consumabile D&D 5e).",
+      alta: "Qualità ALTA (tiro alto): oggetto basilare di ottima fattura, curato nei dettagli con un piccolo vantaggio pratico o +1 situazionale/effetto minore utile, senza essere leggendario.",
+    }[qualityKey];
+
+    const prompt = [
+      `Sei il mastro artigiano di Eldoria (D&D 5e, italiano).`,
+      `Professione: ${profName}.`,
+      `Esito del tiro d20 totale: ${total}.`,
+      `Fascia: ${qualityGuide}`,
+      `Inventa UN SOLO oggetto basilare casuale originale adatto a questa professione e a questa fascia di qualità.`,
+      `Rispondi SOLO con JSON valido con esattamente due chiavi: "name" (nome breve italiano, max 5 parole) e "desc" (1-2 frasi chiare su aspetto ed effetto pratico in gioco).`,
+    ].join("\n");
+
+    try {
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 9000);
+      let resp;
+      try {
+        resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.9,
+                maxOutputTokens: 220,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: ac.signal,
+          },
+        );
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!resp.ok) return { ok: false, reason: `http-${resp.status}` };
+      const data = await resp.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const parsed = JSON.parse(rawText);
+      const name = String(parsed?.name || "").trim().slice(0, 80);
+      const desc = String(parsed?.desc || "").trim().slice(0, 320);
+      if (!name || !desc) return { ok: false, reason: "empty" };
+      return { ok: true, name, desc, source: "gemini" };
+    } catch (e) {
+      console.warn("[craftingRandomItem]", e?.message || e);
+      return { ok: false, reason: "error" };
     }
   },
 );

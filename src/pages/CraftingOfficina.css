@@ -846,3 +846,27 @@
 .cr-page .off-spec-btn:disabled { cursor: default; }
 .cr-page .off-spec-btn small { color: var(--osso-body); font-size: .78rem; }
 .cr-page .off-spec-note { grid-column: 1 / -1; color: var(--osso-body); }
+
+/* Riepilogo dinamico in alto sul banco di lavoro (2026-11-17) */
+.cr-page .off-top-live {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 14px; margin-bottom: 14px; padding: 10px 14px; border-radius: 4px;
+  background: rgba(var(--ossidiana-rgb), .72);
+  border: 1px solid color-mix(in srgb, var(--q, var(--el)) 45%, var(--roccia-3));
+  border-left: 4px solid var(--q, var(--el));
+  position: sticky; top: 8px; z-index: 6; backdrop-filter: blur(6px);
+}
+.cr-page .off-top-live-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.cr-page .off-top-live-tier {
+  font-family: "Alegreya SC", "Alegreya", serif; font-size: .78rem; letter-spacing: .06em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 3px;
+  background: color-mix(in srgb, var(--q, var(--el)) 18%, transparent);
+  color: var(--osso); border: 1px solid color-mix(in srgb, var(--q, var(--el)) 55%, transparent);
+}
+.cr-page .off-top-live-item { font-family: "Alegreya", Georgia, serif; font-size: .98rem; color: var(--osso); }
+.cr-page .off-top-live-stats {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  font-family: "Alegreya", Georgia, serif; font-size: .88rem; color: var(--osso-body);
+}
+.cr-page .off-top-live-stats b { font-family: "Cinzel", Georgia, serif; color: var(--osso); }
+.cr-page .off-top-live-stats small { color: var(--osso-2); font-size: .78rem; }

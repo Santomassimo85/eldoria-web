@@ -21,8 +21,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-// Cloud Functions callable (regione us-central1, come da deploy).
-export const functions = getFunctions(app, "us-central1");
+// Cloud Functions callable (regione europe-west4, co-locata con Firestore).
+export const functions = getFunctions(app, "europe-west4");
 
 // Lazy messaging — only initialized when supported (HTTPS + browser support)
 export const getMessagingIfSupported = async () => {

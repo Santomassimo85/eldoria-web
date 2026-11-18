@@ -225,6 +225,11 @@ export default function PetDen() {
   }, [uid, char, tourney, entered, den.tourney]);
   const points = Number(char?.petPoints) || 0;
 
+  useEffect(() => {
+    if (!uid) return;
+    import("../utils/pet").then(({ awardPetPoints }) => awardPetPoints(uid, "daily_login")).catch(() => {});
+  }, [uid]);
+
   // Pet arrivati dal Mercato: si ritirano all'apertura (solo dopo l'iniziale).
   useEffect(() => {
     if (!uid || !char || giftsTried.current || !den.starter) return;
@@ -845,7 +850,7 @@ function Manual() {
         <h3>Punti pet</h3>
         <ul>
           <li>Arena: round e tornei vinti, Sfide Libere concluse.</li>
-          <li>Login del giorno · vittoria contro il World Boss · ogni nuovo piano della Torre.</li>
+          <li>Login del giorno (10 pt il 1° giorno, +2 pt ogni giorno consecutivo fino a 30 pt) · visite pagine/cronache/NPC/luoghi ogni giorno · World Boss · ogni nuovo piano della Torre.</li>
         </ul>
       </section>
     </div>
@@ -1255,7 +1260,8 @@ function EggShopTab({ uid, den, art, points, run, ledger, goNest }) {
       <h2 className="pd-h2">Come si guadagnano i punti</h2>
       <ul className="pd-howto">
         <li>⚔ Arena: round e tornei vinti, Sfide Libere concluse</li>
-        <li>🗓 Login del giorno</li>
+        <li>🗓 Login del giorno: 10 pt (+2 al giorno consecutivo fino a 30 pt)</li>
+        <li>📖 Visite alle pagine, Cronache, NPC e Luoghi (ogni giorno)</li>
         <li>🐉 Vittoria contro il World Boss</li>
         <li>🗼 Ogni nuovo piano della Torre</li>
         <li>💰 Uova e pet compaiono anche all'asta del Mercato Nero</li>

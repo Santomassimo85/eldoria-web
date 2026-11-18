@@ -42,6 +42,28 @@ const BOW_KEY = "seg-my-bow"; // da dove parte la freccia in prima persona: l'ar
 const HAND_KEY = "seg-my-focus"; // la mano sinistra (focus, mano libera o scudo), in basso a sinistra nella scena
 let callable = null;
 const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
+
+// Cache di sessione per mostri e tile delle Segrete (evita re-fetch ad ogni stanza).
+const _TILE_CACHE = new Map();
+const _HAND_CACHE = new Map();
+let _monstersCache = null;
+let _monstersAt = 0;
+let _monstersPending = null;
+function loadMonsterFronts() {
+  if (_monstersCache && Date.now() - _monstersAt < 300000) return Promise.resolve(_monstersCache);
+  if (_monstersPending) return _monstersPending;
+  _monstersPending = getDocs(collection(db, "dungeon_monsters"))
+    .then((s) => {
+      const m = {};
+      s.docs.forEach((d) => { const u = d.data().frontImageUrl; if (u) m[d.id] = u; });
+      _monstersCache = m;
+      _monstersAt = Date.now();
+      return m;
+    })
+    .catch(() => _monstersCache || {})
+    .finally(() => { _monstersPending = null; });
+  return _monstersPending;
+}
 const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const pipsOf = (c, round) => statusIcons(c, round || 1).map((i) => ({ k: i.k, icon: i.ico, tag: i.tag, dur: i.n ? String(i.n) : "", good: i.good, tip: `${i.t}${i.n ? ` · ${i.n} round` : ""}` }));
 /* CRONACA (2026-11-07): striscia e nomi col colore della classe per gli eroi, rosso per i mostri;
@@ -308,9 +330,7 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   useEffect(() => onSnapshot(doc(db, "dungeon_runs", room.id), (s) => setLatestRun(s.exists() ? s.data() : null), (e) => setErr(e.message)), [room.id]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
-    getDocs(collection(db, "dungeon_monsters")).then((s) => {
-      const m = {}; s.docs.forEach((d) => { const u = d.data().frontImageUrl; if (u) m[d.id] = u; }); setFronts(m);
-    }).catch(() => {});
+    loadMonsterFronts().then(setFronts).catch(() => {});
   }, []);
 
   const startKey = room.startedAt?.toMillis ? room.startedAt.toMillis() : 0;
@@ -331,17 +351,18 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   }, [room.id, room.status, run, startKey]);
 
   /* ── il motore grafico ── */
-  const tileCache = useRef({});
   const loadThemeTiles = async (key) => {
     if (!key) return null;
-    if (key in tileCache.current) return tileCache.current[key];
+    if (_TILE_CACHE.has(key)) return _TILE_CACHE.get(key);
     try {
       const s = await getDoc(doc(db, "dungeon_tiles", key));
-      tileCache.current[key] = s.exists() ? s.data() : null;
+      const val = s.exists() ? s.data() : null;
+      _TILE_CACHE.set(key, val);
+      return val;
     } catch {
-      tileCache.current[key] = null;
+      _TILE_CACHE.set(key, null);
+      return null;
     }
-    return tileCache.current[key];
   };
   useEffect(() => {
     if (!cv || !fg) return undefined;
@@ -371,7 +392,14 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
   useEffect(() => {
     if (!eng || !weaponKey) return;
     // empty = lo stesso sprite con la freccia già scoccata (arco e balestra)
-    const read = (k, gl = glove) => (k ? getDoc(doc(db, "dungeon_tiles", handDoc(k, gl))).then((s) => s.data() || {}).catch(() => ({})) : Promise.resolve({}));
+    const read = (k, gl = glove) => {
+      if (!k) return Promise.resolve({});
+      const docId = handDoc(k, gl);
+      if (_HAND_CACHE.has(docId)) return Promise.resolve(_HAND_CACHE.get(docId));
+      return getDoc(doc(db, "dungeon_tiles", docId))
+        .then((s) => { const d = s.data() || {}; _HAND_CACHE.set(docId, d); return d; })
+        .catch(() => ({}));
+    };
     Promise.all([
       specialKey ? read(pairKey(specialKey, offKey)) : {},
       armorKey ? read(pairKey(weaponKey, offKey), armorGlove(armorKey, race)) : {},
@@ -563,12 +591,12 @@ export default function SegreteCrawler({ room, uid, tools, charData }) {
           land();
         }
         if (handAnimation) await handAnimation;
-        await sleep(l.fx ? ROW_GAP_MS : l.roll ? 500 : 250);
+        await sleep(l.fx ? 180 : l.roll ? 220 : 120);
         if (!mounted.current || seenKey.current !== startKey) return;
         queued.current = Math.max(0, queued.current - 1);
       }
       await whenDiceIdle();
-      await sleep(350);
+      await sleep(120);
       if (!mounted.current || seenKey.current !== startKey) return;
       await commitPresentation(snapshot);
       if (!queued.current) setAnimating(false);
