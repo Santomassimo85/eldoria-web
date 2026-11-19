@@ -3,6 +3,7 @@ import { useAuth } from "../AuthContext";
 import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from "../firebase";
 import { logAgent } from "../utils/agentLog";
+import { isMainMaster } from "../utils/roles";
 import {
   doc, getDoc, setDoc, collection, query, where, getDocs,
   runTransaction, writeBatch, serverTimestamp, increment,
@@ -303,7 +304,8 @@ const HINT_GROUPS = [
 ];
 
 function formatText(text) {
-  return text
+  return String(text || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br/>");
@@ -315,6 +317,7 @@ function now() {
 
 export default function Assistente() {
   const { currentUser } = useAuth();
+  const isMaster = isMainMaster(currentUser?.email);
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Salve. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate. Come posso aiutarti?", time: now() }
   ]);
@@ -323,24 +326,34 @@ export default function Assistente() {
   const [trace, setTrace] = useState([]);
   const [pendingAction, setPendingAction] = useState(null);
   const [showHints, setShowHints] = useState(true);
-  const greetedRef = useRef(false);
   const bottomRef = useRef(null);
   const taRef = useRef(null);
+  const activeRequest = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   // Saluto personalizzato col nome del personaggio (se la conversazione è ancora vergine).
   useEffect(() => {
-    if (!currentUser?.uid || greetedRef.current) return;
-    greetedRef.current = true;
+    let alive = true;
+    activeRequest.current?.abort();
+    setLoading(false);
+    setPendingAction(null);
+    setTrace([]);
+    setShowHints(true);
+    setMessages([{ role: 'assistant', content: isMaster
+      ? 'Bentornato, Master. Posso cercare nei riassunti di tutti i gruppi e incrociarli con storie dei personaggi, NPC, luoghi e missioni. Chiedimi anche di vecchi eventi o legami tra personaggi.'
+      : 'Salve. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate.', time: now() }]);
+    if (!currentUser?.uid || isMaster) return () => { alive = false; };
     getDoc(doc(db, "characters", currentUser.uid)).then(snap => {
+      if (!alive) return;
       const nome = snap.exists() ? (snap.data().name || "").trim() : "";
       if (!nome) return;
       setMessages(m => (m.length === 1 && m[0].role === "assistant")
         ? [{ ...m[0], content: `Salve, ${nome}. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate. Come posso aiutarti?` }]
         : m);
     }).catch(() => {});
-  }, [currentUser]);
+    return () => { alive = false; };
+  }, [currentUser?.uid, isMaster]);
 
   function addTrace(icon, text) {
     setTrace(t => [...t.slice(-8), { icon, text, id: Date.now() }]);
@@ -349,6 +362,8 @@ export default function Assistente() {
   async function send(text) {
     const msg = (text || input).trim();
     if (!msg || loading) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setInput("");
     setShowHints(false);
     if (taRef.current) taRef.current.style.height = "46px";
@@ -374,9 +389,12 @@ export default function Assistente() {
     }
 
     try {
+      const idToken = await currentUser.getIdToken();
+      if (controller.signal.aborted) return;
       const r = await fetch("/api/assistente", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        headers: { "content-type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           messages: history.map(m => ({ role: m.role, content: m.content })),
           uid: currentUser?.uid,
@@ -384,6 +402,7 @@ export default function Assistente() {
         })
       });
       const data = await r.json();
+      if (controller.signal.aborted) return;
       if (data.error) throw new Error(data.error);
 
       addTrace("✅", "Risposta ricevuta");
@@ -399,12 +418,16 @@ export default function Assistente() {
         setPendingAction(data.pendingAction);
       }
       logAgent("oracolo", "success", `Risposta: "${String(data.reply || "").slice(0, 160)}"`, { user: who }, { count: true });
-      setMessages(m => [...m, { role: "assistant", content: data.reply, time: now() }]);
+      setMessages(m => [...m, { role: "assistant", content: data.reply, sources: data.sources || [], time: now() }]);
     } catch (e) {
+      if (controller.signal.aborted) return;
       logAgent("oracolo", "error", e.message, { user: who });
       setMessages(m => [...m, { role: "assistant", content: `⚠️ Errore: ${e.message}`, time: now() }]);
     } finally {
-      setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -466,7 +489,7 @@ export default function Assistente() {
       <GlacierHero
         className="ast-glhero"
         ariaLabel="Assistente di Eldoria"
-        hint="la memoria vivente di Eldoria"
+        hint={isMaster ? "Master · archivio di tutti i gruppi" : "la memoria vivente di Eldoria"}
         eyebrow="Oracolo di Eldoria"
         title="Assistente di Eldoria"
         tagline="Mercato · Missioni · NPC · Luoghi · Sessioni"
@@ -489,6 +512,15 @@ export default function Assistente() {
         {messages.map((m, i) => (
           <div key={i} className={"msg " + (m.role === "user" ? "user" : "bot")}>
             <div className="msg-bubble" dangerouslySetInnerHTML={{ __html: formatText(m.content) }} />
+            {!!m.sources?.length && <details style={{ maxWidth: '100%', marginTop: 8, overflowWrap: 'anywhere' }}>
+              <summary>Fonti consultate ({m.sources.length})</summary>
+              <ul style={{ paddingLeft: 20 }}>
+                {m.sources.map(source => <li key={`${source.collection}/${source.id}`}>
+                  {source.href ? <a href={source.href} target="_blank" rel="noopener noreferrer">{source.titolo}</a> : <span>{source.titolo}</span>}
+                  {' · '}{[source.tipo, source.gruppo, source.data].filter(Boolean).join(' · ')}
+                </li>)}
+              </ul>
+            </details>}
             <span className="msg-time">{m.time}</span>
           </div>
         ))}
@@ -503,7 +535,7 @@ export default function Assistente() {
       {/* SUGGERIMENTI */}
       {showHints && (
         <div className="ast-hints">
-          {HINT_GROUPS.map((g, gi) => (
+          {(isMaster ? [{ icon: '📚', label: 'Memoria del Master', hints: ["Chi era l’amica di Palar?", "Cerca i legami di Palar nei riassunti", "Cosa è successo nell’ultima sessione ENOX?"] }, ...HINT_GROUPS] : HINT_GROUPS).map((g, gi) => (
             <div key={gi} className="ast-hint-group">
               <div className="ast-hint-label"><span>{g.icon}</span>{g.label}</div>
               <div className="ast-hint-row">
