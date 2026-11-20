@@ -16,6 +16,9 @@ async function moduleOf(entry) {
   const sheet = { name: 'Palar', inventory: [{ id: 'crystal', name: enhancer.name, quantity: 1 }] };
   const reserved = M.reserveMaterial(enhancer, { charData: sheet }, 'enhancers', 'craft1_enhancer');
   sheet.crafting = { materialReservations: { craft1_enhancer: reserved.use } };
+  assert.equal(M.availableCraftInventory(sheet)[0].quantity, 0);
+  assert.equal(M.availableCraftInventory(sheet)[0].craftReserved, 1);
+  assert.equal(M.availableCraftInventory({ ...sheet, inventory: [{ name: enhancer.name, quantity: 1 }] })[0].quantity, 0, 'Il vecchio sync senza id non restituisce il materiale impegnato');
   assert.equal(F.enhancerEvidence(enhancer, { charData: sheet }).ok, false);
   assert.throws(() => M.reserveMaterial(enhancer, { charData: sheet }, 'enhancers', 'craft2_enhancer'));
   sheet.inventory[0].quantity = 0;
@@ -82,4 +85,3 @@ async function moduleOf(entry) {
   assert.equal(deleted, 1);
   console.log('OK — prenotazioni, scorte, mercato, quantità Foundry, retry e bonus del craft');
 })().catch(error => { console.error(error); process.exitCode = 1; });
-

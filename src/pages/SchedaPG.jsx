@@ -6,6 +6,7 @@ import GlacierHero from "../components/glacier/GlacierHero";
 import { buildSetIndex, matchInventorySets } from "../utils/itemSets";
 import { availableCoins, availableGp } from "../data/craftingPurse";
 import { fmtMo } from "../data/craftingTime";
+import { availableCraftInventory } from '../data/craftingMaterials';
 
 /* ============================================================
    Scheda PG — vista in stile grimorio, legge characters/{uid}.
@@ -374,7 +375,7 @@ export default function SchedaPG() {
   // Tolte come le paga la macro: prima l'oro, poi le altre monete, col resto.
   const coinsLeft = craftPending ? availableCoins(data) : null;
   const coinOf = (k) => (coinsLeft ? coinsLeft[k] : (cur[k] ?? 0));
-  const inv = data.inventory || [];
+  const inv = availableCraftInventory(data);
   const invSets = matchInventorySets(inv, setIndex);
   const initial = (data.name || "?").trim().charAt(0).toUpperCase();
   const keyStats = keyStatsFor(data.class);
@@ -433,6 +434,7 @@ export default function SchedaPG() {
         <div className="in">
           <div className="nm">{i.name}</div>
           <div className="mt">{[i.weight ? `${i.weight} kg` : null, i.type].filter(Boolean).join(" · ")}</div>
+          {i.craftReserved > 0 && <div className="mt">{i.craftReserved} impegnato nel crafting · in attesa di sincronizzazione</div>}
         </div>
         {i.equipped && <span className="eq">Eq.</span>}
         {set && (

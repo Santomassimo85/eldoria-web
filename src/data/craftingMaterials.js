@@ -3,6 +3,28 @@ export const materialName = (s) => String(s || '').toLowerCase().replace(/[’�
 const quantity = (item) => Math.max(0, Math.floor(Number(item.quantity ?? item.qty ?? 1) || 0));
 const itemId = (item) => item.id || item._id || item.foundryId || '';
 
+export function availableCraftInventory(charData) {
+  const inventory = Array.isArray(charData?.inventory) ? charData.inventory : [];
+  const ids = new Set(inventory.map(itemId).filter(Boolean));
+  const pending = new Map();
+  for (const use of Object.values(charData?.crafting?.materialReservations || {})) {
+    if (use.status !== 'pending' || !['scheda', 'mercato'].includes(use.source)) continue;
+    const key = use.itemId && ids.has(use.itemId) ? `id:${use.itemId}` : `name:${materialName(use.itemName)}`;
+    pending.set(key, (pending.get(key) || 0) + (Number(use.quantity) || 1));
+  }
+  return inventory.map((item) => {
+    let available = quantity(item);
+    let reserved = 0;
+    for (const key of [itemId(item) ? `id:${itemId(item)}` : '', `name:${materialName(item.name)}`].filter(Boolean)) {
+      const used = Math.min(available, pending.get(key) || 0);
+      available -= used;
+      reserved += used;
+      pending.set(key, (pending.get(key) || 0) - used);
+    }
+    return { ...item, quantity: available, craftReserved: reserved };
+  });
+}
+
 export function materialEvidence(material, { charData, marketItems = [], isMaster = false } = {}, bucket = 'enhancers') {
   if (!material) return { ok: false, qty: 0, source: '', label: '' };
   if (isMaster) return { ok: true, qty: Infinity, source: 'master', label: 'Master' };
@@ -12,18 +34,16 @@ export function materialEvidence(material, { charData, marketItems = [], isMaste
   const matches = (name) => names.some((alias) => materialName(name).includes(alias));
   const uses = Object.values(charData?.crafting?.materialReservations || {});
   // L'inventario è autorevole quando esiste, anche se vuoto. actions è il formato legacy.
-  const sheet = Array.isArray(charData?.inventory) ? charData.inventory : (Array.isArray(charData?.actions) ? charData.actions : []);
+  const rawSheet = Array.isArray(charData?.inventory) ? charData.inventory : (Array.isArray(charData?.actions) ? charData.actions : []);
+  const sheet = availableCraftInventory({ ...charData, inventory: rawSheet });
   const seen = new Set();
   for (const item of sheet.filter((entry) => matches(entry?.name))) {
     const id = itemId(item);
     const key = id || materialName(item.name);
     if (seen.has(key)) continue;
     seen.add(key);
-    const pending = uses.filter((use) => use.status === 'pending' && use.source === 'scheda' &&
-      (id && use.itemId ? use.itemId === id : materialName(use.itemName) === materialName(item.name)))
-      .reduce((total, use) => total + (Number(use.quantity) || 1), 0);
     const owned = id ? quantity(item) : sheet.filter((entry) => !itemId(entry) && materialName(entry.name) === materialName(item.name)).reduce((total, entry) => total + quantity(entry), 0);
-    const available = owned - pending;
+    const available = owned;
     if (available > 0) return { ok: true, qty: available, source: 'scheda', itemId: id, itemName: item.name, label: `sulla scheda: ${item.name} (${available})` };
   }
   // Acquisti storici non sono nuove scorte: si usano solo per schede prive di inventario.
