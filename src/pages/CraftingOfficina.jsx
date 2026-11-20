@@ -34,6 +34,8 @@ import { serverClockOffset, serverNow } from "../data/serverClock";
 import { DOCILI_PREGIO_PCT, GRADE_BONUS, XP_LEVELS, XP_PER_TIER, progression, xpForCraft } from "../data/craftingProgress";
 import { CRAFT_VALUE_SCALE, DAMAGE_TYPES_IT, ENHANCERS, TIER_TO_FOUNDRY, classifyCraftedItem, craftGoldPayload, craftSaleValue, craftedItemToFoundryPayload, enhancerEvidence, itemChoices, needsResChoice } from "../data/craftingFoundry";
 import { curseGravita, generateCurse, gravitaByKey } from "../data/craftingCurse";
+import { reserveMaterial } from "../data/craftingMaterials";
+import { cancelCraftInbox } from '../data/craftingQueue';
 import { generateRandomBasicItem, randomQualityForRoll } from "../data/craftingRandom";
 import { COMPONENTS, COMPONENT_ROLL_DIE, CRAFT_BASE_MINUTES, INVESTMENTS, MAX_COMPONENTS, PACE_OPTIONS, TOOLS_MINUTES, componentByKey, componentDie, applyOutcomeTime, componentEffectLabel, craftMinutes, craftTimeLabel, fmtCountdown, fmtMinutes, fmtMo, investCostMo, investmentByKey, outcomeTimeBy, roundMo, outcomeTimeRange, paceByKey, xpWithInvestment } from "../data/craftingTime";
 import { componentEvidence, toolsEvidence } from "../data/craftingOwnership";
@@ -479,6 +481,7 @@ export default function CraftingOfficina() {
       // transazione del tiro. Descrive la rarità MIRATA, non l'esito: la coda
       // è leggibile e il tiro resta segreto fino al ritiro.
       const goldRef = !isMaster && paidMo > 0 ? doc(collection(db, "foundry_inbox")) : null;
+      const materialsRef = !isMaster && entry.components.length ? doc(collection(db, "foundry_inbox")) : null;
       if (goldRef) { entry.goldInboxId = goldRef.id; entry.goldAuto = true; }
       // Transazione: rilegge contatori e scorte e rifiuta se nel frattempo sono stati consumati.
       await runTransaction(db, async (tx) => {
@@ -513,16 +516,24 @@ export default function CraftingOfficina() {
           // Il Master non paga: niente spesa in sospeso.
           "crafting.goldPending": roundMo(Math.max(0, (Number(cur.goldPending) || 0) + (goldRef ? (Number(entry.costMo) || 0) : 0))),
         };
-        // I componenti: dalla scorta del Master si consumano (uno per tipo); altrimenti
-        // devono risultare sulla scheda Foundry o comprati al Mercato (il Master li toglie lui).
+        const materialUses = [];
+        const materialData = { ...data, crafting: { ...cur, materialReservations: { ...cur.materialReservations } } };
         for (const k of entry.components) {
           const c = componentByKey(k);
-          const n = Number(cur.components?.[k]) || 0;
-          if (n > 0) { patch[`crafting.components.${k}`] = n - 1; entry.componentProof[k] = `scorta del Master (consumato 1 di ${n})`; continue; }
-          const ev = componentEvidence(c, ownCtx);
-          if (!ev.ok && !isMaster) throw new Error(`${c?.name || k}: non risulta tra le tue cose.`);
-          entry.componentProof[k] = ev.ok && ev.label ? `${ev.label} · da togliere dalla scheda` : "Master";
+          const reservation = reserveMaterial(c, { charData: materialData, marketItems, isMaster }, 'components', `${entry.id}_${k}`);
+          Object.assign(patch, reservation.patch);
+          if (reservation.use) {
+            materialUses.push(reservation.use);
+            materialData.crafting.materialReservations[reservation.use.reservationId] = reservation.use;
+          }
+          entry.componentProof[k] = `${reservation.evidence.label} · consumato 1`;
         }
+        entry.materialReservationIds = materialUses.map((use) => use.reservationId);
+        if (materialsRef && materialUses.length) tx.set(materialsRef, {
+          status: 'pending_materials', kind: 'materials', origin: 'crafting', crafterUid: uid,
+          target: 'player', targetUid: uid, targetName: data.name || '', name: `Materiali per ${entry.name}`,
+          materialUses, craftEntryId: entry.id, createdAt: serverTimestamp(),
+        });
         // Le capacità del Sentiero si spendono qui, sullo stato fresco.
         if (raddoppioOn) { if (cur.raddoppioWeek === al.weekKey) throw new Error("Il Raddoppio l'hai già usato questa settimana."); patch["crafting.raddoppioWeek"] = al.weekKey; }
         if (firmaOn) { if (cur.firmaWeek === al.weekKey) throw new Error("La Firma del Maestro l'hai già usata questa settimana."); patch["crafting.firmaWeek"] = al.weekKey; }
@@ -619,31 +630,49 @@ export default function CraftingOfficina() {
         entry.quality ? `materiali ${LEGACY_QUALITY[entry.quality] || entry.quality}` : "", // prove di prima del 2026-09-22
         entry.work && !entry.work.tools ? "senza strumenti" : "",
       ].filter(Boolean);
-      const ref = await addDoc(collection(db, "foundry_inbox"), {
-        status: "pending", ...payload,
-        origin: "crafting", crafterUid: uid, crafterName: charData?.name || "",
-        craft: {
-          profession: p.key, tier: entry.tier, targetTier: entry.targetTier, d20: entry.d20, total: entry.total, d12: entry.d12,
-          enhancer: enh?.key || "", enhancerSource: ev?.source || "", enhancerProof: ev?.label || "", note: note.trim(), resType: resType || "",
-          cost: fmtMo(entry.costMo || tierMo(entry.targetTier)), investment: inv.key, investmentPct: inv.costPct, upgraded: !!entry.upgraded, mods: conds,
-          minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
-          components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
-          componentBonus: entry.bonusParts?.comps || 0,
-          componentProofs: (entry.components || []).map((k) => `${componentByKey(k)?.name || k}: ${entry.componentProof?.[k] || "—"}`),
-          toolsProof: entry.toolsProof || "",
-          componentEffects: (entry.components || []).map((k) => componentByKey(k)).filter((c) => c?.effect).map((c) => `${c.name}: ${c.effect.label}`),
-          // ☠ Maledizione dell'1 naturale: va nella coda del Master, MAI nella
-          // descrizione che finisce su Foundry (la leggerebbe il giocatore).
-          cursed: !!entry.cursed,
-          curse: entry.cursed && entry.curse ? entry.curse : null,
-        },
-        createdAt: serverTimestamp(), createdBy: currentUser.email,
+      if (enh && !enh.applies.includes(payload.foundryType)) throw new Error('Questo potenziatore non è compatibile con l’oggetto scelto.');
+      const ref = doc(collection(db, "foundry_inbox"));
+      await runTransaction(db, async (tx) => {
+        const charRef = doc(db, 'characters', uid);
+        const snapshot = await tx.get(charRef);
+        const data = snapshot.data() || {};
+        const currentLog = Array.isArray(data.crafting?.log) ? data.crafting.log : [];
+        const currentEntry = currentLog.find((row) => row.id === entry.id);
+        if (!currentEntry) throw new Error('Il lavoro non è più nel registro. Ricarica la pagina.');
+        if (currentEntry.inboxId) return;
+        if (currentEntry.name !== entry.name || currentEntry.tier !== entry.tier) throw new Error('Il lavoro è cambiato. Ricarica la pagina.');
+        let liveMarket = marketItems;
+        const evidence = enh ? enhancerEvidence(enh, { charData: data, marketItems, isMaster }) : null;
+        if (evidence?.source === 'mercato') {
+          const purchase = await tx.get(doc(db, 'items', evidence.marketId));
+          liveMarket = purchase.exists() ? [{ ...purchase.data(), id: purchase.id }] : [];
+        }
+        const reservation = enh ? reserveMaterial(enh, { charData: data, marketItems: liveMarket, isMaster }, 'enhancers', `${entry.id}_enhancer`) : null;
+        const materialUses = reservation?.use ? [reservation.use] : [];
+        tx.set(ref, {
+          status: materialUses.length || currentEntry.materialReservationIds?.length ? 'pending_craft' : 'pending', ...payload, materialUses,
+          requiredMaterials: currentEntry.materialReservationIds || [],
+          origin: "crafting", crafterUid: uid, crafterName: charData?.name || "",
+          craft: {
+            profession: p.key, tier: entry.tier, targetTier: entry.targetTier, d20: entry.d20, total: entry.total, d12: entry.d12,
+            enhancer: enh?.key || "", enhancerSource: reservation?.evidence.source || "", enhancerProof: reservation?.evidence.label || "", note: note.trim(), resType: resType || "",
+            cost: fmtMo(entry.costMo || tierMo(entry.targetTier)), investment: inv.key, investmentPct: inv.costPct, upgraded: !!entry.upgraded, mods: conds,
+            minutes: entry.minutes || 0, work: entry.work ? craftTimeLabel(entry.work) : "", startedAt: entry.at || 0, readyAt: entry.readyAt || 0,
+            components: (entry.components || []).map((k) => componentByKey(k)?.name || k),
+            componentBonus: entry.bonusParts?.comps || 0,
+            componentProofs: (entry.components || []).map((k) => `${componentByKey(k)?.name || k}: ${entry.componentProof?.[k] || "—"}`),
+            toolsProof: entry.toolsProof || "",
+            componentEffects: (entry.components || []).map((k) => componentByKey(k)).filter((c) => c?.effect).map((c) => `${c.name}: ${c.effect.label}`),
+            // ☠ Maledizione dell'1 naturale: va nella coda del Master, MAI nella
+            // descrizione che finisce su Foundry (la leggerebbe il giocatore).
+            cursed: !!entry.cursed,
+            curse: entry.cursed && entry.curse ? entry.curse : null,
+          },
+          createdAt: serverTimestamp(), createdBy: currentUser.email,
+        });
+        const newLog = currentLog.map((e) => (e.id === entry.id ? { ...e, inboxId: ref.id, enhancer: enh?.key || "", choice: payload.name, note: note.trim() } : e));
+        tx.update(charRef, { "crafting.log": newLog.slice(0, 40), "crafting.busyUntil": deleteField(), ...reservation?.patch });
       });
-      const newLog = log.map((e) => (e.id === entry.id ? { ...e, inboxId: ref.id, enhancer: enh?.key || "", choice: payload.name, note: note.trim() } : e));
-      const patch = { "crafting.log": newLog.slice(0, 40), "crafting.busyUntil": deleteField() };
-      // La scorta assegnata dal Master si consuma: un cristallo incastonato non torna indietro.
-      if (ev?.source === "scorta") patch[`crafting.enhancers.${enh.key}`] = Math.max(0, (ev.stock || 1) - 1);
-      await updateDoc(doc(db, "characters", uid), patch);
       setRevealedId("");
       setMsg(`📦 "${payload.name}" è nella coda del Master: comparirà nel tuo inventario su Foundry alla prossima importazione.`);
     } catch (e) { setMsg("Errore: " + (e.message || e)); }
@@ -2111,6 +2140,7 @@ function CraftLedger({ chars, reload, patchChar }) {
     setBusyId(e.id);
     let newLog = null;
     try {
+      if (e.inboxId) await cancelCraftInbox(e.inboxId);
       const ref = doc(db, "characters", uid);
       // Spesa automatica ancora in coda? Allora la macro non l'ha scalata:
       // si toglie dalla coda e l'oro torna in borsa. Se non c'è più, è già
@@ -2139,7 +2169,6 @@ function CraftLedger({ chars, reload, patchChar }) {
         if (!e.inboxId && !e.skipped) patch["crafting.busyUntil"] = deleteField();
         tx.update(ref, patch);
       });
-      if (e.inboxId) await deleteDoc(doc(db, "foundry_inbox", e.inboxId)).catch(() => {});
       if (e.goldInboxId) await deleteDoc(doc(db, "foundry_inbox", e.goldInboxId)).catch(() => {}); // via anche la spesa in coda
       setConfirmId("");
       // Aggiorno subito la tabella (la rilettura da Firestore può arrivare dopo), poi ricarico.

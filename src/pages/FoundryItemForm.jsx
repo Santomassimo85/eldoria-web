@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
+import { cancelCraftInbox } from '../data/craftingQueue';
 import {
   collection, addDoc, getDocs, query, orderBy,
-  onSnapshot, deleteDoc, doc, serverTimestamp,
+  onSnapshot, doc, serverTimestamp,
 } from "firebase/firestore";
 import { Link } from "react-router-dom";
 import {
@@ -180,7 +181,7 @@ export default function FoundryItemForm() {
   }
 
   async function removePending(id) {
-    try { await deleteDoc(doc(db, "foundry_inbox", id)); } catch {}
+    try { await cancelCraftInbox(id); } catch (error) { setMsg(error.message); }
   }
 
   // Carica un oggetto del Mercato nel form (per revisione prima della coda).
@@ -484,7 +485,9 @@ export default function FoundryItemForm() {
             <div className="dmt-li" key={p.id}>
               <div className="n">
                 {p.name}
-                {p.kind === "xp"
+                {p.kind === "materials"
+                  ? <span className="npcgen-chip dmt-pill fdy-craft">🧱 materiali da consumare</span>
+                  : p.kind === "xp"
                   ? <span className="npcgen-chip dmt-pill fdy-craft" title="Premio del World Boss: Fetch admin li somma ai PE della scheda">⭐ PE</span>
                   : p.kind === "gold"
                   ? <span className="npcgen-chip dmt-pill fdy-craft" title="Spesa dei materiali dell'Officina: la macro la scala dall'oro">💰 {p.op === "add" ? "monete in più" : "monete da scalare"}</span>
@@ -501,6 +504,7 @@ export default function FoundryItemForm() {
                 {p.target === "player" ? `→ ${p.targetName || "giocatore"}` : "→ mondo"}
                 {p.kind === "gold" || p.kind === "xp" ? ` · ${p.reason || ""}` : ""}
                 {p.damageFormula ? ` · ${p.damageFormula} ${p.damageType}` : ""}
+                {!!p.materialUses?.length && <span className="fdy-craft-note"> · Consumo su Foundry: {p.materialUses.map(use => `${use.quantity} × ${use.itemName || use.name}`).join(', ')}</span>}
                 {p.origin === "crafting" && p.craft && (
                   <span className="fdy-craft-note"> · {PROFESSIONI.find(x => x.key === p.craft.profession)?.name || p.craft.profession} · rarità {tierByKey(p.craft.tier).label} (mirava {tierByKey(p.craft.targetTier).label}) · d20 {p.craft.d20} → {p.craft.total}{p.craft.d12 ? ` · d12 ${p.craft.d12}` : " · oggetto scelto dal catalogo"}{p.craft.cost ? ` · materiali ${p.craft.cost}` : ""}{p.craft.work ? ` · ⏱ lavoro ${p.craft.work}` : ""}{p.craft.componentBonus ? ` · componenti +${p.craft.componentBonus} al tiro` : ""}{p.craft.componentProofs?.length ? ` · possesso: ${p.craft.componentProofs.join("; ")}` : ""}{p.craft.toolsProof ? ` · strumenti ${p.craft.toolsProof}` : ""}{p.craft.componentEffects?.length ? ` · ⚠ DA DECIDERE: ${p.craft.componentEffects.join("; ")}` : ""}{p.craft.enhancer ? ` · potenziatore ${ENHANCERS.find(e => e.key === p.craft.enhancer)?.name || p.craft.enhancer}${p.craft.enhancerProof ? ` (${p.craft.enhancerProof})` : p.craft.enhancerOwned ? " (dichiarato, non verificato)" : ""}` : ""}{p.craft.mods?.length ? ` · condizioni: ${p.craft.mods.join(", ")}` : ""}{p.craft.note ? ` · nota: "${p.craft.note}"` : ""}{p.craft.curse?.nome ? ` · ☠ MALEDIZIONE (${p.craft.curse.gravita || "seria"}) "${p.craft.curse.nome}": ${p.craft.curse.meccanica}${p.craft.curse.rivelazione ? ` — se ne accorge: ${p.craft.curse.rivelazione}` : ""}${p.craft.curse.rimozione ? ` — si spezza: ${p.craft.curse.rimozione}` : ""}` : ""}</span>
                 )}

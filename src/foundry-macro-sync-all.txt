@@ -131,6 +131,7 @@ function buildFields(actor) {
       const w = typeof i.system.weight === "object" ? i.system.weight?.value : i.system.weight;
       const p = typeof i.system.price === "object" ? i.system.price?.value : i.system.price;
       return fsMap({
+        id: fsStr(i.id),
         name: fsStr(i.name),
         type: fsStr(i.type),
         quantity: fsInt(i.system.quantity ?? 1),
@@ -628,11 +629,11 @@ async function leggiCoda() {
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
   return (data.documents || [])
-    .map((doc) => ({ _path: doc.name, _id: doc.name.split("/").pop(), ...obj(doc.fields || {}) }))
-    .filter((d) => d.status === "pending" || (d.kind === "xp" && d.status === "pending_xp") || (d.kind === "actor" && d.status === "pending_actor"));
+    .map((doc) => ({ _path: doc.name, _id: doc.name.split("/").pop(), _updateTime: doc.updateTime, ...obj(doc.fields || {}) }))
+    .filter((d) => ["pending", "pending_craft", "pending_materials"].includes(d.status) || (d.kind === "xp" && d.status === "pending_xp") || (d.kind === "actor" && d.status === "pending_actor"));
 }
 
-const descriviVoce = (d) => d.kind === "actor"
+const descriviVoce = (d) => d.kind === "materials" ? `${d.targetName || d.targetUid}: materiali del crafting` : d.kind === "actor"
   ? `👹 ${d.name || "Nemico"} → Attori · ${CARTELLA_NEMICI}`
   : d.kind === "xp"
   ? `${d.targetName || d.targetUid}: +${d.amount} PE (${d.reason || "premio"})`
@@ -844,14 +845,67 @@ async function creaNemico(d) {
 
 // Processa la coda. attoreDi(uid) → attore del PG (dal piano dei collegamenti).
 // Ritorna { oggetti, spese, saltate, toccati:Set(uid), righe:[] }.
+// MATERIALI CRAFT — quantità e ricevuta nello stesso aggiornamento Item.
+const nomeMaterialeCraft = (value) => String(value || "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/\s+/g, " ").trim();
+function materialeConsumato(actor, id) {
+  return actor.items.reduce((total, item) => total + (Number(item.getFlag("world", "craftMaterialReceipts")?.[id]) || 0), 0);
+}
+async function prenotaCodaMateriali(d) {
+  if (Number(d.materialLeaseUntil) > Date.now()) return false;
+  const url = `${BASE}/foundry_inbox/${d._id}?key=${FIREBASE_CONFIG.apiKey}&updateMask.fieldPaths=materialLeaseUntil&currentDocument.updateTime=${encodeURIComponent(d._updateTime)}`;
+  const response = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: { materialLeaseUntil: { integerValue: String(Date.now() + 90000) } } }) });
+  if (response.status === 409 || response.status === 412) return false;
+  if (!response.ok) throw new Error(`Prenotazione materiali fallita (${response.status})`);
+  return true;
+}
+async function consumaMaterialiCraft(actor, uses) {
+  const changes = new Map();
+  for (const use of uses) {
+    const count = Number(use.quantity);
+    if (!use.reservationId || !Number.isInteger(count) || count < 1) throw new Error("Prenotazione materiale non valida.");
+    let remaining = Math.max(0, count - materialeConsumato(actor, use.reservationId));
+    if (!remaining) continue;
+    const candidates = use.itemId ? [actor.items.get(use.itemId)].filter(Boolean)
+      : actor.items.filter((item) => nomeMaterialeCraft(item.name) === nomeMaterialeCraft(use.itemName));
+    for (const item of candidates) {
+      const change = changes.get(item.id) || { _id: item.id, "system.quantity": Math.max(0, Number(item.system.quantity ?? 1) || 0), receipts: { ...(item.getFlag("world", "craftMaterialReceipts") || {}) } };
+      const taken = Math.min(remaining, change["system.quantity"]);
+      if (!taken) continue;
+      change["system.quantity"] -= taken;
+      change.receipts[use.reservationId] = (Number(change.receipts[use.reservationId]) || 0) + taken;
+      changes.set(item.id, change);
+      remaining -= taken;
+      if (!remaining) break;
+    }
+    if (remaining) throw new Error(`${use.itemName || use.name}: quantità insufficiente su Foundry. La voce resta in coda.`);
+  }
+  if (changes.size) await actor.updateEmbeddedDocuments("Item", [...changes.values()].map(({ receipts, ...change }) => ({
+    ...change, "flags.world.craftMaterialReceipts": receipts,
+  })));
+}
+async function confermaMaterialiCraft(actor, uid, uses) {
+  const { fields } = buildFields(actor);
+  const reservations = {};
+  for (const use of uses) reservations[use.reservationId] = { mapValue: { fields: { status: { stringValue: "done" } } } };
+  const masks = ['inventory', 'actions', ...uses.map((use) => `crafting.materialReservations.\`${use.reservationId}\`.status`)];
+  const query = masks.map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`).join('&');
+  const response = await fetch(`${BASE}/characters/${uid}?key=${FIREBASE_CONFIG.apiKey}&${query}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { inventory: fields.inventory, actions: fields.actions,
+      crafting: { mapValue: { fields: { materialReservations: { mapValue: { fields: reservations } } } } } } }),
+  });
+  if (!response.ok) throw new Error(`Quantità consumate, aggiornamento sito da riprovare (${response.status}).`);
+}
+// FINE MATERIALI CRAFT
 async function processaCoda(voci, attoreDi) {
-  const esito = { oggetti: 0, spese: 0, pe: 0, nemici: 0, saltate: 0, toccati: new Set(), righe: [] };
-  for (const d of voci) {
+  const esito = { oggetti: 0, spese: 0, pe: 0, nemici: 0, materiali: 0, saltate: 0, toccati: new Set(), righe: [] };
+  for (const d of [...voci].sort((a, b) => Number(b.kind === "materials") - Number(a.kind === "materials"))) {
     try {
       if (d.kind === "actor") {
         await creaNemico(d);
         esito.nemici++;
-      } else if (d.kind === "gold" || d.kind === "xp" || d.target === "player") {
+      } else if (d.kind === "gold" || d.kind === "xp" || d.kind === "materials" || d.target === "player") {
         const actor = attoreDi(d.targetUid);
         if (!actor) {
           esito.saltate++;
@@ -860,7 +914,40 @@ async function processaCoda(voci, attoreDi) {
         }
         if (d.kind === "gold") { await scalaMonete(actor, d); esito.spese++; }
         else if (d.kind === "xp") { await daiPE(actor, d); esito.pe++; }
-        else { await actor.createEmbeddedDocuments("Item", [buildItemData(d)]); esito.oggetti++; }
+        else {
+          let consumes = Array.isArray(d.materialUses) ? d.materialUses : [];
+          // Compatibilità con ritiri già in coda prima della correzione.
+          if (!consumes.length && d.origin === 'crafting' && d.craft?.enhancer && ['scheda', 'mercato'].includes(d.craft.enhancerSource)) {
+            const name = String(d.craft.enhancerProof || '').replace(/^(sulla scheda:|comprato al Mercato:)\s*/i, '').trim();
+            if (!name) throw new Error('Manca il nome del potenziatore del vecchio ritiro: verifica la voce prima di importare.');
+            consumes = [{ reservationId: `legacy_${d._id}_enhancer`, quantity: 1, itemName: name }];
+          }
+          if (d.origin === 'crafting' && !Array.isArray(d.requiredMaterials)) {
+            for (const [index, proof] of (d.craft?.componentProofs || []).entries()) {
+              const match = String(proof).match(/:\s*(?:sulla scheda:|comprato al Mercato:)\s*(.+?)(?:\s*· da togliere dalla scheda)?$/i);
+              if (match) consumes.push({ reservationId: `legacy_${d._id}_component_${index}`, quantity: 1,
+                itemName: match[1].replace(/\s*\(\+\d+\)$/, '').trim() });
+            }
+          }
+          const required = Array.isArray(d.requiredMaterials) ? d.requiredMaterials : [];
+          if (consumes.length || required.length) {
+            if (!await prenotaCodaMateriali(d)) { esito.saltate++; continue; }
+            for (const id of required) if (!materialeConsumato(actor, id)) throw new Error("I componenti del lavoro devono essere consumati prima del ritiro.");
+            await consumaMaterialiCraft(actor, consumes);
+          }
+          if (d.kind !== "materials") {
+            if (!actor.items.some((item) => item.getFlag("world", "craftInboxId") === d._id)) {
+              const itemData = buildItemData(d);
+              foundry.utils.setProperty(itemData, "flags.world.craftInboxId", d._id);
+              await actor.createEmbeddedDocuments("Item", [itemData]);
+            }
+            esito.oggetti++;
+          }
+          if (consumes.length) {
+            await confermaMaterialiCraft(actor, d.targetUid, consumes);
+            esito.materiali += consumes.reduce((total, use) => total + use.quantity, 0);
+          }
+        }
         esito.toccati.add(d.targetUid);
       } else {
         await Item.create(buildItemData(d));
@@ -1040,8 +1127,8 @@ async function syncOne(uid, actor, userName) {
           const a = perUid.get(uid) || attoreDaFlag(uid);
           if (a) await syncOne(uid, a, nomeUtente.get(uid)).catch((e) => console.warn("[Coda] sync:", e));
         }
-        if (es.oggetti || es.spese || es.pe || es.nemici) {
-          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} monete, ${es.pe} PE, ${es.nemici} nemici.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
+        if (es.oggetti || es.spese || es.pe || es.nemici || es.materiali) {
+          ChatMessage.create({ whisper: ChatMessage.getWhisperRecipients("GM"), content: `<p>🔁 Dall'app: ${es.oggetti} oggetti, ${es.spese} monete, ${es.pe} PE, ${es.nemici} nemici, ${es.materiali} materiali consumati.</p><ul>${es.righe.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` });
         }
       } catch (e) { console.warn("[Coda] giro automatico:", e); }
       finally { G.inCorso = false; }

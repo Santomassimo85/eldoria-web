@@ -5,6 +5,7 @@
 // prezzo, peso, danno/attacco per le armi (valori SRD), CA per le armature,
 // proprietà… così l'oggetto creato dal giocatore arriva su Foundry "da manuale".
 
+import { materialEvidence } from "./craftingMaterials";
 import { PREGIATURE, normTier } from "./crafting";
 import { componentByKey, craftTimeLabel, fmtMo, roundMo } from "./craftingTime";
 import { itemMech } from "./craftingCatalogo";
@@ -187,23 +188,11 @@ const RARITY_ORDER = ["common", "uncommon", "rare", "veryRare", "legendary", "ar
 // ── Verifica del possesso di un potenziatore ("deve essere posseduto in gioco").
 // Tre prove valide, in quest'ordine:
 //   1. scorta assegnata dal Master: `characters/{uid}.crafting.enhancers[key]` > 0 (si consuma all'uso);
-//   2. l'oggetto è sulla scheda sincronizzata da Foundry (`characters.actions[].name`);
-//   3. l'oggetto è stato comprato al Mercato Nero (`items` con isSold e buyerName = nome del PG).
+//   2. quantità disponibile nell'inventario Foundry, al netto delle prenotazioni;
+//   3. acquisto al Mercato solo per schede legacy ancora prive di inventario.
 // Il Master non ha bisogno di prove.
 export function enhancerEvidence(enh, { charData, marketItems = [], isMaster = false } = {}) {
-  if (!enh) return { ok: false, source: "", label: "" };
-  if (isMaster) return { ok: true, source: "master", label: "Master" };
-  const stock = Number(charData?.crafting?.enhancers?.[enh.key]) || 0;
-  if (stock > 0) return { ok: true, source: "scorta", label: `assegnato dal Master (${stock})`, stock };
-  const names = [enh.name, ...(enh.aliases || [])].map((x) => x.toLowerCase());
-  const match = (n) => { const l = String(n || "").toLowerCase(); return names.some((a) => l.includes(a)); };
-  const actions = Array.isArray(charData?.actions) ? charData.actions : [];
-  const onSheet = actions.find((a) => match(a?.name));
-  if (onSheet) return { ok: true, source: "scheda", label: `sulla scheda: ${onSheet.name}` };
-  const me = String(charData?.name || "").trim().toLowerCase();
-  const bought = me && marketItems.find((it) => it?.isSold && String(it.buyerName || "").trim().toLowerCase() === me && match(it.name));
-  if (bought) return { ok: true, source: "mercato", label: `comprato al Mercato: ${bought.name}` };
-  return { ok: false, source: "", label: "non risulta né sulla scheda né al Mercato: chiedi al Master di assegnartelo" };
+  return materialEvidence(enh, { charData, marketItems, isMaster }, "enhancers");
 }
 
 // ── Resistenze a scelta (Cotta della Resistenza, Pozione di Resistenza…) ──
@@ -316,6 +305,9 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
     else if (mech.save) actionType = "save";
     if (mech.dmg2) extraDamage.push([mech.dmg2[0], mech.dmg2[1]]);
   }
+  if (enhancer?.key === 'lacrima_driade' && isCons && actionType === 'heal' && damageFormula) {
+    damageFormula = `${damageFormula} + 1d4`;
+  }
   const saveAbility = mech?.save ? mech.save[0] : "";
   const saveDC = mech?.save ? Number(mech.save[1]) || 0 : 0;
   const uses = mech?.uses
@@ -324,6 +316,7 @@ export function craftedItemToFoundryPayload({ profession, tier: rawTier, name, d
   // Effetti attivi: addosso finché lo porti (equipaggiamento) o da applicare
   // dalla scheda quando lo usi (consumabili).
   const fx = [...(mech?.fx || []), ...(res ? [`res:${res}`] : [])];
+  if (enhancer?.effect?.armorValue && cls.foundryType === 'equipment' && !cls.armorType) fx.push(`ac+${enhancer.effect.armorValue}`);
   const changes = fxChanges(fx);
   const effects = changes.length ? [{ name: finalName, changes, transfer: !isCons }] : [];
 

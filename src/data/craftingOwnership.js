@@ -10,6 +10,7 @@
 // basta che il nome dell'oggetto su Foundry contenga uno degli alias.
 // Il Master non ha bisogno di prove.
 
+import { materialEvidence } from "./craftingMaterials";
 import { COMPONENTS } from "./craftingTime";
 
 // Nomi (o pezzi di nome) degli strumenti di ogni professione, come compaiono
@@ -60,18 +61,9 @@ export function toolsEvidence(prof, { charData, marketItems = [], isMaster = fal
   return { ...f, hint: def.hint, label: f.ok ? f.label : `non risultano sulla scheda: servono "${def.hint}" nell'inventario di Foundry (poi sincronizza) o comprati al Mercato` };
 }
 
-// Componente: scorta del Master (si consuma) → scheda/inventario → Mercato. `qty` = pezzi usabili.
+// Componente: scorta del Master → inventario → acquisto legacy. Le prenotazioni si sottraggono ai pezzi usabili.
 export function componentEvidence(comp, { charData, marketItems = [], isMaster = false } = {}) {
-  if (!comp) return { ok: false, qty: 0, label: "", source: "" };
-  if (isMaster) return { ok: true, qty: Infinity, source: "master", label: "Master" };
-  const stock = Number(charData?.crafting?.components?.[comp.key]) || 0;
-  const f = findOwned([comp.name, ...(comp.aliases || [])], charData, marketItems);
-  const qty = stock + (f.ok ? f.qty : 0);
-  if (qty <= 0) return { ok: false, qty: 0, source: "", label: "non risulta: il Master lo assegna dopo la sessione o lo mette sulla scheda Foundry" };
-  const bits = [];
-  if (stock > 0) bits.push(`assegnato dal Master (${stock})`);
-  if (f.ok) bits.push(f.label);
-  return { ok: true, qty, stock, source: stock > 0 ? "scorta" : f.source, label: bits.join(" · ") };
+  return materialEvidence(comp, { charData, marketItems, isMaster }, "components");
 }
 
 export const componentDefs = () => COMPONENTS;
