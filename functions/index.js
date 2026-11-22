@@ -262,7 +262,8 @@ exports.arenaWeeklyReset = onSchedule(
                 const snaps = {};
                 Object.entries(meta.characterSnapshots || {}).forEach(([uid, s]) => { if (keep.has(uid)) snaps[uid] = s; });
                 tx.update(ref, {
-                    phase: "registration",
+                    // Chiusa finché il Master non sceglie di avviarla ("Apri iscrizioni").
+                    phase: "closed",
                     participants: [], waitingList: [],
                     matches: fun, characterSnapshots: snaps,
                     tournamentWinner: null, currentRound: 1, matchHistory: [],

@@ -7409,6 +7409,7 @@ export default function Arena() {
         <div className="abm-board" role="status" aria-label="Stato dell'Arena">
           <div className="abm-board-row abm-board-phase">
             {arenaMeta.phase === "registration" && <span className="arune-pill open">● Iscrizioni aperte</span>}
+            {arenaMeta.phase === "closed" && <span className="arune-pill finished">● Arena chiusa</span>}
             {arenaMeta.phase === "combat" && <span className="arune-pill combat">● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}</span>}
             {arenaMeta.phase === "finished" && <span className="arune-pill finished">● Concluso</span>}
             {arenaMeta.timerPaused && <span className="arune-pill paused" title="Timer in pausa">⏸ In pausa</span>}
@@ -7455,6 +7456,7 @@ export default function Arena() {
             sub: arenaMeta.phase === "registration" ? (isRegistered ? "Sei iscritto ✓" : isPending ? "In attesa di approvazione…" : "Crea il tuo campione — classi base Lv.3") : "Iscrizioni chiuse · prova l'Arena Libera",
             onClick: () => {
               if (arenaMeta.phase === "registration") { if (!isMaster) openLoadoutPicker(); else setArenaView("master"); }
+              else if (arenaMeta.phase === "closed" && isMaster) setArenaView("master");
               else setArenaView("libera");
             },
           },
@@ -7904,6 +7906,16 @@ export default function Arena() {
               ))}
             </div>
           </div>
+          {arenaMeta.phase === "closed" && (
+            <div className="prize-editor">
+              <p className="col-label">🔒 Arena chiusa</p>
+              <p className="empty-note">Dopo il reset della domenica l'Arena resta chiusa finché non decidi tu di avviarla.</p>
+              <button className="btn-approve" onClick={async () => {
+                if (!window.confirm("Aprire le iscrizioni al torneo? Tutti i giocatori riceveranno la notifica.")) return;
+                await updateDoc(doc(db, "arena_meta", "global"), { phase: "registration" });
+              }}>▶ Apri iscrizioni</button>
+            </div>
+          )}
           {arenaMeta.phase === "registration" && (
             <div className="prize-editor">
               <p className="col-label">♛ Opzioni Iscrizioni</p>
