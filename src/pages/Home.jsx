@@ -143,10 +143,10 @@ export default function Home() {
       dogma: "“Ogni storia merita una fine. Ma anche una canzone.”",
     },
     {
-      nome: "MYRHAL – Il Tessitore dell’Arcano",
+      nome: "MYRHAL – La Tessitrice dell’Arcano",
       immagine: "/assets/pantheon/Myrhal.jpg",
       dominio: "Magia, conoscenza proibita, tessitura della realtà",
-      titoli: "Il Signore del Filo Invisibile, Colui che Tesse il Cosmo",
+      titoli: "La Signora del Filo Invisibile, Colei che Tesse il Cosmo",
       simbolo: "Una ragnatela a forma di spirale, con un occhio al centro",
       descrizione:
         "Myrhal non ha forma, ma appare a chi studia la magia nei sogni e nei momenti di rivelazione. Le sue magie non sono lanci incantati, ma trame da comprendere e intrecciare.",
