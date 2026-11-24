@@ -22,7 +22,7 @@ const GIORNI_PER_ANNO = MESI_EXANTHIA.length * GIORNI_PER_MESE; // 360
 export const GIORNO_TESTATA = "Voren";
 export const SOTTOTITOLO_TESTATA = `La Gazzetta del ${GIORNO_TESTATA}`;
 
-const ANNO_BASE = 1582; // l'era conta dalla "Caduta delle Stelle" (vedi Home)
+const ANNO_BASE = 1852; // 1852 anni dopo la "Caduta delle Stelle": l'anno della Home e delle cronache
 const ERA = "dopo la Caduta delle Stelle";
 const ERA_BREVE = "d.C.S.";
 const MESE_ANCORA = 6;   // Solleone (0-based)
@@ -46,7 +46,7 @@ export function exanthiaDate(number) {
   };
 }
 
-/** "10 di Solleone · Anno 1582 dopo la Caduta delle Stelle" */
+/** "10 di Solleone · Anno 1852 dopo la Caduta delle Stelle" */
 export function exanthiaDateLabel(number) {
   const d = exanthiaDate(number);
   return `${d.day} di ${d.month} · Anno ${d.year} ${ERA}`;
