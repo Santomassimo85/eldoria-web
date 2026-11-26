@@ -296,6 +296,28 @@ export async function streamGenerateSession(payload, onChunk) {
   return { ...parseGenerated(full), warning: data.warning || "", usage: data.usage || null };
 }
 
+export async function editSessionWithAi(payload) {
+  const resp = await fetch("/api/generate-session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...payload, mode: "edit" }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  const full = data.text || "";
+  if (!full) throw new Error("Nessuna modifica generata.");
+  const parsed = parseGenerated(full);
+  const registry = await loadLoreRegistry().catch(() => null);
+  const html = registry ? linkifySessionHtml(parsed.html, registry) : parsed.html;
+  return {
+    html,
+    summary: parsed.summary,
+    title: data.title || "",
+    warning: data.warning || "",
+    usage: data.usage || null,
+  };
+}
+
 // Salva/aggiorna una sessione generata.
 export async function saveSession({ party, sessionNumber, title, htmlContent, summary, durata }) {
   const id = sessionDocId(party, sessionNumber);

@@ -99,6 +99,8 @@ function wrapSimple(fragment, title) {
   const m = body.match(/<body[^>]*>([\s\S]*?)(<\/body>|$)/i);
   if (m) body = m[1];
   body = body.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<\/?(html|head)[^>]*>/gi, "");
+  body = body.replace(/^\s*<main[^>]*>/i, "").replace(/<\/main>\s*$/i, "");
+  body = body.replace(/<p class="legenda">[\s\S]*?<\/p>/gi, "").trim();
   const safeTitle = String(title || "Sessione").replace(/[<>&]/g, "");
   return `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>${SHELL_CSS}</style></head>
@@ -400,17 +402,67 @@ async function callClaude({ system, user, maxTokens, tool = null }) {
   return { full, streamErr, stopReason, usage };
 }
 
+function stripShellForEdit(html) {
+  let s = String(html || "").trim();
+  const m = s.match(/<main[^>]*>([\s\S]*?)<\/main>/i) || s.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (m) s = m[1];
+  s = s.replace(/<p class="legenda">[\s\S]*?<\/p>/gi, "");
+  // Rimuovi i link lore aggiunti dall'app: verranno riapplicati dopo la modifica.
+  s = s.replace(/<a\b[^>]*class="[^"]*lore-link[^"]*"[^>]*>([\s\S]*?)<\/a>/gi, "$1");
+  return s.trim();
+}
+
+function buildEditSystem({ party, world, closingChronicle, actsPlan }) {
+  return `Sei l'assistente del Dungeon Master per il party ${party} della campagna "Crit Happens" (${world || "Eldoria"}).
+Devi MODIFICARE la prep di sessione esistente seguendo esattamente le istruzioni del DM.
+- Mantieni invariate le parti che il DM non ha chiesto di cambiare.
+- Rispetta la regola fondamentale: ${NO_PLAYER_ACTIONS}
+- Tempi di riferimento: ${actsPlan}.
+- Scrivi i nomi di NPC, luoghi e PG senza tag <a> (l'app li trasforma in link automaticamente).
+- Usa SOLO i tag HTML del contenuto (niente <html>, <head>, <style>, <script>, niente attributi style): <header>, <section class="box">, <section class="atto">, <div class="npc">, <div class="scontro">, <p class="chiusura">… — ${closingChronicle}</p>, terminando con <!--FINE-->.
+
+[OUTPUT — formato ESATTO, nient'altro]
+---HTML---
+…il contenuto modificato del body che finisce con <!--FINE-->…
+---SUMMARY---
+{"panoramica": "...", "bottino": "...", "ganciAperti": "..."}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY mancante" });
 
   const b = req.body || {};
   const isDraft = b.mode === "draft";
+  const isEdit = b.mode === "edit";
   if (!b.party || !b.sessionNumber) return res.status(400).json({ error: "Servono party e sessionNumber." });
 
   const actsPlan = DURATION_PLAN[b.durata] || "4 atti da ~45 minuti ciascuno";
 
   try {
+    if (isEdit) {
+      if (!String(b.editPrompt || "").trim()) return res.status(400).json({ error: "Scrivi cosa vuoi modificare." });
+      const cleanHtml = stripShellForEdit(b.currentHtml || "").slice(0, 32000);
+      const curSum = JSON.stringify(b.currentSummary || {});
+      const userMsg = `[SESSIONE ATTUALE — HTML]\n${cleanHtml}\n\n[SUMMARY ATTUALE]\n${curSum}\n\n[RICHIESTA DI MODIFICA DEL DM]\n${String(b.editPrompt).trim()}\n\nApplica le modifiche richieste mantenendo coerente il resto della sessione e aggiorna anche il JSON ---SUMMARY--- se cambiano panoramica, bottino o ganciAperti.`;
+      const { full, streamErr, stopReason, usage } = await callClaude({
+        system: buildEditSystem({
+          party: b.party, world: b.world || "", closingChronicle: b.closingChronicle || "Cronache", actsPlan,
+        }),
+        user: userMsg,
+        maxTokens: 7000,
+      });
+      if (!full) return res.status(502).json({ error: streamErr || "Nessuna modifica generata." });
+      const h = full.indexOf("---HTML---");
+      const sIdx = full.indexOf("---SUMMARY---");
+      const fragment = full.slice(h >= 0 ? h + 10 : 0, sIdx > h ? sIdx : undefined);
+      const summaryPart = sIdx >= 0 ? full.slice(sIdx) : "---SUMMARY---\n{}";
+      const title = (fragment.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "").replace(/<[^>]+>/g, "").trim();
+      const text = `---HTML---\n${wrapSimple(fragment, title)}\n${summaryPart}`;
+      const truncated = stopReason === "max_tokens" || !fragment.includes("<!--FINE-->");
+      const warning = streamErr || (truncated ? "La sessione modificata potrebbe essere troncata (manca la fine)." : "");
+      return res.status(200).json({ text, title, usage, ...(warning ? { warning } : {}) });
+    }
     if (isDraft) {
       const { full, streamErr, usage } = await callClaude({
         system: buildDraftSystem({ party: b.party, world: b.world || "", actsPlan }),
