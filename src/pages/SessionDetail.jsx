@@ -13,7 +13,15 @@ const isDmUser = isAdminEmail;
 
 // Testo dei riquadri di riepilogo: una regola globale dà ai <p> un grigio
 // scuro (illeggibile sul fondo scuro), quindi il colore va messo qui.
-const SUM_STYLE = `.sessdet-sum{color:var(--osso,#ece5d6);line-height:1.6;white-space:pre-line;margin:0}`;
+const SUM_STYLE = `
+.sessdet-sum{color:var(--osso,#ece5d6);line-height:1.6;white-space:pre-line;margin:0}
+.sessdet-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.sessdet-toolbar .sumadm-btn.primary{flex:0 0 auto;color:#141016;font-weight:700}
+.sessdet-toolbar .sumadm-btn.ghost{background:rgba(255,255,255,0.06);color:var(--osso,#ece5d6);border:1px solid rgba(var(--oro-rgb),0.45)}
+.sessdet-toolbar .sumadm-btn.ghost:hover:not(:disabled){background:rgba(var(--oro-rgb),0.16);border-color:rgba(var(--oro-rgb),0.8)}
+.sessdet-input{width:100%;background:rgba(15,12,18,0.85);color:var(--osso,#ece5d6);border:1px solid rgba(var(--oro-rgb),0.38);border-radius:6px;padding:9px 12px;font-family:inherit;font-size:0.92rem;line-height:1.5;box-sizing:border-box}
+.sessdet-input:focus{outline:none;border-color:rgba(var(--oro-rgb),0.85)}
+`;
 
 export default function SessionDetail() {
   const { party: partyParam, number } = useParams();
@@ -236,33 +244,33 @@ export default function SessionDetail() {
               <h1 className="sumadm-title">{session.title || "(senza titolo)"}</h1>
               {session.durata && <p className="sumadm-sub">Durata prevista: {session.durata}</p>}
             </div>
-            <div className="adm-btn-row" style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div className="sessdet-toolbar">
               <button
                 type="button"
-                className={`adm-btn ${aiOpen ? "adm-btn--primary" : ""}`}
+                className={`sumadm-btn ${aiOpen ? "primary" : "ghost"}`}
                 onClick={() => setAiOpen((v) => !v)}
               >
                 ✨ {aiOpen ? "Chiudi AI" : "Modifica con AI"}
               </button>
               {!editing ? (
-                <button type="button" className="adm-btn" onClick={enterManualEdit}>
+                <button type="button" className="sumadm-btn ghost" onClick={enterManualEdit}>
                   ✏️ Modifica a mano
                 </button>
               ) : (
                 <>
-                  <button type="button" className="adm-btn adm-btn--primary" onClick={handleSaveManual} disabled={saving}>
+                  <button type="button" className="sumadm-btn primary" onClick={handleSaveManual} disabled={saving}>
                     {saving ? "Salvataggio…" : "💾 Salva modifiche"}
                   </button>
-                  <button type="button" className="adm-btn" onClick={toggleHtmlMode} disabled={saving}>
+                  <button type="button" className="sumadm-btn ghost" onClick={toggleHtmlMode} disabled={saving}>
                     {rawHtmlMode ? "👁 Editor visuale" : "⟨/⟩ Codice HTML"}
                   </button>
-                  <button type="button" className="adm-btn" onClick={() => setEditing(false)} disabled={saving}>
+                  <button type="button" className="sumadm-btn ghost" onClick={() => setEditing(false)} disabled={saving}>
                     Annulla
                   </button>
                 </>
               )}
               {undoSnapshot && (
-                <button type="button" className="adm-btn" onClick={handleUndoAi} disabled={saving || aiBusy}>
+                <button type="button" className="sumadm-btn ghost" onClick={handleUndoAi} disabled={saving || aiBusy}>
                   ↩ Ripristina prima dell'AI
                 </button>
               )}
@@ -278,20 +286,20 @@ export default function SessionDetail() {
               <div className="sumadm-card-head">
                 <h2>✨ Modifica questa sessione con l'AI</h2>
               </div>
-              <p style={{ margin: "0 0 10px", opacity: 0.85, fontSize: "0.9rem" }}>
+              <p style={{ margin: "0 0 10px", color: "var(--osso, #ece5d6)", opacity: 0.85, fontSize: "0.9rem" }}>
                 Scrivi cosa vuoi cambiare, aggiungere o togliere: l'AI aggiornerà la sessione mantenendo il resto invariato.
               </p>
               <textarea
-                className="adm-textarea"
+                className="sessdet-input"
                 rows={3}
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 placeholder="Es. Nell'Atto II aggiungi un'imboscata di 3 assassini sul ponte, cambia il bottino finale con 150 mo e una pergamena di Palla di Fuoco..."
                 disabled={aiBusy}
-                style={{ width: "100%", marginBottom: 10 }}
+                style={{ marginBottom: 10 }}
               />
-              <div className="adm-btn-row">
-                <button type="submit" className="adm-btn adm-btn--primary" disabled={aiBusy || !aiPrompt.trim()}>
+              <div className="sessdet-toolbar" style={{ marginTop: 0 }}>
+                <button type="submit" className="sumadm-btn primary" disabled={aiBusy || !aiPrompt.trim()}>
                   {aiBusy ? "✨ Modifica in corso…" : "✨ Applica modifiche AI"}
                 </button>
               </div>
@@ -304,31 +312,31 @@ export default function SessionDetail() {
               <div className="sumadm-card-head">
                 <h2>✏️ Modifica diretta</h2>
               </div>
-              <div className="adm-form adm-form--2" style={{ marginBottom: 12 }}>
-                <div className="adm-field">
+              <div className="sumadm-row3" style={{ gridTemplateColumns: "2fr 1fr", marginBottom: 12 }}>
+                <div className="sumadm-field">
                   <label>Titolo</label>
-                  <input className="adm-input" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} />
+                  <input className="sessdet-input" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} />
                 </div>
-                <div className="adm-field">
+                <div className="sumadm-field">
                   <label>Durata prevista</label>
-                  <input className="adm-input" value={draftDurata} onChange={(e) => setDraftDurata(e.target.value)} placeholder="es. 3h" />
+                  <input className="sessdet-input" value={draftDurata} onChange={(e) => setDraftDurata(e.target.value)} placeholder="es. 3h" />
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
-                <div className="adm-field">
+                <div className="sumadm-field">
                   <label>📋 Panoramica</label>
-                  <textarea className="adm-textarea" rows={3} value={draftSummary.panoramica} onChange={(e) => setDraftSummary((s) => ({ ...s, panoramica: e.target.value }))} />
+                  <textarea className="sessdet-input" rows={3} value={draftSummary.panoramica} onChange={(e) => setDraftSummary((s) => ({ ...s, panoramica: e.target.value }))} />
                 </div>
-                <div className="adm-field">
+                <div className="sumadm-field">
                   <label>💰 Bottino</label>
-                  <textarea className="adm-textarea" rows={3} value={draftSummary.bottino} onChange={(e) => setDraftSummary((s) => ({ ...s, bottino: e.target.value }))} />
+                  <textarea className="sessdet-input" rows={3} value={draftSummary.bottino} onChange={(e) => setDraftSummary((s) => ({ ...s, bottino: e.target.value }))} />
                 </div>
-                <div className="adm-field">
+                <div className="sumadm-field">
                   <label>🪝 Ganci aperti</label>
-                  <textarea className="adm-textarea" rows={3} value={draftSummary.ganciAperti} onChange={(e) => setDraftSummary((s) => ({ ...s, ganciAperti: e.target.value }))} />
+                  <textarea className="sessdet-input" rows={3} value={draftSummary.ganciAperti} onChange={(e) => setDraftSummary((s) => ({ ...s, ganciAperti: e.target.value }))} />
                 </div>
               </div>
-              <p style={{ margin: "12px 0 0", opacity: 0.8, fontSize: "0.85rem" }}>
+              <p style={{ margin: "12px 0 0", color: "var(--osso, #ece5d6)", opacity: 0.85, fontSize: "0.85rem" }}>
                 {rawHtmlMode
                   ? "Stai modificando il codice HTML grezzo della sessione."
                   : "Clicca direttamente sul testo della sessione qui sotto per scrivere o modificare qualsiasi parte, poi premi «Salva modifiche»."}
@@ -353,10 +361,10 @@ export default function SessionDetail() {
           {editing ? (
             rawHtmlMode ? (
               <textarea
-                className="adm-textarea"
+                className="sessdet-input"
                 value={draftHtml}
                 onChange={(e) => setDraftHtml(e.target.value)}
-                style={{ width: "100%", height: "75vh", fontFamily: "monospace", fontSize: "0.85rem" }}
+                style={{ height: "75vh", fontFamily: "monospace", fontSize: "0.85rem" }}
               />
             ) : (
               <iframe
