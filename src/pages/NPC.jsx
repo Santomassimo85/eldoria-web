@@ -163,10 +163,16 @@ export default function NPC() {
                   {(npc.faction || city !== "Erranti") && (
                     <span className="nx-tag">{npc.faction || city}</span>
                   )}
-                  <span className="nx-anello">
+                  <span className={`nx-anello${npc.dead ? " is-dead" : ""}`}>
                     {npc.image
                       ? <img src={npc.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
                       : <span className="nx-anello-ph" aria-hidden="true">{String(npc.name || "?").charAt(0)}</span>}
+                    {npc.dead && (
+                      <svg className="npc-dead-x" viewBox="0 0 100 100" aria-label="Deceduto">
+                        <line x1="18" y1="18" x2="82" y2="82" />
+                        <line x1="82" y1="18" x2="18" y2="82" />
+                      </svg>
+                    )}
                   </span>
                   <span className="nx-nome">{npc.name}</span>
                   {(npc.faction || npc.location) && (
@@ -191,10 +197,16 @@ export default function NPC() {
             {/* Ritratto INTERO (contain) su un fondo sfocato della stessa immagine:
                 si vede tutto su ogni schermo; tocco = a tutto schermo. */}
             {openNpc.image && (
-              <button type="button" className="npc-ritratto" onClick={() => setZoomImg(openNpc.image)}
+              <button type="button" className={`npc-ritratto${openNpc.dead ? " is-dead" : ""}`} onClick={() => setZoomImg(openNpc.image)}
                       style={{ "--ritratto": `url("${openNpc.image}")` }} aria-label={`Ingrandisci il ritratto di ${openNpc.name}`}>
                 <img src={openNpc.image} alt={openNpc.name}
                      onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }} />
+                {openNpc.dead && (
+                  <svg className="npc-dead-x" viewBox="0 0 100 100" aria-label="Deceduto">
+                    <line x1="20" y1="20" x2="80" y2="80" />
+                    <line x1="80" y1="20" x2="20" y2="80" />
+                  </svg>
+                )}
                 <span className="npc-ritratto-zoom" aria-hidden="true">⤢</span>
               </button>
             )}
