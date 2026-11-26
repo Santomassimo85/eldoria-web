@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "../firebase";
 import { READ_SCROLL_NEED } from "../data/petReads";
+import { getActiveCharId } from "./multiChar";
 
 const IDLE_MS = 30000;
 const TICK_MS = 500;
@@ -32,7 +33,7 @@ function remember(uid, key) {
     localStorage.setItem(storeKey(uid), JSON.stringify([...s].slice(-3000)));
   } catch { /* storage bloccato: chiederà di nuovo al server, che dirà "già fatto" */ }
 }
-const call = (data) => httpsCallable(functions, "petReadReward")(data).then((r) => r.data);
+const call = (data) => httpsCallable(functions, "petReadReward")({ ...data, charId: getActiveCharId() }).then((r) => r.data);
 
 // Ultima attività del giocatore, condivisa da tutti i tracker.
 let lastActivity = Date.now();

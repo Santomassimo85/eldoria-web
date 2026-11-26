@@ -1565,11 +1565,29 @@ exports.scribaKickoff = onRequest(
 // ── La Ruota di Exanthia: il giro lo fa il server (2026-10-17) ───────────────
 // Vedi functions/ruota.js. Un giro al giorno per account (doc ruota_spins
 // `{giorno}_{uid}` creato in transazione), solo il Master principale senza limiti.
+const MULTI_CHARS = {
+  ipAONmlrnmgb2p9ncTbOLlY75cT2: [
+    "ipAONmlrnmgb2p9ncTbOLlY75cT2",
+    "ipAONmlrnmgb2p9ncTbOLlY75cT2__zareth",
+  ],
+};
+function isOwnerOfChar(authUid, charId) {
+  if (!authUid || !charId) return false;
+  if (charId === authUid) return true;
+  return (MULTI_CHARS[authUid] || []).includes(charId);
+}
+function resolveCharUid(request) {
+  const authUid = request.auth?.uid;
+  if (!authUid) return null;
+  const requested = String(request.data?.charId || "");
+  return requested && isOwnerOfChar(authUid, requested) ? requested : authUid;
+}
+
 const ruota = require("./ruota");
 exports.ruotaSpin = onCall(
   { region: "europe-west4", timeoutSeconds: 30, memory: "256MiB" },
   async (request) => {
-    const uid = request.auth?.uid;
+    const uid = resolveCharUid(request);
     if (!uid) throw new HttpsError("unauthenticated", "Accedi per girare la ruota.");
     const email = String(request.auth.token?.email || "").trim().toLowerCase();
     const isMaster = email === ruota.MAIN_MASTER_EMAIL;
@@ -1632,7 +1650,7 @@ const loginRewards = require("./loginRewards");
 exports.loginDaily = onCall(
   { region: "europe-west4", timeoutSeconds: 30, memory: "256MiB" },
   async (request) => {
-    const uid = request.auth?.uid;
+    const uid = resolveCharUid(request);
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const db = admin.firestore();
     const now = new Date();
@@ -1688,7 +1706,7 @@ const petReads = require("./petReads");
 exports.petReadReward = onCall(
   { region: "europe-west4", timeoutSeconds: 20, memory: "256MiB" },
   async (request) => {
-    const uid = request.auth?.uid;
+    const uid = resolveCharUid(request);
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const action = request.data?.action === "start" ? "start" : "finish";
     const kind = String(request.data?.kind || "");
@@ -1859,7 +1877,7 @@ const isPetMaster = (request) => PET_MASTER_EMAILS.includes(String(request.auth?
 exports.petDo = onCall(
   { region: "europe-west4", timeoutSeconds: 30, memory: "512MiB" },
   async (request) => {
-    const uid = request.auth?.uid;
+    const uid = resolveCharUid(request);
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const opName = String(request.data?.op || "");
     const args = Array.isArray(request.data?.args) ? request.data.args : [];
@@ -1918,10 +1936,10 @@ const PET_POINT_SOURCES = {
 };
 async function petAwardAllowed(db, request, target, source, key) {
   const caller = request.auth.uid;
-  if (source === "daily_login") return caller === target;
+  if (source === "daily_login") return isOwnerOfChar(caller, target);
   if (source === "boss_win") return isPetMaster(request);
   if (source === "market_bid") {
-    if (caller !== target || !key) return false;
+    if (!isOwnerOfChar(caller, target) || !key) return false;
     return (await db.collection("items").doc(String(key)).get()).exists;
   }
   if (source.startsWith("arena_")) {
@@ -2023,7 +2041,7 @@ async function getSegreteMasterUid() {
 exports.segreteDo = onCall(
   { region: "europe-west4", timeoutSeconds: 30, memory: "512MiB" },
   async (request) => {
-    const uid = request.auth?.uid;
+    const uid = resolveCharUid(request);
     if (!uid) throw new HttpsError("unauthenticated", "Accedi.");
     const op = String(request.data?.op || "");
     const db = admin.firestore();

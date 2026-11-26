@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { httpsCallable } from "firebase/functions";
+import { getActiveCharId } from "../utils/multiChar";
 import { db, functions } from "../firebase";
 import { ITEMS, SHOP_ITEMS, RARITY, COIN_ICON, COIN_NAME, FLOOR_COINS_DIE, bagOf, coinsOf, itemOf, boughtToday, dailyLimit, GIFT_FEE, GIFT_DAILY, giftsToday, isGear, gearUsers, sellPriceOf, tradeValueOf } from "../data/segreteItems";
 import { WEAPON_CHOICES, fxLine } from "../data/segreteKits";
@@ -15,7 +16,7 @@ import { classInfo, clsStyle } from "../data/segrete";
 import { SgIcon } from "../components/GameIcon";
 
 let callable = null;
-const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
+const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable({ ...data, charId: getActiveCharId() }).then((r) => r.data); };
 
 // chi usa un equipaggiamento: "Guerriero, Bardo"
 const usersOf = (it) => gearUsers(it).map((c) => classInfo(c)?.it).filter(Boolean).join(", ");

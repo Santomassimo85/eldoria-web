@@ -320,7 +320,7 @@ export default function Segrete({ mode = "segrete", initialTab = null }) {
     const st = charData?.storyTower;
     const wk = currentWeekKey();
     if (!uid || !st || !st.weekKey || st.weekKey === wk || st.rewardedWeek === st.weekKey || !(Number(st.floor) > 0)) return;
-    httpsCallable(functions, "segreteDo")({ op: "towerClaimWeekly" }).catch(() => {});
+    httpsCallable(functions, "segreteDo")({ op: "towerClaimWeekly", charId: uid }).catch(() => {});
   }, [uid, charData?.storyTower?.weekKey, charData?.storyTower?.floor, charData?.storyTower?.rewardedWeek]);
   useEffect(() => onSnapshot(collection(db, "dungeon_types"), (s) => setCustom(s.docs.map((d) => ({ key: d.id, ...d.data() }))), () => setCustom([])), []);
   useEffect(() => {

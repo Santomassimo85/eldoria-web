@@ -12,6 +12,12 @@ service cloud.firestore {
     function isOwner(uid) {
       return isAuth() && request.auth.uid == uid;
     }
+    function isCharOwner(charId) {
+      return isLoggedIn() && (
+        request.auth.uid == charId ||
+        (request.auth.uid == "ipAONmlrnmgb2p9ncTbOLlY75cT2" && charId == "ipAONmlrnmgb2p9ncTbOLlY75cT2__zareth")
+      );
+    }
     function isMaster() {
       return isLoggedIn() && (
         request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
@@ -164,9 +170,9 @@ service cloud.firestore {
       allow create: if isMaster() || (
         isLoggedIn() &&
         request.resource.data.origin == "crafting" &&
-        request.resource.data.crafterUid == request.auth.uid &&
+        isCharOwner(request.resource.data.crafterUid) &&
         request.resource.data.target == "player" &&
-        request.resource.data.targetUid == request.auth.uid
+        isCharOwner(request.resource.data.targetUid)
       );
       allow update, delete: if true;  // la macro marca "imported"/elimina (non autenticata)
     }
@@ -231,7 +237,7 @@ service cloud.firestore {
     }
 
     match /pg_sheets/{userId} {
-      allow read, write: if isMaster() || (isLoggedIn() && request.auth.uid == userId);
+      allow read, write: if isMaster() || isCharOwner(userId);
     }
 
     // ── Arena ────────────────────────────────────────────────────────────────
@@ -252,7 +258,11 @@ service cloud.firestore {
 
     match /characters_arena/{charId} {
       allow read: if isLoggedIn();
-      allow write: if isLoggedIn() && (request.auth.uid + "_arena" == charId || isMaster());
+      allow write: if isLoggedIn() && (
+        request.auth.uid + "_arena" == charId ||
+        (request.auth.uid == "ipAONmlrnmgb2p9ncTbOLlY75cT2" && charId == "ipAONmlrnmgb2p9ncTbOLlY75cT2__zareth_arena") ||
+        isMaster()
+      );
     }
 
     match /arena_bets/{betId} {
@@ -351,7 +361,7 @@ service cloud.firestore {
     // ── Letture/visite che hanno già pagato i punti pet (2026-10-31): le scrive
     // SOLO la function petReadReward. Ognuno legge le sue, il Master tutte.
     match /pet_reads/{readId} {
-      allow read: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
+      allow read: if isLoggedIn() && (isCharOwner(resource.data.uid) || isMaster());
       allow write: if false;
     }
     // Inizio delle letture in corso (ora del server): solo la function.
@@ -371,8 +381,8 @@ service cloud.firestore {
     match /pet_matches/{matchId} {
       allow read: if isLoggedIn();
       // le lotte del Torneo dei Pet le crea il Master già "active"
-      allow create: if isLoggedIn() && ((request.resource.data.a == request.auth.uid && request.resource.data.status == "pending") || isMaster());
-      allow update: if isLoggedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid || isMaster());
+      allow create: if isLoggedIn() && ((isCharOwner(request.resource.data.a) && request.resource.data.status == "pending") || isMaster());
+      allow update: if isLoggedIn() && (isCharOwner(resource.data.a) || isCharOwner(resource.data.b) || isMaster());
       allow delete: if isMaster();
     }
 
@@ -387,15 +397,15 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow create, update: if isMaster() || (
         isLoggedIn()
-        && request.resource.data.uid == request.auth.uid
-        && entryId == request.resource.data.tid + "_" + request.auth.uid
+        && isCharOwner(request.resource.data.uid)
+        && entryId == request.resource.data.tid + "_" + request.resource.data.uid
         && get(/databases/$(database)/documents/pet_meta/tournament).data.status == "registration"
         && get(/databases/$(database)/documents/pet_meta/tournament).data.tid == request.resource.data.tid
         && request.resource.data.team.size() <= 3
       );
       allow delete: if isMaster() || (
         isLoggedIn()
-        && resource.data.uid == request.auth.uid
+        && isCharOwner(resource.data.uid)
         && get(/databases/$(database)/documents/pet_meta/tournament).data.status == "registration"
       );
     }
@@ -531,10 +541,10 @@ service cloud.firestore {
 
     // ── Notifications ────────────────────────────────────────────────────────
     match /notifications/{msgId} {
-      allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow read: if isLoggedIn() && (isCharOwner(resource.data.userId) || isMaster());
       allow create: if isLoggedIn();
-      allow update: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
-      allow delete: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow update: if isLoggedIn() && (isCharOwner(resource.data.userId) || isMaster());
+      allow delete: if isLoggedIn() && (isCharOwner(resource.data.userId) || isMaster());
     }
 
     // ── Market & items ───────────────────────────────────────────────────────

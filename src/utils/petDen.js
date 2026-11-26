@@ -21,6 +21,7 @@ import { PET_DEX } from "../data/petDex";
 import { EVOLUTIONS } from "../data/petEvo";
 import { towerFresh as freshTower } from "../data/petOps";
 import { towerWeek } from "../data/petEngine";
+import { getActiveCharId } from "./multiChar";
 export { denOf, countOf, MASCOT_XP_BONUS, PVP_POINTS, PVP_DAILY, PVP_WIN_XP, PVP_LOSS_XP, PVP_XP_FIGHTS, LOSS_XP, towerSeed, towerTurnSeed, towerStart, towerFresh, canResetTower } from "../data/petOps";
 
 const charRef = (uid) => doc(db, "characters", uid);
@@ -28,7 +29,7 @@ let callable = null;
 async function petDo(op, args) {
   callable = callable || httpsCallable(functions, "petDo");
   try {
-    const r = await callable({ op, args });
+    const r = await callable({ op, args, charId: getActiveCharId() });
     return r.data?.out ?? null;
   } catch (e) {
     throw new Error(e?.message || "Il Rifugio non risponde, riprova.");

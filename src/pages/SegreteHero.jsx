@@ -7,6 +7,7 @@ import { SgIcon } from "../components/GameIcon";
 import { sgTone } from "../data/segreteIcons";
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { getActiveCharId } from "../utils/multiChar";
 import { functions } from "../firebase";
 import { playDiceRoll } from "../components/diceSound";
 import SegreteGear from "./SegreteGear";
@@ -24,7 +25,7 @@ import {
 } from "../data/segreteKits";
 
 let callable = null;
-const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
+const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable({ ...data, charId: getActiveCharId() }).then((r) => r.data); };
 const STAT_HINT = { str: "colpi in mischia", dex: "CA leggera, iniziativa, archi", con: "punti ferita", int: "magia del Mago", wis: "magia di Druido e Chierico", cha: "magia di Stregone, Warlock, Bardo, Paladino" };
 
 const ActChip = ({ a, sub, lv = 1 }) => (

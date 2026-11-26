@@ -198,7 +198,7 @@ export function RuotaGioco({ popup = false, onClose }) {
     try {
       // Il giro lo fa il SERVER (functions/ruota.js): ora, giorno, spicchio e dadi.
       // Un giro al giorno per account, scritto in ruota_spins che nessun client può toccare.
-      const { data } = await httpsCallable(functions, "ruotaSpin")();
+      const { data } = await httpsCallable(functions, "ruotaSpin")({ charId: uid });
       const r = decorate(data);
       spinTo(r.idx, () => setShown(isMaster ? { ...r, prova: true } : r));
     } catch (e) {

@@ -25,6 +25,7 @@ export const PARTY_MEMBERS = {
     { name: "Temistocle", race: "Halfling",   class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
     { name: "Lael",       race: "Alto Elfo",  class: "Mago",     image: "/assets/player/lael.jpg" },
     { name: "Palar",      race: "Dragonide (gemma, ametista)", class: "Paladino", image: "/assets/player/palar.webp" },
+    { name: "Zareth",     race: "Umano", class: "Guerriero", image: "" },
   ],
   Unico: [],
 };

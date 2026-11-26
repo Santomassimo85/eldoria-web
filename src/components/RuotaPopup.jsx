@@ -20,7 +20,7 @@ import { waitGate } from "../utils/popupGate";
 const seenKey = (uid, day) => `ruota_popup_${uid}_${day}`;
 
 export default function RuotaPopup() {
-  const { currentUser } = useAuth();
+  const { currentUser, charSelectionPending } = useAuth();
   const uid = currentUser?.uid;
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function RuotaPopup() {
   }, []);
 
   useEffect(() => {
-    if (!uid || isMainMaster(currentUser?.email)) return;
+    if (!uid || charSelectionPending || isMainMaster(currentUser?.email)) return;
     let alive = true;
     (async () => {
       try {
@@ -51,7 +51,7 @@ export default function RuotaPopup() {
       } catch { /* niente rete o niente ora del server: niente popup */ }
     })();
     return () => { alive = false; };
-  }, [uid, currentUser?.email]);
+  }, [uid, charSelectionPending, currentUser?.email]);
 
   const close = () => {
     try { sessionStorage.setItem(seenKey(uid, day), "1"); } catch { /* niente */ }

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import { getActiveCharId } from "../utils/multiChar";
 import { db, functions } from "../firebase";
 import { heroActionList, targetKind, AFK_MS } from "../data/segreteEngine";
 import { classInfo, classColor, clsStyle, diffOf, sizeOf } from "../data/segrete";
@@ -41,7 +42,7 @@ const vfxKey = (id) => `seg-${id}`;
 const BOW_KEY = "seg-my-bow"; // da dove parte la freccia in prima persona: l'arco, in basso al centro
 const HAND_KEY = "seg-my-focus"; // la mano sinistra (focus, mano libera o scudo), in basso a sinistra nella scena
 let callable = null;
-const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable(data).then((r) => r.data); };
+const segreteDo = (data) => { callable = callable || httpsCallable(functions, "segreteDo"); return callable({ ...data, charId: getActiveCharId() }).then((r) => r.data); };
 
 // Cache di sessione per mostri e tile delle Segrete (evita re-fetch ad ogni stanza).
 const _TILE_CACHE = new Map();

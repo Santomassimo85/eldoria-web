@@ -51,7 +51,7 @@ export function LoginTrack({ count, month, compact = false, fresh = 0 }) {
 }
 
 export default function LoginRewardPopup() {
-  const { currentUser } = useAuth();
+  const { currentUser, charSelectionPending } = useAuth();
   const uid = currentUser?.uid;
   const [res, setRes] = useState(null);
   const releaseRef = useRef(null);
@@ -66,7 +66,7 @@ export default function LoginRewardPopup() {
   }, []);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || charSelectionPending) return;
     const master = isMainMaster(currentUser?.email);
     let alive = true;
     const release = () => { releaseRef.current?.(); releaseRef.current = null; };
@@ -86,7 +86,7 @@ export default function LoginRewardPopup() {
         const c = s.data();
         if (!master && (!c.name || isHiddenChar({ ...c, id: uid }))) { release(); return; }
         if (!master && c.loginRewards?.lastDay === d) { try { localStorage.setItem(doneKey(uid, d), "1"); } catch { /* niente */ } release(); return; }
-        const { data } = await httpsCallable(functions, "loginDaily")();
+        const { data } = await httpsCallable(functions, "loginDaily")({ charId: uid });
         try { localStorage.setItem(doneKey(uid, data.day), "1"); } catch { /* niente */ }
         if (master) try { sessionStorage.setItem(masterSeenKey(uid), "1"); } catch { /* niente */ }
         if (!alive) { release(); return; }
@@ -108,7 +108,7 @@ export default function LoginRewardPopup() {
     const onVis = () => { if (!document.hidden) check(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { alive = false; document.removeEventListener("visibilitychange", onVis); release(); };
-  }, [uid, currentUser?.email]);
+  }, [uid, charSelectionPending, currentUser?.email]);
 
   const close = () => { setRes(null); releaseRef.current?.(); releaseRef.current = null; };
 

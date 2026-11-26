@@ -277,6 +277,7 @@ const ATTIVI_DI_RISERVA = [
   "aRVJF5qBpyQdZCNA8aAQG5kl4QH2", // Tanagar
   "G66OrKRV6DRrE8WO0XuAshvBM0x1", // Caius
   "ipAONmlrnmgb2p9ncTbOLlY75cT2", // Soran
+  "ipAONmlrnmgb2p9ncTbOLlY75cT2__zareth", // Zareth
   "6NELjFDvEWU3Z0vxCUPkwBg0GBP2", // Zethir
   "LAn3oXhTgVRNoeUh1ttsew2Fh6I3", // Dago
   "8kRI5YVJ9GcpoYCxlW0a6Gfk1p33", // Makenna
@@ -320,7 +321,8 @@ function activeCharacters(site, hidden) {
 function userFor(c) {
   const byName = c.foundryUser ? game.users.find((u) => normName(u.name) === normName(c.foundryUser)) : null;
   if (byName) return byName;
-  const fromMap = Object.entries(uidMap).find(([, uid]) => uid === c.uid)?.[0];
+  const baseUid = String(c.uid || "").split("__")[0];
+  const fromMap = Object.entries(uidMap).find(([, uid]) => uid === c.uid || uid === baseUid)?.[0];
   return fromMap ? game.users.getName(fromMap) : null;
 }
 
@@ -336,7 +338,12 @@ function actorFor(c, user, chars) {
   }
   const byId = c.foundryActorId ? game.actors.get(c.foundryActorId) : null;
   if (byId && byId.type === "character") return { actor: byId, how: "id attore" };
-  if (user?.character && user.character.type === "character") return { actor: user.character, how: `assegnato a ${user.name}` };
+  if (user?.character && user.character.type === "character") {
+    const fUid = user.character.getFlag("world", "firebaseUID");
+    if ((!fUid || fUid === c.uid) && normName(user.character.name) === normName(c.name)) {
+      return { actor: user.character, how: `assegnato a ${user.name}` };
+    }
+  }
   if (user) {
     const owned = chars.filter((a) => (a.ownership?.[user.id] ?? 0) >= 3);
     if (owned.length === 1) return { actor: owned[0], how: `posseduto da ${user.name}` };
@@ -352,21 +359,27 @@ function actorFor(c, user, chars) {
 function makePlan(active) {
   const chars = game.actors.filter((a) => a.type === "character");
   const used = new Map();
-  const rows = active.map((c) => {
-    const user = userFor(c);
+  const userCounts = new Map();
+  const resolvedUsers = active.map((c) => userFor(c));
+  for (const u of resolvedUsers) {
+    if (u) userCounts.set(u.id, (userCounts.get(u.id) || 0) + 1);
+  }
+  const rows = active.map((c, idx) => {
+    const user = resolvedUsers[idx];
+    const multiForUser = user ? (userCounts.get(user.id) || 0) > 1 : false;
     const { actor, how } = actorFor(c, user, chars);
     const fix = [];
     if (actor) {
       if (actor.getFlag("world", "firebaseUID") !== c.uid) fix.push("collegamento al sito");
       if (user && (actor.ownership?.[user.id] ?? 0) < 3) fix.push(`${user.name} proprietario`);
-      if (user && user.character?.id !== actor.id) fix.push(`assegnato a ${user.name}`);
+      if (user && !multiForUser && user.character?.id !== actor.id) fix.push(`assegnato a ${user.name}`);
       const stale = chars.filter((a) => a.id !== actor.id && a.getFlag("world", "firebaseUID") === c.uid);
       if (stale.length) fix.push(`tolto il collegamento da ${stale.map((a) => a.name).join(", ")}`);
-      if (used.has(actor.id)) return { c, user, actor: null, how: `attore già usato da ${used.get(actor.id)}`, fix: [] };
+      if (used.has(actor.id)) return { c, user, multiForUser, actor: null, how: `attore già usato da ${used.get(actor.id)}`, fix: [] };
       used.set(actor.id, c.name);
-      return { c, user, actor, how, fix, stale };
+      return { c, user, multiForUser, actor, how, fix, stale };
     }
-    return { c, user, actor: null, how, fix: [] };
+    return { c, user, multiForUser, actor: null, how, fix: [] };
   });
   return rows;
 }
@@ -1007,7 +1020,7 @@ async function linkOne(r) {
   const base = game.actors.get(r.actor.id) || r.actor;
   if (base.getFlag("world", "firebaseUID") !== r.c.uid) await base.setFlag("world", "firebaseUID", r.c.uid);
   if (r.user && (base.ownership?.[r.user.id] ?? 0) < 3) await base.update({ [`ownership.${r.user.id}`]: 3 });
-  if (r.user && r.user.character?.id !== base.id) await r.user.update({ character: base.id });
+  if (r.user && !r.multiForUser && r.user.character?.id !== base.id) await r.user.update({ character: base.id });
   for (const a of r.stale || []) await a.unsetFlag("world", "firebaseUID");
 }
 

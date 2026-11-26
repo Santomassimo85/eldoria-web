@@ -27,7 +27,7 @@ export const PARTIES = [
     id: "ENOX",
     name: "Gruppo ENOX",
     world: "Eldoria / Ezhkie",
-    characters: ["Makenna", "Temistocle", "Lael", "Palar"],
+    characters: ["Makenna", "Temistocle", "Lael", "Palar", "Zareth"],
     closingChronicle: "Annali di Ezhkie",
     color: "#8e44ad",
     active: false,

@@ -74,6 +74,7 @@ import NotificationOptIn from "./components/NotificationOptIn";
 import AppVoice from "./components/AppVoice";
 import RuotaPopup from "./components/RuotaPopup";
 import LoginRewardPopup from "./components/LoginRewards";
+import CharacterPickerModal from "./components/CharacterPickerModal";
 import Resoconto from "./pages/Resoconto";
 import { pageKeyOf } from "./data/petReads";
 import ReadTracker from "./components/ReadTracker";
@@ -555,6 +556,7 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationOptIn />
+      <CharacterPickerModal />
       <LoginRewardPopup />
       <RuotaPopup />
       <PageVisitReward />

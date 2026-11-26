@@ -73,7 +73,7 @@ function getRattoRank(points = 0) {
 }
 
 export default function LoginDropdown({ soffi, soffio, onSoffio }) {
-  const { currentUser, login, logout } = useAuth();
+  const { currentUser, isMultiChar, openCharPicker, login, logout } = useAuth();
   const navigate = useNavigate();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -108,9 +108,10 @@ export default function LoginDropdown({ soffi, soffio, onSoffio }) {
 
   useEffect(() => {
     if (!currentUser) return;
+    setCharData(null);
 
     const unsubChar = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
-      if (snap.exists()) setCharData(snap.data());
+      setCharData(snap.exists() ? snap.data() : null);
     });
 
     const qNotify = query(
@@ -275,6 +276,16 @@ export default function LoginDropdown({ soffi, soffio, onSoffio }) {
           >
             📜 Scheda Personaggio
           </button>
+
+          {isMultiChar && (
+            <button
+              type="button"
+              className="ld-menu-item ld-menu-item--gold"
+              onClick={() => { setIsOpen(false); openCharPicker(); }}
+            >
+              🔄 Cambia personaggio
+            </button>
+          )}
 
           {/* Resoconto (2026-10-31): login del mese, punti pet e cosa si è già letto. */}
           <button className="ld-menu-item" onClick={() => { navigate("/resoconto"); setIsOpen(false); }}>
