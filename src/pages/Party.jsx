@@ -57,7 +57,7 @@ const PARTIES = [
       { name: "Lael",                   race: "Alto Elfo",             class: "Mago",     image: "/assets/player/lael.jpg" },
       { name: "Palar",                  race: "Dragonide (Ametista)",  class: "Paladino", image: "/assets/player/palar.webp" },
       { name: "Kael & Mora",            race: "Hexblood",              class: "??",       image: "/assets/player/.png" },
-      { name: "Zareth",                 race: "Umano",                 class: "Guerriero", image: "" },
+      { name: "Zareth",                 race: "Umano",                 class: "Guerriero", image: "/assets/player/zareth.webp" },
     ],
   },
   {
